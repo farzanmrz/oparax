@@ -11,6 +11,7 @@
 
 ## Build, Test, and Development Commands
 - `pnpm install`: install dependencies (root delegates to `frontend/`).
+- `pnpm install:frontend`: reinstall only `frontend/` dependencies.
 - `pnpm dev`: run local dev server at `http://localhost:3000`.
 - `pnpm build`: create production build.
 - `pnpm start`: run built app.
