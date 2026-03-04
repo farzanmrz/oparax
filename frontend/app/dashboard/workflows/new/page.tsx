@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useRef } from "react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,22 +15,15 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { HandleInput } from "@/components/handle-input"
-import { createWorkflow } from "./actions"
 import {
   FREQUENCY_OPTIONS,
   MAX_HANDLES,
-  MOCK_HEADLINES,
   type WorkflowFormState,
 } from "./constants"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon, Loading03Icon } from "@hugeicons/core-free-icons"
 
-type TestPhase = "idle" | "scanning" | "analyzing" | "drafting" | "done"
-type PagePhase = "form" | "headlines" | "drafting"
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+type ScanPhase = "idle" | "loading" | "success" | "error"
 
 export default function NewWorkflowPage() {
   const [formState, setFormState] = useState<WorkflowFormState>({
@@ -39,17 +31,17 @@ export default function NewWorkflowPage() {
     description: "",
     frequency: "30m",
     handles: [],
-    styleRules: "",
-    exampleTweet: "",
   })
-  const [testPhase, setTestPhase] = useState<TestPhase>("idle")
-  const [pagePhase, setPagePhase] = useState<PagePhase>("form")
-  const [selectedHeadlines, setSelectedHeadlines] = useState<Set<number>>(
-    new Set()
-  )
-  const [isPending, startTransition] = useTransition()
+  const [scanPhase, setScanPhase] = useState<ScanPhase>("idle")
+  const [scanResult, setScanResult] = useState<string | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
-  const canTest = formState.description.trim().length > 0
+  const canTest =
+    formState.name.trim().length > 0 &&
+    formState.description.trim().length > 0 &&
+    formState.frequency.length > 0 &&
+    formState.handles.length > 0
 
   // --- Handles ---
 
@@ -67,49 +59,47 @@ export default function NewWorkflowPage() {
     }))
   }
 
-  // --- Test run (mocked) ---
+  // --- Test run (real Grok scan) ---
 
   async function runTestScan() {
-    setTestPhase("scanning")
-    await delay(1500)
-    setTestPhase("analyzing")
-    await delay(1500)
-    setTestPhase("drafting")
-    await delay(1500)
-    setTestPhase("done")
-    setPagePhase("headlines")
-  }
+    // Reset stale state
+    setScanResult(null)
+    setScanError(null)
+    setScanPhase("loading")
 
-  // --- Headline selection ---
+    // Abort any in-flight request
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
 
-  function toggleHeadline(id: number) {
-    setSelectedHeadlines((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  // --- Submit ---
-
-  function handleSubmit() {
-    startTransition(async () => {
-      const result = await createWorkflow({
-        name: formState.name,
-        description: formState.description,
-        frequency: formState.frequency,
-        handles: formState.handles,
-        styleRules: formState.styleRules,
-        exampleTweet: formState.exampleTweet,
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: formState.description,
+          handles: formState.handles,
+        }),
+        signal: controller.signal,
       })
-      if (result?.error) {
-        toast.error(result.error)
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setScanError(data.error || "Something went wrong.")
+        setScanPhase("error")
+        toast.error(data.error || "Something went wrong.")
+        return
       }
-    })
+
+      setScanResult(data.outputText)
+      setScanPhase("success")
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return
+      setScanError("Network error. Check your connection and try again.")
+      setScanPhase("error")
+      toast.error("Network error. Check your connection and try again.")
+    }
   }
 
   return (
@@ -122,7 +112,7 @@ export default function NewWorkflowPage() {
         </p>
       </div>
 
-      {/* ── Phase 1: Workflow config + test ── */}
+      {/* ── Workflow config + test ── */}
       <Card>
         <CardContent className="space-y-6 p-6">
           {/* Section header */}
@@ -131,11 +121,7 @@ export default function NewWorkflowPage() {
           </div>
 
           {/* Name (optional) */}
-          <FormField
-            label="Workflow name"
-            optional
-            hint="Leave blank to auto-generate from your description."
-          >
+          <FormField label="Workflow name">
             <Input
               value={formState.name}
               onChange={(e) =>
@@ -205,178 +191,58 @@ export default function NewWorkflowPage() {
             <div>
               <h2 className="text-base font-semibold">Test Run</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Preview what your workflow will find. This simulates a single
-                scan cycle.
+                Preview what your workflow will find. This runs a real scan
+                against X.
               </p>
             </div>
 
-            {testPhase === "idle" && (
-              <div className="flex justify-center py-2">
-                <Button onClick={runTestScan} disabled={!canTest}>
-                  Run Test
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-center py-2">
+              <Button
+                onClick={runTestScan}
+                disabled={!canTest || scanPhase === "loading"}
+              >
+                Run Test
+              </Button>
+            </div>
 
-            {testPhase !== "idle" && (
-              <div className="space-y-3">
-                <ProgressStep
-                  label="Scanning X accounts..."
-                  active={testPhase === "scanning"}
-                  done={["analyzing", "drafting", "done"].includes(testPhase)}
-                />
-                <ProgressStep
-                  label="Analyzing stories..."
-                  active={testPhase === "analyzing"}
-                  done={["drafting", "done"].includes(testPhase)}
-                />
-                <ProgressStep
-                  label="Generating headlines..."
-                  active={testPhase === "drafting"}
-                  done={testPhase === "done"}
-                />
-              </div>
+            {/* Progress indicator */}
+            {scanPhase === "loading" && (
+              <ProgressStep
+                label="Scanning X accounts..."
+                active={true}
+                done={false}
+              />
+            )}
+            {scanPhase === "success" && (
+              <ProgressStep
+                label="Scanning X accounts..."
+                active={false}
+                done={true}
+              />
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* ── Phase 2: Headline selection ── */}
-      {pagePhase !== "form" && (
+      {/* ── Scan results ── */}
+      {scanPhase === "success" && scanResult && (
         <Card>
           <CardContent className="space-y-4 p-6">
-            <div>
-              <h2 className="text-base font-semibold">Headlines Found</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {MOCK_HEADLINES.length} unique stories detected. Select the ones
-                you want to draft tweets for.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              {MOCK_HEADLINES.map((item) => {
-                const isSelected = selectedHeadlines.has(item.id)
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => toggleHeadline(item.id)}
-                    className={cn(
-                      "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors",
-                      isSelected
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground/40"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-muted-foreground/40"
-                      )}
-                    >
-                      {isSelected && (
-                        <HugeiconsIcon
-                          icon={Tick02Icon}
-                          strokeWidth={3}
-                          className="size-3"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium leading-snug">
-                        {item.headline}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        via {item.source}
-                      </p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {pagePhase === "headlines" && (
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={() => setPagePhase("drafting")}
-                  disabled={selectedHeadlines.size === 0}
-                >
-                  Continue with {selectedHeadlines.size} headline
-                  {selectedHeadlines.size !== 1 ? "s" : ""}
-                </Button>
-              </div>
-            )}
+            <h2 className="text-base font-semibold">Scan Results</h2>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+              {scanResult}
+            </p>
           </CardContent>
         </Card>
       )}
 
-      {/* ── Phase 3: Drafting rules ── */}
-      {pagePhase === "drafting" && (
-        <>
-          <Card>
-            <CardContent className="space-y-6 p-6">
-              <div>
-                <h2 className="text-base font-semibold">Drafting Rules</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Tell the AI how you write. These rules shape every tweet it
-                  drafts.
-                </p>
-              </div>
-
-              <FormField
-                label="Style conventions"
-                optional
-                hint="Describe your writing style — tone, structure, emoji usage, common phrases."
-              >
-                <Textarea
-                  value={formState.styleRules}
-                  onChange={(e) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      styleRules: e.target.value,
-                    }))
-                  }
-                  placeholder={`e.g. Always start with "BREAKING:" for major news. Use 🚨 emoji for transfers. Keep it under 240 characters. Never use hashtags.`}
-                  rows={4}
-                />
-              </FormField>
-
-              <FormField
-                label="Example tweet"
-                optional
-                hint="Paste or write an example tweet so the AI can match your voice."
-              >
-                <Textarea
-                  value={formState.exampleTweet}
-                  onChange={(e) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      exampleTweet: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. BREAKING: Liverpool have agreed personal terms with Florian Wirtz. Transfer fee of €120M being negotiated with Leverkusen. Done deal expected within 48hrs 🚨"
-                  rows={3}
-                />
-              </FormField>
-            </CardContent>
-          </Card>
-
-          {/* Submit */}
-          <div className="flex justify-end pb-4">
-            <Button onClick={handleSubmit} disabled={isPending}>
-              {isPending && (
-                <HugeiconsIcon
-                  icon={Loading03Icon}
-                  strokeWidth={2}
-                  className="animate-spin"
-                />
-              )}
-              Activate Workflow
-            </Button>
-          </div>
-        </>
+      {/* ── Scan error ── */}
+      {scanPhase === "error" && scanError && (
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-destructive">{scanError}</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
@@ -447,14 +313,7 @@ function ProgressStep({
       ) : (
         <div className="size-6 rounded-full border-2 border-muted-foreground/20" />
       )}
-      <span
-        className={cn(
-          "text-sm",
-          done || active ? "text-foreground" : "text-muted-foreground"
-        )}
-      >
-        {label}
-      </span>
+      <span className="text-sm text-foreground">{label}</span>
     </div>
   )
 }

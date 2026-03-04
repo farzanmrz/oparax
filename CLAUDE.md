@@ -6,25 +6,25 @@ Oparax is an AI-powered social media automation tool for professional news repor
 
 ## Tech Stack
 
-| Category | Package | Version | Purpose |
-| -------- | ------- | ------- | ------- |
-| Framework | Next.js (`next`) | 16.1.6 | React meta-framework — SSR, file-based routing, API routes |
-| UI | React (`react`) | 19.2.3 | Component-based UI rendering |
-| Language | TypeScript (`typescript`) | 5.9.3 | Static type-checking for JavaScript |
-| Styling | Tailwind CSS (`tailwindcss`) | 4.2.0 | Utility-first CSS framework |
-| Components | shadcn/ui (`shadcn`) | 3.8.5 | Pre-built, customizable UI components (copied into codebase, Nova style) |
-| Icons | Hugeicons (`@hugeicons/react`) | 1.1.5 | Icon library for shadcn components |
-| BaaS | Supabase (`@supabase/supabase-js`) | 2.97.0 | Supabase client — auth, database queries, storage |
-| BaaS | Supabase SSR (`@supabase/ssr`) | 0.8.0 | Server-side auth helpers — cookie/session management for Next.js |
-| Testing | Vitest (`vitest`) | 4.0.18 | Unit/integration test runner (Vite-native) |
-| Testing | React Testing Library (`@testing-library/react`) | 16.3.2 | React component testing utilities |
-| AI SDK | OpenAI JS SDK (`openai`) | latest | xAI/Grok integration — pointed at `https://api.x.ai/v1`, uses Responses API (`client.responses.create()`). All xAI feature work done in this SDK. Vercel AI SDK (`@ai-sdk/xai`) is installed but not used for Grok work. |
-| Runtime | Python | 3.11.14 | Backend scripts for X API integration |
-| Deployment | Vercel | — | Frontend hosting with auto-deploy from GitHub |
+| Category   | Package                                          | Version | Purpose                                                                                                                                                                                                                  |
+| ---------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Framework  | Next.js (`next`)                                 | 16.1.6  | React meta-framework — SSR, file-based routing, API routes                                                                                                                                                               |
+| UI         | React (`react`)                                  | 19.2.3  | Component-based UI rendering                                                                                                                                                                                             |
+| Language   | TypeScript (`typescript`)                        | 5.9.3   | Static type-checking for JavaScript                                                                                                                                                                                      |
+| Styling    | Tailwind CSS (`tailwindcss`)                     | 4.2.0   | Utility-first CSS framework                                                                                                                                                                                              |
+| Components | shadcn/ui (`shadcn`)                             | 3.8.5   | Pre-built, customizable UI components (copied into codebase, Nova style)                                                                                                                                                 |
+| Icons      | Hugeicons (`@hugeicons/react`)                   | 1.1.5   | Icon library for shadcn components                                                                                                                                                                                       |
+| BaaS       | Supabase (`@supabase/supabase-js`)               | 2.97.0  | Supabase client — auth, database queries, storage                                                                                                                                                                        |
+| BaaS       | Supabase SSR (`@supabase/ssr`)                   | 0.8.0   | Server-side auth helpers — cookie/session management for Next.js                                                                                                                                                         |
+| Testing    | Vitest (`vitest`)                                | 4.0.18  | Unit/integration test runner (Vite-native)                                                                                                                                                                               |
+| Testing    | React Testing Library (`@testing-library/react`) | 16.3.2  | React component testing utilities                                                                                                                                                                                        |
+| AI SDK     | OpenAI JS SDK (`openai`)                         | latest  | xAI/Grok integration — pointed at `https://api.x.ai/v1`, uses Responses API (`client.responses.create()`). All xAI feature work done in this SDK. Vercel AI SDK (`@ai-sdk/xai`) is installed but not used for Grok work. |
+| Runtime    | Python                                           | 3.11.14 | Backend scripts for X API integration                                                                                                                                                                                    |
+| Deployment | Vercel                                           | —       | Frontend hosting with auto-deploy from GitHub                                                                                                                                                                            |
 
 ## Environment
 
-- **JS Package Manager**: `pnpm` — run `pnpm install` in `frontend/` for dependencies
+- **JS Package Manager**: `pnpm` only — run root wrappers (`pnpm dev`, `pnpm build`, `pnpm test`) or direct commands in `frontend/`
 - **Python Package Manager**: `uv` — run `uv sync` at root for Python dependencies
 - **Deployment**: Vercel at [oparax.com](https://oparax.com) (frontend), TBD (backend)
 
@@ -74,7 +74,7 @@ oparax-chirp/
 │   ├── vitest.config.ts           # Test runner config
 │   └── package.json               # Dependencies and scripts
 ├── scripts/
-│   └── search_test.py             # X API v2 search test
+│   └── enforce-pnpm.cjs           # Blocks npm/yarn installs (pnpm-only policy)
 ├── .claude/
 │   └── reference/
 │       ├── vision.md              # Product vision and roadmap
@@ -84,18 +84,17 @@ oparax-chirp/
 ├── NOTES.md                       # Brain dump — low-priority bugs & feature ideas
 ├── pyproject.toml                 # Python config
 └── .env                           # API credentials (git-ignored)
-# Note: root package.json / package-lock.json removed — they caused Turbopack dev-mode errors
+# Note: root package.json exists only as thin pnpm wrappers. Keep root package-lock.json absent.
 ```
 
 ## Reference Documentation
 
-| Document | When to Read |
-| -------- | ------------ |
-| `.claude/reference/vision.md` | Product vision, core loop, long-term direction |
-| `.claude/reference/project-info.md` | Accounts, env vars, API setup, dev commands |
-| `.claude/reference/userjourney.md` | Start of session (context), end of session (update) |
-| `NOTES.md` | Low-priority bugs and feature ideas noticed by the user (brain dump, not urgent) |
-
+| Document                            | When to Read                                                                     |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| `.claude/reference/vision.md`       | Product vision, core loop, long-term direction                                   |
+| `.claude/reference/project-info.md` | Accounts, env vars, API setup, dev commands                                      |
+| `.claude/reference/userjourney.md`  | Start of session (context), end of session (update)                              |
+| `NOTES.md`                          | Low-priority bugs and feature ideas noticed by the user (brain dump, not urgent) |
 
 ## Conventions
 
@@ -105,6 +104,7 @@ oparax-chirp/
 - `proxy.ts` = Next.js per-request hook (refreshes auth). `lib/supabase/middleware.ts` = utility it calls (not the framework feature — confusing name from Supabase docs)
 - TypeScript strict mode, ESLint flat config (v9+)
 - Server Components by default
+- `frontend/next.config.ts` pins `turbopack.root` and `outputFileTracingRoot` to `frontend/` to avoid root inference issues
 
 ### Tailwind CSS v4
 
@@ -113,14 +113,20 @@ oparax-chirp/
 - Dark mode via `prefers-color-scheme` media query
 - Add shadcn components: `pnpm dlx shadcn@latest add <component>` from `frontend/`
 
+### Prompts
+
+- All AI prompts live in `frontend/lib/prompts.ts` — single source of truth
+- Naming convention: `sysprompt_<identifier>` for system prompts, `usrprompt_<identifier>` for user prompts
+- Example: `sysprompt_scan`, `usrprompt_barca`
+
 ### Testing
 
 - Tests in `frontend/__tests__/`, named `{feature}-{type}.test.ts`
-- `pnpm test` (single run) / `pnpm test:watch` from `frontend/`
+- `pnpm test` (single run) / `pnpm test:watch` from root wrappers; direct `frontend/` commands also supported
 - Vitest config at `frontend/vitest.config.ts`, `@` alias maps to `frontend/`
 - Mock `redirect()`: `await expect(fn()).rejects.toThrow("NEXT_REDIRECT")`
 
 ## Session Workflow
 
 - **Start of session**: Read `userjourney.md` to understand where things left off and what's remaining.
-- **End of session**: Run `/wrap-up` (git commit, userjourney.md, NOTES.md, conditional CLAUDE.md/README.md). Individual: `/update-user-journey`, `/update-notes`, `/update-claude-md`.
+- **End of session**: Run `/wrap-up` (git commit, userjourney.md, NOTES.md, conditional CLAUDE.md/README.md).
