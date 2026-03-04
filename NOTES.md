@@ -27,3 +27,9 @@
   Also explore `server_side_tool_usage_details` in the response for deeper observability
   into which x_search internal strategies (keyword, semantic, user, thread) Grok is picking.
   This matters for understanding and optimizing retrieval quality.
+
+- **x_search date filtering limitation** — `from_date`/`to_date` on the `x_search` tool
+  are NOT reliably propagated to all sub-tools. `x_keyword_search` ignores them entirely
+  (uses `mode: "Latest"` instead); only `x_semantic_search` picks up `from_date`. System
+  prompt instructions help but don't fully enforce it. Needs further investigation — may
+  require model-level filtering of results after retrieval.

@@ -175,3 +175,20 @@
 
 - **Workflow detail page (issue #11)** — `/dashboard/workflows/[id]` currently 404s; needs a detail view showing config, run history, and draft review
 - **Merge `ft/10` into `main`** — Branch is committed locally; push blocked by network issue this session (run `git push --set-upstream origin ft/10-workflow-creation-wizard` then merge)
+
+## 2026-03-03 22:19 — Session `86419116-1a7a-4504-9e89-b63e33bdd57b`
+
+### What was done
+
+- **SDK decision** — Switched from Vercel AI SDK (`@ai-sdk/xai`) to OpenAI JS SDK (`openai` package pointed at `https://api.x.ai/v1`) for all Grok/xAI work; documented in CLAUDE.md tech stack table
+- **grok-search.ts** — Rewrote `frontend/scripts/grok-search.ts` from scratch using OpenAI JS SDK: `client.responses.create()` with system + user prompt, `x_search` tool with `allowed_x_handles`, `from_date`/`to_date`, `max_turns`; imports system/user prompts from `prompts.ts`
+- **prompts.ts** — Created `frontend/scripts/prompts.ts` with named exports for reusable system and user prompts (`sysprompt_base`, `usrprompt_barca`, `usrprompt_srk`)
+- **TypeScript fix** — Added `// @ts-expect-error` directive above `type: 'x_search'` to suppress OpenAI SDK type error (x_search is xAI-specific, not in OpenAI's Tool union type)
+- **Prettier config** — Created `frontend/.prettierrc` with `printWidth: 0` so objects/arrays always expand to multiple lines
+- **xAI behavior findings** — Confirmed: `from_date`/`to_date` only partially propagate to x_search sub-tools (`x_keyword_search` ignores them, only `x_semantic_search` honors them); `max_turns` limits reasoning loop turns not individual tool calls; 2 keyword + 1 semantic is Grok's default search strategy
+- **NOTES.md** — Added "Grok / xAI Experimentation" section: xAI sub-agent idea, streaming note, tool_choice observability
+- **Frontend plan** — Designed 3-step incremental plan to wire Grok x_search to the create-workflow form: (1) new API route `app/api/scan/route.ts`, (2) simplify form to 4 required fields + real test run, (3) trim constants; plan saved to `.claude/plans/`
+
+### What's remaining
+
+- **Wire Grok to frontend (Step 1)** — Create `frontend/app/api/scan/route.ts`: POST endpoint that accepts description + handles, calls Grok x_search, returns `outputText`. Discuss date window, model choice, and prompt setup before implementing.
