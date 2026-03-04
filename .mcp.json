@@ -1,11 +1,14 @@
 {
   "mcpServers": {
     "shadcn": {
+      "type": "stdio",
       "command": "npx",
-      "args": [
-        "shadcn@latest",
-        "mcp"
-      ]
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "xai-docs": {
+      "type": "http",
+      "url": "https://docs.x.ai/api/mcp",
+      "disabled_tools": ["get_llms_txt"]
     }
   }
 }

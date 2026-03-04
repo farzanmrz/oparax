@@ -18,6 +18,7 @@ Oparax is an AI-powered social media automation tool for professional news repor
 | BaaS | Supabase SSR (`@supabase/ssr`) | 0.8.0 | Server-side auth helpers — cookie/session management for Next.js |
 | Testing | Vitest (`vitest`) | 4.0.18 | Unit/integration test runner (Vite-native) |
 | Testing | React Testing Library (`@testing-library/react`) | 16.3.2 | React component testing utilities |
+| AI SDK | OpenAI JS SDK (`openai`) | latest | xAI/Grok integration — pointed at `https://api.x.ai/v1`, uses Responses API (`client.responses.create()`). All xAI feature work done in this SDK. Vercel AI SDK (`@ai-sdk/xai`) is installed but not used for Grok work. |
 | Runtime | Python | 3.11.14 | Backend scripts for X API integration |
 | Deployment | Vercel | — | Frontend hosting with auto-deploy from GitHub |
 
