@@ -16,11 +16,10 @@
   MCP server and know how to translate Python OpenAI SDK examples to JS. Useful once the
   x_search testing phase is complete and we're building more complex patterns.
 
-- **Streaming implementation** — When real-time output is needed (e.g., showing Grok's
-  response appearing word by word in the UI), we'll need `client.responses.create({ stream: true })`.
-  This is a separate feature from the standard `async/await` pattern we're using now.
-  The `async function main()` wrapper in current scripts is NOT the same as streaming —
-  it's just how any API call works in Node.js. Streaming will be its own implementation step.
+- **Streaming reasoning tokens** — Currently we stream Grok's final output text, but the
+  "Scanning X accounts..." spinner shows no intermediate progress. Could stream reasoning
+  tokens and tool call events to show what Grok is doing (searching, thinking, etc.)
+  like grok.com does. Low priority but nice UX improvement.
 
 - **tool_choice observability** — Investigate whether `tool_choice` parameter affects
   server-side tools (x_search, web_search) or only client-side function calling tools.
@@ -33,3 +32,19 @@
   (uses `mode: "Latest"` instead); only `x_semantic_search` picks up `from_date`. System
   prompt instructions help but don't fully enforce it. Needs further investigation — may
   require model-level filtering of results after retrieval.
+
+- **Structured output for scan results** — Current approach returns free-form markdown that
+  we parse with regex for `[[N]](url)` citations. Should switch to structured JSON output
+  (array of headlines, each with tweet IDs). Eliminates regex fragility, handles null results
+  cleanly (empty array instead of filler text), and enables relevance filtering at the schema level.
+
+- **Prompt relevance filtering** — `sysprompt_scan` doesn't distinguish between direct news
+  about a subject vs. adjacent/fan activity mentioning them. Example: "SRK fan club celebrates
+  Veer-Zaara re-release" returned alongside actual SRK news. Prompt needs refinement to
+  instruct Grok on relevance thresholds. Also currently Barca-specific in tone — needs
+  generalizing for any topic.
+
+- **OpenAI SDK property serialization** — Inline date expressions like
+  `new Date(Date.now() - 24*60*60*1000).toISOString().split("T")[0]` passed directly in
+  the tools config were silently dropped by the OpenAI SDK. Extracting to named constants
+  first fixed it. Be cautious with complex expressions inside SDK request objects.

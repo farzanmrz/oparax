@@ -19,6 +19,7 @@ Oparax is an AI-powered social media automation tool for professional news repor
 | Testing    | Vitest (`vitest`)                                | 4.0.18  | Unit/integration test runner (Vite-native)                                                                                                                                                                               |
 | Testing    | React Testing Library (`@testing-library/react`) | 16.3.2  | React component testing utilities                                                                                                                                                                                        |
 | AI SDK     | OpenAI JS SDK (`openai`)                         | latest  | xAI/Grok integration — pointed at `https://api.x.ai/v1`, uses Responses API (`client.responses.create()`). All xAI feature work done in this SDK. Vercel AI SDK (`@ai-sdk/xai`) is installed but not used for Grok work. |
+| Embeds     | react-tweet (`react-tweet`)                      | 3.3.0   | Renders embedded tweets from tweet IDs — no Twitter JS/iframe. Used in `scan-result.tsx` for Grok citation embeds.                                                                                                       |
 | Runtime    | Python                                           | 3.11.14 | Backend scripts for X API integration                                                                                                                                                                                    |
 | Deployment | Vercel                                           | —       | Frontend hosting with auto-deploy from GitHub                                                                                                                                                                            |
 
@@ -45,14 +46,19 @@ oparax-chirp/
 │   │   │   ├── actions.ts         # Signup server action
 │   │   │   └── check-email/page.tsx  # Post-signup confirmation
 │   │   ├── auth/confirm/route.ts  # Email verification handler
+│   │   ├── api/scan/route.ts      # POST /api/scan — streams Grok x_search via SSE
 │   │   └── dashboard/             # Protected section (auth guard in layout)
 │   │       ├── layout.tsx         # Sidebar shell + auth guard (protects all /dashboard/*)
 │   │       ├── page.tsx           # Workflow list or empty state
-│   │       └── settings/page.tsx  # Account settings (sign out, coming-soon placeholders)
+│   │       ├── settings/page.tsx  # Account settings (sign out, coming-soon placeholders)
+│   │       └── workflows/new/     # Workflow creation form
+│   │           ├── page.tsx       # Form + streaming test scan + results
+│   │           └── constants.ts   # WorkflowFormState type, FREQUENCY_OPTIONS, MAX_HANDLES
 │   ├── components/                # UI components
 │   │   ├── app-sidebar.tsx        # Main sidebar (logo, nav, user footer)
 │   │   ├── nav-main.tsx           # Flat nav with active state via usePathname
 │   │   ├── nav-user.tsx           # User dropdown (avatar initials + sign-out)
+│   │   ├── scan-result.tsx         # Grok output renderer — parses citations, embeds tweets via react-tweet
 │   │   ├── workflow-card.tsx      # Workflow card for dashboard list
 │   │   ├── login-form.tsx         # Login form (shadcn login-04 block)
 │   │   ├── signup-form.tsx        # Signup form (shadcn signup-04 block)
@@ -66,6 +72,8 @@ oparax-chirp/
 │   │   ├── supabase/middleware.ts  # Session refresh (called by proxy.ts)
 │   │   ├── validation.ts          # validateAuthForm(), validateSignupForm()
 │   │   ├── auth-errors.ts         # mapAuthError()
+│   │   ├── prompts.ts             # AI prompts — sysprompt_scan, etc.
+│   │   ├── scan-constraints.ts    # SCAN_MAX_HANDLES, HANDLE_RE (shared by route.ts + constants.ts)
 │   │   └── utils.ts               # cn() helper for class merging
 │   ├── __tests__/auth/            # Vitest tests (auth suite)
 │   ├── proxy.ts                   # Runs on EVERY request — refreshes auth
