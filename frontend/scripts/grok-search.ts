@@ -24,8 +24,8 @@ async function main() {
         // @ts-expect-error x_search is an xAI-specific tool not in the OpenAI SDK type definitions
         type: 'x_search',
         allowed_x_handles: ['FabrizioRomano'],
-        from_date: '2026-03-04T03:00:00Z',
-        to_date: '2026-03-04T05:00:00Z',
+        from_date: '2026-03-04',
+        to_date: '2026-03-04',
       },
     ],
     max_turns: 10,

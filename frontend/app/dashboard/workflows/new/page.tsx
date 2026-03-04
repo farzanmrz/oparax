@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { HandleInput } from "@/components/handle-input"
+import { ScanResult } from "@/components/scan-result"
 import {
   FREQUENCY_OPTIONS,
   MAX_HANDLES,
@@ -83,16 +84,49 @@ export default function NewWorkflowPage() {
         signal: controller.signal,
       })
 
-      const data = await res.json()
-
+      // Non-streaming error responses (validation, auth) return JSON
       if (!res.ok) {
-        setScanError(data.error || "Something went wrong.")
+        const data = await res.json().catch(() => ({}))
+        const msg = data.error || "Something went wrong."
+        setScanError(msg)
         setScanPhase("error")
-        toast.error(data.error || "Something went wrong.")
+        toast.error(msg)
         return
       }
 
-      setScanResult(data.outputText)
+      // Stream SSE response
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ""
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() ?? ""
+
+        for (const line of lines) {
+          if (line === "data: [DONE]") continue
+          if (!line.startsWith("data: ")) continue
+
+          const payload = JSON.parse(line.slice(6))
+          if (payload.error) {
+            setScanError(payload.error)
+            setScanPhase("error")
+            toast.error(payload.error)
+            return
+          }
+          if (payload.text) {
+            accumulated += payload.text
+            setScanResult(accumulated)
+          }
+        }
+      }
+
       setScanPhase("success")
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return
@@ -103,7 +137,7 @@ export default function NewWorkflowPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-8">
+    <div className="mx-auto w-full max-w-6xl space-y-8">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Create Workflow</h1>
@@ -120,18 +154,40 @@ export default function NewWorkflowPage() {
             <h2 className="text-base font-semibold">Workflow Details</h2>
           </div>
 
-          {/* Name (optional) */}
-          <FormField label="Workflow name">
-            <Input
-              value={formState.name}
-              onChange={(e) =>
-                setFormState((prev) => ({ ...prev, name: e.target.value }))
-              }
-              placeholder="e.g. PL Transfer Watch"
-            />
-          </FormField>
+          {/* Row 1: Name + Frequency side by side */}
+          <div className="grid grid-cols-2 gap-6">
+            <FormField label="Workflow name">
+              <Input
+                value={formState.name}
+                onChange={(e) =>
+                  setFormState((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder="e.g. PL Transfer Watch"
+              />
+            </FormField>
 
-          {/* Description */}
+            <FormField label="Scan frequency">
+              <Select
+                value={formState.frequency}
+                onValueChange={(val) =>
+                  setFormState((prev) => ({ ...prev, frequency: val }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREQUENCY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          </div>
+
+          {/* Row 2: Description (full width) */}
           <FormField
             label="Describe your beat"
             hint="Be specific — the more detail you give, the better the AI knows what to look for."
@@ -145,32 +201,11 @@ export default function NewWorkflowPage() {
                 }))
               }
               placeholder="e.g. Premier League transfer rumors, focusing on top 6 clubs. I break signings, loan deals, and contract extensions."
-              rows={4}
+              rows={3}
             />
           </FormField>
 
-          {/* Frequency */}
-          <FormField label="Scan frequency">
-            <Select
-              value={formState.frequency}
-              onValueChange={(val) =>
-                setFormState((prev) => ({ ...prev, frequency: val }))
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FREQUENCY_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-
-          {/* X Handles (optional) */}
+          {/* Row 3: Handles (full width) */}
           <FormField
             label="X accounts to monitor"
             optional
@@ -224,14 +259,24 @@ export default function NewWorkflowPage() {
         </CardContent>
       </Card>
 
-      {/* ── Scan results ── */}
-      {scanPhase === "success" && scanResult && (
+      {/* ── Streaming output (raw text while loading) ── */}
+      {scanPhase === "loading" && scanResult && (
         <Card>
           <CardContent className="space-y-4 p-6">
             <h2 className="text-base font-semibold">Scan Results</h2>
             <p className="whitespace-pre-wrap text-sm text-muted-foreground">
               {scanResult}
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Final scan results (with tweet embeds) ── */}
+      {scanPhase === "success" && scanResult && (
+        <Card>
+          <CardContent className="space-y-4 p-6">
+            <h2 className="text-base font-semibold">Scan Results</h2>
+            <ScanResult outputText={scanResult} />
           </CardContent>
         </Card>
       )}
