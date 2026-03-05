@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,9 +15,10 @@ import { login } from "@/app/login/actions"
 
 export function LoginForm({
   error,
+  message,
   className,
   ...props
-}: React.ComponentProps<"div"> & { error?: string }) {
+}: React.ComponentProps<"div"> & { error?: string; message?: string }) {
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
@@ -37,6 +39,14 @@ export function LoginForm({
                   {error}
                 </div>
               )}
+              {message && (
+                <div
+                  role="status"
+                  className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700"
+                >
+                  {message}
+                </div>
+              )}
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
@@ -50,6 +60,12 @@ export function LoginForm({
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
+                  <Link
+                    href="/forgot-password"
+                    className="ml-auto text-sm underline underline-offset-4"
+                  >
+                    Forgot password?
+                  </Link>
                 </div>
                 <Input id="password" name="password" type="password" required />
               </Field>
