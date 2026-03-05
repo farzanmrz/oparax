@@ -119,6 +119,27 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
 ```
 
+### Supabase Password Reset Setup
+
+To make forgot-password work with the App Router callback flow, configure
+Supabase Auth with these settings:
+
+1. In **Auth > Email Templates > Reset Password**, set the link to:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next={{ .RedirectTo }}">
+  Reset password
+</a>
+```
+
+2. In **Auth > URL Configuration > Redirect URLs**, allow your reset page URLs:
+- `http://localhost:3000/auth/reset-password`
+- `https://oparax.com/auth/reset-password`
+- Any additional environment domains you use (preview/staging)
+
+3. Keep your Site URL aligned with your current environment host so auth links
+resolve correctly.
+
 ### Running Tests
 
 ```bash
