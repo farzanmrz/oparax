@@ -63,22 +63,26 @@ export async function createWorkflow(input: CreateWorkflowInput) {
   }
 
   // 2 — Create the x_search trigger linked to the workflow
-  const { error: trgError } = await supabase.from("triggers").insert({
-    workflow_id: workflow.id,
-    type: "x_search",
-    config: {
-      handles: input.handles,
-      description,
-    },
-    frequency: input.frequency,
-    status: "active",
-  })
+  const { data: trigger, error: trgError } = await supabase
+    .from("triggers")
+    .insert({
+      workflow_id: workflow.id,
+      type: "x_search",
+      config: {
+        handles: input.handles,
+        description,
+      },
+      frequency: input.frequency,
+      status: "active",
+    })
+    .select("id")
+    .single()
 
-  if (trgError) {
+  if (trgError || !trigger) {
     // Clean up the orphaned workflow
     await supabase.from("workflows").delete().eq("id", workflow.id)
     return { error: "Failed to create trigger. Please try again." }
   }
 
-  redirect("/dashboard")
+  return { workflowId: workflow.id, triggerId: trigger.id }
 }

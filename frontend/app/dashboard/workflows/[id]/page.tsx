@@ -1,12 +1,19 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { Card, CardContent } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
-import { TriggerScanPanel } from "./trigger-scan-panel"
+import { WorkflowDraftingStudio } from "@/components/workflow-drafting-studio"
+import { getWorkflowDraftingScopeId } from "@/lib/workflow-drafting"
 import { ScanHistory } from "./scan-history"
 
 export type ScanRun = {
@@ -84,11 +91,19 @@ export default async function WorkflowDetailPage({
 
         return (
           <Card key={trigger.id}>
-            <CardContent className="space-y-4 p-6">
+            <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold">X Search Trigger</h2>
+                <div className="space-y-1">
+                  <CardTitle>X Search Trigger</CardTitle>
+                  <CardDescription>
+                    Scan recent X results into a structured knowledge bank, then
+                    draft tweets from the headlines you choose.
+                  </CardDescription>
+                </div>
                 <Badge variant="outline">{trigger.type}</Badge>
               </div>
+            </CardHeader>
+            <CardContent className="space-y-6 p-6">
 
               <div className="grid grid-cols-2 gap-6">
                 <InfoItem label="Frequency" value={frequencyLabels[trigger.frequency] ?? trigger.frequency} />
@@ -114,14 +129,13 @@ export default async function WorkflowDetailPage({
                 </p>
               )}
 
-              {/* Scan action — per trigger */}
-              <TriggerScanPanel
+              <WorkflowDraftingStudio
+                storageId={getWorkflowDraftingScopeId(workflow.id, trigger.id)}
                 triggerId={trigger.id}
-                description={trigger.config?.description ?? ""}
+                initialMonitoringDescription={trigger.config?.description ?? ""}
                 handles={handles}
               />
 
-              {/* Scan history */}
               {trigger.scan_runs?.length > 0 && (
                 <ScanHistory scanRuns={trigger.scan_runs} />
               )}

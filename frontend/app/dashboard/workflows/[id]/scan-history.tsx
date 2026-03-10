@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ScanResult } from "@/components/scan-result"
+import { StoredScanOutput } from "@/components/stored-scan-output"
 import {
   Table,
   TableBody,
@@ -103,7 +103,7 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
                 {run.status}
               </Badge>
             </div>
-            <ScanResult outputText={run.raw_output} />
+            <StoredScanOutput rawOutput={run.raw_output} />
           </div>
         )
       })()}

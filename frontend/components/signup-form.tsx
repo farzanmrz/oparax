@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -113,9 +114,11 @@ export function SignupForm({
             </FieldGroup>
           </form>
           <div className="bg-muted relative hidden md:block">
-            <img
+            <Image
               src="/images/landing_bird.png"
               alt="Oparax bird illustration"
+              fill
+              sizes="(min-width: 768px) 50vw, 100vw"
               className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
             />
           </div>

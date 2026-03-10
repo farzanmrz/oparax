@@ -1,164 +1,219 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createWorkflow } from "@/app/dashboard/workflows/new/actions";
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createWorkflow } from "@/app/dashboard/workflows/new/actions"
 
-// Mock next/navigation
-const mockRedirect = vi.fn();
+const mockRedirect = vi.fn()
 vi.mock("next/navigation", () => ({
   redirect: (...args: unknown[]) => {
-    mockRedirect(...args);
-    throw new Error("NEXT_REDIRECT");
+    mockRedirect(...args)
+    throw new Error("NEXT_REDIRECT")
   },
-}));
+}))
 
-// Mock the Supabase server client
-const mockGetUser = vi.fn();
-const mockInsert = vi.fn();
+const mockGetUser = vi.fn()
+const mockWorkflowInsert = vi.fn()
+const mockTriggerInsert = vi.fn()
+const mockWorkflowDeleteEq = vi.fn()
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn().mockResolvedValue({
     auth: {
       getUser: () => mockGetUser(),
     },
-    from: () => ({
-      insert: (data: unknown) => {
-        mockInsert(data);
-        return { error: mockInsert._error ?? null };
-      },
-    }),
+    from: (table: string) => {
+      if (table === "workflows") {
+        return {
+          insert: (data: unknown) => {
+            mockWorkflowInsert(data)
+            return {
+              select: () => ({
+                single: () =>
+                  Promise.resolve(
+                    mockWorkflowInsert._result ?? {
+                      data: { id: "workflow-123" },
+                      error: null,
+                    },
+                  ),
+              }),
+            }
+          },
+          delete: () => ({
+            eq: (...args: unknown[]) => {
+              mockWorkflowDeleteEq(...args)
+              return Promise.resolve({ error: null })
+            },
+          }),
+        }
+      }
+
+      if (table === "triggers") {
+        return {
+          insert: (data: unknown) => {
+            mockTriggerInsert(data)
+            return {
+              select: () => ({
+                single: () =>
+                  Promise.resolve(
+                    mockTriggerInsert._result ?? {
+                      data: { id: "trigger-123" },
+                      error: null,
+                    },
+                  ),
+              }),
+            }
+          },
+        }
+      }
+
+      throw new Error(`Unexpected table ${table}`)
+    },
   }),
-}));
+}))
 
 const validInput = {
   name: "",
   description: "Premier League transfer rumors",
   frequency: "30m",
   handles: ["FabrizioRomano"],
-  styleRules: "",
-  exampleTweet: "",
-};
+}
 
 describe("createWorkflow action", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.clearAllMocks()
     mockGetUser.mockResolvedValue({
       data: { user: { id: "user-123" } },
-    });
-    mockInsert._error = null;
-  });
+    })
+    mockWorkflowInsert._result = {
+      data: { id: "workflow-123" },
+      error: null,
+    }
+    mockTriggerInsert._result = {
+      data: { id: "trigger-123" },
+      error: null,
+    }
+  })
 
-  it("redirects to /dashboard on successful creation", async () => {
-    await expect(createWorkflow(validInput)).rejects.toThrow("NEXT_REDIRECT");
+  it("returns the created workflow id and inserts workflow plus trigger", async () => {
+    const result = await createWorkflow(validInput)
 
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: "user-123",
-        description: "Premier League transfer rumors",
-        frequency: "30m",
+    expect(result).toEqual({
+      workflowId: "workflow-123",
+      triggerId: "trigger-123",
+    })
+    expect(mockWorkflowInsert).toHaveBeenCalledWith({
+      user_id: "user-123",
+      name: "Premier League transfer rumors",
+      description: "Premier League transfer rumors",
+      status: "active",
+    })
+    expect(mockTriggerInsert).toHaveBeenCalledWith({
+      workflow_id: "workflow-123",
+      type: "x_search",
+      config: {
         handles: ["FabrizioRomano"],
-        status: "active",
-      })
-    );
-    expect(mockRedirect).toHaveBeenCalledWith("/dashboard");
-  });
+        description: "Premier League transfer rumors",
+      },
+      frequency: "30m",
+      status: "active",
+    })
+  })
 
-  it("uses provided name when given", async () => {
-    await expect(
-      createWorkflow({ ...validInput, name: "My Custom Name" })
-    ).rejects.toThrow("NEXT_REDIRECT");
+  it("uses a provided name when given", async () => {
+    await createWorkflow({ ...validInput, name: "My Custom Name" })
 
-    const insertArg = mockInsert.mock.calls[0][0];
-    expect(insertArg.name).toBe("My Custom Name");
-  });
+    expect(mockWorkflowInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "My Custom Name",
+      }),
+    )
+  })
 
-  it("saves style_rules and example_tweet when provided", async () => {
-    await expect(
-      createWorkflow({
-        ...validInput,
-        styleRules: "Always start with BREAKING:",
-        exampleTweet: "BREAKING: Big transfer news here",
-      })
-    ).rejects.toThrow("NEXT_REDIRECT");
+  it("generates a name from the description when name is empty", async () => {
+    await createWorkflow({
+      ...validInput,
+      name: "",
+      description:
+        "Premier League transfer rumors focusing on top 6 clubs and relegation",
+      handles: [],
+    })
 
-    const insertArg = mockInsert.mock.calls[0][0];
-    expect(insertArg.style_rules).toBe("Always start with BREAKING:");
-    expect(insertArg.example_tweet).toBe("BREAKING: Big transfer news here");
-  });
+    const insertArg = mockWorkflowInsert.mock.calls[0][0]
+    expect(insertArg.name).toBeTruthy()
+    expect(insertArg.name.length).toBeLessThanOrEqual(45)
+    expect(insertArg.name.charAt(0)).toMatch(/[A-Z]/)
+  })
 
-  it("saves null for empty style_rules and example_tweet", async () => {
-    await expect(createWorkflow(validInput)).rejects.toThrow("NEXT_REDIRECT");
+  it("allows an empty handles array", async () => {
+    await createWorkflow({ ...validInput, handles: [] })
 
-    const insertArg = mockInsert.mock.calls[0][0];
-    expect(insertArg.style_rules).toBeNull();
-    expect(insertArg.example_tweet).toBeNull();
-  });
+    expect(mockTriggerInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: {
+          handles: [],
+          description: "Premier League transfer rumors",
+        },
+      }),
+    )
+  })
 
-  it("generates a name from description when name is empty", async () => {
-    await expect(
-      createWorkflow({
-        ...validInput,
-        name: "",
-        description:
-          "Premier League transfer rumors focusing on top 6 clubs and relegation",
-        handles: [],
-      })
-    ).rejects.toThrow("NEXT_REDIRECT");
+  it("redirects to /login when the user is not authenticated", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } })
 
-    const insertArg = mockInsert.mock.calls[0][0];
-    expect(insertArg.name).toBeTruthy();
-    expect(insertArg.name.length).toBeLessThanOrEqual(45);
-    expect(insertArg.name.charAt(0)).toMatch(/[A-Z]/);
-  });
+    await expect(createWorkflow(validInput)).rejects.toThrow("NEXT_REDIRECT")
 
-  it("allows empty handles array", async () => {
-    await expect(
-      createWorkflow({ ...validInput, handles: [] })
-    ).rejects.toThrow("NEXT_REDIRECT");
+    expect(mockRedirect).toHaveBeenCalledWith("/login")
+    expect(mockWorkflowInsert).not.toHaveBeenCalled()
+    expect(mockTriggerInsert).not.toHaveBeenCalled()
+  })
 
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ handles: [] })
-    );
-  });
+  it("returns an error when description is empty", async () => {
+    const result = await createWorkflow({ ...validInput, description: "  " })
 
-  it("redirects to /login when user is not authenticated", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
+    expect(result).toEqual({ error: "Description is required." })
+    expect(mockWorkflowInsert).not.toHaveBeenCalled()
+  })
 
-    await expect(createWorkflow(validInput)).rejects.toThrow("NEXT_REDIRECT");
+  it("returns an error when frequency is invalid", async () => {
+    const result = await createWorkflow({ ...validInput, frequency: "5m" })
 
-    expect(mockRedirect).toHaveBeenCalledWith("/login");
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
+    expect(result).toEqual({ error: "Invalid frequency." })
+    expect(mockWorkflowInsert).not.toHaveBeenCalled()
+  })
 
-  // Validation — Supabase insert should NOT be called
+  it("returns an error when more than 10 handles are provided", async () => {
+    const result = await createWorkflow({
+      ...validInput,
+      handles: Array.from({ length: 11 }, (_, index) => `handle${index}`),
+    })
 
-  it("returns error when description is empty", async () => {
-    const result = await createWorkflow({ ...validInput, description: "  " });
+    expect(result).toEqual({ error: "Maximum 10 handles allowed." })
+    expect(mockWorkflowInsert).not.toHaveBeenCalled()
+  })
 
-    expect(result).toEqual({ error: "Description is required." });
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
+  it("returns an error when workflow creation fails", async () => {
+    mockWorkflowInsert._result = {
+      data: null,
+      error: { message: "DB error" },
+    }
 
-  it("returns error when frequency is invalid", async () => {
-    const result = await createWorkflow({ ...validInput, frequency: "5m" });
-
-    expect(result).toEqual({ error: "Invalid frequency." });
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it("returns error when more than 10 handles provided", async () => {
-    const handles = Array.from({ length: 11 }, (_, i) => `handle${i}`);
-    const result = await createWorkflow({ ...validInput, handles });
-
-    expect(result).toEqual({ error: "Maximum 10 handles allowed." });
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it("returns error when Supabase insert fails", async () => {
-    mockInsert._error = { message: "DB error" };
-
-    const result = await createWorkflow(validInput);
+    const result = await createWorkflow(validInput)
 
     expect(result).toEqual({
       error: "Failed to create workflow. Please try again.",
-    });
-  });
-});
+    })
+    expect(mockTriggerInsert).not.toHaveBeenCalled()
+  })
+
+  it("cleans up the workflow when trigger creation fails", async () => {
+    mockTriggerInsert._result = {
+      data: null,
+      error: { message: "Trigger error" },
+    }
+
+    const result = await createWorkflow(validInput)
+
+    expect(result).toEqual({
+      error: "Failed to create trigger. Please try again.",
+    })
+    expect(mockWorkflowDeleteEq).toHaveBeenCalledWith("id", "workflow-123")
+  })
+})

@@ -9,7 +9,6 @@ export { SCAN_MAX_HANDLES as MAX_HANDLES } from "@/lib/scan-constraints"
 
 export interface WorkflowFormState {
   name: string
-  description: string
   frequency: string
   handles: string[]
 }
