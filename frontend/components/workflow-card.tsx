@@ -2,13 +2,17 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
+type Trigger = {
+  frequency: string
+  config: { handles?: string[]; description?: string }
+  last_run_at: string | null
+}
+
 type Workflow = {
   id: string
   name: string
   status: string
-  frequency: string
-  handles: string[]
-  last_run_at: string | null
+  triggers: Trigger[]
 }
 
 const frequencyLabels: Record<string, string> = {
@@ -33,6 +37,12 @@ function timeAgo(dateString: string): string {
 }
 
 export function WorkflowCard({ workflow }: { workflow: Workflow }) {
+  // Use the first trigger (currently each workflow has one x_search trigger)
+  const trigger = workflow.triggers?.[0]
+  const handles = trigger?.config?.handles ?? []
+  const frequency = trigger?.frequency ?? "30m"
+  const lastRunAt = trigger?.last_run_at ?? null
+
   return (
     <Link href={`/dashboard/workflows/${workflow.id}`}>
       <Card className="transition-colors hover:bg-muted/50">
@@ -45,13 +55,13 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {frequencyLabels[workflow.frequency] ?? workflow.frequency}
+              {frequencyLabels[frequency] ?? frequency}
               {" · "}
-              {workflow.handles.length} {workflow.handles.length === 1 ? "handle" : "handles"} monitored
-              {workflow.last_run_at && (
+              {handles.length} {handles.length === 1 ? "handle" : "handles"} monitored
+              {lastRunAt && (
                 <>
                   {" · "}
-                  Last run: {timeAgo(workflow.last_run_at)}
+                  Last run: {timeAgo(lastRunAt)}
                 </>
               )}
             </p>

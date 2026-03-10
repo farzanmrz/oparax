@@ -8,8 +8,6 @@ interface CreateWorkflowInput {
   description: string
   frequency: string
   handles: string[]
-  styleRules: string
-  exampleTweet: string
 }
 
 const VALID_FREQUENCIES = ["15m", "30m", "1h", "2h"]
@@ -35,7 +33,8 @@ export async function createWorkflow(input: CreateWorkflowInput) {
     redirect("/login")
   }
 
-  if (!input.description.trim()) {
+  const description = input.description.trim()
+  if (!description) {
     return { error: "Description is required." }
   }
   if (!VALID_FREQUENCIES.includes(input.frequency)) {
@@ -45,21 +44,40 @@ export async function createWorkflow(input: CreateWorkflowInput) {
     return { error: "Maximum 10 handles allowed." }
   }
 
-  const name = input.name.trim() || generateWorkflowName(input.description)
+  const name = input.name.trim() || generateWorkflowName(description)
 
-  const { error } = await supabase.from("workflows").insert({
-    user_id: user.id,
-    name,
-    description: input.description.trim(),
+  // 1 — Create the workflow
+  const { data: workflow, error: wfError } = await supabase
+    .from("workflows")
+    .insert({
+      user_id: user.id,
+      name,
+      description,
+      status: "active",
+    })
+    .select("id")
+    .single()
+
+  if (wfError || !workflow) {
+    return { error: "Failed to create workflow. Please try again." }
+  }
+
+  // 2 — Create the x_search trigger linked to the workflow
+  const { error: trgError } = await supabase.from("triggers").insert({
+    workflow_id: workflow.id,
+    type: "x_search",
+    config: {
+      handles: input.handles,
+      description,
+    },
     frequency: input.frequency,
-    handles: input.handles,
-    style_rules: input.styleRules.trim() || null,
-    example_tweet: input.exampleTweet.trim() || null,
     status: "active",
   })
 
-  if (error) {
-    return { error: "Failed to create workflow. Please try again." }
+  if (trgError) {
+    // Clean up the orphaned workflow
+    await supabase.from("workflows").delete().eq("id", workflow.id)
+    return { error: "Failed to create trigger. Please try again." }
   }
 
   redirect("/dashboard")

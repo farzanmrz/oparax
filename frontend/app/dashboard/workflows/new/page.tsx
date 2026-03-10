@@ -21,6 +21,7 @@ import {
   MAX_HANDLES,
   type WorkflowFormState,
 } from "./constants"
+import { createWorkflow } from "./actions"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon, Loading03Icon } from "@hugeicons/core-free-icons"
 
@@ -36,6 +37,7 @@ export default function NewWorkflowPage() {
   const [scanPhase, setScanPhase] = useState<ScanPhase>("idle")
   const [scanResult, setScanResult] = useState<string | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const canTest =
@@ -58,6 +60,23 @@ export default function NewWorkflowPage() {
       ...prev,
       handles: prev.handles.filter((_, i) => i !== index),
     }))
+  }
+
+  // --- Save workflow ---
+
+  async function handleSave() {
+    setSaving(true)
+    const result = await createWorkflow({
+      name: formState.name,
+      description: formState.description,
+      frequency: formState.frequency,
+      handles: formState.handles,
+    })
+    if (result?.error) {
+      toast.error(result.error)
+      setSaving(false)
+    }
+    // On success, the action redirects to /dashboard
   }
 
   // --- Test run (real Grok scan) ---
@@ -288,6 +307,15 @@ export default function NewWorkflowPage() {
             <p className="text-sm text-destructive">{scanError}</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── Save workflow ── */}
+      {scanPhase === "success" && (
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : "Save Workflow"}
+          </Button>
+        </div>
       )}
     </div>
   )
