@@ -2,12 +2,12 @@
 
 ## Recent work
 
-- **Streaming scan** — API route streams Grok response via SSE; frontend reads stream incrementally and shows raw text during loading, full ScanResult with tweet embeds after completion
-- **Tweet embeds** — Created `scan-result.tsx` using react-tweet; parses Grok `[[N]](url)` citations, renders X posts as compact embeds in flex-wrap rows
-- **Wider layout** — Page widened to `max-w-6xl`; name+frequency in 2-col grid; compact tweet CSS (350px, hidden actions)
-- **Date fix** — Fixed `from_date`/`to_date` format to `YYYY-MM-DD` constants (inline expressions were silently dropped by SDK)
-- **API route** — `POST /api/scan` with auth guard, input validation, streaming SSE response from Grok x_search
+- **Schema redesign** — Dropped old flat tables; rebuilt with 3-table model: `workflows → triggers → scan_runs`. RLS policies, FK indexes, check constraints, `handle_updated_at()` trigger all applied via Supabase migration.
+- **Save workflow rewired** — `createWorkflow` action now inserts both a `workflows` row and a linked `triggers` row (type: x_search, config: `{ handles, description }`, frequency). Dashboard query updated to FK-join triggers.
+- **Workflow detail page** — `/dashboard/workflows/[id]/page.tsx` server component fetches workflow + trigger + scan_runs; renders trigger config (frequency, monitored accounts, last_run_at).
+- **Scan trigger + history** — `TriggerScanPanel` client component streams Grok via SSE, persists to `scan_runs` via server actions. `ScanHistory` shows past runs in a shadcn Table with click-to-expand output.
+- **Tweet embeds + streaming** — Scan result renderer (`scan-result.tsx`) parses Grok citations and renders X posts via react-tweet; SSE streaming shows raw text while loading then full result on completion.
 
 ## What's next
 
-Switch Grok scan to structured output (JSON schema with headline+tweet arrays) — eliminates regex parsing, handles null results cleanly, and enables relevance filtering at the schema level. Also refine `sysprompt_scan` to be more generalizable beyond football use case.
+Improve scan result quality: switch Grok output to structured JSON (headlines + tweet ID arrays) to eliminate regex parsing, then refine `sysprompt_scan` to filter relevance and generalize beyond football use case.

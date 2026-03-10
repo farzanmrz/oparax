@@ -51,9 +51,15 @@ oparax-chirp/
 │   │       ├── layout.tsx         # Sidebar shell + auth guard (protects all /dashboard/*)
 │   │       ├── page.tsx           # Workflow list or empty state
 │   │       ├── settings/page.tsx  # Account settings (sign out, coming-soon placeholders)
-│   │       └── workflows/new/     # Workflow creation form
-│   │           ├── page.tsx       # Form + streaming test scan + results
-│   │           └── constants.ts   # WorkflowFormState type, FREQUENCY_OPTIONS, MAX_HANDLES
+│   │       ├── workflows/new/     # Workflow creation form
+│   │       │   ├── page.tsx       # Form + streaming test scan + Save button
+│   │       │   ├── actions.ts     # createWorkflow — inserts workflow + trigger rows
+│   │       │   └── constants.ts   # WorkflowFormState type, FREQUENCY_OPTIONS, MAX_HANDLES
+│   │       └── workflows/[id]/    # Workflow detail page
+│   │           ├── page.tsx       # Server component — fetches workflow + triggers + scan_runs
+│   │           ├── actions.ts     # createScanRun, completeScanRun, failScanRun
+│   │           ├── trigger-scan-panel.tsx  # Client — SSE scan trigger + streaming output
+│   │           └── scan-history.tsx        # Client — shadcn Table of past scan runs, expandable
 │   ├── components/                # UI components
 │   │   ├── app-sidebar.tsx        # Main sidebar (logo, nav, user footer)
 │   │   ├── nav-main.tsx           # Flat nav with active state via usePathname
@@ -64,6 +70,7 @@ oparax-chirp/
 │   │   ├── signup-form.tsx        # Signup form (shadcn signup-04 block)
 │   │   └── ui/                    # shadcn base components
 │   │       ├── button.tsx, card.tsx, field.tsx, input.tsx, label.tsx, separator.tsx
+│   │       ├── table.tsx          # shadcn Table (installed for scan history)
 │   │       └── sidebar.tsx, avatar.tsx, badge.tsx, breadcrumb.tsx, dropdown-menu.tsx
 │   │           sheet.tsx, skeleton.tsx, sonner.tsx, tooltip.tsx
 │   ├── lib/                       # Shared utilities
