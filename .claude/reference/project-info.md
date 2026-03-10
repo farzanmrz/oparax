@@ -15,12 +15,13 @@
 
 - **Endpoint**: `https://api.x.com/2/tweets/search/recent`
 - **Credentials** in root `.env`: `X_BEARER_TOKEN`, `X_CONSUMER_KEY`, `X_SECRET_KEY`
-- **Test script**: `scripts/search_test.py`
+- **Frontend experiment scripts**: `frontend/scripts/grok-search.ts`, `frontend/scripts/prompts.ts`
 
 ## Vercel
 
 - **Live** at [oparax.com](https://oparax.com)
 - Root directory set to `frontend`
+- Keep Root Directory as `frontend` (do not switch to repo root)
 - Auto-deploys from `main` branch on GitHub push
 - Env vars (`NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) configured
@@ -47,19 +48,29 @@
 
 ## Development Commands
 
-### Frontend (run from `frontend/`)
+### Preferred (run from repo root)
 
 ```bash
-pnpm dev          # Dev server at http://localhost:3000 (Turbopack)
-pnpm build        # Production build
-pnpm start        # Serve production build
-pnpm lint         # ESLint with Next.js core-web-vitals + TypeScript rules
-pnpm test         # Run Vitest tests (single run)
-pnpm test:watch   # Run Vitest in watch mode
+pnpm install      # Installs frontend dependencies via root postinstall
+pnpm dev          # Dev server at http://localhost:3000 (delegates to frontend/)
+pnpm build        # Production build (delegates to frontend/)
+pnpm start        # Serve production build (delegates to frontend/)
+pnpm lint         # ESLint (delegates to frontend/)
+pnpm test         # Run Vitest tests (delegates to frontend/)
+pnpm test:watch   # Run Vitest watch mode (delegates to frontend/)
+```
+
+### Direct Frontend (also valid)
+
+```bash
+cd frontend
+pnpm dev
+pnpm build
+pnpm test
 ```
 
 ### Python (run from root)
 
 ```bash
-uv run python scripts/search_test.py   # Test X API v2 search endpoint
+uv sync
 ```

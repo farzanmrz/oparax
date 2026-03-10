@@ -182,6 +182,21 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* ── Compact tweet embeds ── */
+.react-tweet-theme {
+  --tweet-container-margin: 0;
+  --tweet-body-font-size: 0.8125rem;
+  max-width: 350px;
+}
+
+/* Hide actions (reply/retweet/like) in tweet embeds */
+.react-tweet-theme [data-testid="reply"],
+.react-tweet-theme [data-testid="retweet"],
+.react-tweet-theme [data-testid="like"],
+.react-tweet-theme a[href*="/intent/"] {
+  display: none;
+}
+
 /* ── Base styles ── */
 @layer base {
   * {

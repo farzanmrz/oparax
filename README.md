@@ -56,7 +56,7 @@ oparax-chirp/
 │   ├── components/      # shadcn/ui components
 │   ├── lib/             # Supabase clients, validation
 │   └── __tests__/       # Vitest unit tests
-├── scripts/             # Python experiments (X API)
+├── scripts/             # Project scripts (PNPM guard, Python experiments)
 ├── .claude/             # Claude Code config + reference
 ├── CLAUDE.md            # Claude Code project instructions
 ├── pyproject.toml       # Python dependencies (uv)
@@ -82,13 +82,25 @@ cd oparax-chirp
 # Install Python dependencies
 uv sync
 
-# Install frontend dependencies and start dev server
-cd frontend
+# Install JS dependencies (delegates to frontend/)
 pnpm install
+
+# Start frontend dev server (delegates to frontend/)
 pnpm dev
 ```
 
 The frontend dev server runs at `http://localhost:3000`.
+
+### Direct Frontend Commands (Optional)
+
+You can still run frontend commands directly:
+
+```bash
+cd frontend
+pnpm dev
+pnpm build
+pnpm test
+```
 
 ### Environment Variables
 
@@ -131,15 +143,8 @@ resolve correctly.
 ### Running Tests
 
 ```bash
-cd frontend
-pnpm test         # Single run
-pnpm test:watch   # Watch mode
-```
-
-### Running the X API Test Script
-
-```bash
-uv run python scripts/search_test.py
+pnpm test         # Single run (root wrapper)
+pnpm test:watch   # Watch mode (root wrapper)
 ```
 
 ## Coding Agents

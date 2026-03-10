@@ -93,7 +93,7 @@ export function HandleInput({
             <button
               type="button"
               onClick={() => onRemove(index)}
-              className="ml-0.5 rounded-full text-muted-foreground transition-colors hover:text-foreground"
+              className="ml-0.5 inline-flex min-h-8 min-w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
               aria-label={`Remove @${handle}`}
             >
               <HugeiconsIcon
