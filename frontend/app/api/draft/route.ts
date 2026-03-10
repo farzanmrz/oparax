@@ -66,6 +66,13 @@ type RepairCandidate = {
   issue: string
 }
 
+type DraftBatchCollection =
+  | { error: string }
+  | {
+      acceptedDrafts: Map<string, ParsedDraft>
+      repairCandidates: RepairCandidate[]
+    }
+
 function getDraftIssue(text: string): string | null {
   if (!text.trim()) {
     return "Draft is empty."
@@ -128,7 +135,7 @@ async function requestDraftBatch(input: {
 function collectDraftBatch(
   rawDrafts: ParsedDraft[],
   expectedHeadlines: KnowledgeHeadline[],
-) {
+): DraftBatchCollection {
   if (rawDrafts.length !== expectedHeadlines.length) {
     return { error: "Drafting service returned an incomplete result." }
   }

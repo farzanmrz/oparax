@@ -159,6 +159,8 @@ export async function POST(req: Request) {
     yesterday.setDate(yesterday.getDate() - 1)
 
     const response = await client.responses.create({
+      // x_search and no_inline_citations are xAI-specific extensions that are
+      // accepted by the runtime API but not reflected in the OpenAI SDK types.
       model: "grok-4-1-fast-reasoning",
       input: [
         { role: "system", content: prompts.sysprompt_scan },
@@ -166,7 +168,6 @@ export async function POST(req: Request) {
       ],
       tools: [
         {
-          // @ts-expect-error x_search is xAI-specific, not in OpenAI SDK types
           type: "x_search",
           ...(normalizedHandles.length > 0 && {
             allowed_x_handles: normalizedHandles,
@@ -184,7 +185,7 @@ export async function POST(req: Request) {
           strict: true,
         },
       },
-    })
+    } as unknown as Parameters<typeof client.responses.create>[0])
 
     const outputText = extractResponseText(response)
     if (!outputText) {
