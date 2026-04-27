@@ -95,3 +95,8 @@
 - Sign in with Google etc. also needed and gotta figure out how to link the services
 - Grok 4.2 experimentation might be worth it
 - Cron job for scan frequency needs to be configured
+
+### Priority
+
+- Either setup playwright-cli skill with claude code subagent
+- Or figure out what is vercel-labs' agent browser and can its skill be applied and used across claude code and codex for free with subagents in claude code atleast
