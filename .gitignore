@@ -210,3 +210,6 @@ package-lock.json
 
 # Vercel
 .vercel
+
+# General
+.DS_Store
