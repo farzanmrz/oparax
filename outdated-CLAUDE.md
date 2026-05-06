@@ -141,7 +141,7 @@ oparax-chirp/
 - Vitest config at `frontend/vitest.config.ts`, `@` alias maps to `frontend/`
 - Mock `redirect()`: `await expect(fn()).rejects.toThrow("NEXT_REDIRECT")`
 
-## Session Workflow
+## Session Workflow - Ignore now its irrelevant
 
 - **Start of session**: Read `userjourney.md` to understand where things left off and what's remaining.
 - **End of session**: Run `/wrap-up` (git commit, userjourney.md, NOTES.md, conditional CLAUDE.md/README.md).

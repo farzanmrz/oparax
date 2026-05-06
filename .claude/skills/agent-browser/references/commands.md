@@ -32,7 +32,7 @@ agent-browser batch \
 ```
 
 `open` with no URL gives you a clean launch so any interception, cookies,
-or init scripts you register take effect on the *first* real navigation.
+or init scripts you register take effect on the _first_ real navigation.
 Use for SSR-only debug (`--resource-type script`), protected-origin auth,
 or capturing fresh `react suspense`/`vitals` state without noise from a
 prior page.
@@ -119,6 +119,7 @@ agent-browser wait @e1                     # Wait for element
 agent-browser wait 2000                    # Wait milliseconds
 agent-browser wait --text "Success"        # Wait for text (or -t)
 agent-browser wait --url "**/dashboard"    # Wait for URL pattern (or -u)
+agent-browser wait --u "http://localhost:3000/dashboard" # Wait for exact URL
 agent-browser wait --load networkidle      # Wait for network idle (or -l)
 agent-browser wait --fn "window.ready"     # Wait for JS condition (or -f)
 ```
@@ -252,6 +253,7 @@ agent-browser frame main              # Return to main frame
 ```
 
 The `frame` command accepts:
+
 - **Element refs** — `frame @e3` resolves the ref to an iframe element
 - **CSS selectors** — `frame "#payment-iframe"` finds the iframe by selector
 - **Frame name/URL** — matches against the browser's frame tree
