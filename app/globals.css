@@ -130,7 +130,7 @@
 /* ── Tailwind v4 theme registration ── */
 @theme inline {
   /* Fonts */
-  --font-sans: var(--font-nunito-sans);
+  --font-sans: var(--font-roboto-flex);
 
   /* Colors (semantic tokens) */
   --color-background: var(--background);

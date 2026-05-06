@@ -7,17 +7,6 @@ effort: low
 allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*), Bash(lsof:*), Bash(kill:*), Bash(pnpm:*), Bash(curl:*)
 ---
 
-# Changes to make
-
-- annotate screenshots in headless not working: Need to introduce the flag manually
-
-- Cant do wait or get for url for confirmation have to confirm using some element of dashboard page for speed
-- If not above then figure out why getting URL is getting stuck
-  : Collectively switch to element based identification
-
-- Why is skill not running with defined model and effort, or it is and claude-devtools shows opus generally
-  : Cause it needs to run with subagent context, define a subagent and try moving these flows as referred folders/files inside agent-browser skill itself cause this rough version works
-
 # UI/UX Tester
 
 See the Flows section for currently testable flows. The General section below applies to all of them.
