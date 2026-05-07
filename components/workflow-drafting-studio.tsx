@@ -12,6 +12,8 @@ import {
   failScanRun,
 } from "@/app/dashboard/workflows/[id]/actions"
 import {
+  clearWorkflowDraftingState,
+  CREATE_WORKFLOW_DRAFTING_ID,
   createEmptyWorkflowDraftingState,
   DraftingProfile,
   DraftedTweet,
@@ -76,17 +78,27 @@ export function WorkflowDraftingStudio({
 
   useEffect(() => {
     startHydrationTransition(() => {
-      const saved = loadWorkflowDraftingState(localStorage, storageId)
-      if (saved) {
-        setState(saved)
-        setExampleInputs(saved.draftingProfile.examples)
-      } else {
+      if (storageId === CREATE_WORKFLOW_DRAFTING_ID) {
+        clearWorkflowDraftingState(localStorage, storageId)
         const initialState = buildInitialState(
           initialMonitoringDescription,
           initialDraftingProfile,
         )
         setState(initialState)
         setExampleInputs(initialState.draftingProfile.examples)
+      } else {
+        const saved = loadWorkflowDraftingState(localStorage, storageId)
+        if (saved) {
+          setState(saved)
+          setExampleInputs(saved.draftingProfile.examples)
+        } else {
+          const initialState = buildInitialState(
+            initialMonitoringDescription,
+            initialDraftingProfile,
+          )
+          setState(initialState)
+          setExampleInputs(initialState.draftingProfile.examples)
+        }
       }
       setHasHydrated(true)
     })

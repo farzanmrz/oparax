@@ -25,12 +25,24 @@ The product path to stabilize first:
 
 # Tasks
 
+## Parallel Codex Completed
+
+1. Login, Forgot Password and Sign Up pages
+
+- Beautified UI generally
+- Added hover, click actions to buttons and URLs
+- Streamlined font weight/sizes for text elements of header, button text, form label, URL and normal text elements
+- Introduced Show/Hide password button for viewing password easily
+- Standardized length of main card to show full image
+- Implemented field validation for email format, password etc. shows error help text when format mismatches
+- Assigned loader for URL redirection since it wasnt clear if URL is working
+
 ## P0 - Core Flow Reliability
 
 Goal: create workflow -> scan -> draft -> save -> detail page works without
 stale data or stuck UI.
 
-### P0.1 Remove stale create-page defaults
+### P0.1 Remove stale create-page defaults ✅
 
 - Fresh local and production sessions should not show prefilled FC Barca/static
   data unless a template system intentionally adds it.
