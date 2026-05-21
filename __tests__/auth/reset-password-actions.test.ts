@@ -66,7 +66,7 @@ describe("updatePassword action", () => {
     });
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/login?message=Password%20updated%20successfully.%20Please%20sign%20in."
+      "/login?message=Password%20updated%20successfully.%20Please%20log%20in."
     );
   });
 
@@ -135,7 +135,7 @@ describe("updatePassword action", () => {
       password: "newPassword123",
     });
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/login?message=Password%20updated%20successfully.%20Please%20sign%20in."
+      "/login?message=Password%20updated%20successfully.%20Please%20log%20in."
     );
   });
 

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Twitter CDN domains for react-tweet embedded images.
+  // Keep Twitter CDN domains available for react-tweet embedded images.
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "pbs.twimg.com" },
