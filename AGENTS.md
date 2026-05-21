@@ -8,9 +8,8 @@ Next.js App Router app at the repo root.
 
 ```text
 .
-├── package.json                      # Deps + scripts (pnpm dev / build / lint / test)
+├── package.json                      # Deps + scripts (pnpm dev / build / lint)
 ├── next.config.ts                    # Next.js config
-├── vitest.config.ts                  # Vitest config (+ vitest.setup.ts)
 ├── components.json                   # shadcn config
 ├── tsconfig.json                     # TypeScript config (strict, @/* alias)
 │
@@ -75,7 +74,6 @@ Next.js App Router app at the repo root.
 │   ├── auth-errors.ts                # mapAuthError() — Supabase error → user message
 │   └── utils.ts                      # cn() class-merging helper
 │
-├── __tests__/                        # Tests grouped by domain (auth/, workflows/)
 ├── hooks/                            # use-mobile.ts (responsive viewport helper)
 ├── public/                           # Static assets
 │

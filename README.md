@@ -36,7 +36,6 @@ Two independent pipelines planned:
 | Components | shadcn/ui (Nova style) | 3.8.5 |
 | Icons | Hugeicons | 1.1.5 |
 | Auth & Database | Supabase | 2.97.0 |
-| Testing | Vitest + RTL | 4.0.18 |
 | Social API | X API v2 | - |
 | Intelligence | Grok API | planned |
 | Content Gen | Claude API | planned |
@@ -47,29 +46,27 @@ Two independent pipelines planned:
 
 ```text
 oparax-chirp/
-├── frontend/            # Next.js app
-│   ├── app/             # Pages and routes (App Router)
-│   │   ├── login/       # Login page + server action
-│   │   ├── signup/      # Signup page + server action
-│   │   ├── dashboard/   # Protected dashboard
-│   │   └── auth/        # Email verification handler
-│   ├── components/      # shadcn/ui components
-│   ├── lib/             # Supabase clients, validation
-│   └── __tests__/       # Vitest unit tests
-├── scripts/             # Project scripts (PNPM guard, Python experiments)
+├── app/                 # Next.js App Router pages and routes
+│   ├── login/           # Login page + server action
+│   ├── signup/          # Signup page + server action
+│   ├── forgot-password/ # Password reset request
+│   ├── auth/            # Email verification + reset-password handler
+│   ├── dashboard/       # Protected dashboard (workflows, settings)
+│   └── api/             # Scan + draft API routes
+├── components/          # shadcn/ui primitives + app components
+├── lib/                 # Supabase clients, Grok client, validation, prompts
+├── hooks/               # Custom React hooks
+├── scripts/             # PNPM guard, Grok scratchpad
 ├── .claude/             # Claude Code config + reference
-├── CLAUDE.md            # Claude Code project instructions
-├── pyproject.toml       # Python dependencies (uv)
-└── .env                 # API credentials (git-ignored)
+├── AGENTS.md            # Agent / Claude Code project instructions
+└── .env.local           # API credentials (git-ignored)
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.11+
 - Node.js 20+
-- [uv](https://docs.astral.sh/uv/) — Python package manager
 - [pnpm](https://pnpm.io/) — Node.js package manager
 
 ### Setup
@@ -79,40 +76,18 @@ oparax-chirp/
 git clone https://github.com/farzanmrz/oparax-chirp.git
 cd oparax-chirp
 
-# Install Python dependencies
-uv sync
-
-# Install JS dependencies (delegates to frontend/)
+# Install JS dependencies
 pnpm install
 
-# Start frontend dev server (delegates to frontend/)
+# Start the dev server
 pnpm dev
 ```
 
-The frontend dev server runs at `http://localhost:3000`.
-
-### Direct Frontend Commands (Optional)
-
-You can still run frontend commands directly:
-
-```bash
-cd frontend
-pnpm dev
-pnpm build
-pnpm test
-```
+The dev server runs at `http://localhost:3000`.
 
 ### Environment Variables
 
-Create `.env` at the project root:
-
-```text
-X_BEARER_TOKEN=your_x_api_token
-X_CONSUMER_KEY=your_consumer_key
-X_SECRET_KEY=your_secret_key
-```
-
-Create `frontend/.env.local`:
+Create `.env.local` at the project root:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -140,16 +115,9 @@ Supabase Auth with these settings:
 3. Keep your Site URL aligned with your current environment host so auth links
 resolve correctly.
 
-### Running Tests
-
-```bash
-pnpm test         # Single run (root wrapper)
-pnpm test:watch   # Watch mode (root wrapper)
-```
-
 ## Coding Agents
 
-- **Claude Code:** Uses [`CLAUDE.md`](CLAUDE.md)
+- **Claude Code:** Uses [`AGENTS.md`](AGENTS.md)
   for project context, with detailed reference docs
   in `.claude/reference/`
 
