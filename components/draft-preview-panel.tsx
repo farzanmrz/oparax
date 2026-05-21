@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -55,15 +54,10 @@ export function DraftPreviewPanel({
     <Card className="border-border/70 bg-gradient-to-br from-card via-card to-primary/5">
       <CardHeader>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <HugeiconsIcon icon={SentIcon} strokeWidth={1.8} className="size-4" />
-              Draft Preview
-            </CardTitle>
-            <CardDescription>
-              Generate one directly postable tweet per selected knowledge item.
-            </CardDescription>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <HugeiconsIcon icon={SentIcon} strokeWidth={1.8} className="size-4" />
+            Draft Preview
+          </CardTitle>
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="outline" className="rounded-full px-2.5 py-1">
               {selectedCount} selected

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -68,15 +67,10 @@ export function KnowledgeBankPanel({
     <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/25">
       <CardHeader>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <HugeiconsIcon icon={SearchList01Icon} strokeWidth={1.8} className="size-4" />
-              Knowledge Bank
-            </CardTitle>
-            <CardDescription>
-              Run a scan, inspect source-grounded angles, and choose which knowledge items you want drafted.
-            </CardDescription>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <HugeiconsIcon icon={SearchList01Icon} strokeWidth={1.8} className="size-4" />
+            Knowledge Bank
+          </CardTitle>
           <div className="flex flex-wrap items-center gap-3">
             {knowledgeBank && (
               <Badge variant="outline" className="rounded-full px-2.5 py-1">

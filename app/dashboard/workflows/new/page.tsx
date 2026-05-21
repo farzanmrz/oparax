@@ -8,7 +8,6 @@ import { DashboardPageHeader } from "@/components/dashboard-page-header"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -110,99 +109,84 @@ export default function NewWorkflowPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8">
+    <div className="flex w-full flex-col gap-8">
       <DashboardPageHeader
         title="Create Workflow"
-        description="Build the scan, shape the voice, preview drafted tweets, then save the workflow."
         breadcrumbs={[
           { label: "Workflows", href: "/dashboard" },
           { label: "Create Workflow" },
         ]}
       />
 
-      <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
-        <CardHeader>
-          <CardTitle>Workflow Setup</CardTitle>
-          <CardDescription>
-            Name the workflow, set the scan cadence, and choose the X accounts you want to monitor.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-2 md:px-4">
+        <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
+          <CardHeader>
+            <CardTitle>Workflow Setup</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold">Workflow name</label>
+                <Input
+                  value={formState.name}
+                  onChange={(event) =>
+                    setFormState((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  placeholder="e.g. PL Transfer Watch"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold">Scan frequency</label>
+                <Select
+                  value={formState.frequency}
+                  onValueChange={(value) =>
+                    setFormState((prev) => ({ ...prev, frequency: value }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Workflow name</label>
-              <Input
-                value={formState.name}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, name: event.target.value }))
-                }
-                placeholder="e.g. PL Transfer Watch"
+              <label className="block text-sm font-semibold">
+                X accounts to monitor
+              </label>
+              <HandleInput
+                handles={formState.handles}
+                maxHandles={MAX_HANDLES}
+                onAdd={addHandle}
+                onRemove={removeHandle}
               />
-              <p className="text-xs text-muted-foreground">
-                Optional. If left blank, a name will be generated from the monitoring brief.
-              </p>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Scan frequency</label>
-              <Select
-                value={formState.frequency}
-                onValueChange={(value) =>
-                  setFormState((prev) => ({ ...prev, frequency: value }))
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FREQUENCY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <WorkflowDraftingStudio
+          storageId={CREATE_WORKFLOW_DRAFTING_ID}
+          handles={formState.handles}
+          initialMonitoringDescription=""
+          onStateChange={setDraftingState}
+        />
+
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">Ready to save?</p>
           </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold">
-              X accounts to monitor
-            </label>
-            <HandleInput
-              handles={formState.handles}
-              maxHandles={MAX_HANDLES}
-              onAdd={addHandle}
-              onRemove={removeHandle}
-            />
-            <p className="text-xs text-muted-foreground">
-              Optional. Leave empty to let Grok search broadly across X for your monitoring brief.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-            Drafting instructions, examples, knowledge bank, and valid drafts are stored locally in this browser for now.
-          </div>
-        </CardContent>
-      </Card>
-
-      <WorkflowDraftingStudio
-        storageId={CREATE_WORKFLOW_DRAFTING_ID}
-        handles={formState.handles}
-        initialMonitoringDescription=""
-        onStateChange={setDraftingState}
-      />
-
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold">Ready to save?</p>
-          <p className="text-sm text-muted-foreground">
-            Save becomes available once at least one valid draft is visible in the preview panel.
-          </p>
+          <Button onClick={handleSave} disabled={!canSave}>
+            {saving ? "Saving..." : "Save Workflow"}
+          </Button>
         </div>
-        <Button onClick={handleSave} disabled={!canSave}>
-          {saving ? "Saving..." : "Save Workflow"}
-        </Button>
       </div>
     </div>
   )
