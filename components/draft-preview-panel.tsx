@@ -13,10 +13,12 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { DraftedTweet, KnowledgeHeadline } from "@/lib/workflow-drafting"
+
+const workflowActionButtonClass =
+  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner dark:bg-teal-300 dark:text-zinc-950 dark:hover:bg-teal-200 dark:active:bg-teal-400"
 
 interface DraftPreviewPanelProps {
   drafts: DraftedTweet[]
@@ -26,6 +28,7 @@ interface DraftPreviewPanelProps {
   draftError: string | null
   selectedCount: number
   onGenerateDrafts: () => void
+  variant?: "card" | "embedded"
 }
 
 export function DraftPreviewPanel({
@@ -36,6 +39,7 @@ export function DraftPreviewPanel({
   draftError,
   selectedCount,
   onGenerateDrafts,
+  variant = "card",
 }: DraftPreviewPanelProps) {
   const sourceHeadlineMap = new Map(
     sourceHeadlines.map((headline) => [headline.id, headline]),
@@ -50,145 +54,149 @@ export function DraftPreviewPanel({
     }
   }
 
+  const content = (
+    <>
+      {draftError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {draftError}
+        </div>
+      )}
+
+      {isDrafting && (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-10 text-center text-sm text-muted-foreground">
+          Grok is drafting tweet-ready posts for the selected knowledge items...
+        </div>
+      )}
+
+      {!isDrafting && drafts.length === 0 && variant === "card" && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+          Select at least one knowledge item, then generate drafts to preview directly postable copy here.
+        </div>
+      )}
+
+      {drafts.length > 0 && (
+        <div className="grid gap-4">
+          {drafts.map((draft) => {
+            const sourceHeadline = sourceHeadlineMap.get(draft.headlineId)
+
+            return (
+              <article
+                key={draft.headlineId}
+                className={`rounded-xl border px-4 py-4 shadow-sm sm:px-5 ${
+                  draft.isOverflow
+                    ? "border-destructive/30 bg-destructive/5"
+                    : "border-border/70 bg-card"
+                }`}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={draft.isOverflow ? "destructive" : "secondary"}
+                      className="rounded-full px-2.5 py-1"
+                    >
+                      {draft.charCount} chars
+                    </Badge>
+                    {!draft.isOverflow && (
+                      <Badge variant="outline" className="rounded-full px-2.5 py-1">
+                        <HugeiconsIcon
+                          icon={CheckmarkCircle02Icon}
+                          strokeWidth={1.8}
+                          className="size-3.5"
+                        />
+                        Ready
+                      </Badge>
+                    )}
+                    {draft.isOverflow && (
+                      <Badge variant="destructive" className="rounded-full px-2.5 py-1">
+                        <HugeiconsIcon
+                          icon={Alert02Icon}
+                          strokeWidth={1.8}
+                          className="size-3.5"
+                        />
+                        Over limit
+                      </Badge>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyDraft(draft.text)}
+                    className="min-h-11 sm:min-h-10"
+                  >
+                    <Copy className="size-4" />
+                    Copy draft
+                  </Button>
+                </div>
+
+                <div className="mt-4 rounded-lg border border-border/70 bg-background/70 px-4 py-4">
+                  <p className="whitespace-pre-wrap text-base leading-8 text-foreground sm:text-[1.02rem]">
+                    {draft.text}
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    <span className="font-medium text-foreground">Based on:</span>{" "}
+                    {draft.headlineTitle}
+                  </p>
+
+                  {sourceHeadline && sourceHeadline.sourceUrls.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <span className="font-medium text-foreground">Sources used:</span>
+                      {sourceHeadline.sourceUrls.slice(0, 3).map((url, index) => (
+                        <a
+                          key={`${draft.headlineId}-${url}`}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="underline underline-offset-2"
+                        >
+                          Source {index + 1}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {draft.isOverflow && (
+                    <p className="text-destructive">
+                      This draft is shown for review but will not be included in the saved valid-drafts state.
+                    </p>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
+
+  if (variant === "embedded") {
+    return <div className="space-y-4">{content}</div>
+  }
+
   return (
     <Card className="border-border/70 bg-gradient-to-br from-card via-card to-primary/5">
       <CardHeader>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <CardTitle className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Badge variant="outline" className="rounded-full px-2.5 py-1">
+            {selectedCount} selected
+          </Badge>
+          <Button
+            type="button"
+            onClick={onGenerateDrafts}
+            disabled={!canGenerateDrafts || isDrafting}
+            className={workflowActionButtonClass}
+          >
             <HugeiconsIcon icon={SentIcon} strokeWidth={1.8} className="size-4" />
-            Draft Preview
-          </CardTitle>
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline" className="rounded-full px-2.5 py-1">
-              {selectedCount} selected
-            </Badge>
-            <Button
-              type="button"
-              onClick={onGenerateDrafts}
-              disabled={!canGenerateDrafts || isDrafting}
-              className="min-h-11"
-            >
-              <HugeiconsIcon icon={SentIcon} strokeWidth={1.8} className="size-4" />
-              {isDrafting ? "Drafting..." : "Generate Drafts"}
-            </Button>
-          </div>
+            {isDrafting ? "Drafting..." : "Generate Drafts"}
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {draftError && (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {draftError}
-          </div>
-        )}
-
-        {isDrafting && (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-10 text-center text-sm text-muted-foreground">
-            Grok is drafting tweet-ready posts for the selected knowledge items...
-          </div>
-        )}
-
-        {!isDrafting && drafts.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
-            Select at least one knowledge item, then generate drafts to preview directly postable copy here.
-          </div>
-        )}
-
-        {drafts.length > 0 && (
-          <div className="grid gap-4">
-            {drafts.map((draft) => {
-              const sourceHeadline = sourceHeadlineMap.get(draft.headlineId)
-
-              return (
-                <article
-                  key={draft.headlineId}
-                  className={`rounded-[1.75rem] border px-4 py-4 shadow-sm sm:px-5 ${
-                    draft.isOverflow
-                      ? "border-destructive/30 bg-destructive/5"
-                      : "border-border/70 bg-card"
-                  }`}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={draft.isOverflow ? "destructive" : "secondary"}
-                        className="rounded-full px-2.5 py-1"
-                      >
-                        {draft.charCount} chars
-                      </Badge>
-                      {!draft.isOverflow && (
-                        <Badge variant="outline" className="rounded-full px-2.5 py-1">
-                          <HugeiconsIcon
-                            icon={CheckmarkCircle02Icon}
-                            strokeWidth={1.8}
-                            className="size-3.5"
-                          />
-                          Ready
-                        </Badge>
-                      )}
-                      {draft.isOverflow && (
-                        <Badge variant="destructive" className="rounded-full px-2.5 py-1">
-                          <HugeiconsIcon
-                            icon={Alert02Icon}
-                            strokeWidth={1.8}
-                            className="size-3.5"
-                          />
-                          Over limit
-                        </Badge>
-                      )}
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyDraft(draft.text)}
-                      className="min-h-11 sm:min-h-10"
-                    >
-                      <Copy className="size-4" />
-                      Copy draft
-                    </Button>
-                  </div>
-
-                  <div className="mt-4 rounded-[1.4rem] border border-border/70 bg-background/70 px-4 py-4">
-                    <p className="whitespace-pre-wrap text-base leading-8 text-foreground sm:text-[1.02rem]">
-                      {draft.text}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-                    <p>
-                      <span className="font-medium text-foreground">Based on:</span>{" "}
-                      {draft.headlineTitle}
-                    </p>
-
-                    {sourceHeadline && sourceHeadline.sourceUrls.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                        <span className="font-medium text-foreground">Sources used:</span>
-                        {sourceHeadline.sourceUrls.slice(0, 3).map((url, index) => (
-                          <a
-                            key={`${draft.headlineId}-${url}`}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="underline underline-offset-2"
-                          >
-                            Source {index + 1}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-
-                    {draft.isOverflow && (
-                      <p className="text-destructive">
-                        This draft is shown for review but will not be included in the saved valid-drafts state.
-                      </p>
-                    )}
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        )}
+        {content}
       </CardContent>
     </Card>
   )

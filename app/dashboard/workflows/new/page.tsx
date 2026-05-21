@@ -5,20 +5,20 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { DashboardPageHeader } from "@/components/dashboard-page-header"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field"
 import { HandleInput } from "@/components/handle-input"
 import { WorkflowDraftingStudio } from "@/components/workflow-drafting-studio"
 import {
@@ -29,29 +29,44 @@ import {
   WorkflowDraftingState,
 } from "@/lib/workflow-drafting"
 import {
-  FREQUENCY_OPTIONS,
+  FREQUENCY_UNIT_OPTIONS,
+  getFrequencyError,
+  getFrequencyUnitOption,
   MAX_HANDLES,
+  parseFrequencyAmount,
+  type FrequencyUnit,
   type WorkflowFormState,
 } from "./constants"
 import { createWorkflow } from "./actions"
+
+const workflowActionButtonClass =
+  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner dark:bg-teal-300 dark:text-zinc-950 dark:hover:bg-teal-200 dark:active:bg-teal-400"
 
 export default function NewWorkflowPage() {
   const router = useRouter()
   const [formState, setFormState] = useState<WorkflowFormState>({
     name: "",
-    frequency: "30m",
+    frequencyAmountInput: "10",
+    frequencyUnit: "m",
     handles: [],
   })
   const [draftingState, setDraftingState] = useState<WorkflowDraftingState>(() =>
     createEmptyWorkflowDraftingState(""),
   )
   const [saving, setSaving] = useState(false)
+  const [frequencyTouched, setFrequencyTouched] = useState(false)
 
   const validDrafts = draftingState.drafts.filter((draft) => !draft.isOverflow)
+  const frequencyError = getFrequencyError(
+    formState.frequencyAmountInput,
+    formState.frequencyUnit,
+  )
+  const showFrequencyError = frequencyTouched && !!frequencyError
   const canSave =
     draftingState.monitoringDescription.trim().length > 0 &&
     draftingState.draftingProfile.instructions.trim().length > 0 &&
     validDrafts.length > 0 &&
+    !frequencyError &&
     !saving
 
   function addHandle(handle: string) {
@@ -68,14 +83,38 @@ export default function NewWorkflowPage() {
     }))
   }
 
+  function updateFrequencyUnit(unit: FrequencyUnit) {
+    const option = getFrequencyUnitOption(unit)
+    if (!option) return
+
+    setFormState((prev) => ({
+      ...prev,
+      frequencyAmountInput: String(option.defaultAmount),
+      frequencyUnit: unit,
+    }))
+    setFrequencyTouched(false)
+  }
+
   async function handleSave() {
+    const frequencyAmount = parseFrequencyAmount(
+      formState.frequencyAmountInput,
+      formState.frequencyUnit,
+    )
+
+    if (frequencyAmount === null) {
+      setFrequencyTouched(true)
+      toast.error("Enter a valid scan frequency.")
+      return
+    }
+
     setSaving(true)
 
     try {
       const result = await createWorkflow({
         name: formState.name,
         description: draftingState.monitoringDescription,
-        frequency: formState.frequency,
+        frequencyAmount,
+        frequencyUnit: formState.frequencyUnit,
         handles: formState.handles,
       })
 
@@ -119,71 +158,116 @@ export default function NewWorkflowPage() {
       />
 
       <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-2 md:px-4">
-        <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
-          <CardHeader>
-            <CardTitle>Workflow Setup</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold">Workflow name</label>
-                <Input
-                  value={formState.name}
-                  onChange={(event) =>
-                    setFormState((prev) => ({ ...prev, name: event.target.value }))
-                  }
-                  placeholder="e.g. PL Transfer Watch"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold">Scan frequency</label>
-                <Select
-                  value={formState.frequency}
-                  onValueChange={(value) =>
-                    setFormState((prev) => ({ ...prev, frequency: value }))
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FREQUENCY_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                X accounts to monitor
-              </label>
-              <HandleInput
-                handles={formState.handles}
-                maxHandles={MAX_HANDLES}
-                onAdd={addHandle}
-                onRemove={removeHandle}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         <WorkflowDraftingStudio
           storageId={CREATE_WORKFLOW_DRAFTING_ID}
           handles={formState.handles}
           initialMonitoringDescription=""
           onStateChange={setDraftingState}
+          variant="create"
+          setupFields={
+            <>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="workflow-name">
+                    Workflow name
+                  </FieldLabel>
+                  <Input
+                    id="workflow-name"
+                    value={formState.name}
+                    onChange={(event) =>
+                      setFormState((prev) => ({
+                        ...prev,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g. PL Transfer Watch"
+                  />
+                </Field>
+
+                <Field
+                  data-invalid={showFrequencyError ? true : undefined}
+                  className="data-[invalid=true]:text-foreground"
+                >
+                  <FieldLabel htmlFor="scan-frequency-amount">
+                    Scan frequency
+                  </FieldLabel>
+                  <div className="grid max-w-md grid-cols-[9.5rem_minmax(0,1fr)] gap-0">
+                    <Select
+                      value={formState.frequencyUnit}
+                      onValueChange={(value) =>
+                        updateFrequencyUnit(value as FrequencyUnit)
+                      }
+                    >
+                      <SelectTrigger
+                        className="w-full rounded-r-none border-r-0 text-foreground"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {FREQUENCY_UNIT_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      id="scan-frequency-amount"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={formState.frequencyAmountInput}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          frequencyAmountInput: event.target.value.replace(
+                            /\D/g,
+                            "",
+                          ),
+                        }))
+                      }
+                      onFocus={() => setFrequencyTouched(false)}
+                      onBlur={() => setFrequencyTouched(true)}
+                      aria-invalid={showFrequencyError}
+                      aria-describedby={
+                        showFrequencyError ? "scan-frequency-error" : undefined
+                      }
+                      className="rounded-l-none text-foreground"
+                    />
+                    {showFrequencyError && (
+                      <FieldError
+                        id="scan-frequency-error"
+                        className="col-start-2 mt-1 text-xs leading-5"
+                      >
+                        {frequencyError}
+                      </FieldError>
+                    )}
+                  </div>
+                </Field>
+              </div>
+
+              <Field>
+                <FieldLabel>
+                  X accounts to monitor
+                </FieldLabel>
+                <HandleInput
+                  handles={formState.handles}
+                  maxHandles={MAX_HANDLES}
+                  onAdd={addHandle}
+                  onRemove={removeHandle}
+                />
+              </Field>
+            </>
+          }
         />
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold">Ready to save?</p>
-          </div>
-          <Button onClick={handleSave} disabled={!canSave}>
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSave}
+            disabled={!canSave}
+            className={workflowActionButtonClass}
+          >
             {saving ? "Saving..." : "Save Workflow"}
           </Button>
         </div>

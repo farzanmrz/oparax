@@ -1,8 +1,24 @@
 "use client"
 
-import { useEffect, useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  NewsIcon,
+  SentIcon,
+} from "@hugeicons/core-free-icons"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card"
+import {
+  Field,
+  FieldLabel,
+} from "@/components/ui/field"
+import { Textarea } from "@/components/ui/textarea"
 import { DraftProfileEditor } from "@/components/draft-profile-editor"
 import { KnowledgeBankPanel } from "@/components/knowledge-bank-panel"
 import { DraftPreviewPanel } from "@/components/draft-preview-panel"
@@ -26,6 +42,9 @@ import {
   WorkflowDraftingState,
 } from "@/lib/workflow-drafting"
 
+const workflowActionButtonClass =
+  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner dark:bg-teal-300 dark:text-zinc-950 dark:hover:bg-teal-200 dark:active:bg-teal-400"
+
 interface WorkflowDraftingStudioProps {
   storageId: string
   handles: string[]
@@ -33,6 +52,8 @@ interface WorkflowDraftingStudioProps {
   initialDraftingProfile?: DraftingProfile
   triggerId?: string
   onStateChange?: (state: WorkflowDraftingState) => void
+  setupFields?: ReactNode
+  variant?: "standard" | "create"
 }
 
 function buildInitialState(
@@ -61,6 +82,8 @@ export function WorkflowDraftingStudio({
   initialDraftingProfile,
   triggerId,
   onStateChange,
+  setupFields,
+  variant = "standard",
 }: WorkflowDraftingStudioProps) {
   const router = useRouter()
   const [state, setState] = useState<WorkflowDraftingState>(() =>
@@ -126,12 +149,18 @@ export function WorkflowDraftingStudio({
       state.selectedHeadlineIds.includes(headline.id),
     ) ?? []
 
+  const hasMonitoringDescription =
+    state.monitoringDescription.trim().length > 0
+  const hasDraftingProfile =
+    state.draftingProfile.instructions.trim().length > 0 && !hasExampleErrors
   const canRunScan =
-    state.monitoringDescription.trim().length > 0 &&
-    state.draftingProfile.instructions.trim().length > 0 &&
-    !hasExampleErrors
+    hasMonitoringDescription &&
+    (variant === "create" || hasDraftingProfile)
   const canGenerateDrafts =
-    canRunScan && selectedHeadlines.length > 0 && !isScanning
+    hasMonitoringDescription &&
+    hasDraftingProfile &&
+    selectedHeadlines.length > 0 &&
+    !isScanning
 
   function syncExamples(nextInputs: string[]) {
     setExampleInputs(nextInputs)
@@ -178,7 +207,10 @@ export function WorkflowDraftingStudio({
     setState((prev) => ({
       ...prev,
       knowledgeBank,
-      selectedHeadlineIds: [],
+      selectedHeadlineIds:
+        variant === "create"
+          ? knowledgeBank.headlines.map((headline) => headline.id)
+          : [],
       drafts: [],
     }))
     setScanError(null)
@@ -321,6 +353,125 @@ export function WorkflowDraftingStudio({
         toast.error(message)
       }
     })
+  }
+
+  if (variant === "create") {
+    const knowledgeItemCount = state.knowledgeBank?.headlines.length ?? 0
+    const selectedCount = state.selectedHeadlineIds.length
+
+    return (
+      <div className="space-y-8">
+        <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20 py-0">
+          <CardContent className="space-y-6 p-5 sm:p-6">
+            {setupFields}
+
+            <Field>
+              <FieldLabel htmlFor="monitoring-description">
+                What to monitor
+              </FieldLabel>
+              <Textarea
+                id="monitoring-description"
+                value={state.monitoringDescription}
+                onChange={(event) =>
+                  updateMonitoringDescription(event.target.value)
+                }
+                placeholder="e.g. Premier League transfer movement, injury developments, and manager comments involving the top six clubs."
+                rows={6}
+              />
+            </Field>
+
+            <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {state.knowledgeBank && (
+                  <Badge variant="outline" className="rounded-full px-2.5 py-1">
+                    {knowledgeItemCount} knowledge item
+                    {knowledgeItemCount === 1 ? "" : "s"}
+                  </Badge>
+                )}
+                {selectedCount > 0 && (
+                  <Badge className="rounded-full px-2.5 py-1">
+                    {selectedCount} selected
+                  </Badge>
+                )}
+              </div>
+              <Button
+                type="button"
+                onClick={runScan}
+                disabled={!canRunScan || isScanning || isHydrating}
+                className={workflowActionButtonClass}
+              >
+                <HugeiconsIcon icon={NewsIcon} strokeWidth={1.8} className="size-4" />
+                {isScanning || isHydrating ? "Scanning..." : "Run Scan"}
+              </Button>
+            </div>
+
+            <KnowledgeBankPanel
+              knowledgeBank={state.knowledgeBank}
+              selectedHeadlineIds={state.selectedHeadlineIds}
+              canRunScan={canRunScan}
+              isScanning={isScanning || isHydrating}
+              scanError={scanError}
+              onRunScan={runScan}
+              onToggleHeadline={toggleHeadline}
+              variant="embedded"
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-gradient-to-br from-card via-card to-primary/5 py-0">
+          <CardContent className="space-y-6 p-5 sm:p-6">
+            <DraftProfileEditor
+              monitoringDescription={state.monitoringDescription}
+              draftingInstructions={state.draftingProfile.instructions}
+              exampleInputs={exampleInputs}
+              exampleErrors={exampleErrors}
+              onMonitoringDescriptionChange={updateMonitoringDescription}
+              onDraftingInstructionsChange={updateDraftingInstructions}
+              onExampleChange={(index, value) => {
+                const nextInputs = [...exampleInputs]
+                nextInputs[index] = value
+                syncExamples(nextInputs)
+              }}
+              onAddExample={() => syncExamples([...exampleInputs, ""])}
+              onRemoveExample={(index) => {
+                const nextInputs = exampleInputs.filter(
+                  (_, itemIndex) => itemIndex !== index,
+                )
+                syncExamples(nextInputs)
+              }}
+              showMonitoringDescription={false}
+              variant="embedded"
+            />
+
+            <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <Badge variant="outline" className="w-fit rounded-full px-2.5 py-1">
+                {selectedCount} selected
+              </Badge>
+              <Button
+                type="button"
+                onClick={generateDrafts}
+                disabled={!canGenerateDrafts || isDrafting}
+                className={workflowActionButtonClass}
+              >
+                <HugeiconsIcon icon={SentIcon} strokeWidth={1.8} className="size-4" />
+                {isDrafting ? "Drafting..." : "Generate Drafts"}
+              </Button>
+            </div>
+
+            <DraftPreviewPanel
+              drafts={state.drafts}
+              sourceHeadlines={selectedHeadlines}
+              canGenerateDrafts={canGenerateDrafts}
+              isDrafting={isDrafting}
+              draftError={draftError}
+              selectedCount={selectedCount}
+              onGenerateDrafts={generateDrafts}
+              variant="embedded"
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

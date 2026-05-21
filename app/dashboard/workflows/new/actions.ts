@@ -2,15 +2,18 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import {
+  isFrequencyUnit,
+  parseFrequencyAmount,
+} from "./constants"
 
 interface CreateWorkflowInput {
   name: string
   description: string
-  frequency: string
+  frequencyAmount: number
+  frequencyUnit: string
   handles: string[]
 }
-
-const VALID_FREQUENCIES = ["15m", "30m", "1h", "2h"]
 
 function generateWorkflowName(description: string): string {
   const words = description.trim().split(/\s+/)
@@ -37,7 +40,14 @@ export async function createWorkflow(input: CreateWorkflowInput) {
   if (!description) {
     return { error: "Description is required." }
   }
-  if (!VALID_FREQUENCIES.includes(input.frequency)) {
+  if (!isFrequencyUnit(input.frequencyUnit)) {
+    return { error: "Invalid frequency." }
+  }
+  const frequencyAmount = parseFrequencyAmount(
+    String(input.frequencyAmount),
+    input.frequencyUnit,
+  )
+  if (frequencyAmount === null) {
     return { error: "Invalid frequency." }
   }
   if (input.handles.length > 10) {
@@ -72,7 +82,8 @@ export async function createWorkflow(input: CreateWorkflowInput) {
         handles: input.handles,
         description,
       },
-      frequency: input.frequency,
+      frequency_amount: frequencyAmount,
+      frequency_unit: input.frequencyUnit,
       status: "active",
     })
     .select("id")

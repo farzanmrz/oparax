@@ -83,7 +83,7 @@ export function HandleInput({
 
   return (
     <div className="space-y-2">
-      <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+      <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border-2 border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
         {handles.map((handle, index) => (
           <span
             key={handle}

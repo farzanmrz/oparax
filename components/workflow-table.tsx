@@ -19,7 +19,8 @@ type ScanRun = {
 }
 
 type Trigger = {
-  frequency: string
+  frequency_amount: number | null
+  frequency_unit: string | null
   last_run_at: string | null
   scan_runs?: ScanRun[]
 }
@@ -41,13 +42,6 @@ type WorkflowTableRow = {
   status: string
   href?: string
   isDemo?: boolean
-}
-
-const frequencyLabels: Record<string, string> = {
-  "15m": "Every 15 min",
-  "30m": "Every 30 min",
-  "1h": "Every hour",
-  "2h": "Every 2 hours",
 }
 
 const demoRows: WorkflowTableRow[] = [
@@ -95,6 +89,21 @@ function formatDate(dateString: string | null) {
   }).format(new Date(dateString))
 }
 
+function formatFrequency(amount: number | null | undefined, unit: string | null | undefined) {
+  if (!amount || !unit) return "Not scheduled"
+
+  const unitLabels: Record<string, [string, string]> = {
+    m: ["minute", "minutes"],
+    h: ["hour", "hours"],
+    d: ["day", "days"],
+    w: ["week", "weeks"],
+  }
+  const labels = unitLabels[unit]
+  if (!labels) return "Not scheduled"
+
+  return `Every ${amount} ${amount === 1 ? labels[0] : labels[1]}`
+}
+
 function titleCase(value: string) {
   if (!value) return "Unknown"
 
@@ -115,16 +124,16 @@ function metricFallback(index: number) {
 function toWorkflowRows(workflows: WorkflowTableWorkflow[]) {
   return workflows.map((workflow, index): WorkflowTableRow => {
     const trigger = workflow.triggers?.[0]
-    const frequency = trigger?.frequency
     const scanRuns = trigger?.scan_runs ?? []
     const fallback = metricFallback(index)
 
     return {
       id: workflow.id,
       name: workflow.name,
-      frequency: frequency
-        ? frequencyLabels[frequency] ?? frequency
-        : "Not scheduled",
+      frequency: formatFrequency(
+        trigger?.frequency_amount,
+        trigger?.frequency_unit,
+      ),
       lastRun: formatDate(trigger?.last_run_at ?? null),
       scans: scanRuns.length > 0 ? scanRuns.length : fallback.scans,
       posts: fallback.posts,

@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: workflows } = await supabase
     .from("workflows")
-    .select("id, name, status, triggers(frequency, last_run_at, scan_runs(id, item_count, status))")
+    .select("id, name, status, triggers(frequency_amount, frequency_unit, last_run_at, scan_runs(id, item_count, status))")
     .order("created_at", { ascending: false })
 
   return (

@@ -1,44 +1,46 @@
 ---
 name: frontend-custom
-description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.
+description: Enforces the company's standardized UI by reusing the fixed design defined for each web element (inputs, buttons, forms, cards, etc.) from its canonical source file or global style, instead of styling components ad hoc. Keeps the whole site visually consistent and removes the need to re-explain the UI format for every new component.
+when_to_use: Whenever building or editing any web UI — new pages, landing pages, dashboards, form wizards, individual components/artifacts, or restyling and standardizing existing components.
 ---
 
-This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+This skill makes new and edited UI components match the company's standardized design. Do NOT invent new aesthetics, fonts, colors, or layouts. For each component type, the canonical look is already defined in this repo — reuse it.
 
-The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
+## How to use this skill
 
-## Design Thinking
+1. Identify which component(s) the task involves (input, button, form, card, etc.).
+2. Look up that component in the **Component Registry** below.
+3. Open the referenced source file / class and reuse its existing styles, props, and structure. Do not redefine styling that already lives there.
+4. If a component type is not yet listed in the registry, match the closest existing component's conventions and flag that it's missing so it can be added here.
 
-Before coding, understand the context and commit to a BOLD aesthetic direction:
+## Component Registry
 
-- **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
-- **Constraints**: Technical requirements (framework, performance, accessibility).
-- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
+For each component, the registry points to the canonical source of truth. The linked file's classes/props are authoritative — compose with it, do not fork or restyle it.
 
-**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
+### Input
+- **Source of truth**: `components/ui/input.tsx`
+- **Usage**: Import and use the `Input` component directly. Pass overrides via `className` only when the task explicitly requires it; never replace the base classes defined in the source file.
+- **Notes**: _(fill in: when to use this vs. textarea, label pairing, error/aria-invalid handling, etc.)_
 
-Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
+<!--
+### Button
+- **Source of truth**: components/ui/button.tsx
+- **Usage**:
+- **Notes**:
 
-- Production-grade and functional
-- Visually striking and memorable
-- Cohesive with a clear aesthetic point-of-view
-- Meticulously refined in every detail
+### Form
+- **Source of truth**:
+- **Usage**:
+- **Notes**:
 
-## Frontend Aesthetics Guidelines
+### Card
+- **Source of truth**:
+- **Usage**:
+- **Notes**:
 
-Focus on:
+Add more component entries here following the same pattern.
+-->
 
-- **Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics; unexpected, characterful font choices. Pair a distinctive display font with a refined body font.
-- **Color & Theme**: Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
-- **Motion**: Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
-- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
-- **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
+## Global conventions
 
-NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
-
-Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
-
-**IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
-
-Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+_(fill in: theme tokens / CSS variables in app/globals.css, font choices, spacing scale, dark-mode rules, or any global class/id that applies across components.)_

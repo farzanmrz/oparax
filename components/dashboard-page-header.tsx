@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 const breadcrumbLinkClass =
-  "rounded-sm font-medium text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:text-teal-900 hover:decoration-current active:text-teal-800 dark:text-teal-300 dark:decoration-teal-300/35 dark:hover:text-teal-100 dark:active:text-teal-200"
+  "rounded-sm font-semibold text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:text-teal-900 hover:decoration-current active:text-teal-800 dark:text-teal-300 dark:decoration-teal-300/35 dark:hover:text-teal-100 dark:active:text-teal-200"
 
 type Crumb = {
   label: string
@@ -40,36 +40,40 @@ export function DashboardPageHeader({
   action?: PageAction
 }) {
   return (
-    <div className="flex w-full flex-col gap-5">
-      <div className="flex min-h-7 items-center gap-2">
-        <SidebarTrigger className="-ml-2 md:hidden" />
-        <Breadcrumb>
-          <BreadcrumbList className="gap-1 text-xs sm:text-[0.8rem]">
-            {breadcrumbs.map((crumb, index) => {
-              const isLast = index === breadcrumbs.length - 1
+    <div className="flex w-full flex-col gap-6">
+      <div className="border-b-2 border-teal-400/25 dark:border-teal-300/25">
+        <div className="mx-auto flex min-h-12 w-full max-w-screen-2xl items-center gap-2 px-2 md:px-4">
+          <SidebarTrigger className="-ml-2 md:hidden" />
+          <Breadcrumb>
+            <BreadcrumbList className="gap-1 text-xs sm:text-[0.8rem]">
+              {breadcrumbs.map((crumb, index) => {
+                const isLast = index === breadcrumbs.length - 1
 
-              return (
-                <Fragment key={`${crumb.label}-${index}`}>
-                  <BreadcrumbItem>
-                    {crumb.href && !isLast ? (
-                      <BreadcrumbLink asChild className={breadcrumbLinkClass}>
-                        <Link href={crumb.href}>{crumb.label}</Link>
-                      </BreadcrumbLink>
-                    ) : (
-                      <BreadcrumbPage className="font-semibold text-foreground">
-                        {crumb.label}
-                      </BreadcrumbPage>
+                return (
+                  <Fragment key={`${crumb.label}-${index}`}>
+                    <BreadcrumbItem>
+                      {crumb.href && !isLast ? (
+                        <BreadcrumbLink asChild className={breadcrumbLinkClass}>
+                          <Link href={crumb.href}>{crumb.label}</Link>
+                        </BreadcrumbLink>
+                      ) : (
+                        <BreadcrumbPage className="font-normal text-muted-foreground">
+                          {crumb.label}
+                        </BreadcrumbPage>
+                      )}
+                    </BreadcrumbItem>
+                    {!isLast && (
+                      <BreadcrumbSeparator className="text-muted-foreground/90 [&>svg]:size-4" />
                     )}
-                  </BreadcrumbItem>
-                  {!isLast && <BreadcrumbSeparator />}
-                </Fragment>
-              )
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
+                  </Fragment>
+                )
+              })}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 border-b border-border px-2 pb-5 sm:flex-row sm:items-end sm:justify-between md:px-4">
+      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-2 sm:flex-row sm:items-end sm:justify-between md:px-4">
         <div className="flex min-w-0 flex-col gap-2">
           <h1 className="truncate text-3xl font-semibold tracking-tight text-foreground">
             {title}

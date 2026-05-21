@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 type Trigger = {
-  frequency: string
+  frequency_amount: number | null
+  frequency_unit: string | null
   config: { handles?: string[]; description?: string }
   last_run_at: string | null
 }
@@ -13,13 +14,6 @@ type Workflow = {
   name: string
   status: string
   triggers: Trigger[]
-}
-
-const frequencyLabels: Record<string, string> = {
-  "15m": "Every 15 min",
-  "30m": "Every 30 min",
-  "1h": "Every hour",
-  "2h": "Every 2 hours",
 }
 
 function timeAgo(dateString: string): string {
@@ -36,11 +30,29 @@ function timeAgo(dateString: string): string {
   return `${diffDays}d ago`
 }
 
+function formatFrequency(amount: number | null | undefined, unit: string | null | undefined) {
+  if (!amount || !unit) return "Not scheduled"
+
+  const unitLabels: Record<string, [string, string]> = {
+    m: ["minute", "minutes"],
+    h: ["hour", "hours"],
+    d: ["day", "days"],
+    w: ["week", "weeks"],
+  }
+  const labels = unitLabels[unit]
+  if (!labels) return "Not scheduled"
+
+  return `Every ${amount} ${amount === 1 ? labels[0] : labels[1]}`
+}
+
 export function WorkflowCard({ workflow }: { workflow: Workflow }) {
   // Use the first trigger (currently each workflow has one x_search trigger)
   const trigger = workflow.triggers?.[0]
   const handles = trigger?.config?.handles ?? []
-  const frequency = trigger?.frequency ?? "30m"
+  const frequency = formatFrequency(
+    trigger?.frequency_amount,
+    trigger?.frequency_unit,
+  )
   const lastRunAt = trigger?.last_run_at ?? null
 
   return (
@@ -55,7 +67,7 @@ export function WorkflowCard({ workflow }: { workflow: Workflow }) {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {frequencyLabels[frequency] ?? frequency}
+              {frequency}
               {" · "}
               {handles.length} {handles.length === 1 ? "handle" : "handles"} monitored
               {lastRunAt && (

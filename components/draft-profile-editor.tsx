@@ -4,18 +4,17 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
   Cancel01Icon,
-  NoteIcon,
-  PencilEdit02Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+import {
+  Field,
+  FieldLabel,
+} from "@/components/ui/field"
 import {
   countTweetCharacters,
   TWEET_CHAR_LIMIT,
@@ -31,6 +30,8 @@ interface DraftProfileEditorProps {
   onExampleChange: (index: number, value: string) => void
   onAddExample: () => void
   onRemoveExample: (index: number) => void
+  showMonitoringDescription?: boolean
+  variant?: "card" | "embedded"
 }
 
 export function DraftProfileEditor({
@@ -43,124 +44,127 @@ export function DraftProfileEditor({
   onExampleChange,
   onAddExample,
   onRemoveExample,
+  showMonitoringDescription = true,
+  variant = "card",
 }: DraftProfileEditorProps) {
-  return (
-    <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={1.8} className="size-4" />
-          Drafting Profile
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid gap-5 lg:grid-cols-2">
-          <section className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-sm">
-            <div className="mb-3 flex items-center gap-2">
-              <Badge variant="outline" className="rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-[0.18em]">
-                Scan Input
-              </Badge>
-            </div>
-            <label className="mb-2 block text-sm font-semibold">
+  const content = (
+    <div className="space-y-6">
+      <div
+        className={
+          showMonitoringDescription
+            ? "grid gap-5 lg:grid-cols-2"
+            : "grid gap-5"
+        }
+      >
+        {showMonitoringDescription && (
+          <Field>
+            <FieldLabel htmlFor="monitoring-description">
               What to monitor
-            </label>
+            </FieldLabel>
             <Textarea
+              id="monitoring-description"
               value={monitoringDescription}
-              onChange={(event) => onMonitoringDescriptionChange(event.target.value)}
+              onChange={(event) =>
+                onMonitoringDescriptionChange(event.target.value)
+              }
               placeholder="e.g. Premier League transfer movement, injury developments, and manager comments involving the top six clubs."
               rows={6}
             />
-          </section>
+          </Field>
+        )}
 
-          <section className="rounded-2xl border border-primary/15 bg-primary/5 p-4 shadow-sm">
-            <div className="mb-3 flex items-center gap-2">
-              <Badge className="rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-[0.18em]">
-                Required
-              </Badge>
-            </div>
-            <label className="mb-2 block text-sm font-semibold">
-              Drafting instructions
-            </label>
-            <Textarea
-              value={draftingInstructions}
-              onChange={(event) =>
-                onDraftingInstructionsChange(event.target.value)
-              }
-              placeholder="e.g. Start directly with the news, sound authoritative, avoid emojis, and keep the wording tight enough for a single tweet."
-              rows={6}
-            />
-          </section>
+        <Field>
+          <FieldLabel htmlFor="drafting-instructions">
+            Drafting instructions
+          </FieldLabel>
+          <Textarea
+            id="drafting-instructions"
+            value={draftingInstructions}
+            onChange={(event) =>
+              onDraftingInstructionsChange(event.target.value)
+            }
+            placeholder="e.g. Start directly with the news, sound authoritative, avoid emojis, and keep the wording tight enough for a single tweet."
+            rows={6}
+          />
+        </Field>
+      </div>
+
+      <section className="rounded-xl border border-border/80 bg-background/70 p-4 shadow-sm dark:bg-white/[0.03]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-sm font-semibold">Example tweets</h3>
+          <Button type="button" variant="outline" size="sm" onClick={onAddExample}>
+            <HugeiconsIcon icon={Add01Icon} strokeWidth={1.8} className="size-4" />
+            Add Example
+          </Button>
         </div>
 
-        <section className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={NoteIcon} strokeWidth={1.8} className="size-4 text-primary" />
-              <h3 className="text-sm font-semibold">Example tweets</h3>
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={onAddExample}>
-              <HugeiconsIcon icon={Add01Icon} strokeWidth={1.8} className="size-4" />
-              Add Example
-            </Button>
-          </div>
+        {exampleInputs.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {exampleInputs.map((example, index) => {
+              const charCount = countTweetCharacters(example)
+              const isOverflow = charCount > TWEET_CHAR_LIMIT
+              const exampleId = `example-tweet-${index}`
 
-          {exampleInputs.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-6 text-sm text-muted-foreground">
-              No examples yet.
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {exampleInputs.map((example, index) => {
-                const charCount = countTweetCharacters(example)
-                const isOverflow = charCount > TWEET_CHAR_LIMIT
-
-                return (
-                  <div
-                    key={`example-${index}`}
-                    className="rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-sm"
-                  >
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold">
-                        Example {index + 1}
+              return (
+                <div
+                  key={`example-${index}`}
+                  className="rounded-lg border border-border/70 bg-card/80 p-3 shadow-sm"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <FieldLabel htmlFor={exampleId}>
+                      Example {index + 1}
+                    </FieldLabel>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs ${
+                          isOverflow ? "text-destructive" : "text-muted-foreground"
+                        }`}
+                      >
+                        {charCount}/{TWEET_CHAR_LIMIT}
                       </span>
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`text-xs ${
-                            isOverflow ? "text-destructive" : "text-muted-foreground"
-                          }`}
-                        >
-                          {charCount}/{TWEET_CHAR_LIMIT}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => onRemoveExample(index)}
-                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          aria-label={`Remove example ${index + 1}`}
-                        >
-                          <HugeiconsIcon
-                            icon={Cancel01Icon}
-                            strokeWidth={1.8}
-                            className="size-4"
-                          />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveExample(index)}
+                        className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        aria-label={`Remove example ${index + 1}`}
+                      >
+                        <HugeiconsIcon
+                          icon={Cancel01Icon}
+                          strokeWidth={1.8}
+                          className="size-4"
+                        />
+                      </button>
                     </div>
-                    <Textarea
-                      value={example}
-                      onChange={(event) => onExampleChange(index, event.target.value)}
-                      placeholder="Paste an example tweet that represents your ideal voice."
-                      rows={4}
-                    />
-                    {exampleErrors[index] && (
-                      <p className="mt-2 text-xs text-destructive">
-                        {exampleErrors[index]}
-                      </p>
-                    )}
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
+                  <Textarea
+                    id={exampleId}
+                    value={example}
+                    onChange={(event) => onExampleChange(index, event.target.value)}
+                    placeholder="Paste an example tweet that represents your ideal voice."
+                    rows={4}
+                  />
+                  {exampleErrors[index] && (
+                    <p className="mt-2 text-xs text-destructive">
+                      {exampleErrors[index]}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+
+  if (variant === "embedded") {
+    return content
+  }
+
+  return (
+    <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20 py-0">
+      <CardContent className="p-5 sm:p-6">
+        {content}
       </CardContent>
     </Card>
   )

@@ -26,17 +26,26 @@ type Trigger = {
   id: string
   type: string
   config: { handles?: string[]; description?: string }
-  frequency: string
+  frequency_amount: number | null
+  frequency_unit: string | null
   status: string
   last_run_at: string | null
   scan_runs: ScanRun[]
 }
 
-const frequencyLabels: Record<string, string> = {
-  "15m": "Every 15 min",
-  "30m": "Every 30 min",
-  "1h": "Every hour",
-  "2h": "Every 2 hours",
+function formatFrequency(amount: number | null | undefined, unit: string | null | undefined) {
+  if (!amount || !unit) return "Not scheduled"
+
+  const unitLabels: Record<string, [string, string]> = {
+    m: ["minute", "minutes"],
+    h: ["hour", "hours"],
+    d: ["day", "days"],
+    w: ["week", "weeks"],
+  }
+  const labels = unitLabels[unit]
+  if (!labels) return "Not scheduled"
+
+  return `Every ${amount} ${amount === 1 ? labels[0] : labels[1]}`
 }
 
 export default async function WorkflowDetailPage({
@@ -95,7 +104,13 @@ export default async function WorkflowDetailPage({
             <CardContent className="space-y-6 p-6">
 
               <div className="grid grid-cols-2 gap-6">
-                <InfoItem label="Frequency" value={frequencyLabels[trigger.frequency] ?? trigger.frequency} />
+                <InfoItem
+                  label="Frequency"
+                  value={formatFrequency(
+                    trigger.frequency_amount,
+                    trigger.frequency_unit,
+                  )}
+                />
                 <InfoItem label="Status" value={trigger.status === "active" ? "Active" : "Paused"} />
               </div>
 
