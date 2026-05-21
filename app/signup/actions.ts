@@ -24,7 +24,7 @@ export async function signup(formData: FormData) {
 
   if (data.user?.identities?.length === 0) {
     redirect(
-      `/signup?error=${encodeURIComponent("An account with this email already exists. Please sign in instead.")}`
+      `/signup?error=${encodeURIComponent("An account with this email already exists. Please log in instead.")}`
     );
   }
 

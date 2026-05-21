@@ -6,12 +6,12 @@ import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
 
 const navItems = [
@@ -31,32 +31,34 @@ export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
-  user: { email: string }
+  user: { email: string; name: string }
 }) {
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="gap-3 border-b border-sidebar-border/80 p-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="/dashboard">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg text-sm font-bold">
+                <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-foreground text-sm font-bold text-background">
                   O
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Oparax</span>
+                <div className="grid flex-1 text-left leading-tight">
+                  <span className="truncate text-base font-semibold">Oparax</span>
+                  <span className="truncate text-xs text-sidebar-foreground/55">
+                    newsroom automation
+                  </span>
                 </div>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <SidebarSeparator className="mx-0" />
+        <NavUser user={user} />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="pt-2">
         <NavMain items={navItems} />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={user} />
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

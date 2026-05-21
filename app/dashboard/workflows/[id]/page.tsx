@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation"
-import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import {
   Card,
@@ -9,9 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
+import { DashboardPageHeader } from "@/components/dashboard-page-header"
 import { WorkflowDraftingStudio } from "@/components/workflow-drafting-studio"
 import { getWorkflowDraftingScopeId } from "@/lib/workflow-drafting"
 import { ScanHistory } from "./scan-history"
@@ -61,29 +58,21 @@ export default async function WorkflowDetailPage({
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
-      {/* Back link */}
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      <DashboardPageHeader
+        title={workflow.name}
+        description={workflow.description ?? undefined}
+        breadcrumbs={[
+          { label: "Workflows", href: "/dashboard" },
+          { label: workflow.name },
+        ]}
+      />
+
+      <Badge
+        variant={workflow.status === "active" ? "default" : "secondary"}
+        className="w-fit"
       >
-        <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} className="size-4" />
-        Back to workflows
-      </Link>
-
-      {/* Header — workflow-level info */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{workflow.name}</h1>
-            <Badge variant={workflow.status === "active" ? "default" : "secondary"}>
-              {workflow.status === "active" ? "Active" : "Paused"}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">{workflow.description}</p>
-        </div>
-      </div>
-
-      <Separator />
+        {workflow.status === "active" ? "Active" : "Paused"}
+      </Badge>
 
       {/* Trigger cards — each trigger has its own config + scan action */}
       {(workflow.triggers as Trigger[])?.map((trigger) => {

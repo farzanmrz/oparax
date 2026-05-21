@@ -2,17 +2,31 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
+
+function getDisplayName({
+  email,
+  metadata,
+}: {
+  email: string
+  metadata: Record<string, unknown>
+}) {
+  const metadataName =
+    typeof metadata.full_name === "string"
+      ? metadata.full_name
+      : typeof metadata.name === "string"
+        ? metadata.name
+        : typeof metadata.display_name === "string"
+          ? metadata.display_name
+          : ""
+
+  if (metadataName.trim()) return metadataName.trim()
+  if (email) return email.split("@")[0]
+
+  return "Reporter"
+}
 
 export default async function DashboardLayout({
   children,
@@ -28,27 +42,17 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
+  const email = user.email ?? ""
+  const name = getDisplayName({
+    email,
+    metadata: user.user_metadata,
+  })
+
   return (
     <SidebarProvider>
-      <AppSidebar user={{ email: user.email ?? "" }} />
+      <AppSidebar user={{ email, name }} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Dashboard</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-6 bg-muted/25 p-4 md:p-8">
           {children}
         </div>
       </SidebarInset>

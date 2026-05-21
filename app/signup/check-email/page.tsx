@@ -13,7 +13,7 @@ export default function CheckEmailPage() {
           href="/login"
           className="inline-block text-sm font-medium underline underline-offset-4"
         >
-          Back to sign in
+          Back to Login
         </Link>
       </div>
     </div>

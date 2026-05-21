@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import { DashboardPageHeader } from "@/components/dashboard-page-header"
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -17,13 +17,11 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your account and connected services.
-        </p>
-      </div>
-      <Separator />
+      <DashboardPageHeader
+        title="Settings"
+        description="Manage your account and connected services."
+        breadcrumbs={[{ label: "Settings" }]}
+      />
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>

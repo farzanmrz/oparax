@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { DashboardPageHeader } from "@/components/dashboard-page-header"
 import {
   Card,
   CardContent,
@@ -110,12 +111,14 @@ export default function NewWorkflowPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Create Workflow</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Build the scan, shape the voice, preview drafted tweets, then save the workflow.
-        </p>
-      </div>
+      <DashboardPageHeader
+        title="Create Workflow"
+        description="Build the scan, shape the voice, preview drafted tweets, then save the workflow."
+        breadcrumbs={[
+          { label: "Workflows", href: "/dashboard" },
+          { label: "Create Workflow" },
+        ]}
+      />
 
       <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
         <CardHeader>
