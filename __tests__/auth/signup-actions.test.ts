@@ -136,7 +136,7 @@ describe("signup action", () => {
     await expect(signup(formData)).rejects.toThrow("NEXT_REDIRECT");
     expect(mockRedirect).toHaveBeenCalledWith(
       expect.stringContaining(
-        encodeURIComponent("Unable to create account. Please try again or sign in.")
+        encodeURIComponent("Unable to create account. Please try again or log in.")
       )
     );
   });
@@ -152,7 +152,7 @@ describe("signup action", () => {
     await expect(signup(formData)).rejects.toThrow("NEXT_REDIRECT");
     expect(mockRedirect).toHaveBeenCalledWith(
       expect.stringContaining(
-        encodeURIComponent("An account with this email already exists. Please sign in instead.")
+        encodeURIComponent("An account with this email already exists. Please log in instead.")
       )
     );
   });

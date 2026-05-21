@@ -61,7 +61,7 @@ export async function updatePassword(formData: FormData) {
 
   redirect(
     `/login?message=${encodeURIComponent(
-      "Password updated successfully. Please sign in."
+      "Password updated successfully. Please log in."
     )}`
   );
 }

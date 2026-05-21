@@ -72,7 +72,7 @@ export function ResetPasswordForm({
               </Field>
               <FieldDescription className="text-center">
                 <Link href="/login" className="underline underline-offset-4">
-                  Back to sign in
+                  Back to Login
                 </Link>
               </FieldDescription>
             </FieldGroup>

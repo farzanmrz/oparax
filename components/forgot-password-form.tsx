@@ -1,6 +1,7 @@
-import Link from "next/link"
 import Image from "next/image"
+import { Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AuthPendingLink } from "@/components/auth-pending-link"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Field,
@@ -12,6 +13,12 @@ import { Input } from "@/components/ui/input"
 import { SubmitButton } from "@/components/submit-button"
 import { requestPasswordReset } from "@/app/forgot-password/actions"
 
+const linkClass =
+  "rounded-sm font-semibold !text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:!text-teal-900 hover:decoration-current active:!text-teal-800 dark:!text-teal-300 dark:decoration-teal-300/35 dark:hover:!text-teal-100 dark:active:!text-teal-200"
+
+const submitButtonClass =
+  "h-11 w-full bg-teal-600 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner dark:bg-teal-300 dark:text-zinc-950 dark:hover:bg-teal-200 dark:active:bg-teal-400"
+
 export function ForgotPasswordForm({
   error,
   message,
@@ -20,16 +27,12 @@ export function ForgotPasswordForm({
 }: React.ComponentProps<"div"> & { error?: string; message?: string }) {
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
-        <CardContent className="grid p-0 md:grid-cols-2">
-          <form action={requestPasswordReset} className="p-6 md:p-8">
+      <Card className="overflow-hidden border-border/70 bg-card/95 p-0 shadow-2xl shadow-foreground/10 md:h-[700px]">
+        <CardContent className="grid h-full p-0 md:grid-cols-2">
+          <form action={requestPasswordReset} className="flex h-full flex-col justify-center bg-gradient-to-b from-card to-muted/30 p-6 md:p-8">
             <FieldGroup>
-              <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Reset your password</h1>
-                <p className="text-muted-foreground text-sm text-balance">
-                  Enter your account email and we&apos;ll send you a secure reset
-                  link.
-                </p>
+              <div className="flex flex-col items-center text-center">
+                <h1 className="text-2xl font-semibold">Reset your password</h1>
               </div>
               {error && (
                 <div
@@ -53,30 +56,33 @@ export function ForgotPasswordForm({
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="you@example.com"
                   required
                 />
               </Field>
               <Field>
-                <SubmitButton type="submit" className="h-11 w-full">
+                <SubmitButton type="submit" className={submitButtonClass}>
+                  <Mail />
                   Send reset link
                 </SubmitButton>
               </Field>
               <FieldDescription className="text-center">
-                Remembered it?{" "}
-                <Link href="/login" className="underline underline-offset-4">
-                  Back to sign in
-                </Link>
+                <AuthPendingLink
+                  href="/login"
+                  className={linkClass}
+                >
+                  Return to Login
+                </AuthPendingLink>
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:block">
+          <div className="bg-muted/60 hidden items-center justify-center p-6 md:flex">
             <Image
               src="/images/landing_bird.png"
               alt="Oparax bird illustration"
-              fill
+              width={1696}
+              height={2528}
               sizes="(min-width: 768px) 50vw, 0vw"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+              className="h-full max-h-full w-auto max-w-full object-contain opacity-90 dark:brightness-[0.42] dark:saturate-[0.75]"
             />
           </div>
         </CardContent>

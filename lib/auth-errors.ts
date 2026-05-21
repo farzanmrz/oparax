@@ -4,11 +4,11 @@ const ERROR_MAP: Record<string, string> = {
   "Invalid login credentials": "Invalid email or password.",
   "Email not confirmed": "Invalid email or password.",
   "Invalid Refresh Token: Refresh Token Not Found":
-    "Your session has expired. Please sign in again.",
+    "Your session has expired. Please log in again.",
 
   // Signup errors
   "User already registered":
-    "Unable to create account. Please try again or sign in.",
+    "Unable to create account. Please try again or log in.",
   "Password should be at least 6 characters":
     "Password must be at least 6 characters.",
   "Unable to validate email address: invalid format":

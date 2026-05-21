@@ -16,7 +16,7 @@ describe("mapAuthError", () => {
 
   it("maps 'User already registered' to generic message", () => {
     expect(mapAuthError("User already registered")).toBe(
-      "Unable to create account. Please try again or sign in."
+      "Unable to create account. Please try again or log in."
     );
   });
 
