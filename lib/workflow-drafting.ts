@@ -7,6 +7,27 @@ export interface DraftingProfile {
   examples: string[]
 }
 
+export interface KnowledgeSource {
+  type: "tweet" | "site"
+  title: string
+  url: string
+  publisher: string
+}
+
+export interface ScanToolCall {
+  type: string
+  name: string
+  arguments: unknown
+}
+
+export interface ScanMetadata {
+  model: string
+  maxTurns: number
+  serverSideToolUsage: Record<string, number>
+  toolCalls: ScanToolCall[]
+  costInUsdTicks: number | null
+}
+
 export interface KnowledgeHeadline {
   id: string
   title: string
@@ -17,11 +38,13 @@ export interface KnowledgeHeadline {
   sourceHandles: string[]
   sourceUrls: string[]
   publishedAt?: string
+  sources?: KnowledgeSource[]
 }
 
 export interface KnowledgeBank {
   generatedAt: string
   headlines: KnowledgeHeadline[]
+  scanMetadata?: ScanMetadata
 }
 
 export interface DraftedTweet {
@@ -64,6 +87,92 @@ function normalizeStringArray(value: unknown): string[] {
   return [...new Set(value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean))]
 }
 
+function normalizeSources(value: unknown): KnowledgeSource[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const sources: KnowledgeSource[] = []
+  const seenUrls = new Set<string>()
+
+  for (const item of value) {
+    if (!isObject(item)) continue
+
+    const type = item.type === "tweet" || item.type === "site" ? item.type : null
+    const url = normalizeString(item.url)
+
+    if (!type || !url || seenUrls.has(url)) {
+      continue
+    }
+
+    sources.push({
+      type,
+      url,
+      title: normalizeString(item.title) ?? "",
+      publisher: normalizeString(item.publisher) ?? "",
+    })
+    seenUrls.add(url)
+  }
+
+  return sources
+}
+
+function normalizeNumberRecord(value: unknown): Record<string, number> {
+  if (!isObject(value)) {
+    return {}
+  }
+
+  const normalized: Record<string, number> = {}
+
+  for (const [key, rawValue] of Object.entries(value)) {
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+      normalized[key] = rawValue
+    }
+  }
+
+  return normalized
+}
+
+function normalizeScanMetadata(value: unknown): ScanMetadata | null {
+  if (!isObject(value)) {
+    return null
+  }
+
+  const model = normalizeString(value.model)
+  const maxTurns = value.maxTurns
+  const costInUsdTicks = value.costInUsdTicks
+
+  if (!model || typeof maxTurns !== "number") {
+    return null
+  }
+
+  return {
+    model,
+    maxTurns,
+    serverSideToolUsage: normalizeNumberRecord(value.serverSideToolUsage),
+    toolCalls: Array.isArray(value.toolCalls)
+      ? value.toolCalls
+          .filter(isObject)
+          .map((toolCall) => ({
+            type: normalizeString(toolCall.type) ?? "",
+            name: normalizeString(toolCall.name) ?? "",
+            arguments: toolCall.arguments ?? null,
+          }))
+          .filter((toolCall) => toolCall.type || toolCall.name)
+      : [],
+    costInUsdTicks:
+      typeof costInUsdTicks === "number" && Number.isFinite(costInUsdTicks)
+        ? costInUsdTicks
+        : null,
+  }
+}
+
+function sourceUrlsByType(sources: KnowledgeSource[], type: KnowledgeSource["type"]) {
+  return sources
+    .filter((source) => source.type === type)
+    .map((source) => source.url)
+}
+
 function parseLegacyKnowledgeHeadline(value: Record<string, unknown>): KnowledgeHeadline | null {
   const id = normalizeString(value.id)
   const title = normalizeString(value.title)
@@ -100,8 +209,10 @@ export function parseKnowledgeHeadline(value: unknown): KnowledgeHeadline | null
   }
 
   const aggregatedContext = normalizeString(value.aggregatedContext)
+  const explanation = normalizeString(value.explanation)
   const primaryTweetUrl = normalizeString(value.primaryTweetUrl)
   const publishedAt = normalizeString(value.publishedAt) ?? undefined
+  const sources = normalizeSources(value.sources)
 
   if (aggregatedContext) {
     return {
@@ -116,6 +227,38 @@ export function parseKnowledgeHeadline(value: unknown): KnowledgeHeadline | null
       sourceHandles: normalizeStringArray(value.sourceHandles),
       sourceUrls: normalizeStringArray(value.sourceUrls),
       publishedAt,
+      ...(sources.length > 0 && { sources }),
+    }
+  }
+
+  if (explanation) {
+    const tweetUrls = normalizeStringArray(value.sourceTweetUrls)
+    const siteUrls = normalizeStringArray(value.sourceSiteUrls)
+    const sourceHandles = normalizeStringArray(value.sourceHandles)
+
+    return {
+      id,
+      title,
+      aggregatedContext: explanation,
+      evidencePoints: [],
+      primaryTweetUrl: "",
+      supportingTweetUrls: [
+        ...new Set([...tweetUrls, ...sourceUrlsByType(sources, "tweet")]),
+      ],
+      sourceHandles: [
+        ...new Set([
+          ...sourceHandles,
+          ...sources
+            .filter((source) => source.type === "tweet")
+            .map((source) => source.publisher)
+            .filter(Boolean),
+        ]),
+      ],
+      sourceUrls: [
+        ...new Set([...siteUrls, ...sourceUrlsByType(sources, "site")]),
+      ],
+      publishedAt,
+      ...(sources.length > 0 && { sources }),
     }
   }
 
@@ -164,31 +307,38 @@ export function isKnowledgeHeadline(value: unknown): value is KnowledgeHeadline 
 }
 
 export function isKnowledgeBank(value: unknown): value is KnowledgeBank {
-  if (!isObject(value)) return false
-
-  return (
-    typeof value.generatedAt === "string" &&
-    Array.isArray(value.headlines) &&
-    value.headlines.every((headline) => parseKnowledgeHeadline(headline) !== null)
-  )
+  return parseKnowledgeBank(value) !== null
 }
 
 export function parseKnowledgeBank(value: unknown): KnowledgeBank | null {
-  if (!isObject(value) || typeof value.generatedAt !== "string" || !Array.isArray(value.headlines)) {
+  if (!isObject(value) || typeof value.generatedAt !== "string") {
     return null
   }
 
-  const headlines = value.headlines
+  const rawHeadlines = Array.isArray(value.headlines)
+    ? value.headlines
+    : Array.isArray(value.newsItems)
+      ? value.newsItems
+      : null
+
+  if (!rawHeadlines) {
+    return null
+  }
+
+  const headlines = rawHeadlines
     .map((headline) => parseKnowledgeHeadline(headline))
     .filter((headline): headline is KnowledgeHeadline => headline !== null)
 
-  if (headlines.length !== value.headlines.length) {
+  if (headlines.length !== rawHeadlines.length) {
     return null
   }
+
+  const scanMetadata = normalizeScanMetadata(value.scanMetadata)
 
   return {
     generatedAt: value.generatedAt,
     headlines,
+    ...(scanMetadata && { scanMetadata }),
   }
 }
 

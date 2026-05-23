@@ -73,6 +73,24 @@ export async function failScanRun(scanRunId: string) {
   await persistFailedScanRun(supabase, scanRunId, "Manual scan failed.")
 }
 
+export async function deleteWorkflow(workflowId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("workflows")
+    .delete()
+    .eq("id", workflowId)
+    .select("id")
+    .single()
+
+  if (error || !data) {
+    return { error: "Failed to delete workflow." }
+  }
+
+  revalidatePath("/dashboard")
+  return { success: true }
+}
+
 function getTriggerConfigValue(
   config: unknown,
   key: "description" | "handles",

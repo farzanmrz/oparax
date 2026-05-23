@@ -1,8 +1,14 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { TweetUrlGrid } from "@/components/tweet-url-grid"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -11,23 +17,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 import type { ScanItem, ScanRun } from "./page"
 
-function timeAgo(dateString: string): string {
-  const now = new Date()
-  const date = new Date(dateString)
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-
-  if (diffMin < 1) return "Just now"
-  if (diffMin < 60) return `${diffMin} min ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr} hr ago`
-  const diffDays = Math.floor(diffHr / 24)
-  return `${diffDays}d ago`
-}
-
 function titleCase(value: string) {
+  if (!value) return "Unknown"
+
   return value
     .split(/[\s_-]+/)
     .filter(Boolean)
@@ -35,10 +30,66 @@ function titleCase(value: string) {
     .join(" ")
 }
 
-const statusVariant: Record<string, "default" | "secondary" | "destructive"> = {
-  completed: "default",
-  running: "secondary",
-  failed: "destructive",
+function formatDateTime(dateString: string): string {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(dateString))
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "completed":
+      return "border-foreground bg-foreground text-background"
+    case "failed":
+      return "border-destructive/20 bg-destructive/10 text-destructive"
+    case "running":
+      return "border-border bg-secondary text-secondary-foreground"
+    default:
+      return "border-border bg-muted text-muted-foreground"
+  }
+}
+
+function getItemSourceUrls(item: ScanItem) {
+  return [
+    ...new Set(
+      [
+        item.primary_tweet_url,
+        ...item.supporting_tweet_urls,
+        ...item.source_urls,
+      ]
+        .map((url) => url.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+function SourceLinks({ urls }: { urls: string[] }) {
+  if (urls.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p className="font-medium text-muted-foreground">Sources</p>
+      <div className="flex flex-col gap-1.5">
+        {urls.map((url) => (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="break-all text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+          >
+            {url}
+          </a>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
@@ -50,22 +101,20 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
       ),
     [scanRuns],
   )
-  const [expandedId, setExpandedId] = useState<string | null>(sorted[0]?.id ?? null)
-  const latestRunId = sorted[0]?.id ?? null
-  const previousLatestRunId = useRef(latestRunId)
-
-  useEffect(() => {
-    if (latestRunId && previousLatestRunId.current !== latestRunId) {
-      setExpandedId(latestRunId)
-      previousLatestRunId.current = latestRunId
-    }
-  }, [latestRunId])
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (sorted.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-        No scan runs yet.
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Scan history</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+            No scan runs yet.
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -78,77 +127,113 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
     : null
 
   return (
-    <div className="space-y-4">
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Run time</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">New</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.map((run) => (
-              <TableRow
-                key={run.id}
-                className="cursor-pointer"
-                onClick={() => toggleExpand(run.id)}
-              >
-                <TableCell>
-                  <span className="font-medium">{timeAgo(run.started_at)}</span>
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    {new Date(run.started_at).toLocaleString()}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusVariant[run.status] ?? "secondary"}>
-                    {titleCase(run.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {titleCase(run.source)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {run.item_count ?? 0}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {run.new_item_count ?? 0}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Scan history</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm shadow-foreground/5">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border bg-muted/35 hover:bg-muted/35">
+                  <TableHead className="min-w-64 px-5 py-4">
+                    Run time
+                  </TableHead>
+                  <TableHead className="min-w-32 px-5 py-4">
+                    Status
+                  </TableHead>
+                  <TableHead className="min-w-36 px-5 py-4">
+                    Source
+                  </TableHead>
+                  <TableHead className="px-5 py-4 text-right">
+                    Total
+                  </TableHead>
+                  <TableHead className="px-5 py-4 text-right">New</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((run) => {
+                  const isSelected = expandedId === run.id
+
+                  return (
+                    <TableRow
+                      key={run.id}
+                      data-state={isSelected ? "selected" : undefined}
+                      className="group h-16 cursor-pointer border-border hover:bg-muted/45"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isSelected}
+                      onClick={() => toggleExpand(run.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          toggleExpand(run.id)
+                        }
+                      }}
+                    >
+                      <TableCell className="px-5 py-4">
+                        <span className="block text-[0.98rem] font-semibold">
+                          {formatDateTime(run.started_at)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "min-w-20 justify-center",
+                            statusBadgeClass(run.status),
+                          )}
+                        >
+                          {titleCase(run.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-[0.96rem] text-muted-foreground">
+                        {titleCase(run.source)}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-right text-[0.98rem] font-semibold tabular-nums">
+                        {run.item_count ?? 0}
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-right text-[0.98rem] font-semibold tabular-nums">
+                        {run.new_item_count ?? 0}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {expandedRun && (
-        <div className="rounded-md border p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium">
-                {new Date(expandedRun.started_at).toLocaleString()}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Scan results: {formatDateTime(expandedRun.started_at)}
+            </CardTitle>
+            <CardAction>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "min-w-20 justify-center",
+                  statusBadgeClass(expandedRun.status),
+                )}
+              >
+                {titleCase(expandedRun.status)}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {expandedRun.error_message ? (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {expandedRun.error_message}
               </p>
-              {expandedRun.completed_at && (
-                <p className="text-sm text-muted-foreground">
-                  Completed {new Date(expandedRun.completed_at).toLocaleString()}
-                </p>
-              )}
-            </div>
-            <Badge variant={statusVariant[expandedRun.status] ?? "secondary"}>
-              {titleCase(expandedRun.status)}
-            </Badge>
-          </div>
-
-          {expandedRun.error_message ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              {expandedRun.error_message}
-            </p>
-          ) : (
-            <ScanRunItems items={expandedRun.newItems} />
-          )}
-        </div>
+            ) : (
+              <ScanRunItems items={expandedRun.scanItems} />
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   )
@@ -157,73 +242,42 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
 function ScanRunItems({ items }: { items: ScanItem[] }) {
   if (items.length === 0) {
     return (
-      <p className="rounded-md border border-dashed p-5 text-sm text-muted-foreground">
-        No new items added.
+      <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+        No scan items returned for this run.
       </p>
     )
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {items.map((item) => {
-        const supportingTweetUrls = item.supporting_tweet_urls.filter(
-          (url) => url !== item.primary_tweet_url,
-        )
+        const sourceUrls = getItemSourceUrls(item)
 
         return (
           <article
             key={item.id}
-            className="rounded-md border bg-card p-4 shadow-sm shadow-foreground/5"
+            className="rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm transition-all sm:px-5"
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold">{item.title}</h3>
-                  {item.source_handles.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {item.source_handles.map((handle) => (
-                        <Badge
-                          key={`${item.id}-${handle}`}
-                          variant="secondary"
-                          className="font-mono text-[11px]"
-                        >
-                          @{handle}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right text-xs text-muted-foreground">
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                  {item.title}
+                </h3>
+                <div className="text-right text-xs leading-5 text-muted-foreground">
                   {item.published_at && (
-                    <p>Published {new Date(item.published_at).toLocaleString()}</p>
+                    <p>Published {formatDateTime(item.published_at)}</p>
                   )}
-                  <p>First seen {new Date(item.first_seen_at).toLocaleString()}</p>
+                  {item.first_seen_at && (
+                    <p>First seen {formatDateTime(item.first_seen_at)}</p>
+                  )}
                 </div>
               </div>
 
-              <p className="text-sm leading-6 text-muted-foreground">
+              <p className="max-w-4xl text-base leading-7 text-foreground/90">
                 {item.aggregated_context}
               </p>
 
-              {item.evidence_points.length > 0 && (
-                <div className="grid gap-2 md:grid-cols-2">
-                  {item.evidence_points.map((point) => (
-                    <p
-                      key={`${item.id}-${point}`}
-                      className="rounded-md border bg-muted/25 p-3 text-sm leading-6"
-                    >
-                      {point}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {item.primary_tweet_url && (
-                <TweetUrlGrid urls={[item.primary_tweet_url]} limit={1} />
-              )}
-              {supportingTweetUrls.length > 0 && (
-                <TweetUrlGrid urls={supportingTweetUrls} />
-              )}
+              <SourceLinks urls={sourceUrls} />
             </div>
           </article>
         )

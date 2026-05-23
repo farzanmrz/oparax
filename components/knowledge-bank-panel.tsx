@@ -12,8 +12,7 @@ import {
   CardHeader,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { KnowledgeBank } from "@/lib/workflow-drafting"
-import { TweetUrlGrid } from "@/components/tweet-url-grid"
+import type { KnowledgeBank, KnowledgeHeadline } from "@/lib/workflow-drafting"
 
 interface KnowledgeBankPanelProps {
   knowledgeBank: KnowledgeBank | null
@@ -26,24 +25,38 @@ interface KnowledgeBankPanelProps {
   variant?: "card" | "embedded"
 }
 
-function ExternalLinks({ urls }: { urls: string[] }) {
+function getHeadlineSourceUrls(headline: KnowledgeHeadline) {
+  return [
+    ...new Set(
+      [
+        headline.primaryTweetUrl,
+        ...headline.supportingTweetUrls,
+        ...headline.sourceUrls,
+      ]
+        .map((url) => url.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+function SourceLinks({ urls }: { urls: string[] }) {
   if (urls.length === 0) {
     return null
   }
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 text-sm text-muted-foreground">
-      <p className="mb-2 font-medium text-foreground">Source links</p>
-      <div className="space-y-2">
-        {urls.slice(0, 4).map((url, index) => (
+    <div className="flex flex-col gap-2 text-sm">
+      <p className="font-medium text-muted-foreground">Sources</p>
+      <div className="flex flex-col gap-1.5">
+        {urls.map((url) => (
           <a
             key={url}
             href={url}
             target="_blank"
             rel="noreferrer noopener"
-            className="block truncate"
+            className="break-all text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
           >
-            Source {index + 1}
+            {url}
           </a>
         ))}
       </div>
@@ -93,9 +106,7 @@ export function KnowledgeBankPanel({
         <div className="grid gap-4">
           {knowledgeBank.headlines.map((headline) => {
             const isSelected = selectedHeadlineIds.includes(headline.id)
-            const supportingTweetUrls = headline.supportingTweetUrls.filter(
-              (url) => url !== headline.primaryTweetUrl,
-            )
+            const sourceUrls = getHeadlineSourceUrls(headline)
 
             return (
               <article
@@ -128,27 +139,10 @@ export function KnowledgeBankPanel({
                       {headline.aggregatedContext}
                     </p>
 
-                    {(headline.primaryTweetUrl || supportingTweetUrls.length > 0) && (
-                      <section className="space-y-3">
-                        {headline.primaryTweetUrl && (
-                          <div>
-                            <TweetUrlGrid urls={[headline.primaryTweetUrl]} limit={1} />
-                          </div>
-                        )}
-
-                        {supportingTweetUrls.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                              Supporting sources
-                            </p>
-                            <TweetUrlGrid urls={supportingTweetUrls} />
-                          </div>
-                        )}
-                      </section>
-                    )}
+                    <SourceLinks urls={sourceUrls} />
                   </div>
 
-                  <div className="flex shrink-0 flex-col gap-3 xl:w-52">
+                  <div className="flex shrink-0 flex-col gap-3 xl:w-40">
                     <Button
                       type="button"
                       variant={isSelected ? "secondary" : "outline"}
@@ -157,8 +151,6 @@ export function KnowledgeBankPanel({
                     >
                       {isSelected ? "Deselect" : "Select angle"}
                     </Button>
-
-                    <ExternalLinks urls={headline.sourceUrls} />
                   </div>
                 </div>
               </article>

@@ -2,14 +2,18 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import {
   Card,
+  CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DashboardPageHeader } from "@/components/dashboard-page-header"
+import {
+  getHeadlineTweetUrls,
+  parseStoredScanRunOutput,
+} from "@/lib/workflow-drafting"
 import { ScanHistory } from "./scan-history"
+import { DeleteWorkflowButton } from "./delete-workflow-button"
 import { RunScanButton } from "./run-scan-button"
 
 export type ScanItem = {
@@ -22,7 +26,7 @@ export type ScanItem = {
   source_handles: string[]
   source_urls: string[]
   published_at: string | null
-  first_seen_at: string
+  first_seen_at: string | null
 }
 
 export type ScanRun = {
@@ -37,6 +41,7 @@ export type ScanRun = {
   started_at: string
   completed_at: string | null
   newItems: ScanItem[]
+  scanItems: ScanItem[]
 }
 
 type TriggerConfig = {
@@ -84,6 +89,31 @@ function getStringArray(value: unknown): string[] {
     : []
 }
 
+function getRawOutputScanItems(
+  run: Omit<ScanRun, "newItems" | "scanItems">,
+): ScanItem[] {
+  const parsed = parseStoredScanRunOutput(run.raw_output)
+
+  if (!parsed || parsed.kind !== "knowledge_bank") {
+    return []
+  }
+
+  return parsed.knowledgeBank.headlines.map((headline, index) => ({
+    id: `${run.id}-${headline.id || index}`,
+    title: headline.title,
+    aggregated_context: headline.aggregatedContext,
+    evidence_points: headline.evidencePoints,
+    primary_tweet_url: headline.primaryTweetUrl,
+    supporting_tweet_urls: getHeadlineTweetUrls(headline).filter(
+      (url) => url !== headline.primaryTweetUrl,
+    ),
+    source_handles: headline.sourceHandles,
+    source_urls: headline.sourceUrls,
+    published_at: headline.publishedAt ?? null,
+    first_seen_at: null,
+  }))
+}
+
 export default async function WorkflowDetailPage({
   params,
 }: {
@@ -118,7 +148,10 @@ export default async function WorkflowDetailPage({
           .order("started_at", { ascending: false })
       : { data: [] }
 
-  const scanRuns = (scanRunRows ?? []) as Omit<ScanRun, "newItems">[]
+  const scanRuns = (scanRunRows ?? []) as Omit<
+    ScanRun,
+    "newItems" | "scanItems"
+  >[]
   const scanRunIds = scanRuns.map((run) => run.id)
   const { data: scanItemRows } =
     scanRunIds.length > 0
@@ -154,61 +187,57 @@ export default async function WorkflowDetailPage({
     itemsByRun.set(firstScanRunId, items)
   }
 
-  const runsWithItems: ScanRun[] = scanRuns.map((run) => ({
-    ...run,
-    newItems: itemsByRun.get(run.id) ?? [],
-  }))
+  const runsWithItems: ScanRun[] = scanRuns.map((run) => {
+    const newItems = itemsByRun.get(run.id) ?? []
+    const rawItems = getRawOutputScanItems(run)
+
+    return {
+      ...run,
+      newItems,
+      scanItems: run.raw_output ? rawItems : newItems,
+    }
+  })
   const exampleTweets = getStringArray(workflow.example_tweets)
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <DashboardPageHeader
-        title={workflow.name}
-        description={workflow.description ?? undefined}
-        breadcrumbs={[
-          { label: "Workflows", href: "/dashboard" },
-          { label: workflow.name },
-        ]}
-      />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          variant={workflow.status === "active" ? "default" : "secondary"}
-          className="w-fit"
-        >
-          {workflow.status === "active" ? "Active" : "Paused"}
-        </Badge>
+    <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-2 md:px-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <h1 className="truncate text-3xl font-semibold tracking-tight text-heading">
+          {workflow.name}
+        </h1>
+        <DeleteWorkflowButton
+          workflowId={workflow.id}
+          workflowName={workflow.name}
+        />
       </div>
 
       {triggers.map((trigger) => {
         const handles = getStringArray(trigger.config?.handles)
+        const triggerRuns = runsWithItems.filter(
+          (run) => run.trigger_id === trigger.id,
+        )
 
         return (
-          <div key={trigger.id} className="space-y-6">
+          <div key={trigger.id} className="flex flex-col gap-6">
             <Card>
               <CardHeader>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <CardTitle>Saved workflow settings</CardTitle>
-                    <CardDescription>
-                      These fields were saved from the create workflow flow.
-                    </CardDescription>
-                  </div>
+                <CardTitle>Workflow settings</CardTitle>
+                <CardAction>
                   <RunScanButton triggerId={trigger.id} />
-                </div>
+                </CardAction>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="flex flex-col gap-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <InfoItem
+                    label="Status"
+                    value={workflow.status === "active" ? "Active" : "Paused"}
+                  />
                   <InfoItem
                     label="Frequency"
                     value={formatFrequency(
                       trigger.frequency_amount,
                       trigger.frequency_unit,
                     )}
-                  />
-                  <InfoItem
-                    label="Trigger status"
-                    value={trigger.status === "active" ? "Active" : "Paused"}
                   />
                   <InfoItem
                     label="Last run"
@@ -220,51 +249,54 @@ export default async function WorkflowDetailPage({
                   />
                 </div>
 
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                  <div className="space-y-2">
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Monitored accounts
+                  </span>
+                  {handles.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {handles.map((handle) => (
+                        <Badge
+                          key={handle}
+                          variant="secondary"
+                          className="font-mono"
+                        >
+                          @{handle}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No account filter.
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="flex flex-col gap-2">
                     <span className="text-sm font-medium text-muted-foreground">
                       What to monitor
                     </span>
-                    <p className="rounded-md border bg-muted/25 p-3 text-sm leading-6">
-                      {trigger.config?.description ?? workflow.description}
+                    <p className="rounded-lg border border-border bg-muted/25 p-3 text-sm leading-6 text-foreground/90">
+                      {trigger.config?.description ??
+                        workflow.description ??
+                        "No monitoring brief saved."}
                     </p>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <span className="text-sm font-medium text-muted-foreground">
-                      Monitored accounts
+                      Drafting instructions
                     </span>
-                    {handles.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {handles.map((handle) => (
-                          <Badge
-                            key={handle}
-                            variant="secondary"
-                            className="font-mono"
-                          >
-                            @{handle}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No account filter.
-                      </p>
-                    )}
+                    <p className="rounded-lg border border-border bg-muted/25 p-3 text-sm leading-6 text-foreground/90">
+                      {workflow.drafting_instructions ||
+                        "No instructions saved."}
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Drafting instructions
-                  </span>
-                  <p className="rounded-md border bg-muted/25 p-3 text-sm leading-6">
-                    {workflow.drafting_instructions || "No instructions saved."}
-                  </p>
-                </div>
-
                 {exampleTweets.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <span className="text-sm font-medium text-muted-foreground">
                       Example tweets
                     </span>
@@ -272,7 +304,7 @@ export default async function WorkflowDetailPage({
                       {exampleTweets.map((example, index) => (
                         <p
                           key={`${index}-${example}`}
-                          className="rounded-md border bg-muted/25 p-3 text-sm leading-6"
+                          className="rounded-lg border border-border bg-muted/25 p-3 text-sm leading-6 text-foreground/90"
                         >
                           {example}
                         </p>
@@ -283,21 +315,7 @@ export default async function WorkflowDetailPage({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Scan history</CardTitle>
-                <CardDescription>
-                  Each run shows when it ran and which new items were added.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScanHistory
-                  scanRuns={runsWithItems.filter(
-                    (run) => run.trigger_id === trigger.id,
-                  )}
-                />
-              </CardContent>
-            </Card>
+            <ScanHistory scanRuns={triggerRuns} />
           </div>
         )
       })}
@@ -307,9 +325,9 @@ export default async function WorkflowDetailPage({
 
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="space-y-1 rounded-md border bg-muted/25 p-3">
+    <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-muted/25 p-3">
       <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      <p className="text-sm font-medium">{value}</p>
+      <p className="break-words text-sm font-medium text-foreground">{value}</p>
     </div>
   )
 }

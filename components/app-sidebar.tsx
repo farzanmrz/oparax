@@ -2,10 +2,11 @@
 
 import { WorkflowSquare01Icon, Settings02Icon } from "@hugeicons/core-free-icons"
 import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
+import { NavUser, SidebarSignOut } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -59,6 +60,9 @@ export function AppSidebar({
       <SidebarContent className="pt-2">
         <NavMain items={navItems} />
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border/80 p-3">
+        <SidebarSignOut />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

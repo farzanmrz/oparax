@@ -104,7 +104,10 @@ async function requestDraftBatch(input: {
   userPrompt: string
 }) {
   const response = await input.model.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.3",
+    reasoning: {
+      effort: "high",
+    },
     input: [
       { role: "system", content: input.systemPrompt },
       { role: "user", content: input.userPrompt },

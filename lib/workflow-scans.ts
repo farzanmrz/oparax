@@ -6,6 +6,8 @@ import {
   parseKnowledgeBank,
   type KnowledgeBank,
   type KnowledgeHeadline,
+  type ScanMetadata,
+  type ScanToolCall,
 } from "@/lib/workflow-drafting"
 import { createXaiClient, extractResponseText } from "@/lib/xai"
 
@@ -40,17 +42,18 @@ export interface PersistScanResultInput {
   minimumPublishedAt?: Date | string | null
 }
 
-const knowledgeBankJsonSchema = {
+const scanResultJsonSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
     generatedAt: {
       type: "string",
-      description: "ISO timestamp for when the knowledge bank was generated.",
+      description: "ISO timestamp for when the scan result was generated.",
     },
-    headlines: {
+    newsItems: {
       type: "array",
-      description: "Distinct source-grounded knowledge items found in the scan results.",
+      description:
+        "Every distinct source-grounded news item found from X and/or web search.",
       items: {
         type: "object",
         additionalProperties: false,
@@ -64,66 +67,77 @@ const knowledgeBankJsonSchema = {
             maxLength: 180,
             description: "Short title for one atomic news angle.",
           },
-          aggregatedContext: {
+          explanation: {
             type: "string",
-            maxLength: 2400,
+            maxLength: 4000,
             description:
-              "Human-readable accumulated context for the angle, preserving useful detail from the retrieved sources.",
+              "Plain-language explanation of what happened, combining only what the sources support.",
           },
-          evidencePoints: {
+          sources: {
             type: "array",
             minItems: 1,
-            maxItems: 8,
+            description: "All tweet and website sources used for this scan item.",
             items: {
-              type: "string",
-              maxLength: 500,
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                type: {
+                  type: "string",
+                  enum: ["tweet", "site"],
+                },
+                title: {
+                  type: "string",
+                  description:
+                    "Tweet/post title, article headline, page title, or short source label.",
+                },
+                url: {
+                  type: "string",
+                  description: "Source URL.",
+                },
+                publisher: {
+                  type: "string",
+                  description:
+                    "X handle without @ for tweets, or publisher/site name for websites.",
+                },
+              },
+              required: ["type", "title", "url", "publisher"],
             },
-            description:
-              "Source-grounded details, claims, quotes, or developments gathered under the same angle.",
           },
-          primaryTweetUrl: {
-            type: "string",
-            description: "The most representative X post URL for the angle.",
-          },
-          supportingTweetUrls: {
+          sourceTweetUrls: {
             type: "array",
-            maxItems: 8,
             items: { type: "string" },
-            description:
-              "Additional X post URLs that support the same angle and are suitable for embedding.",
+            description: "X post/profile URLs used for this item.",
+          },
+          sourceSiteUrls: {
+            type: "array",
+            items: { type: "string" },
+            description: "Non-X website URLs used for this item.",
           },
           sourceHandles: {
             type: "array",
-            maxItems: 8,
             items: { type: "string" },
             description: "Supporting X handles without @ symbols.",
-          },
-          sourceUrls: {
-            type: "array",
-            maxItems: 12,
-            items: { type: "string" },
-            description: "Supporting source URLs used for this headline.",
           },
         },
         required: [
           "id",
           "title",
-          "aggregatedContext",
-          "evidencePoints",
-          "primaryTweetUrl",
-          "supportingTweetUrls",
+          "explanation",
+          "sources",
+          "sourceTweetUrls",
+          "sourceSiteUrls",
           "sourceHandles",
-          "sourceUrls",
         ],
       },
     },
   },
-  required: ["generatedAt", "headlines"],
+  required: ["generatedAt", "newsItems"],
 } as const
 
 const TWEET_STATUS_RE = /(?:x|twitter)\.com\/[^/\s]+\/status\/(\d+)/i
 const X_SNOWFLAKE_EPOCH_MS = BigInt(1288834974657)
 const X_SNOWFLAKE_TIMESTAMP_SHIFT = BigInt(22)
+const SCAN_MAX_TURNS = 10
 
 function parseOptionalDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null
@@ -134,6 +148,97 @@ function parseOptionalDate(value: Date | string | null | undefined): Date | null
 
 function toIsoDate(date: Date): string {
   return date.toISOString().split("T")[0]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function getCostInUsdTicks(response: unknown): number | null {
+  if (!isRecord(response) || !isRecord(response.usage)) {
+    return null
+  }
+
+  const ticks = response.usage.cost_in_usd_ticks
+  if (typeof ticks === "number" && Number.isFinite(ticks)) {
+    return ticks
+  }
+
+  if (typeof ticks === "string" && /^\d+$/.test(ticks)) {
+    return Number(ticks)
+  }
+
+  return null
+}
+
+function getServerSideToolUsage(response: unknown): Record<string, number> {
+  if (!isRecord(response) || !isRecord(response.server_side_tool_usage)) {
+    return {}
+  }
+
+  const usage: Record<string, number> = {}
+
+  for (const [key, value] of Object.entries(response.server_side_tool_usage)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      usage[key] = value
+    }
+  }
+
+  return usage
+}
+
+function extractOutputToolCalls(response: unknown): ScanToolCall[] {
+  if (!isRecord(response) || !Array.isArray(response.output)) {
+    return []
+  }
+
+  return response.output
+    .filter(isRecord)
+    .filter((item) => {
+      const type = typeof item.type === "string" ? item.type : ""
+      return type === "web_search_call" || type === "x_search_call"
+    })
+    .map((item) => ({
+      type: typeof item.type === "string" ? item.type : "",
+      name:
+        typeof item.name === "string"
+          ? item.name
+          : typeof item.action === "string"
+            ? item.action
+            : "",
+      arguments: item.arguments ?? null,
+    }))
+}
+
+function extractTopLevelToolCalls(response: unknown): ScanToolCall[] {
+  if (!isRecord(response) || !Array.isArray(response.tool_calls)) {
+    return []
+  }
+
+  return response.tool_calls.filter(isRecord).map((toolCall) => {
+    const fn = isRecord(toolCall.function) ? toolCall.function : null
+
+    return {
+      type: typeof toolCall.type === "string" ? toolCall.type : "",
+      name: typeof fn?.name === "string" ? fn.name : "",
+      arguments: fn?.arguments ?? null,
+    }
+  })
+}
+
+function extractScanMetadata(response: unknown): ScanMetadata {
+  const toolCalls = [
+    ...extractTopLevelToolCalls(response),
+    ...extractOutputToolCalls(response),
+  ]
+
+  return {
+    model: "grok-4.3",
+    maxTurns: SCAN_MAX_TURNS,
+    serverSideToolUsage: getServerSideToolUsage(response),
+    toolCalls,
+    costInUsdTicks: getCostInUsdTicks(response),
+  }
 }
 
 export function extractTweetStatusId(url: string): string | null {
@@ -241,9 +346,14 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
     const toDate = toIsoDate(today)
 
     const response = await client.responses.create({
-      // x_search and no_inline_citations are xAI-specific extensions that are
+      // x_search, web_search, reasoning, and no_inline_citations are xAI-specific extensions that are
       // accepted by the runtime API but not reflected in the OpenAI SDK types.
-      model: "grok-4-1-fast-reasoning",
+      model: "grok-4.3",
+      reasoning: {
+        effort: "high",
+        summary: "detailed",
+      },
+      max_turns: SCAN_MAX_TURNS,
       input: [
         { role: "system", content: prompts.sysprompt_scan },
         {
@@ -259,6 +369,9 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
       ],
       tools: [
         {
+          type: "web_search",
+        },
+        {
           type: "x_search",
           ...(input.handles.length > 0 && {
             allowed_x_handles: input.handles,
@@ -268,11 +381,12 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
         },
       ],
       include: ["no_inline_citations"],
+      store: false,
       text: {
         format: {
           type: "json_schema",
-          name: "knowledge_bank",
-          schema: knowledgeBankJsonSchema,
+          name: "web_and_x_scan",
+          schema: scanResultJsonSchema,
           strict: true,
         },
       },
@@ -295,7 +409,10 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
       )
     }
 
-    return knowledgeBank
+    return {
+      ...knowledgeBank,
+      scanMetadata: extractScanMetadata(response),
+    }
   } catch (error) {
     if (error instanceof WorkflowScanError) {
       throw error
@@ -345,6 +462,12 @@ export function buildScanItemDedupeKey(headline: KnowledgeHeadline): string {
 
   if (firstTweetId) {
     return `tweet:${firstTweetId}`
+  }
+
+  const firstSourceUrl = headline.sourceUrls.find(Boolean)
+
+  if (firstSourceUrl) {
+    return `url:${firstSourceUrl.toLowerCase()}`
   }
 
   const normalizedTitle = headline.title
