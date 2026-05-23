@@ -6,85 +6,41 @@ Oparax is an AI-powered social media automation tool for professional news repor
 
 Next.js App Router app at the repo root.
 
+Folder-level map — drill into a folder when a task touches it; the non-obvious gotchas are called out inline.
+
 ```text
 .
-├── package.json                      # Deps + scripts (pnpm dev / build / lint)
-├── next.config.ts                    # Next.js config
-├── components.json                   # shadcn config
-├── tsconfig.json                     # TypeScript config (strict, @/* alias)
+├── package.json    # Deps + scripts (pnpm dev / build / lint)
+├── next.config.ts  # Next.js config
+├── components.json # shadcn config
+├── tsconfig.json   # TypeScript config (strict, @/* alias)
+├── proxy.ts        # Per-request hook that refreshes the Supabase session.
+│                   # MISLEADINGLY NAMED — NOT Supabase middleware (that lives in lib/supabase/middleware.ts).
 │
-├── app/                              # App Router routes
-│   ├── page.tsx                      # / — redirects to /login
-│   ├── layout.tsx                    # Root layout (fonts, providers, Toaster)
-│   ├── globals.css                   # Tailwind v4 theme (@theme inline)
-│   │
-│   ├── login/                        # Email + password sign-in
-│   ├── signup/
-│   │   └── check-email/              # Post-signup "verify your inbox" screen
-│   ├── auth/
-│   │   ├── confirm/                  # Email verification handler (token → session)
-│   │   └── reset-password/           # Password reset form (after clicking reset link)
-│   ├── forgot-password/              # Email-entry form to start password reset
-│   │
-│   ├── dashboard/                    # Protected — auth guard lives in dashboard/layout.tsx
-│   │   ├── settings/                 # Account settings (sign out, etc.)
-│   │   └── workflows/
-│   │       ├── new/                  # Workflow creation form + streaming test scan
-│   │       └── [id]/                 # Workflow detail — trigger panel + scan history
-│   │
-│   └── api/
-│       ├── scan/route.ts             # POST — streams Grok x_search via SSE
-│       └── draft/route.ts            # POST — generates draft tweets from a knowledge bank
+├── app/            # Next.js App Router
+│   ├── login/, signup/, auth/, forgot-password/  # Auth flow: sign-in, sign-up + email verify, password reset
+│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings + workflow create/detail pages
+│   └── api/        # scan/route.ts → streams Grok x_search over SSE; draft/route.ts → generates draft tweets
 │
 ├── components/
-│   ├── ui/                           # shadcn primitives (button, card, input, table, sidebar, ...)
-│   │
-│   ├── app-sidebar.tsx               # Sidebar shell (logo + nav + user dropdown)
-│   ├── nav-main.tsx                  # Sidebar nav with active-route state
-│   ├── nav-user.tsx                  # User dropdown (avatar + sign out)
-│   │
-│   ├── login-form.tsx                # Auth forms — paired with their route's actions.ts
-│   ├── signup-form.tsx
-│   ├── forgot-password-form.tsx
-│   ├── reset-password-form.tsx
-│   ├── submit-button.tsx             # Shared submit button with pending state
-│   │
-│   ├── workflow-card.tsx             # Workflow tile on the dashboard list
-│   ├── workflow-drafting-studio.tsx  # Top-level drafting UI on workflows/[id]
-│   ├── stepper.tsx                   # Multi-step progress indicator inside the studio
-│   ├── handle-input.tsx              # @handle chip input (uses lib/scan-constraints)
-│   │
-│   ├── knowledge-bank-panel.tsx      # Renders parsed KnowledgeBank from a scan run
-│   ├── draft-profile-editor.tsx      # Edits the DraftingProfile (instructions + examples)
-│   ├── draft-preview-panel.tsx       # Live preview of generated draft tweets
-│   ├── tweet-url-grid.tsx            # Grid of source tweet URLs with react-tweet embeds
-│   ├── scan-result.tsx               # Renders Grok output — parses citations, embeds tweets via react-tweet
-│   └── stored-scan-output.tsx        # Renders historical scan-run output (handles legacy + new schema)
+│   ├── ui/         # shadcn primitives (button, card, input, table, sidebar, …)
+│   └── *.tsx       # App components: auth forms, sidebar/nav, and the workflow drafting studio + its panels/stepper
 │
-├── lib/                              # Domain logic
-│   ├── supabase/
-│   │   ├── client.ts                 # Browser Supabase client
-│   │   ├── server.ts                 # Server Supabase client (RSC + server actions)
-│   │   └── middleware.ts             # Session-refresh utility (called by proxy.ts)
-│   ├── xai.ts                        # Grok client (openai SDK → api.x.ai/v1) + response-text extractor
-│   ├── prompts.ts                    # AI prompts — convention: sysprompt_<id> / usrprompt_<id>
-│   ├── workflow-drafting.ts          # KnowledgeBank/DraftedTweet types, parsers, localStorage persistence
-│   ├── scan-constraints.ts           # Handle regex + MAX_HANDLES (shared by api/scan + workflows/new)
-│   ├── validation.ts                 # validateAuthForm / validateSignupForm
-│   ├── auth-errors.ts                # mapAuthError() — Supabase error → user message
-│   └── utils.ts                      # cn() class-merging helper
+├── lib/            # Domain logic: supabase/ clients, xai.ts (Grok client), prompts.ts,
+│                   # workflow-drafting.ts, scan-constraints.ts, validation.ts, auth-errors.ts, utils.ts (cn helper)
 │
-├── hooks/                            # use-mobile.ts (responsive viewport helper)
-├── public/                           # Static assets
-│
-├── scripts/
-│   ├── enforce-pnpm.cjs              # Preinstall guard — blocks npm/yarn
-│   ├── grok-search.ts                # Personal Grok scratchpad (manual iteration — leave alone)
-│   └── prompts.ts                    # Scratchpad prompts for grok-search.ts only — unrelated to lib/prompts.ts
-│
-└── proxy.ts                          # Next.js per-request hook — refreshes Supabase session.
-                                      # MISLEADINGLY NAMED: NOT Supabase middleware (that's lib/supabase/middleware.ts)
+├── hooks/          # use-mobile.ts (responsive viewport helper)
+├── public/         # Static assets
+└── scripts/        # enforce-pnpm preinstall guard + grok-search.ts personal scratchpad (leave alone)
 ```
+
+## Local Environment
+
+Treat these as standing facts. Do not verify them, re-check them, or run anything to make them true:
+
+- The dev server is **always already running** at `http://localhost:3000` (`pnpm dev` is up in the background).
+- **Never run `pnpm dev`** — or any other command that starts or builds the server. It is already serving.
+- When using `agent-browser`, navigate straight to `http://localhost:3000`. The app is live, so do not start it first.
 
 ## Skill Invocation
 
@@ -97,5 +53,5 @@ These rules are mandatory and **override a skill's own description** wherever th
 
 **Never invoke on your own:**
 
-- `agent-browser` — Use only when I explicitly ask for it by name.
+- `agent-browser` — Use only when I explicitly ask for it by name. When you do, point it at `http://localhost:3000` and never start the server first (see Local Environment).
 - `ui-tester` — Do not invoke under any circumstances. It is a work in progress and not ready for use, even if its own description says otherwise.
