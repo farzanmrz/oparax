@@ -132,7 +132,7 @@ function SignupLiveFields() {
           <FieldDescription
             id="confirm-password-match-status"
             aria-live="polite"
-            className="ml-2 text-xs leading-5 text-emerald-600 dark:text-emerald-300"
+            className="ml-2 text-xs leading-5 text-emerald-600"
           >
             {passwordsMatch ? "Passwords match." : null}
           </FieldDescription>

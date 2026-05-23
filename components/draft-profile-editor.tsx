@@ -89,7 +89,7 @@ export function DraftProfileEditor({
         </Field>
       </div>
 
-      <section className="rounded-xl border border-border/80 bg-background/70 p-4 shadow-sm dark:bg-white/[0.03]">
+      <section className="rounded-xl border border-border/80 bg-background/70 p-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-semibold">Example tweets</h3>
           <Button type="button" variant="outline" size="sm" onClick={onAddExample}>

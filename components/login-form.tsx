@@ -17,13 +17,13 @@ import { SubmitButton } from "@/components/submit-button"
 import { login } from "@/app/login/actions"
 
 const linkClass =
-  "rounded-sm font-semibold !text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:!text-teal-900 hover:decoration-current active:!text-teal-800 dark:!text-teal-300 dark:decoration-teal-300/35 dark:hover:!text-teal-100 dark:active:!text-teal-200"
+  "rounded-sm font-semibold !text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:!text-teal-900 hover:decoration-current active:!text-teal-800"
 
 const emailButtonClass =
-  "h-11 w-full bg-teal-600 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner dark:bg-teal-300 dark:text-zinc-950 dark:hover:bg-teal-200 dark:active:bg-teal-400"
+  "h-11 w-full bg-teal-600 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner"
 
 const ssoButtonClass =
-  "h-11 w-full border-border/80 bg-background/70 text-foreground shadow-sm hover:-translate-y-px hover:border-teal-500/45 hover:bg-teal-500/10 hover:text-foreground hover:shadow-md active:translate-y-0 active:scale-[0.99] active:bg-teal-500/15 active:shadow-inner dark:bg-white/[0.04] dark:hover:border-teal-300/45 dark:hover:bg-teal-300/10"
+  "h-11 w-full border-border/80 bg-background/70 text-foreground shadow-sm hover:-translate-y-px hover:border-teal-500/45 hover:bg-teal-500/10 hover:text-foreground hover:shadow-md active:translate-y-0 active:scale-[0.99] active:bg-teal-500/15 active:shadow-inner"
 
 export function LoginForm({
   error,
@@ -128,7 +128,7 @@ export function LoginForm({
               width={1696}
               height={2528}
               sizes="(min-width: 768px) 50vw, 100vw"
-              className="h-full max-h-full w-auto max-w-full object-contain opacity-90 dark:brightness-[0.42] dark:saturate-[0.75]"
+              className="h-full max-h-full w-auto max-w-full object-contain opacity-90"
             />
           </div>
         </CardContent>

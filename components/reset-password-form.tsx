@@ -83,7 +83,7 @@ export function ResetPasswordForm({
               alt="Oparax bird illustration"
               fill
               sizes="(min-width: 768px) 50vw, 0vw"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           </div>
         </CardContent>

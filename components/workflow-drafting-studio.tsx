@@ -43,7 +43,7 @@ import {
 } from "@/lib/workflow-drafting"
 
 const workflowActionButtonClass =
-  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner dark:bg-teal-300 dark:text-zinc-950 dark:hover:bg-teal-200 dark:active:bg-teal-400"
+  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner"
 
 interface WorkflowDraftingStudioProps {
   storageId: string

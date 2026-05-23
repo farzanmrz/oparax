@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 const breadcrumbLinkClass =
-  "rounded-sm font-semibold text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:text-teal-900 hover:decoration-current active:text-teal-800 dark:text-teal-300 dark:decoration-teal-300/35 dark:hover:text-teal-100 dark:active:text-teal-200"
+  "rounded-sm font-semibold text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:text-teal-900 hover:decoration-current active:text-teal-800"
 
 type Crumb = {
   label: string
@@ -41,7 +41,7 @@ export function DashboardPageHeader({
 }) {
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="border-b-2 border-teal-400/25 dark:border-teal-300/25">
+      <div className="border-b-2 border-teal-400/25">
         <div className="mx-auto flex min-h-12 w-full max-w-screen-2xl items-center gap-2 px-2 md:px-4">
           <SidebarTrigger className="-ml-2 md:hidden" />
           <Breadcrumb>
