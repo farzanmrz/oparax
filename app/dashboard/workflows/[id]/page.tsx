@@ -116,10 +116,10 @@ export default async function WorkflowDetailPage({
 
               {handles.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-sm font-medium text-muted-foreground">Monitored accounts</span>
+                  <span className="text-base font-medium text-muted-foreground">Monitored accounts</span>
                   <div className="flex flex-wrap gap-2">
                     {handles.map((handle: string) => (
-                      <Badge key={handle} variant="secondary" className="font-mono text-xs">
+                      <Badge key={handle} variant="secondary" className="font-mono">
                         @{handle}
                       </Badge>
                     ))}
@@ -128,7 +128,7 @@ export default async function WorkflowDetailPage({
               )}
 
               {trigger.last_run_at && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Last run: {new Date(trigger.last_run_at).toLocaleString()}
                 </p>
               )}
@@ -154,8 +154,8 @@ export default async function WorkflowDetailPage({
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
-      <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      <p className="text-sm">{value}</p>
+      <span className="text-base font-medium text-muted-foreground">{label}</span>
+      <p className="text-base">{value}</p>
     </div>
   )
 }

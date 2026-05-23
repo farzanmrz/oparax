@@ -50,7 +50,7 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
   return (
     <div className="space-y-3">
       <Separator />
-      <h3 className="text-sm font-semibold">Scan History</h3>
+      <h3 className="text-base font-semibold">Scan History</h3>
 
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -68,18 +68,18 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
                 className="cursor-pointer"
                 onClick={() => toggleExpand(run.id)}
               >
-                <TableCell className="text-sm">
+                <TableCell>
                   {timeAgo(run.started_at)}
-                  <span className="ml-2 text-xs text-muted-foreground">
+                  <span className="ml-2 text-sm text-muted-foreground">
                     {new Date(run.started_at).toLocaleString()}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={statusVariant[run.status] ?? "secondary"} className="text-xs">
+                  <Badge variant={statusVariant[run.status] ?? "secondary"}>
                     {run.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right text-sm">
+                <TableCell className="text-right">
                   {run.item_count ?? "—"}
                 </TableCell>
               </TableRow>
@@ -96,10 +96,10 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
         return (
           <div className="rounded-lg border p-4">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-sm font-medium text-muted-foreground">
                 Scan from {new Date(run.started_at).toLocaleString()}
               </span>
-              <Badge variant={statusVariant[run.status] ?? "secondary"} className="text-xs">
+              <Badge variant={statusVariant[run.status] ?? "secondary"}>
                 {run.status}
               </Badge>
             </div>

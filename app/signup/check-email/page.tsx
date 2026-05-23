@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { AuthPendingLink } from "@/components/auth-pending-link"
 
 export default function CheckEmailPage() {
   return (
@@ -9,12 +9,12 @@ export default function CheckEmailPage() {
           We sent you a confirmation link. Please check your email and click the
           link to activate your account.
         </p>
-        <Link
+        <AuthPendingLink
           href="/login"
           className="auth-link"
         >
           Back to Login
-        </Link>
+        </AuthPendingLink>
       </div>
     </div>
   )

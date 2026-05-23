@@ -91,9 +91,13 @@ export function DraftProfileEditor({
 
       <section className="rounded-xl border border-border/80 bg-background/70 p-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-sm font-semibold">Example tweets</h3>
-          <Button type="button" variant="outline" size="sm" onClick={onAddExample}>
-            <HugeiconsIcon icon={Add01Icon} strokeWidth={1.8} className="size-4" />
+          <h3 className="text-base font-semibold">Example tweets</h3>
+          <Button type="button" variant="outline" onClick={onAddExample}>
+            <HugeiconsIcon
+              icon={Add01Icon}
+              strokeWidth={1.8}
+              data-icon="inline-start"
+            />
             Add Example
           </Button>
         </div>
@@ -116,7 +120,7 @@ export function DraftProfileEditor({
                     </FieldLabel>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-xs ${
+                        className={`text-sm ${
                           isOverflow ? "text-destructive" : "text-muted-foreground"
                         }`}
                       >
@@ -144,7 +148,7 @@ export function DraftProfileEditor({
                     rows={4}
                   />
                   {exampleErrors[index] && (
-                    <p className="mt-2 text-xs text-destructive">
+                    <p className="mt-2 text-sm text-destructive">
                       {exampleErrors[index]}
                     </p>
                   )}

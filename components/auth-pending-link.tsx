@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { Loader2 } from "lucide-react"
 import {
   type ComponentProps,
   type MouseEvent,
@@ -56,6 +57,7 @@ export function AuthPendingLink({
       }}
     >
       {children}
+      {isPending ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
     </Link>
   )
 }

@@ -170,23 +170,23 @@ export function WorkflowTable({
     <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm shadow-foreground/5">
       <Table>
         <TableHeader>
-          <TableRow className="border-border bg-muted/50 hover:bg-muted/50">
-            <TableHead className="min-w-64 px-5 py-4 text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <TableRow className="border-border bg-muted/35 hover:bg-muted/35">
+            <TableHead className="min-w-64 px-5 py-4">
               Workflow name
             </TableHead>
-            <TableHead className="min-w-44 px-5 py-4 text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <TableHead className="min-w-44 px-5 py-4">
               Triggered frequency
             </TableHead>
-            <TableHead className="min-w-52 px-5 py-4 text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <TableHead className="min-w-52 px-5 py-4">
               Last run date
             </TableHead>
-            <TableHead className="px-5 py-4 text-right text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <TableHead className="px-5 py-4 text-right">
               Scans
             </TableHead>
-            <TableHead className="px-5 py-4 text-right text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <TableHead className="px-5 py-4 text-right">
               Posts
             </TableHead>
-            <TableHead className="px-5 py-4 text-right text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <TableHead className="px-5 py-4 text-right">
               Status
             </TableHead>
           </TableRow>

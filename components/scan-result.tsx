@@ -41,7 +41,6 @@ function renderCitation(citation: string, index: number) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 hover:text-primary/80"
     >
       {label}
     </a>

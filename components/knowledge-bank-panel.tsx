@@ -15,9 +15,6 @@ import { Badge } from "@/components/ui/badge"
 import type { KnowledgeBank } from "@/lib/workflow-drafting"
 import { TweetUrlGrid } from "@/components/tweet-url-grid"
 
-const workflowActionButtonClass =
-  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner"
-
 interface KnowledgeBankPanelProps {
   knowledgeBank: KnowledgeBank | null
   selectedHeadlineIds: string[]
@@ -35,7 +32,7 @@ function ExternalLinks({ urls }: { urls: string[] }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 text-xs text-muted-foreground">
+    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 text-sm text-muted-foreground">
       <p className="mb-2 font-medium text-foreground">Source links</p>
       <div className="space-y-2">
         {urls.slice(0, 4).map((url, index) => (
@@ -44,7 +41,7 @@ function ExternalLinks({ urls }: { urls: string[] }) {
             href={url}
             target="_blank"
             rel="noreferrer noopener"
-            className="block truncate text-primary underline underline-offset-2"
+            className="block truncate"
           >
             Source {index + 1}
           </a>
@@ -69,25 +66,25 @@ export function KnowledgeBankPanel({
   const content = (
     <>
       {scanError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-base text-destructive">
           {scanError}
         </div>
       )}
 
       {!knowledgeBank && !isScanning && variant === "card" && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-base text-muted-foreground">
           Run a scan to turn X results into a source-grounded research bank of selectable angles.
         </div>
       )}
 
       {isScanning && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-10 text-center text-base text-muted-foreground">
           Oparax is searching recent X results and clustering them into atomic knowledge items...
         </div>
       )}
 
       {knowledgeBank?.headlines.length === 0 && !isScanning && (
-        <div className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-8 text-center text-base text-muted-foreground">
           No relevant knowledge items were found in the current scan window.
         </div>
       )}
@@ -112,7 +109,7 @@ export function KnowledgeBankPanel({
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0 flex-1 space-y-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                      <h3 className="text-lg font-semibold tracking-tight text-foreground">
                         {headline.title}
                       </h3>
                       {isSelected && (
@@ -127,7 +124,7 @@ export function KnowledgeBankPanel({
                       )}
                     </div>
 
-                    <p className="max-w-4xl text-sm leading-6 text-foreground/90">
+                    <p className="max-w-4xl text-base leading-7 text-foreground/90">
                       {headline.aggregatedContext}
                     </p>
 
@@ -141,7 +138,7 @@ export function KnowledgeBankPanel({
 
                         {supportingTweetUrls.length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                            <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
                               Supporting sources
                             </p>
                             <TweetUrlGrid urls={supportingTweetUrls} />
@@ -195,9 +192,13 @@ export function KnowledgeBankPanel({
               type="button"
               onClick={onRunScan}
               disabled={!canRunScan || isScanning}
-              className={workflowActionButtonClass}
+              pending={isScanning}
             >
-              <HugeiconsIcon icon={NewsIcon} strokeWidth={1.8} className="size-4" />
+              <HugeiconsIcon
+                icon={NewsIcon}
+                strokeWidth={1.8}
+                data-icon="inline-start"
+              />
               {isScanning ? "Scanning..." : "Run Scan"}
             </Button>
         </div>

@@ -34,7 +34,7 @@ export function TweetUrlGrid({
               href={url}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-sm text-primary underline underline-offset-2"
+              className="text-sm"
             >
               View source
             </a>

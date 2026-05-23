@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -8,8 +9,10 @@ import { DashboardPageHeader } from "@/components/dashboard-page-header"
 
 export default function SettingsPage() {
   const router = useRouter()
+  const [signOutPending, setSignOutPending] = useState(false)
 
   async function handleSignOut() {
+    setSignOutPending(true)
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/login")
@@ -28,7 +31,12 @@ export default function SettingsPage() {
           <CardDescription>Your account details and session.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" onClick={handleSignOut}>
+          <Button
+            variant="outline"
+            onClick={handleSignOut}
+            disabled={signOutPending}
+            pending={signOutPending}
+          >
             Sign out
           </Button>
         </CardContent>

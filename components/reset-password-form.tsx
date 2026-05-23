@@ -1,5 +1,5 @@
-import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { AuthPendingLink } from "@/components/auth-pending-link"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Field,
@@ -64,15 +64,15 @@ export function ResetPasswordForm({
                   required
                 />
               </Field>
-              <Field>
+              <Field className="auth-action-field">
                 <SubmitButton type="submit" className="auth-submit-button">
                   Update password
                 </SubmitButton>
               </Field>
               <FieldDescription className="auth-inline-action">
-                <Link href="/login" className="auth-link">
+                <AuthPendingLink href="/login" className="auth-link">
                   Back to Login
-                </Link>
+                </AuthPendingLink>
               </FieldDescription>
             </FieldGroup>
           </form>

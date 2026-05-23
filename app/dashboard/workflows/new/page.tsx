@@ -39,9 +39,6 @@ import {
 } from "./constants"
 import { createWorkflow } from "./actions"
 
-const workflowActionButtonClass =
-  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner"
-
 export default function NewWorkflowPage() {
   const router = useRouter()
   const [formState, setFormState] = useState<WorkflowFormState>({
@@ -238,7 +235,7 @@ export default function NewWorkflowPage() {
                     {showFrequencyError && (
                       <FieldError
                         id="scan-frequency-error"
-                        className="col-start-2 mt-1 text-xs leading-5"
+                        className="col-start-2 mt-1"
                       >
                         {frequencyError}
                       </FieldError>
@@ -265,8 +262,8 @@ export default function NewWorkflowPage() {
         <div className="flex justify-end">
           <Button
             onClick={handleSave}
-            disabled={!canSave}
-            className={workflowActionButtonClass}
+            disabled={!canSave || saving}
+            pending={saving}
           >
             {saving ? "Saving..." : "Save Workflow"}
           </Button>

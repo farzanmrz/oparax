@@ -26,7 +26,7 @@ function FieldLegend({
     <legend
       data-slot="field-legend"
       data-variant={variant}
-      className={cn("mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base", className)}
+      className={cn("mb-1.5 font-[525] text-foreground/82 data-[variant=label]:text-base data-[variant=legend]:text-lg", className)}
       {...props}
     />
   )
@@ -37,7 +37,7 @@ function FieldGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="field-group"
       className={cn(
-        "gap-5 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4 group/field-group @container/field-group flex w-full flex-col",
+        "gap-6 data-[slot=checkbox-group]:gap-4 *:data-[slot=field-group]:gap-5 group/field-group @container/field-group flex w-full flex-col",
         className
       )}
       {...props}
@@ -45,7 +45,7 @@ function FieldGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-const fieldVariants = cva("data-[invalid=true]:text-destructive gap-2 group/field flex w-full", {
+const fieldVariants = cva("data-[invalid=true]:text-destructive gap-2.5 group/field flex w-full", {
   variants: {
     orientation: {
       vertical:
@@ -112,7 +112,7 @@ function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="field-label"
       className={cn(
-        "gap-2 text-sm font-medium group-data-[disabled=true]/field:opacity-50 flex w-fit items-center leading-snug",
+        "gap-2 text-base font-[525] text-foreground/82 group-data-[disabled=true]/field:opacity-50 flex w-fit items-center leading-snug",
         className
       )}
       {...props}
@@ -125,9 +125,9 @@ function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="field-description"
       className={cn(
-        "text-muted-foreground text-left text-[0.8125rem] leading-5 [[data-variant=legend]+&]:-mt-1.5 font-normal group-has-data-horizontal/field:text-balance",
+        "text-muted-foreground text-left text-[0.9375rem] leading-6 [[data-variant=legend]+&]:-mt-1.5 font-normal group-has-data-horizontal/field:text-balance",
         "last:mt-0 nth-last-2:-mt-1",
-        "[&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4",
+        "[&>a]:text-link [&>a]:font-medium [&>a]:no-underline [&>a]:underline-offset-4 [&>a:hover]:text-link-hover",
         className
       )}
       {...props}
@@ -146,7 +146,7 @@ function FieldSeparator({
     <div
       data-slot="field-separator"
       data-content={!!children}
-      className={cn("-my-2 h-5 text-[0.8125rem] group-data-[variant=outline]/field-group:-mb-2 relative", className)}
+      className={cn("relative h-7 text-base", className)}
       {...props}
     >
       <Separator className="absolute inset-0 top-1/2" />
@@ -205,7 +205,7 @@ function FieldError({
     <div
       role="alert"
       data-slot="field-error"
-      className={cn("text-destructive text-[0.8125rem] leading-5 font-normal", className)}
+      className={cn("text-destructive text-sm leading-6 font-normal", className)}
       {...props}
     >
       {content}

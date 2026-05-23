@@ -17,9 +17,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import type { DraftedTweet, KnowledgeHeadline } from "@/lib/workflow-drafting"
 
-const workflowActionButtonClass =
-  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner"
-
 interface DraftPreviewPanelProps {
   drafts: DraftedTweet[]
   sourceHeadlines: KnowledgeHeadline[]
@@ -57,19 +54,19 @@ export function DraftPreviewPanel({
   const content = (
     <>
       {draftError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-base text-destructive">
           {draftError}
         </div>
       )}
 
       {isDrafting && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-10 text-center text-base text-muted-foreground">
           Grok is drafting tweet-ready posts for the selected knowledge items...
         </div>
       )}
 
       {!isDrafting && drafts.length === 0 && variant === "card" && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-base text-muted-foreground">
           Select at least one knowledge item, then generate drafts to preview directly postable copy here.
         </div>
       )}
@@ -121,22 +118,20 @@ export function DraftPreviewPanel({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={() => copyDraft(draft.text)}
-                    className="min-h-11 sm:min-h-10"
                   >
-                    <Copy className="size-4" />
+                    <Copy data-icon="inline-start" />
                     Copy draft
                   </Button>
                 </div>
 
                 <div className="mt-4 rounded-lg border border-border/70 bg-background/70 px-4 py-4">
-                  <p className="whitespace-pre-wrap text-base leading-8 text-foreground sm:text-[1.02rem]">
+                  <p className="whitespace-pre-wrap text-lg leading-8 text-foreground">
                     {draft.text}
                   </p>
                 </div>
 
-                <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <div className="mt-4 space-y-3 text-base text-muted-foreground">
                   <p>
                     <span className="font-medium text-foreground">Based on:</span>{" "}
                     {draft.headlineTitle}
@@ -188,9 +183,13 @@ export function DraftPreviewPanel({
             type="button"
             onClick={onGenerateDrafts}
             disabled={!canGenerateDrafts || isDrafting}
-            className={workflowActionButtonClass}
+            pending={isDrafting}
           >
-            <HugeiconsIcon icon={SentIcon} strokeWidth={1.8} className="size-4" />
+            <HugeiconsIcon
+              icon={SentIcon}
+              strokeWidth={1.8}
+              data-icon="inline-start"
+            />
             {isDrafting ? "Drafting..." : "Generate Drafts"}
           </Button>
         </div>

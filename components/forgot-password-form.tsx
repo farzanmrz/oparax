@@ -52,9 +52,9 @@ export function ForgotPasswordForm({
                   required
                 />
               </Field>
-              <Field>
+              <Field className="auth-action-field">
                 <SubmitButton type="submit" className="auth-submit-button">
-                  <Mail />
+                  <Mail data-icon="inline-start" />
                   Send reset link
                 </SubmitButton>
               </Field>

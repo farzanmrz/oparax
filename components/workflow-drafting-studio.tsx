@@ -42,9 +42,6 @@ import {
   WorkflowDraftingState,
 } from "@/lib/workflow-drafting"
 
-const workflowActionButtonClass =
-  "h-10 bg-teal-600 px-4 text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner"
-
 interface WorkflowDraftingStudioProps {
   storageId: string
   handles: string[]
@@ -398,9 +395,13 @@ export function WorkflowDraftingStudio({
                 type="button"
                 onClick={runScan}
                 disabled={!canRunScan || isScanning || isHydrating}
-                className={workflowActionButtonClass}
+                pending={isScanning || isHydrating}
               >
-                <HugeiconsIcon icon={NewsIcon} strokeWidth={1.8} className="size-4" />
+                <HugeiconsIcon
+                  icon={NewsIcon}
+                  strokeWidth={1.8}
+                  data-icon="inline-start"
+                />
                 {isScanning || isHydrating ? "Scanning..." : "Run Scan"}
               </Button>
             </div>
@@ -451,9 +452,13 @@ export function WorkflowDraftingStudio({
                 type="button"
                 onClick={generateDrafts}
                 disabled={!canGenerateDrafts || isDrafting}
-                className={workflowActionButtonClass}
+                pending={isDrafting}
               >
-                <HugeiconsIcon icon={SentIcon} strokeWidth={1.8} className="size-4" />
+                <HugeiconsIcon
+                  icon={SentIcon}
+                  strokeWidth={1.8}
+                  data-icon="inline-start"
+                />
                 {isDrafting ? "Drafting..." : "Generate Drafts"}
               </Button>
             </div>

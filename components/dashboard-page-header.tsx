@@ -4,6 +4,7 @@ import { Fragment } from "react"
 import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon } from "@hugeicons/core-free-icons"
+import { AuthPendingLink } from "@/components/auth-pending-link"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 const breadcrumbLinkClass =
-  "rounded-sm font-semibold text-teal-700 underline decoration-teal-700/30 underline-offset-4 transition-[color,text-decoration-color] hover:text-teal-900 hover:decoration-current active:text-teal-800"
+  "rounded-sm font-medium text-link no-underline decoration-link/25 underline-offset-4 transition-[color,text-decoration-color] hover:text-link-hover hover:decoration-current active:text-link-active"
 
 type Crumb = {
   label: string
@@ -41,7 +42,7 @@ export function DashboardPageHeader({
 }) {
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="border-b-2 border-teal-400/25">
+      <div className="border-b border-border">
         <div className="mx-auto flex min-h-12 w-full max-w-screen-2xl items-center gap-2 px-2 md:px-4">
           <SidebarTrigger className="-ml-2 md:hidden" />
           <Breadcrumb>
@@ -75,7 +76,7 @@ export function DashboardPageHeader({
 
       <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-2 sm:flex-row sm:items-end sm:justify-between md:px-4">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="truncate text-3xl font-semibold tracking-tight text-foreground">
+          <h1 className="truncate text-3xl font-semibold tracking-tight text-heading">
             {title}
           </h1>
           {description && (
@@ -87,16 +88,16 @@ export function DashboardPageHeader({
         {action && (
           <Button
             asChild
-            className="h-10 bg-foreground px-4 text-background shadow-sm shadow-foreground/10 hover:bg-foreground/90 hover:shadow-lg hover:shadow-foreground/15 active:bg-foreground/85 sm:w-auto"
+            size="lg"
           >
-            <Link href={action.href}>
+            <AuthPendingLink href={action.href}>
               <HugeiconsIcon
                 icon={Add01Icon}
                 strokeWidth={2}
                 data-icon="inline-start"
               />
               {action.label}
-            </Link>
+            </AuthPendingLink>
           </Button>
         )}
       </div>

@@ -82,12 +82,12 @@ export function HandleInput({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border-2 border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+    <div className="flex flex-col gap-2.5">
+      <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-lg border-2 border-input bg-background/35 px-3 py-2 transition-colors hover:border-foreground/35 hover:bg-background/45 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
         {handles.map((handle, index) => (
           <span
             key={handle}
-            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-0.5 text-sm text-secondary-foreground"
+            className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-base text-secondary-foreground"
           >
             @{handle}
             <button
@@ -109,15 +109,15 @@ export function HandleInput({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={handles.length === 0 ? "e.g. FabrizioRomano, AlexKayKay" : ""}
-          className="min-w-[120px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+          className="min-w-[120px] flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
           disabled={handles.length >= maxHandles}
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-base text-destructive">{error}</p>}
 
       {handles.length > 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           {handles.length} of {maxHandles} added
         </p>
       )}

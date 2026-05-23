@@ -43,9 +43,10 @@ These rules are mandatory and **override a skill's own description** wherever th
 **Invoke when the condition applies:**
 
 - `ask-questions-if-underspecified` — Invoke whenever a request is unclear: vague scope, several tasks bundled together, or a mid-conversation shift to something new. Clarify how to proceed before acting.
-- `ui-standard` — Invoke before designing or editing any frontend/web UI. It defines the styling standards every UI change must follow.
+
+- `agent-browser` — The dev server is **always already running** at `http://localhost:3000`, so navigate straight there — never run `pnpm dev`/`build` or otherwise start the server first.
 
 **Never invoke on your own:**
 
-- `agent-browser` — Use only when I explicitly ask for it by name. The dev server is **always already running** at `http://localhost:3000`, so navigate straight there — never run `pnpm dev`/`build` or otherwise start the server first.
 - `ui-tester` — Do not invoke under any circumstances. It is a work in progress and not ready for use, even if its own description says otherwise.
+- `ui-standard` — Do not invoke under any circumstaces. It is a work in progress, and we are still standardizing the UI, so it is not ready for use even if its own description says otherwise.
