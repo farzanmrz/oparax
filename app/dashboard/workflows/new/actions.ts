@@ -139,6 +139,7 @@ export async function createWorkflow(input: CreateWorkflowInput) {
         scanRunId: scanRun.id,
         knowledgeBank: input.initialKnowledgeBank,
         source: "create",
+        updateNextRunAt: false,
       })
     } catch (error) {
       console.error("Failed to persist initial scan:", error)

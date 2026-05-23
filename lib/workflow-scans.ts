@@ -305,61 +305,110 @@ export async function persistScanRunResults({
   updateNextRunAt = true,
 }: PersistScanResultInput) {
   const completedAt = new Date()
-  let newItemCount = 0
+  const itemRows = new Map<
+    string,
+    {
+      dedupeKey: string
+      payload: {
+        workflow_id: string
+        trigger_id: string
+        last_scan_run_id: string
+        title: string
+        aggregated_context: string
+        evidence_points: string[]
+        primary_tweet_url: string
+        supporting_tweet_urls: string[]
+        source_handles: string[]
+        source_urls: string[]
+        raw_headline: KnowledgeHeadline
+        last_seen_at: string
+      }
+    }
+  >()
 
   for (const headline of knowledgeBank.headlines) {
     const dedupeKey = buildScanItemDedupeKey(headline)
-    const { data: existing, error: lookupError } = await supabase
+    if (itemRows.has(dedupeKey)) continue
+
+    itemRows.set(dedupeKey, {
+      dedupeKey,
+      payload: {
+        workflow_id: workflowId,
+        trigger_id: triggerId,
+        last_scan_run_id: scanRunId,
+        title: headline.title,
+        aggregated_context: headline.aggregatedContext,
+        evidence_points: headline.evidencePoints,
+        primary_tweet_url: headline.primaryTweetUrl,
+        supporting_tweet_urls: headline.supportingTweetUrls,
+        source_handles: headline.sourceHandles,
+        source_urls: headline.sourceUrls,
+        raw_headline: headline,
+        last_seen_at: completedAt.toISOString(),
+      },
+    })
+  }
+
+  const dedupeKeys = [...itemRows.keys()]
+  const existingByDedupeKey = new Map<string, string>()
+
+  if (dedupeKeys.length > 0) {
+    const { data: existingItems, error: lookupError } = await supabase
       .from("scan_items")
-      .select("id")
+      .select("id, dedupe_key")
       .eq("trigger_id", triggerId)
-      .eq("dedupe_key", dedupeKey)
-      .maybeSingle()
+      .in("dedupe_key", dedupeKeys)
 
     if (lookupError) {
       throw new Error("Failed to check existing scan item.")
     }
 
-    const itemPayload = {
-      workflow_id: workflowId,
-      trigger_id: triggerId,
-      last_scan_run_id: scanRunId,
-      title: headline.title,
-      aggregated_context: headline.aggregatedContext,
-      evidence_points: headline.evidencePoints,
-      primary_tweet_url: headline.primaryTweetUrl,
-      supporting_tweet_urls: headline.supportingTweetUrls,
-      source_handles: headline.sourceHandles,
-      source_urls: headline.sourceUrls,
-      raw_headline: headline,
-      last_seen_at: completedAt.toISOString(),
+    for (const item of existingItems ?? []) {
+      if (typeof item.dedupe_key === "string" && typeof item.id === "string") {
+        existingByDedupeKey.set(item.dedupe_key, item.id)
+      }
     }
+  }
 
-    if (existing?.id) {
+  const updates = [...itemRows.values()]
+    .map((item) => ({
+      id: existingByDedupeKey.get(item.dedupeKey),
+      payload: item.payload,
+    }))
+    .filter((item): item is { id: string; payload: typeof item.payload } =>
+      Boolean(item.id),
+    )
+  const inserts = [...itemRows.values()]
+    .filter((item) => !existingByDedupeKey.has(item.dedupeKey))
+    .map((item) => ({
+      ...item.payload,
+      first_scan_run_id: scanRunId,
+      dedupe_key: item.dedupeKey,
+      first_seen_at: completedAt.toISOString(),
+    }))
+
+  await Promise.all(
+    updates.map(async (item) => {
       const { error: updateError } = await supabase
         .from("scan_items")
-        .update(itemPayload)
-        .eq("id", existing.id)
+        .update(item.payload)
+        .eq("id", item.id)
 
       if (updateError) {
         throw new Error("Failed to update scan item.")
       }
-      continue
-    }
+    }),
+  )
 
-    const { error: insertError } = await supabase.from("scan_items").insert({
-      ...itemPayload,
-      first_scan_run_id: scanRunId,
-      dedupe_key: dedupeKey,
-      first_seen_at: completedAt.toISOString(),
-    })
+  if (inserts.length > 0) {
+    const { error: insertError } = await supabase.from("scan_items").insert(inserts)
 
     if (insertError) {
       throw new Error("Failed to save scan item.")
     }
-
-    newItemCount += 1
   }
+
+  const newItemCount = inserts.length
 
   const { error: runError } = await supabase
     .from("scan_runs")
