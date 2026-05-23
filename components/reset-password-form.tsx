@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -24,16 +23,16 @@ export function ResetPasswordForm({
   type?: "recovery"
 }) {
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
-        <CardContent className="grid p-0 md:grid-cols-2">
-          <form action={updatePassword} className="p-6 md:p-8">
+    <div className={cn("auth-form-stack", className)} {...props}>
+      <Card className="auth-card">
+        <CardContent className="auth-card-content">
+          <form action={updatePassword} className="auth-form-panel">
             {tokenHash && <input type="hidden" name="token_hash" value={tokenHash} />}
             {type && <input type="hidden" name="type" value={type} />}
-            <FieldGroup>
-              <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Set a new password</h1>
-                <p className="text-muted-foreground text-sm text-balance">
+            <FieldGroup className="auth-field-group">
+              <div className="auth-heading-block">
+                <h1 className="auth-heading">Set a new password</h1>
+                <p className="auth-helper text-balance">
                   Use at least 6 characters and keep it unique to this account.
                 </p>
               </div>
@@ -66,26 +65,17 @@ export function ResetPasswordForm({
                 />
               </Field>
               <Field>
-                <SubmitButton type="submit" className="h-11 w-full">
+                <SubmitButton type="submit" className="auth-submit-button">
                   Update password
                 </SubmitButton>
               </Field>
-              <FieldDescription className="text-center">
-                <Link href="/login" className="underline underline-offset-4">
+              <FieldDescription className="auth-inline-action">
+                <Link href="/login" className="auth-link">
                   Back to Login
                 </Link>
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:block">
-            <Image
-              src="/images/landing_bird.png"
-              alt="Oparax bird illustration"
-              fill
-              sizes="(min-width: 768px) 50vw, 0vw"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          </div>
         </CardContent>
       </Card>
     </div>

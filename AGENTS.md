@@ -86,8 +86,16 @@ Next.js App Router app at the repo root.
                                       # MISLEADINGLY NAMED: NOT Supabase middleware (that's lib/supabase/middleware.ts)
 ```
 
-### Notes
+## Skill Invocation
 
-- **Auth flow.** Sign-up walks the user through three pages: `signup/` (form posts to its colocated `actions.ts`, which calls Supabase `signUp`), `signup/check-email/` (static "we sent you a verification email" screen), and `auth/confirm/` (handles the magic-link token Supabase emails, exchanges it for a session, and redirects to `/dashboard`). Password reset flows similarly: `forgot-password/` (request email) → magic link → `auth/reset-password/` (set new password). Each flow's form lives in `components/<flow>-form.tsx` and submits to its route's `actions.ts`.
+These rules are mandatory and **override a skill's own description** wherever they conflict. Apply them both at the start of a chat and mid-conversation, as soon as a condition is met.
 
-- **Drafting studio composition.** `workflow-drafting-studio.tsx` is the entry point rendered on `dashboard/workflows/[id]/`. It composes `knowledge-bank-panel`, `draft-profile-editor`, `draft-preview-panel`, `tweet-url-grid`, and `stepper.tsx` into the multi-step drafting UI. Shared state types and the localStorage persistence layer live in `lib/workflow-drafting.ts`.
+**Invoke when the condition applies:**
+
+- `ask-questions-if-underspecified` — Invoke whenever a request is unclear: vague scope, several tasks bundled together, or a mid-conversation shift to something new. Clarify how to proceed before acting.
+- `ui-standard` — Invoke before designing or editing any frontend/web UI. It defines the styling standards every UI change must follow.
+
+**Never invoke on your own:**
+
+- `agent-browser` — Use only when I explicitly ask for it by name.
+- `ui-tester` — Do not invoke under any circumstances. It is a work in progress and not ready for use, even if its own description says otherwise.

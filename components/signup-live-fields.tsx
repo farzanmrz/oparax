@@ -13,9 +13,6 @@ import { PasswordInput } from "@/components/password-input"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-const labelClass = "text-[0.93rem] font-semibold !text-foreground/90"
-const inputClass = "!text-foreground"
-
 function SignupLiveFields() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -50,15 +47,12 @@ function SignupLiveFields() {
   return (
     <>
       <Field data-invalid={emailError ? true : undefined}>
-        <FieldLabel htmlFor="email" className={labelClass}>
-          Email
-        </FieldLabel>
+        <FieldLabel htmlFor="email">Email</FieldLabel>
         <Input
           id="email"
           name="email"
           type="email"
           value={email}
-          className={inputClass}
           onChange={(event) => setEmail(event.target.value)}
           onBlur={() => setTouched((current) => ({ ...current, email: true }))}
           aria-invalid={!!emailError}
@@ -66,20 +60,17 @@ function SignupLiveFields() {
           required
         />
         {emailError && (
-          <FieldError id="email-format-error" className="ml-2 text-xs leading-5">
+          <FieldError id="email-format-error" className="ml-2">
             {emailError}
           </FieldError>
         )}
       </Field>
       <Field data-invalid={passwordError ? true : undefined}>
-        <FieldLabel htmlFor="password" className={labelClass}>
-          Password
-        </FieldLabel>
+        <FieldLabel htmlFor="password">Password</FieldLabel>
         <PasswordInput
           id="password"
           name="password"
           value={password}
-          className={inputClass}
           onChange={(event) => setPassword(event.target.value)}
           onBlur={() =>
             setTouched((current) => ({ ...current, password: true }))
@@ -93,21 +84,20 @@ function SignupLiveFields() {
         {passwordError && (
           <FieldError
             id="password-length-error"
-            className="ml-2 text-xs leading-5"
+            className="ml-2"
           >
             {passwordError}
           </FieldError>
         )}
       </Field>
       <Field data-invalid={confirmPasswordError ? true : undefined}>
-        <FieldLabel htmlFor="confirm-password" className={labelClass}>
+        <FieldLabel htmlFor="confirm-password">
           Confirm Password
         </FieldLabel>
         <PasswordInput
           id="confirm-password"
           name="confirm-password"
           value={confirmPassword}
-          className={inputClass}
           onChange={(event) => setConfirmPassword(event.target.value)}
           onBlur={() =>
             setTouched((current) => ({ ...current, confirmPassword: true }))
@@ -123,7 +113,7 @@ function SignupLiveFields() {
         {confirmPasswordError && (
           <FieldError
             id="confirm-password-match-status"
-            className="ml-2 text-xs leading-5"
+            className="ml-2"
           >
             {confirmPasswordError}
           </FieldError>
@@ -132,7 +122,7 @@ function SignupLiveFields() {
           <FieldDescription
             id="confirm-password-match-status"
             aria-live="polite"
-            className="ml-2 text-xs leading-5 text-emerald-600"
+            className="ml-2 text-emerald-600"
           >
             {passwordsMatch ? "Passwords match." : null}
           </FieldDescription>

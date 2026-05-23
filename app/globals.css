@@ -5,43 +5,43 @@
 /* -- Permanent app theme -- */
 :root {
   color-scheme: dark;
-  --background: oklch(0.13 0.028 261.692);
-  --foreground: oklch(0.985 0.002 247.839);
-  --card: oklch(0.21 0.034 264.665);
-  --card-foreground: oklch(0.985 0.002 247.839);
-  --popover: oklch(0.21 0.034 264.665);
-  --popover-foreground: oklch(0.985 0.002 247.839);
-  --primary: oklch(0.928 0.006 264.531);
-  --primary-foreground: oklch(0.21 0.034 264.665);
-  --secondary: oklch(0.278 0.033 256.848);
-  --secondary-foreground: oklch(0.985 0.002 247.839);
-  --muted: oklch(0.278 0.033 256.848);
-  --muted-foreground: oklch(0.707 0.022 261.325);
-  --accent: oklch(0.278 0.033 256.848);
-  --accent-foreground: oklch(0.985 0.002 247.839);
+  --background: oklch(0.115 0 0);
+  --foreground: oklch(0.982 0 0);
+  --card: oklch(0.215 0 0);
+  --card-foreground: oklch(0.982 0 0);
+  --popover: oklch(0.215 0 0);
+  --popover-foreground: oklch(0.982 0 0);
+  --primary: oklch(0.91 0 0);
+  --primary-foreground: oklch(0.215 0 0);
+  --secondary: oklch(0.3 0 0);
+  --secondary-foreground: oklch(0.982 0 0);
+  --muted: oklch(0.3 0 0);
+  --muted-foreground: oklch(0.705 0 0);
+  --accent: oklch(0.3 0 0);
+  --accent-foreground: oklch(0.982 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(1 0 0);
   --destructive-bg: oklch(0.258 0.092 26.042);
   --success: oklch(0.696 0.17 162.48);
-  --success-foreground: oklch(0.13 0.028 261.692);
+  --success-foreground: oklch(0.115 0 0);
   --success-bg: oklch(0.135 0.062 172);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 22%);
-  --ring: oklch(0.551 0.027 264.364);
+  --ring: oklch(0.58 0 0);
   --radius: 0.45rem;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.034 264.665);
-  --sidebar-foreground: oklch(0.985 0.002 247.839);
+  --sidebar: oklch(0.215 0 0);
+  --sidebar-foreground: oklch(0.982 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0.002 247.839);
-  --sidebar-accent: oklch(0.278 0.033 256.848);
-  --sidebar-accent-foreground: oklch(0.985 0.002 247.839);
+  --sidebar-primary-foreground: oklch(0.982 0 0);
+  --sidebar-accent: oklch(0.3 0 0);
+  --sidebar-accent-foreground: oklch(0.982 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --sidebar-ring: oklch(0.58 0 0);
 }
 
 /* ── Tailwind v4 theme registration ── */
@@ -99,6 +99,90 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* -- Auth surface system -- */
+@layer utilities {
+  .auth-page {
+    @apply flex min-h-svh flex-col items-center justify-center bg-background p-6 md:p-10;
+  }
+
+  .auth-container {
+    @apply w-full max-w-sm;
+  }
+
+  .auth-message {
+    @apply mx-auto flex max-w-sm flex-col items-center gap-4 text-center;
+  }
+
+  .auth-form-stack {
+    @apply flex flex-col gap-5;
+  }
+
+  .auth-card[data-slot="card"] {
+    @apply overflow-hidden bg-card/95 p-0;
+  }
+
+  .auth-card-content[data-slot="card-content"] {
+    @apply p-0;
+  }
+
+  .auth-form-panel {
+    @apply flex flex-col justify-center bg-card p-5 md:px-7 md:py-7;
+  }
+
+  .auth-field-group[data-slot="field-group"] {
+    @apply gap-3.5;
+  }
+
+  .auth-heading-block {
+    @apply flex flex-col items-center gap-2 text-center;
+  }
+
+  .auth-heading {
+    @apply text-2xl leading-tight font-semibold text-foreground;
+  }
+
+  .auth-helper {
+    @apply max-w-sm text-center text-[0.8125rem] leading-5 text-muted-foreground;
+  }
+
+  .auth-field-link {
+    @apply ml-auto text-sm;
+  }
+
+  .auth-inline-action {
+    @apply text-center text-[0.8125rem] leading-5 text-muted-foreground;
+  }
+
+  .auth-legal {
+    @apply px-6 text-center text-[0.8125rem] leading-5 text-muted-foreground;
+  }
+
+  .auth-link {
+    @apply rounded-sm font-semibold text-teal-500 underline decoration-teal-500/35 underline-offset-4 transition-[color,text-decoration-color] hover:text-teal-400 hover:decoration-current active:text-teal-300;
+  }
+
+  .auth-submit-button[data-slot="button"] {
+    @apply h-10 w-full bg-teal-600 text-sm font-semibold text-white shadow-sm shadow-teal-950/20 hover:-translate-y-px hover:bg-teal-500 hover:shadow-lg hover:shadow-teal-950/25 active:translate-y-0 active:scale-[0.99] active:bg-teal-700 active:shadow-inner;
+  }
+
+  .auth-sso-button[data-slot="button"] {
+    @apply h-10 w-full border-border/80 bg-background/70 text-sm font-semibold text-foreground shadow-sm hover:-translate-y-px hover:border-teal-500/45 hover:bg-teal-500/10 hover:text-foreground hover:shadow-md active:translate-y-0 active:scale-[0.99] active:bg-teal-500/15 active:shadow-inner;
+  }
+
+  .auth-sso-stack[data-slot="field"] {
+    @apply flex flex-col gap-2.5;
+  }
+
+  .auth-field-group [data-slot="field-separator-content"] {
+    @apply bg-card;
+  }
+
+  .auth-inline-action[data-slot="field-description"],
+  .auth-legal[data-slot="field-description"] {
+    text-align: center;
+  }
+}
+
 /* ── Compact tweet embeds ── */
 .react-tweet-theme {
   --tweet-container-margin: 0;
@@ -120,7 +204,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-sm leading-5 text-foreground;
     font-family: var(--font-sans, sans-serif);
   }
 }

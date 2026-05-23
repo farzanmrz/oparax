@@ -9,8 +9,8 @@ export default async function ResetPasswordPage({
   const recoveryType = type === "recovery" ? type : undefined
 
   return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm md:max-w-4xl">
+    <div className="auth-page">
+      <div className="auth-container">
         <ResetPasswordForm
           error={error}
           tokenHash={token_hash}
