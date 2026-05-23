@@ -1,5 +1,7 @@
 # Project Overview
 
+<!-- Canonical agent instructions. CLAUDE.md is a symlink to this file — edit here, both tools see it. -->
+
 Oparax is an AI-powered social media automation tool for professional news reporters. It monitors X (Twitter) for breaking stories and drafts posts in the user's voice. The primary use case is a football news reporter with 400k+ followers on X.
 
 ## Project Structure
@@ -26,21 +28,13 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 │   ├── ui/         # shadcn primitives (button, card, input, table, sidebar, …)
 │   └── *.tsx       # App components: auth forms, sidebar/nav, and the workflow drafting studio + its panels/stepper
 │
-├── lib/            # Domain logic: supabase/ clients, xai.ts (Grok client), prompts.ts,
+├── lib/            # Domain logic: supabase/ clients, xai.ts (Grok client = openai SDK @ api.x.ai), prompts.ts,
 │                   # workflow-drafting.ts, scan-constraints.ts, validation.ts, auth-errors.ts, utils.ts (cn helper)
 │
 ├── hooks/          # use-mobile.ts (responsive viewport helper)
 ├── public/         # Static assets
-└── scripts/        # enforce-pnpm preinstall guard + grok-search.ts personal scratchpad (leave alone)
+└── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
 ```
-
-## Local Environment
-
-Treat these as standing facts. Do not verify them, re-check them, or run anything to make them true:
-
-- The dev server is **always already running** at `http://localhost:3000` (`pnpm dev` is up in the background).
-- **Never run `pnpm dev`** — or any other command that starts or builds the server. It is already serving.
-- When using `agent-browser`, navigate straight to `http://localhost:3000`. The app is live, so do not start it first.
 
 ## Skill Invocation
 
@@ -53,5 +47,5 @@ These rules are mandatory and **override a skill's own description** wherever th
 
 **Never invoke on your own:**
 
-- `agent-browser` — Use only when I explicitly ask for it by name. When you do, point it at `http://localhost:3000` and never start the server first (see Local Environment).
+- `agent-browser` — Use only when I explicitly ask for it by name. The dev server is **always already running** at `http://localhost:3000`, so navigate straight there — never run `pnpm dev`/`build` or otherwise start the server first.
 - `ui-tester` — Do not invoke under any circumstances. It is a work in progress and not ready for use, even if its own description says otherwise.
