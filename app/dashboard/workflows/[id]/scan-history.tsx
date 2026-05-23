@@ -193,9 +193,12 @@ function ScanRunItems({ items }: { items: ScanItem[] }) {
                     </div>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(item.first_seen_at).toLocaleString()}
-                </span>
+                <div className="text-right text-xs text-muted-foreground">
+                  {item.published_at && (
+                    <p>Published {new Date(item.published_at).toLocaleString()}</p>
+                  )}
+                  <p>First seen {new Date(item.first_seen_at).toLocaleString()}</p>
+                </div>
               </div>
 
               <p className="text-sm leading-6 text-muted-foreground">

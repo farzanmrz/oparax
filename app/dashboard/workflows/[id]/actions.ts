@@ -89,7 +89,7 @@ export async function runManualWorkflowScan(triggerId: string) {
 
   const { data: trigger, error: triggerError } = await supabase
     .from("triggers")
-    .select("id, workflow_id, config")
+    .select("id, workflow_id, config, last_run_at")
     .eq("id", triggerId)
     .single()
 
@@ -120,6 +120,7 @@ export async function runManualWorkflowScan(triggerId: string) {
     const knowledgeBank = await runWorkflowScan({
       description,
       handles: normalizeScanHandles(getTriggerConfigValue(trigger.config, "handles")),
+      minimumPublishedAt: trigger.last_run_at,
     })
     const result = await persistScanRunResults({
       supabase,
@@ -128,6 +129,7 @@ export async function runManualWorkflowScan(triggerId: string) {
       scanRunId: scanRun.id,
       knowledgeBank,
       source: "manual",
+      minimumPublishedAt: trigger.last_run_at,
     })
 
     revalidatePath(`/dashboard/workflows/${trigger.workflow_id}`)

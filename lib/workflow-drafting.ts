@@ -16,6 +16,7 @@ export interface KnowledgeHeadline {
   supportingTweetUrls: string[]
   sourceHandles: string[]
   sourceUrls: string[]
+  publishedAt?: string
 }
 
 export interface KnowledgeBank {
@@ -100,6 +101,7 @@ export function parseKnowledgeHeadline(value: unknown): KnowledgeHeadline | null
 
   const aggregatedContext = normalizeString(value.aggregatedContext)
   const primaryTweetUrl = normalizeString(value.primaryTweetUrl)
+  const publishedAt = normalizeString(value.publishedAt) ?? undefined
 
   if (aggregatedContext) {
     return {
@@ -113,6 +115,7 @@ export function parseKnowledgeHeadline(value: unknown): KnowledgeHeadline | null
       ),
       sourceHandles: normalizeStringArray(value.sourceHandles),
       sourceUrls: normalizeStringArray(value.sourceUrls),
+      publishedAt,
     }
   }
 

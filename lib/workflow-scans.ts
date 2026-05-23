@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { prompts, buildScanUserPrompt } from "@/lib/prompts"
+import { prompts, buildWorkflowScanUserPrompt } from "@/lib/prompts"
 import { SCAN_MAX_HANDLES, HANDLE_RE } from "@/lib/scan-constraints"
 import {
   getHeadlineTweetUrls,
@@ -26,6 +26,7 @@ export type ScanRunSource = "create" | "manual" | "scheduled"
 export interface ScanInput {
   description: string
   handles: string[]
+  minimumPublishedAt?: Date | string | null
 }
 
 export interface PersistScanResultInput {
@@ -36,6 +37,7 @@ export interface PersistScanResultInput {
   knowledgeBank: KnowledgeBank
   source: ScanRunSource
   updateNextRunAt?: boolean
+  minimumPublishedAt?: Date | string | null
 }
 
 const knowledgeBankJsonSchema = {
@@ -120,6 +122,55 @@ const knowledgeBankJsonSchema = {
 } as const
 
 const TWEET_STATUS_RE = /(?:x|twitter)\.com\/[^/\s]+\/status\/(\d+)/i
+const X_SNOWFLAKE_EPOCH_MS = BigInt(1288834974657)
+const X_SNOWFLAKE_TIMESTAMP_SHIFT = BigInt(22)
+
+function parseOptionalDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null
+
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().split("T")[0]
+}
+
+export function extractTweetStatusId(url: string): string | null {
+  return url.match(TWEET_STATUS_RE)?.[1] ?? null
+}
+
+export function decodeTweetPublishedAt(statusId: string): Date | null {
+  if (!/^\d+$/.test(statusId)) return null
+
+  try {
+    const millis =
+      (BigInt(statusId) >> X_SNOWFLAKE_TIMESTAMP_SHIFT) +
+      X_SNOWFLAKE_EPOCH_MS
+    const date = new Date(Number(millis))
+    return Number.isNaN(date.getTime()) ? null : date
+  } catch {
+    return null
+  }
+}
+
+export function getHeadlinePublishedAt(headline: KnowledgeHeadline): Date | null {
+  const tweetUrls = [
+    headline.primaryTweetUrl,
+    ...headline.supportingTweetUrls,
+    ...headline.sourceUrls,
+  ].filter(Boolean)
+
+  for (const url of tweetUrls) {
+    const statusId = extractTweetStatusId(url)
+    if (!statusId) continue
+
+    const publishedAt = decodeTweetPublishedAt(statusId)
+    if (publishedAt) return publishedAt
+  }
+
+  return parseOptionalDate(headline.publishedAt)
+}
 
 export function normalizeScanHandles(handles: unknown): string[] {
   if (handles === undefined) {
@@ -185,6 +236,9 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
     const today = new Date()
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
+    const minimumPublishedAt = parseOptionalDate(input.minimumPublishedAt)
+    const fromDate = minimumPublishedAt ? toIsoDate(minimumPublishedAt) : toIsoDate(yesterday)
+    const toDate = toIsoDate(today)
 
     const response = await client.responses.create({
       // x_search and no_inline_citations are xAI-specific extensions that are
@@ -192,7 +246,16 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
       model: "grok-4-1-fast-reasoning",
       input: [
         { role: "system", content: prompts.sysprompt_scan },
-        { role: "user", content: buildScanUserPrompt(input.description) },
+        {
+          role: "user",
+          content: buildWorkflowScanUserPrompt({
+            description: input.description,
+            handles: input.handles,
+            fromDate,
+            toDate,
+            minimumPublishedAt: minimumPublishedAt?.toISOString(),
+          }),
+        },
       ],
       tools: [
         {
@@ -200,8 +263,8 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
           ...(input.handles.length > 0 && {
             allowed_x_handles: input.handles,
           }),
-          from_date: yesterday.toISOString().split("T")[0],
-          to_date: today.toISOString().split("T")[0],
+          from_date: fromDate,
+          to_date: toDate,
         },
       ],
       include: ["no_inline_citations"],
@@ -303,12 +366,15 @@ export async function persistScanRunResults({
   knowledgeBank,
   source,
   updateNextRunAt = true,
+  minimumPublishedAt,
 }: PersistScanResultInput) {
   const completedAt = new Date()
+  const minimumPublishedAtDate = parseOptionalDate(minimumPublishedAt)
   const itemRows = new Map<
     string,
     {
       dedupeKey: string
+      shouldInsert: boolean
       payload: {
         workflow_id: string
         trigger_id: string
@@ -321,6 +387,7 @@ export async function persistScanRunResults({
         source_handles: string[]
         source_urls: string[]
         raw_headline: KnowledgeHeadline
+        published_at: string | null
         last_seen_at: string
       }
     }
@@ -329,9 +396,15 @@ export async function persistScanRunResults({
   for (const headline of knowledgeBank.headlines) {
     const dedupeKey = buildScanItemDedupeKey(headline)
     if (itemRows.has(dedupeKey)) continue
+    const publishedAt = getHeadlinePublishedAt(headline)
+    const shouldInsert =
+      !minimumPublishedAtDate ||
+      !publishedAt ||
+      publishedAt.getTime() > minimumPublishedAtDate.getTime()
 
     itemRows.set(dedupeKey, {
       dedupeKey,
+      shouldInsert,
       payload: {
         workflow_id: workflowId,
         trigger_id: triggerId,
@@ -343,7 +416,11 @@ export async function persistScanRunResults({
         supporting_tweet_urls: headline.supportingTweetUrls,
         source_handles: headline.sourceHandles,
         source_urls: headline.sourceUrls,
-        raw_headline: headline,
+        raw_headline: {
+          ...headline,
+          ...(publishedAt && { publishedAt: publishedAt.toISOString() }),
+        },
+        published_at: publishedAt?.toISOString() ?? null,
         last_seen_at: completedAt.toISOString(),
       },
     })
@@ -379,7 +456,10 @@ export async function persistScanRunResults({
       Boolean(item.id),
     )
   const inserts = [...itemRows.values()]
-    .filter((item) => !existingByDedupeKey.has(item.dedupeKey))
+    .filter(
+      (item) =>
+        item.shouldInsert && !existingByDedupeKey.has(item.dedupeKey),
+    )
     .map((item) => ({
       ...item.payload,
       first_scan_run_id: scanRunId,

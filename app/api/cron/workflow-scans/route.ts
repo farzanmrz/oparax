@@ -22,6 +22,7 @@ type ClaimedTrigger = {
   } | null
   frequency_amount: number
   frequency_unit: string
+  last_run_at: string | null
   claimed_at: string
   scheduled_next_run_at: string
 }
@@ -52,6 +53,7 @@ function getScanInput(claimed: ClaimedTrigger) {
   return {
     description,
     handles: normalizeScanHandles(claimed.trigger_config?.handles),
+    minimumPublishedAt: claimed.last_run_at,
   }
 }
 
@@ -114,6 +116,7 @@ export async function GET(request: NextRequest) {
       knowledgeBank,
       source: "scheduled",
       updateNextRunAt: false,
+      minimumPublishedAt: claimed.last_run_at,
     })
 
     return NextResponse.json({

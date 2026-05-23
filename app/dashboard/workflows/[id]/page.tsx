@@ -21,6 +21,7 @@ export type ScanItem = {
   supporting_tweet_urls: string[]
   source_handles: string[]
   source_urls: string[]
+  published_at: string | null
   first_seen_at: string
 }
 
@@ -124,7 +125,7 @@ export default async function WorkflowDetailPage({
       ? await supabase
           .from("scan_items")
           .select(
-            "id, title, aggregated_context, evidence_points, primary_tweet_url, supporting_tweet_urls, source_handles, source_urls, first_seen_at, first_scan_run_id",
+            "id, title, aggregated_context, evidence_points, primary_tweet_url, supporting_tweet_urls, source_handles, source_urls, published_at, first_seen_at, first_scan_run_id",
           )
           .eq("workflow_id", workflow.id)
           .in("first_scan_run_id", scanRunIds)
@@ -147,6 +148,7 @@ export default async function WorkflowDetailPage({
       supporting_tweet_urls: getStringArray(row.supporting_tweet_urls),
       source_handles: getStringArray(row.source_handles),
       source_urls: getStringArray(row.source_urls),
+      published_at: row.published_at,
       first_seen_at: row.first_seen_at,
     })
     itemsByRun.set(firstScanRunId, items)

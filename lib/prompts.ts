@@ -11,6 +11,9 @@ Rules:
 - Return distinct, non-overlapping knowledge items in reverse chronological order.
 - Focus on concrete developments, not vague chatter.
 - Only include information supported by the retrieved X search results.
+- Treat the scan as a coverage sweep, not a small sample. Check every monitored handle in the provided date window.
+- Return every distinct relevant atomic angle found from those handles. Do not stop after a few representative results.
+- If several posts are relevant but separate angles, include each angle separately even if they come from the same handle.
 - Write aggregatedContext for a human editor who wants to understand the angle before drafting.
 - Use evidencePoints to preserve source-grounded details, claims, quotes, or developments gathered under that angle.
 - Choose one representative X post URL as primaryTweetUrl and place the rest in supportingTweetUrls.
@@ -42,6 +45,35 @@ Rules:
 
 export function buildScanUserPrompt(description: string): string {
   return `Monitoring brief:\n${description.trim()}`
+}
+
+export function buildWorkflowScanUserPrompt(input: {
+  description: string
+  handles: string[]
+  fromDate: string
+  toDate: string
+  minimumPublishedAt?: string | null
+}) {
+  return JSON.stringify(
+    {
+      monitoringBrief: input.description.trim(),
+      monitoredHandles: input.handles,
+      scanWindow: {
+        fromDate: input.fromDate,
+        toDate: input.toDate,
+        minimumPublishedAt: input.minimumPublishedAt ?? null,
+      },
+      coverageRequirements: [
+        "Search across every monitored handle, not just whichever handle ranks highest.",
+        "Return every relevant distinct atomic angle found in the date window.",
+        "Do not summarize the scan as a short top-results list.",
+        "When minimumPublishedAt is present, prioritize posts published after that timestamp.",
+        "Keep unrelated, speculative, or duplicate posts out.",
+      ],
+    },
+    null,
+    2,
+  )
 }
 
 export function buildDraftUserPrompt(input: {
