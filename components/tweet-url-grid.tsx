@@ -1,7 +1,5 @@
 "use client"
 
-import { Tweet } from "react-tweet"
-
 const TWEET_ID_RE = /x\.com\/.+\/status\/(\d+)/
 
 function extractTweetId(url: string): string | null {
@@ -42,9 +40,15 @@ export function TweetUrlGrid({
         }
 
         return (
-          <div key={url} className="max-w-[360px]">
-            <Tweet id={tweetId} />
-          </div>
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="block rounded-md border bg-muted/25 p-3 text-sm font-medium text-foreground underline-offset-4 transition-colors hover:text-foreground/75 hover:underline"
+          >
+            View X post {tweetId}
+          </a>
         )
       })}
     </div>

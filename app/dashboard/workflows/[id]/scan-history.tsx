@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { TweetUrlGrid } from "@/components/tweet-url-grid"
 import {
@@ -42,10 +42,24 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive"> = {
 }
 
 export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
-  const sorted = [...scanRuns].sort(
-    (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+  const sorted = useMemo(
+    () =>
+      [...scanRuns].sort(
+        (a, b) =>
+          new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+      ),
+    [scanRuns],
   )
   const [expandedId, setExpandedId] = useState<string | null>(sorted[0]?.id ?? null)
+  const latestRunId = sorted[0]?.id ?? null
+  const previousLatestRunId = useRef(latestRunId)
+
+  useEffect(() => {
+    if (latestRunId && previousLatestRunId.current !== latestRunId) {
+      setExpandedId(latestRunId)
+      previousLatestRunId.current = latestRunId
+    }
+  }, [latestRunId])
 
   if (sorted.length === 0) {
     return (
