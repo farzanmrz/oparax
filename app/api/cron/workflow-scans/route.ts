@@ -9,7 +9,12 @@ import {
 } from "@/lib/workflow-scans"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 800
+
+const SCHEDULED_SCAN_TIMEOUT_MS = 10 * 60 * 1000
+const STALE_SCHEDULED_SCAN_AFTER_MS = 15 * 60 * 1000
+
+type ServiceRoleClient = ReturnType<typeof createServiceRoleClient>
 
 type ClaimedTrigger = {
   trigger_id: string
@@ -43,6 +48,56 @@ function getClaimedTrigger(data: unknown): ClaimedTrigger | null {
   return data[0] as ClaimedTrigger
 }
 
+function getIsoBefore(durationMs: number) {
+  return new Date(Date.now() - durationMs).toISOString()
+}
+
+async function failStaleScheduledScanRuns(supabase: ServiceRoleClient) {
+  const { count, error } = await supabase
+    .from("scan_runs")
+    .update(
+      {
+        status: "failed",
+        error_message:
+          "Scheduled scan exceeded the execution window and was marked failed.",
+        completed_at: new Date().toISOString(),
+      },
+      { count: "exact" },
+    )
+    .eq("source", "scheduled")
+    .eq("status", "running")
+    .lt("started_at", getIsoBefore(STALE_SCHEDULED_SCAN_AFTER_MS))
+
+  if (error) {
+    console.error("Failed to reap stale scheduled scan runs:", error)
+    return 0
+  }
+
+  return count ?? 0
+}
+
+async function getActiveScheduledScanRun(
+  supabase: ServiceRoleClient,
+  triggerId: string,
+) {
+  const { data, error } = await supabase
+    .from("scan_runs")
+    .select("id, started_at")
+    .eq("trigger_id", triggerId)
+    .eq("source", "scheduled")
+    .eq("status", "running")
+    .gte("started_at", getIsoBefore(STALE_SCHEDULED_SCAN_AFTER_MS))
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
 function getScanInput(claimed: ClaimedTrigger) {
   const description =
     typeof claimed.trigger_config?.description === "string" &&
@@ -63,6 +118,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceRoleClient()
+  const reapedStaleRunCount = await failStaleScheduledScanRuns(supabase)
   const { data, error } = await supabase.rpc("claim_due_workflow_trigger")
 
   if (error) {
@@ -80,7 +136,42 @@ export async function GET(request: NextRequest) {
       completed: false,
       failed: false,
       newItemCount: 0,
+      reapedStaleRunCount,
     })
+  }
+
+  try {
+    const activeScanRun = await getActiveScheduledScanRun(
+      supabase,
+      claimed.trigger_id,
+    )
+
+    if (activeScanRun) {
+      return NextResponse.json({
+        claimed: true,
+        completed: false,
+        failed: false,
+        skipped: true,
+        reason: "A scheduled scan is already running for this trigger.",
+        triggerId: claimed.trigger_id,
+        activeScanRunId: activeScanRun.id,
+        activeScanRunStartedAt: activeScanRun.started_at,
+        nextRunAt: claimed.scheduled_next_run_at,
+        reapedStaleRunCount,
+      })
+    }
+  } catch (activeRunError) {
+    console.error("Failed to check active scheduled scan run:", activeRunError)
+    return NextResponse.json(
+      {
+        claimed: true,
+        completed: false,
+        failed: true,
+        triggerId: claimed.trigger_id,
+        reapedStaleRunCount,
+      },
+      { status: 500 },
+    )
   }
 
   const { data: scanRun, error: scanRunError } = await supabase
@@ -107,7 +198,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const knowledgeBank = await runWorkflowScan(getScanInput(claimed))
+    const knowledgeBank = await runWorkflowScan({
+      ...getScanInput(claimed),
+      timeoutMs: SCHEDULED_SCAN_TIMEOUT_MS,
+    })
     const result = await persistScanRunResults({
       supabase,
       workflowId: claimed.workflow_id,

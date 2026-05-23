@@ -29,6 +29,7 @@ export interface ScanInput {
   description: string
   handles: string[]
   minimumPublishedAt?: Date | string | null
+  timeoutMs?: number
 }
 
 export interface PersistScanResultInput {
@@ -241,6 +242,22 @@ function extractScanMetadata(response: unknown): ScanMetadata {
   }
 }
 
+function isRequestTimeoutError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const name = error.name.toLowerCase()
+  const message = error.message.toLowerCase()
+  return (
+    name.includes("timeout") ||
+    name === "aborterror" ||
+    message.includes("timed out") ||
+    message.includes("timeout") ||
+    message.includes("aborted")
+  )
+}
+
 export function extractTweetStatusId(url: string): string | null {
   return url.match(TWEET_STATUS_RE)?.[1] ?? null
 }
@@ -345,52 +362,60 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
     const fromDate = minimumPublishedAt ? toIsoDate(minimumPublishedAt) : toIsoDate(yesterday)
     const toDate = toIsoDate(today)
 
-    const response = await client.responses.create({
-      // x_search, web_search, reasoning, and no_inline_citations are xAI-specific extensions that are
-      // accepted by the runtime API but not reflected in the OpenAI SDK types.
-      model: "grok-4.3",
-      reasoning: {
-        effort: "high",
-        summary: "detailed",
-      },
-      max_turns: SCAN_MAX_TURNS,
-      input: [
-        { role: "system", content: prompts.sysprompt_scan },
-        {
-          role: "user",
-          content: buildWorkflowScanUserPrompt({
-            description: input.description,
-            handles: input.handles,
-            fromDate,
-            toDate,
-            minimumPublishedAt: minimumPublishedAt?.toISOString(),
-          }),
+    const response = await client.responses.create(
+      {
+        // x_search, web_search, reasoning, and no_inline_citations are xAI-specific extensions that are
+        // accepted by the runtime API but not reflected in the OpenAI SDK types.
+        model: "grok-4.3",
+        reasoning: {
+          effort: "high",
+          summary: "detailed",
         },
-      ],
-      tools: [
-        {
-          type: "web_search",
+        max_turns: SCAN_MAX_TURNS,
+        input: [
+          { role: "system", content: prompts.sysprompt_scan },
+          {
+            role: "user",
+            content: buildWorkflowScanUserPrompt({
+              description: input.description,
+              handles: input.handles,
+              fromDate,
+              toDate,
+              minimumPublishedAt: minimumPublishedAt?.toISOString(),
+            }),
+          },
+        ],
+        tools: [
+          {
+            type: "web_search",
+          },
+          {
+            type: "x_search",
+            ...(input.handles.length > 0 && {
+              allowed_x_handles: input.handles,
+            }),
+            from_date: fromDate,
+            to_date: toDate,
+          },
+        ],
+        include: ["no_inline_citations"],
+        store: false,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "web_and_x_scan",
+            schema: scanResultJsonSchema,
+            strict: true,
+          },
         },
-        {
-          type: "x_search",
-          ...(input.handles.length > 0 && {
-            allowed_x_handles: input.handles,
-          }),
-          from_date: fromDate,
-          to_date: toDate,
-        },
-      ],
-      include: ["no_inline_citations"],
-      store: false,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "web_and_x_scan",
-          schema: scanResultJsonSchema,
-          strict: true,
-        },
-      },
-    } as unknown as Parameters<typeof client.responses.create>[0])
+      } as unknown as Parameters<typeof client.responses.create>[0],
+      input.timeoutMs
+        ? {
+            timeout: input.timeoutMs,
+            maxRetries: 0,
+          }
+        : undefined,
+    )
 
     const outputText = extractResponseText(response)
     if (!outputText) {
@@ -416,6 +441,13 @@ export async function runWorkflowScan(input: ScanInput): Promise<KnowledgeBank> 
   } catch (error) {
     if (error instanceof WorkflowScanError) {
       throw error
+    }
+
+    if (isRequestTimeoutError(error)) {
+      throw new WorkflowScanError(
+        "News scanning service exceeded the scheduled scan time budget.",
+        504,
+      )
     }
 
     console.error("Grok scan error:", error instanceof Error ? error.message : error)
