@@ -274,8 +274,7 @@ export function WorkflowDraftingStudio({
           const persistResult = await completeScanRun(
             scanRunId,
             triggerId,
-            JSON.stringify(knowledgeBank),
-            knowledgeBank.headlines.length,
+            knowledgeBank,
           )
 
           if (persistResult?.error) {

@@ -24,9 +24,8 @@ import { WorkflowDraftingStudio } from "@/components/workflow-drafting-studio"
 import {
   CREATE_WORKFLOW_DRAFTING_ID,
   createEmptyWorkflowDraftingState,
-  getWorkflowDraftingScopeId,
-  migrateWorkflowDraftingState,
-  WorkflowDraftingState,
+  normalizeExampleTweets,
+  type WorkflowDraftingState,
 } from "@/lib/workflow-drafting"
 import {
   FREQUENCY_UNIT_OPTIONS,
@@ -113,6 +112,11 @@ export default function NewWorkflowPage() {
         frequencyAmount,
         frequencyUnit: formState.frequencyUnit,
         handles: formState.handles,
+        draftingInstructions: draftingState.draftingProfile.instructions,
+        exampleTweets: normalizeExampleTweets(
+          draftingState.draftingProfile.examples,
+        ),
+        initialKnowledgeBank: draftingState.knowledgeBank,
       })
 
       if (result?.error) {
@@ -127,11 +131,6 @@ export default function NewWorkflowPage() {
         return
       }
 
-      migrateWorkflowDraftingState(
-        localStorage,
-        CREATE_WORKFLOW_DRAFTING_ID,
-        getWorkflowDraftingScopeId(result.workflowId, result.triggerId),
-      )
       router.push(`/dashboard/workflows/${result.workflowId}`)
       router.refresh()
     } catch (error) {

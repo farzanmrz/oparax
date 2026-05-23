@@ -2,8 +2,7 @@
 
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { StoredScanOutput } from "@/components/stored-scan-output"
+import { TweetUrlGrid } from "@/components/tweet-url-grid"
 import {
   Table,
   TableBody,
@@ -12,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { ScanRun } from "./page"
+import type { ScanItem, ScanRun } from "./page"
 
 function timeAgo(dateString: string): string {
   const now = new Date()
@@ -28,6 +27,14 @@ function timeAgo(dateString: string): string {
   return `${diffDays}d ago`
 }
 
+function titleCase(value: string) {
+  return value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => `${word[0].toUpperCase()}${word.slice(1)}`)
+    .join(" ")
+}
+
 const statusVariant: Record<string, "default" | "secondary" | "destructive"> = {
   completed: "default",
   running: "secondary",
@@ -35,30 +42,38 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive"> = {
 }
 
 export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
-  // Sort most recent first
   const sorted = [...scanRuns].sort(
-    (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+    (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
   )
-
-  // Most recent scan auto-expanded
   const [expandedId, setExpandedId] = useState<string | null>(sorted[0]?.id ?? null)
+
+  if (sorted.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+        No scan runs yet.
+      </div>
+    )
+  }
 
   function toggleExpand(id: string) {
     setExpandedId((prev) => (prev === id ? null : id))
   }
 
-  return (
-    <div className="space-y-3">
-      <Separator />
-      <h3 className="text-base font-semibold">Scan History</h3>
+  const expandedRun = expandedId
+    ? sorted.find((run) => run.id === expandedId)
+    : null
 
+  return (
+    <div className="space-y-4">
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Time</TableHead>
+              <TableHead>Run time</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Items</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">New</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -69,18 +84,24 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
                 onClick={() => toggleExpand(run.id)}
               >
                 <TableCell>
-                  {timeAgo(run.started_at)}
+                  <span className="font-medium">{timeAgo(run.started_at)}</span>
                   <span className="ml-2 text-sm text-muted-foreground">
                     {new Date(run.started_at).toLocaleString()}
                   </span>
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusVariant[run.status] ?? "secondary"}>
-                    {run.status}
+                    {titleCase(run.status)}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  {run.item_count ?? "—"}
+                <TableCell className="text-muted-foreground">
+                  {titleCase(run.source)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {run.item_count ?? 0}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {run.new_item_count ?? 0}
                 </TableCell>
               </TableRow>
             ))}
@@ -88,25 +109,108 @@ export function ScanHistory({ scanRuns }: { scanRuns: ScanRun[] }) {
         </Table>
       </div>
 
-      {/* Expanded scan result */}
-      {expandedId && (() => {
-        const run = sorted.find((r) => r.id === expandedId)
-        if (!run?.raw_output) return null
+      {expandedRun && (
+        <div className="rounded-md border p-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">
+                {new Date(expandedRun.started_at).toLocaleString()}
+              </p>
+              {expandedRun.completed_at && (
+                <p className="text-sm text-muted-foreground">
+                  Completed {new Date(expandedRun.completed_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+            <Badge variant={statusVariant[expandedRun.status] ?? "secondary"}>
+              {titleCase(expandedRun.status)}
+            </Badge>
+          </div>
+
+          {expandedRun.error_message ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {expandedRun.error_message}
+            </p>
+          ) : (
+            <ScanRunItems items={expandedRun.newItems} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ScanRunItems({ items }: { items: ScanItem[] }) {
+  if (items.length === 0) {
+    return (
+      <p className="rounded-md border border-dashed p-5 text-sm text-muted-foreground">
+        No new items added.
+      </p>
+    )
+  }
+
+  return (
+    <div className="grid gap-3">
+      {items.map((item) => {
+        const supportingTweetUrls = item.supporting_tweet_urls.filter(
+          (url) => url !== item.primary_tweet_url,
+        )
 
         return (
-          <div className="rounded-lg border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                Scan from {new Date(run.started_at).toLocaleString()}
-              </span>
-              <Badge variant={statusVariant[run.status] ?? "secondary"}>
-                {run.status}
-              </Badge>
+          <article
+            key={item.id}
+            className="rounded-md border bg-card p-4 shadow-sm shadow-foreground/5"
+          >
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold">{item.title}</h3>
+                  {item.source_handles.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {item.source_handles.map((handle) => (
+                        <Badge
+                          key={`${item.id}-${handle}`}
+                          variant="secondary"
+                          className="font-mono text-[11px]"
+                        >
+                          @{handle}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(item.first_seen_at).toLocaleString()}
+                </span>
+              </div>
+
+              <p className="text-sm leading-6 text-muted-foreground">
+                {item.aggregated_context}
+              </p>
+
+              {item.evidence_points.length > 0 && (
+                <div className="grid gap-2 md:grid-cols-2">
+                  {item.evidence_points.map((point) => (
+                    <p
+                      key={`${item.id}-${point}`}
+                      className="rounded-md border bg-muted/25 p-3 text-sm leading-6"
+                    >
+                      {point}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {item.primary_tweet_url && (
+                <TweetUrlGrid urls={[item.primary_tweet_url]} limit={1} />
+              )}
+              {supportingTweetUrls.length > 0 && (
+                <TweetUrlGrid urls={supportingTweetUrls} />
+              )}
             </div>
-            <StoredScanOutput rawOutput={run.raw_output} />
-          </div>
+          </article>
         )
-      })()}
+      })}
     </div>
   )
 }

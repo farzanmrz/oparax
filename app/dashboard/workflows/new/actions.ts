@@ -3,6 +3,11 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import {
+  addFrequencyToDate,
+  persistScanRunResults,
+} from "@/lib/workflow-scans"
+import type { KnowledgeBank } from "@/lib/workflow-drafting"
+import {
   isFrequencyUnit,
   parseFrequencyAmount,
 } from "./constants"
@@ -13,6 +18,9 @@ interface CreateWorkflowInput {
   frequencyAmount: number
   frequencyUnit: string
   handles: string[]
+  draftingInstructions: string
+  exampleTweets: string[]
+  initialKnowledgeBank: KnowledgeBank | null
 }
 
 function generateWorkflowName(description: string): string {
@@ -55,6 +63,15 @@ export async function createWorkflow(input: CreateWorkflowInput) {
   }
 
   const name = input.name.trim() || generateWorkflowName(description)
+  const draftingInstructions = input.draftingInstructions.trim()
+  const exampleTweets = input.exampleTweets
+    .map((example) => example.trim())
+    .filter(Boolean)
+  const firstNextRunAt = addFrequencyToDate(
+    new Date(),
+    frequencyAmount,
+    input.frequencyUnit,
+  )
 
   // 1 — Create the workflow
   const { data: workflow, error: wfError } = await supabase
@@ -63,6 +80,8 @@ export async function createWorkflow(input: CreateWorkflowInput) {
       user_id: user.id,
       name,
       description,
+      drafting_instructions: draftingInstructions,
+      example_tweets: exampleTweets,
       status: "active",
     })
     .select("id")
@@ -84,6 +103,7 @@ export async function createWorkflow(input: CreateWorkflowInput) {
       },
       frequency_amount: frequencyAmount,
       frequency_unit: input.frequencyUnit,
+      next_run_at: firstNextRunAt?.toISOString(),
       status: "active",
     })
     .select("id")
@@ -93,6 +113,38 @@ export async function createWorkflow(input: CreateWorkflowInput) {
     // Clean up the orphaned workflow
     await supabase.from("workflows").delete().eq("id", workflow.id)
     return { error: "Failed to create trigger. Please try again." }
+  }
+
+  if (input.initialKnowledgeBank) {
+    const { data: scanRun, error: scanRunError } = await supabase
+      .from("scan_runs")
+      .insert({
+        trigger_id: trigger.id,
+        status: "running",
+        source: "create",
+      })
+      .select("id")
+      .single()
+
+    if (scanRunError || !scanRun) {
+      await supabase.from("workflows").delete().eq("id", workflow.id)
+      return { error: "Failed to save initial scan. Please try again." }
+    }
+
+    try {
+      await persistScanRunResults({
+        supabase,
+        workflowId: workflow.id,
+        triggerId: trigger.id,
+        scanRunId: scanRun.id,
+        knowledgeBank: input.initialKnowledgeBank,
+        source: "create",
+      })
+    } catch (error) {
+      console.error("Failed to persist initial scan:", error)
+      await supabase.from("workflows").delete().eq("id", workflow.id)
+      return { error: "Failed to save initial scan. Please try again." }
+    }
   }
 
   return { workflowId: workflow.id, triggerId: trigger.id }

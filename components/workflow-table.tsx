@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 type ScanRun = {
   id: string
   item_count: number | null
+  new_item_count?: number | null
   status: string
 }
 
@@ -38,7 +39,7 @@ type WorkflowTableRow = {
   frequency: string
   lastRun: string
   scans: number
-  posts: number
+  newItems: number
   status: string
   href?: string
   isDemo?: boolean
@@ -51,7 +52,7 @@ const demoRows: WorkflowTableRow[] = [
     frequency: "Every 30 min",
     lastRun: "May 6, 2026, 9:42 AM",
     scans: 18,
-    posts: 7,
+    newItems: 7,
     status: "active",
     isDemo: true,
   },
@@ -61,7 +62,7 @@ const demoRows: WorkflowTableRow[] = [
     frequency: "Every hour",
     lastRun: "May 6, 2026, 8:15 AM",
     scans: 12,
-    posts: 4,
+    newItems: 4,
     status: "active",
     isDemo: true,
   },
@@ -71,7 +72,7 @@ const demoRows: WorkflowTableRow[] = [
     frequency: "Every 2 hours",
     lastRun: "May 5, 2026, 7:30 PM",
     scans: 9,
-    posts: 2,
+    newItems: 2,
     status: "paused",
     isDemo: true,
   },
@@ -114,18 +115,14 @@ function titleCase(value: string) {
     .join(" ")
 }
 
-function metricFallback(index: number) {
-  const scans = [24, 16, 11, 7][index % 4]
-  const posts = [8, 5, 3, 2][index % 4]
-
-  return { scans, posts }
-}
-
 function toWorkflowRows(workflows: WorkflowTableWorkflow[]) {
-  return workflows.map((workflow, index): WorkflowTableRow => {
+  return workflows.map((workflow): WorkflowTableRow => {
     const trigger = workflow.triggers?.[0]
     const scanRuns = trigger?.scan_runs ?? []
-    const fallback = metricFallback(index)
+    const newItems = scanRuns.reduce(
+      (total, run) => total + (run.new_item_count ?? 0),
+      0,
+    )
 
     return {
       id: workflow.id,
@@ -135,8 +132,8 @@ function toWorkflowRows(workflows: WorkflowTableWorkflow[]) {
         trigger?.frequency_unit,
       ),
       lastRun: formatDate(trigger?.last_run_at ?? null),
-      scans: scanRuns.length > 0 ? scanRuns.length : fallback.scans,
-      posts: fallback.posts,
+      scans: scanRuns.length,
+      newItems,
       status: workflow.status,
       href: `/dashboard/workflows/${workflow.id}`,
     }
@@ -184,7 +181,7 @@ export function WorkflowTable({
               Scans
             </TableHead>
             <TableHead className="px-5 py-4 text-right">
-              Posts
+              New items
             </TableHead>
             <TableHead className="px-5 py-4 text-right">
               Status
@@ -229,7 +226,7 @@ export function WorkflowTable({
                 {row.scans}
               </TableCell>
               <TableCell className="px-5 py-4 text-right text-[0.98rem] font-semibold tabular-nums">
-                {row.posts}
+                {row.newItems}
               </TableCell>
               <TableCell className="px-5 py-4 text-right">
                 <Badge

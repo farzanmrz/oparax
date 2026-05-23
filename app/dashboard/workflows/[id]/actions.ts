@@ -1,6 +1,15 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import {
+  failScanRun as persistFailedScanRun,
+  normalizeScanHandles,
+  persistScanRunResults,
+  runWorkflowScan,
+  WorkflowScanError,
+} from "@/lib/workflow-scans"
+import type { KnowledgeBank } from "@/lib/workflow-drafting"
 
 export async function createScanRun(triggerId: string) {
   const supabase = await createClient()
@@ -21,43 +30,116 @@ export async function createScanRun(triggerId: string) {
 export async function completeScanRun(
   scanRunId: string,
   triggerId: string,
-  rawOutput: string,
-  itemCount: number,
+  knowledgeBank: KnowledgeBank,
 ) {
   const supabase = await createClient()
 
-  // Update the scan run with results
-  const { error: runError } = await supabase
-    .from("scan_runs")
-    .update({
-      status: "completed",
-      raw_output: rawOutput,
-      item_count: itemCount,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", scanRunId)
+  const { data: trigger, error: triggerError } = await supabase
+    .from("triggers")
+    .select("workflow_id")
+    .eq("id", triggerId)
+    .single()
 
-  if (runError) {
+  if (triggerError || !trigger) {
     return { error: "Failed to save scan results." }
   }
 
-  // Update the trigger's last_run_at
-  await supabase
-    .from("triggers")
-    .update({ last_run_at: new Date().toISOString() })
-    .eq("id", triggerId)
+  try {
+    const result = await persistScanRunResults({
+      supabase,
+      workflowId: trigger.workflow_id,
+      triggerId,
+      scanRunId,
+      knowledgeBank,
+      source: "manual",
+    })
 
-  return { success: true }
+    revalidatePath(`/dashboard/workflows/${trigger.workflow_id}`)
+    return { success: true, ...result }
+  } catch (error) {
+    console.error("Failed to save scan results:", error)
+    await persistFailedScanRun(
+      supabase,
+      scanRunId,
+      "Failed to save scan results.",
+    )
+    return { error: "Failed to save scan results." }
+  }
 }
 
 export async function failScanRun(scanRunId: string) {
   const supabase = await createClient()
 
-  await supabase
+  await persistFailedScanRun(supabase, scanRunId, "Manual scan failed.")
+}
+
+function getTriggerConfigValue(
+  config: unknown,
+  key: "description" | "handles",
+) {
+  if (typeof config !== "object" || config === null || !(key in config)) {
+    return undefined
+  }
+
+  return (config as Record<string, unknown>)[key]
+}
+
+export async function runManualWorkflowScan(triggerId: string) {
+  const supabase = await createClient()
+
+  const { data: trigger, error: triggerError } = await supabase
+    .from("triggers")
+    .select("id, workflow_id, config")
+    .eq("id", triggerId)
+    .single()
+
+  if (triggerError || !trigger) {
+    return { error: "Workflow trigger was not found." }
+  }
+
+  const description = getTriggerConfigValue(trigger.config, "description")
+  if (typeof description !== "string" || !description.trim()) {
+    return { error: "Workflow trigger is missing a scan description." }
+  }
+
+  const { data: scanRun, error: scanRunError } = await supabase
     .from("scan_runs")
-    .update({
-      status: "failed",
-      completed_at: new Date().toISOString(),
+    .insert({
+      trigger_id: triggerId,
+      status: "running",
+      source: "manual",
     })
-    .eq("id", scanRunId)
+    .select("id")
+    .single()
+
+  if (scanRunError || !scanRun) {
+    return { error: "Failed to start scan." }
+  }
+
+  try {
+    const knowledgeBank = await runWorkflowScan({
+      description,
+      handles: normalizeScanHandles(getTriggerConfigValue(trigger.config, "handles")),
+    })
+    const result = await persistScanRunResults({
+      supabase,
+      workflowId: trigger.workflow_id,
+      triggerId,
+      scanRunId: scanRun.id,
+      knowledgeBank,
+      source: "manual",
+    })
+
+    revalidatePath(`/dashboard/workflows/${trigger.workflow_id}`)
+    return { success: true, scanRunId: scanRun.id, ...result }
+  } catch (error) {
+    const message =
+      error instanceof WorkflowScanError || error instanceof Error
+        ? error.message
+        : "Manual scan failed."
+
+    await persistFailedScanRun(supabase, scanRun.id, message)
+    revalidatePath(`/dashboard/workflows/${trigger.workflow_id}`)
+    return { error: message }
+  }
 }

@@ -14,6 +14,7 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 .
 ├── package.json    # Deps + scripts (pnpm dev / build / lint)
 ├── next.config.ts  # Next.js config
+├── vercel.json     # Vercel cron configuration.
 ├── components.json # shadcn config
 ├── tsconfig.json   # TypeScript config (strict, @/* alias)
 ├── proxy.ts        # Per-request hook that refreshes the Supabase session.
@@ -33,6 +34,7 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 │
 ├── hooks/          # use-mobile.ts (responsive viewport helper)
 ├── public/         # Static assets
+├── supabase/       # Repo-tracked Supabase migrations.
 └── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
 ```
 
