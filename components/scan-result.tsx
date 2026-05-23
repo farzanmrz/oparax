@@ -1,7 +1,5 @@
 "use client"
 
-import { Tweet } from "react-tweet"
-
 // Matches Grok inline citations like [[1]](https://x.com/user/status/123)
 const CITATION_RE = /(\[\[\d+\]\]\([^)]+\))/
 
@@ -25,9 +23,7 @@ function renderCitation(citation: string, index: number) {
 
   if (tweetMatch) {
     return (
-      <div key={index} className="my-3">
-        <Tweet id={tweetMatch[1]} />
-      </div>
+      <XPostLink key={index} url={url} tweetId={tweetMatch[1]} />
     )
   }
 
@@ -72,12 +68,10 @@ export function ScanResult({ outputText }: ScanResultProps) {
       const url = urlMatch?.[1]
       const tweetMatch = url?.match(TWEET_ID_RE)
 
-      if (tweetMatch) {
+      if (tweetMatch && url) {
         // Accumulate tweet into current group
         tweetGroup.push(
-          <div key={i} className="max-w-[350px]">
-            <Tweet id={tweetMatch[1]} />
-          </div>
+          <XPostLink key={i} url={url} tweetId={tweetMatch[1]} />,
         )
         return
       }
@@ -103,5 +97,18 @@ export function ScanResult({ outputText }: ScanResultProps) {
 
   return (
     <div className="space-y-1 text-sm text-muted-foreground">{elements}</div>
+  )
+}
+
+function XPostLink({ url, tweetId }: { url: string; tweetId: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="my-3 block rounded-md border bg-muted/25 p-3 text-sm font-medium text-foreground underline-offset-4 transition-colors hover:text-foreground/75 hover:underline"
+    >
+      View X post {tweetId}
+    </a>
   )
 }

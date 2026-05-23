@@ -14,7 +14,15 @@ export function RunScanButton({ triggerId }: { triggerId: string }) {
 
   function runScan() {
     startTransition(async () => {
-      const result = await runManualWorkflowScan(triggerId)
+      let result: Awaited<ReturnType<typeof runManualWorkflowScan>>
+
+      try {
+        result = await runManualWorkflowScan(triggerId)
+      } catch (error) {
+        console.error("Manual workflow scan failed:", error)
+        toast.error("Scan failed. Please try again.")
+        return
+      }
 
       if (!result || ("error" in result && result.error)) {
         toast.error(result?.error ?? "Scan failed.")
