@@ -1,7 +1,5 @@
 # Project Overview
 
-<!-- Canonical agent instructions. CLAUDE.md is a symlink to this file — edit here, both tools see it. -->
-
 Oparax is an AI-powered social media automation tool for professional news reporters. It monitors X (Twitter) for breaking stories and drafts posts in the user's voice. The primary use case is a football news reporter with 400k+ followers on X.
 
 ## Project Structure
@@ -23,6 +21,7 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 ├── app/            # Next.js App Router
 │   ├── login/, signup/, auth/, forgot-password/  # Auth flow: sign-in, sign-up + email verify, password reset
 │   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings + workflow create/detail pages
+│   │   └── test/   # Minimal Grok prompt-testing workflow pages; mirrors shell scan output for iteration.
 │   └── api/        # scan/route.ts → streams Grok x_search over SSE; draft/route.ts → generates draft tweets
 │
 ├── components/
@@ -38,17 +37,15 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 └── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
 ```
 
+# Agentic Context
+
+- The user alternates between both **`Claude Code`** and **`Codex`** when developing this project.
+- The configuration setup across markdown files and folders is therefore kept as adaptable as possible to enable both IDEs to work seamlessly.
+- **`AGENTS.md`** is the canonical instruction file both tools read — therefore it is mainly edited for all rules.
+- **`CLAUDE.md`** imports `@AGENTS.md` for all rules and **SPECIFIC Claude-only instructions** can be added further in `CLAUDE.md` to prevent leaking to Codex.
+
 ## Skill Invocation
 
-These rules are mandatory and **override a skill's own description** wherever they conflict. Apply them both at the start of a chat and mid-conversation, as soon as a condition is met.
-
-**Invoke when the condition applies:**
-
-- `ask-questions-if-underspecified` — Invoke whenever a request is unclear: vague scope, several tasks bundled together, or a mid-conversation shift to something new. Clarify how to proceed before acting.
-
-- `agent-browser` — The dev server is **always already running** at `http://localhost:3000`, so navigate straight there — never run `pnpm dev`/`build` or otherwise start the server first.
-
-**Never invoke on your own:**
+It is MANDATORY you NEVER invoke the skills mentioned below and **override a skill's own description** wherever they conflict. At the start of a chat and mid-conversation, as soon as a condition is met always make sure you never invoke the following skills since they are a work in progress and hence incomplete:
 
 - `ui-tester` — Do not invoke under any circumstances. It is a work in progress and not ready for use, even if its own description says otherwise.
-- `ui-standard` — Do not invoke under any circumstaces. It is a work in progress, and we are still standardizing the UI, so it is not ready for use even if its own description says otherwise.

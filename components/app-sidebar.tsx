@@ -1,6 +1,10 @@
 "use client"
 
-import { WorkflowSquare01Icon, Settings02Icon } from "@hugeicons/core-free-icons"
+import {
+  Settings02Icon,
+  TestTube01Icon,
+  WorkflowSquare01Icon,
+} from "@hugeicons/core-free-icons"
 import { NavMain } from "@/components/nav-main"
 import { NavUser, SidebarSignOut } from "@/components/nav-user"
 import {
@@ -20,6 +24,11 @@ const navItems = [
     title: "Workflows",
     url: "/dashboard",
     icon: WorkflowSquare01Icon,
+  },
+  {
+    title: "Test",
+    url: "/dashboard/test",
+    icon: TestTube01Icon,
   },
   {
     title: "Settings",

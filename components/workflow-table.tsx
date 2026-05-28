@@ -156,12 +156,14 @@ function statusBadgeClass(status: string) {
 }
 
 export function WorkflowTable({
+  showDemoRows = true,
   workflows,
 }: {
+  showDemoRows?: boolean
   workflows: WorkflowTableWorkflow[]
 }) {
   const hasLiveRows = workflows.length > 0
-  const rows = hasLiveRows ? toWorkflowRows(workflows) : demoRows
+  const rows = hasLiveRows ? toWorkflowRows(workflows) : showDemoRows ? demoRows : []
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm shadow-foreground/5">
