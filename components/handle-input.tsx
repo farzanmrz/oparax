@@ -1,12 +1,15 @@
 "use client"
 
+// Imports
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
 
 interface HandleInputProps {
   handles: string[]
   maxHandles: number
+  controlClassName?: string
   onAdd: (handle: string) => void
   onRemove: (index: number) => void
 }
@@ -20,6 +23,7 @@ function isValidHandle(handle: string): boolean {
 }
 
 export function HandleInput({
+  controlClassName,
   handles,
   maxHandles,
   onAdd,
@@ -83,7 +87,13 @@ export function HandleInput({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-lg border-2 border-input bg-background/35 px-3 py-2 transition-colors hover:border-foreground/35 hover:bg-background/45 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+      <div
+        data-slot="handle-input-control"
+        className={cn(
+          "flex min-h-11 flex-wrap items-center gap-2 rounded-lg border-2 border-input bg-background/35 px-3 py-2 transition-colors hover:border-foreground/35 hover:bg-background/45 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
+          controlClassName,
+        )}
+      >
         {handles.map((handle, index) => (
           <span
             key={handle}
