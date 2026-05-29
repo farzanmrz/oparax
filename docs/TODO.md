@@ -25,7 +25,7 @@
 - [ ] **T3** — Token refresh/rotation in `lib/x/tokens.ts` *(needs T2; unit target)*
 - [ ] **T4** — `lib/x/client.ts` (`postTweet`/`getMe`) + `app/api/x/disconnect/route.ts` *(needs T3)*
 ### Track B — Monitor → Scan → Draft
-- [ ] **T5** — Monitor CRUD: rewrite `test/page.tsx` + `test/new/page.tsx` + `components/loop/monitor-form.tsx` *(needs T1)*
+- [x] **T5** — Monitor CRUD: rewrote `test/page.tsx` (list) + `test/new/page.tsx` (create) + built `components/loop/monitor-form.tsx` (fresh handle-chip UX) + `lib/scan/handles.ts` + `test/new/actions.ts` (server action, server-side redirect). Browser-verified 6/6 (login, fields, chip add/validate/remove, create→list under RLS). *(needs T1)*
 - [ ] **T6** — Streaming scan: `lib/scan/*` + `app/api/monitors/[id]/scan/route.ts` + `test/[id]` skeleton + `scan-stream-view` + `story-list` *(needs T1, T5; risks R1, R2, R8)*
 - [ ] **T7** — Pick + draft + edit: `lib/draft/*` + `app/api/drafts/route.ts` + `draft-editor` *(needs T6)*
 - [ ] **CHECKPOINT 2** — both tracks work independently
