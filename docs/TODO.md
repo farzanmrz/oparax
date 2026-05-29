@@ -27,8 +27,8 @@
 ### Track B — Monitor → Scan → Draft
 - [x] **T5** — Monitor CRUD: rewrote `test/page.tsx` (list) + `test/new/page.tsx` (create) + built `components/loop/monitor-form.tsx` (fresh handle-chip UX) + `lib/scan/handles.ts` + `test/new/actions.ts` (server action, server-side redirect). Browser-verified 6/6 (login, fields, chip add/validate/remove, create→list under RLS). *(needs T1)*
 - [x] **T6** — Streaming scan: built `lib/scan/{client,prompt,request,stream,parse}.ts` (reproduced test-scan, parameterized window/handles, +`no_inline_citations`/"search posts" steer) + `app/api/monitors/[id]/scan/route.ts` (NDJSON stream, R1 client-at-entry, scans+stories on completion, persist-then-signal) + `test/[id]/page.tsx` + `scan-stream-view` + `story-list` (react-tweet). R2 transitive-write probe ✅ (a=1/1, b=0/0); detail page browser-verified up to boundary (Run scan NOT triggered — real paid scan deferred to CP2). *(needs T1, T5; risks R1, R2, R8)*
-- [ ] **T7** — Pick + draft + edit: `lib/draft/*` + `app/api/drafts/route.ts` + `draft-editor` *(needs T6)*
-- [ ] **CHECKPOINT 2** — both tracks work independently
+- [x] **T7** — Pick + draft + edit: built `lib/draft/{count,validate,prompt}.ts` (twitter-text weighted count; getDraftIssue: empty/>280 weighted/RAW_URL/MARKDOWN) + `app/api/drafts/route.ts` (grok-4.3 strict json {text}, one repair pass, insert under RLS) + `components/loop/draft-editor.tsx` (Generate → inline edit + live weighted count → saveDraft action, status edited) wired into `test/[id]`. Throwaway tsx checks (count/validate/dedupe) 11/11 ✅; R2 drafts probe ✅ (a=1 edited, b=0). Live generate→edit deferred to CP2. *(needs T6)*
+- [ ] **CHECKPOINT 2** — both tracks work independently *(Track B ✅ T5–T7; awaiting Track A T2–T4)*
 
 ## Phase 3 — Convergence
 - [ ] **T8 — Post to X**: `app/api/x/post/route.ts` + `post-button` *(needs T4 ∧ T7 ∧ T1)*

@@ -2,6 +2,7 @@
 import { Tweet } from "react-tweet"
 import { extractTweetId } from "@/lib/scan/parse"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DraftEditor, type ExistingDraft } from "@/components/loop/draft-editor"
 
 // A persisted story rendered in the list (subset of the stories row)
 export interface StoryListItem {
@@ -17,9 +18,16 @@ export interface StoryListItem {
  * react-tweet when the primary URL is an X status URL, with the remaining
  * source URLs as links.
  * @param props.stories - the stories to render (newest first)
+ * @param props.drafts - existing drafts keyed by story id
  * @returns the story list, or an empty-state message
  */
-export function StoryList({ stories }: { stories: StoryListItem[] }) {
+export function StoryList({
+  stories,
+  drafts,
+}: {
+  stories: StoryListItem[]
+  drafts: Record<string, ExistingDraft>
+}) {
   if (stories.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -66,6 +74,12 @@ export function StoryList({ stories }: { stories: StoryListItem[] }) {
                   ))}
                 </div>
               )}
+              <div className="border-t border-border pt-3">
+                <DraftEditor
+                  storyId={story.id}
+                  initialDraft={drafts[story.id] ?? null}
+                />
+              </div>
             </CardContent>
           </Card>
         )

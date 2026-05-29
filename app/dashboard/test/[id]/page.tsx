@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScanStreamView } from "@/components/loop/scan-stream-view"
 import { StoryList, type StoryListItem } from "@/components/loop/story-list"
+import type { ExistingDraft } from "@/components/loop/draft-editor"
 import type { Monitor, Scan } from "@/lib/types"
 
 // Monitor fields shown on the detail page
@@ -44,7 +45,7 @@ export default async function MonitorDetailPage({
 }) {
   const { id } = await params
 
-  // Create Supabase client for this request
+  // Create Supabase client for this request.
   const supabase = await createClient()
 
   // Fetch the monitor via RLS; a missing monitor is a 404
@@ -60,17 +61,17 @@ export default async function MonitorDetailPage({
     notFound()
   }
 
-  // Non-null binding so all subsequent queries use the narrowed type
+  // Non-null binding for subsequent queries.
   const monitor = monitorData
 
-  // Fetch stories for this monitor (newest first)
+  // Fetch stories for this monitor, newest first.
   const { data: storiesData } = await supabase
     .from("stories")
     .select("id, title, summary, source_urls, primary_tweet_url, created_at")
     .eq("monitor_id", id)
     .order("created_at", { ascending: false })
 
-  // Fetch the 5 most recent scans for this monitor
+  // Fetch the 5 most recent scans for this monitor.
   const { data: scansData } = await supabase
     .from("scans")
     .select("id, status, story_count, cost_usd, x_search_count, started_at")
@@ -78,9 +79,29 @@ export default async function MonitorDetailPage({
     .order("started_at", { ascending: false })
     .limit(5)
 
-  // Cast to the component-friendly types
+  // Cast to the component-friendly types.
   const stories = (storiesData ?? []) as StoryListItem[]
   const scans = (scansData ?? []) as ScanSummary[]
+
+  // Load existing drafts for these stories; newest draft per story wins.
+  const storyIds = stories.map((story) => story.id)
+  let draftRows: Array<ExistingDraft & { story_id: string }> = []
+  if (storyIds.length > 0) {
+    const { data: draftsData } = await supabase
+      .from("drafts")
+      .select("id, story_id, text, status")
+      .in("story_id", storyIds)
+      .order("created_at", { ascending: false })
+    draftRows = (draftsData ?? []) as Array<ExistingDraft & { story_id: string }>
+  }
+
+  // Map story id → its newest draft for the editor's initial state.
+  const drafts: Record<string, ExistingDraft> = {}
+  for (const row of draftRows) {
+    if (!drafts[row.story_id]) {
+      drafts[row.story_id] = { id: row.id, text: row.text, status: row.status }
+    }
+  }
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -150,7 +171,7 @@ export default async function MonitorDetailPage({
 
         <div className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-heading">Stories</h2>
-          <StoryList stories={stories} />
+          <StoryList stories={stories} drafts={drafts} />
         </div>
       </div>
     </div>

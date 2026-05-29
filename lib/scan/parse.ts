@@ -84,7 +84,8 @@ export function parseScanItems(answerText: string): ScanItem[] | null {
 export function toStoryDraft(item: ScanItem): StoryDraft {
   const primaryTweetUrl = item.urls.find((url) => X_STATUS_RE.test(url)) ?? ""
   const tweetId = primaryTweetUrl ? extractTweetId(primaryTweetUrl) : null
-  const dedupeKey = tweetId ?? primaryTweetUrl ?? item.urls[0] ?? item.title
+  // First non-empty wins (|| not ?? — primaryTweetUrl is "" when no X URL).
+  const dedupeKey = tweetId || primaryTweetUrl || item.urls[0] || item.title
 
   return {
     title: item.title,
