@@ -22,7 +22,7 @@
 ## Phase 2 — Track A (Connect-X) ∥ Track B (Monitor→Scan→Draft)
 ### Track A — Connect-X
 - [x] **T2** — Connect X: built `app/auth/callback/route.ts` (exchange → capture provider tokens R3 → /2/users/me → AES-encrypt → upsert x_connections → redirect) + `lib/x/tokens.ts` (AES-256-GCM encrypt/decrypt + saveConnection) + Settings now server-rendered (reads only x_username, no tokens to client) + `components/loop/connect-x.tsx` (unlink-stale-then-linkIdentity) + extracted `sign-out-button.tsx`. AES roundtrip ✅ (throwaway tsx); Settings renders Connect X (browser, boundary). **Live connect (real OAuth + x_connections write) is yours to run** — needs `X_TOKEN_ENC_KEY` in `.env.local`. *(needs T1; risks R3, R7)*
-- [ ] **T3** — Token refresh/rotation in `lib/x/tokens.ts` *(needs T2; unit target)*
+- [x] **T3** — Token refresh/rotation in `lib/x/tokens.ts`: `getFreshAccessToken(supabase, userId)` — reuse if fresh, else POST api.x.com/2/oauth2/token (Basic client creds), persist the rotated refresh token + new expiry (re-encrypted). Throwaway tsx unit tests ✅ (expired → new access + rotated refresh stored + future expiry; fresh → reused, no network, no update). *(needs T2; unit target)*
 - [ ] **T4** — `lib/x/client.ts` (`postTweet`/`getMe`) + `app/api/x/disconnect/route.ts` *(needs T3)*
 ### Track B — Monitor → Scan → Draft
 - [x] **T5** — Monitor CRUD: rewrote `test/page.tsx` (list) + `test/new/page.tsx` (create) + built `components/loop/monitor-form.tsx` (fresh handle-chip UX) + `lib/scan/handles.ts` + `test/new/actions.ts` (server action, server-side redirect). Browser-verified 6/6 (login, fields, chip add/validate/remove, create→list under RLS). *(needs T1)*

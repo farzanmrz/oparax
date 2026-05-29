@@ -99,3 +99,124 @@ export async function saveConnection(
   )
   return error
 }
+
+// X OAuth2 token endpoint.
+const X_TOKEN_ENDPOINT = "https://api.x.com/2/oauth2/token"
+
+// Refresh slightly before expiry to avoid edge-case failures.
+const EXPIRY_BUFFER_MS = 60_000
+
+// Encrypted token row fields needed to decide if a refresh is required.
+interface StoredTokens {
+  access_token: string
+  refresh_token: string
+  expires_at: string
+}
+
+/**
+ * Whether a stored access token is expired (or within the refresh buffer).
+ * @param expiresAt - ISO expiry timestamp
+ * @returns true if the token should be refreshed now
+ */
+export function isExpired(expiresAt: string): boolean {
+  return new Date(expiresAt).getTime() - EXPIRY_BUFFER_MS <= Date.now()
+}
+
+/**
+ * Exchange a refresh token for a new access token via X's confidential-client
+ * token endpoint. X rotates the refresh token, so the caller must persist the
+ * returned refreshToken.
+ * @param refreshToken - the current (decrypted) refresh token
+ * @returns the new access + rotated refresh token and the new expiry
+ */
+export async function rotateAccessToken(refreshToken: string): Promise<{
+  accessToken: string
+  refreshToken: string
+  expiresAt: string
+}> {
+
+  // X OAuth credentials for the confidential-client refresh flow.
+  const clientId = process.env.X_CLIENT_ID
+  const clientSecret = process.env.X_CLIENT_SECRET
+  if (!clientId || !clientSecret) {
+    throw new Error("X_CLIENT_ID / X_CLIENT_SECRET are not set.")
+  }
+
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
+  const response = await fetch(X_TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }).toString(),
+  })
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "")
+    throw new Error(`X token refresh failed (${response.status}): ${detail}`)
+  }
+
+  const json = (await response.json()) as {
+    access_token?: string
+    refresh_token?: string
+    expires_in?: number
+  }
+  if (!json.access_token || !json.refresh_token) {
+    throw new Error("X token refresh returned no tokens.")
+  }
+
+  const expiresIn = typeof json.expires_in === "number" ? json.expires_in : 7200
+  return {
+    accessToken: json.access_token,
+    refreshToken: json.refresh_token,
+    expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+  }
+}
+
+/**
+ * Return a valid X access token for a user: decrypt the stored one and reuse it
+ * if still fresh, otherwise refresh, persist the rotated refresh token + new
+ * expiry (re-encrypted), and return the new access token.
+ * @param supabase - a server Supabase client (RLS owner-scoped)
+ * @param userId - the connection owner
+ * @returns a usable (decrypted) access token
+ */
+export async function getFreshAccessToken(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<string> {
+  const { data, error } = await supabase
+    .from("x_connections")
+    .select("access_token, refresh_token, expires_at")
+    .eq("user_id", userId)
+    .single()
+  if (error || !data) {
+    throw new Error("No X connection for this user.")
+  }
+  const stored = data as StoredTokens
+
+  // Reuse the decrypted access token if still fresh (no network call).
+  if (!isExpired(stored.expires_at)) {
+    return decrypt(stored.access_token)
+  }
+
+  // Expired: refresh, then persist the rotated tokens re-encrypted.
+  const rotated = await rotateAccessToken(decrypt(stored.refresh_token))
+  const { error: updateError } = await supabase
+    .from("x_connections")
+    .update({
+      access_token: encrypt(rotated.accessToken),
+      refresh_token: encrypt(rotated.refreshToken),
+      expires_at: rotated.expiresAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+  if (updateError) {
+    throw new Error("Failed to persist refreshed X tokens.")
+  }
+
+  return rotated.accessToken
+}
