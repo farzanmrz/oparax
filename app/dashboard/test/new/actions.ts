@@ -9,7 +9,7 @@ import {
   normalizeHandle,
 } from "@/lib/scan/handles"
 
-// Input payload for monitor creation (validation happens server-side).
+// Input payload for monitor creation (validation happens server-side)
 export interface CreateMonitorInput {
   name: string
   monitoringDescription: string
@@ -31,10 +31,10 @@ export async function createMonitor(
   input: CreateMonitorInput,
 ): Promise<{ error: string } | void> {
 
-  // Supabase client scoped to the current request.
+  // Supabase client scoped to the current request
   const supabase = await createClient()
 
-  // Fetch the signed-in user; redirect to login if missing.
+  // Fetch the signed-in user; redirect to login if missing
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -42,37 +42,40 @@ export async function createMonitor(
     redirect("/login")
   }
 
-  // Validate the monitor name is non-empty.
+  // Validate the monitor name is non-empty
   const name = input.name.trim()
   if (!name) {
     return { error: "Name is required." }
   }
 
-  // Normalize, dedupe, and validate the monitored handles; check the 20 cap before insert.
+  // Normalize, dedupe, and validate the monitored handles; check the 20 cap
   const handles = [...new Set(input.handles.map(normalizeHandle).filter(Boolean))]
+
   if (handles.length > MONITOR_MAX_HANDLES) {
     return { error: `Maximum ${MONITOR_MAX_HANDLES} handles allowed.` }
   }
 
-  // Verify each handle is valid.
+  // Verify each handle is valid
   const invalid = handles.find((handle) => !isValidHandle(handle))
+
   if (invalid) {
     return { error: `"${invalid}" is not a valid X handle.` }
   }
 
-  // Optional scan window; empty strings become null for chronological sorting.
+  // Optional scan window; empty strings become null for chronological sorting
   const scanFrom = input.scanFrom?.trim() || null
   const scanTo = input.scanTo?.trim() || null
+
   if (scanFrom && scanTo && scanFrom > scanTo) {
     return { error: "Scan start date must be on or before the end date." }
   }
 
-  // Trim and filter empty example tweets.
+  // Trim and filter empty example tweets
   const exampleTweets = input.exampleTweets
     .map((tweet) => tweet.trim())
     .filter(Boolean)
 
-  // Insert the monitor into the DB; RLS enforces user ownership.
+  // Insert the monitor into the DB; RLS enforces user ownership
   const { data: monitor, error } = await supabase
     .from("monitors")
     .insert({
@@ -93,6 +96,6 @@ export async function createMonitor(
     return { error: "Failed to create monitor. Please try again." }
   }
 
-  // Redirect to the monitors list where the new monitor now appears.
-  redirect("/dashboard/test")
+  // Route to the new monitor's detail page
+  redirect(`/dashboard/test/${monitor.id}`)
 }
