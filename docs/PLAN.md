@@ -78,8 +78,8 @@ T1  Migration: 6 tables + RLS ──────────── CHECKPOINT 1
 **Acceptance:** create a monitor → row in `monitors` → appears in the list; ≤20 handles enforced; RLS scopes it to you.
 
 ### T6 — Streaming scan + stories  ·  needs T1, T5
-**Files:** BUILD `lib/scan/{client,request,stream,parse,prompt}.ts` (reproduce `buildResponseParams`/`TestScanStreamWriter`, **dates from `monitor.scan_from/scan_to`**, `prompt` adds "search posts, not profiles" + `include:['no_inline_citations']`; `parse` → story rows + `dedupe_key` from primary X url). BUILD `app/api/monitors/[id]/scan/route.ts` (NDJSON `ReadableStream`, `runtime="nodejs"`; capture cookie `createClient()` at entry; on completion insert `scans` + `stories`). BUILD `app/dashboard/test/[id]/page.tsx` **skeleton** + `components/loop/{scan-stream-view,story-list}.tsx` (`react-tweet` for sources).
-**Acceptance:** Run Scan on a monitor → live reasoning/tool/cost stream → `scans` row + `stories` rows → stories render with embedded source tweets.
+**Files:** BUILD `lib/scan/{client,request,stream,parse,prompt}.ts` (reproduce `buildResponseParams`/`TestScanStreamWriter`, **dates from `monitor.scan_from/scan_to`**, `prompt` adds "search posts, not profiles" + `include:['no_inline_citations']`; `parse` → story rows + `dedupe_key` from primary X url). BUILD `app/api/monitors/[id]/scan/route.ts` (NDJSON `ReadableStream`, `runtime="nodejs"`; capture cookie `createClient()` at entry; on completion insert `scans` + `stories`). BUILD `app/dashboard/test/[id]/page.tsx` **skeleton** + `components/loop/{scan-stream-view,story-list}.tsx` (source links; `react-tweet` removed 2026-05-29, embed parked).
+**Acceptance:** Run Scan on a monitor → live reasoning/tool/cost stream → `scans` row + `stories` rows → stories render with title/summary + source links.
 **Risk R1:** don't re-read cookies mid-stream. **R2:** verify a transitive-RLS insert works under the user session (fallback: service-role for writes + in-code `monitor.user_id===user.id`). **R8:** mind Vercel function timeout.
 
 ### T7 — Pick + draft + edit  ·  needs T1, T6

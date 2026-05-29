@@ -40,7 +40,7 @@ Each step is falsifiable. Slice 1 is "done" when every box can be checked by han
 | 1 | **Connect X** | From **Settings → Connections**, user clicks Connect X → Supabase `linkIdentity({provider:'x'})` consent → returns connected. The connected `@handle` is shown; Disconnect works. The X **refresh token** is captured in the callback and stored encrypted server-side (never sent to the browser). |
 | 2 | **Create a monitor** | User creates a monitor: name, monitoring description, monitored handles (≤20), drafting instructions, example tweets, scan date window. Persists and opens its detail page. |
 | 3 | **Trigger scan** | On the monitor detail page, Scan runs a Grok `x_search` (streaming progress visible — reasoning/tool-call/cost events, via a **new** streaming scan endpoint + display). On completion a `scans` row is stored. |
-| 4 | **See separated stories** | The scan's distinct stories are stored as `stories` rows and listed (title, summary, source handles, source tweet links via `react-tweet`). |
+| 4 | **See separated stories** | The scan's distinct stories are stored as `stories` rows and listed (title, summary, source links). *(Rich tweet embedding via `react-tweet` was removed 2026-05-29 — server-render `entities is not iterable` crash; plain source links for now, neater embed parked in §9.)* |
 | 5 | **Pick + draft** | User selects one story → generates a draft via a **new** draft endpoint (≤280 weighted chars, no raw URLs, no markdown — new validation/repair step). Persists as a `drafts` row. |
 | 6 | **Edit draft** | User edits the draft text inline; live weighted char count (`twitter-text` weighting: emoji/CJK = 2, URLs = 23). Edited text persists; status → `edited`. |
 | 7 | **Post** | Post button → ensure access token fresh (refresh if expired) → `POST /2/tweets` → on HTTP 201 a `posts` row stores the returned tweet id + URL; details page shows it posted. Failures surface a readable error; draft → `failed`. |
@@ -171,7 +171,7 @@ supabase/migrations/
 ```
 **Left to rot (untouched, retired in §4.4):** `lib/xai.ts`, `lib/workflow-drafting.ts`, `lib/scan-constraints.ts`, `lib/prompts.ts`, `app/api/scan`, `app/api/draft`, old components (`knowledge-bank-panel`, `draft-preview-panel`, `draft-profile-editor`, `scan-result`, `stored-scan-output`, `workflow-*`), `app/dashboard/workflows/*`.
 **Left alone (kept auth, not loop code):** `app/login|signup|auth|forgot-password`, `lib/validation.ts`, `lib/auth-errors.ts`.
-**Reused as-is:** npm deps (`openai`, `react-tweet`, `@supabase/*`), shadcn `components/ui/`, `lib/supabase/*`, `proxy.ts`. **Added (approved) dep:** `twitter-text` (weighted char counting). **No `zod`** — request bodies validated manually with `typeof` checks, as existing routes do.
+**Reused as-is:** npm deps (`openai`, `@supabase/*`), shadcn `components/ui/`, `lib/supabase/*`, `proxy.ts`. **Added (approved) dep:** `twitter-text` (weighted char counting). **Removed dep:** `react-tweet` (2026-05-29 — server-render crash; story sources render as plain links, richer embed parked §9). **No `zod`** — request bodies validated manually with `typeof` checks, as existing routes do.
 *No hand-rolled OAuth/PKCE (Supabase's `'x'` provider does the handshake). Exact paths/folder names finalized in `plan`.*
 
 ---
@@ -217,7 +217,7 @@ Plumbing-first → **mostly manual + falsifiable**, unit tests only where correc
 - Editing `scripts/prompts.ts` or anything under `roughmd/` / `test_sc/` (intentional WIP scratch — leave alone).
 
 ### Never (parked — out of scope for slice 1)
-Aggregation/dedup across scans · cron auto-scan · auto-select/auto-post · email alerts · pricing/payment · landing page · **full** settings-page buildout (minimal Connect-X block *is* in scope) · X-as-login/SSO (X is link-only) · Google SSO · multi-platform · extra scan sources · delete/restore flows · relevance-feedback · AI-output/prompt refinement · schema cleanup of unused/legacy tables (beyond §4.4) · UI polish · per-account long-tweet limits (#20).
+Aggregation/dedup across scans · cron auto-scan · auto-select/auto-post · email alerts · pricing/payment · landing page · **full** settings-page buildout (minimal Connect-X block *is* in scope) · X-as-login/SSO (X is link-only) · Google SSO · multi-platform · extra scan sources · delete/restore flows · relevance-feedback · AI-output/prompt refinement · schema cleanup of unused/legacy tables (beyond §4.4) · UI polish · per-account long-tweet limits (#20) · **rich/embedded tweet display** (react-tweet removed 2026-05-29 after a server-render crash; stories show plain source links — revisit a neater embed later).
 
 ---
 
