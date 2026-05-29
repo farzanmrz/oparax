@@ -75,6 +75,7 @@ T1  Migration: 6 tables + RLS ──────────── CHECKPOINT 1
 
 ### T5 — Monitor CRUD  ·  needs T1 · parallel with Track A
 **Files:** REWRITE `app/dashboard/test/page.tsx` (list monitors) + `app/dashboard/test/new/page.tsx` (create form). BUILD `components/loop/monitor-form.tsx` (reproduce handle-chip UX + regex `^[A-Za-z0-9_]{1,15}$`; **no schedule fields**), a server action inserting `monitors`.
+**Added 2026-05-29 (user feedback — restore legacy preview-before-save):** `components/loop/monitor-scan-preview.tsx` + raw-field `app/api/scan-preview/route.ts` + `app/api/draft-preview/route.ts` let the create form run a scan + draft preview *before* saving; `createMonitor` accepts `previewStories`/`previewMetrics` and persists them as the monitor's first scan on save (no re-scan). Draft generate logic shared via `lib/draft/generate.ts`.
 **Acceptance:** create a monitor → row in `monitors` → appears in the list; ≤20 handles enforced; RLS scopes it to you.
 
 ### T6 — Streaming scan + stories  ·  needs T1, T5

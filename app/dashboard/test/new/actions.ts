@@ -8,8 +8,15 @@ import {
   isValidHandle,
   normalizeHandle,
 } from "@/lib/scan/handles"
+import type { PreviewStory } from "@/lib/scan/stream"
 
-// Input payload for monitor creation (validation happens server-side)
+// Metrics from a preview scan to persist on the scans row
+export interface PreviewMetrics {
+  costUsd: number | null
+  xSearchCalls: number | null
+}
+
+// Monitor creation payload; server validates all fields
 export interface CreateMonitorInput {
   name: string
   monitoringDescription: string
@@ -18,6 +25,8 @@ export interface CreateMonitorInput {
   exampleTweets: string[]
   scanFrom: string | null
   scanTo: string | null
+  previewStories?: PreviewStory[]
+  previewMetrics?: PreviewMetrics | null
 }
 
 /**
@@ -31,10 +40,9 @@ export async function createMonitor(
   input: CreateMonitorInput,
 ): Promise<{ error: string } | void> {
 
-  // Supabase client scoped to the current request
+  // Create a scoped Supabase client + get the signed-in user.
   const supabase = await createClient()
 
-  // Fetch the signed-in user; redirect to login if missing
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -42,27 +50,26 @@ export async function createMonitor(
     redirect("/login")
   }
 
-  // Validate the monitor name is non-empty
+  // Validate monitor name, handles, and optional scan window.
   const name = input.name.trim()
   if (!name) {
     return { error: "Name is required." }
   }
 
-  // Normalize, dedupe, and validate the monitored handles; check the 20 cap
+  // Normalize, dedupe, and validate handles against the 20-handle cap.
   const handles = [...new Set(input.handles.map(normalizeHandle).filter(Boolean))]
 
   if (handles.length > MONITOR_MAX_HANDLES) {
     return { error: `Maximum ${MONITOR_MAX_HANDLES} handles allowed.` }
   }
 
-  // Verify each handle is valid
   const invalid = handles.find((handle) => !isValidHandle(handle))
 
   if (invalid) {
     return { error: `"${invalid}" is not a valid X handle.` }
   }
 
-  // Optional scan window; empty strings become null for chronological sorting
+  // Parse optional scan dates; empty strings become null.
   const scanFrom = input.scanFrom?.trim() || null
   const scanTo = input.scanTo?.trim() || null
 
@@ -70,12 +77,12 @@ export async function createMonitor(
     return { error: "Scan start date must be on or before the end date." }
   }
 
-  // Trim and filter empty example tweets
+  // Trim and filter empty example tweets.
   const exampleTweets = input.exampleTweets
     .map((tweet) => tweet.trim())
     .filter(Boolean)
 
-  // Insert the monitor into the DB; RLS enforces user ownership
+  // Insert the monitor; RLS enforces ownership.
   const { data: monitor, error } = await supabase
     .from("monitors")
     .insert({
@@ -96,6 +103,46 @@ export async function createMonitor(
     return { error: "Failed to create monitor. Please try again." }
   }
 
-  // Route to the new monitor's detail page
+  // Best-effort: persist the preview scan + stories (failure doesn't undo the monitor).
+  const previewStories = input.previewStories ?? []
+  if (previewStories.length > 0) {
+    const { data: scan } = await supabase
+      .from("scans")
+      .insert({
+        monitor_id: monitor.id,
+        status: "completed",
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        cost_usd: input.previewMetrics?.costUsd ?? null,
+        x_search_count: input.previewMetrics?.xSearchCalls ?? null,
+        story_count: previewStories.length,
+      })
+      .select("id")
+      .single<{ id: string }>()
+
+    if (scan) {
+
+      // Dedupe by dedupe_key to satisfy the unique constraint.
+      const seen = new Set<string>()
+      const rows = previewStories
+        .filter((story) => {
+          if (seen.has(story.dedupeKey)) return false
+          seen.add(story.dedupeKey)
+          return true
+        })
+        .map((story) => ({
+          scan_id: scan.id,
+          monitor_id: monitor.id,
+          title: story.title,
+          summary: story.summary,
+          source_urls: story.sourceUrls,
+          primary_tweet_url: story.primaryTweetUrl,
+          dedupe_key: story.dedupeKey,
+        }))
+      await supabase.from("stories").insert(rows)
+    }
+  }
+
+  // Redirect to the new monitor's detail page.
   redirect(`/dashboard/test/${monitor.id}`)
 }

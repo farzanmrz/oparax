@@ -1,25 +1,15 @@
 // Imports
-import OpenAI from "openai"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { weightedLength } from "@/lib/draft/count"
-import { getDraftIssue } from "@/lib/draft/validate"
-import {
-  DRAFT_JSON_SCHEMA,
-  DRAFT_MODEL,
-  DRAFT_REPAIR_SYSTEM_PROMPT,
-  DRAFT_SYSTEM_PROMPT,
-  buildDraftRepairUserPrompt,
-  buildDraftUserPrompt,
-  type DraftContext,
-  type DraftStoryInput,
-} from "@/lib/draft/prompt"
+import { createDraftClient, generateValidatedDraft } from "@/lib/draft/generate"
+import type { DraftContext, DraftStoryInput } from "@/lib/draft/prompt"
 
-// Node runtime for the OpenAI SDK; generation is quick but reasoning-heavy.
+// Node runtime for generation; maxDuration for reasoning-heavy inference
 export const runtime = "nodejs"
 export const maxDuration = 120
 
-// Story + nested monitor context loaded for drafting (selected under RLS).
+// Story + monitor_id loaded for drafting (RLS scopes to owner)
 interface DraftStoryRow {
   id: string
   title: string
@@ -38,57 +28,8 @@ function jsonError(message: string, status: number) {
 }
 
 /**
- * Pull the structured-output text from a Responses API result.
- * @param response - the completed Responses API result
- * @returns the output text, or an empty string
- */
-function extractResponseText(response: OpenAI.Responses.Response): string {
-  if (typeof response.output_text === "string" && response.output_text.trim()) {
-    return response.output_text
-  }
-  // Fallback: walk output[].content[] for the first output_text part.
-  const output = (response as { output?: unknown }).output
-  if (Array.isArray(output)) {
-    for (const item of output) {
-      const content = (item as { content?: unknown }).content
-      if (Array.isArray(content)) {
-        for (const part of content) {
-          const record = part as { type?: unknown; text?: unknown }
-          if (record.type === "output_text" && typeof record.text === "string") {
-            return record.text
-          }
-        }
-      }
-    }
-  }
-  return ""
-}
-
-/**
- * Parse the structured JSON { text } from the model output.
- * @param raw - the raw output text
- * @returns the draft text, or null if it could not be parsed
- */
-function parseDraftText(raw: string): string | null {
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      typeof (parsed as { text?: unknown }).text === "string"
-    ) {
-      return (parsed as { text: string }).text
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
-/**
- * Generate one draft for a single story, with one validation/repair pass, and
- * persist it as a drafts row. Reproduces the legacy validate/repair flow,
- * simplified to one story → one draft and weighted character counting.
+ * Generate one draft for a saved story (one validation/repair pass) and persist
+ * it as a drafts row.
  * @param req - the request carrying { storyId }
  * @returns the persisted draft as JSON, or a JSON error
  */
@@ -101,7 +42,7 @@ export async function POST(req: Request) {
     return jsonError("Authentication required.", 401)
   }
 
-  // Parse the request body.
+  // Parse + validate the request body.
   let body: unknown
   try {
     body = await req.json()
@@ -109,7 +50,7 @@ export async function POST(req: Request) {
     return jsonError("Invalid JSON.", 400)
   }
 
-  // Validate that storyId is provided and is a string.
+  // Extract and validate the storyId.
   const storyId =
     body && typeof body === "object"
       ? (body as Record<string, unknown>).storyId
@@ -118,7 +59,7 @@ export async function POST(req: Request) {
     return jsonError("storyId is required.", 400)
   }
 
-  // RLS scopes the story to the owner via its monitor.
+  // Load the story scoped to the authenticated user.
   const { data: story } = await supabase
     .from("stories")
     .select("id, title, summary, monitor_id")
@@ -128,7 +69,7 @@ export async function POST(req: Request) {
     return jsonError("Story not found.", 404)
   }
 
-  // Drafting context comes from the story's monitor.
+  // Load the monitor's drafting context.
   const { data: monitor } = await supabase
     .from("monitors")
     .select("monitoring_description, drafting_instructions, example_tweets")
@@ -139,7 +80,7 @@ export async function POST(req: Request) {
       example_tweets: string[]
     }>()
 
-  // Prepare the drafting context and story input for the model.
+  // Build context + story for the generator.
   const context: DraftContext = {
     monitoringDescription: monitor?.monitoring_description ?? "",
     draftingInstructions: monitor?.drafting_instructions ?? "",
@@ -150,85 +91,20 @@ export async function POST(req: Request) {
     summary: story.summary,
   }
 
-  // Grok client configured for xAI.
-  const client = new OpenAI({
-    apiKey: process.env.XAI_API_KEY,
-    baseURL: "https://api.x.ai/v1",
-    timeout: 60_000,
+  // Generate with validation and one repair pass.
+  const result = await generateValidatedDraft({
+    client: createDraftClient(),
+    context,
+    story: storyInput,
   })
-
-  // Generate a draft once or with repair; calls Grok with system + user prompt.
-  async function generate(
-    systemPrompt: string,
-    userPrompt: string,
-  ): Promise<string> {
-    const response = await client.responses.create({
-      model: DRAFT_MODEL,
-      reasoning: { effort: "high" },
-      input: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "tweet_draft",
-          schema: DRAFT_JSON_SCHEMA,
-          strict: true,
-        },
-      },
-    } as unknown as OpenAI.Responses.ResponseCreateParamsNonStreaming)
-
-    const text = parseDraftText(extractResponseText(response))
-    if (!text) {
-      throw new Error("Drafting service returned an invalid result.")
-    }
-    return text
+  if (!result.ok) {
+    return jsonError(result.error, 502)
   }
 
-  // Generate the initial draft.
-  let text: string
-  try {
-    text = await generate(
-      DRAFT_SYSTEM_PROMPT,
-      buildDraftUserPrompt({ ...context, story: storyInput }),
-    )
-  } catch (error) {
-    return jsonError(
-      error instanceof Error ? error.message : "Drafting failed.",
-      502,
-    )
-  }
-
-  // One repair pass if the first draft fails validation.
-  let issue = getDraftIssue(text)
-  if (issue) {
-    try {
-      text = await generate(
-        DRAFT_REPAIR_SYSTEM_PROMPT,
-        buildDraftRepairUserPrompt({
-          ...context,
-          story: storyInput,
-          invalidDraft: text,
-          invalidReason: issue,
-        }),
-      )
-    } catch (error) {
-      return jsonError(
-        error instanceof Error ? error.message : "Draft repair failed.",
-        502,
-      )
-    }
-    issue = getDraftIssue(text)
-    if (issue) {
-      return jsonError("Drafting service could not produce valid tweet text.", 502)
-    }
-  }
-
-  // Persist as a drafts row with status 'draft' (RLS scopes to user).
+  // Persist as a drafts row (status draft) under the user session (RLS).
   const { data: draft, error } = await supabase
     .from("drafts")
-    .insert({ story_id: storyId, text, status: "draft" })
+    .insert({ story_id: storyId, text: result.text, status: "draft" })
     .select("id, text, status")
     .single<{ id: string; text: string; status: string }>()
   if (error || !draft) {

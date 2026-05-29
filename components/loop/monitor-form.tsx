@@ -29,6 +29,11 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  MonitorScanPreview,
+  type PreviewMetricsView,
+} from "@/components/loop/monitor-scan-preview"
+import type { PreviewStory } from "@/lib/scan/stream"
 
 /**
  * Form for creating a new X monitor with handles, drafting rules, and scan window.
@@ -36,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea"
  * @returns the monitor creation form UI
  */
 export function MonitorForm() {
+
   // Router for navigation after successful monitor creation.
   const router = useRouter()
 
@@ -44,21 +50,26 @@ export function MonitorForm() {
   const [monitoringDescription, setMonitoringDescription] = useState("")
   const [draftingInstructions, setDraftingInstructions] = useState("")
 
-  // Handles management: validated list and current input with error state.
+  // Handles management: validated list, current input, and error state.
   const [handles, setHandles] = useState<string[]>([])
   const [handleInput, setHandleInput] = useState("")
   const [handleError, setHandleError] = useState<string | null>(null)
 
-  // Example tweets and optional scan window; form-level error and pending state.
+  // Example tweets, scan window, form errors, and pending state.
   const [exampleTweets, setExampleTweets] = useState<string[]>([""])
   const [scanFrom, setScanFrom] = useState("")
   const [scanTo, setScanTo] = useState("")
   const [formError, setFormError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
+  // Previewed scan stories + metrics (lifted from MonitorScanPreview); persisted on save.
+  const [previewStories, setPreviewStories] = useState<PreviewStory[]>([])
+  const [previewMetrics, setPreviewMetrics] = useState<PreviewMetricsView | null>(
+    null,
+  )
+
   /**
    * Add a handle chip from the current input, validating it locally.
-   * Matches server-side rules: 1–15 [A-Za-z0-9_], ≤20 total, no duplicates.
    * @param raw - the raw handle string from the input
    */
   function commitHandle(raw: string) {
@@ -131,28 +142,28 @@ export function MonitorForm() {
   }
 
   /**
-   * Submit the monitor form: validates fields, includes any pending handle, and calls the server action.
-   * On success the server redirects; on failure shows an error message here.
+   * Submit the monitor form: validate all fields, fold pending handle, call server action.
    * @param event - the form submission event
    */
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+
     event.preventDefault()
     setFormError(null)
 
-    // Require a non-empty monitor name.
+    // Validate monitor name is non-empty.
     if (!name.trim()) {
       setFormError("Name is required.")
       return
     }
 
-    // Fold any half-typed handle still in the input into the final list.
+    // Fold any pending handle from the input field.
     const pendingHandle = normalizeHandle(handleInput)
     const finalHandles =
       pendingHandle && isValidHandle(pendingHandle) && !handles.includes(pendingHandle)
         ? [...handles, pendingHandle]
         : handles
 
-    // Build the server action input from the form state.
+    // Build the server action input.
     const input: CreateMonitorInput = {
       name,
       monitoringDescription,
@@ -161,9 +172,11 @@ export function MonitorForm() {
       exampleTweets,
       scanFrom: scanFrom || null,
       scanTo: scanTo || null,
+      previewStories,
+      previewMetrics,
     }
 
-    // Submit to the server action; success redirects server-side and unmounts this form.
+    // Submit; success redirects server-side, failure shows error.
     setPending(true)
     const result = await createMonitor(input)
     if (result?.error) {
@@ -330,24 +343,40 @@ export function MonitorForm() {
               </Field>
             </div>
 
-            <FieldError>{formError}</FieldError>
-
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/dashboard/test")}
-                disabled={pending}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" pending={pending} disabled={pending}>
-                Create monitor
-              </Button>
-            </div>
           </FieldGroup>
         </CardContent>
       </Card>
+
+      <MonitorScanPreview
+        fields={{
+          handles,
+          monitoringDescription,
+          draftingInstructions,
+          exampleTweets,
+          scanFrom,
+          scanTo,
+        }}
+        onPreview={(stories, metrics) => {
+          setPreviewStories(stories)
+          setPreviewMetrics(metrics)
+        }}
+      />
+
+      <FieldError>{formError}</FieldError>
+
+      <div className="flex justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push("/dashboard/test")}
+          disabled={pending}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" pending={pending} disabled={pending}>
+          Create monitor
+        </Button>
+      </div>
     </form>
   )
 }

@@ -1,7 +1,6 @@
 // Imports
 import type OpenAI from "openai"
 
-// Stream event types and scan output parsing
 // One atomic news item from the scan's structured JSON output
 export interface ScanItem {
   title: string
@@ -9,14 +8,23 @@ export interface ScanItem {
   urls: string[]
 }
 
-// Server-reported scan metrics (xAI returns authoritative cost + tool counts)
+// Server-reported scan metrics from the final response usage
 export interface ScanMetrics {
   costUsd: number | null
   elapsedMs: number
   xSearchCalls: number | null
 }
 
-// NDJSON events streamed to the browser: live events from the writer + terminal persisted event
+// A parsed story from the preview terminal event; persisted on form save
+export interface PreviewStory {
+  title: string
+  summary: string
+  sourceUrls: string[]
+  primaryTweetUrl: string
+  dedupeKey: string
+}
+
+// NDJSON events streamed to the browser: live events + terminal event
 export type ScanStreamEvent =
   | { type: "reasoning_delta"; text: string }
   | { type: "tool_call_started"; id: string; name: string }
@@ -28,6 +36,7 @@ export type ScanStreamEvent =
       storyCount: number
       metrics: ScanMetrics
     }
+  | { type: "preview_complete"; stories: PreviewStory[]; metrics: ScanMetrics }
   | { type: "error"; message: string }
 
 /**
@@ -73,6 +82,8 @@ export class ScanStreamWriter {
    * @param event - one event from the Responses API stream
    */
   handle(event: OpenAI.Responses.ResponseStreamEvent) {
+
+    // Route each event type to its handler.
     switch (event.type) {
       case "response.output_item.added":
         if (event.item.type === "custom_tool_call") {

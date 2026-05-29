@@ -52,7 +52,7 @@ Each step is falsifiable. Slice 1 is "done" when every box can be checked by han
 |---|---|---|
 | A | **Login** (exists) | Sign up / log in with **email + password** → dashboard. X is *not* a login method. |
 | B | **Settings → Connections** (extend) | Sees **Connect X** (existing "coming soon" placeholder made live). Clicks → X consent → back to Settings showing **"Connected as @handle · Disconnect."** Only "settings" work in scope — one connections block, not the full page. |
-| C | **`/dashboard/test/new`** (extend) | Create a monitor (name, what to monitor, handles, drafting instructions, example tweets, scan window) → saves → routes to its detail page. |
+| C | **`/dashboard/test/new`** (extend) | Create a monitor (name, what to monitor, handles, drafting instructions, example tweets, scan window). **Optionally Run a preview scan + per-story draft preview *before* saving** (raw-field `/api/scan-preview` + `/api/draft-preview`, nothing persisted) to verify instructions — restoring the legacy "see results before save" loop. On **Create**, the monitor saves **and the previewed scan + stories are persisted** (no re-scan) → routes to its detail page. |
 | D–G | **`/dashboard/test/[id]`** (build — your item #9 details page) | **Run scan** (streaming) → **stories list** → click a story → **Generate draft** → **edit inline** (live char count) → **Post to X** → **"Posted ✓"** + link to the live tweet. Also shows this monitor's past scans + posted tweets. |
 
 Sidebar nav: Login → Dashboard (`test/` list) → Settings (Connect X) and Monitor detail (`test/[id]`) are the only surfaces touched.

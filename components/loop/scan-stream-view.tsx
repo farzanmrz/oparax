@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/card"
 import type { ScanStreamEvent } from "@/lib/scan/stream"
 
-// Live state of a streamed scan run
+// Live state of a streamed scan run.
 type ScanStatus = "idle" | "running" | "done" | "error"
 
-// A tool call (x_search) surfaced during the scan
+// A tool call (x_search) surfaced during the scan.
 interface ToolCallView {
   id: string
   name: string
@@ -23,7 +23,7 @@ interface ToolCallView {
   completed: boolean
 }
 
-// Final metrics shown after a successful scan
+// Final metrics shown after a successful scan.
 interface ScanResultView {
   storyCount: number
   costUsd: number | null
@@ -61,19 +61,20 @@ function parseScanEvent(line: string): ScanStreamEvent | null {
  * @returns the scan control + live stream UI
  */
 export function ScanStreamView({ monitorId }: { monitorId: string }) {
+
   const router = useRouter()
 
-  // Live scan state, reasoning output, tool calls, final result, and any error
+  // Live scan state, reasoning, tool calls, result, and error.
   const [status, setStatus] = useState<ScanStatus>("idle")
   const [reasoning, setReasoning] = useState("")
   const [toolCalls, setToolCalls] = useState<ToolCallView[]>([])
   const [result, setResult] = useState<ScanResultView | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Apply one event to local state; returns true for terminal events
+  // Apply one event to local state; returns true for terminal events.
   function applyEvent(event: ScanStreamEvent): boolean {
 
-    // Route each event type to its state update
+    // Route each event type to its state update.
     switch (event.type) {
       case "reasoning_delta":
         setReasoning((prev) => prev + event.text)
@@ -102,6 +103,8 @@ export function ScanStreamView({ monitorId }: { monitorId: string }) {
           ),
         )
         return false
+      case "preview_complete":
+        return false
       case "persisted":
         setResult({
           storyCount: event.storyCount,
@@ -117,11 +120,12 @@ export function ScanStreamView({ monitorId }: { monitorId: string }) {
     }
   }
 
-  // Fetch the scan stream and process events as they arrive
+  // Fetch the scan stream and process events as they arrive.
   async function runScan() {
+
     if (status === "running") return
 
-    // Reset state before starting a new scan
+    // Reset state before starting a new scan.
     setReasoning("")
     setToolCalls([])
     setResult(null)
@@ -129,7 +133,8 @@ export function ScanStreamView({ monitorId }: { monitorId: string }) {
     setStatus("running")
 
     try {
-      // Fetch the scan stream
+
+      // Fetch the scan stream from the API.
       const response = await fetch(`/api/monitors/${monitorId}/scan`, {
         method: "POST",
       })
@@ -143,7 +148,7 @@ export function ScanStreamView({ monitorId }: { monitorId: string }) {
         throw new Error("Scan did not return a readable stream.")
       }
 
-      // Read and parse the NDJSON response stream
+      // Read + parse the NDJSON stream line by line.
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let pendingLine = ""
@@ -155,7 +160,7 @@ export function ScanStreamView({ monitorId }: { monitorId: string }) {
 
         pendingLine += decoder.decode(value, { stream: true })
 
-        // Split on newlines and process complete lines
+        // Split on newlines and process complete lines.
         const lines = pendingLine.split("\n")
         pendingLine = lines.pop() ?? ""
 
@@ -165,7 +170,7 @@ export function ScanStreamView({ monitorId }: { monitorId: string }) {
         }
       }
 
-      // Handle any remaining partial line
+      // Handle any remaining partial line.
       pendingLine += decoder.decode()
       if (pendingLine.trim()) {
         const event = parseScanEvent(pendingLine)
@@ -176,7 +181,7 @@ export function ScanStreamView({ monitorId }: { monitorId: string }) {
         throw new Error("Scan ended before returning final output.")
       }
 
-      // Refresh so the server-rendered story list shows the new rows
+      // Refresh to pick up the newly persisted rows.
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Scan failed.")
