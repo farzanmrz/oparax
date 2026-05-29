@@ -21,7 +21,7 @@
 
 ## Phase 2 — Track A (Connect-X) ∥ Track B (Monitor→Scan→Draft)
 ### Track A — Connect-X
-- [ ] **T2** — Connect X: `app/auth/callback/route.ts` + `lib/x/tokens.ts` (AES) + Settings block + `components/loop/connect-x.tsx` *(needs T1; risks R3, R7)*
+- [x] **T2** — Connect X: built `app/auth/callback/route.ts` (exchange → capture provider tokens R3 → /2/users/me → AES-encrypt → upsert x_connections → redirect) + `lib/x/tokens.ts` (AES-256-GCM encrypt/decrypt + saveConnection) + Settings now server-rendered (reads only x_username, no tokens to client) + `components/loop/connect-x.tsx` (unlink-stale-then-linkIdentity) + extracted `sign-out-button.tsx`. AES roundtrip ✅ (throwaway tsx); Settings renders Connect X (browser, boundary). **Live connect (real OAuth + x_connections write) is yours to run** — needs `X_TOKEN_ENC_KEY` in `.env.local`. *(needs T1; risks R3, R7)*
 - [ ] **T3** — Token refresh/rotation in `lib/x/tokens.ts` *(needs T2; unit target)*
 - [ ] **T4** — `lib/x/client.ts` (`postTweet`/`getMe`) + `app/api/x/disconnect/route.ts` *(needs T3)*
 ### Track B — Monitor → Scan → Draft
