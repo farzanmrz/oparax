@@ -13,6 +13,9 @@
 > instructions/example-tweets/scan-date fields, per-item auto-draft, `react-tweet`.
 > **Deferred (not this pass):** Test→Monitor rename, legacy `workflow` code/table
 > purge (legacy is inert — no new file imports it). Sidebar label now "Prompt lab".
+> Full rationale + deferred backlog: **`docs/decisions/0001-architecture.md`**.
+> **Status 2026-05-31: the loop posts a real tweet end-to-end locally (CP3 done)** via
+> the prompt-lab Post button (T8's intent). Remaining: CP4 deploy walk + the backlog.
 
 ## Context
 We're building the first **end-to-end manual loop** for Oparax — *Connect X → create monitor → scan (Grok `x_search`) → see separated stories → pick one → draft → edit → post a real tweet* — deployed and real enough that a football reporter can run it and give feedback. The driving reason: there is **no ground truth** yet; self-refining AI output is unfalsifiable, so plumbing-first is the fastest path to a real user's signal. Source of truth = `docs/SPEC.md` (v3.1). Constraints: speed-to-reporter, **zero throwaway work**, **all loop code built fresh** (no reuse of legacy first-party code), correct-not-pretty, **manual-only** (no cron/aggregation/auto — all parked).

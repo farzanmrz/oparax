@@ -1,6 +1,7 @@
 # SPEC — Oparax Slice 1: The Manual Loop
 
 > Status: **APPROVED (v3.1)** — plan approved 2026-05-29; building per `docs/PLAN.md` + `docs/TODO.md`. (v3.1 = `stories` trimmed to scan output; `twitter-text` added as an approved dep; `zod` not used.)
+> **Built + pivoted (2026-05-31):** the loop posts a **real tweet end-to-end (CP3 done)**; the surface became a single **Prompt-Lab** page (`/dashboard/test`). See **`docs/decisions/0001-architecture.md`** (project-wide architecture + deferred backlog) and **`docs/TODO.md` → "Current state"**. The §2.5 monitor-CRUD flow below is the *original* design (set aside, kept in git).
 > Author flow: `interview-me` (intent) → `spec` (this doc) → `plan` → `build`.
 > External contracts grounded against live sources on **2026-05-29**
 > (xai-docs MCP, x-docs MCP, Supabase MCP project `pcgvpypzfwuchyfwdlwe`, Supabase + X docs via web, codebase read).
