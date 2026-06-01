@@ -1,0 +1,18 @@
+/* Halve the whole embed uniformly — width, height, avatar, text, padding.
+   `zoom` reflows (the footprint shrinks too), unlike `transform: scale`. */
+.wrapper {
+  zoom: 0.5;
+}
+
+/* react-tweet ships a 1.5rem vertical margin on the container; the card owns
+   spacing, so drop it. Overriding the var requires the same `.react-tweet-theme`
+   element theme.css sets it on, hence the descendant selector. */
+.wrapper :global(.react-tweet-theme) {
+  --tweet-container-margin: 0;
+}
+
+/* Hide the X/Twitter logo in the header. The CSS-module class is bundler-hashed,
+   but this aria-label is hardcoded in react-tweet's TweetHeader, so it's stable. */
+.wrapper :global(a[aria-label="View on Twitter"]) {
+  display: none;
+}

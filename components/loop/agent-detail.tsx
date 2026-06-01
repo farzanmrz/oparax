@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronRight, Play, RefreshCw, Save, Send } from "lucide-react"
+import { CompactTweet } from "@/components/loop/compact-tweet"
 import { MONITOR_MAX_HANDLES } from "@/lib/scan/handles"
 import type { ScanMetrics, ScanStreamEvent } from "@/lib/scan/stream"
 import { cn } from "@/lib/utils"
@@ -16,14 +17,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 
 type ToolCallOutput = {
@@ -87,6 +80,13 @@ function parseScanEvent(line: string): ScanStreamEvent | null {
 
 function formatCost(costUsd: number | null): string {
   return costUsd === null ? "Cost unavailable" : `$${costUsd.toFixed(6)}`
+}
+
+// react-tweet takes a numeric tweet id, but we store full status URLs
+// (https://x.com/<user>/status/<id>). Pull the trailing id out.
+function getTweetId(url: string): string | null {
+  const match = url.match(/status(?:es)?\/(\d+)/)
+  return match ? match[1] : null
 }
 
 function formatDate(value: string): string {
@@ -733,61 +733,101 @@ export function AgentDetail({
                           <FieldError>{run.error_message}</FieldError>
                         </div>
                       )}
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[34%]">Story</TableHead>
-                            <TableHead className="w-[42%]">Draft</TableHead>
-                            <TableHead>Sources</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {run.items.map((item) => {
-                            const status = itemStatus[item.id] ?? item.status
-                            const tweetUrl = tweetUrls[item.id] ?? item.x_tweet_url
-                            const draftText =
-                              draftTexts[item.id] ??
-                              item.final_text ??
-                              item.drafted_text
-                            const itemPending = pendingItem === item.id
-                            const isPosted = status === "posted"
+                      <div className="flex flex-col gap-3 p-4">
+                        {run.items.map((item) => {
+                          const status = itemStatus[item.id] ?? item.status
+                          const tweetUrl = tweetUrls[item.id] ?? item.x_tweet_url
+                          const draftText =
+                            draftTexts[item.id] ??
+                            item.final_text ??
+                            item.drafted_text
+                          const itemPending = pendingItem === item.id
+                          const isPosted = status === "posted"
+                          const primaryTweetId = getTweetId(
+                            item.primary_tweet_url || item.source_urls[0] || "",
+                          )
 
-                            return (
-                              <TableRow key={item.id}>
-                                <TableCell className="whitespace-normal align-top">
-                                  <div className="flex min-w-0 flex-col gap-1.5">
-                                    <p className="font-medium leading-6 text-foreground">
-                                      {item.story_title}
-                                    </p>
-                                    <p className="text-sm leading-6 text-muted-foreground">
-                                      {item.story_summary}
-                                    </p>
+                          return (
+                            <Card key={item.id}>
+                              <CardContent className="flex flex-col gap-4">
+                                <p className="text-lg font-semibold leading-7 text-foreground">
+                                  {item.story_summary}
+                                </p>
+
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                                    <Textarea
+                                      value={draftText}
+                                      onChange={(event) =>
+                                        setDraftTexts((prev) => ({
+                                          ...prev,
+                                          [item.id]: event.target.value,
+                                        }))
+                                      }
+                                      rows={4}
+                                      className={cn(
+                                        "min-h-28 flex-1 resize-y text-sm leading-6",
+                                        isPosted && "opacity-80",
+                                      )}
+                                      disabled={isPosted}
+                                    />
+                                    <div className="flex shrink-0 flex-col items-end gap-2">
+                                      <div className="flex gap-2">
+                                        <Button
+                                          type="button"
+                                          pending={itemPending}
+                                          disabled={
+                                            itemPending ||
+                                            isPosted ||
+                                            !canRedraftRun
+                                          }
+                                          onClick={() =>
+                                            void redraftItem(item, canRedraftRun)
+                                          }
+                                        >
+                                          <RefreshCw aria-hidden="true" />
+                                          Redraft
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          pending={itemPending}
+                                          disabled={
+                                            itemPending || !xConnected || isPosted
+                                          }
+                                          onClick={() => void postItem(item)}
+                                        >
+                                          <Send aria-hidden="true" />
+                                          Post to X
+                                        </Button>
+                                      </div>
+                                      {tweetUrl && (
+                                        <a
+                                          href={tweetUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-sm text-link hover:text-link-hover"
+                                        >
+                                          View post
+                                        </a>
+                                      )}
+                                      {!xConnected && (
+                                        <p className="max-w-52 text-right text-sm text-muted-foreground">
+                                          Connect X in Settings to post drafts.
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
-                                </TableCell>
-                                <TableCell className="whitespace-normal align-top">
-                                  <Textarea
-                                    value={draftText}
-                                    onChange={(event) =>
-                                      setDraftTexts((prev) => ({
-                                        ...prev,
-                                        [item.id]: event.target.value,
-                                      }))
-                                    }
-                                    rows={4}
-                                    className={cn(
-                                      "min-h-28 resize-y text-sm leading-6",
-                                      isPosted && "opacity-80",
-                                    )}
-                                    disabled={isPosted}
-                                  />
                                   {itemErrors[item.id] && (
-                                    <FieldError>
-                                      {itemErrors[item.id]}
-                                    </FieldError>
+                                    <FieldError>{itemErrors[item.id]}</FieldError>
                                   )}
-                                </TableCell>
-                                <TableCell className="whitespace-normal align-top">
+                                </div>
+
+                                {primaryTweetId ? (
+                                  <CompactTweet
+                                    id={primaryTweetId}
+                                    apiUrl={`/api/tweet/${primaryTweetId}`}
+                                  />
+                                ) : (
                                   <div className="flex flex-col gap-1">
                                     {item.source_urls.map((url, index) => (
                                       <a
@@ -801,62 +841,12 @@ export function AgentDetail({
                                       </a>
                                     ))}
                                   </div>
-                                </TableCell>
-                                <TableCell className="whitespace-normal align-top">
-                                  <div className="flex flex-col items-end gap-2">
-                                    {tweetUrl && (
-                                      <a
-                                        href={tweetUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-sm text-link hover:text-link-hover"
-                                      >
-                                        View post
-                                      </a>
-                                    )}
-                                    <div className="flex flex-wrap justify-end gap-2">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="form-action"
-                                        pending={itemPending}
-                                        disabled={
-                                          itemPending ||
-                                          isPosted ||
-                                          !canRedraftRun
-                                        }
-                                        onClick={() =>
-                                          void redraftItem(item, canRedraftRun)
-                                        }
-                                      >
-                                        <RefreshCw aria-hidden="true" />
-                                        Redraft
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="form-action"
-                                        pending={itemPending}
-                                        disabled={
-                                          itemPending || !xConnected || isPosted
-                                        }
-                                        onClick={() => void postItem(item)}
-                                      >
-                                        <Send aria-hidden="true" />
-                                        Post to X
-                                      </Button>
-                                    </div>
-                                    {!xConnected && (
-                                      <p className="max-w-52 text-right text-sm text-muted-foreground">
-                                        Connect X in Settings to post drafts.
-                                      </p>
-                                    )}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )
+                        })}
+                      </div>
                     </div>
                   )}
                 </section>
