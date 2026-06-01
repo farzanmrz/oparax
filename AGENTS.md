@@ -27,6 +27,7 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 │
 ├── components/
 │   ├── ui/         # shadcn primitives (button, card, input, table, sidebar, …)
+│   ├── hooks/      # shadcn `hooks` alias target (components.json) → use-mobile.ts, REQUIRED by ui/sidebar.tsx
 │   ├── loop/       # agents UI + connect-x / disconnect-x (X linking) components
 │   ├── settings/   # settings sections: profile, coming-soon placeholders, tab nav
 │   └── *.tsx       # auth forms, sidebar/nav, dashboard page header
@@ -35,12 +36,10 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 │                   # lifecycle + client), types/ (generated DB types + aliases), validation.ts, auth-errors.ts, utils.ts
 │
 ├── docs/           # Spec, PRD & planning docs — all spec/PRD + ADRs + ideas live here. See decisions/0002-agent-data-model.md
-├── hooks/          # use-mobile.ts (responsive viewport helper)
-├── public/         # Static assets
-├── supabase/       # Repo-tracked migrations. Live tables: agents, runs, run_items, x_connections
-│                   # (old monitors/scans/stories/drafts/posts DROPPED in the agents-model cutover)
-└── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
+└── public/         # Static assets
 ```
+
+DB schema is NOT tracked in-repo (the `supabase/migrations` folder was removed 2026-06-01) — the database is managed via the Supabase MCP/dashboard. Current shape lives in `lib/types/database.ts` (generated types) + `docs/decisions/0002-agent-data-model.md`. Live tables: `agents, runs, run_items, x_connections`. The `scripts/` scratchpad folder was also removed; the pnpm-only guard now runs inline via `preinstall: npx -y only-allow pnpm` (no committed script file).
 
 **Current surface:** the **Agents page** (`app/dashboard/agents`, was `test`) is the active product — Connect X → configure agent (handles + prompts) → **Run Agent** (single Grok call: scan + draft together, one cost) → every story is drafted → review + edit → **post manually per item**. Running before save is an in-memory **preview**; **Save Agent** persists the agent plus that preview as a completed `runs` row with `run_items`, then routes to the agent detail page. **Routing:** `/` sends signed-in users to `/dashboard`; `/dashboard` sends connected users to `/dashboard/agents` and disconnected users to `/dashboard/connect-x`; `/dashboard/connect-x` is the required X-linking gate before creating agents; `/dashboard/agents` = saved-agents list; `/dashboard/agents/new` = create / Run-Agent page (requires `x_connections`); `/dashboard/agents/[id]` = manual scan history + redraft/post detail. The legacy `workflows` module (pages + the 4 legacy tables) was removed 2026-05-31; `monitors/scans/stories/drafts/posts` were dropped in the agents-model cutover. Live DB tables: `agents, runs, run_items, x_connections`. Disconnecting X unlinks the Supabase Auth `x` identity, deletes `x_connections`, and marks agents `inactive`; reconnecting X reactivates them. Auto-scan cron deferred. Full architecture + typing decisions: `docs/decisions/0002-agent-data-model.md`; original baseline: `docs/decisions/0001-architecture.md`.
 
