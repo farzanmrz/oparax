@@ -7,11 +7,17 @@ export const DEFAULT_RUN_NAME = "FC Barcelona news"
 
 // Default monitored handles prefilled into the lab (football beat reporters).
 export const DEFAULT_HANDLES = [
+  "talkfcb_",
+  "EduardoHagn",
   "FabrizioRomano",
   "DavidOrnstein",
   "Glongari",
-  "talkfcb_",
+  "cfcpys",
+  "Barza_Buzz",
+  "Messilizer0",
   "fcbarcelona",
+  "BarcaSpaces",
+  "NealGardner_",
 ]
 
 // Default scan USER prompt (what to search for).

@@ -65,6 +65,8 @@ Update the shared system first. If a visual issue appears on one page but the sa
 - Button hover should be visible on the neutral primary surface; active state may use a subtle pressed effect.
 - Use the shared `pending` prop for async button progress. The loader belongs to the right of the button content.
 - Use `SubmitButton` for server-action forms so pending state is automatic.
+- Use `size="form-action"` for compact actions that sit in a form label row, such as running a scan or agent from an instruction field header.
+- Use `variant="success"` for explicit save/confirm actions when a green semantic cue is desired; keep it primary-like with a subtle green border rather than a solid green fill.
 - Do not add local CTA classes when the shared `Button` default covers the case.
 
 ## Inputs And Forms

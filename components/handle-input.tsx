@@ -99,13 +99,13 @@ export function HandleInput({
         {handles.map((handle, index) => (
           <span
             key={handle}
-            className="inline-flex h-7 items-center gap-1 rounded-md border border-link/25 bg-link/10 px-2.5 text-sm font-medium text-link"
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-x-handle-border bg-x-handle-bg px-2.5 text-sm font-medium text-x-handle"
           >
             @{handle}
             <button
               type="button"
               onClick={() => onRemove(index)}
-              className="ml-0.5 inline-flex size-5 items-center justify-center rounded-full text-link/70 transition-colors hover:bg-link/15 hover:text-link-hover"
+              className="ml-0.5 inline-flex size-5 items-center justify-center rounded-full text-x-handle/70 transition-colors hover:bg-background/50 hover:text-x-handle-hover"
               aria-label={`Remove @${handle}`}
             >
               <HugeiconsIcon

@@ -1,7 +1,8 @@
 "use client"
 
 // Imports
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { ChevronRight, HelpCircle } from "lucide-react"
 import {
   DEFAULT_HANDLES,
   DEFAULT_RUN_NAME,
@@ -9,15 +10,12 @@ import {
 } from "@/lib/scan/defaults"
 import { DEFAULT_DRAFTING_INSTRUCTIONS } from "@/lib/draft/defaults"
 import { MONITOR_MAX_HANDLES } from "@/lib/scan/handles"
-import { TWEET_WEIGHTED_LIMIT, weightedLength } from "@/lib/draft/count"
-import { getDraftIssue } from "@/lib/draft/validate"
 import { cn } from "@/lib/utils"
 import { HandleInput } from "@/components/handle-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -32,21 +30,22 @@ type ToolCallOutput = {
   input: string
 }
 
-type DraftStatus = "idle" | "drafting" | "done" | "posting" | "posted" | "error"
+type HelpTopicName = "scan" | "draft"
+type HelpTopic = HelpTopicName | null
+type SaveStatus = "idle" | "saving" | "saved" | "error"
 
-type DraftState = {
-  text: string
-  status: DraftStatus
-  error: string | null
-  postUrl: string | null
+const HELP_COPY: Record<HelpTopicName, { title: string; body: string }> = {
+  scan: {
+    title: "Scanning instructions",
+    body: "Use this to define what the agent should monitor, how strict it should be about story quality, and which kinds of posts should be ignored during the scan.",
+  },
+  draft: {
+    title: "Drafting instructions",
+    body: "Use this to describe the voice, formatting, angle, and posting style the agent should apply when it turns each scanned story into an X-ready draft.",
+  },
 }
-
-const EMPTY_DRAFT_STATE: DraftState = {
-  text: "",
-  status: "idle",
-  error: null,
-  postUrl: null,
-}
+const UNSAVED_WARNING =
+  "Your prompt lab changes will be lost if you leave this page."
 
 /**
  * Parse one NDJSON line into a scan event, or null if invalid.
@@ -90,20 +89,21 @@ function formatScanCost(costUsd: number | null): string {
   return costUsd === null ? "Cost unavailable" : `Cost $${costUsd.toFixed(6)}`
 }
 
-/**
- * Return a usable draft state object for a selected story.
- * @param draft - stored draft state
- * @returns the stored draft state or the empty default
- */
-function getDraftState(draft: DraftState | undefined): DraftState {
-  return draft ?? EMPTY_DRAFT_STATE
+function getAgentFingerprint({
+  handles,
+  scanInstructions,
+  draftingInstructions,
+}: {
+  handles: string[]
+  scanInstructions: string
+  draftingInstructions: string
+}): string {
+  return JSON.stringify({ handles, scanInstructions, draftingInstructions })
 }
 
 /**
- * Prompt-lab: prefilled operator inputs (name, handles, scan user prompt,
- * drafting instructions) drive a scan; pick a story, generate one draft, edit
- * it, and post a real tweet. System prompts live in code. Nothing persists
- * until you post.
+ * Prompt-lab: prefilled operator inputs drive one agent run. The current API
+ * still streams scan output; the UI is shaped for the combined scan+draft flow.
  * @returns the prompt-lab UI
  */
 export function PromptLab() {
@@ -115,7 +115,7 @@ export function PromptLab() {
     DEFAULT_DRAFTING_INSTRUCTIONS,
   )
 
-  // Scan run state.
+  // Agent run state.
   const [scanStatus, setScanStatus] = useState<
     "idle" | "running" | "done" | "error"
   >("idle")
@@ -125,59 +125,132 @@ export function PromptLab() {
   const [stories, setStories] = useState<PreviewStory[]>([])
   const [scanError, setScanError] = useState<string | null>(null)
   const [selectedStoryKeys, setSelectedStoryKeys] = useState<string[]>([])
-  const selectedStoryKeysRef = useRef<string[]>([])
 
-  // Draft + post state.
-  const [drafts, setDrafts] = useState<Record<string, DraftState>>({})
-  const draftBatchRef = useRef(0)
+  // Page interaction state.
+  const [helpTopic, setHelpTopic] = useState<HelpTopic>(null)
+  const [isReasoningOpen, setIsReasoningOpen] = useState(false)
+  const [isToolsOpen, setIsToolsOpen] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [lastRunFingerprint, setLastRunFingerprint] = useState<string | null>(
+    null,
+  )
+  const runFingerprintRef = useRef("")
+  const allowHistoryNavigationRef = useRef(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    allowHistoryNavigationRef.current = false
+    window.history.pushState(
+      { promptLabUnsavedGuard: true },
+      "",
+      window.location.href,
+    )
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (allowHistoryNavigationRef.current) return
+      event.preventDefault()
+      event.returnValue = ""
+    }
+
+    function handleDocumentClick(event: MouseEvent) {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return
+      }
+
+      const target =
+        event.target instanceof Element
+          ? event.target.closest<HTMLAnchorElement>("a[href]")
+          : null
+      if (!target || target.target || target.download) return
+
+      const rawHref = target.getAttribute("href")
+      if (
+        !rawHref ||
+        rawHref.startsWith("#") ||
+        rawHref.startsWith("mailto:") ||
+        rawHref.startsWith("tel:")
+      ) {
+        return
+      }
+
+      const destination = new URL(target.href, window.location.href)
+      const current = new URL(window.location.href)
+      const isSamePage =
+        destination.origin === current.origin &&
+        destination.pathname === current.pathname &&
+        destination.search === current.search
+      if (isSamePage) return
+
+      if (!window.confirm(UNSAVED_WARNING)) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
+      allowHistoryNavigationRef.current = true
+      setHasUnsavedChanges(false)
+    }
+
+    function handlePopState() {
+      if (allowHistoryNavigationRef.current) return
+
+      if (window.confirm(UNSAVED_WARNING)) {
+        allowHistoryNavigationRef.current = true
+        setHasUnsavedChanges(false)
+        window.setTimeout(() => window.history.back(), 0)
+        return
+      }
+
+      window.history.pushState(
+        { promptLabUnsavedGuard: true },
+        "",
+        window.location.href,
+      )
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    window.addEventListener("popstate", handlePopState)
+    document.addEventListener("click", handleDocumentClick, true)
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      window.removeEventListener("popstate", handlePopState)
+      document.removeEventListener("click", handleDocumentClick, true)
+    }
+  }, [hasUnsavedChanges])
+
+  function markDirty() {
+    setHasUnsavedChanges(true)
+    setSaveError(null)
+    setSaveStatus((status) => (status === "saving" ? status : "idle"))
+  }
 
   function addHandle(handle: string) {
+    markDirty()
     setHandles((prev) => [...prev, handle])
   }
 
   function removeHandle(index: number) {
+    markDirty()
     setHandles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
-  }
-
-  function getSelectedStoryEntries() {
-    const selected = new Set(selectedStoryKeys)
-    return stories
-      .map((story, index) => ({
-        story,
-        index,
-        key: getStoryKey(story, index),
-      }))
-      .filter((entry) => selected.has(entry.key))
   }
 
   function toggleStory(story: PreviewStory, index: number) {
     const key = getStoryKey(story, index)
-    setSelectedStoryKeys((prev) => {
-      if (!prev.includes(key)) {
-        const next = [...prev, key]
-        selectedStoryKeysRef.current = next
-        return next
-      }
-
-      setDrafts((draftsByKey) => {
-        const next = { ...draftsByKey }
-        delete next[key]
-        return next
-      })
-      const next = prev.filter((item) => item !== key)
-      selectedStoryKeysRef.current = next
-      return next
-    })
-  }
-
-  function updateDraft(
-    key: string,
-    updater: (draft: DraftState) => DraftState,
-  ) {
-    setDrafts((prev) => ({
-      ...prev,
-      [key]: updater(getDraftState(prev[key])),
-    }))
+    setSelectedStoryKeys((prev) =>
+      prev.includes(key)
+        ? prev.filter((item) => item !== key)
+        : [...prev, key],
+    )
   }
 
   // Apply one stream event to scan state; returns true for terminal events.
@@ -185,15 +258,20 @@ export function PromptLab() {
     if (!event) return false
     switch (event.type) {
       case "reasoning_delta":
+        setIsReasoningOpen(true)
         setReasoning((prev) => prev + event.text)
         return false
       case "tool_call_started":
+        setIsReasoningOpen(true)
+        setIsToolsOpen(true)
         setToolCalls((prev) => [
           ...prev,
           { id: event.id, name: event.name, input: "" },
         ])
         return false
       case "tool_call_input_delta":
+        setIsReasoningOpen(true)
+        setIsToolsOpen(true)
         setToolCalls((prev) =>
           prev.some((toolCall) => toolCall.id === event.id)
             ? prev.map((toolCall) =>
@@ -227,6 +305,7 @@ export function PromptLab() {
         setStories(event.stories)
         setScanCost(event.metrics.costUsd)
         setScanStatus("done")
+        setLastRunFingerprint(runFingerprintRef.current)
         return true
       case "error":
         setScanError(event.message)
@@ -235,22 +314,35 @@ export function PromptLab() {
     }
   }
 
-  // Run a scan from the current handles + scan user prompt.
-  async function runScan() {
+  // Run the agent from the current handles + scan/draft instructions.
+  async function runAgent() {
     if (scanStatus === "running") return
+
+    const runFingerprint = getAgentFingerprint({
+      handles,
+      scanInstructions: scanUserPrompt,
+      draftingInstructions,
+    })
+    if (lastRunFingerprint === runFingerprint) return
     if (handles.length === 0) {
-      setScanError("Add at least one handle to scan.")
+      setScanError("Add at least one handle to monitor.")
       return
     }
-    draftBatchRef.current += 1
+    if (!scanUserPrompt.trim() || !draftingInstructions.trim()) {
+      setScanError("Add scanning and drafting instructions before running.")
+      return
+    }
+
+    markDirty()
+    runFingerprintRef.current = runFingerprint
     setScanStatus("running")
+    setIsReasoningOpen(true)
+    setIsToolsOpen(false)
     setReasoning("")
     setToolCalls([])
     setScanCost(null)
     setStories([])
-    selectedStoryKeysRef.current = []
     setSelectedStoryKeys([])
-    setDrafts({})
     setScanError(null)
 
     try {
@@ -260,10 +352,10 @@ export function PromptLab() {
         body: JSON.stringify({ handles, userPrompt: scanUserPrompt }),
       })
       if (!response.ok) {
-        throw new Error((await response.text()) || "Scan failed.")
+        throw new Error((await response.text()) || "Agent run failed.")
       }
       if (!response.body) {
-        throw new Error("Scan returned no stream.")
+        throw new Error("Agent run returned no stream.")
       }
 
       const reader = response.body.getReader()
@@ -286,124 +378,39 @@ export function PromptLab() {
         sawTerminalEvent = true
       }
       if (!sawTerminalEvent) {
-        throw new Error("Scan ended before returning output.")
+        throw new Error("Agent run ended before returning output.")
       }
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : "Scan failed.")
+      setScanError(err instanceof Error ? err.message : "Agent run failed.")
       setScanStatus("error")
     }
   }
 
-  // Generate drafts for every selected story from the drafting instructions.
-  async function generateDrafts() {
-    const entries = getSelectedStoryEntries()
-    if (entries.length === 0) return
+  async function saveAgent() {
+    if (saveStatus === "saving") return
 
-    const batchId = draftBatchRef.current + 1
-    draftBatchRef.current = batchId
-
-    for (const { key } of entries) {
-      updateDraft(key, (draft) => ({
-        ...draft,
-        status: "drafting",
-        error: null,
-        postUrl: null,
-      }))
-    }
-
-    await Promise.all(
-      entries.map(async ({ key, story }) => {
-        try {
-          const response = await fetch("/api/test/draft", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              draftingInstructions,
-              storyTitle: story.title,
-              storySummary: story.summary,
-            }),
-          })
-          const data = (await response.json()) as {
-            text?: string
-            error?: string
-          }
-          if (!response.ok || typeof data.text !== "string") {
-            throw new Error(data.error || "Draft failed.")
-          }
-          const text = data.text
-          if (
-            batchId !== draftBatchRef.current ||
-            !selectedStoryKeysRef.current.includes(key)
-          ) {
-            return
-          }
-          updateDraft(key, () => ({
-            text,
-            status: "done",
-            error: null,
-            postUrl: null,
-          }))
-        } catch (err) {
-          if (
-            batchId !== draftBatchRef.current ||
-            !selectedStoryKeysRef.current.includes(key)
-          ) {
-            return
-          }
-          updateDraft(key, (draft) => ({
-            ...draft,
-            status: "error",
-            error: err instanceof Error ? err.message : "Draft failed.",
-            postUrl: null,
-          }))
-        }
-      }),
-    )
-  }
-
-  // Post one edited draft as a real tweet.
-  async function postDraft(key: string, story: PreviewStory) {
-    const draft = getDraftState(drafts[key])
-    if (!draft.text.trim()) return
-
-    updateDraft(key, (current) => ({
-      ...current,
-      status: "posting",
-      error: null,
-      postUrl: null,
-    }))
-
+    setSaveStatus("saving")
+    setSaveError(null)
     try {
-      const response = await fetch("/api/test/post", {
+      const response = await fetch("/api/test/save-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          text: draft.text,
-          storyTitle: story.title,
-          storySummary: story.summary,
-          sourceUrls: story.sourceUrls,
+          handles,
+          monitoringDescription: scanUserPrompt,
+          draftingInstructions,
         }),
       })
-      const data = (await response.json()) as { url?: string; error?: string }
-      if (!response.ok || !data.url) {
-        throw new Error(data.error || "Post failed.")
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save agent.")
       }
-      if (!selectedStoryKeysRef.current.includes(key)) return
-      updateDraft(key, (current) => ({
-        ...current,
-        status: "posted",
-        error: null,
-        postUrl: data.url ?? null,
-      }))
+      setSaveStatus("saved")
+      setHasUnsavedChanges(false)
     } catch (err) {
-      if (!selectedStoryKeysRef.current.includes(key)) return
-      updateDraft(key, (current) => ({
-        ...current,
-        status: "error",
-        error: err instanceof Error ? err.message : "Post failed.",
-        postUrl: null,
-      }))
+      setSaveStatus("error")
+      setSaveError(err instanceof Error ? err.message : "Failed to save.")
     }
   }
 
@@ -413,21 +420,92 @@ export function PromptLab() {
     key: getStoryKey(story, index),
   }))
   const selectedStorySet = new Set(selectedStoryKeys)
-  const selectedStoryEntries = storyEntries.filter((entry) =>
-    selectedStorySet.has(entry.key),
-  )
-  const isDraftingSelectedStories = selectedStoryEntries.some(
-    ({ key }) => getDraftState(drafts[key]).status === "drafting",
-  )
-  const hasDraftOutput = selectedStoryEntries.some(({ key }) => {
-    const draft = getDraftState(drafts[key])
-    return draft.text || draft.status === "drafting" || draft.error
+  const currentRunFingerprint = getAgentFingerprint({
+    handles,
+    scanInstructions: scanUserPrompt,
+    draftingInstructions,
   })
+  const hasRunAgent = lastRunFingerprint !== null
+  const isRunCurrent =
+    hasRunAgent && lastRunFingerprint === currentRunFingerprint
+  const canRunAgent =
+    scanStatus !== "running" &&
+    handles.length > 0 &&
+    scanUserPrompt.trim().length > 0 &&
+    draftingInstructions.trim().length > 0 &&
+    !isRunCurrent
+  const runButtonLabel = hasRunAgent ? "Rerun Agent" : "Run Agent"
+  const canSaveAgent =
+    scanStatus === "done" &&
+    stories.length > 0 &&
+    isRunCurrent &&
+    name.trim().length > 0 &&
+    handles.length > 0 &&
+    saveStatus !== "saving" &&
+    saveStatus !== "saved"
   const hasScanOutput =
     scanStatus === "running" ||
     reasoning ||
     toolCalls.length > 0 ||
     scanStatus === "done"
+
+  function renderHelpButton(topic: HelpTopicName) {
+    const copy = HELP_COPY[topic]
+
+    return (
+      <button
+        type="button"
+        aria-label={`Show ${copy.title.toLowerCase()} help`}
+        onClick={() => setHelpTopic(topic)}
+        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      >
+        <HelpCircle aria-hidden="true" className="size-4" />
+      </button>
+    )
+  }
+
+  function renderHelpDialog() {
+    if (!helpTopic) return null
+    const copy = HELP_COPY[helpTopic]
+
+    return (
+      <div
+        role="presentation"
+        className="fixed inset-0 z-50 flex items-start justify-center bg-background/75 px-4 py-16 backdrop-blur-sm"
+        onClick={() => setHelpTopic(null)}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="prompt-lab-help-title"
+          className="w-full max-w-lg rounded-lg border border-border bg-popover p-5 text-popover-foreground shadow-xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <h2
+                id="prompt-lab-help-title"
+                className="text-lg font-semibold leading-6 text-foreground"
+              >
+                {copy.title}
+              </h2>
+              <p className="text-base leading-6 text-muted-foreground">
+                {copy.body}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="form-action"
+              onClick={() => setHelpTopic(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-2 md:px-4">
@@ -440,12 +518,20 @@ export function PromptLab() {
                 <Input
                   id="prompt-lab-name"
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(event) => {
+                    markDirty()
+                    setName(event.target.value)
+                  }}
                 />
               </Field>
 
               <Field>
-                <FieldLabel>X accounts to monitor</FieldLabel>
+                <FieldLabel>
+                  X accounts to monitor{" "}
+                  <span className="text-muted-foreground">
+                    ({handles.length} of {MONITOR_MAX_HANDLES})
+                  </span>
+                </FieldLabel>
                 <HandleInput
                   handles={handles}
                   maxHandles={MONITOR_MAX_HANDLES}
@@ -458,221 +544,240 @@ export function PromptLab() {
 
             <div className="grid gap-6 lg:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="prompt-lab-scanning-instructions">
-                  Scanning instructions
-                </FieldLabel>
+                <div className="flex items-start gap-1.5">
+                  <FieldLabel htmlFor="prompt-lab-scanning-instructions">
+                    Scanning instructions
+                  </FieldLabel>
+                  {renderHelpButton("scan")}
+                </div>
                 <Textarea
                   id="prompt-lab-scanning-instructions"
                   value={scanUserPrompt}
-                  onChange={(event) => setScanUserPrompt(event.target.value)}
+                  onChange={(event) => {
+                    markDirty()
+                    setScanUserPrompt(event.target.value)
+                  }}
                   rows={8}
                   className="min-h-52 resize-y"
                 />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="prompt-lab-drafting-instructions">
-                  Drafting instructions
-                </FieldLabel>
+                <div className="flex items-start gap-1.5">
+                  <FieldLabel htmlFor="prompt-lab-drafting-instructions">
+                    Drafting instructions
+                  </FieldLabel>
+                  {renderHelpButton("draft")}
+                </div>
                 <Textarea
                   id="prompt-lab-drafting-instructions"
                   value={draftingInstructions}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    markDirty()
                     setDraftingInstructions(event.target.value)
-                  }
+                  }}
                   rows={8}
                   className="min-h-52 resize-y"
                 />
               </Field>
             </div>
 
-            {scanStatus !== "running" && (
-              <div className="flex justify-start">
-                <Button onClick={runScan}>
-                  Run scan
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-start">
+              <Button
+                onClick={runAgent}
+                pending={scanStatus === "running"}
+                disabled={!canRunAgent}
+                variant={isRunCurrent ? "outline" : "default"}
+                size="form-action"
+              >
+                {scanStatus === "running" ? "Running" : runButtonLabel}
+              </Button>
+            </div>
 
             {hasScanOutput && (
-              <div className="flex flex-col gap-4 border-l border-border pl-4">
-                <div className="flex flex-wrap items-center gap-2 text-base leading-6 text-muted-foreground">
-                  {scanStatus === "running" && (
-                    <span
-                      aria-hidden="true"
-                      className="size-2 rounded-full bg-link animate-pulse"
-                    />
-                  )}
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  aria-expanded={isReasoningOpen}
+                  onClick={() => setIsReasoningOpen((open) => !open)}
+                  className="flex w-full items-center gap-3 py-1 text-left outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "shrink-0 rounded-full",
+                      scanStatus === "running"
+                        ? "size-3 animate-spin border-2 border-success/25 border-t-success"
+                        : "size-2.5 bg-success",
+                    )}
+                  />
                   <span className="font-semibold text-foreground/90">
                     Reasoning
-                  </span>
-                  <span>·</span>
-                  {scanStatus === "running" ? (
-                    <span>Agents thinking</span>
-                  ) : (
-                    <span>
-                      {toolCalls.length} tool call
-                      {toolCalls.length === 1 ? "" : "s"} ·{" "}
-                      {formatScanCost(scanCost)} · {stories.length} stor
-                      {stories.length === 1 ? "y" : "ies"}
-                    </span>
-                  )}
-                </div>
-
-                {reasoning && (
-                  <p className="whitespace-pre-wrap text-base leading-6">
-                    {reasoning}
-                  </p>
-                )}
-
-                {toolCalls.map((toolCall) => (
-                  <div key={toolCall.id} className="flex flex-col gap-1 pl-4">
-                    <p className="text-base leading-6">
-                      <span className="font-semibold text-foreground/90">
-                        {toolCall.name}
+                    {scanStatus === "done" && (
+                      <span className="ml-2 font-normal text-muted-foreground">
+                        ({toolCalls.length} tool call
+                        {toolCalls.length === 1 ? "" : "s"} ·{" "}
+                        {formatScanCost(scanCost)} · {stories.length} item
+                        {stories.length === 1 ? "" : "s"})
                       </span>
-                      :
-                    </p>
-                    {toolCall.input && (
-                      <p className="whitespace-pre-wrap pl-4 text-base leading-6 text-muted-foreground">
-                        {toolCall.input}
+                    )}
+                  </span>
+                  <ChevronRight
+                    aria-hidden="true"
+                    className={cn(
+                      "ml-auto size-4 shrink-0 text-muted-foreground transition-transform",
+                      isReasoningOpen && "rotate-90",
+                    )}
+                  />
+                </button>
+
+                {isReasoningOpen && (
+                  <div className="flex flex-col gap-2 pl-10">
+                    {reasoning && (
+                      <p className="flex items-start gap-2 whitespace-pre-wrap text-base leading-6 text-foreground/90">
+                        <span
+                          aria-hidden="true"
+                          className="mt-2 size-2 shrink-0 rounded-full bg-success/55"
+                        />
+                        <span>{reasoning}</span>
                       </p>
                     )}
-                  </div>
-                ))}
 
-                {stories.length > 0 && (
-                  <div
-                    className="grid gap-3 pt-2 [grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))]"
-                    aria-label="Scan results"
-                  >
-                    {storyEntries.map(({ story, index, key }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        aria-pressed={selectedStorySet.has(key)}
-                        onClick={() => toggleStory(story, index)}
-                        className={cn(
-                          "min-h-20 cursor-pointer rounded-lg border border-border bg-background/35 px-3.5 py-3 text-left text-base leading-6 transition-colors outline-none hover:border-foreground/35 hover:bg-background/45 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                          selectedStorySet.has(key) &&
-                            "border-ring bg-background/55",
+                    {toolCalls.length > 0 && (
+                      <div>
+                        <button
+                          type="button"
+                          aria-expanded={isToolsOpen}
+                          onClick={() => setIsToolsOpen((open) => !open)}
+                          className="flex w-full items-start gap-2 py-1 text-left text-base leading-6 text-foreground/90 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="mt-2 size-2 shrink-0 rounded-full bg-success/55"
+                          />
+                          <span>Calling tools: {toolCalls.length}</span>
+                          <ChevronRight
+                            aria-hidden="true"
+                            className={cn(
+                              "ml-auto size-4 shrink-0 text-muted-foreground transition-transform",
+                              isToolsOpen && "rotate-90",
+                            )}
+                          />
+                        </button>
+
+                        {isToolsOpen && (
+                          <div className="flex flex-col gap-1.5 pl-5">
+                            {toolCalls.map((toolCall) => (
+                              <p
+                                key={toolCall.id}
+                                className="text-sm leading-6 text-muted-foreground"
+                              >
+                                <span className="font-semibold">
+                                  {toolCall.name}:
+                                </span>{" "}
+                                <span className="whitespace-pre-wrap break-words">
+                                  {toolCall.input || "Waiting for input."}
+                                </span>
+                              </p>
+                            ))}
+                          </div>
                         )}
-                      >
-                        <span className="font-[525] text-foreground/90">
-                          {story.title}
-                        </span>
-                      </button>
-                    ))}
+                      </div>
+                    )}
                   </div>
                 )}
+
               </div>
             )}
+
+            {stories.length > 0 && (
+              <div className="flex flex-col gap-3" aria-label="Agent results">
+                <p className="text-base font-[525] leading-6 text-foreground/90">
+                  Review the generated news and draft previews below before
+                  posting on X.
+                </p>
+                {storyEntries.map(({ story, index, key }) => {
+                  const isSelected = selectedStorySet.has(key)
+
+                  return (
+                    <div
+                      key={key}
+                      className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]"
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => toggleStory(story, index)}
+                        className={cn(
+                          "min-w-0 rounded-lg border border-border bg-muted/25 px-3 py-2.5 text-left text-sm leading-5 transition-colors outline-none hover:border-foreground/35 hover:bg-muted/45 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                          isSelected && "border-success/60 bg-success-bg/45",
+                        )}
+                      >
+                        <span className="text-foreground/82">
+                          {story.title}
+                        </span>
+                        {story.sourceUrls.length > 0 ? (
+                          story.sourceUrls.map((url) => (
+                            <span
+                              key={url}
+                              className="ml-2 break-all text-link"
+                            >
+                              {url}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="ml-2 text-muted-foreground">
+                            No source URLs returned.
+                          </span>
+                        )}
+                      </button>
+
+                      <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-background/30 px-3 py-2.5 text-sm leading-5">
+                        <p className="font-[525] text-foreground/90">
+                          Draft preview
+                        </p>
+                        <p className="text-muted-foreground">
+                          Draft output will appear here when the combined agent
+                          run is connected.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="form-action"
+                          disabled
+                          className="self-start"
+                        >
+                          Post to X
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             {scanError && <FieldError>{scanError}</FieldError>}
           </FieldGroup>
         </CardContent>
       </Card>
 
-      {selectedStoryEntries.length > 0 && (
-        <div className="flex flex-col gap-4">
-          <div className="flex justify-start">
-            <Button
-              onClick={generateDrafts}
-              pending={isDraftingSelectedStories}
-              disabled={isDraftingSelectedStories}
-            >
-              {hasDraftOutput ? "Regenerate drafts" : "Generate drafts"}
-            </Button>
-          </div>
-
-          {hasDraftOutput && (
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))]">
-              {selectedStoryEntries.map(({ story, key }) => {
-                const draft = getDraftState(drafts[key])
-                const draftCount = draft.text ? weightedLength(draft.text) : 0
-                const draftIssue = draft.text ? getDraftIssue(draft.text) : null
-                const isPosting = draft.status === "posting"
-
-                if (!draft.text && draft.status !== "drafting" && !draft.error) {
-                  return null
-                }
-
-                return (
-                  <Card key={key} size="sm" className="min-w-0">
-                    <CardContent className="flex h-full flex-col gap-3">
-                      <Field data-invalid={draftIssue ? true : undefined}>
-                        <FieldLabel htmlFor={`prompt-lab-draft-${key}`}>
-                          {story.title}
-                        </FieldLabel>
-                        {draft.status === "drafting" ? (
-                          <FieldDescription>Drafting...</FieldDescription>
-                        ) : (
-                          <Textarea
-                            id={`prompt-lab-draft-${key}`}
-                            value={draft.text}
-                            onChange={(event) =>
-                              updateDraft(key, (current) => ({
-                                ...current,
-                                text: event.target.value,
-                                error: null,
-                                postUrl: null,
-                              }))
-                            }
-                            rows={5}
-                            className="resize-y"
-                            aria-invalid={draftIssue ? true : undefined}
-                            disabled={isPosting}
-                          />
-                        )}
-                        {draft.text && (
-                          <FieldDescription
-                            className={
-                              draftCount > TWEET_WEIGHTED_LIMIT
-                                ? "text-destructive"
-                                : undefined
-                            }
-                          >
-                            {draftCount} / {TWEET_WEIGHTED_LIMIT}
-                          </FieldDescription>
-                        )}
-                        {draftIssue && <FieldError>{draftIssue}</FieldError>}
-                        {draft.error && <FieldError>{draft.error}</FieldError>}
-                        {draft.postUrl && (
-                          <FieldDescription>
-                            Posted{" "}
-                            <a
-                              href={draft.postUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              View tweet
-                            </a>
-                          </FieldDescription>
-                        )}
-                      </Field>
-                      {draft.text && (
-                        <Button
-                          onClick={() => postDraft(key, story)}
-                          pending={isPosting}
-                          disabled={isPosting || draftIssue !== null}
-                          className="mt-auto self-start"
-                        >
-                          Post to X
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="flex justify-end">
-        <Button disabled>
-          Save agent
+      <div className="flex flex-col items-start gap-2">
+        <Button
+          onClick={saveAgent}
+          pending={saveStatus === "saving"}
+          disabled={!canSaveAgent}
+          variant="success"
+        >
+          {saveStatus === "saving"
+            ? "Saving"
+            : saveStatus === "saved"
+              ? "Saved"
+              : "Save Agent"}
         </Button>
+        {saveError && <FieldError>{saveError}</FieldError>}
       </div>
+
+      {renderHelpDialog()}
     </div>
   )
 }
