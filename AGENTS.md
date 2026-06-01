@@ -12,31 +12,35 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 .
 ├── package.json    # Deps + scripts (pnpm dev / build / lint)
 ├── next.config.ts  # Next.js config
-├── vercel.json     # Vercel cron configuration.
+├── vercel.json     # Vercel config; crons EMPTY (auto-scan cron deferred — see docs/PLAN.md)
 ├── components.json # shadcn config
 ├── tsconfig.json   # TypeScript config (strict, @/* alias)
 ├── proxy.ts        # Per-request hook that refreshes the Supabase session.
 │                   # MISLEADINGLY NAMED — NOT Supabase middleware (that lives in lib/supabase/middleware.ts).
 │
 ├── app/            # Next.js App Router
-│   ├── login/, signup/, auth/, forgot-password/  # Auth flow: sign-in, sign-up + email verify, password reset
-│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings + workflow create/detail pages
-│   │   └── test/   # Minimal Grok prompt-testing workflow pages; mirrors shell scan output for iteration.
-│   └── api/        # scan/route.ts → streams Grok x_search over SSE; draft/route.ts → generates draft tweets
+│   ├── login/, signup/, auth/, forgot-password/  # Auth flow; auth/callback = X OAuth (link X for posting)
+│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings/ (tabbed) + the prompt lab
+│   │   └── test/   # THE PROMPT LAB (components/loop/prompt-lab.tsx): scan → pick story → draft → post a real tweet
+│   └── api/        # test/* → prompt-lab scan(stream)/draft/post · x/* → disconnect (legacy scan/draft/cron removed)
 │
 ├── components/
 │   ├── ui/         # shadcn primitives (button, card, input, table, sidebar, …)
-│   └── *.tsx       # App components: auth forms, sidebar/nav, and the workflow drafting studio + its panels/stepper
+│   ├── loop/       # prompt-lab + connect-x / disconnect-x (X linking) components
+│   ├── settings/   # settings sections: profile, coming-soon placeholders, tab nav
+│   └── *.tsx       # auth forms, sidebar/nav, dashboard page header
 │
-├── lib/            # Domain logic: supabase/ clients, xai.ts (Grok client = openai SDK @ api.x.ai), prompts.ts,
-│                   # workflow-drafting.ts, scan-constraints.ts, validation.ts, auth-errors.ts, utils.ts (cn helper)
+├── lib/            # Domain logic: supabase/ clients, scan/ + draft/ (Grok scan & draft pipeline), x/ (token
+│                   # lifecycle + client), types/ (generated DB types + aliases), validation.ts, auth-errors.ts, utils.ts
 │
 ├── docs/           # Spec, PRD & planning docs (e.g. SPEC.md) — all spec/PRD documentation lives here.
 ├── hooks/          # use-mobile.ts (responsive viewport helper)
 ├── public/         # Static assets
-├── supabase/       # Repo-tracked Supabase migrations.
+├── supabase/       # Repo-tracked migrations. Live tables: x_connections, monitors, scans, stories, drafts, posts
 └── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
 ```
+
+**Current surface:** the **prompt lab** (`app/dashboard/test`) is the active product — Connect X → scan → draft → post a real tweet. The legacy `workflows` module (pages + the 4 `workflows/triggers/scan_runs/scan_items` tables) was removed 2026-05-31. Auto-scan cron is scoped to **scan-only** and deferred. Full status in `docs/`.
 
 # Agentic Context
 

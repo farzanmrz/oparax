@@ -20,8 +20,13 @@
   was **set aside** for the prompt-lab (kept in git). The *capabilities* (scan,
   draft, post under RLS) carried over into `lib/scan/*`, `lib/draft/*`, `lib/x/*`,
   `app/api/test/*`. Don't rebuild the monitor pages.
-- **Next:** CP4 deploy walk (T9) + the Backlog section below. Deferred: Test→Monitor
-  rename, legacy `workflow` purge (legacy is inert — no new file imports it).
+- **Done since (2026-05-31):** legacy `workflows` purge COMPLETE — module code deleted
+  (pages/components/lib/`api/{scan,draft,test-scan}`/cron) + the 4 legacy tables dropped
+  (`supabase/migrations/20260601042543_drop_legacy_tables.sql`; kept shared `handle_updated_at`).
+  Real **Settings** UI shipped (`?section=` tabs): Profile = editable display name +
+  connected accounts (Connect/Disconnect X); Billing/Account-security/Notifications greyed.
+- **Next:** CP4 deploy walk (T9) + the Backlog section below. Auto-scan **cron = scan-only,
+  deferred** to the prompt-lab "agents" backend (built separately). Deferred: Test→Monitor rename.
 - **Gotchas:** `ts-format` skill was removed (hand-format `.ts/.tsx`); agent-browser
   is **not** used for UI checks (developer verifies manually); env present in
   `.env`/`.env.local` (`X_CLIENT_ID/SECRET`, `X_TOKEN_ENC_KEY`, `XAI_API_KEY`);
@@ -63,7 +68,7 @@
 - [ ] **CHECKPOINT 4** — real tweet via the full loop + reporter feedback *(= SUCCESS)*
 
 ## Phase 5 — Cleanup *(ASK-FIRST)*
-- [ ] **T10 — Destructive legacy cleanup**: delete `workflows/*` + `DROP` the 4 legacy tables (~2.8k dev rows) — explicit go-ahead only
+- [x] **T10 — Destructive legacy cleanup** *(done 2026-05-31, explicit go-ahead given)*: deleted `app/dashboard/workflows/*`, `app/dashboard/page.tsx` (now redirects to `/dashboard/test`), `app/api/{scan,draft,test-scan,cron/workflow-scans}`, the workflow components, and `lib/{workflow-drafting,workflow-scans,prompts,scan-constraints,xai}.ts`; `DROP`ped the 4 legacy tables + their functions/enum (migration `20260601042543`). Kept shared `handle_updated_at`. Build + lint green; no prompt-lab path touched.
 - [ ] **Test → Monitor rename** (routes/files/sidebar/docs) — deferred cosmetic pass (ADR-0001 D6)
 
 ## Backlog — deferred, not built *(see `docs/decisions/0001-architecture.md`)*

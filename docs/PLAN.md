@@ -2,6 +2,7 @@
 
 > Companion docs: `docs/SPEC.md` (source of truth) · `docs/TODO.md` (checkbox list).
 > Status: **APPROVED 2026-05-29.** Build per this plan; begin at **T0**.
+> **2026-05-31 cleanup:** legacy `workflows` module + its 4 tables removed (T10 done — migration `20260601042543`); real Settings UI shipped; auto-scan cron = **scan-only + deferred** to the prompt-lab "agents" backend.
 >
 > **Pivot 2026-05-31 (user) — surface = a single Prompt Lab page.** The monitor
 > create/list/detail CRUD (T5/T6/T7 UI) is **set aside** (kept in git) in favor of
