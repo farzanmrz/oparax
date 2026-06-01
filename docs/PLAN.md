@@ -4,6 +4,8 @@
 > Status: **APPROVED 2026-05-29.** Build per this plan; begin at **T0**.
 > **2026-05-31 cleanup:** legacy `workflows` module + its 4 tables removed (T10 done — migration `20260601042543`); real Settings UI shipped; auto-scan cron = **scan-only + deferred** to the prompt-lab "agents" backend.
 >
+> **Agents model cutover (2026-06-01):** Surface renamed `test` → `agents` (routes `/dashboard/agents`, `/api/agents/*`). Single **Run Agent** button performs scan+draft in one Grok call; every story is drafted; cost is one `cost_usd` per run. New 4-table schema: `agents, runs, run_items, x_connections` — old `monitors/scans/stories/drafts/posts` dropped. Running without saving = in-memory preview; Save Agent persists. T0–T8/CP3 remain done; deploy walk (T9/CP4) and backlog carry forward. Full decisions + typing rulings: `docs/decisions/0002-agent-data-model.md`.
+>
 > **Pivot 2026-05-31 (user) — surface = a single Prompt Lab page.** The monitor
 > create/list/detail CRUD (T5/T6/T7 UI) is **set aside** (kept in git) in favor of
 > ONE iteration page at `/dashboard/test`: prefilled, editable **system + user

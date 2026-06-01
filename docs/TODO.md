@@ -3,34 +3,15 @@
 > Checkbox companion to `docs/PLAN.md` (full detail) and `docs/SPEC.md` (source of truth).
 > Order: **T0 → T1 → [Track A ∥ Track B] → T8 → T9 → T10.** Stop at each **CHECKPOINT** before proceeding.
 
-## Current state — READ FIRST (2026-05-31)
-**The manual loop works end-to-end locally and posts a real tweet.** Architecture
-+ rationale: **`docs/decisions/0001-architecture.md`**.
+## Current state — READ FIRST (updated 2026-06-01)
+**The agents model is live.** Surface = `/dashboard/agents` (was `/dashboard/test`). Manual loop posts a real tweet end-to-end. Architecture baseline: **`docs/decisions/0001-architecture.md`**. Agents schema + typing rulings: **`docs/decisions/0002-agent-data-model.md`**.
 
-- **Surface:** ONE ephemeral **Prompt-Lab** page at `/dashboard/test` (sidebar
-  "Prompt lab"). Operator inputs (name, handles, scan user prompt, drafting
-  instructions) are prefilled + editable; **system prompts live in code**
-  (`lib/scan/prompt.ts`, `lib/draft/prompt.ts`). Flow: Run scan → pick one story →
-  Generate draft → edit → **Post to X**. Nothing persists until you post
-  (`/api/test/{scan,draft}` are ephemeral; `/api/test/post` writes the chain + fires
-  the real tweet). Posting needs a connected X account (Settings → Connect X).
-- **Done:** T0–T8 + CP3 (real tweet posts locally). Connect-X, token refresh/rotate,
-  scan, draft, post all built + working.
-- **The T5–T7 checkboxes below describe the ORIGINAL monitor-CRUD build** — that UI
-  was **set aside** for the prompt-lab (kept in git). The *capabilities* (scan,
-  draft, post under RLS) carried over into `lib/scan/*`, `lib/draft/*`, `lib/x/*`,
-  `app/api/test/*`. Don't rebuild the monitor pages.
-- **Done since (2026-05-31):** legacy `workflows` purge COMPLETE — module code deleted
-  (pages/components/lib/`api/{scan,draft,test-scan}`/cron) + the 4 legacy tables dropped
-  (`supabase/migrations/20260601042543_drop_legacy_tables.sql`; kept shared `handle_updated_at`).
-  Real **Settings** UI shipped (`?section=` tabs): Profile = editable display name +
-  connected accounts (Connect/Disconnect X); Billing/Account-security/Notifications greyed.
-- **Next:** CP4 deploy walk (T9) + the Backlog section below. Auto-scan **cron = scan-only,
-  deferred** to the prompt-lab "agents" backend (built separately). Deferred: Test→Monitor rename.
-- **Gotchas:** `ts-format` skill was removed (hand-format `.ts/.tsx`); agent-browser
-  is **not** used for UI checks (developer verifies manually); env present in
-  `.env`/`.env.local` (`X_CLIENT_ID/SECRET`, `X_TOKEN_ENC_KEY`, `XAI_API_KEY`);
-  throwaway `scripts/check-slice1.ts` (run via `tsx`, uncommitted) covers the unit logic.
+- **Surface:** **Agents page** at `/dashboard/agents` (sidebar "Agents"). Configure agent (handles + prompts) → **Run Agent** (one Grok call: scan + draft together, one `cost_usd`) → every story drafted as a `run_items` row → review + edit → **post manually per item**. Running without saving = in-memory preview; **Save Agent** persists to `agents` table. System prompts live in code; posting requires a connected X account.
+- **Done:** T0–T8 + CP3 (real tweet posts locally). Connect-X, token refresh/rotate, scan, draft, post all built + working. Agents model cutover complete: `agents/runs/run_items` live, old `monitors/scans/stories/drafts/posts` dropped.
+- **The T5–T7 checkboxes below describe the ORIGINAL monitor-CRUD build** — that UI was set aside; capabilities (scan, draft, post) carried into `lib/scan/*`, `lib/draft/*`, `lib/x/*`, `app/api/agents/*`. Don't rebuild the monitor pages.
+- **Done since (2026-05-31):** legacy `workflows` purge COMPLETE (code + 4 tables dropped, migration `20260601042543`). Real Settings UI shipped. Agents model cutover (rename + new 4-table schema, old 5 tables dropped).
+- **Next:** CP4 deploy walk (T9) + backlog below. Auto-scan cron deferred (schema columns reserved on `agents`). Posting to X stays manual.
+- **Gotchas:** `ts-format` skill removed (hand-format `.ts/.tsx`); agent-browser not used for UI checks (developer verifies manually); env in `.env`/`.env.local` (`X_CLIENT_ID/SECRET`, `X_TOKEN_ENC_KEY`, `XAI_API_KEY`); throwaway `scripts/check-slice1.ts` (tsx, uncommitted) covers unit logic.
 
 ## Phase 0 — De-risk
 - [x] **T0 — Posting spike** *(gates everything; not parallel)*
@@ -71,12 +52,14 @@
 - [x] **T10 — Destructive legacy cleanup** *(done 2026-05-31, explicit go-ahead given)*: deleted `app/dashboard/workflows/*`, `app/dashboard/page.tsx` (now redirects to `/dashboard/test`), `app/api/{scan,draft,test-scan,cron/workflow-scans}`, the workflow components, and `lib/{workflow-drafting,workflow-scans,prompts,scan-constraints,xai}.ts`; `DROP`ped the 4 legacy tables + their functions/enum (migration `20260601042543`). Kept shared `handle_updated_at`. Build + lint green; no prompt-lab path touched.
 - [ ] **Test → Monitor rename** (routes/files/sidebar/docs) — deferred cosmetic pass (ADR-0001 D6)
 
-## Backlog — deferred, not built *(see `docs/decisions/0001-architecture.md`)*
-- [ ] Tweet-deletion → DB sync (reconcile `posts` when a tweet is deleted on X)
-- [ ] Save/persist a lab run ("agent") to the DB as a reusable config
-- [ ] Edit a posted tweet or a saved draft / scan instructions; re-run saved configs
+## Backlog — deferred, not built *(see `docs/decisions/0001-architecture.md` + `0002-agent-data-model.md`)*
+- [ ] Tweet-deletion → DB sync (reconcile `run_items` when a tweet is deleted on X)
+- [x] ~~Save/persist a lab run ("agent") to the DB as a reusable config~~ — **done** in agents-model cutover (`agents` table + Save Agent)
+- [ ] Edit a posted tweet or a saved draft / agent instructions; re-run saved configs
 - [ ] X reconnect-on-logout UX (smooth the per-user `x_connections` reconnect)
-- [ ] Broader UI polish (parked for slice 1 — correct-not-pretty)
+- [ ] Broader UI polish (parked — correct-not-pretty)
+- [ ] Retention / aging policy for `runs` + `run_items` (must protect `status='posted'` rows — see ADR-0002 open questions)
+- [ ] Auto-scan cron (`scan_cadence_minutes` / `next_run_at` columns reserved on `agents`; `vercel.json` crons empty)
 
 ## Cross-cutting (every task)
 - [ ] `pnpm build` + `pnpm lint` green · hand-format `.ts/.tsx` to conventions (the `ts-format` skill was removed)

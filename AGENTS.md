@@ -20,27 +20,28 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 │
 ├── app/            # Next.js App Router
 │   ├── login/, signup/, auth/, forgot-password/  # Auth flow; auth/callback = X OAuth (link X for posting)
-│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings/ (tabbed) + the prompt lab
-│   │   └── test/   # THE PROMPT LAB (components/loop/prompt-lab.tsx): scan → pick story → draft → post a real tweet
-│   └── api/        # test/* → prompt-lab scan(stream)/draft/post · x/* → disconnect (legacy scan/draft/cron removed)
+│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings/ (tabbed) + agents surface
+│   │   └── agents/ # THE AGENTS PAGE (was test/): Run Agent (scan+draft in one call) → review stories+drafts → post manually per item; unsaved = preview, Save persists the agent config
+│   └── api/        # agents/* → scan+draft(stream)/run/post · x/* → disconnect (legacy test/scan/draft/cron removed)
 │
 ├── components/
 │   ├── ui/         # shadcn primitives (button, card, input, table, sidebar, …)
-│   ├── loop/       # prompt-lab + connect-x / disconnect-x (X linking) components
+│   ├── loop/       # agents UI + connect-x / disconnect-x (X linking) components
 │   ├── settings/   # settings sections: profile, coming-soon placeholders, tab nav
 │   └── *.tsx       # auth forms, sidebar/nav, dashboard page header
 │
 ├── lib/            # Domain logic: supabase/ clients, scan/ + draft/ (Grok scan & draft pipeline), x/ (token
 │                   # lifecycle + client), types/ (generated DB types + aliases), validation.ts, auth-errors.ts, utils.ts
 │
-├── docs/           # Spec, PRD & planning docs (e.g. SPEC.md) — all spec/PRD documentation lives here.
+├── docs/           # Spec, PRD & planning docs — all spec/PRD + ADRs + ideas live here. See decisions/0002-agent-data-model.md
 ├── hooks/          # use-mobile.ts (responsive viewport helper)
 ├── public/         # Static assets
-├── supabase/       # Repo-tracked migrations. Live tables: x_connections, monitors, scans, stories, drafts, posts
+├── supabase/       # Repo-tracked migrations. Live tables: agents, runs, run_items, x_connections
+│                   # (old monitors/scans/stories/drafts/posts DROPPED in the agents-model cutover)
 └── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
 ```
 
-**Current surface:** the **prompt lab** (`app/dashboard/test`) is the active product — Connect X → scan → draft → post a real tweet. The legacy `workflows` module (pages + the 4 `workflows/triggers/scan_runs/scan_items` tables) was removed 2026-05-31. Auto-scan cron is scoped to **scan-only** and deferred. Full status in `docs/`.
+**Current surface:** the **Agents page** (`app/dashboard/agents`, was `test`) is the active product — Connect X → configure agent (handles + prompts) → **Run Agent** (single Grok call: scan + draft together, one cost) → every story is drafted → review + edit → **post manually per item**. Running without saving is an in-memory **preview**; **Save Agent** persists the config. The legacy `workflows` module (pages + the 4 legacy tables) was removed 2026-05-31; `monitors/scans/stories/drafts/posts` were dropped in the agents-model cutover. Live DB tables: `agents, runs, run_items, x_connections`. Auto-scan cron deferred. Full architecture + typing decisions: `docs/decisions/0002-agent-data-model.md`; original baseline: `docs/decisions/0001-architecture.md`.
 
 # Agentic Context
 
