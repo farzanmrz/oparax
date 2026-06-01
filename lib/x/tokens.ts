@@ -97,7 +97,15 @@ export async function saveConnection(
     },
     { onConflict: "user_id" },
   )
-  return error
+  if (error) return error
+
+  const { error: agentError } = await supabase
+    .from("agents")
+    .update({ status: "active" })
+    .eq("user_id", input.userId)
+    .eq("status", "inactive")
+
+  return agentError
 }
 
 // X OAuth2 token endpoint.

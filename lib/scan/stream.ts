@@ -6,6 +6,7 @@ export interface ScanItem {
   title: string
   body: string
   urls: string[]
+  draft: string
 }
 
 // Server-reported scan metrics from the final response usage
@@ -22,6 +23,7 @@ export interface PreviewStory {
   sourceUrls: string[]
   primaryTweetUrl: string
   dedupeKey: string
+  draft: string
 }
 
 // NDJSON events streamed to the browser: live events + terminal event
@@ -32,7 +34,7 @@ export type ScanStreamEvent =
   | { type: "tool_call_completed"; id: string; input: string }
   | {
       type: "persisted"
-      scanId: string
+      runId: string
       storyCount: number
       metrics: ScanMetrics
     }

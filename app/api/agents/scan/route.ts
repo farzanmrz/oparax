@@ -2,7 +2,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { createScanClient } from "@/lib/scan/client"
 import { buildScanRequest } from "@/lib/scan/request"
-import { buildScanInstructions } from "@/lib/scan/prompt"
+import {
+  buildAgentRunUserPrompt,
+  buildScanInstructions,
+} from "@/lib/scan/prompt"
 import { ScanStreamWriter, encodeScanEvent } from "@/lib/scan/stream"
 import { parseScanItems, toStoryDraft } from "@/lib/scan/parse"
 import {
@@ -16,11 +19,10 @@ export const runtime = "nodejs"
 export const maxDuration = 300
 
 /**
- * Prompt-lab scan: stream a Grok x_search from the editable handles + scan user
- * prompt, and emit the parsed stories in a terminal preview_complete event. The
- * scan SYSTEM prompt is fixed in code (buildScanInstructions). Ephemeral —
- * persists nothing (post does that).
- * @param req - the request carrying handles + scan user prompt
+ * Prompt-lab run: stream a Grok x_search from the editable handles + tagged
+ * scan/draft user prompt, and emit parsed stories with draft previews in a
+ * terminal preview_complete event. Ephemeral — save persists the preview.
+ * @param req - the request carrying handles + scan/draft instructions
  * @returns an NDJSON streaming response
  */
 export async function POST(req: Request) {
@@ -32,12 +34,42 @@ export async function POST(req: Request) {
     return new Response("Authentication required.", { status: 401 })
   }
 
+  const { data: connection } = await supabase
+    .from("x_connections")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle<{ id: string }>()
+  if (!connection) {
+    return new Response("Connect X before creating an agent.", { status: 403 })
+  }
+
   // Parse + validate the editable lab fields.
   const rawBody = (await req.json().catch(() => null)) as unknown
   if (typeof rawBody !== "object" || rawBody === null) {
     return new Response("Invalid JSON.", { status: 400 })
   }
   const body = rawBody as Record<string, unknown>
+  const name = typeof body.name === "string" ? body.name.trim() : ""
+
+  if (!name) {
+    return new Response("Agent name is required.", { status: 400 })
+  }
+
+  const { data: existingAgents, error: existingError } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("name", name)
+    .limit(1)
+
+  if (existingError) {
+    return new Response("Failed to check existing agents.", { status: 500 })
+  }
+  if ((existingAgents ?? []).length > 0) {
+    return new Response("An agent with this name already exists.", {
+      status: 409,
+    })
+  }
 
   const handles = Array.isArray(body.handles)
     ? [
@@ -62,9 +94,21 @@ export async function POST(req: Request) {
     return new Response(`"${invalid}" is not a valid X handle.`, { status: 400 })
   }
 
-  const userPrompt = typeof body.userPrompt === "string" ? body.userPrompt : ""
-  if (!userPrompt.trim()) {
+  const scanningInstructions =
+    typeof body.userPrompt === "string"
+      ? body.userPrompt
+      : typeof body.scanningInstructions === "string"
+        ? body.scanningInstructions
+        : ""
+  const draftingInstructions =
+    typeof body.draftingInstructions === "string"
+      ? body.draftingInstructions
+      : ""
+  if (!scanningInstructions.trim()) {
     return new Response("A scan user prompt is required.", { status: 400 })
+  }
+  if (!draftingInstructions.trim()) {
+    return new Response("Drafting instructions are required.", { status: 400 })
   }
 
   const encoder = new TextEncoder()
@@ -88,7 +132,10 @@ export async function POST(req: Request) {
             fromDate: null,
             toDate: null,
             instructions: buildScanInstructions(),
-            userPrompt,
+            userPrompt: buildAgentRunUserPrompt({
+              scanningInstructions,
+              draftingInstructions,
+            }),
           }),
         )
 

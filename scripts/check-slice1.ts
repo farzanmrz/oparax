@@ -37,13 +37,19 @@ const withTweet = toStoryDraft({
   title: "T",
   body: "B",
   urls: ["https://x.com/AdamSchefter/status/123", "https://espn.com/x"],
+  draft: "Draft text",
 })
 check("dedupeKey = tweet id", withTweet.dedupeKey === "123", `got ${withTweet.dedupeKey}`)
 check(
   "primaryTweetUrl = x status url",
   withTweet.primaryTweetUrl === "https://x.com/AdamSchefter/status/123",
 )
-const noTweet = toStoryDraft({ title: "Only non-x", body: "B", urls: ["https://espn.com/a"] })
+const noTweet = toStoryDraft({
+  title: "Only non-x",
+  body: "B",
+  urls: ["https://espn.com/a"],
+  draft: "Draft text",
+})
 check(
   "no x url → dedupeKey falls back to first url (not empty)",
   noTweet.dedupeKey === "https://espn.com/a",

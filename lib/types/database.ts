@@ -237,7 +237,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      agent_status: "active" | "paused"
+      agent_status: "active" | "paused" | "inactive"
       item_status: "drafted" | "posted" | "failed"
       run_source: "manual" | "cron"
       run_status: "running" | "completed" | "failed"
@@ -368,7 +368,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      agent_status: ["active", "paused"],
+      agent_status: ["active", "paused", "inactive"],
       item_status: ["drafted", "posted", "failed"],
       run_source: ["manual", "cron"],
       run_status: ["running", "completed", "failed"],

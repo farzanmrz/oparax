@@ -85,6 +85,9 @@ export default async function SettingsPage({
     .select("x_username")
     .maybeSingle<{ x_username: string }>()
   const xUsername = connection?.x_username
+  const { count: agentCount } = await supabase
+    .from("agents")
+    .select("id", { count: "exact", head: true })
 
   return (
     <div className="space-y-6">
@@ -100,6 +103,7 @@ export default async function SettingsPage({
           initialDisplayName={displayName}
           xUsername={xUsername}
           xError={params.x_error}
+          agentCount={agentCount ?? 0}
         />
       )}
 

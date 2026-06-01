@@ -36,5 +36,17 @@ export async function POST() {
     return NextResponse.json({ error: "Failed to disconnect." }, { status: 500 })
   }
 
+  const { error: agentsError } = await supabase
+    .from("agents")
+    .update({ status: "inactive" })
+    .eq("user_id", user.id)
+
+  if (agentsError) {
+    return NextResponse.json(
+      { error: "Disconnected X, but failed to mark agents inactive." },
+      { status: 500 },
+    )
+  }
+
   return NextResponse.json({ ok: true })
 }

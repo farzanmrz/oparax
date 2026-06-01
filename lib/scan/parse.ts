@@ -9,6 +9,7 @@ export interface StoryDraft {
   sourceUrls: string[]
   primaryTweetUrl: string
   dedupeKey: string
+  draft: string
 }
 
 // Regex to extract tweet id from X/Twitter status URL
@@ -36,7 +37,8 @@ function normalizeItem(value: unknown): ScanItem | null {
   const record = value as Record<string, unknown>
   const title = typeof record.title === "string" ? record.title.trim() : ""
   const body = typeof record.body === "string" ? record.body.trim() : ""
-  if (!title || !body) return null
+  const draft = typeof record.draft === "string" ? record.draft.trim() : ""
+  if (!title || !body || !draft) return null
   if (!Array.isArray(record.urls)) return null
 
   const urls = [
@@ -49,7 +51,7 @@ function normalizeItem(value: unknown): ScanItem | null {
   ]
   if (urls.length === 0) return null
 
-  return { title, body, urls }
+  return { title, body, urls, draft }
 }
 
 /**
@@ -93,5 +95,6 @@ export function toStoryDraft(item: ScanItem): StoryDraft {
     sourceUrls: item.urls,
     primaryTweetUrl,
     dedupeKey,
+    draft: item.draft,
   }
 }

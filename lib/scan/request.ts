@@ -69,8 +69,14 @@ export function buildScanRequest(
                       "Source URLs for this item, including at least one direct X/Twitter URL.",
                     items: { type: "string", format: "uri" },
                   },
+                  draft: {
+                    type: "string",
+                    maxLength: 280,
+                    description:
+                      "A single postable X draft for this item, with no raw URLs or markdown.",
+                  },
                 },
-                required: ["title", "body", "urls"],
+                required: ["title", "body", "urls", "draft"],
               },
             },
           },

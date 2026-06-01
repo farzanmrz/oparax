@@ -9,9 +9,14 @@ import { Button } from "@/components/ui/button"
  * Connect-X control: unlinks any stale 'x' identity (so a re-link issues fresh
  * provider tokens we can capture), then starts the Supabase linkIdentity flow
  * requesting tweet.write and redirecting to our /auth/callback.
+ * @param props.nextPath - in-app path to return to after X connects
  * @returns the Connect X button + any error
  */
-export function ConnectX() {
+export function ConnectX({
+  nextPath = "/dashboard/settings",
+}: {
+  nextPath?: string
+}) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,7 +52,7 @@ export function ConnectX() {
       provider: "x",
       options: {
         scopes: "tweet.write",
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/settings`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
       },
     })
     if (linkError) {

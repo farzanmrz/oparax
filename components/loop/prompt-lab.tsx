@@ -23,7 +23,11 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import type { PreviewStory, ScanStreamEvent } from "@/lib/scan/stream"
+import type {
+  PreviewStory,
+  ScanMetrics,
+  ScanStreamEvent,
+} from "@/lib/scan/stream"
 
 type ToolCallOutput = {
   id: string
@@ -126,9 +130,11 @@ export function PromptLab() {
   const [reasoning, setReasoning] = useState("")
   const [toolCalls, setToolCalls] = useState<ToolCallOutput[]>([])
   const [scanCost, setScanCost] = useState<number | null>(null)
+  const [scanMetrics, setScanMetrics] = useState<ScanMetrics | null>(null)
   const [stories, setStories] = useState<PreviewStory[]>([])
   const [scanError, setScanError] = useState<string | null>(null)
   const [selectedStoryKeys, setSelectedStoryKeys] = useState<string[]>([])
+  const [nameError, setNameError] = useState<string | null>(null)
 
   // Page interaction state.
   const [helpTopic, setHelpTopic] = useState<HelpTopic>(null)
@@ -308,6 +314,7 @@ export function PromptLab() {
       case "preview_complete":
         setStories(event.stories)
         setScanCost(event.metrics.costUsd)
+        setScanMetrics(event.metrics)
         setScanStatus("done")
         setLastRunFingerprint(runFingerprintRef.current)
         return true
@@ -332,6 +339,10 @@ export function PromptLab() {
       setScanError("Add at least one handle to monitor.")
       return
     }
+    if (!name.trim()) {
+      setNameError("Agent name is required.")
+      return
+    }
     if (!scanUserPrompt.trim() || !draftingInstructions.trim()) {
       setScanError("Add scanning and drafting instructions before running.")
       return
@@ -345,18 +356,31 @@ export function PromptLab() {
     setReasoning("")
     setToolCalls([])
     setScanCost(null)
+    setScanMetrics(null)
     setStories([])
     setSelectedStoryKeys([])
     setScanError(null)
+    setNameError(null)
 
     try {
       const response = await fetch("/api/agents/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ handles, userPrompt: scanUserPrompt }),
+        body: JSON.stringify({
+          name,
+          handles,
+          userPrompt: scanUserPrompt,
+          draftingInstructions,
+        }),
       })
       if (!response.ok) {
-        throw new Error((await response.text()) || "Agent run failed.")
+        const message = (await response.text()) || "Agent run failed."
+        if (response.status === 409) {
+          setNameError(message)
+          setScanStatus("idle")
+          return
+        }
+        throw new Error(message)
       }
       if (!response.body) {
         throw new Error("Agent run returned no stream.")
@@ -404,16 +428,22 @@ export function PromptLab() {
           handles,
           monitoringDescription: scanUserPrompt,
           draftingInstructions,
+          stories,
+          metrics: scanMetrics,
         }),
       })
-      const data = (await response.json()) as { error?: string }
+      const data = (await response.json()) as { id?: string; error?: string }
       if (!response.ok) {
+        if (response.status === 409) {
+          setNameError(data.error || "An agent with this name already exists.")
+          setSaveStatus("idle")
+          return
+        }
         throw new Error(data.error || "Failed to save agent.")
       }
       setSaveStatus("saved")
       setHasUnsavedChanges(false)
-      // Navigate out to the agents list, where the new agent now appears.
-      router.push("/dashboard/agents")
+      router.push(data.id ? `/dashboard/agents/${data.id}` : "/dashboard/agents")
     } catch (err) {
       setSaveStatus("error")
       setSaveError(err instanceof Error ? err.message : "Failed to save.")
@@ -437,6 +467,8 @@ export function PromptLab() {
   const canRunAgent =
     scanStatus !== "running" &&
     handles.length > 0 &&
+    name.trim().length > 0 &&
+    !nameError &&
     scanUserPrompt.trim().length > 0 &&
     draftingInstructions.trim().length > 0 &&
     !isRunCurrent
@@ -446,6 +478,7 @@ export function PromptLab() {
     stories.length > 0 &&
     isRunCurrent &&
     name.trim().length > 0 &&
+    !nameError &&
     handles.length > 0 &&
     saveStatus !== "saving" &&
     saveStatus !== "saved"
@@ -526,9 +559,11 @@ export function PromptLab() {
                   value={name}
                   onChange={(event) => {
                     markDirty()
+                    setNameError(null)
                     setName(event.target.value)
                   }}
                 />
+                <FieldError>{nameError}</FieldError>
               </Field>
 
               <Field>
@@ -742,9 +777,8 @@ export function PromptLab() {
                         <p className="font-[525] text-foreground/90">
                           Draft preview
                         </p>
-                        <p className="text-muted-foreground">
-                          Draft output will appear here when the combined agent
-                          run is connected.
+                        <p className="whitespace-pre-wrap text-foreground/85">
+                          {story.draft}
                         </p>
                         <Button
                           type="button"
@@ -753,7 +787,7 @@ export function PromptLab() {
                           disabled
                           className="self-start"
                         >
-                          Post to X
+                          Save agent to post
                         </Button>
                       </div>
                     </div>

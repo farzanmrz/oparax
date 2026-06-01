@@ -34,10 +34,12 @@ export function ProfileSection({
   initialDisplayName,
   xUsername,
   xError,
+  agentCount,
 }: {
   initialDisplayName: string
   xUsername?: string
   xError?: string
+  agentCount: number
 }) {
 
   // Router to refresh server components (sidebar name) after a save.
@@ -100,7 +102,7 @@ export function ProfileSection({
               <p className="text-sm">
                 Connected as <span className="font-medium">@{xUsername}</span>
               </p>
-              <DisconnectXButton />
+              <DisconnectXButton agentCount={agentCount} />
             </div>
           ) : (
             <ConnectX />
