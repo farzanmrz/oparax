@@ -3,7 +3,7 @@
 import Link from "next/link"
 import {
   Settings02Icon,
-  TestTube01Icon,
+  UserAiIcon,
 } from "@hugeicons/core-free-icons"
 import { NavMain } from "@/components/nav-main"
 import { NavUser, SidebarSignOut } from "@/components/nav-user"
@@ -21,9 +21,9 @@ import {
 
 const navItems = [
   {
-    title: "Prompt lab",
+    title: "Agents",
     url: "/dashboard/agents",
-    icon: TestTube01Icon,
+    icon: UserAiIcon,
   },
   {
     title: "Settings",
