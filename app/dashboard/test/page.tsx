@@ -1,4 +1,3 @@
-// Imports
 import { DashboardPageHeader } from "@/components/dashboard-page-header"
 import { PromptLab } from "@/components/loop/prompt-lab"
 
@@ -12,7 +11,6 @@ export default function PromptLabPage() {
       <DashboardPageHeader
         title="Prompt lab"
         description="Iterate the scan + draft prompts, pick a story, and post a real tweet."
-        breadcrumbs={[{ label: "Prompt lab" }]}
       />
       <PromptLab />
     </div>

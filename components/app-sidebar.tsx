@@ -3,7 +3,6 @@
 import {
   Settings02Icon,
   TestTube01Icon,
-  WorkflowSquare01Icon,
 } from "@hugeicons/core-free-icons"
 import { NavMain } from "@/components/nav-main"
 import { NavUser, SidebarSignOut } from "@/components/nav-user"
@@ -20,11 +19,6 @@ import {
 } from "@/components/ui/sidebar"
 
 const navItems = [
-  {
-    title: "Workflows",
-    url: "/dashboard",
-    icon: WorkflowSquare01Icon,
-  },
   {
     title: "Prompt lab",
     url: "/dashboard/test",
@@ -49,7 +43,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="/dashboard">
+              <a href="/dashboard/test">
                 <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-foreground text-sm font-bold text-background">
                   O
                 </div>

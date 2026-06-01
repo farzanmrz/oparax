@@ -10,6 +10,7 @@ interface HandleInputProps {
   handles: string[]
   maxHandles: number
   controlClassName?: string
+  showCount?: boolean
   onAdd: (handle: string) => void
   onRemove: (index: number) => void
 }
@@ -26,6 +27,7 @@ export function HandleInput({
   controlClassName,
   handles,
   maxHandles,
+  showCount = true,
   onAdd,
   onRemove,
 }: HandleInputProps) {
@@ -86,30 +88,30 @@ export function HandleInput({
   }
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-1.5">
       <div
         data-slot="handle-input-control"
         className={cn(
-          "flex min-h-11 flex-wrap items-center gap-2 rounded-lg border-2 border-input bg-background/35 px-3 py-2 transition-colors hover:border-foreground/35 hover:bg-background/45 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
+          "flex min-h-11 flex-wrap items-center gap-1.5 rounded-lg border-2 border-input bg-background/35 px-3 py-1.5 transition-colors hover:border-foreground/35 hover:bg-background/45 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
           controlClassName,
         )}
       >
         {handles.map((handle, index) => (
           <span
             key={handle}
-            className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-base text-secondary-foreground"
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-link/25 bg-link/10 px-2.5 text-sm font-medium text-link"
           >
             @{handle}
             <button
               type="button"
               onClick={() => onRemove(index)}
-              className="ml-0.5 inline-flex min-h-8 min-w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
+              className="ml-0.5 inline-flex size-5 items-center justify-center rounded-full text-link/70 transition-colors hover:bg-link/15 hover:text-link-hover"
               aria-label={`Remove @${handle}`}
             >
               <HugeiconsIcon
                 icon={Cancel01Icon}
                 strokeWidth={2}
-                className="size-3.5"
+                className="size-3"
               />
             </button>
           </span>
@@ -119,15 +121,15 @@ export function HandleInput({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={handles.length === 0 ? "e.g. FabrizioRomano, AlexKayKay" : ""}
-          className="min-w-[120px] flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+          className="min-w-[10rem] flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
           disabled={handles.length >= maxHandles}
         />
       </div>
 
-      {error && <p className="text-base text-destructive">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {handles.length > 0 && (
-        <p className="text-base text-muted-foreground">
+      {showCount && handles.length > 0 && (
+        <p className="text-sm text-muted-foreground">
           {handles.length} of {maxHandles} added
         </p>
       )}
