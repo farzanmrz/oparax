@@ -2,13 +2,17 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
-// The settings sections, in display order. The slug is the `?section=` value.
-const SECTIONS = [
+// The settings sections, in display order — the single source of truth shared
+// with the page's `?section=` validation. The slug is the `?section=` value.
+export const SETTINGS_SECTIONS = [
   { slug: "profile", label: "Profile" },
   { slug: "billing", label: "Billing" },
   { slug: "security", label: "Security" },
   { slug: "notifications", label: "Notifications" },
 ] as const
+
+// A valid settings section slug.
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]["slug"]
 
 /**
  * Tab-style navigation for the settings sections. Each tab is a plain Link that
@@ -17,10 +21,14 @@ const SECTIONS = [
  * @param props.activeSection - currently selected section slug
  * @returns the settings tab navigation
  */
-export function SettingsTabNav({ activeSection }: { activeSection: string }) {
+export function SettingsTabNav({
+  activeSection,
+}: {
+  activeSection: SettingsSection
+}) {
   return (
     <nav className="flex gap-1 border-b border-border">
-      {SECTIONS.map(({ slug, label }) => {
+      {SETTINGS_SECTIONS.map(({ slug, label }) => {
         const isActive = slug === activeSection
         return (
           <Link

@@ -1,7 +1,11 @@
 // Imports
 import { createClient } from "@/lib/supabase/server"
 import { DashboardPageHeader } from "@/components/dashboard-page-header"
-import { SettingsTabNav } from "@/components/settings/settings-tab-nav"
+import {
+  SettingsTabNav,
+  SETTINGS_SECTIONS,
+  type SettingsSection,
+} from "@/components/settings/settings-tab-nav"
 import { ProfileSection } from "@/components/settings/profile-section"
 import { ComingSoonSection } from "@/components/settings/coming-soon-section"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -36,10 +40,6 @@ function getDisplayName({
   return "Reporter"
 }
 
-// Known settings sections; anything else falls back to the profile tab.
-const SECTIONS = ["profile", "billing", "security", "notifications"] as const
-type Section = (typeof SECTIONS)[number]
-
 /**
  * Settings page. Renders tabbed sections selected via `?section=`. Reads the
  * signed-in user (for the display name) and the X connection server-side (only
@@ -61,8 +61,10 @@ export default async function SettingsPage({
   const params = await searchParams
 
   // Pick the active section, defaulting to profile for unknown values.
-  const section: Section = SECTIONS.includes(params.section as Section)
-    ? (params.section as Section)
+  const section: SettingsSection = SETTINGS_SECTIONS.some(
+    (entry) => entry.slug === params.section,
+  )
+    ? (params.section as SettingsSection)
     : "profile"
 
   // Supabase client scoped to this request.
