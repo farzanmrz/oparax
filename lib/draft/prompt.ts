@@ -25,7 +25,7 @@ Rules:
 - Do not include raw URLs.
 - Stay within 280 characters.
 - Use only the provided story as the factual basis; do not invent details.
-- Follow the drafting instructions and match the voice of the example tweets.`
+- Follow the drafting instructions provided in the user message.`
 
 // System prompt for the single repair pass when a draft fails validation.
 export const DRAFT_REPAIR_SYSTEM_PROMPT = `You are repairing a drafted X post so it becomes directly postable.

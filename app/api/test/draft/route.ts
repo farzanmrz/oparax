@@ -2,16 +2,17 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { weightedLength } from "@/lib/draft/count"
-import { createDraftClient, generateDraftFromPrompts } from "@/lib/draft/generate"
+import { createDraftClient, generateDraft } from "@/lib/draft/generate"
 
 // Node runtime for the OpenAI SDK; generation is reasoning-heavy.
 export const runtime = "nodejs"
 export const maxDuration = 120
 
 /**
- * Prompt-lab draft: generate one tweet from the editable draft system + user
- * prompts and the selected story. Ephemeral — persists nothing (post does that).
- * @param req - the request carrying the prompts + selected story content
+ * Prompt-lab draft: generate one tweet for the selected story from the operator's
+ * drafting instructions. The draft SYSTEM prompt is fixed in code. Ephemeral —
+ * persists nothing (post does that).
+ * @param req - the request carrying the selected story + drafting instructions
  * @returns the generated draft text + weighted length, or a JSON error
  */
 export async function POST(req: Request) {
@@ -35,29 +36,22 @@ export async function POST(req: Request) {
   }
   const record = body as Record<string, unknown>
 
-  const systemPrompt =
-    typeof record.systemPrompt === "string" ? record.systemPrompt : ""
-  const userPrompt =
-    typeof record.userPrompt === "string" ? record.userPrompt : ""
+  const draftingInstructions =
+    typeof record.draftingInstructions === "string"
+      ? record.draftingInstructions
+      : ""
   const storyTitle =
     typeof record.storyTitle === "string" ? record.storyTitle.trim() : ""
   const storySummary =
     typeof record.storySummary === "string" ? record.storySummary.trim() : ""
-  if (!systemPrompt.trim() || !userPrompt.trim()) {
-    return NextResponse.json(
-      { error: "Draft system and user prompts are required." },
-      { status: 400 },
-    )
-  }
   if (!storyTitle && !storySummary) {
     return NextResponse.json({ error: "Select a story first." }, { status: 400 })
   }
 
-  // Generate + validate (+ one repair) from the editable prompts.
-  const result = await generateDraftFromPrompts({
+  // Generate + validate (+ one repair); system prompt comes from code.
+  const result = await generateDraft({
     client: createDraftClient(),
-    systemPrompt,
-    userPrompt,
+    draftingInstructions,
     story: { title: storyTitle, summary: storySummary },
   })
   if (!result.ok) {

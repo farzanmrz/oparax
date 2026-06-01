@@ -9,42 +9,11 @@ import { postTweet } from "@/lib/x/client"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-// A hidden per-user monitor that owns all prompt-lab posts (keeps RLS intact).
-const LAB_MONITOR_NAME = "__prompt_lab__"
-
 /**
- * Find or create the hidden lab monitor that owns lab scans/stories/drafts.
- * @param supabase - the request-scoped Supabase client
- * @param userId - the owner
- * @returns the lab monitor id, or null on failure
- */
-async function getLabMonitorId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<string | null> {
-  const { data: existing } = await supabase
-    .from("monitors")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("name", LAB_MONITOR_NAME)
-    .maybeSingle<{ id: string }>()
-  if (existing) {
-    return existing.id
-  }
-
-  const { data: created } = await supabase
-    .from("monitors")
-    .insert({ user_id: userId, name: LAB_MONITOR_NAME, status: "paused" })
-    .select("id")
-    .single<{ id: string }>()
-  return created?.id ?? null
-}
-
-/**
- * Prompt-lab post: validate the draft, persist the minimal chain (lab monitor →
- * scan → story → draft), post a real tweet, and record the post. This is the
- * only write path in the lab.
- * @param req - the request carrying the story content + final draft text
+ * Prompt-lab post: validate the draft, persist the minimal chain (a monitor
+ * named after the run → scan → story → draft), post a real tweet, and record the
+ * post. This is the only write path in the lab.
+ * @param req - the request carrying the run name + story content + draft text
  * @returns the tweet id + url on success, or a JSON error
  */
 export async function POST(req: Request) {
@@ -65,6 +34,10 @@ export async function POST(req: Request) {
   }
   const record = (body ?? {}) as Record<string, unknown>
   const text = typeof record.text === "string" ? record.text : ""
+  const runName =
+    typeof record.name === "string" && record.name.trim()
+      ? record.name.trim()
+      : "Prompt lab run"
   const storyTitle =
     typeof record.storyTitle === "string" ? record.storyTitle.trim() : ""
   const storySummary =
@@ -80,10 +53,15 @@ export async function POST(req: Request) {
   }
 
   // Persist the minimal ownership chain so the post has valid FKs + RLS.
-  const monitorId = await getLabMonitorId(supabase, user.id)
-  if (!monitorId) {
+  const { data: monitor } = await supabase
+    .from("monitors")
+    .insert({ user_id: user.id, name: runName, status: "paused" })
+    .select("id")
+    .single<{ id: string }>()
+  if (!monitor) {
     return NextResponse.json({ error: "Failed to prepare post." }, { status: 500 })
   }
+  const monitorId = monitor.id
 
   const { data: scan } = await supabase
     .from("scans")

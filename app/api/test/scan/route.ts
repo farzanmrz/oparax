@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createScanClient } from "@/lib/scan/client"
 import { buildScanRequest } from "@/lib/scan/request"
+import { buildScanInstructions } from "@/lib/scan/prompt"
 import { ScanStreamWriter, encodeScanEvent } from "@/lib/scan/stream"
 import { parseScanItems, toStoryDraft } from "@/lib/scan/parse"
 import {
@@ -15,10 +16,11 @@ export const runtime = "nodejs"
 export const maxDuration = 300
 
 /**
- * Prompt-lab scan: stream a Grok x_search from the editable system + user
- * prompts and handles, and emit the parsed stories in a terminal
- * preview_complete event. Ephemeral — persists nothing (post does that).
- * @param req - the request carrying handles + scan system/user prompts
+ * Prompt-lab scan: stream a Grok x_search from the editable handles + scan user
+ * prompt, and emit the parsed stories in a terminal preview_complete event. The
+ * scan SYSTEM prompt is fixed in code (buildScanInstructions). Ephemeral —
+ * persists nothing (post does that).
+ * @param req - the request carrying handles + scan user prompt
  * @returns an NDJSON streaming response
  */
 export async function POST(req: Request) {
@@ -60,13 +62,9 @@ export async function POST(req: Request) {
     return new Response(`"${invalid}" is not a valid X handle.`, { status: 400 })
   }
 
-  const systemPrompt =
-    typeof body.systemPrompt === "string" ? body.systemPrompt : ""
   const userPrompt = typeof body.userPrompt === "string" ? body.userPrompt : ""
-  if (!systemPrompt.trim() || !userPrompt.trim()) {
-    return new Response("Scan system and user prompts are required.", {
-      status: 400,
-    })
+  if (!userPrompt.trim()) {
+    return new Response("A scan user prompt is required.", { status: 400 })
   }
 
   const encoder = new TextEncoder()
@@ -89,7 +87,7 @@ export async function POST(req: Request) {
             handles,
             fromDate: null,
             toDate: null,
-            instructions: systemPrompt,
+            instructions: buildScanInstructions(),
             userPrompt,
           }),
         )

@@ -4,13 +4,10 @@
 import { useState } from "react"
 import {
   DEFAULT_HANDLES,
-  DEFAULT_SCAN_SYSTEM_PROMPT,
+  DEFAULT_RUN_NAME,
   DEFAULT_SCAN_USER_PROMPT,
 } from "@/lib/scan/defaults"
-import {
-  DEFAULT_DRAFT_SYSTEM_PROMPT,
-  DEFAULT_DRAFT_USER_PROMPT,
-} from "@/lib/draft/defaults"
+import { DEFAULT_DRAFTING_INSTRUCTIONS } from "@/lib/draft/defaults"
 import {
   MONITOR_MAX_HANDLES,
   isValidHandle,
@@ -19,17 +16,10 @@ import {
 import { TWEET_WEIGHTED_LIMIT, weightedLength } from "@/lib/draft/count"
 import { getDraftIssue } from "@/lib/draft/validate"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type { PreviewStory, ScanStreamEvent } from "@/lib/scan/stream"
-
-// A scanned story plus its selectable index (in-memory only; nothing persisted).
-type LabStory = PreviewStory
 
 /**
  * Parse one NDJSON line into a scan event, or null if invalid.
@@ -55,20 +45,22 @@ function parseScanEvent(line: string): ScanStreamEvent | null {
 }
 
 /**
- * Prompt-lab: iterate the scan + draft system/user prompts on one page. Run a
- * scan, pick a story, generate a draft, edit it, and post a real tweet. Nothing
- * is persisted until you post.
+ * Prompt-lab: prefilled operator inputs (name, handles, scan user prompt,
+ * drafting instructions) drive a scan; pick a story, generate one draft, edit
+ * it, and post a real tweet. System prompts live in code. Nothing persists
+ * until you post.
  * @returns the prompt-lab UI
  */
 export function PromptLab() {
-  // Scan inputs (prefilled, editable).
+  // Operator inputs (prefilled, editable). System prompts are in code.
+  const [name, setName] = useState(DEFAULT_RUN_NAME)
   const [handles, setHandles] = useState<string[]>(DEFAULT_HANDLES)
   const [handleInput, setHandleInput] = useState("")
   const [handleError, setHandleError] = useState<string | null>(null)
-  const [scanSystemPrompt, setScanSystemPrompt] = useState(
-    DEFAULT_SCAN_SYSTEM_PROMPT,
-  )
   const [scanUserPrompt, setScanUserPrompt] = useState(DEFAULT_SCAN_USER_PROMPT)
+  const [draftingInstructions, setDraftingInstructions] = useState(
+    DEFAULT_DRAFTING_INSTRUCTIONS,
+  )
 
   // Scan run state.
   const [scanStatus, setScanStatus] = useState<
@@ -77,22 +69,14 @@ export function PromptLab() {
   const [reasoning, setReasoning] = useState("")
   const [toolCount, setToolCount] = useState(0)
   const [scanCost, setScanCost] = useState<number | null>(null)
-  const [stories, setStories] = useState<LabStory[]>([])
+  const [stories, setStories] = useState<PreviewStory[]>([])
   const [scanError, setScanError] = useState<string | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
 
-  // Draft inputs (prefilled, editable) + draft run state.
-  const [draftSystemPrompt, setDraftSystemPrompt] = useState(
-    DEFAULT_DRAFT_SYSTEM_PROMPT,
-  )
-  const [draftUserPrompt, setDraftUserPrompt] = useState(
-    DEFAULT_DRAFT_USER_PROMPT,
-  )
+  // Draft + post state.
   const [draftText, setDraftText] = useState("")
   const [drafting, setDrafting] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
-
-  // Post state.
   const [posting, setPosting] = useState(false)
   const [postUrl, setPostUrl] = useState<string | null>(null)
   const [postError, setPostError] = useState<string | null>(null)
@@ -155,7 +139,7 @@ export function PromptLab() {
     }
   }
 
-  // Run a scan from the current editable prompts + handles.
+  // Run a scan from the current handles + scan user prompt.
   async function runScan() {
     if (scanStatus === "running") return
     if (handles.length === 0) {
@@ -176,11 +160,7 @@ export function PromptLab() {
       const response = await fetch("/api/test/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          handles,
-          systemPrompt: scanSystemPrompt,
-          userPrompt: scanUserPrompt,
-        }),
+        body: JSON.stringify({ handles, userPrompt: scanUserPrompt }),
       })
       if (!response.ok) {
         throw new Error((await response.text()) || "Scan failed.")
@@ -217,7 +197,7 @@ export function PromptLab() {
     }
   }
 
-  // Generate a draft for the selected story from the editable draft prompts.
+  // Generate a draft for the selected story from the drafting instructions.
   async function generateDraft() {
     if (selected === null) return
     const story = stories[selected]
@@ -229,8 +209,7 @@ export function PromptLab() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          systemPrompt: draftSystemPrompt,
-          userPrompt: draftUserPrompt,
+          draftingInstructions,
           storyTitle: story.title,
           storySummary: story.summary,
         }),
@@ -259,6 +238,7 @@ export function PromptLab() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name,
           text: draftText,
           storyTitle: story.title,
           storySummary: story.summary,
@@ -288,6 +268,11 @@ export function PromptLab() {
           <CardTitle className="text-base">1 · Scan</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Name</span>
+            <Input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Handles</span>
             <div className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-input bg-background/35 px-3 py-2">
@@ -328,21 +313,20 @@ export function PromptLab() {
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Scan system prompt</span>
-            <Textarea
-              value={scanSystemPrompt}
-              onChange={(event) => setScanSystemPrompt(event.target.value)}
-              rows={6}
-              className="font-mono text-xs"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Scan user prompt</span>
             <Textarea
               value={scanUserPrompt}
               onChange={(event) => setScanUserPrompt(event.target.value)}
               rows={3}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Drafting instructions</span>
+            <Textarea
+              value={draftingInstructions}
+              onChange={(event) => setDraftingInstructions(event.target.value)}
+              rows={2}
             />
           </label>
 
@@ -385,7 +369,11 @@ export function PromptLab() {
               <button
                 key={`${story.dedupeKey}-${index}`}
                 type="button"
-                onClick={() => setSelected(index)}
+                onClick={() => {
+                  setSelected(index)
+                  setDraftText("")
+                  setPostUrl(null)
+                }}
                 className={`flex flex-col gap-1 rounded-lg border p-3 text-left ${
                   selected === index
                     ? "border-primary bg-primary/5"
@@ -408,31 +396,13 @@ export function PromptLab() {
             <CardTitle className="text-base">3 · Draft</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Draft system prompt</span>
-              <Textarea
-                value={draftSystemPrompt}
-                onChange={(event) => setDraftSystemPrompt(event.target.value)}
-                rows={5}
-                className="font-mono text-xs"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Draft user prompt</span>
-              <Textarea
-                value={draftUserPrompt}
-                onChange={(event) => setDraftUserPrompt(event.target.value)}
-                rows={3}
-              />
-            </label>
-
             <Button
               onClick={generateDraft}
               pending={drafting}
               disabled={drafting}
               className="self-start"
             >
-              Generate draft
+              {draftText ? "Regenerate draft" : "Generate draft"}
             </Button>
             {draftError && (
               <p className="text-sm text-destructive">{draftError}</p>

@@ -1,7 +1,12 @@
 // Imports
 import OpenAI from "openai"
 import { getDraftIssue } from "@/lib/draft/validate"
-import { DRAFT_JSON_SCHEMA, DRAFT_MODEL } from "@/lib/draft/prompt"
+import {
+  DRAFT_JSON_SCHEMA,
+  DRAFT_MODEL,
+  DRAFT_REPAIR_SYSTEM_PROMPT,
+  DRAFT_SYSTEM_PROMPT,
+} from "@/lib/draft/prompt"
 
 /**
  * Build a Grok client for draft generation (openai SDK @ api.x.ai).
@@ -100,32 +105,46 @@ async function generateOnce(
   return text
 }
 
-// The story content the draft is grounded in (appended to the user prompt).
+// The story content the draft is grounded in (appended to the user content).
 export interface DraftStory {
   title: string
   summary: string
 }
 
 /**
- * Generate one tweet draft from editable system + user prompts (the prompt-lab
- * path). The story is appended to the user prompt; one validation/repair pass
- * strips URLs/markdown/over-length.
- * @param input - client, editable system + user prompts, and the story
+ * Build the draft user content from the operator's drafting instructions + the
+ * selected story. The system prompt stays in code (DRAFT_SYSTEM_PROMPT).
+ * @param draftingInstructions - operator guidance from the page (may be empty)
+ * @param story - the selected story
+ * @returns the user-message content
+ */
+function buildDraftUserContent(
+  draftingInstructions: string,
+  story: DraftStory,
+): string {
+  const guidance = draftingInstructions.trim()
+  const head = guidance ? `Drafting instructions: ${guidance}\n\n` : ""
+  return `${head}Story title: ${story.title}\nStory summary: ${story.summary}`
+}
+
+/**
+ * Generate one tweet draft for a story. The draft system prompt is fixed in
+ * code; the operator only supplies drafting instructions (+ the story). One
+ * validation/repair pass strips URLs/markdown/over-length.
+ * @param input - client, operator drafting instructions, and the story
  * @returns the valid draft text, or a readable error
  */
-export async function generateDraftFromPrompts(input: {
+export async function generateDraft(input: {
   client: OpenAI
-  systemPrompt: string
-  userPrompt: string
+  draftingInstructions: string
   story: DraftStory
 }): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
-  // Ground the editable user prompt in the selected story.
-  const userContent = `${input.userPrompt}\n\nStory title: ${input.story.title}\nStory summary: ${input.story.summary}`
+  const userContent = buildDraftUserContent(input.draftingInstructions, input.story)
 
-  // Generate the first draft.
+  // Generate the first draft (system prompt from code).
   let text: string
   try {
-    text = await generateOnce(input.client, input.systemPrompt, userContent)
+    text = await generateOnce(input.client, DRAFT_SYSTEM_PROMPT, userContent)
   } catch (error) {
     return {
       ok: false,
@@ -133,14 +152,14 @@ export async function generateDraftFromPrompts(input: {
     }
   }
 
-  // One repair pass if the draft fails validation, reusing the editable prompt.
+  // One repair pass if the draft fails validation.
   let issue = getDraftIssue(text)
   if (issue) {
     try {
       text = await generateOnce(
         input.client,
-        input.systemPrompt,
-        `${userContent}\n\nYour previous draft was invalid: ${issue} Return only a corrected single tweet body — no markdown, no raw URLs, within 280 characters.`,
+        DRAFT_REPAIR_SYSTEM_PROMPT,
+        `${userContent}\n\nYour previous draft was invalid: ${issue} Return only a corrected single tweet body.`,
       )
     } catch (error) {
       return {
