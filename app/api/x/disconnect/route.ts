@@ -6,10 +6,10 @@ import { createClient } from "@/lib/supabase/server"
 export const runtime = "nodejs"
 
 /**
- * Disconnect X: delete the user's x_connections row. RLS already scopes the
- * delete to the owner; eq(user_id) is explicit. Token revocation at X is
- * optional (SPEC §3.1) and skipped for slice 1 — the access token expires in
- * ~2h, and the Supabase 'x' identity is unlinked on the next Connect.
+ * Disconnect X: unlink the Supabase Auth 'x' identity, then delete the user's
+ * x_connections row. RLS already scopes the delete to the owner; eq(user_id) is
+ * explicit. Token revocation at X is optional (SPEC §3.1) and skipped for slice
+ * 1 — the access token expires in ~2h.
  * @returns ok, or a JSON error
  */
 export async function POST() {
@@ -24,6 +24,31 @@ export async function POST() {
 
   if (!user) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 })
+  }
+
+  const { data: identities, error: identitiesError } =
+    await supabase.auth.getUserIdentities()
+
+  if (identitiesError) {
+    return NextResponse.json(
+      { error: "Failed to read linked X account." },
+      { status: 500 },
+    )
+  }
+
+  const xIdentity = identities.identities.find(
+    (identity) => identity.provider === "x",
+  )
+
+  if (xIdentity) {
+    const { error: unlinkError } = await supabase.auth.unlinkIdentity(xIdentity)
+
+    if (unlinkError) {
+      return NextResponse.json(
+        { error: "Failed to unlink X from your account." },
+        { status: 500 },
+      )
+    }
   }
 
   // Delete the x_connections row; RLS scopes it to the owner.
