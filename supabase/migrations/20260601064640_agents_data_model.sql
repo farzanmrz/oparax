@@ -11,9 +11,8 @@ drop table if exists public.stories cascade;
 drop table if exists public.scans cascade;
 drop table if exists public.monitors cascade;
 
--- 2. Extensions + enums (stable sets → Postgres enums → TS string-literal unions).
-create extension if not exists citext;
-
+-- 2. Enums (stable sets → Postgres enums → TS string-literal unions).
+-- (Handle case-insensitivity is enforced in app code, not citext — see ADR-0002.)
 do $$ begin
   create type public.agent_status as enum ('active', 'paused');
 exception when duplicate_object then null; end $$;
