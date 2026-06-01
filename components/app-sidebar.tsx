@@ -1,6 +1,10 @@
 "use client"
 
-import { WorkflowSquare01Icon, Settings02Icon } from "@hugeicons/core-free-icons"
+import Link from "next/link"
+import {
+  Settings02Icon,
+  TestTube01Icon,
+} from "@hugeicons/core-free-icons"
 import { NavMain } from "@/components/nav-main"
 import { NavUser, SidebarSignOut } from "@/components/nav-user"
 import {
@@ -17,9 +21,9 @@ import {
 
 const navItems = [
   {
-    title: "Workflows",
-    url: "/dashboard",
-    icon: WorkflowSquare01Icon,
+    title: "Prompt lab",
+    url: "/dashboard/agents",
+    icon: TestTube01Icon,
   },
   {
     title: "Settings",
@@ -40,7 +44,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="/dashboard">
+              <Link href="/dashboard/agents">
                 <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-foreground text-sm font-bold text-background">
                   O
                 </div>
@@ -50,7 +54,7 @@ export function AppSidebar({
                     newsroom automation
                   </span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

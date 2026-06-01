@@ -29,6 +29,10 @@
   --success: oklch(0.696 0.17 162.48);
   --success-foreground: oklch(0.115 0 0);
   --success-bg: oklch(0.135 0.062 172);
+  --x-handle: oklch(0.76 0.14 245);
+  --x-handle-hover: oklch(0.84 0.12 245);
+  --x-handle-bg: oklch(0.24 0.065 245);
+  --x-handle-border: oklch(0.62 0.12 245 / 42%);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 22%);
   --ring: oklch(0.66 0.12 184.704);
@@ -77,6 +81,10 @@
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-success-bg: var(--success-bg);
+  --color-x-handle: var(--x-handle);
+  --color-x-handle-hover: var(--x-handle-hover);
+  --color-x-handle-bg: var(--x-handle-bg);
+  --color-x-handle-border: var(--x-handle-border);
 
   /* shadcn/ui additions */
   --color-popover: var(--popover);
@@ -217,21 +225,6 @@
   .auth-legal[data-slot="field-description"] {
     text-align: center;
   }
-}
-
-/* ── Compact tweet embeds ── */
-.react-tweet-theme {
-  --tweet-container-margin: 0;
-  --tweet-body-font-size: 0.8125rem;
-  max-width: 350px;
-}
-
-/* Hide actions (reply/retweet/like) in tweet embeds */
-.react-tweet-theme [data-testid="reply"],
-.react-tweet-theme [data-testid="retweet"],
-.react-tweet-theme [data-testid="like"],
-.react-tweet-theme a[href*="/intent/"] {
-  display: none;
 }
 
 /* ── Base styles ── */

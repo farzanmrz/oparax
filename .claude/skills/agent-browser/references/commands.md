@@ -32,7 +32,7 @@ agent-browser batch \
 ```
 
 `open` with no URL gives you a clean launch so any interception, cookies,
-or init scripts you register take effect on the _first_ real navigation.
+or init scripts you register take effect on the *first* real navigation.
 Use for SSR-only debug (`--resource-type script`), protected-origin auth,
 or capturing fresh `react suspense`/`vitals` state without noise from a
 prior page.
@@ -103,6 +103,9 @@ agent-browser screenshot --full   # Full page
 agent-browser pdf output.pdf      # Save as PDF
 ```
 
+Headless Chromium screenshots hide native scrollbars for consistent image output.
+Pass `--hide-scrollbars false` when launching to keep native scrollbars visible.
+
 ## Video Recording
 
 ```bash
@@ -119,7 +122,6 @@ agent-browser wait @e1                     # Wait for element
 agent-browser wait 2000                    # Wait milliseconds
 agent-browser wait --text "Success"        # Wait for text (or -t)
 agent-browser wait --url "**/dashboard"    # Wait for URL pattern (or -u)
-agent-browser wait --u "http://localhost:3000/dashboard" # Wait for exact URL
 agent-browser wait --load networkidle      # Wait for network idle (or -l)
 agent-browser wait --fn "window.ready"     # Wait for JS condition (or -f)
 ```
@@ -253,7 +255,6 @@ agent-browser frame main              # Return to main frame
 ```
 
 The `frame` command accepts:
-
 - **Element refs** — `frame @e3` resolves the ref to an iframe element
 - **CSS selectors** — `frame "#payment-iframe"` finds the iframe by selector
 - **Frame name/URL** — matches against the browser's frame tree
@@ -311,6 +312,7 @@ agent-browser --headers <json> ...    # HTTP headers scoped to URL's origin
 agent-browser --executable-path <p>   # Custom browser executable
 agent-browser --extension <path> ...  # Load browser extension (repeatable)
 agent-browser --ignore-https-errors   # Ignore SSL certificate errors
+agent-browser --hide-scrollbars false # Keep native scrollbars visible in headless Chromium screenshots
 agent-browser --help                  # Show help (-h)
 agent-browser --version               # Show version (-V)
 agent-browser <command> --help        # Show detailed help for a command
@@ -385,6 +387,7 @@ AGENT_BROWSER_EXECUTABLE_PATH="/path/chrome" # Custom browser path
 AGENT_BROWSER_EXTENSIONS="/ext1,/ext2"       # Comma-separated extension paths
 AGENT_BROWSER_INIT_SCRIPTS="/a.js,/b.js"     # Comma-separated init script paths
 AGENT_BROWSER_ENABLE="react-devtools"        # Comma-separated built-in init script features
+AGENT_BROWSER_HIDE_SCROLLBARS="false"        # Keep native scrollbars visible in headless Chromium screenshots
 AGENT_BROWSER_PROVIDER="browserbase"         # Cloud browser provider
 AGENT_BROWSER_STREAM_PORT="9223"             # Override WebSocket streaming port (default: OS-assigned)
 AGENT_BROWSER_HOME="/path/to/agent-browser"  # Custom install location

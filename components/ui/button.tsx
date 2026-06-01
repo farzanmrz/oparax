@@ -16,6 +16,8 @@ const buttonVariants = cva(
           "border-border/80 bg-background/60 text-foreground shadow-sm hover:border-primary/45 hover:bg-primary/10 hover:text-foreground hover:shadow-md aria-expanded:bg-muted aria-expanded:text-foreground active:scale-[0.99]",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-sm aria-expanded:bg-secondary aria-expanded:text-secondary-foreground active:scale-[0.98]",
+        success:
+          "border-success/45 bg-primary text-primary-foreground shadow-sm shadow-black/25 hover:border-success/70 hover:bg-primary/85 hover:shadow-md hover:shadow-black/30 active:scale-[0.99] active:bg-primary/80",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         destructive:
@@ -27,6 +29,8 @@ const buttonVariants = cva(
           "h-10 gap-2 px-3.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         xs: "h-8 gap-1.5 rounded-[min(var(--radius-md),10px)] px-2.5 text-sm in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-4",
         sm: "h-9 gap-1.5 rounded-[min(var(--radius-md),12px)] px-3 text-sm in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-4",
+        "form-action":
+          "h-8 gap-1.5 rounded-[min(var(--radius-md),10px)] px-2.5 text-sm font-medium in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-4",
         lg: "h-11 gap-2 px-4 has-data-[icon=inline-end]:pr-3.5 has-data-[icon=inline-start]:pl-3.5",
         icon: "size-10",
         "icon-xs":

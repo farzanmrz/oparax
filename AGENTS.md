@@ -1,7 +1,5 @@
 # Project Overview
 
-<!-- Canonical agent instructions. CLAUDE.md is a symlink to this file — edit here, both tools see it. -->
-
 Oparax is an AI-powered social media automation tool for professional news reporters. It monitors X (Twitter) for breaking stories and drafts posts in the user's voice. The primary use case is a football news reporter with 400k+ followers on X.
 
 ## Project Structure
@@ -14,41 +12,40 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 .
 ├── package.json    # Deps + scripts (pnpm dev / build / lint)
 ├── next.config.ts  # Next.js config
-├── vercel.json     # Vercel cron configuration.
+├── vercel.json     # Vercel config; crons EMPTY (auto-scan cron deferred — see docs/PLAN.md)
 ├── components.json # shadcn config
 ├── tsconfig.json   # TypeScript config (strict, @/* alias)
 ├── proxy.ts        # Per-request hook that refreshes the Supabase session.
 │                   # MISLEADINGLY NAMED — NOT Supabase middleware (that lives in lib/supabase/middleware.ts).
 │
 ├── app/            # Next.js App Router
-│   ├── login/, signup/, auth/, forgot-password/  # Auth flow: sign-in, sign-up + email verify, password reset
-│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings + workflow create/detail pages
-│   └── api/        # scan/route.ts → streams Grok x_search over SSE; draft/route.ts → generates draft tweets
+│   ├── login/, signup/, auth/, forgot-password/  # Auth flow; auth/callback = X OAuth (link X for posting)
+│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); connect-x gate, settings, agents surface
+│   │   ├── connect-x/ # Required X-linking gate before creating agents; redirects back via ?next=...
+│   │   └── agents/ # page.tsx = LIST · new/ = create (Run Agent: scan+draft → review → Save) · [id]/ = manual run/redraft/post detail
+│   └── api/        # agents/* → scan(stream preview) · save-agent (agents+runs+run_items) · [id]/run · run-items post/redraft · x/* → disconnect
 │
 ├── components/
 │   ├── ui/         # shadcn primitives (button, card, input, table, sidebar, …)
-│   └── *.tsx       # App components: auth forms, sidebar/nav, and the workflow drafting studio + its panels/stepper
+│   ├── loop/       # agents UI + connect-x / disconnect-x (X linking) components
+│   ├── settings/   # settings sections: profile, coming-soon placeholders, tab nav
+│   └── *.tsx       # auth forms, sidebar/nav, dashboard page header
 │
-├── lib/            # Domain logic: supabase/ clients, xai.ts (Grok client = openai SDK @ api.x.ai), prompts.ts,
-│                   # workflow-drafting.ts, scan-constraints.ts, validation.ts, auth-errors.ts, utils.ts (cn helper)
+├── lib/            # Domain logic: supabase/ clients, scan/ + draft/ (Grok scan & draft pipeline), x/ (token
+│                   # lifecycle + client), types/ (generated DB types + aliases), validation.ts, auth-errors.ts, utils.ts
 │
+├── docs/           # Spec, PRD & planning docs — all spec/PRD + ADRs + ideas live here. See decisions/0002-agent-data-model.md
 ├── hooks/          # use-mobile.ts (responsive viewport helper)
 ├── public/         # Static assets
-├── supabase/       # Repo-tracked Supabase migrations.
+├── supabase/       # Repo-tracked migrations. Live tables: agents, runs, run_items, x_connections
+│                   # (old monitors/scans/stories/drafts/posts DROPPED in the agents-model cutover)
 └── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
 ```
 
-## Skill Invocation
+**Current surface:** the **Agents page** (`app/dashboard/agents`, was `test`) is the active product — Connect X → configure agent (handles + prompts) → **Run Agent** (single Grok call: scan + draft together, one cost) → every story is drafted → review + edit → **post manually per item**. Running before save is an in-memory **preview**; **Save Agent** persists the agent plus that preview as a completed `runs` row with `run_items`, then routes to the agent detail page. **Routing:** `/` sends signed-in users to `/dashboard`; `/dashboard` sends connected users to `/dashboard/agents` and disconnected users to `/dashboard/connect-x`; `/dashboard/connect-x` is the required X-linking gate before creating agents; `/dashboard/agents` = saved-agents list; `/dashboard/agents/new` = create / Run-Agent page (requires `x_connections`); `/dashboard/agents/[id]` = manual scan history + redraft/post detail. The legacy `workflows` module (pages + the 4 legacy tables) was removed 2026-05-31; `monitors/scans/stories/drafts/posts` were dropped in the agents-model cutover. Live DB tables: `agents, runs, run_items, x_connections`. Disconnecting X deletes `x_connections` and marks agents `inactive`; reconnecting X reactivates them. Auto-scan cron deferred. Full architecture + typing decisions: `docs/decisions/0002-agent-data-model.md`; original baseline: `docs/decisions/0001-architecture.md`.
 
-These rules are mandatory and **override a skill's own description** wherever they conflict. Apply them both at the start of a chat and mid-conversation, as soon as a condition is met.
+# Agentic Context
 
-**Invoke when the condition applies:**
-
-- `ask-questions-if-underspecified` — Invoke whenever a request is unclear: vague scope, several tasks bundled together, or a mid-conversation shift to something new. Clarify how to proceed before acting.
-
-- `agent-browser` — The dev server is **always already running** at `http://localhost:3000`, so navigate straight there — never run `pnpm dev`/`build` or otherwise start the server first.
-
-**Never invoke on your own:**
-
-- `ui-tester` — Do not invoke under any circumstances. It is a work in progress and not ready for use, even if its own description says otherwise.
-- `ui-standard` — Do not invoke under any circumstaces. It is a work in progress, and we are still standardizing the UI, so it is not ready for use even if its own description says otherwise.
+- This project is developed interchangeably in **Claude Code** and **Codex**. `AGENTS.md` is the canonical shared instruction file read by both tools. Hence you are only allowed to always edit this `AGENTS.md`
+- `CLAUDE.md` imports `AGENTS.md` and contains further Claude Code-specific instructions if needed. User always edits that manually
+- Whenever user asks you to check a webpage component on the frontend website, NEVER be confused on the credentials and always apply these as default unless specified otherwise: **Email:** `testuser@oparax.com`, **Password:** `hello123`.

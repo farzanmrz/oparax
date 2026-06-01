@@ -28,5 +28,9 @@ export async function signup(formData: FormData) {
     );
   }
 
+  if (data.session) {
+    redirect("/dashboard/connect-x");
+  }
+
   redirect("/signup/check-email");
 }
