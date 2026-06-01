@@ -26,7 +26,7 @@ const navItems = [
     icon: WorkflowSquare01Icon,
   },
   {
-    title: "Test",
+    title: "Prompt lab",
     url: "/dashboard/test",
     icon: TestTube01Icon,
   },

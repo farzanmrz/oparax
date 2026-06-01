@@ -1,16 +1,7 @@
 // Imports
 import OpenAI from "openai"
 import { getDraftIssue } from "@/lib/draft/validate"
-import {
-  DRAFT_JSON_SCHEMA,
-  DRAFT_MODEL,
-  DRAFT_REPAIR_SYSTEM_PROMPT,
-  DRAFT_SYSTEM_PROMPT,
-  buildDraftRepairUserPrompt,
-  buildDraftUserPrompt,
-  type DraftContext,
-  type DraftStoryInput,
-} from "@/lib/draft/prompt"
+import { DRAFT_JSON_SCHEMA, DRAFT_MODEL } from "@/lib/draft/prompt"
 
 /**
  * Build a Grok client for draft generation (openai SDK @ api.x.ai).
@@ -53,12 +44,11 @@ function extractResponseText(response: OpenAI.Responses.Response): string {
 }
 
 /**
- * Parse the structured JSON text from the model output.
+ * Parse the structured JSON { text } from the model output.
  * @param raw - the raw output text
  * @returns the draft text, or null if it could not be parsed
  */
 function parseDraftText(raw: string): string | null {
-
   try {
     const parsed = JSON.parse(raw) as unknown
     if (
@@ -78,7 +68,7 @@ function parseDraftText(raw: string): string | null {
  * Run one Grok generation with a system + user prompt.
  * @param client - the Grok client
  * @param systemPrompt - the system instructions
- * @param userPrompt - the JSON user prompt
+ * @param userPrompt - the user prompt
  * @returns the draft text
  */
 async function generateOnce(
@@ -110,25 +100,32 @@ async function generateOnce(
   return text
 }
 
+// The story content the draft is grounded in (appended to the user prompt).
+export interface DraftStory {
+  title: string
+  summary: string
+}
+
 /**
- * Generate a single tweet draft for a story with one validation/repair pass.
- * Shared by the saved-story route and the create-form preview route.
- * @param input - the Grok client, drafting context, and the story
+ * Generate one tweet draft from editable system + user prompts (the prompt-lab
+ * path). The story is appended to the user prompt; one validation/repair pass
+ * strips URLs/markdown/over-length.
+ * @param input - client, editable system + user prompts, and the story
  * @returns the valid draft text, or a readable error
  */
-export async function generateValidatedDraft(input: {
+export async function generateDraftFromPrompts(input: {
   client: OpenAI
-  context: DraftContext
-  story: DraftStoryInput
+  systemPrompt: string
+  userPrompt: string
+  story: DraftStory
 }): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
-  // Generate the first draft from the prompt.
+  // Ground the editable user prompt in the selected story.
+  const userContent = `${input.userPrompt}\n\nStory title: ${input.story.title}\nStory summary: ${input.story.summary}`
+
+  // Generate the first draft.
   let text: string
   try {
-    text = await generateOnce(
-      input.client,
-      DRAFT_SYSTEM_PROMPT,
-      buildDraftUserPrompt({ ...input.context, story: input.story }),
-    )
+    text = await generateOnce(input.client, input.systemPrompt, userContent)
   } catch (error) {
     return {
       ok: false,
@@ -136,19 +133,14 @@ export async function generateValidatedDraft(input: {
     }
   }
 
-  // One repair pass if the first draft fails validation.
+  // One repair pass if the draft fails validation, reusing the editable prompt.
   let issue = getDraftIssue(text)
   if (issue) {
     try {
       text = await generateOnce(
         input.client,
-        DRAFT_REPAIR_SYSTEM_PROMPT,
-        buildDraftRepairUserPrompt({
-          ...input.context,
-          story: input.story,
-          invalidDraft: text,
-          invalidReason: issue,
-        }),
+        input.systemPrompt,
+        `${userContent}\n\nYour previous draft was invalid: ${issue} Return only a corrected single tweet body — no markdown, no raw URLs, within 280 characters.`,
       )
     } catch (error) {
       return {
@@ -158,7 +150,7 @@ export async function generateValidatedDraft(input: {
     }
     issue = getDraftIssue(text)
     if (issue) {
-      return { ok: false, error: "Drafting service could not produce valid tweet text." }
+      return { ok: false, error: "Drafting could not produce valid tweet text." }
     }
   }
 

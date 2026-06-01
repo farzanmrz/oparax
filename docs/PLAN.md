@@ -2,6 +2,17 @@
 
 > Companion docs: `docs/SPEC.md` (source of truth) · `docs/TODO.md` (checkbox list).
 > Status: **APPROVED 2026-05-29.** Build per this plan; begin at **T0**.
+>
+> **Pivot 2026-05-31 (user) — surface = a single Prompt Lab page.** The monitor
+> create/list/detail CRUD (T5/T6/T7 UI) is **set aside** (kept in git) in favor of
+> ONE iteration page at `/dashboard/test`: prefilled, editable **system + user
+> prompts** for *both* scan and draft (the real iteration target), pick one story,
+> draft it, post a real tweet. Ephemeral — persists only on post (a hidden lab
+> monitor owns the chain). Engines (`lib/scan/*`, `lib/draft/*`, `lib/x/*`) reused;
+> routes are `/api/test/{scan,draft,post}`. Removed from the surface: drafting-
+> instructions/example-tweets/scan-date fields, per-item auto-draft, `react-tweet`.
+> **Deferred (not this pass):** Test→Monitor rename, legacy `workflow` code/table
+> purge (legacy is inert — no new file imports it). Sidebar label now "Prompt lab".
 
 ## Context
 We're building the first **end-to-end manual loop** for Oparax — *Connect X → create monitor → scan (Grok `x_search`) → see separated stories → pick one → draft → edit → post a real tweet* — deployed and real enough that a football reporter can run it and give feedback. The driving reason: there is **no ground truth** yet; self-refining AI output is unfalsifiable, so plumbing-first is the fastest path to a real user's signal. Source of truth = `docs/SPEC.md` (v3.1). Constraints: speed-to-reporter, **zero throwaway work**, **all loop code built fresh** (no reuse of legacy first-party code), correct-not-pretty, **manual-only** (no cron/aggregation/auto — all parked).

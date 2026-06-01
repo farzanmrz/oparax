@@ -31,6 +31,7 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 ├── lib/            # Domain logic: supabase/ clients, xai.ts (Grok client = openai SDK @ api.x.ai), prompts.ts,
 │                   # workflow-drafting.ts, scan-constraints.ts, validation.ts, auth-errors.ts, utils.ts (cn helper)
 │
+├── docs/           # Spec, PRD & planning docs (e.g. SPEC.md) — all spec/PRD documentation lives here.
 ├── hooks/          # use-mobile.ts (responsive viewport helper)
 ├── public/         # Static assets
 ├── supabase/       # Repo-tracked Supabase migrations.
@@ -39,13 +40,6 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 
 # Agentic Context
 
-- The user alternates between both **`Claude Code`** and **`Codex`** when developing this project.
-- The configuration setup across markdown files and folders is therefore kept as adaptable as possible to enable both IDEs to work seamlessly.
-- **`AGENTS.md`** is the canonical instruction file both tools read — therefore it is mainly edited for all rules.
-- **`CLAUDE.md`** imports `@AGENTS.md` for all rules and **SPECIFIC Claude-only instructions** can be added further in `CLAUDE.md` to prevent leaking to Codex.
-
-## Skill Invocation
-
-It is MANDATORY you NEVER invoke the skills mentioned below and **override a skill's own description** wherever they conflict. At the start of a chat and mid-conversation, as soon as a condition is met always make sure you never invoke the following skills since they are a work in progress and hence incomplete:
-
-- `ui-tester` — Do not invoke under any circumstances. It is a work in progress and not ready for use, even if its own description says otherwise.
+- This project is developed interchangeably in **Claude Code** and **Codex**. `AGENTS.md` is the canonical shared instruction file read by both tools. Hence you are only allowed to always edit this `AGENTS.md`
+- `CLAUDE.md` imports `AGENTS.md` and contains further Claude Code-specific instructions if needed. User always edits that manually
+- Whenever user asks you to check a webpage component on the frontend website, NEVER be confused on the credentials and always apply these as default unless specified otherwise: **Email:** `testuser@oparax.com`, **Password:** `hello123`.
