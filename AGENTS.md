@@ -21,8 +21,8 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 ├── app/            # Next.js App Router
 │   ├── login/, signup/, auth/, forgot-password/  # Auth flow; auth/callback = X OAuth (link X for posting)
 │   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); settings/ (tabbed) + agents surface
-│   │   └── agents/ # THE AGENTS PAGE (was test/): Run Agent (scan+draft in one call) → review stories+drafts → post manually per item; unsaved = preview, Save persists the agent config
-│   └── api/        # agents/* → scan+draft(stream)/run/post · x/* → disconnect (legacy test/scan/draft/cron removed)
+│   │   └── agents/ # Agents area (was test/): page.tsx = LIST (dashboard landing) · new/ = create (Run Agent: scan+draft → review → Save → list) · [id]/ = detail (TBD)
+│   └── api/        # agents/* → scan(stream) · draft · save-agent (writes the `agents` table) · x/* → disconnect  (combined run + per-item post = TBD)
 │
 ├── components/
 │   ├── ui/         # shadcn primitives (button, card, input, table, sidebar, …)
@@ -41,7 +41,7 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 └── scripts/        # enforce-pnpm preinstall guard + grok-search.ts + prompts.ts personal scratchpad (leave alone)
 ```
 
-**Current surface:** the **Agents page** (`app/dashboard/agents`, was `test`) is the active product — Connect X → configure agent (handles + prompts) → **Run Agent** (single Grok call: scan + draft together, one cost) → every story is drafted → review + edit → **post manually per item**. Running without saving is an in-memory **preview**; **Save Agent** persists the config. The legacy `workflows` module (pages + the 4 legacy tables) was removed 2026-05-31; `monitors/scans/stories/drafts/posts` were dropped in the agents-model cutover. Live DB tables: `agents, runs, run_items, x_connections`. Auto-scan cron deferred. Full architecture + typing decisions: `docs/decisions/0002-agent-data-model.md`; original baseline: `docs/decisions/0001-architecture.md`.
+**Current surface:** the **Agents page** (`app/dashboard/agents`, was `test`) is the active product — Connect X → configure agent (handles + prompts) → **Run Agent** (single Grok call: scan + draft together, one cost) → every story is drafted → review + edit → **post manually per item**. Running without saving is an in-memory **preview**; **Save Agent** persists to the `agents` table and routes to the list. **Routing:** `/dashboard/agents` = saved-agents **list** (the dashboard landing; `/dashboard` redirects here) · `/dashboard/agents/new` = the create / Run-Agent page · `/dashboard/agents/[id]` = per-agent detail (TBD). The legacy `workflows` module (pages + the 4 legacy tables) was removed 2026-05-31; `monitors/scans/stories/drafts/posts` were dropped in the agents-model cutover. Live DB tables: `agents, runs, run_items, x_connections`. **Written so far: `agents` (on Save) + `x_connections` (on Connect X); `runs`/`run_items` are NOT yet populated — they await the combined Run-Agent persistence (the next build).** Auto-scan cron deferred. Full architecture + typing decisions: `docs/decisions/0002-agent-data-model.md`; original baseline: `docs/decisions/0001-architecture.md`.
 
 # Agentic Context
 

@@ -2,6 +2,7 @@
 
 // Imports
 import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { ChevronRight, HelpCircle } from "lucide-react"
 import {
   DEFAULT_HANDLES,
@@ -107,6 +108,9 @@ function getAgentFingerprint({
  * @returns the prompt-lab UI
  */
 export function PromptLab() {
+  // Router to navigate to the agents list after a successful save.
+  const router = useRouter()
+
   // Operator inputs (prefilled, editable). System prompts are in code.
   const [name, setName] = useState(DEFAULT_RUN_NAME)
   const [handles, setHandles] = useState<string[]>(DEFAULT_HANDLES)
@@ -408,6 +412,8 @@ export function PromptLab() {
       }
       setSaveStatus("saved")
       setHasUnsavedChanges(false)
+      // Navigate out to the agents list, where the new agent now appears.
+      router.push("/dashboard/agents")
     } catch (err) {
       setSaveStatus("error")
       setSaveError(err instanceof Error ? err.message : "Failed to save.")
