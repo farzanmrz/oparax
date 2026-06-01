@@ -8,10 +8,10 @@ import {
 import { createClient } from "@/lib/supabase/server"
 
 /**
- * Save a prompt-lab run as a real monitor configuration after the operator has
- * proven the scan + draft shape in the lab UI.
- * @param req - request carrying the monitor name, handles, and instructions
- * @returns the saved monitor id, or a JSON error
+ * Save the prompt-lab inputs as a real agent configuration after the operator
+ * has proven the scan + draft shape in the lab UI.
+ * @param req - request carrying the agent name, handles, and instructions
+ * @returns the saved agent id, or a JSON error
  */
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -81,8 +81,8 @@ export async function POST(req: Request) {
     )
   }
 
-  const { data: monitor, error } = await supabase
-    .from("monitors")
+  const { data: agent, error } = await supabase
+    .from("agents")
     .insert({
       user_id: user.id,
       name,
@@ -94,12 +94,12 @@ export async function POST(req: Request) {
     .select("id")
     .single<{ id: string }>()
 
-  if (error || !monitor) {
+  if (error || !agent) {
     return NextResponse.json(
-      { error: "Failed to save workflow." },
+      { error: "Failed to save agent." },
       { status: 500 },
     )
   }
 
-  return NextResponse.json({ id: monitor.id })
+  return NextResponse.json({ id: agent.id })
 }

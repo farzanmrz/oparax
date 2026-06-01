@@ -21,7 +21,7 @@ import {
 const navItems = [
   {
     title: "Prompt lab",
-    url: "/dashboard/test",
+    url: "/dashboard/agents",
     icon: TestTube01Icon,
   },
   {
@@ -43,7 +43,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="/dashboard/test">
+              <a href="/dashboard/agents">
                 <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-foreground text-sm font-bold text-background">
                   O
                 </div>

@@ -14,42 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      drafts: {
-        Row: {
-          created_at: string
-          id: string
-          status: string
-          story_id: string
-          text: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          status?: string
-          story_id: string
-          text?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          status?: string
-          story_id?: string
-          text?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "drafts_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      monitors: {
+      agents: {
         Row: {
           created_at: string
           drafting_instructions: string
@@ -58,9 +23,11 @@ export type Database = {
           monitored_handles: string[]
           monitoring_description: string
           name: string
+          next_run_at: string | null
+          scan_cadence_minutes: number | null
           scan_from: string | null
           scan_to: string | null
-          status: string
+          status: Database["public"]["Enums"]["agent_status"]
           updated_at: string
           user_id: string
         }
@@ -72,9 +39,11 @@ export type Database = {
           monitored_handles?: string[]
           monitoring_description?: string
           name: string
+          next_run_at?: string | null
+          scan_cadence_minutes?: number | null
           scan_from?: string | null
           scan_to?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["agent_status"]
           updated_at?: string
           user_id: string
         }
@@ -86,368 +55,140 @@ export type Database = {
           monitored_handles?: string[]
           monitoring_description?: string
           name?: string
+          next_run_at?: string | null
+          scan_cadence_minutes?: number | null
           scan_from?: string | null
           scan_to?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["agent_status"]
           updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
-      posts: {
+      run_items: {
         Row: {
-          draft_id: string
-          error_message: string | null
-          id: string
-          posted_at: string
-          status: string
-          x_tweet_id: string
-          x_tweet_url: string
-        }
-        Insert: {
-          draft_id: string
-          error_message?: string | null
-          id?: string
-          posted_at?: string
-          status?: string
-          x_tweet_id: string
-          x_tweet_url: string
-        }
-        Update: {
-          draft_id?: string
-          error_message?: string | null
-          id?: string
-          posted_at?: string
-          status?: string
-          x_tweet_id?: string
-          x_tweet_url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "posts_draft_id_fkey"
-            columns: ["draft_id"]
-            isOneToOne: false
-            referencedRelation: "drafts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scan_items: {
-        Row: {
-          aggregated_context: string
+          agent_id: string
+          created_at: string
           dedupe_key: string
-          evidence_points: string[]
-          first_scan_run_id: string | null
-          first_seen_at: string
+          drafted_text: string
+          error_message: string | null
+          final_text: string | null
           id: string
-          last_scan_run_id: string | null
-          last_seen_at: string
+          posted_at: string | null
           primary_tweet_url: string
-          published_at: string | null
-          raw_headline: Json
-          source_handles: string[]
+          run_id: string
           source_urls: string[]
-          supporting_tweet_urls: string[]
-          title: string
-          trigger_id: string
-          workflow_id: string
+          status: Database["public"]["Enums"]["item_status"]
+          story_summary: string
+          story_title: string
+          updated_at: string
+          x_tweet_id: string | null
+          x_tweet_url: string | null
         }
         Insert: {
-          aggregated_context: string
+          agent_id: string
+          created_at?: string
           dedupe_key: string
-          evidence_points?: string[]
-          first_scan_run_id?: string | null
-          first_seen_at?: string
+          drafted_text?: string
+          error_message?: string | null
+          final_text?: string | null
           id?: string
-          last_scan_run_id?: string | null
-          last_seen_at?: string
+          posted_at?: string | null
           primary_tweet_url?: string
-          published_at?: string | null
-          raw_headline?: Json
-          source_handles?: string[]
+          run_id: string
           source_urls?: string[]
-          supporting_tweet_urls?: string[]
-          title: string
-          trigger_id: string
-          workflow_id: string
+          status?: Database["public"]["Enums"]["item_status"]
+          story_summary?: string
+          story_title?: string
+          updated_at?: string
+          x_tweet_id?: string | null
+          x_tweet_url?: string | null
         }
         Update: {
-          aggregated_context?: string
+          agent_id?: string
+          created_at?: string
           dedupe_key?: string
-          evidence_points?: string[]
-          first_scan_run_id?: string | null
-          first_seen_at?: string
+          drafted_text?: string
+          error_message?: string | null
+          final_text?: string | null
           id?: string
-          last_scan_run_id?: string | null
-          last_seen_at?: string
+          posted_at?: string | null
           primary_tweet_url?: string
-          published_at?: string | null
-          raw_headline?: Json
-          source_handles?: string[]
+          run_id?: string
           source_urls?: string[]
-          supporting_tweet_urls?: string[]
-          title?: string
-          trigger_id?: string
-          workflow_id?: string
+          status?: Database["public"]["Enums"]["item_status"]
+          story_summary?: string
+          story_title?: string
+          updated_at?: string
+          x_tweet_id?: string | null
+          x_tweet_url?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "scan_items_first_scan_run_id_fkey"
-            columns: ["first_scan_run_id"]
+            foreignKeyName: "run_items_agent_id_fkey"
+            columns: ["agent_id"]
             isOneToOne: false
-            referencedRelation: "scan_runs"
+            referencedRelation: "agents"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "scan_items_last_scan_run_id_fkey"
-            columns: ["last_scan_run_id"]
+            foreignKeyName: "run_items_run_id_fkey"
+            columns: ["run_id"]
             isOneToOne: false
-            referencedRelation: "scan_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scan_items_trigger_id_fkey"
-            columns: ["trigger_id"]
-            isOneToOne: false
-            referencedRelation: "triggers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scan_items_workflow_id_fkey"
-            columns: ["workflow_id"]
-            isOneToOne: false
-            referencedRelation: "workflows"
+            referencedRelation: "runs"
             referencedColumns: ["id"]
           },
         ]
       }
-      scan_runs: {
+      runs: {
         Row: {
-          completed_at: string | null
-          error_message: string | null
-          id: string
-          item_count: number | null
-          new_item_count: number
-          raw_output: string | null
-          source: string
-          started_at: string
-          status: string
-          trigger_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          error_message?: string | null
-          id?: string
-          item_count?: number | null
-          new_item_count?: number
-          raw_output?: string | null
-          source?: string
-          started_at?: string
-          status?: string
-          trigger_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          error_message?: string | null
-          id?: string
-          item_count?: number | null
-          new_item_count?: number
-          raw_output?: string | null
-          source?: string
-          started_at?: string
-          status?: string
-          trigger_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scan_runs_trigger_id_fkey"
-            columns: ["trigger_id"]
-            isOneToOne: false
-            referencedRelation: "triggers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scans: {
-        Row: {
+          agent_id: string
           completed_at: string | null
           cost_usd: number | null
           error_message: string | null
           id: string
-          monitor_id: string
-          raw_output: Json | null
+          inputs: Json | null
+          item_count: number | null
+          source: Database["public"]["Enums"]["run_source"]
           started_at: string
-          status: string
-          story_count: number | null
+          status: Database["public"]["Enums"]["run_status"]
           x_search_count: number | null
         }
         Insert: {
+          agent_id: string
           completed_at?: string | null
           cost_usd?: number | null
           error_message?: string | null
           id?: string
-          monitor_id: string
-          raw_output?: Json | null
+          inputs?: Json | null
+          item_count?: number | null
+          source?: Database["public"]["Enums"]["run_source"]
           started_at?: string
-          status?: string
-          story_count?: number | null
+          status?: Database["public"]["Enums"]["run_status"]
           x_search_count?: number | null
         }
         Update: {
+          agent_id?: string
           completed_at?: string | null
           cost_usd?: number | null
           error_message?: string | null
           id?: string
-          monitor_id?: string
-          raw_output?: Json | null
+          inputs?: Json | null
+          item_count?: number | null
+          source?: Database["public"]["Enums"]["run_source"]
           started_at?: string
-          status?: string
-          story_count?: number | null
+          status?: Database["public"]["Enums"]["run_status"]
           x_search_count?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "scans_monitor_id_fkey"
-            columns: ["monitor_id"]
+            foreignKeyName: "runs_agent_id_fkey"
+            columns: ["agent_id"]
             isOneToOne: false
-            referencedRelation: "monitors"
+            referencedRelation: "agents"
             referencedColumns: ["id"]
           },
         ]
-      }
-      stories: {
-        Row: {
-          created_at: string
-          dedupe_key: string
-          id: string
-          monitor_id: string
-          primary_tweet_url: string
-          scan_id: string
-          source_urls: string[]
-          summary: string
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          dedupe_key: string
-          id?: string
-          monitor_id: string
-          primary_tweet_url?: string
-          scan_id: string
-          source_urls?: string[]
-          summary?: string
-          title: string
-        }
-        Update: {
-          created_at?: string
-          dedupe_key?: string
-          id?: string
-          monitor_id?: string
-          primary_tweet_url?: string
-          scan_id?: string
-          source_urls?: string[]
-          summary?: string
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stories_monitor_id_fkey"
-            columns: ["monitor_id"]
-            isOneToOne: false
-            referencedRelation: "monitors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stories_scan_id_fkey"
-            columns: ["scan_id"]
-            isOneToOne: false
-            referencedRelation: "scans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      triggers: {
-        Row: {
-          config: Json
-          created_at: string
-          frequency_amount: number
-          frequency_unit: Database["public"]["Enums"]["trigger_frequency_unit"]
-          id: string
-          last_run_at: string | null
-          next_run_at: string | null
-          status: string
-          type: string
-          workflow_id: string
-        }
-        Insert: {
-          config?: Json
-          created_at?: string
-          frequency_amount: number
-          frequency_unit: Database["public"]["Enums"]["trigger_frequency_unit"]
-          id?: string
-          last_run_at?: string | null
-          next_run_at?: string | null
-          status?: string
-          type?: string
-          workflow_id: string
-        }
-        Update: {
-          config?: Json
-          created_at?: string
-          frequency_amount?: number
-          frequency_unit?: Database["public"]["Enums"]["trigger_frequency_unit"]
-          id?: string
-          last_run_at?: string | null
-          next_run_at?: string | null
-          status?: string
-          type?: string
-          workflow_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "triggers_workflow_id_fkey"
-            columns: ["workflow_id"]
-            isOneToOne: false
-            referencedRelation: "workflows"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workflows: {
-        Row: {
-          created_at: string
-          description: string
-          drafting_instructions: string
-          example_tweets: string[]
-          id: string
-          name: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          drafting_instructions?: string
-          example_tweets?: string[]
-          id?: string
-          name: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          drafting_instructions?: string
-          example_tweets?: string[]
-          id?: string
-          name?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       x_connections: {
         Row: {
@@ -493,31 +234,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      claim_due_workflow_trigger: {
-        Args: never
-        Returns: {
-          claimed_at: string
-          frequency_amount: number
-          frequency_unit: Database["public"]["Enums"]["trigger_frequency_unit"]
-          last_run_at: string
-          scheduled_next_run_at: string
-          trigger_config: Json
-          trigger_id: string
-          workflow_description: string
-          workflow_id: string
-          workflow_name: string
-        }[]
-      }
-      trigger_frequency_interval: {
-        Args: {
-          frequency_amount: number
-          frequency_unit: Database["public"]["Enums"]["trigger_frequency_unit"]
-        }
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
-      trigger_frequency_unit: "m" | "h" | "d" | "w"
+      agent_status: "active" | "paused"
+      item_status: "drafted" | "posted" | "failed"
+      run_source: "manual" | "cron"
+      run_status: "running" | "completed" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -645,7 +368,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      trigger_frequency_unit: ["m", "h", "d", "w"],
+      agent_status: ["active", "paused"],
+      item_status: ["drafted", "posted", "failed"],
+      run_source: ["manual", "cron"],
+      run_status: ["running", "completed", "failed"],
     },
   },
 } as const

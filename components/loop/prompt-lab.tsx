@@ -346,7 +346,7 @@ export function PromptLab() {
     setScanError(null)
 
     try {
-      const response = await fetch("/api/test/scan", {
+      const response = await fetch("/api/agents/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ handles, userPrompt: scanUserPrompt }),
@@ -392,7 +392,7 @@ export function PromptLab() {
     setSaveStatus("saving")
     setSaveError(null)
     try {
-      const response = await fetch("/api/test/save-agent", {
+      const response = await fetch("/api/agents/save-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(redirectTo);
         }
 
-        redirectTo.pathname = "/dashboard/test";
+        redirectTo.pathname = "/dashboard/agents";
         return NextResponse.redirect(redirectTo);
       }
     } catch {
