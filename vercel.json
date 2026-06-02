@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "fluid": true,
+  "regions": ["iad1"],
   "crons": [],
   "git": {
     "deploymentEnabled": {
@@ -10,5 +13,15 @@
       "fix/**": false,
       "chore/**": false
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ]
 }
