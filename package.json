@@ -2,7 +2,7 @@
   "name": "oparax-chirp",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.5.0",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "preinstall": "npx -y only-allow pnpm",
     "dev": "next dev",
