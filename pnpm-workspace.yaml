@@ -1,3 +1,11 @@
+# pnpm 11 reads build-script allow/ignore settings here (no longer from the
+# package.json `pnpm` field). esbuild's postinstall is allowed; the others are
+# intentionally ignored — we don't need their build scripts, and listing them
+# silences the "Ignored build scripts" warning.
+onlyBuiltDependencies:
+  - esbuild
 ignoredBuiltDependencies:
+  - core-js
+  - msw
   - sharp
   - unrs-resolver
