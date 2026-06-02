@@ -6,7 +6,7 @@ Oparax is an AI-powered social media automation tool for professional news repor
 
 Next.js App Router app at the repo root.
 
-Folder-level map — drill into a folder when a task touches it; the non-obvious gotchas are called out inline.
+Folder-level map — drill into a folder when a task touches it; the non-obvious gotchas are called out inline. Min
 
 ```text
 .
