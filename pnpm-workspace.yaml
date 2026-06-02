@@ -5,7 +5,7 @@
 onlyBuiltDependencies:
   - esbuild
 ignoredBuiltDependencies:
-  - core-js@2.6.12
+  - core-js
   - msw
   - sharp
   - unrs-resolver
