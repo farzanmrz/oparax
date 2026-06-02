@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.28.2",
   "scripts": {
-    "preinstall": "npx -y only-allow pnpm",
+    "preinstall": "node -e \"if(!/pnpm/.test(process.env.npm_config_user_agent||'')){console.error('This repo uses pnpm. Run pnpm install (npm/yarn are blocked).');process.exit(1)}\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
