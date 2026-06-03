@@ -36,6 +36,8 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 │                   # lifecycle + client), types/ (generated DB types + aliases), validation.ts, auth-errors.ts, utils.ts
 │
 ├── docs/           # Spec, PRD & planning docs — all spec/PRD + ADRs + ideas live here. See decisions/0002-agent-data-model.md
+│                   # UI revamp: docs/design-workflow.md = Claude Design ↔ Claude Code loop (design=greenfield/Claude Design, behavior=brownfield/this repo).
+│                   # The `ui-standard` skill was RETIRED 2026-06-03 — it encoded the old look now being replaced.
 └── public/         # Static assets
 ```
 
