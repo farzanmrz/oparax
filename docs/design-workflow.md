@@ -14,7 +14,7 @@ Split every page into two independent concerns with **opposite** sources of trut
 
 | Axis | Mode | Source of truth | Owned by |
 |------|------|-----------------|----------|
-| **Design** — look, layout, UX structure, which components exist | Greenfield. Reinvent freely. | The **published Claude Design system** (seeded from the landing page) | Claude Design |
+| **Design** — look, layout, UX structure, which components exist | Greenfield. Reinvent freely. | The **Claude Design design system** (generated from the landing page, then linked to projects) | Claude Design |
 | **Behavior** — what the page does | Brownfield. **Must not break.** | This repo | Claude Code |
 
 The arrow for the visual layer is **design → code**: Claude Design defines the look, and Claude
@@ -37,23 +37,44 @@ working:
   (persists `agents` + `runs` + `run_items`) → agent detail (redraft / post per item).
 - **Next.js App Router boundaries** — `"use client"` vs server components, server-action forms.
 
-## Step 1 — Set up & publish the design system (once)
+## Step 1 — Build the design system (once) — ✅ done for Oparax
 
-Do this before designing individual pages so every later page inherits the look automatically.
+On the Claude Design dashboard, **design systems and projects are separate top-level things** —
+you build the design system on its own, then *link* it to projects. Linking happens via the
+New-project **"Design system"** dropdown, or inside a chat via the **"Choose design systems"**
+picker (the top one takes precedence). An **org-default** design system is inherited by new
+projects automatically. A design system does **not** read a project's uploaded files — it has its
+own asset intake, which is the key thing to get right below.
 
-1. Claude Design → org settings → **Design System** → onboarding / Remix.
-2. **Seed it from the landing page, NOT from this repo.** Seeding from the repo would drag in the
-   old OKLCH/shadcn look we're replacing. Export the landing page to standalone HTML or a few
-   full-page screenshots, add the logo, and upload those. Let Claude extract the palette,
-   typography, spacing, and components.
-3. Run a test prompt ("design a settings page"), confirm it feels like the same family.
-4. Flip **Published** on. From then on, every new project created from the org home inherits it.
+Populate the design system via its **own** onboarding ("Set up your design system"), seeded from
+the **landing page**, NOT the app repo:
+
+1. Open the (blank) design system → its setup page.
+2. **Link code from computer** → drag a small folder containing the landing page's downloaded files
+   (`Oparax_Landing.html` + `oparax.css`; the tweak `*.jsx` are light-themed tooling marked
+   `@ds-adherence-ignore` and can be left out). This is the seed — the new look *as code*. Because
+   the design system can't read project files, the landing page has to come in through this
+   code-intake.
+   - ⚠️ Do **NOT** use "Link code on GitHub" with the app repo — that's the old OKLCH/shadcn look
+     being replaced.
+3. **Company name and blurb** → product + what it does + its surfaces (marketing site + app
+   dashboard). It's a description, not a design instruction.
+4. **Fonts / logos** → skip when the fonts are web fonts already referenced in the code (Oparax uses
+   Roboto Flex + IBM Plex Mono via Google Fonts) and the logo is an inline SVG. Nothing to upload.
+5. **Any other notes** → a short *philosophical* steer (~2 lines), **not** specific tokens — the
+   tokens come from the code, and over-specifying here only inhibits creativity. Oparax's:
+   > Dark, precise, high-signal — a technical "newsroom terminal" that feels fast and built for
+   > pros, never busy or decorative. Lead with clarity and speed: every screen should make the next
+   > action obvious.
+6. **Continue to generation.** Once generated it's no longer "No assets"; as the org default it's
+   inherited by every new project/chat (or pick it explicitly via "Choose design systems").
 
 ## Step 2 — Design a page (repeat per page: dashboard first, then agents, settings, connect-x, auth)
 
-Create a new Claude Design project (it inherits the published system). Attach exactly three inputs:
+Start a new chat for the page — a new project, or a new chat inside an existing project (a project
+holds many chats); either inherits the linked design system. Attach exactly three inputs:
 
-1. **The inherited design system** → handles the look. Nothing to upload.
+1. **The inherited/linked design system** → handles the look. Nothing to upload.
 2. **A screenshot of the *current* page** → tells it *what the page does and what's on it*.
    Say explicitly: "this is the current UI and its purpose — redesign freely, don't preserve this look."
 3. **A written purpose brief** → each component's job, the action it triggers, and where the UX is
@@ -76,7 +97,7 @@ below). Claude Code then:
   accessibility + faster, safer wiring) or hand-roll a bespoke component where no Radix equivalent
   fits — whichever best realizes the design. No blanket rule.
 - Regenerates `globals.css` tokens and components to match the new system as pages land. Over time
-  the code side becomes the faithful reflection of the published design system.
+  the code side becomes the faithful reflection of the design system.
 
 ### Per-page functional contract template
 
