@@ -14,9 +14,14 @@
   --popover-foreground: oklch(0.982 0 0);
   --primary: oklch(0.92 0 0);
   --primary-foreground: oklch(0.13 0 0);
-  --link: oklch(0.68 0.12 190);
-  --link-hover: oklch(0.78 0.12 190);
-  --link-active: oklch(0.72 0.13 190);
+  /* Brand accent (blue) — lifted from the landing design, now app-wide */
+  --brand: oklch(0.74 0.14 245);
+  --brand-strong: oklch(0.82 0.13 245);
+  --brand-bg: oklch(0.74 0.14 245 / 13%);
+  --brand-line: oklch(0.74 0.14 245 / 34%);
+  --link: oklch(0.74 0.14 245);
+  --link-hover: oklch(0.82 0.13 245);
+  --link-active: oklch(0.78 0.13 245);
   --secondary: oklch(0.3 0 0);
   --secondary-foreground: oklch(0.982 0 0);
   --muted: oklch(0.3 0 0);
@@ -35,7 +40,7 @@
   --x-handle-border: oklch(0.62 0.12 245 / 42%);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 22%);
-  --ring: oklch(0.66 0.12 184.704);
+  --ring: oklch(0.66 0.14 245);
   --radius: 0.45rem;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -56,6 +61,7 @@
 @theme inline {
   /* Fonts */
   --font-sans: var(--font-roboto-flex);
+  --font-mono: var(--font-ibm-plex-mono);
 
   /* Colors (semantic tokens) */
   --color-background: var(--background);
@@ -65,6 +71,10 @@
   --color-heading: var(--heading);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-line: var(--brand-line);
   --color-link: var(--link);
   --color-link-hover: var(--link-hover);
   --color-link-active: var(--link-active);

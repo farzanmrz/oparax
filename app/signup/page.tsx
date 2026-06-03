@@ -1,25 +1,17 @@
 import { redirect } from "next/navigation"
-import { SignupForm } from "@/components/signup-form"
-import { createClient } from "@/lib/supabase/server"
 
+// The signup UI now lives in the landing-page auth modal. This route stays as a
+// thin redirect so existing /signup links keep working — it forwards to the
+// landing page, which auto-opens the signup modal.
 export default async function SignupPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (user) redirect("/dashboard")
-
   const { error } = await searchParams
 
-  return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <SignupForm error={error} />
-      </div>
-    </div>
-  )
+  const params = new URLSearchParams({ auth: "signup" })
+  if (error) params.set("error", error)
+
+  redirect(`/?${params.toString()}`)
 }

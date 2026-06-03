@@ -39,7 +39,7 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/login")
+    redirect("/")
   }
 
   const email = user.email ?? ""
