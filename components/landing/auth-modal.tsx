@@ -274,8 +274,11 @@ function SignupView({
   // The eye flips every password field in the form together, per the design.
   const [pwVisible, setPwVisible] = useState(false)
 
-  const allFilled =
-    email.trim() !== "" && password.trim() !== "" && confirm.trim() !== ""
+  // Submit unlocks only when the email is present, the password has reached
+  // the 6-character server minimum, and the confirmation matches it exactly —
+  // not merely when every field has some text.
+  const canSubmit =
+    email.trim() !== "" && password.length >= 6 && confirm === password
 
   // Confirmation email sent — swap the form for the notice. Closing the
   // modal is enough: the email link signs the user in directly.
@@ -395,7 +398,7 @@ function SignupView({
           </div>
         </div>
         <FormFeedback error={feedback.error} message={feedback.message} />
-        <SubmitButton pending={pending} disabled={!allFilled}>
+        <SubmitButton pending={pending} disabled={!canSubmit}>
           Sign up
         </SubmitButton>
       </form>
