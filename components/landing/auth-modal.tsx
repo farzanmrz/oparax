@@ -251,9 +251,11 @@ function LoginView({
 
 function SignupView({
   onChangeView,
+  onClose,
   initialState,
 }: {
   onChangeView: (view: AuthView) => void
+  onClose: () => void
   initialState?: AuthFormState
 }) {
   const id = useId()
@@ -274,6 +276,27 @@ function SignupView({
 
   const allFilled =
     email.trim() !== "" && password.trim() !== "" && confirm.trim() !== ""
+
+  // Confirmation email sent — swap the form for the notice. Closing the
+  // modal is enough: the email link signs the user in directly.
+  if (state.signupComplete) {
+    return (
+      <>
+        <h2>Check your email</h2>
+        <p className="msub">
+          We sent a confirmation link to <b>{state.email}</b>. Click it to
+          activate your account.
+        </p>
+        <button
+          className="btn btn-primary btn-block"
+          type="button"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </>
+    )
+  }
 
   return (
     <>
@@ -542,6 +565,7 @@ export function AuthModal({
           {view === "signup" ? (
             <SignupView
               onChangeView={onChangeView}
+              onClose={onClose}
               initialState={seedFor("signup")}
             />
           ) : null}

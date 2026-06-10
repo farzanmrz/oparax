@@ -22,6 +22,9 @@ import {
 export interface AuthFormState {
   error?: string;
   message?: string;
+  /** Signup succeeded — a confirmation email was sent to `email`. */
+  signupComplete?: boolean;
+  email?: string;
 }
 
 function trimTrailingSlash(url: string): string {
@@ -101,7 +104,9 @@ export async function signupAction(
     redirect("/dashboard/connect-x");
   }
 
-  redirect("/signup/check-email");
+  // No session yet — email confirmation pending. The modal swaps the form
+  // for a "check your email" notice instead of navigating away.
+  return { signupComplete: true, email: validated.email };
 }
 
 export async function resetPasswordAction(
