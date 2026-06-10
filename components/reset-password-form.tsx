@@ -1,83 +1,147 @@
-import { cn } from "@/lib/utils"
-import { AuthPendingLink } from "@/components/auth-pending-link"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { SubmitButton } from "@/components/submit-button"
+"use client"
+
+// Set-a-new-password card — the landing target of the email recovery link.
+// Built on the design-system card/field classes; submits to the routed
+// updatePassword Server Action, which redirects with error params on failure.
+import Link from "next/link"
+import { useId, useState } from "react"
+import { useFormStatus } from "react-dom"
+
 import { updatePassword } from "@/app/auth/reset-password/actions"
+import { EyeIcon, EyeOffIcon } from "@/components/icons"
+
+function SubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      className={`btn btn-primary btn-block${pending ? " loading" : ""}`}
+      type="submit"
+      disabled={disabled}
+    >
+      <span className="ld" />
+      Update password
+    </button>
+  )
+}
+
+function EyeToggle({
+  visible,
+  onToggle,
+}: {
+  visible: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      className="eye"
+      type="button"
+      aria-label={visible ? "Hide password" : "Show password"}
+      aria-pressed={visible}
+      onClick={onToggle}
+    >
+      {visible ? (
+        <EyeOffIcon width={16} height={16} />
+      ) : (
+        <EyeIcon width={16} height={16} />
+      )}
+    </button>
+  )
+}
 
 export function ResetPasswordForm({
   error,
   tokenHash,
   type,
-  className,
-  ...props
-}: React.ComponentProps<"div"> & {
+}: {
   error?: string
   tokenHash?: string
   type?: "recovery"
 }) {
+  const id = useId()
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [confirmError, setConfirmError] = useState(false)
+  // The eye flips every password field in the form together, per the design.
+  const [visible, setVisible] = useState(false)
+
   return (
-    <div className={cn("auth-form-stack", className)} {...props}>
-      <Card className="auth-card">
-        <CardContent className="auth-card-content">
-          <form action={updatePassword} className="auth-form-panel">
-            {tokenHash && <input type="hidden" name="token_hash" value={tokenHash} />}
-            {type && <input type="hidden" name="type" value={type} />}
-            <FieldGroup className="auth-field-group">
-              <div className="auth-heading-block">
-                <h1 className="auth-heading">Set a new password</h1>
-                <p className="auth-helper text-balance">
-                  Use at least 6 characters and keep it unique to this account.
-                </p>
-              </div>
-              {error && (
-                <div
-                  role="alert"
-                  className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                >
-                  {error}
-                </div>
-              )}
-              <Field>
-                <FieldLabel htmlFor="password">New password</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="confirm-password">
-                  Confirm new password
-                </FieldLabel>
-                <Input
-                  id="confirm-password"
-                  name="confirm-password"
-                  type="password"
-                  required
-                />
-              </Field>
-              <Field className="auth-action-field">
-                <SubmitButton type="submit" className="auth-submit-button">
-                  Update password
-                </SubmitButton>
-              </Field>
-              <FieldDescription className="auth-inline-action">
-                <AuthPendingLink href="/login" className="auth-link">
-                  Back to Login
-                </AuthPendingLink>
-              </FieldDescription>
-            </FieldGroup>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="modal">
+      <h2>Set a new password</h2>
+      <p className="msub">
+        Use at least 6 characters and keep it unique to this account.
+      </p>
+      <form
+        noValidate
+        action={updatePassword}
+        onSubmit={(event) => {
+          if (password !== confirm) {
+            event.preventDefault()
+            setConfirmError(true)
+          }
+        }}
+      >
+        {tokenHash && (
+          <input type="hidden" name="token_hash" value={tokenHash} />
+        )}
+        {type && <input type="hidden" name="type" value={type} />}
+        <div className="field">
+          <label htmlFor={`${id}-pw`}>New password</label>
+          <span className="pw-box">
+            <input
+              id={`${id}-pw`}
+              name="password"
+              type={visible ? "text" : "password"}
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                setConfirmError(false)
+              }}
+              required
+            />
+            <EyeToggle
+              visible={visible}
+              onToggle={() => setVisible((v) => !v)}
+            />
+          </span>
+        </div>
+        <div className="field">
+          <label htmlFor={`${id}-pw2`}>Confirm new password</label>
+          <span className="pw-box">
+            <input
+              id={`${id}-pw2`}
+              className={confirmError ? "invalid" : undefined}
+              name="confirm-password"
+              type={visible ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(event) => {
+                setConfirm(event.target.value)
+                setConfirmError(false)
+              }}
+              onBlur={() => {
+                if (confirm && password && password !== confirm)
+                  setConfirmError(true)
+              }}
+              required
+            />
+            <EyeToggle
+              visible={visible}
+              onToggle={() => setVisible((v) => !v)}
+            />
+          </span>
+          <div className={`ferr${confirmError ? " show" : ""}`}>
+            Passwords don&apos;t match
+          </div>
+        </div>
+        <div className={`form-err${error ? " show" : ""}`} role="alert">
+          {error}
+        </div>
+        <SubmitButton disabled={!password.trim() || !confirm.trim()} />
+      </form>
+      <p className="mswitch">
+        <Link href="/login">Back to log in</Link>
+      </p>
     </div>
   )
 }

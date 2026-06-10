@@ -8,8 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "derive:logo": "node scripts/derive-logo.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.0",

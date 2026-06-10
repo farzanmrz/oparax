@@ -1,0 +1,14 @@
+/* ============================================================
+   Oparax — standalone auth pages (reset password, check email)
+   Page layout only: a centered shell for the design-system card.
+   Components & tokens come from app/globals.css.
+   ============================================================ */
+
+.auth-shell {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}

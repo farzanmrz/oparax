@@ -1,26 +1,23 @@
 // Root layout — wraps every page in the app. Loads fonts and global CSS.
 import type { Metadata } from "next";
-import { Roboto_Flex, IBM_Plex_Mono } from "next/font/google";
+import { Source_Sans_3 } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from '@vercel/analytics/next';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const robotoFlex = Roboto_Flex({
-  variable: "--font-roboto-flex",
+// Source Sans 3 is the design system's only font family (--font-sans).
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
   subsets: ["latin"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
-  title: "Oparax",
-  description: "The Chirp app for Oparax",
+  title: "Oparax — AI agent for news reporters",
+  description:
+    "Oparax watches the accounts and sources you can't keep up with, surfaces breaking stories the moment they land, and drafts posts in your voice.",
 };
 
 export default function RootLayout({
@@ -30,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${robotoFlex.variable} ${ibmPlexMono.variable} antialiased`}>
+      <body className={`${sourceSans.variable} antialiased`}>
         <TooltipProvider>
           {children}
         </TooltipProvider>

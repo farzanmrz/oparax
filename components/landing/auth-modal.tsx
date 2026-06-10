@@ -1,15 +1,18 @@
 "use client"
 
+// Auth modals (log in / sign up / forgot password) — React port of the
+// design reference modals, built on the design-system .overlay/.modal/.field
+// classes from app/globals.css. Wired to the stateful Server Actions in
+// lib/auth/modal-actions.ts: failures render inline, successes redirect.
 import { useActionState, useEffect, useId, useRef, useState } from "react"
-import { Eye, EyeOff, Loader2, Mail, UserRoundPlus, X } from "lucide-react"
 
-import "@/app/auth-modal.css"
 import {
   loginAction,
   resetPasswordAction,
   signupAction,
   type AuthFormState,
 } from "@/lib/auth/modal-actions"
+import { EyeIcon, EyeOffIcon, GoogleIcon, XIcon } from "@/components/icons"
 
 export type AuthView = "login" | "signup" | "forgot"
 
@@ -19,135 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const VIEW_LABEL: Record<AuthView, string> = {
   login: "Log in",
   signup: "Sign up",
-  forgot: "Reset password",
-}
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="#4285F4" d="M22.5 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.2-4.8 3.2-7.8Z" />
-      <path fill="#34A853" d="M12 23c2.9 0 5.4-1 7.2-2.6l-3.6-2.7c-1 .7-2.3 1.1-3.6 1.1-2.8 0-5.1-1.9-6-4.4H2.3v2.8A11 11 0 0 0 12 23Z" />
-      <path fill="#FBBC05" d="M6 14.3a6.6 6.6 0 0 1 0-4.2V7.3H2.3a11 11 0 0 0 0 9.8L6 14.3Z" />
-      <path fill="#EA4335" d="M12 5.5c1.6 0 3 .5 4.1 1.6l3.1-3.1A11 11 0 0 0 2.3 7.3L6 10.1c.9-2.6 3.2-4.6 6-4.6Z" />
-    </svg>
-  )
-}
-
-function XIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="#e9e9ea" aria-hidden="true">
-      <path d="M18.9 2H22l-7.6 8.7L23.3 22h-6.8l-5.3-6.9L5.1 22H2l8.1-9.3L1.5 2h6.9l4.8 6.4L18.9 2Zm-1.2 18h1.9L7.3 4H5.3l12.4 16Z" />
-    </svg>
-  )
-}
-
-function SocialRow() {
-  return (
-    <>
-      <div className="lp-auth-or">or continue with</div>
-      <div className="lp-auth-social">
-        <button className="lp-soc-btn" type="button" aria-label="Continue with Google">
-          <GoogleIcon />
-        </button>
-        <button className="lp-soc-btn" type="button" aria-label="Continue with X">
-          <XIcon />
-        </button>
-      </div>
-    </>
-  )
-}
-
-function Alert({ state }: { state: AuthFormState }) {
-  if (state.error) {
-    return (
-      <div className="lp-auth-alert err" role="alert">
-        {state.error}
-      </div>
-    )
-  }
-  if (state.message) {
-    return (
-      <div className="lp-auth-alert ok" role="status">
-        {state.message}
-      </div>
-    )
-  }
-  return null
-}
-
-function PasswordField({
-  id,
-  name,
-  label,
-  autoComplete,
-  value,
-  onChange,
-  onBlur,
-  invalid,
-  message,
-}: {
-  id: string
-  name: string
-  label: string
-  autoComplete: string
-  value?: string
-  onChange?: (value: string) => void
-  onBlur?: () => void
-  invalid?: boolean
-  message?: { text: string; ok?: boolean } | null
-}) {
-  const [visible, setVisible] = useState(false)
-  const Icon = visible ? EyeOff : Eye
-
-  return (
-    <div className="lp-field" data-invalid={invalid ? "true" : undefined}>
-      <label htmlFor={id}>{label}</label>
-      <div className="lp-inwrap">
-        <input
-          id={id}
-          name={name}
-          type={visible ? "text" : "password"}
-          autoComplete={autoComplete}
-          value={value}
-          onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-          onBlur={onBlur}
-          aria-invalid={invalid || undefined}
-          required
-        />
-        <button
-          className="lp-eye"
-          type="button"
-          aria-label={visible ? "Hide password" : "Show password"}
-          aria-pressed={visible}
-          onClick={() => setVisible((v) => !v)}
-        >
-          <Icon width={20} height={20} aria-hidden="true" />
-        </button>
-      </div>
-      {message ? (
-        <p className={`lp-field-msg ${message.ok ? "ok" : "err"}`}>
-          {message.text}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-function SubmitButton({
-  pending,
-  icon,
-  children,
-}: {
-  pending: boolean
-  icon: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <button className="lp-auth-submit" type="submit" disabled={pending}>
-      {pending ? <Loader2 className="lp-spin" aria-hidden="true" /> : icon}
-      {children}
-    </button>
-  )
+  forgot: "Reset your password",
 }
 
 function useAutoFocus() {
@@ -157,6 +32,115 @@ function useAutoFocus() {
     return () => window.clearTimeout(timer)
   }, [])
   return ref
+}
+
+// Re-shows the latest server error/message until the user edits the form.
+function useServerFeedback(state: AuthFormState) {
+  const [lastState, setLastState] = useState(state)
+  const [hidden, setHidden] = useState(false)
+  // A fresh submission result un-hides the feedback (state adjusted during
+  // render, not in an effect, per React guidance).
+  if (state !== lastState) {
+    setLastState(state)
+    setHidden(false)
+  }
+  return {
+    error: !hidden && state.error ? state.error : null,
+    message: !hidden && state.message ? state.message : null,
+    hide: () => setHidden(true),
+  }
+}
+
+function FormFeedback({
+  error,
+  message,
+}: {
+  error: string | null
+  message: string | null
+}) {
+  return (
+    <>
+      <div className={`form-err${error ? " show" : ""}`} role="alert">
+        {error}
+      </div>
+      {message ? (
+        <p className="form-ok" role="status">
+          {message}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
+function SubmitButton({
+  pending,
+  disabled,
+  children,
+}: {
+  pending: boolean
+  disabled: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      className={`btn btn-primary btn-block${pending ? " loading" : ""}`}
+      type="submit"
+      disabled={disabled}
+    >
+      <span className="ld" />
+      {children}
+    </button>
+  )
+}
+
+function EyeToggle({
+  visible,
+  onToggle,
+}: {
+  visible: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      className="eye"
+      type="button"
+      aria-label={visible ? "Hide password" : "Show password"}
+      aria-pressed={visible}
+      onClick={onToggle}
+    >
+      {visible ? (
+        <EyeOffIcon width={16} height={16} />
+      ) : (
+        <EyeIcon width={16} height={16} />
+      )}
+    </button>
+  )
+}
+
+function SocialRow() {
+  return (
+    <>
+      <div className="sso-div">or continue with</div>
+      <div className="sso-row">
+        <span className="sso-btn" title="Coming soon">
+          <GoogleIcon width={19} height={19} />
+        </span>
+        <span className="sso-btn" title="Coming soon">
+          <XIcon width={17} height={17} fill="#E8EDF2" />
+        </span>
+      </div>
+      <p className="sso-note">Google &amp; X sign-in coming soon</p>
+    </>
+  )
+}
+
+function Terms() {
+  return (
+    <p className="terms">
+      By continuing, you agree to our <a href="#">Terms of Service</a> and{" "}
+      <a href="#">Privacy Policy</a>.
+    </p>
+  )
 }
 
 function LoginView({
@@ -171,66 +155,97 @@ function LoginView({
     loginAction,
     initialState ?? EMPTY_STATE
   )
+  const feedback = useServerFeedback(state)
   const firstRef = useAutoFocus()
 
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [emailError, setEmailError] = useState(false)
+  const [pwVisible, setPwVisible] = useState(false)
+
   return (
-    <div>
-      <div className="lp-auth-head">
-        <div className="lp-auth-eyebrow">
-          <span className="eyebrow">Welcome back</span>
-        </div>
-        <h2 className="lp-auth-title">Login</h2>
-        <p className="lp-auth-sub">Sign in to run your desk.</p>
-      </div>
-      <form className="lp-auth-form" action={dispatch}>
-        <Alert state={state} />
-        <div className="lp-field">
+    <>
+      <h2>Log in</h2>
+      <p className="msub">Sign in to run your desk.</p>
+      <form
+        noValidate
+        action={dispatch}
+        onSubmit={(event) => {
+          if (!EMAIL_RE.test(email.trim())) {
+            event.preventDefault()
+            setEmailError(true)
+          }
+        }}
+      >
+        <div className="field">
           <label htmlFor={`${id}-email`}>Email</label>
-          <div className="lp-inwrap">
-            <input
-              ref={firstRef}
-              id={`${id}-email`}
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
+          <input
+            ref={firstRef}
+            id={`${id}-email`}
+            className={emailError ? "invalid" : undefined}
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value)
+              setEmailError(false)
+              feedback.hide()
+            }}
+            onBlur={() => {
+              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true)
+            }}
+            required
+          />
+          <div className={`ferr${emailError ? " show" : ""}`}>
+            Email format incorrect
           </div>
         </div>
-        <PasswordField
-          id={`${id}-pw`}
-          name="password"
-          label="Password"
-          autoComplete="current-password"
-        />
-        <div className="lp-auth-row">
+        <div className="field">
+          <label htmlFor={`${id}-pw`}>Password</label>
+          <span className="pw-box">
+            <input
+              id={`${id}-pw`}
+              name="password"
+              type={pwVisible ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                feedback.hide()
+              }}
+              required
+            />
+            <EyeToggle
+              visible={pwVisible}
+              onToggle={() => setPwVisible((v) => !v)}
+            />
+          </span>
           <button
-            className="lp-auth-link"
+            className="fhint"
             type="button"
             onClick={() => onChangeView("forgot")}
           >
             Forgot password?
           </button>
         </div>
+        <FormFeedback error={feedback.error} message={feedback.message} />
         <SubmitButton
           pending={pending}
-          icon={<Mail width={18} height={18} aria-hidden="true" />}
+          disabled={!email.trim() || !password.trim()}
         >
-          Login
+          Log in
         </SubmitButton>
       </form>
       <SocialRow />
-      <p className="lp-auth-switch">
+      <p className="mswitch">
         Don&apos;t have an account?{" "}
-        <button
-          className="lp-auth-link"
-          type="button"
-          onClick={() => onChangeView("signup")}
-        >
+        <button type="button" onClick={() => onChangeView("signup")}>
           Sign up
         </button>
       </p>
-    </div>
+      <Terms />
+    </>
   )
 }
 
@@ -246,113 +261,130 @@ function SignupView({
     signupAction,
     initialState ?? EMPTY_STATE
   )
+  const feedback = useServerFeedback(state)
   const firstRef = useAutoFocus()
 
-  const [fields, setFields] = useState({ email: "", password: "", confirm: "" })
-  const [touched, setTouched] = useState({
-    email: false,
-    password: false,
-    confirm: false,
-  })
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [emailError, setEmailError] = useState(false)
+  const [confirmError, setConfirmError] = useState(false)
+  // The eye flips every password field in the form together, per the design.
+  const [pwVisible, setPwVisible] = useState(false)
 
-  const trimmedEmail = fields.email.trim()
-  const emailError =
-    touched.email && trimmedEmail.length > 0 && !EMAIL_RE.test(trimmedEmail)
-      ? "Enter a valid email address."
-      : null
-  const passwordError =
-    touched.password && fields.password.length > 0 && fields.password.length < 6
-      ? "Password must be at least 6 characters."
-      : null
-  const confirmError =
-    touched.confirm &&
-    fields.confirm.length > 0 &&
-    fields.confirm !== fields.password
-      ? "Passwords do not match."
-      : null
-  const confirmOk =
-    touched.confirm &&
-    fields.confirm.length > 0 &&
-    fields.confirm === fields.password
+  const allFilled =
+    email.trim() !== "" && password.trim() !== "" && confirm.trim() !== ""
 
   return (
-    <div>
-      <div className="lp-auth-head">
-        <div className="lp-auth-eyebrow">
-          <span className="eyebrow">Get started free</span>
-        </div>
-        <h2 className="lp-auth-title">Sign Up</h2>
-        <p className="lp-auth-sub">Spin up your first agent in minutes.</p>
-      </div>
-      <form className="lp-auth-form" action={dispatch}>
-        <Alert state={state} />
-        <div className="lp-field" data-invalid={emailError ? "true" : undefined}>
+    <>
+      <h2>Sign up</h2>
+      <p className="msub">Spin up your first agent in minutes.</p>
+      <form
+        noValidate
+        action={dispatch}
+        onSubmit={(event) => {
+          let ok = true
+          if (!EMAIL_RE.test(email.trim())) {
+            setEmailError(true)
+            ok = false
+          }
+          if (password && confirm && password !== confirm) {
+            setConfirmError(true)
+            ok = false
+          }
+          if (!ok) event.preventDefault()
+        }}
+      >
+        <div className="field">
           <label htmlFor={`${id}-email`}>Email</label>
-          <div className="lp-inwrap">
+          <input
+            ref={firstRef}
+            id={`${id}-email`}
+            className={emailError ? "invalid" : undefined}
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value)
+              setEmailError(false)
+              feedback.hide()
+            }}
+            onBlur={() => {
+              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true)
+            }}
+            required
+          />
+          <div className={`ferr${emailError ? " show" : ""}`}>
+            Email format incorrect
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor={`${id}-pw`}>Password</label>
+          <span className="pw-box">
             <input
-              ref={firstRef}
-              id={`${id}-email`}
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={fields.email}
-              onChange={(e) =>
-                setFields((f) => ({ ...f, email: e.target.value }))
-              }
-              onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-              aria-invalid={!!emailError}
+              id={`${id}-pw`}
+              name="password"
+              type={pwVisible ? "text" : "password"}
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                setConfirmError(false)
+                feedback.hide()
+              }}
               required
             />
-          </div>
-          {emailError ? <p className="lp-field-msg err">{emailError}</p> : null}
+            <EyeToggle
+              visible={pwVisible}
+              onToggle={() => setPwVisible((v) => !v)}
+            />
+          </span>
         </div>
-        <PasswordField
-          id={`${id}-pw`}
-          name="password"
-          label="Password"
-          autoComplete="new-password"
-          value={fields.password}
-          onChange={(value) => setFields((f) => ({ ...f, password: value }))}
-          onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-          invalid={!!passwordError}
-          message={passwordError ? { text: passwordError } : null}
-        />
-        <PasswordField
-          id={`${id}-pw2`}
-          name="confirm-password"
-          label="Confirm Password"
-          autoComplete="new-password"
-          value={fields.confirm}
-          onChange={(value) => setFields((f) => ({ ...f, confirm: value }))}
-          onBlur={() => setTouched((t) => ({ ...t, confirm: true }))}
-          invalid={!!confirmError}
-          message={
-            confirmError
-              ? { text: confirmError }
-              : confirmOk
-                ? { text: "Passwords match.", ok: true }
-                : null
-          }
-        />
-        <SubmitButton
-          pending={pending}
-          icon={<UserRoundPlus width={18} height={18} aria-hidden="true" />}
-        >
-          Sign Up
+        <div className="field">
+          <label htmlFor={`${id}-pw2`}>Confirm password</label>
+          <span className="pw-box">
+            <input
+              id={`${id}-pw2`}
+              className={confirmError ? "invalid" : undefined}
+              name="confirm-password"
+              type={pwVisible ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(event) => {
+                setConfirm(event.target.value)
+                setConfirmError(false)
+                feedback.hide()
+              }}
+              onBlur={() => {
+                if (confirm && password && password !== confirm)
+                  setConfirmError(true)
+              }}
+              required
+            />
+            <EyeToggle
+              visible={pwVisible}
+              onToggle={() => setPwVisible((v) => !v)}
+            />
+          </span>
+          <div className={`ferr${confirmError ? " show" : ""}`}>
+            Passwords don&apos;t match
+          </div>
+        </div>
+        <FormFeedback error={feedback.error} message={feedback.message} />
+        <SubmitButton pending={pending} disabled={!allFilled}>
+          Sign up
         </SubmitButton>
       </form>
       <SocialRow />
-      <p className="lp-auth-switch">
+      <p className="mswitch">
         Already have an account?{" "}
-        <button
-          className="lp-auth-link"
-          type="button"
-          onClick={() => onChangeView("login")}
-        >
-          Login
+        <button type="button" onClick={() => onChangeView("login")}>
+          Log in
         </button>
       </p>
-    </div>
+      <Terms />
+    </>
   )
 }
 
@@ -368,49 +400,62 @@ function ForgotView({
     resetPasswordAction,
     initialState ?? EMPTY_STATE
   )
+  const feedback = useServerFeedback(state)
   const firstRef = useAutoFocus()
 
+  const [email, setEmail] = useState("")
+  const [emailError, setEmailError] = useState(false)
+
   return (
-    <div>
-      <div className="lp-auth-head">
-        <div className="lp-auth-eyebrow">
-          <span className="eyebrow">Account recovery</span>
-        </div>
-        <h2 className="lp-auth-title">Reset your password</h2>
-        <p className="lp-auth-sub">We&apos;ll email you a secure reset link.</p>
-      </div>
-      <form className="lp-auth-form" action={dispatch}>
-        <Alert state={state} />
-        <div className="lp-field">
+    <>
+      <h2>Reset your password</h2>
+      <p className="msub">We&apos;ll email you a secure reset link.</p>
+      <form
+        noValidate
+        action={dispatch}
+        onSubmit={(event) => {
+          if (!EMAIL_RE.test(email.trim())) {
+            event.preventDefault()
+            setEmailError(true)
+          }
+        }}
+      >
+        <div className="field">
           <label htmlFor={`${id}-email`}>Email</label>
-          <div className="lp-inwrap">
-            <input
-              ref={firstRef}
-              id={`${id}-email`}
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
+          <input
+            ref={firstRef}
+            id={`${id}-email`}
+            className={emailError ? "invalid" : undefined}
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value)
+              setEmailError(false)
+              feedback.hide()
+            }}
+            onBlur={() => {
+              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true)
+            }}
+            required
+          />
+          <div className={`ferr${emailError ? " show" : ""}`}>
+            Email format incorrect
           </div>
         </div>
-        <SubmitButton
-          pending={pending}
-          icon={<Mail width={18} height={18} aria-hidden="true" />}
-        >
+        <FormFeedback error={feedback.error} message={feedback.message} />
+        <SubmitButton pending={pending} disabled={!email.trim()}>
           Send reset link
         </SubmitButton>
       </form>
-      <p className="lp-auth-switch">
-        <button
-          className="lp-auth-link"
-          type="button"
-          onClick={() => onChangeView("login")}
-        >
-          Return to Login
+      <p className="mswitch">
+        <button type="button" onClick={() => onChangeView("login")}>
+          Return to log in
         </button>
       </p>
-    </div>
+      <Terms />
+    </>
   )
 }
 
@@ -429,14 +474,17 @@ export function AuthModal({
 }) {
   const open = view !== null
 
-  // A seeded alert (e.g. "Password updated successfully" after a reset) is bound
-  // to the view that was auto-opened on mount, so it only shows on that view and
-  // not after the user navigates to a different one.
+  // A seeded alert (e.g. "Password updated successfully" after a reset) is
+  // bound to the view that was auto-opened on mount, so it only shows there
+  // and not after the user navigates to a different view.
   const [seed] = useState(() =>
     initialError || initialMessage
       ? {
           view,
-          state: { error: initialError, message: initialMessage } as AuthFormState,
+          state: {
+            error: initialError,
+            message: initialMessage,
+          } as AuthFormState,
         }
       : null
   )
@@ -465,7 +513,7 @@ export function AuthModal({
 
   return (
     <div
-      className={`lp-auth-overlay${open ? " open" : ""}`}
+      className={`overlay${open ? " open" : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label={view ? VIEW_LABEL[view] : "Account"}
@@ -475,30 +523,34 @@ export function AuthModal({
       }}
     >
       {open ? (
-        <div className="lp-auth-card">
+        <div className="modal">
           <button
-            className="lp-auth-close"
+            className="modal-x"
             type="button"
             aria-label="Close"
             onClick={onClose}
           >
-            <X width={18} height={18} aria-hidden="true" />
+            ✕
           </button>
 
           {view === "login" ? (
-            <LoginView onChangeView={onChangeView} initialState={seedFor("login")} />
+            <LoginView
+              onChangeView={onChangeView}
+              initialState={seedFor("login")}
+            />
           ) : null}
           {view === "signup" ? (
-            <SignupView onChangeView={onChangeView} initialState={seedFor("signup")} />
+            <SignupView
+              onChangeView={onChangeView}
+              initialState={seedFor("signup")}
+            />
           ) : null}
           {view === "forgot" ? (
-            <ForgotView onChangeView={onChangeView} initialState={seedFor("forgot")} />
+            <ForgotView
+              onChangeView={onChangeView}
+              initialState={seedFor("forgot")}
+            />
           ) : null}
-
-          <p className="lp-auth-terms">
-            By clicking continue, you agree to our{" "}
-            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
-          </p>
         </div>
       ) : null}
     </div>

@@ -1,20 +1,19 @@
-import { AuthPendingLink } from "@/components/auth-pending-link"
+import Link from "next/link"
+
+import "@/app/auth-pages.css"
 
 export default function CheckEmailPage() {
   return (
-    <div className="auth-page">
-      <div className="auth-message">
-        <h1 className="auth-heading">Check your email</h1>
-        <p className="auth-helper">
-          We sent you a confirmation link. Please check your email and click the
-          link to activate your account.
+    <div className="auth-shell">
+      <div className="modal">
+        <h2>Check your email</h2>
+        <p className="msub">
+          We sent you a confirmation link. Please check your email and click
+          the link to activate your account.
         </p>
-        <AuthPendingLink
-          href="/login"
-          className="auth-link"
-        >
-          Back to Login
-        </AuthPendingLink>
+        <p className="mswitch">
+          <Link href="/login">Back to log in</Link>
+        </p>
       </div>
     </div>
   )

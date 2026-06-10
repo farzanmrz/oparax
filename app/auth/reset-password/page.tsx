@@ -1,5 +1,7 @@
 import { ResetPasswordForm } from "@/components/reset-password-form"
 
+import "@/app/auth-pages.css"
+
 export default async function ResetPasswordPage({
   searchParams,
 }: {
@@ -9,14 +11,12 @@ export default async function ResetPasswordPage({
   const recoveryType = type === "recovery" ? type : undefined
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <ResetPasswordForm
-          error={error}
-          tokenHash={token_hash}
-          type={recoveryType}
-        />
-      </div>
+    <div className="auth-shell">
+      <ResetPasswordForm
+        error={error}
+        tokenHash={token_hash}
+        type={recoveryType}
+      />
     </div>
   )
 }
