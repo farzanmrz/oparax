@@ -280,6 +280,17 @@ function SignupView({
   const canSubmit =
     email.trim() !== "" && password.length >= 6 && confirm === password
 
+  // Surface the mismatch while typing once the confirmation is as long as
+  // the password: with masked fields the user only sees equal dot counts and
+  // a dead submit button, so without this they get no clue what's wrong.
+  // (Blur still sets confirmError for shorter, abandoned confirmations.)
+  const confirmMismatch =
+    password !== "" &&
+    confirm !== "" &&
+    confirm.length >= password.length &&
+    confirm !== password
+  const showConfirmError = confirmError || confirmMismatch
+
   // Confirmation email sent — swap the form for the notice. Closing the
   // modal is enough: the email link signs the user in directly.
   if (state.signupComplete) {
@@ -372,7 +383,7 @@ function SignupView({
           <span className="pw-box">
             <input
               id={`${id}-pw2`}
-              className={confirmError ? "invalid" : undefined}
+              className={showConfirmError ? "invalid" : undefined}
               name="confirm-password"
               type={pwVisible ? "text" : "password"}
               autoComplete="new-password"
@@ -393,7 +404,7 @@ function SignupView({
               onToggle={() => setPwVisible((v) => !v)}
             />
           </span>
-          <div className={`ferr${confirmError ? " show" : ""}`}>
+          <div className={`ferr${showConfirmError ? " show" : ""}`}>
             Passwords don&apos;t match
           </div>
         </div>
