@@ -1,15 +1,18 @@
 # Project Overview
 
-Oparax is an AI-powered social media automation tool for professional news reporters. It monitors X (Twitter) for breaking stories and drafts posts in the user's voice. The primary use case is a football news reporter with 400k+ followers on X.
+Oparax is an AI agent for news reporters: it monitors their beat across X, news websites, and social platforms, catches stories as they break, drafts a post for each platform in their voice, and — once trusted — posts autonomously.
 
-## Project Structure
+## Larger Planned functionality
+
+Oparax is an AI agent for professional news reporters whose audience expects them to be first. A reporter tells it what to watch — X handles, news websites, and accounts across Reddit, Bluesky, LinkedIn, and Meta's platforms (Facebook, Instagram, Threads) — what counts as news on their beat, and how they write. The agent monitors those sources in the background at whatever frequency the reporter sets, separates what it finds into atomic news items (recognizing when multiple sources are carrying the same story), and drafts a ready-to-publish post for each item in the reporter's voice and beliefs, shaped to each destination platform's length and norms. The moment something breaks, the reporter is notified — email, WhatsApp, or push — with drafts attached: they post in one tap, or, for agents they have come to trust, flip on autonomous mode and Oparax selects what is worth posting, publishes, and notifies after the fact. Assistive by default, autonomous by permission.
+
+# Project Structure
 
 Next.js App Router app at the repo root.
 
 Folder-level map — drill into a folder when a task touches it; the non-obvious gotchas are called out inline.
 
 ```text
-.
 ├── package.json    # Deps + scripts (pnpm dev / build / lint)
 ├── next.config.ts  # Next.js config
 ├── vercel.json     # Vercel config; crons EMPTY (auto-scan cron deferred — see docs/PLAN.md)

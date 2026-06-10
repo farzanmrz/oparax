@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 
 import "@/app/landing.css"
 import { AuthModal, type AuthView } from "@/components/landing/auth-modal"
+import { OparaxMark } from "@/components/logo"
 
 export function LandingPage({
   initialView = null,
@@ -93,9 +94,7 @@ export function LandingPage({
         <div className="wrap nav-inner">
           <a className="brand" href="#top" aria-label="Oparax home">
             <span className="mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 2 L22 21 L2 21 Z" fill="var(--accent)" />
-              </svg>
+              <OparaxMark />
             </span>
             <span>Oparax</span>
           </a>
@@ -548,9 +547,7 @@ export function LandingPage({
         <div className="wrap footer-inner">
           <a className="brand" href="#top">
             <span className="mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 2 L22 21 L2 21 Z" fill="var(--accent)" />
-              </svg>
+              <OparaxMark />
             </span>
             <span>Oparax</span>
           </a>

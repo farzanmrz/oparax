@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="470x730" name="Modal — Log in" subtitle="Card surface, stacked fields, form-level error slot, disabled SSO" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 26px; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true"><defs>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"></path></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"></path><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"></circle></symbol>
+  </defs></svg>
+
+  <div class="modal">
+    <button class="modal-x" type="button" aria-label="Close">✕</button>
+    <h2>Log in</h2>
+    <p class="msub">Sign in to run your desk.</p>
+    <form novalidate onsubmit="return false;">
+      <div class="field"><label>Email</label><input type="email" autocomplete="email"></div>
+      <div class="field">
+        <label>Password</label>
+        <span class="pw-box">
+          <input type="password" autocomplete="current-password">
+          <button class="eye" type="button" aria-label="Show password"><svg width="16" height="16"><use href="#i-eye"></use></svg></button>
+        </span>
+        <button class="fhint" type="button">Forgot password?</button>
+      </div>
+      <div class="form-err"></div>
+      <button class="btn btn-primary btn-block" type="submit">Log in</button>
+    </form>
+    <div class="sso-div">or continue with</div>
+    <div class="sso-row">
+      <span class="sso-btn" title="Coming soon"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"></path><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"></path><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"></path><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"></path></svg></span>
+      <span class="sso-btn" title="Coming soon"><svg width="17" height="17"><use href="#i-x" fill="#E8EDF2"></use></svg></span>
+    </div>
+    <p class="sso-note">Google &amp; X sign-in coming soon</p>
+    <p class="mswitch">Don't have an account? <button type="button">Sign up</button></p>
+    <p class="terms">By continuing, you agree to our <a href="#" onclick="return false;">Terms of Service</a> and <a href="#" onclick="return false;">Privacy Policy</a>.</p>
+  </div>
+</body>
+</html>

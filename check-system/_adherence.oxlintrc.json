@@ -1,0 +1,103 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": []
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Source Sans 3))/i]",
+        "message": "Font not provided by the design system. Available: Source Sans 3."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {},
+    "tokens": [
+      "--accent",
+      "--accent-line",
+      "--accent-soft",
+      "--accent-vivid",
+      "--action",
+      "--action-ink",
+      "--bg",
+      "--card",
+      "--chrome",
+      "--chrome-line",
+      "--ctl-h",
+      "--err",
+      "--faint",
+      "--fg",
+      "--field-bg",
+      "--field-focus",
+      "--field-line",
+      "--font-sans",
+      "--inset",
+      "--line",
+      "--line-strong",
+      "--live",
+      "--muted",
+      "--radius"
+    ],
+    "tokenKinds": {
+      "--bg": "color",
+      "--chrome": "color",
+      "--card": "color",
+      "--inset": "spacing",
+      "--line": "color",
+      "--line-strong": "color",
+      "--chrome-line": "color",
+      "--field-bg": "color",
+      "--field-line": "color",
+      "--field-focus": "color",
+      "--fg": "color",
+      "--muted": "color",
+      "--faint": "color",
+      "--accent": "color",
+      "--accent-vivid": "color",
+      "--accent-soft": "color",
+      "--accent-line": "color",
+      "--live": "color",
+      "--action": "color",
+      "--action-ink": "color",
+      "--err": "color",
+      "--font-sans": "font",
+      "--radius": "radius",
+      "--ctl-h": "spacing"
+    },
+    "fontFamilies": [
+      "Source Sans 3"
+    ]
+  }
+}

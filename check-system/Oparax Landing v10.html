@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oparax — AI agent for news reporters</title>
+<link rel="icon" type="image/svg+xml" href="assets/oparax-favicon.svg">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Page-specific layout only — components & tokens come from styles.css */
+  :root { --header-h: 64px; }
+
+  html { background: var(--bg); }
+  body {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .shell {
+    width: 100%;
+    max-width: 1460px;
+    margin: 0 auto;
+    padding-left: 36px;
+    padding-right: 36px;
+  }
+
+  /* ------------------------------------------------ header — lifted, stronger border */
+  .header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    background: var(--chrome);
+    border-bottom: 1.5px solid var(--chrome-line);
+  }
+  .header .shell {
+    min-height: var(--header-h);
+    padding-top: 11px;
+    padding-bottom: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3125rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .brand svg { display: block; }
+  .auth-zone { display: flex; align-items: flex-start; gap: 9px; }
+  .hlogin { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
+  .hfield { position: relative; display: inline-flex; flex-direction: column; gap: 4px; }
+  .pw-wrap { position: relative; display: inline-flex; flex-direction: column; gap: 4px; }
+  .pw-wrap .hl-input { padding-right: 60px; width: 185px; }
+  .hlogin .ferr { margin: 0; white-space: nowrap; }
+  .forgot-link {
+    position: absolute;
+    right: 9px;
+    top: 18px;
+    transform: translateY(-50%);
+    font: 600 0.75rem/1 var(--font-sans);
+    color: var(--accent);
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+  .forgot-link:hover { text-decoration: underline; }
+  .login-modal-btn { display: none; }
+
+  /* ------------------------------------------------ hero */
+  main { flex: 1; padding-top: var(--header-h); display: flex; flex-direction: column; }
+  .hero {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr minmax(480px, 620px);
+    gap: clamp(32px, 4vw, 64px);
+    align-items: center;
+    padding-top: 34px;
+    padding-bottom: 40px;
+  }
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font: 600 0.75rem/1 var(--font-sans);
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .intro h1 {
+    margin: 18px 0 0;
+    font: 800 clamp(2.9rem, 2.1rem + 2.6vw, 4.2rem)/1.04 var(--font-sans);
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  .intro h1 .hl { color: var(--accent); }
+  .intro .sub {
+    margin: 22px 0 0;
+    font: 400 1.1875rem/1.55 var(--font-sans);
+    color: var(--muted);
+    text-wrap: pretty;
+    max-width: 52ch;
+  }
+  .intro .sub b { color: var(--fg); font-weight: 650; }
+
+  /* ------------------------------------------------ footer — lifted, stronger border */
+  .footer { background: var(--chrome); border-top: 1.5px solid var(--chrome-line); }
+  .footer .shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .footer .left {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font: 400 0.84375rem/1 var(--font-sans);
+    color: var(--faint);
+    white-space: nowrap;
+  }
+  .footer nav { display: flex; gap: 26px; }
+  .footer nav a { font: 400 0.875rem/1 var(--font-sans); color: var(--muted); white-space: nowrap; }
+  .footer nav a:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ------------------------------------------------ responsive */
+  @media (max-width: 1280px) {
+    .hlogin { display: none; }
+    .login-modal-btn { display: inline-flex; }
+  }
+  @media (max-width: 1020px) {
+    .shell { padding-left: 22px; padding-right: 22px; }
+    .hero { grid-template-columns: 1fr; }
+    .ffield-row { grid-template-columns: 1fr; }
+    .top-row { grid-template-columns: 1fr; }
+    .footer .shell { flex-direction: column; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <defs>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"></path></symbol>
+      <symbol id="i-reddit" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"></path></symbol>
+      <symbol id="i-bluesky" viewBox="0 0 24 24"><path d="M5.202 2.857C7.954 4.922 10.913 9.11 12 11.358c1.087-2.247 4.046-6.436 6.798-8.501C20.783 1.366 24 .213 24 3.883c0 .732-.42 6.156-.667 7.037-.856 3.061-3.978 3.842-6.755 3.37 4.854.826 6.089 3.562 3.422 6.299-5.065 5.196-7.28-1.304-7.847-2.97-.104-.305-.152-.448-.153-.327 0-.121-.05.022-.153.327-.568 1.666-2.782 8.166-7.847 2.97-2.667-2.737-1.432-5.473 3.422-6.3-2.777.473-5.899-.308-6.755-3.369C.42 10.04 0 4.615 0 3.883c0-3.67 3.217-2.517 5.202-1.026"></path></symbol>
+      <symbol id="i-threads" viewBox="0 0 24 24"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.82.871 4.79-1.548 7.158-1.85 1.81-4.094 2.628-7.277 2.65Zm1.003-11.69c-.242 0-.487.007-.739.021-1.836.103-2.98.946-2.916 2.143.067 1.256 1.452 1.839 2.784 1.767 1.224-.065 2.818-.543 3.086-3.71a10.5 10.5 0 0 0-2.215-.221z"></path></symbol>
+      <symbol id="i-instagram" viewBox="0 0 24 24"><path d="M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077"></path></symbol>
+      <symbol id="i-facebook" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"></path></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"></circle><ellipse cx="12" cy="12" rx="4.2" ry="9.2"></ellipse><line x1="2.8" y1="12" x2="21.2" y2="12"></line></g></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"></path><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"></circle></symbol>
+      <symbol id="i-eye-off" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"></path><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"></circle><line x1="4.5" y1="20" x2="19.5" y2="4" stroke="currentColor" stroke-width="1.8"></line></symbol>
+    </defs>
+  </svg>
+
+  <header class="header">
+    <div class="shell">
+      <a class="brand" href="#" aria-label="Oparax home">
+        <svg viewBox="0 0 1024 1024" width="26" height="26" aria-hidden="true">
+          <path d="M 431.77 811.44 A 310 310 0 0 1 431.77 212.56" fill="none" stroke="currentColor" stroke-width="73" stroke-linecap="round"></path>
+          <path d="M 592.23 212.56 A 310 310 0 0 1 592.23 811.44" fill="none" stroke="currentColor" stroke-width="73" stroke-linecap="round"></path>
+          <circle cx="512" cy="512" r="132" fill="currentColor"></circle>
+        </svg>
+        <span>Oparax</span>
+      </a>
+      <div class="auth-zone">
+        <form class="hlogin" novalidate>
+          <span class="hfield">
+            <input class="hl-input" type="email" placeholder="Email" autocomplete="email">
+            <div class="ferr"></div>
+          </span>
+          <span class="pw-wrap">
+            <input class="hl-input" type="password" placeholder="Password" autocomplete="current-password">
+            <button class="forgot-link" type="button" data-open="forgot">Forgot?</button>
+            <div class="ferr"></div>
+          </span>
+          <button class="btn btn-primary" type="submit">Log in</button>
+        </form>
+        <a class="btn btn-primary login-modal-btn" href="#" data-open="login">Log in</a>
+        <a class="btn btn-secondary" href="#" data-open="signup">Sign up</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero shell" data-screen-label="Landing — Hero">
+      <div class="intro">
+        <span class="kicker"><span class="dot blink"></span>AI news desk for people who live on X</span>
+        <h1>Be first to <span class="hl">every story.</span></h1>
+        <p class="sub">Oparax watches the accounts and sources you can't keep up with, surfaces breaking stories <b>the moment they land</b>, and drafts posts in your voice — so you're first, not buried in forty open tabs.</p>
+      </div>
+
+      <div class="desk-card" data-screen-label="Landing — Agent card">
+        <div class="card-chrome"><svg width="14" height="14"><use href="#i-x" fill="#FFFFFF"></use></svg>Oparax Agent</div>
+
+        <div class="card-body">
+          <div class="top-row">
+            <div class="ffield-wrap">
+              <span class="flabel">Workflow name</span>
+              <div class="ffield">Premier League Desk</div>
+            </div>
+            <div class="ffield-wrap">
+              <span class="flabel">X accounts (3 / 20)</span>
+              <div class="badge-row">
+              <span class="wbadge">@FabrizioRomano</span>
+              <span class="wbadge">@David_Ornstein</span>
+              <span class="wbadge">@SkySportsPL</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ffield-row">
+            <div class="ffield-wrap">
+              <span class="flabel">Scanning instructions</span>
+              <div class="ffield">Confirmed transfer news only — fees, medicals, announcements.</div>
+            </div>
+            <div class="ffield-wrap">
+              <span class="flabel">Drafting instructions</span>
+              <div class="ffield">First person, punchy, no hashtags — sound like me.</div>
+            </div>
+          </div>
+
+          <div class="draft-divider"><span class="chip"><span class="dot blink"></span>News items</span></div>
+
+          <div class="news-list">
+            <div class="news-item">
+              <p>Midfielder agrees personal terms on record £90m move — medical booked for Thursday.</p>
+              <div class="srcs"><span><b class="arr">↗</b>FabrizioRomano</span><span><b class="arr">↗</b>David_Ornstein</span><span class="when">Today · 14:32</span></div>
+            </div>
+            <div class="news-item">
+              <p>Loan deal for England winger collapses after medical flags — clubs back at the table.</p>
+              <div class="srcs"><span><b class="arr">↗</b>David_Ornstein</span><span class="when">Today · 12:18</span></div>
+            </div>
+            <div class="news-item">
+              <p>Veteran keeper signs one-year extension, announcement expected before Friday's match.</p>
+              <div class="srcs"><span><b class="arr">↗</b>SkySportsPL</span><span><b class="arr">↗</b>FabrizioRomano</span><span class="when">Yesterday · 21:47</span></div>
+            </div>
+          </div>
+
+          <div class="draft-divider"><span class="chip"><span class="dot blink"></span>Drafted in your voice</span></div>
+
+          <div class="xpost">
+            <p class="xpost-body">Here we go — personal terms agreed on the £90m deal. Medical locked in for Thursday, full agreement between clubs reached tonight. More to follow.<span class="caret"></span></p>
+            <div class="xpost-foot">
+              <svg width="15" height="15"><use href="#i-x" fill="#FFFFFF"></use></svg>
+              <span class="chars"><b>231</b> / 280</span>
+              <span class="spacer"></span>
+              <a class="btn btn-secondary btn-sm" href="#">Edit</a>
+              <a class="btn btn-primary btn-sm" href="#">Post</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-soon">
+          <span class="soon-label">Coming soon:</span>
+          <svg width="15" height="15" style="color: #8FBDE8;"><use href="#i-globe"></use></svg>
+          <svg width="15" height="15"><use href="#i-reddit" fill="#FF4500"></use></svg>
+          <svg width="15" height="15"><use href="#i-bluesky" fill="#1185FE"></use></svg>
+          <svg width="15" height="15"><use href="#i-threads" fill="#F2F5F8"></use></svg>
+          <svg width="15" height="15"><use href="#i-instagram" fill="#FF0069"></use></svg>
+          <svg width="15" height="15"><use href="#i-facebook" fill="#0866FF"></use></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="4.5" fill="#0A66C2"></rect><text x="12" y="17" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff" font-family="Source Sans 3, sans-serif">in</text></svg>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <div class="left">
+        <svg viewBox="0 0 1024 1024" width="17" height="17" aria-hidden="true">
+          <path d="M 431.77 811.44 A 310 310 0 0 1 431.77 212.56" fill="none" stroke="currentColor" stroke-width="73" stroke-linecap="round"></path>
+          <path d="M 592.23 212.56 A 310 310 0 0 1 592.23 811.44" fill="none" stroke="currentColor" stroke-width="73" stroke-linecap="round"></path>
+          <circle cx="512" cy="512" r="132" fill="currentColor"></circle>
+        </svg>
+        <span>© 2026 Oparax</span>
+      </div>
+      <nav>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms &amp; Conditions</a>
+        <a href="#">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="overlay" id="m-login">
+    <div class="modal">
+      <button class="modal-x" type="button" aria-label="Close">✕</button>
+      <h2>Log in</h2>
+      <p class="msub">Sign in to run your desk.</p>
+      <form id="f-login" novalidate>
+        <div class="field"><label>Email</label><input type="email" autocomplete="email"><div class="ferr"></div></div>
+        <div class="field">
+          <label>Password</label>
+          <span class="pw-box">
+            <input type="password" autocomplete="current-password">
+            <button class="eye" type="button" aria-label="Show password"><svg width="16" height="16"><use href="#i-eye"></use></svg></button>
+          </span>
+          <div class="ferr"></div>
+          <button class="fhint" type="button" data-open="forgot">Forgot password?</button>
+        </div>
+        <div class="form-err"></div>
+        <button class="btn btn-primary btn-block" type="submit">Log in</button>
+      </form>
+      <div class="sso-div">or continue with</div>
+      <div class="sso-row">
+        <span class="sso-btn" title="Coming soon"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"></path><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"></path><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"></path><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"></path></svg></span>
+        <span class="sso-btn" title="Coming soon"><svg width="17" height="17"><use href="#i-x" fill="#E8EDF2"></use></svg></span>
+      </div>
+      <p class="sso-note">Google &amp; X sign-in coming soon</p>
+      <p class="mswitch">Don't have an account? <button type="button" data-open="signup">Sign up</button></p>
+      <p class="terms">By continuing, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="m-signup">
+    <div class="modal">
+      <button class="modal-x" type="button" aria-label="Close">✕</button>
+      <h2>Sign up</h2>
+      <p class="msub">Spin up your first agent in minutes.</p>
+      <form id="f-signup" novalidate>
+        <div class="field"><label>Email</label><input type="email" autocomplete="email"><div class="ferr"></div></div>
+        <div class="field">
+          <label>Password</label>
+          <span class="pw-box">
+            <input id="su-pw" type="password" autocomplete="new-password">
+            <button class="eye" type="button" aria-label="Show password"><svg width="16" height="16"><use href="#i-eye"></use></svg></button>
+          </span>
+          <div class="ferr"></div>
+        </div>
+        <div class="field">
+          <label>Confirm password</label>
+          <span class="pw-box">
+            <input id="su-pw2" type="password" autocomplete="new-password">
+            <button class="eye" type="button" aria-label="Show password"><svg width="16" height="16"><use href="#i-eye"></use></svg></button>
+          </span>
+          <div class="ferr"></div>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Sign up</button>
+      </form>
+      <div class="sso-div">or continue with</div>
+      <div class="sso-row">
+        <span class="sso-btn" title="Coming soon"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"></path><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"></path><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"></path><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"></path></svg></span>
+        <span class="sso-btn" title="Coming soon"><svg width="17" height="17"><use href="#i-x" fill="#E8EDF2"></use></svg></span>
+      </div>
+      <p class="sso-note">Google &amp; X sign-in coming soon</p>
+      <p class="mswitch">Already have an account? <button type="button" data-open="login">Log in</button></p>
+      <p class="terms">By continuing, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="m-forgot">
+    <div class="modal">
+      <button class="modal-x" type="button" aria-label="Close">✕</button>
+      <h2>Reset your password</h2>
+      <p class="msub">We'll email you a secure reset link.</p>
+      <form id="f-forgot" novalidate>
+        <div class="field"><label>Email</label><input type="email" autocomplete="email"><div class="ferr"></div></div>
+        <button class="btn btn-primary btn-block" type="submit">Send reset link</button>
+      </form>
+      <p class="mswitch"><button type="button" data-open="login">Return to log in</button></p>
+      <p class="terms">By continuing, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      function openModal(id) {
+        document.querySelectorAll('.overlay.open').forEach(function (o) { o.classList.remove('open'); });
+        var el = document.getElementById(id);
+        if (el) el.classList.add('open');
+      }
+      function closeAll() {
+        document.querySelectorAll('.overlay.open').forEach(function (o) { o.classList.remove('open'); });
+      }
+
+      /* in-button spinners */
+      document.querySelectorAll('.btn').forEach(function (b) {
+        var s = document.createElement('span');
+        s.className = 'ld';
+        b.insertBefore(s, b.firstChild);
+      });
+      function btnLoad(btn, ms, after) {
+        if (!btn || btn.classList.contains('loading')) return;
+        btn.classList.add('loading');
+        setTimeout(function () {
+          btn.classList.remove('loading');
+          if (after) after();
+        }, ms);
+      }
+
+      /* top loading bar for link navigation */
+      var bar = document.createElement('div');
+      bar.className = 'loadbar';
+      document.body.appendChild(bar);
+      function runBar() {
+        bar.style.transition = 'none';
+        bar.style.width = '0';
+        bar.style.opacity = '1';
+        requestAnimationFrame(function () {
+          bar.style.transition = 'width 0.7s ease';
+          bar.style.width = '75%';
+          setTimeout(function () {
+            bar.style.transition = 'width 0.25s ease, opacity 0.4s ease 0.15s';
+            bar.style.width = '100%';
+            bar.style.opacity = '0';
+          }, 750);
+        });
+      }
+
+      /* field errors */
+      function errEl(input) {
+        var box = input.closest('.field, .hfield, .pw-wrap');
+        return box ? box.querySelector('.ferr') : null;
+      }
+      function setErr(input, msg) {
+        input.classList.add('invalid');
+        var e = errEl(input);
+        if (e) { e.textContent = msg; e.classList.add('show'); }
+      }
+      function clearErr(input) {
+        input.classList.remove('invalid');
+        var e = errEl(input);
+        if (e) e.classList.remove('show');
+      }
+      function validEmail(input) {
+        if (!emailRe.test(input.value)) { setErr(input, 'Email format incorrect'); return false; }
+        clearErr(input);
+        return true;
+      }
+
+      /* blur validation for every email field */
+      document.querySelectorAll('input[type="email"]').forEach(function (inp) {
+        inp.addEventListener('blur', function () {
+          if (inp.value && !emailRe.test(inp.value)) setErr(inp, 'Email format incorrect');
+        });
+        inp.addEventListener('input', function () { clearErr(inp); });
+      });
+
+      /* confirm-password match on blur */
+      var pw1 = document.getElementById('su-pw');
+      var pw2 = document.getElementById('su-pw2');
+      if (pw1 && pw2) {
+        pw2.addEventListener('blur', function () {
+          if (pw2.value && pw1.value && pw1.value !== pw2.value) setErr(pw2, "Passwords don't match");
+        });
+        pw1.addEventListener('input', function () { clearErr(pw2); });
+        pw2.addEventListener('input', function () { clearErr(pw2); });
+      }
+
+      /* eye toggles — flips every password field in the same form together */
+      document.addEventListener('click', function (e) {
+        var eye = e.target.closest('.eye');
+        if (!eye) return;
+        var scope = eye.closest('form') || document;
+        var show = eye.parentElement.querySelector('input').type === 'password';
+        scope.querySelectorAll('.pw-box').forEach(function (box) {
+          box.querySelector('input').type = show ? 'text' : 'password';
+          var u = box.querySelector('.eye use');
+          if (u) u.setAttribute('href', show ? '#i-eye-off' : '#i-eye');
+          box.querySelector('.eye').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+      });
+
+      /* header login — demo: credentials never match */
+      var hform = document.querySelector('.hlogin');
+      hform.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var em = hform.querySelector('input[type="email"]');
+        var pw = hform.querySelector('input[type="password"]');
+        if (!validEmail(em)) return;
+        btnLoad(hform.querySelector('button[type="submit"]'), 1100, function () {
+          setErr(pw, 'Email or password is incorrect');
+        });
+      });
+
+      /* login modal */
+      var fLogin = document.getElementById('f-login');
+      fLogin.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var em = fLogin.querySelector('input[type="email"]');
+        if (!validEmail(em)) return;
+        var ferr = fLogin.querySelector('.form-err');
+        ferr.classList.remove('show');
+        btnLoad(fLogin.querySelector('button[type="submit"]'), 1100, function () {
+          ferr.textContent = 'Email or password is incorrect';
+          ferr.classList.add('show');
+        });
+      });
+      fLogin.addEventListener('input', function () {
+        fLogin.querySelector('.form-err').classList.remove('show');
+      });
+
+      /* signup modal — demo: taken@… already exists */
+      var fSignup = document.getElementById('f-signup');
+      fSignup.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var em = fSignup.querySelector('input[type="email"]');
+        var ok = validEmail(em);
+        if (pw1.value && pw2.value && pw1.value !== pw2.value) { setErr(pw2, "Passwords don't match"); ok = false; }
+        if (!ok) return;
+        btnLoad(fSignup.querySelector('button[type="submit"]'), 1100, function () {
+          if (/^taken@/i.test(em.value)) {
+            setErr(em, 'An account with this email already exists');
+          } else {
+            closeAll();
+            runBar();
+          }
+        });
+      });
+
+      /* forgot modal */
+      var fForgot = document.getElementById('f-forgot');
+      fForgot.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var em = fForgot.querySelector('input[type="email"]');
+        if (!validEmail(em)) return;
+        btnLoad(fForgot.querySelector('button[type="submit"]'), 1100, function () {
+          closeAll();
+          runBar();
+        });
+      });
+
+      /* submit buttons stay disabled until every field is filled */
+      [hform, fLogin, fSignup, fForgot].forEach(function (form) {
+        var btn = form.querySelector('button[type="submit"]');
+        var inputs = [].slice.call(form.querySelectorAll('input'));
+        function upd() {
+          btn.disabled = !inputs.every(function (i) { return i.value.trim() !== ''; });
+        }
+        inputs.forEach(function (i) { i.addEventListener('input', upd); });
+        upd();
+      });
+
+      /* modal triggers, demo buttons, plain links */
+      document.addEventListener('click', function (e) {
+        var opener = e.target.closest('[data-open]');
+        if (opener) { e.preventDefault(); openModal('m-' + opener.getAttribute('data-open')); return; }
+        if (e.target.closest('.modal-x')) { closeAll(); return; }
+        if (e.target.classList && e.target.classList.contains('overlay')) { closeAll(); return; }
+        var btn = e.target.closest('a.btn');
+        if (btn) { e.preventDefault(); btnLoad(btn, 1000); runBar(); return; }
+        var link = e.target.closest('a[href="#"]');
+        if (link) { e.preventDefault(); runBar(); }
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
+    })();
+  </script>
+</body>
+</html>

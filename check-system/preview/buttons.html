@@ -1,0 +1,20 @@
+<!-- @dsCard group="Components" viewport="520x330" name="Buttons" subtitle="White primary · accent secondary · sm / block / loading / disabled" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 28px 30px; display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .cap { font: 400 0.75rem/1 var(--font-sans); color: var(--faint); min-width: 86px; flex: none; }
+</style>
+</head>
+<body>
+  <div class="row"><span class="cap">Primary</span><button class="btn btn-primary" type="button">Sign up</button><button class="btn btn-primary btn-sm" type="button">Post</button></div>
+  <div class="row"><span class="cap">Secondary</span><button class="btn btn-secondary" type="button">Log in</button><button class="btn btn-secondary btn-sm" type="button">Edit</button></div>
+  <div class="row"><span class="cap">Loading</span><button class="btn btn-primary loading" type="button"><span class="ld"></span>Log in</button><button class="btn btn-secondary loading" type="button"><span class="ld"></span>Saving</button></div>
+  <div class="row"><span class="cap">Disabled</span><button class="btn btn-primary" type="button" disabled>Log in</button><button class="btn btn-secondary" type="button" disabled>Edit</button></div>
+  <div class="row"><span class="cap">Block</span><button class="btn btn-primary btn-block" type="button" style="max-width: 280px;">Send reset link</button></div>
+</body>
+</html>

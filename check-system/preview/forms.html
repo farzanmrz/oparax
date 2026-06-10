@@ -1,0 +1,55 @@
+<!-- @dsCard group="Components" viewport="480x620" name="Form fields" subtitle="Labelled fields, inline inputs, password eye, errors, badge fields" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 26px 30px 30px; display: flex; flex-direction: column; }
+  .grp { font: 700 0.6875rem/1 var(--font-sans); letter-spacing: 0.09em; text-transform: uppercase; color: var(--faint); margin: 22px 0 0; }
+  .grp:first-child { margin-top: 0; }
+  .inline-row { display: flex; gap: 8px; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true"><defs>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"></path><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"></circle></symbol>
+  </defs></svg>
+
+  <span class="grp">Stacked field</span>
+  <div class="field"><label>Email</label><input type="email" placeholder="you@newsroom.com"></div>
+
+  <span class="grp">Password with eye</span>
+  <div class="field">
+    <label>Password</label>
+    <span class="pw-box">
+      <input type="password" value="hunter22">
+      <button class="eye" type="button" aria-label="Show password"><svg width="16" height="16"><use href="#i-eye"></use></svg></button>
+    </span>
+  </div>
+
+  <span class="grp">Error state</span>
+  <div class="field">
+    <label>Email</label>
+    <input class="invalid" type="email" value="not-an-email">
+    <div class="ferr show">Email format incorrect</div>
+  </div>
+
+  <span class="grp">Inline input (header)</span>
+  <div class="inline-row"><input class="hl-input" type="email" placeholder="Email"><input class="hl-input" type="password" placeholder="Password"></div>
+
+  <span class="grp">Read-only field + badge field</span>
+  <div class="ffield-wrap" style="margin-top: 10px;">
+    <span class="flabel">Workflow name</span>
+    <div class="ffield">Premier League Desk</div>
+  </div>
+  <div class="ffield-wrap" style="margin-top: 12px;">
+    <span class="flabel">X accounts (3 / 20)</span>
+    <div class="badge-row">
+      <span class="wbadge">@FabrizioRomano</span>
+      <span class="wbadge">@David_Ornstein</span>
+      <span class="wbadge">@SkySportsPL</span>
+    </div>
+  </div>
+</body>
+</html>

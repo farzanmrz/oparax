@@ -5,6 +5,7 @@ import {
   Settings02Icon,
   UserAiIcon,
 } from "@hugeicons/core-free-icons"
+import { OparaxMark } from "@/components/logo"
 import { NavMain } from "@/components/nav-main"
 import { NavUser, SidebarSignOut } from "@/components/nav-user"
 import {
@@ -45,8 +46,8 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard/agents">
-                <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-foreground text-sm font-bold text-background">
-                  O
+                <div className="flex aspect-square size-9 items-center justify-center text-foreground">
+                  <OparaxMark className="size-8" />
                 </div>
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate text-base font-semibold">Oparax</span>

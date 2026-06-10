@@ -1,0 +1,29 @@
+<!-- @dsCard group="Type" viewport="600x460" name="Type roles" subtitle="Source Sans 3 only — roles extracted from the landing page" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 30px 34px; display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+  .row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .meta { font: 400 0.75rem/1.5 var(--font-sans); color: var(--faint); text-align: right; flex: none; }
+  .t-display { font: 800 2.4rem/1.04 var(--font-sans); letter-spacing: -0.03em; }
+  .t-display .hl { color: var(--accent); }
+  .t-kicker { display: inline-flex; align-items: center; gap: 10px; font: 600 0.75rem/1 var(--font-sans); letter-spacing: 0.26em; text-transform: uppercase; color: var(--accent); }
+  .t-sub { font: 400 1.1875rem/1.55 var(--font-sans); color: var(--muted); }
+  .t-sub b { color: var(--fg); font-weight: 650; }
+  .t-card { font: 650 0.9375rem/1 var(--font-sans); }
+  .t-item { font: 650 0.9375rem/1.4 var(--font-sans); }
+</style>
+</head>
+<body>
+  <div class="row"><span class="t-kicker"><span class="dot blink"></span>Kicker line</span><span class="meta">600 · 12px · +0.26em · uppercase · accent</span></div>
+  <div class="row"><span class="t-display">Display <span class="hl">headline.</span></span><span class="meta">800 · clamp 46–67px · −0.03em</span></div>
+  <div class="row"><span class="t-sub">Body lead with <b>bold emphasis</b> in primary ink.</span><span class="meta">400 · 19px · lh 1.55 · muted</span></div>
+  <div class="row"><span class="t-item">Card titles &amp; news item headlines</span><span class="meta">650 · 15px · lh 1.4</span></div>
+  <div class="row"><span class="flabel">Form field label</span><span class="meta">650 · 13px · muted</span></div>
+  <div class="row"><span class="label-sm">Small caps label</span><span class="meta">700 · 11px · +0.09em · uppercase · faint</span></div>
+</body>
+</html>
