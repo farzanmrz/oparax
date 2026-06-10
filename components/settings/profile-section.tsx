@@ -20,6 +20,7 @@ import { SubmitButton } from "@/components/submit-button"
 import { SignOutButton } from "@/components/sign-out-button"
 import { ConnectX } from "@/components/loop/connect-x"
 import { DisconnectXButton } from "@/components/loop/disconnect-x-button"
+import { DeleteAccountButton } from "@/components/settings/delete-account-button"
 
 /**
  * Profile settings section: edit the display name, manage the connected X
@@ -116,8 +117,9 @@ export function ProfileSection({
           <CardTitle>Account</CardTitle>
           <CardDescription>Your account details and session.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col items-start gap-3">
           <SignOutButton />
+          <DeleteAccountButton />
         </CardContent>
       </Card>
     </div>

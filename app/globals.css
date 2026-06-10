@@ -117,6 +117,8 @@
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 22px -8px oklch(1 0 0 / 0.5); }
   .btn-secondary { background: var(--accent); color: var(--action-ink); }
   .btn-secondary:hover { transform: translateY(-1px); filter: brightness(1.05); }
+  .btn-danger { background: var(--err); color: oklch(1 0 0); }
+  .btn-danger:hover { transform: translateY(-1px); filter: brightness(1.05); }
   .btn:active { transform: translateY(0); }
   .btn-sm { height: 32px; font-size: 0.875rem; padding: 0 15px; }
   .btn-block { width: 100%; }
