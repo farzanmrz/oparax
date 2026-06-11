@@ -512,13 +512,11 @@ function ForgotView({
 // submit. Mirrors the signup password validations: 6-character minimum,
 // live mismatch error once the confirmation reaches the password's length.
 function ResetView({
-  onClose,
   onRecoveryActive,
   tokenHash,
   tokenType,
   initialState,
 }: {
-  onClose: () => void
   onRecoveryActive: (active: boolean) => void
   tokenHash?: string
   tokenType?: "recovery"
@@ -551,34 +549,10 @@ function ResetView({
 
   // Tell the modal whether a consumed-token session is dangling, so closing
   // without finishing signs it out instead of leaving the user logged in.
+  // (On success the action redirects to the login modal, so no flag needed.)
   useEffect(() => {
-    onRecoveryActive(Boolean(state.recovered) && !state.passwordUpdated)
+    onRecoveryActive(Boolean(state.recovered))
   }, [state, onRecoveryActive])
-
-  // The success notice closes itself after 10 seconds.
-  useEffect(() => {
-    if (!state.passwordUpdated) return
-    const timer = window.setTimeout(onClose, 10_000)
-    return () => window.clearTimeout(timer)
-  }, [state.passwordUpdated, onClose])
-
-  if (state.passwordUpdated) {
-    return (
-      <>
-        <h2>Password updated</h2>
-        <p className="msub">
-          Your password has been updated successfully. You can now log in.
-        </p>
-        <button
-          className="btn btn-primary btn-block"
-          type="button"
-          onClick={onClose}
-        >
-          Close
-        </button>
-      </>
-    )
-  }
 
   return (
     <>
@@ -775,7 +749,6 @@ export function AuthModal({
           ) : null}
           {view === "reset" ? (
             <ResetView
-              onClose={handleClose}
               onRecoveryActive={(active) => {
                 recoveryActiveRef.current = active
               }}

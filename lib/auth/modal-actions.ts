@@ -26,8 +26,6 @@ export interface AuthFormState {
   /** Signup succeeded — a confirmation email was sent to `email`. */
   signupComplete?: boolean;
   email?: string;
-  /** Password update finished — the reset modal shows its success notice. */
-  passwordUpdated?: boolean;
   /**
    * A recovery session exists (the one-time token was consumed) but the
    * password was not updated. Kept so the user can correct and retry; the
@@ -188,15 +186,31 @@ export async function updatePasswordAction(
   const { error } = await supabase.auth.updateUser({
     password: validated.password,
   });
-  if (error) {
+
+  // Re-setting the same password counts as success: the user proved account
+  // ownership via the recovery link, and "set my password to X" when it is
+  // already X is a no-op — blocking on it only confuses people who
+  // subconsciously reuse their old password.
+  const samePassword =
+    error !== null &&
+    (error.code === "same_password" ||
+      error.message ===
+        "New password should be different from the old password.");
+
+  if (error && !samePassword) {
     // The recovery session stays alive so the user can correct and resubmit
     // (the token is already consumed); the modal signs out on abandon.
     return { error: mapAuthError(error.message), recovered: true };
   }
 
-  // Done — drop the recovery session so the user logs in deliberately.
+  // Done — drop the recovery session and seed the login modal with the
+  // success notice, mirroring the email-verification flow.
   await supabase.auth.signOut();
-  return { passwordUpdated: true };
+  redirect(
+    `/?auth=login&message=${encodeURIComponent(
+      "Password updated successfully. Please log in."
+    )}`
+  );
 }
 
 /**
