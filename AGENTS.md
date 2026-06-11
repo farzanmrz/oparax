@@ -24,11 +24,12 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 ├── app/            # Next.js App Router
 │   ├── globals.css # THE DESIGN SYSTEM — tokens + component classes (see "Design System" section below)
 │   ├── landing.css # Landing page layout only, scoped under `.landing` (components come from globals.css)
-│   ├── auth-pages.css # Centered shell for the standalone auth pages (reset-password, check-email)
 │   ├── icon.svg / apple-icon.png / favicon.ico  # Favicon set from the brand export (public/brand/)
 │   ├── login/, signup/, auth/, forgot-password/  # Auth flow; auth/callback = X OAuth (link X for posting)
-│   │               # /login, /signup, /forgot-password are THIN REDIRECTS to /?auth=... (landing auth modal);
-│   │               # real standalone pages: auth/reset-password (email link target) + signup/check-email
+│   │               # ALL auth UI lives in the landing modals (login/signup/forgot/reset) — /login, /signup,
+│   │               # /forgot-password, /auth/reset-password are THIN REDIRECTS to /?auth=...;
+│   │               # auth/confirm = email-link handler (signup verify → login modal notice, NO auto-login;
+│   │               # recovery → reset modal, token consumed only on submit)
 │   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); connect-x gate, settings, agents surface
 │   │   ├── connect-x/ # Required X-linking gate before creating agents; redirects back via ?next=...
 │   │   └── agents/ # page.tsx = LIST · new/ = create (Run Agent: scan+draft → review → Save) · [id]/ = manual run/redraft/post detail
@@ -43,7 +44,7 @@ Folder-level map — drill into a folder when a task touches it; the non-obvious
 │   ├── hooks/      # shadcn `hooks` alias target (components.json) → use-mobile.ts, REQUIRED by ui/sidebar.tsx (legacy)
 │   ├── loop/       # agents UI + connect-x / disconnect-x (X linking) components (legacy styling, pending redesign)
 │   ├── settings/   # settings sections: profile, coming-soon placeholders, tab nav (legacy styling, pending redesign)
-│   └── *.tsx       # reset-password form (new DS), sidebar/nav + dashboard page header (legacy, pending redesign)
+│   └── *.tsx       # sidebar/nav + dashboard page header (legacy, pending redesign)
 │
 ├── lib/            # Domain logic: supabase/ clients, auth/ (modal Server Actions), scan/ + draft/ (Grok pipeline),
 │                   # x/ (token lifecycle + client), types/ (generated DB types + aliases), validation.ts, auth-errors.ts, utils.ts

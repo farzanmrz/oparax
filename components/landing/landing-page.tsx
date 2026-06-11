@@ -251,10 +251,14 @@ export function LandingPage({
   initialView = null,
   initialError,
   initialMessage,
+  tokenHash,
+  tokenType,
 }: {
   initialView?: AuthView | null
   initialError?: string
   initialMessage?: string
+  tokenHash?: string
+  tokenType?: "recovery"
 } = {}) {
   const [authView, setAuthView] = useState<AuthView | null>(initialView)
 
@@ -337,6 +341,8 @@ export function LandingPage({
         view={authView}
         initialError={initialError}
         initialMessage={initialMessage}
+        tokenHash={tokenHash}
+        tokenType={tokenType}
         onClose={() => setAuthView(null)}
         onChangeView={setAuthView}
       />

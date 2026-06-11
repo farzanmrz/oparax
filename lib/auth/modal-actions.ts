@@ -16,6 +16,7 @@ import {
   isValidationError,
   validateAuthForm,
   validateEmailForm,
+  validateResetPasswordForm,
   validateSignupForm,
 } from "@/lib/validation";
 
@@ -25,6 +26,14 @@ export interface AuthFormState {
   /** Signup succeeded — a confirmation email was sent to `email`. */
   signupComplete?: boolean;
   email?: string;
+  /** Password update finished — the reset modal shows its success notice. */
+  passwordUpdated?: boolean;
+  /**
+   * A recovery session exists (the one-time token was consumed) but the
+   * password was not updated. Kept so the user can correct and retry; the
+   * modal signs it out if they close without succeeding.
+   */
+  recovered?: boolean;
 }
 
 function trimTrailingSlash(url: string): string {
@@ -136,4 +145,66 @@ export async function resetPasswordAction(
     message:
       "If an account exists for this email, we sent a password reset link.",
   };
+}
+
+const INVALID_RESET_LINK_MESSAGE =
+  "Your password reset link is invalid or has expired. Please request a new one.";
+
+export async function updatePasswordAction(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const validated = validateResetPasswordForm(formData);
+  if (isValidationError(validated)) {
+    return { error: validated.message };
+  }
+
+  const tokenHash = formData.get("token_hash");
+  const tokenType = formData.get("type");
+  const hasRecoveryToken =
+    typeof tokenHash === "string" && tokenHash.length > 0;
+  const isRecoveryType = tokenType === "recovery";
+
+  const supabase = await createClient();
+  let {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // No session yet — consume the one-time recovery token from the email link.
+  if (!user && hasRecoveryToken && isRecoveryType) {
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      type: "recovery",
+      token_hash: tokenHash,
+    });
+    if (!verifyError) {
+      user = (await supabase.auth.getUser()).data.user;
+    }
+  }
+
+  if (!user) {
+    return { error: INVALID_RESET_LINK_MESSAGE };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: validated.password,
+  });
+  if (error) {
+    // The recovery session stays alive so the user can correct and resubmit
+    // (the token is already consumed); the modal signs out on abandon.
+    return { error: mapAuthError(error.message), recovered: true };
+  }
+
+  // Done — drop the recovery session so the user logs in deliberately.
+  await supabase.auth.signOut();
+  return { passwordUpdated: true };
+}
+
+/**
+ * Sign out a leftover recovery session. Called when the reset modal is
+ * closed after the token was consumed but before the password was updated,
+ * so the user is not silently left logged in.
+ */
+export async function abandonRecoveryAction(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
 }

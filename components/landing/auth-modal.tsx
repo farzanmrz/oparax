@@ -1,20 +1,30 @@
 "use client"
 
-// Auth modals (log in / sign up / forgot password) — React port of the
-// design reference modals, built on the design-system .overlay/.modal/.field
-// classes from app/globals.css. Wired to the stateful Server Actions in
-// lib/auth/modal-actions.ts: failures render inline, successes redirect.
-import { useActionState, useEffect, useId, useRef, useState } from "react"
+// Auth modals (log in / sign up / forgot password / set new password) —
+// React port of the design reference modals, built on the design-system
+// .overlay/.modal/.field classes from app/globals.css. Wired to the stateful
+// Server Actions in lib/auth/modal-actions.ts: failures render inline,
+// successes redirect or swap the form for a notice.
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react"
 
 import {
+  abandonRecoveryAction,
   loginAction,
   resetPasswordAction,
   signupAction,
+  updatePasswordAction,
   type AuthFormState,
 } from "@/lib/auth/modal-actions"
 import { EyeIcon, EyeOffIcon, GoogleIcon, XIcon } from "@/components/icons"
 
-export type AuthView = "login" | "signup" | "forgot"
+export type AuthView = "login" | "signup" | "forgot" | "reset"
 
 const EMPTY_STATE: AuthFormState = {}
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -23,6 +33,7 @@ const VIEW_LABEL: Record<AuthView, string> = {
   login: "Log in",
   signup: "Sign up",
   forgot: "Reset your password",
+  reset: "Set a new password",
 }
 
 function useAutoFocus() {
@@ -496,20 +507,193 @@ function ForgotView({
   )
 }
 
+// Set-new-password view — the landing target of the email recovery link.
+// The one-time token rides along as hidden fields and is only consumed on
+// submit. Mirrors the signup password validations: 6-character minimum,
+// live mismatch error once the confirmation reaches the password's length.
+function ResetView({
+  onClose,
+  onRecoveryActive,
+  tokenHash,
+  tokenType,
+  initialState,
+}: {
+  onClose: () => void
+  onRecoveryActive: (active: boolean) => void
+  tokenHash?: string
+  tokenType?: "recovery"
+  initialState?: AuthFormState
+}) {
+  const id = useId()
+  const [state, dispatch, pending] = useActionState(
+    updatePasswordAction,
+    initialState ?? EMPTY_STATE
+  )
+  const feedback = useServerFeedback(state)
+  const firstRef = useAutoFocus()
+
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [confirmError, setConfirmError] = useState(false)
+  // The eye flips every password field in the form together, per the design.
+  const [pwVisible, setPwVisible] = useState(false)
+
+  const canSubmit = password.length >= 6 && confirm === password
+
+  // Surface the mismatch while typing once the confirmation is as long as
+  // the password (masked fields otherwise give no clue why submit is dead).
+  const confirmMismatch =
+    password !== "" &&
+    confirm !== "" &&
+    confirm.length >= password.length &&
+    confirm !== password
+  const showConfirmError = confirmError || confirmMismatch
+
+  // Tell the modal whether a consumed-token session is dangling, so closing
+  // without finishing signs it out instead of leaving the user logged in.
+  useEffect(() => {
+    onRecoveryActive(Boolean(state.recovered) && !state.passwordUpdated)
+  }, [state, onRecoveryActive])
+
+  // The success notice closes itself after 10 seconds.
+  useEffect(() => {
+    if (!state.passwordUpdated) return
+    const timer = window.setTimeout(onClose, 10_000)
+    return () => window.clearTimeout(timer)
+  }, [state.passwordUpdated, onClose])
+
+  if (state.passwordUpdated) {
+    return (
+      <>
+        <h2>Password updated</h2>
+        <p className="msub">
+          Your password has been updated successfully. You can now log in.
+        </p>
+        <button
+          className="btn btn-primary btn-block"
+          type="button"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <h2>Set a new password</h2>
+      <p className="msub">
+        Use at least 6 characters and keep it unique to this account.
+      </p>
+      <form
+        noValidate
+        action={dispatch}
+        onSubmit={(event) => {
+          if (password !== confirm) {
+            event.preventDefault()
+            setConfirmError(true)
+          }
+        }}
+      >
+        {tokenHash ? (
+          <input type="hidden" name="token_hash" value={tokenHash} />
+        ) : null}
+        {tokenType ? (
+          <input type="hidden" name="type" value={tokenType} />
+        ) : null}
+        <div className="field">
+          <label htmlFor={`${id}-pw`}>New password</label>
+          <span className="pw-box">
+            <input
+              ref={firstRef}
+              id={`${id}-pw`}
+              name="password"
+              type={pwVisible ? "text" : "password"}
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                setConfirmError(false)
+                feedback.hide()
+              }}
+              required
+            />
+            <EyeToggle
+              visible={pwVisible}
+              onToggle={() => setPwVisible((v) => !v)}
+            />
+          </span>
+        </div>
+        <div className="field">
+          <label htmlFor={`${id}-pw2`}>Confirm new password</label>
+          <span className="pw-box">
+            <input
+              id={`${id}-pw2`}
+              className={showConfirmError ? "invalid" : undefined}
+              name="confirm-password"
+              type={pwVisible ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(event) => {
+                setConfirm(event.target.value)
+                setConfirmError(false)
+                feedback.hide()
+              }}
+              onBlur={() => {
+                if (confirm && password && password !== confirm)
+                  setConfirmError(true)
+              }}
+              required
+            />
+            <EyeToggle
+              visible={pwVisible}
+              onToggle={() => setPwVisible((v) => !v)}
+            />
+          </span>
+          <div className={`ferr${showConfirmError ? " show" : ""}`}>
+            Passwords don&apos;t match
+          </div>
+        </div>
+        <FormFeedback error={feedback.error} message={feedback.message} />
+        <SubmitButton pending={pending} disabled={!canSubmit}>
+          Update password
+        </SubmitButton>
+      </form>
+    </>
+  )
+}
+
 export function AuthModal({
   view,
   initialError,
   initialMessage,
+  tokenHash,
+  tokenType,
   onClose,
   onChangeView,
 }: {
   view: AuthView | null
   initialError?: string
   initialMessage?: string
+  tokenHash?: string
+  tokenType?: "recovery"
   onClose: () => void
   onChangeView: (view: AuthView) => void
 }) {
   const open = view !== null
+
+  // A consumed recovery token leaves a session behind until the password is
+  // updated; if the user closes the reset modal mid-flow, sign it out so
+  // they are not silently logged in (closing must not equal logging in).
+  const recoveryActiveRef = useRef(false)
+  const handleClose = useCallback(() => {
+    if (recoveryActiveRef.current) {
+      recoveryActiveRef.current = false
+      void abandonRecoveryAction()
+    }
+    onClose()
+  }, [onClose])
 
   // A seeded alert (e.g. "Password updated successfully" after a reset) is
   // bound to the view that was auto-opened on mount, so it only shows there
@@ -542,11 +726,11 @@ export function AuthModal({
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
+      if (event.key === "Escape") handleClose()
     }
     document.addEventListener("keydown", onKeyDown)
     return () => document.removeEventListener("keydown", onKeyDown)
-  }, [open, onClose])
+  }, [open, handleClose])
 
   return (
     <div
@@ -556,7 +740,7 @@ export function AuthModal({
       aria-label={view ? VIEW_LABEL[view] : "Account"}
       aria-hidden={open ? undefined : true}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
+        if (event.target === event.currentTarget) handleClose()
       }}
     >
       {open ? (
@@ -565,7 +749,7 @@ export function AuthModal({
             className="modal-x"
             type="button"
             aria-label="Close"
-            onClick={onClose}
+            onClick={handleClose}
           >
             ✕
           </button>
@@ -579,7 +763,7 @@ export function AuthModal({
           {view === "signup" ? (
             <SignupView
               onChangeView={onChangeView}
-              onClose={onClose}
+              onClose={handleClose}
               initialState={seedFor("signup")}
             />
           ) : null}
@@ -587,6 +771,17 @@ export function AuthModal({
             <ForgotView
               onChangeView={onChangeView}
               initialState={seedFor("forgot")}
+            />
+          ) : null}
+          {view === "reset" ? (
+            <ResetView
+              onClose={handleClose}
+              onRecoveryActive={(active) => {
+                recoveryActiveRef.current = active
+              }}
+              tokenHash={tokenHash}
+              tokenType={tokenType}
+              initialState={seedFor("reset")}
             />
           ) : null}
         </div>

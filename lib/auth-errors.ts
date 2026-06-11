@@ -13,6 +13,10 @@ const ERROR_MAP: Record<string, string> = {
     "Password must be at least 6 characters.",
   "Unable to validate email address: invalid format":
     "Please enter a valid email address.",
+
+  // Password reset errors
+  "New password should be different from the old password.":
+    "New password must be different from your current password.",
 };
 
 // Supabase rate-limit messages include a variable countdown

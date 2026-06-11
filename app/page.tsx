@@ -3,12 +3,18 @@ import { createClient } from "@/lib/supabase/server"
 import { LandingPage } from "@/components/landing/landing-page"
 import type { AuthView } from "@/components/landing/auth-modal"
 
-const AUTH_VIEWS: readonly AuthView[] = ["login", "signup", "forgot"]
+const AUTH_VIEWS: readonly AuthView[] = ["login", "signup", "forgot", "reset"]
 
 export default async function RootPage({
   searchParams,
 }: {
-  searchParams: Promise<{ auth?: string; error?: string; message?: string }>
+  searchParams: Promise<{
+    auth?: string
+    error?: string
+    message?: string
+    token_hash?: string
+    type?: string
+  }>
 }) {
   const supabase = await createClient()
   const {
@@ -18,10 +24,12 @@ export default async function RootPage({
   // Signed-in users go straight to the app; everyone else sees the landing page.
   if (user) redirect("/dashboard")
 
-  // ?auth=login|signup|forgot (set by the /login, /signup, /forgot-password
-  // redirects) auto-opens the matching auth modal. error/message are surfaced
-  // inside it — e.g. the "Password updated successfully" notice after a reset.
-  const { auth, error, message } = await searchParams
+  // ?auth=login|signup|forgot|reset (set by the /login, /signup,
+  // /forgot-password redirects and the auth/confirm email handler)
+  // auto-opens the matching auth modal. error/message are surfaced inside it —
+  // e.g. "Email verified successfully" after a signup confirmation — and the
+  // reset view receives the one-time recovery token from the email link.
+  const { auth, error, message, token_hash, type } = await searchParams
   const initialView = AUTH_VIEWS.includes(auth as AuthView)
     ? (auth as AuthView)
     : null
@@ -31,6 +39,8 @@ export default async function RootPage({
       initialView={initialView}
       initialError={error}
       initialMessage={message}
+      tokenHash={token_hash}
+      tokenType={type === "recovery" ? "recovery" : undefined}
     />
   )
 }
