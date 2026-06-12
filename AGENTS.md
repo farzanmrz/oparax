@@ -2,81 +2,21 @@
 
 Oparax is an AI agent for news reporters: it monitors their beat across X, news websites, and social platforms, catches stories as they break, drafts a post for each platform in their voice, and — once trusted — posts autonomously.
 
-## Larger Planned functionality
+**Planned**: the reporter tells Oparax what to watch (X handles, news sites, accounts across Reddit, Bluesky, LinkedIn, and Meta's platforms), what counts as news on their beat, and how they write. It monitors in the background at the cadence they set, separates findings into atomic news items (recognizing shared stories across sources), drafts each item per destination platform in their voice, and notifies the moment something breaks (email / WhatsApp / push) — post in one tap, or let trusted agents post autonomously and notify after the fact.
 
-Oparax is an AI agent for professional news reporters whose audience expects them to be first. A reporter tells it what to watch — X handles, news websites, and accounts across Reddit, Bluesky, LinkedIn, and Meta's platforms (Facebook, Instagram, Threads) — what counts as news on their beat, and how they write. The agent monitors those sources in the background at whatever frequency the reporter sets, separates what it finds into atomic news items (recognizing when multiple sources are carrying the same story), and drafts a ready-to-publish post for each item in the reporter's voice and beliefs, shaped to each destination platform's length and norms. The moment something breaks, the reporter is notified — email, WhatsApp, or push — with drafts attached: they post in one tap, or, for agents they have come to trust, flip on autonomous mode and Oparax selects what is worth posting, publishes, and notifies after the fact. Assistive by default, autonomous by permission.
+**Today**: email signup → connect X (required gate) → create an agent (handles, what counts as news, drafting instructions, example tweets) → Run Agent: one Grok call scans X and drafts every story it finds → review/edit the in-memory preview → Save Agent → post or redraft per item. Setup and env vars: [README.md](README.md).
 
-# Project Structure
+# Architecture & Conventions
 
-Next.js App Router app at the repo root.
+Next.js App Router (TypeScript strict, `@/*` alias) on Vercel (oparax.ai); Supabase auth + Postgres with owner-scoped RLS; Grok (xAI) via the `openai` SDK at `https://api.x.ai/v1`; pnpm only. No test runner — keep `pnpm build` + `pnpm lint` green; the developer verifies flows manually (hand off a checklist).
 
-Folder-level map — drill into a folder when a task touches it; the non-obvious gotchas are called out inline.
-
-```text
-├── package.json    # Deps + scripts (pnpm dev / build / lint)
-├── next.config.ts  # Next.js config
-├── vercel.json     # Vercel config; crons EMPTY (auto-scan cron deferred — see docs/PLAN.md)
-├── components.json # shadcn config
-├── tsconfig.json   # TypeScript config (strict, @/* alias)
-├── proxy.ts        # Per-request hook that refreshes the Supabase session.
-│                   # MISLEADINGLY NAMED — NOT Supabase middleware (that lives in lib/supabase/middleware.ts).
-│
-├── app/            # Next.js App Router
-│   ├── globals.css # THE DESIGN SYSTEM — tokens + component classes (see "Design System" section below)
-│   ├── landing.css # Landing page layout only, scoped under `.landing` (components come from globals.css)
-│   ├── icon.svg / apple-icon.png / favicon.ico  # Favicon set from the brand export (public/brand/)
-│   ├── login/, signup/, auth/, forgot-password/  # Auth flow; auth/callback = X OAuth (link X for posting)
-│   │               # ALL auth UI lives in the landing modals (login/signup/forgot/reset) — /login, /signup,
-│   │               # /forgot-password, /auth/reset-password are THIN REDIRECTS to /?auth=...;
-│   │               # auth/confirm = email-link handler (signup verify → login modal notice, NO auto-login;
-│   │               # recovery → reset modal, token consumed only on submit)
-│   ├── dashboard/  # Protected area (auth guard in dashboard/layout.tsx); connect-x gate, settings, agents surface
-│   │   ├── connect-x/ # Required X-linking gate before creating agents; redirects back via ?next=...
-│   │   └── agents/ # page.tsx = LIST · new/ = create (Run Agent: scan+draft → review → Save) · [id]/ = manual run/redraft/post detail
-│   └── api/        # agents/* → scan(stream preview) · save-agent (agents+runs+run_items) · [id]/run · run-items post/redraft · x/* → disconnect
-│
-├── components/
-│   ├── landing/    # Landing page (React port of the locked design reference) + auth modal, wired to lib/auth/modal-actions.ts
-│   ├── logo.tsx    # Oparax "orbit" mark (currentColor inline SVG) — wordmark is ALWAYS plain text next to it
-│   ├── icons.tsx   # Shared inline SVG icons (platforms, eyes, Google) from the design system
-│   ├── ui/         # LEGACY shadcn primitives — quarantined: do NOT build new UI on these; each dashboard-page
-│   │               # redesign deletes its consumers, then this folder + shadcn deps + components.json go
-│   ├── hooks/      # shadcn `hooks` alias target (components.json) → use-mobile.ts, REQUIRED by ui/sidebar.tsx (legacy)
-│   ├── loop/       # agents UI + connect-x / disconnect-x (X linking) components (legacy styling, pending redesign)
-│   ├── settings/   # settings sections: profile, coming-soon placeholders, tab nav (legacy styling, pending redesign)
-│   └── *.tsx       # sidebar/nav + dashboard page header (legacy, pending redesign)
-│
-├── lib/            # Domain logic: supabase/ clients, auth/ (modal Server Actions), scan/ + draft/ (Grok pipeline),
-│                   # x/ (token lifecycle + client), types/ (generated DB types + aliases), validation.ts, auth-errors.ts, utils.ts
-│
-├── docs/           # Spec, PRD & planning docs — all spec/PRD + ADRs + ideas live here. See decisions/0002-agent-data-model.md
-│                   # UI revamp: docs/design-workflow.md = Claude Design ↔ Claude Code loop (design=greenfield/Claude Design, behavior=brownfield/this repo).
-│                   # The `ui-standard` skill was RETIRED 2026-06-03 — it encoded the old look, replaced by the design system below.
-└── public/
-    └── brand/      # Exported logo set: badge (white mark on #3577B5; rounded + full-bleed square) for profile
-                    # pictures / app icons, plus white & black marks for dark / light surfaces
-```
-
-DB schema is NOT tracked in-repo (the `supabase/migrations` folder was removed 2026-06-01) — the database is managed via the Supabase MCP/dashboard. Current shape lives in `lib/types/database.ts` (generated types) + `docs/decisions/0002-agent-data-model.md`. Live tables: `agents, runs, run_items, x_connections`. The `scripts/` scratchpad folder was also removed (including the old `derive:logo` pipeline, obsolete since the 2026-06-10 design-system port); the pnpm-only guard now runs inline via `preinstall: npx -y only-allow pnpm` (no committed script file).
-
-# Design System
-
-Ported 2026-06-10 from the Claude Design "Check System" handoff bundle (the `check-system/` folder was deleted after the port — `app/globals.css` + this section are now the source of truth). The landing page (`components/landing/`) is the living reference for how the pieces compose. Dark, quiet, and fast.
-
-- **Tokens** (`:root` in `app/globals.css`) — absolute-dark, blue-tinted (hue 250) surfaces:
-  - Surfaces: `--bg` (page) · `--chrome` (header/footer, separated by 1.5px `--chrome-line`) · `--card` (panels/modals) · `--inset` (output wells) · `--field-bg`/`--field-line`/`--field-focus` (form surfaces) · `--line`/`--line-strong` (hairlines)
-  - Ink: `--fg` / `--muted` / `--faint` — kept bright for readability
-  - Accent: light blue, **used sparingly** — `--accent` (text/badges), `--accent-vivid` (dots, caret, loadbar), `--accent-soft`/`--accent-line` (fills/borders)
-  - Interactive: **white** (`--action` + `--action-ink`) — buttons must stand out from the dark bg
-  - Status: `--live` (green, scanning/live), `--err` (validation red)
-  - Shape: `--radius: 6px` rectangular controls (cards/modals 14px, badges 4px); `--ctl-h: 36px` control height — buttons and inputs always match heights
-  - All tokens are also registered as Tailwind utilities (`bg-card`, `text-accent`, …) via `@theme inline`
-- **Font** — Source Sans 3 (variable, via `next/font/google` in `app/layout.tsx` → `--font-source-sans`), the ONLY family
-- **Logo** — the "orbit" mark, drawn inline with `currentColor` (`components/logo.tsx`); wordmark is always plain text next to the mark, never an image. Brand export set in `public/brand/`
-- **Component classes** (`@layer components` in `app/globals.css`): `.btn` (+ `-primary` white / `-secondary` accent / `-danger` err / `-sm` / `-block` / `.loading` with in-button `.ld` spinner) · `.field` (stacked label+input) · `.hl-input` (inline/header input) · `.pw-box`+`.eye` (password visibility — toggles all password fields in a form together) · `.ferr`/`.form-err`/`.form-ok`+`.invalid` (validation) · `.wbadge` · `.dot` (+`.blink`,`.green`) · `.label-sm` · `.draft-divider`+`.chip` · `.ffield-wrap`/`.flabel`/`.ffield`/`.badge-row`+`.top-row`/`.ffield-row` (read-only form display) · `.desk-card`+`.card-chrome`/`.card-body`/`.card-soon` (agent card) · `.news-item`(+`.srcs`/`.when`) · `.xpost`+`.xpost-foot`/`.caret` (draft post) · `.modal`/`.overlay` suite (incl. disabled `.sso-btn`) · `.loadbar`
-- **Convention**: pages keep ONLY their own layout CSS (e.g. `app/landing.css` scoped under `.landing`); reusable components live in `globals.css`. UI copy is plain sentence case — direct, first-person, no jargon.
-- **Rules of thumb**: (1) one headline, one sub, one primary action; (2) accent blue is seasoning, not paint — white is for actions; (3) every form: label above field, errors below in red on blur, submit disabled until all fields filled, loaders on press; (4) animation only where it carries meaning (blinking dot = live, caret = drafting, spinner = loading), slow and `prefers-reduced-motion` safe; (5) keep pages to a single viewport where possible — header fixed, footer in flow.
-- **Legacy quarantine**: `components/ui/` (shadcn) and the dashboard/loop/settings components styled on the OLD theme still compile but look rough — their old tokens were hard-cut. Do NOT build new UI on shadcn; each page gets redesigned via Claude Design (see `docs/design-workflow.md`), deleting its shadcn consumers as it goes.
+- **Auth**: email/password is the only login; X is linked afterward purely for posting (not SSO). All auth UI lives in the landing-page modals — `/login`, `/signup`, `/forgot-password`, `/auth/reset-password` are thin redirects to `/?auth=...`; `app/auth/confirm` handles email links (verify → login modal, no auto-login; recovery token consumed only on reset submit); `app/auth/callback` is the X OAuth return.
+- **X tokens**: captured once in the callback, stored AES-256-GCM encrypted in `x_connections` (key `X_TOKEN_ENC_KEY`), self-refreshed by `lib/x/tokens.ts`; never sent to the browser.
+- **`proxy.ts`** is misleadingly named — it's the per-request Supabase session refresh (wraps `lib/supabase/middleware.ts`); don't touch the wrapping.
+- **Grok pipeline**: one streamed scan+draft call with strict JSON schemas (`lib/scan/`, `lib/draft/`); system prompts live in code (`lib/scan/prompt.ts`, `lib/draft/prompt.ts`); run cost is read from xAI's response. Tweets are capped at 280 *weighted* chars via `twitter-text` — enforced in code, never as a DB constraint. No `zod` (plain `typeof` validation); tweet embeds use `react-tweet` against our auth-gated proxy `app/api/tweet/[id]`.
+- **Data**: schema is NOT tracked in-repo (managed via Supabase dashboard/MCP); the shape is the generated types in `lib/types/database.ts`. Four owner-scoped tables: `x_connections` · `agents` (saved config; cron columns are inert placeholders) · `runs` (one row + one `cost_usd` per Run Agent) · `run_items` (story + draft + post state; `agent_id` denormalized for one-hop RLS). A run is an in-memory preview until Save Agent persists agent + run + items; posting is always manual per item. X ids are `text` (JSON numbers round past 2^53); money is `numeric`; posted items must survive any future run pruning.
+- **Design system**: `app/globals.css` is the source of truth — tokens in `:root` (mirrored as Tailwind utilities) and reusable component classes in `@layer components`; check there before writing new CSS. The landing page (`components/landing/`) is the living reference. Source Sans 3 is the only font; logo = inline orbit mark (`components/logo.tsx`) with a plain-text wordmark. White = actions, accent blue = seasoning; forms: label above field, red errors on blur, submit disabled until filled; pages keep only their own layout CSS (e.g. `app/landing.css`); UI copy is plain sentence case.
+- **UI redesign**: pages are redesigned one at a time in Claude Design — the look is reinvented freely, but behavior is this repo's contract: keep server-action field `name`s, the auth/connect-x guards and `?next=` redirects, and the run → preview → save → post/redraft pipeline. Never build new UI on the quarantined legacy shadcn pieces (`components/ui/`); delete legacy consumers as each page lands.
 
 # Agentic Context
 
