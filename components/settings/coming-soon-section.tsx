@@ -1,16 +1,5 @@
-// Imports
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-
 /**
- * Placeholder section for not-yet-shipped settings areas. Renders a titled Card
+ * Placeholder section for not-yet-shipped settings areas. Renders a titled panel
  * with a "Coming soon" badge and shows its children as a disabled, non-
  * interactive preview so the eventual layout is visible without being usable.
  * @param props.title - section title
@@ -28,22 +17,19 @@ export function ComingSoonSection({
   children: React.ReactNode
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-        <CardAction>
-          <Badge variant="outline">Coming soon</Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <div
-          className="pointer-events-none opacity-50 select-none"
-          aria-hidden="true"
-        >
+    <div className="ws-panel">
+      <div className="ws-panel-head">
+        <div className="ws-panel-title">
+          <span>{title}</span>
+          <span className="ws-soon-badge">Coming soon</span>
+        </div>
+        <p className="ws-panel-desc">{description}</p>
+      </div>
+      <div className="ws-panel-body">
+        <div className="ws-inert" aria-hidden="true">
           {children}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

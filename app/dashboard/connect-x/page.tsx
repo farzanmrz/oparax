@@ -1,23 +1,26 @@
-// Imports
 import { redirect } from "next/navigation"
-import { ConnectX } from "@/components/loop/connect-x"
-import { DashboardPageHeader } from "@/components/dashboard-page-header"
-import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
+import { ConnectXButton } from "@/components/dashboard/connect-x-button"
+import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header"
+import { PlusIcon } from "@/components/dashboard/shell-icons"
+import { isSafeNextPath } from "@/lib/safe-next"
 
+// Clamp ?next= to a safe in-app destination (never back to login/signup or to
+// connect-x itself). Preserves the gate's redirect contract.
 function getSafeNextPath(next: string | undefined): string {
-  if (!next) return "/dashboard/agents"
-  if (!next.startsWith("/") || next.startsWith("//")) return "/dashboard/agents"
+  if (!isSafeNextPath(next)) return "/dashboard/agents"
   if (next === "/login" || next === "/signup") return "/dashboard/agents"
   if (next.startsWith("/dashboard/connect-x")) return "/dashboard/agents"
   return next
 }
 
 /**
- * Required X connection gate. Users need a connected X account before creating
- * agents because the MVP workflow ends in manual posting.
+ * Required X connection gate — the post-login landing until X is linked. The
+ * dashboard layout renders the shell (auth-guarded + connection-aware); this page
+ * supplies only the main content: state 1 (X not connected) — an Agents header
+ * with a disabled "New agent" and the connect-X empty state. Redirects away once
+ * X is connected.
  * @param props.searchParams - optional next path and reason
- * @returns the Connect X page, or redirects if already connected
  */
 export default async function ConnectXPage({
   searchParams,
@@ -37,25 +40,22 @@ export default async function ConnectXPage({
     redirect(nextPath)
   }
 
-  const message =
-    params.reason === "create-agent"
-      ? "Connect X before creating an agent."
-      : "Connect X to create agents and post drafted items."
-
   return (
-    <div className="flex w-full flex-col gap-6">
-      <DashboardPageHeader title="Connect X" description={message} />
-      <div className="mx-auto w-full max-w-screen-2xl px-2 md:px-4">
-        <Card>
-          <CardContent className="flex flex-col gap-3">
-            <p className="max-w-xl text-base leading-6 text-muted-foreground">
-              Oparax uses X only for posting. Email/password remains your login,
-              and the X token is stored separately for this account.
-            </p>
-            <ConnectX nextPath={nextPath} />
-          </CardContent>
-        </Card>
+    <>
+      <WorkspacePageHeader
+        title="Agents"
+        action={
+          <button type="button" className="btn btn-primary" disabled>
+            <PlusIcon width={16} height={16} />
+            <span>New agent</span>
+          </button>
+        }
+      />
+
+      <div className="ws-empty">
+        <p>Please connect your X account to create agents.</p>
+        <ConnectXButton nextPath={nextPath} />
       </div>
-    </div>
+    </>
   )
 }

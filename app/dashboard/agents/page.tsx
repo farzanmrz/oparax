@@ -1,9 +1,8 @@
-// Imports
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { DashboardPageHeader } from "@/components/dashboard-page-header"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
+import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header"
+import { PlusIcon } from "@/components/dashboard/shell-icons"
 import type { Agent } from "@/lib/types"
 
 // The agent fields the list renders.
@@ -13,65 +12,83 @@ type AgentRow = Pick<
 >
 
 /**
- * Agents list — the dashboard landing view. Lists the signed-in user's saved
- * agents (RLS-scoped) with a Create-new action; each row links to the agent's
- * detail page (built later). Empty state prompts the first create.
+ * Agents list — the connected dashboard landing (design state 3). Lists the
+ * signed-in user's saved agents (RLS-scoped) with an active "New agent" action;
+ * each row links to the agent's detail page. Empty state (state 2) prompts the
+ * first create. Renders into the shell provided by the dashboard layout.
  * @returns the agents list page
  */
 export default async function AgentsPage() {
   const supabase = await createClient()
 
-  // RLS scopes this to the signed-in user's own agents.
-  const { data } = await supabase
-    .from("agents")
-    .select("id, name, monitored_handles, status, created_at")
-    .order("created_at", { ascending: false })
+  // Connection gate: the agents list is only for connected users. Without X
+  // linked, send them to the connect-X landing (where "New agent" is disabled) —
+  // matching the index router and the sidebar's Agents link. Closes the gap where
+  // a direct hit / OAuth-cancel redirect to /dashboard/agents showed an active
+  // "New agent" with no connection. Fetched in parallel with the agents list.
+  const [{ data: connection }, { data }] = await Promise.all([
+    supabase.from("x_connections").select("id").maybeSingle<{ id: string }>(),
+    supabase
+      .from("agents")
+      .select("id, name, monitored_handles, status, created_at")
+      .order("created_at", { ascending: false }),
+  ])
+
+  if (!connection) {
+    redirect("/dashboard/connect-x")
+  }
 
   const agents = (data ?? []) as AgentRow[]
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      <DashboardPageHeader
+    <>
+      <WorkspacePageHeader
         title="Agents"
-        description="Your saved agents. Open one to review its runs, or create a new one."
-        action={{ href: "/dashboard/agents/new", label: "Create new agent" }}
+        action={
+          <Link href="/dashboard/agents/new" className="btn btn-primary">
+            <PlusIcon width={16} height={16} />
+            <span>New agent</span>
+          </Link>
+        }
       />
-      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-2 md:px-4">
-        {agents.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              No agents yet. Create one to get started.
-            </CardContent>
-          </Card>
-        ) : (
-          agents.map((agent) => (
-            <Link
-              key={agent.id}
-              href={`/dashboard/agents/${agent.id}`}
-              className="rounded-xl transition-colors hover:bg-muted/40"
-            >
-              <Card>
-                <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <span className="truncate text-base font-medium text-foreground">
-                      {agent.name}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {agent.monitored_handles.length} handle
-                      {agent.monitored_handles.length === 1 ? "" : "s"}
-                    </span>
+
+      {agents.length === 0 ? (
+        <div className="ws-empty">
+          <p>No agents yet. Create your first one to start scanning X.</p>
+        </div>
+      ) : (
+        <div className="ws-list">
+          {agents.map((agent) => {
+            const count = agent.monitored_handles.length
+            return (
+              <Link
+                key={agent.id}
+                href={`/dashboard/agents/${agent.id}`}
+                className="ws-agent-card"
+              >
+                <div className="ws-agent-main">
+                  <span className="ws-agent-name">{agent.name}</span>
+                  <div className="ws-agent-handles">
+                    {agent.monitored_handles.slice(0, 6).map((handle) => (
+                      <span key={handle} className="wbadge">
+                        @{handle.replace(/^@/, "")}
+                      </span>
+                    ))}
+                    {count > 6 && <span className="wbadge">+{count - 6}</span>}
                   </div>
-                  <Badge
-                    variant={agent.status === "active" ? "default" : "secondary"}
-                  >
-                    {agent.status}
-                  </Badge>
-                </CardContent>
-              </Card>
-            </Link>
-          ))
-        )}
-      </div>
-    </div>
+                </div>
+                <span
+                  className="ws-status"
+                  data-active={agent.status === "active"}
+                >
+                  <span className="dot" />
+                  {agent.status.charAt(0).toUpperCase() + agent.status.slice(1)}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </>
   )
 }

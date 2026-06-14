@@ -9,15 +9,7 @@ import { MONITOR_MAX_HANDLES } from "@/lib/scan/handles"
 import type { ScanMetrics, ScanStreamEvent } from "@/lib/scan/stream"
 import { cn } from "@/lib/utils"
 import { HandleInput } from "@/components/handle-input"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Textarea } from "@/components/ui/textarea"
+import { XIcon } from "@/components/icons"
 
 type ToolCallOutput = {
   id: string
@@ -467,26 +459,21 @@ export function AgentDetail({
     if (!hasRunOutput) return null
 
     return (
-      <div className="flex flex-col gap-2">
+      <div className="ws-run">
         <button
           type="button"
           aria-expanded={isReasoningOpen}
           onClick={() => setIsReasoningOpen((open) => !open)}
-          className="flex w-full items-center gap-3 py-1 text-left outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="ws-run-head"
         >
           <span
             aria-hidden="true"
-            className={cn(
-              "shrink-0 rounded-full",
-              running
-                ? "size-3 animate-spin border-2 border-success/25 border-t-success"
-                : "size-2.5 bg-success",
-            )}
+            className={cn("dot", running ? "blink" : "green")}
           />
-          <span className="font-semibold text-foreground/90">
+          <span>
             Reasoning
             {latestMetrics && (
-              <span className="ml-2 font-normal text-muted-foreground">
+              <span className="ws-run-meta">
                 ({toolCalls.length} tool call
                 {toolCalls.length === 1 ? "" : "s"} ·{" "}
                 {formatCost(latestMetrics.costUsd)} · {latestStoryCount ?? 0}{" "}
@@ -496,24 +483,14 @@ export function AgentDetail({
           </span>
           <ChevronRight
             aria-hidden="true"
-            className={cn(
-              "ml-auto size-4 shrink-0 text-muted-foreground transition-transform",
-              isReasoningOpen && "rotate-90",
-            )}
+            size={16}
+            className={cn("ws-run-chevron", isReasoningOpen && "open")}
           />
         </button>
 
         {isReasoningOpen && (
-          <div className="flex flex-col gap-2 pl-10">
-            {reasoning && (
-              <p className="flex items-start gap-2 whitespace-pre-wrap text-base leading-6 text-foreground/90">
-                <span
-                  aria-hidden="true"
-                  className="mt-2 size-2 shrink-0 rounded-full bg-success/55"
-                />
-                <span>{reasoning}</span>
-              </p>
-            )}
+          <div className="ws-run-body">
+            {reasoning && <p className="ws-run-text">{reasoning}</p>}
 
             {toolCalls.length > 0 && (
               <div>
@@ -521,33 +498,30 @@ export function AgentDetail({
                   type="button"
                   aria-expanded={isToolsOpen}
                   onClick={() => setIsToolsOpen((open) => !open)}
-                  className="flex w-full items-start gap-2 py-1 text-left text-base leading-6 text-foreground/90 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="ws-run-head"
+                  style={{ font: "600 0.8125rem/1 var(--font-sans)" }}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="mt-2 size-2 shrink-0 rounded-full bg-success/55"
-                  />
                   <span>Calling tools: {toolCalls.length}</span>
                   <ChevronRight
                     aria-hidden="true"
-                    className={cn(
-                      "ml-auto size-4 shrink-0 text-muted-foreground transition-transform",
-                      isToolsOpen && "rotate-90",
-                    )}
+                    size={15}
+                    className={cn("ws-run-chevron", isToolsOpen && "open")}
                   />
                 </button>
 
                 {isToolsOpen && (
-                  <div className="flex flex-col gap-1.5 pl-5">
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      marginTop: 8,
+                    }}
+                  >
                     {toolCalls.map((toolCall) => (
-                      <p
-                        key={toolCall.id}
-                        className="text-sm leading-6 text-muted-foreground"
-                      >
-                        <span className="font-semibold">{toolCall.name}:</span>{" "}
-                        <span className="whitespace-pre-wrap break-words">
-                          {toolCall.input || "Waiting for input."}
-                        </span>
+                      <p key={toolCall.id} className="ws-tool">
+                        <b>{toolCall.name}:</b>{" "}
+                        {toolCall.input || "Waiting for input."}
                       </p>
                     ))}
                   </div>
@@ -556,7 +530,7 @@ export function AgentDetail({
             )}
 
             {runMessage && !running && (
-              <p className="text-sm text-muted-foreground">{runMessage}</p>
+              <p className="ws-item-note">{runMessage}</p>
             )}
           </div>
         )}
@@ -565,296 +539,278 @@ export function AgentDetail({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-5 px-2 md:px-4">
-      <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+    <div className="ws-create">
+      <div className="ws-stats">
         <span>
-          <span className="font-semibold text-foreground">{runs.length}</span>{" "}
-          scans
+          <b>{runs.length}</b> scans
         </span>
         <span>
-          <span className="font-semibold text-foreground">{totalItems}</span>{" "}
-          drafts
+          <b>{totalItems}</b> drafts
         </span>
         <span>
-          <span className="font-semibold text-foreground">{postedItems}</span>{" "}
-          posted
+          <b>{postedItems}</b> posted
         </span>
         <span>
-          <span className="font-semibold text-foreground">
-            {formatCost(totalCost)}
-          </span>{" "}
-          total cost
+          <b>{formatCost(totalCost)}</b> total cost
         </span>
       </div>
 
-      <Card>
-        <CardContent>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>
-                X accounts to monitor{" "}
-                <span className="text-muted-foreground">
-                  ({handles.length} of {MONITOR_MAX_HANDLES})
-                </span>
-              </FieldLabel>
-              <HandleInput
-                handles={handles}
-                maxHandles={MONITOR_MAX_HANDLES}
-                showCount={false}
-                onAdd={addHandle}
-                onRemove={removeHandle}
+      <div className="desk-card">
+        <div className="card-chrome">
+          <XIcon width={14} height={14} />
+          Oparax Agent
+        </div>
+
+        <div className="card-body">
+          <div className="ffield-wrap">
+            <span className="flabel">
+              X accounts to monitor{" "}
+              <span style={{ color: "var(--faint)", fontWeight: 400 }}>
+                ({handles.length} of {MONITOR_MAX_HANDLES})
+              </span>
+            </span>
+            <HandleInput
+              handles={handles}
+              maxHandles={MONITOR_MAX_HANDLES}
+              showCount={false}
+              onAdd={addHandle}
+              onRemove={removeHandle}
+            />
+          </div>
+
+          <div className="ffield-row">
+            <div className="ffield-wrap">
+              <label className="flabel" htmlFor="agent-scan-instructions">
+                Scanning instructions
+              </label>
+              <textarea
+                id="agent-scan-instructions"
+                className="ws-textarea"
+                value={monitoringDescription}
+                onChange={(event) => {
+                  markSettingsChanged()
+                  setMonitoringDescription(event.target.value)
+                }}
+                rows={8}
               />
-            </Field>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="agent-scan-instructions">
-                  Scanning instructions
-                </FieldLabel>
-                <Textarea
-                  id="agent-scan-instructions"
-                  value={monitoringDescription}
-                  onChange={(event) => {
-                    markSettingsChanged()
-                    setMonitoringDescription(event.target.value)
-                  }}
-                  rows={8}
-                  className="min-h-52 resize-y"
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="agent-drafting-instructions">
-                  Drafting instructions
-                </FieldLabel>
-                <Textarea
-                  id="agent-drafting-instructions"
-                  value={draftingInstructions}
-                  onChange={(event) => {
-                    markSettingsChanged()
-                    setDraftingInstructions(event.target.value)
-                  }}
-                  rows={8}
-                  className="min-h-52 resize-y"
-                />
-              </Field>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="form-action"
-                pending={savingSettings}
-                disabled={!settingsDirty || savingSettings}
-                onClick={() => void saveSettings()}
-              >
-                <Save aria-hidden="true" />
-                Save settings
-              </Button>
-              <Button
-                type="button"
-                size="form-action"
-                pending={running}
-                disabled={!canRun}
-                onClick={runAgent}
-              >
-                <Play aria-hidden="true" />
-                {running ? "Running" : "Run Agent"}
-              </Button>
-              {settingsSaved && (
-                <span className="text-sm text-muted-foreground">Saved.</span>
-              )}
+            <div className="ffield-wrap">
+              <label className="flabel" htmlFor="agent-drafting-instructions">
+                Drafting instructions
+              </label>
+              <textarea
+                id="agent-drafting-instructions"
+                className="ws-textarea"
+                value={draftingInstructions}
+                onChange={(event) => {
+                  markSettingsChanged()
+                  setDraftingInstructions(event.target.value)
+                }}
+                rows={8}
+              />
             </div>
+          </div>
 
-            {agent.status === "inactive" && (
-              <FieldError>
-                This agent is inactive because X is disconnected. Reconnect X to
-                post and run it again.
-              </FieldError>
-            )}
-            {settingsError && <FieldError>{settingsError}</FieldError>}
-            {runError && <FieldError>{runError}</FieldError>}
-            {renderRunOutput()}
-          </FieldGroup>
-        </CardContent>
-      </Card>
+          <div className="ws-settings-actions">
+            <button
+              type="button"
+              className={cn("btn btn-secondary", savingSettings && "loading")}
+              disabled={!settingsDirty}
+              onClick={() => void saveSettings()}
+            >
+              <span className="ld" />
+              <Save aria-hidden="true" size={15} />
+              Save settings
+            </button>
+            <button
+              type="button"
+              className={cn("btn btn-primary", running && "loading")}
+              disabled={!canRun && !running}
+              onClick={runAgent}
+            >
+              <span className="ld" />
+              <Play aria-hidden="true" size={15} />
+              {running ? "Running" : "Run Agent"}
+            </button>
+            {settingsSaved && <span className="ws-saved-note">Saved.</span>}
+          </div>
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        {runs.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
+          {agent.status === "inactive" && (
+            <div className="ferr show">
+              This agent is inactive because X is disconnected. Reconnect X to
+              post and run it again.
+            </div>
+          )}
+          {settingsError && <div className="ferr show">{settingsError}</div>}
+          {runError && <div className="ferr show">{runError}</div>}
+          {renderRunOutput()}
+        </div>
+      </div>
+
+      {runs.length === 0 ? (
+        <div className="ws-runs">
+          <div className="ws-runs-empty">
             No scans yet. Run the agent to create scanned items and drafts.
           </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {runs.map((run) => {
-              const isExpanded = expandedRunIds.includes(run.id)
-              const canRedraftRun =
-                draftingInstructions.trim() !==
-                run.input_drafting_instructions.trim()
+        </div>
+      ) : (
+        <div className="ws-runs">
+          {runs.map((run) => {
+            const isExpanded = expandedRunIds.includes(run.id)
+            const canRedraftRun =
+              draftingInstructions.trim() !==
+              run.input_drafting_instructions.trim()
 
-              return (
-                <section key={run.id}>
-                  <button
-                    type="button"
-                    aria-expanded={isExpanded}
-                    onClick={() => toggleRun(run.id)}
-                    className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/35 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                  >
-                    <ChevronRight
-                      aria-hidden="true"
-                      className={cn(
-                        "size-4 text-muted-foreground transition-transform",
-                        isExpanded && "rotate-90",
-                      )}
-                    />
-                    <span className="font-medium text-foreground">
-                      {formatDate(run.started_at)}
+            return (
+              <section key={run.id} className="ws-run-row">
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  onClick={() => toggleRun(run.id)}
+                  className="ws-run-toggle"
+                >
+                  <ChevronRight
+                    aria-hidden="true"
+                    size={16}
+                    className={cn("chev", isExpanded && "open")}
+                  />
+                  <span className="ws-run-date">
+                    {formatDate(run.started_at)}
+                  </span>
+                  <span className="ws-run-stat">
+                    {run.items.length} item{run.items.length === 1 ? "" : "s"}
+                  </span>
+                  <span className="ws-run-stat">{formatCost(run.cost_usd)}</span>
+                  {run.x_search_count !== null && (
+                    <span className="ws-run-stat">
+                      {run.x_search_count} x_search
                     </span>
-                    <span className="text-sm text-muted-foreground">
-                      {run.items.length} item{run.items.length === 1 ? "" : "s"}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatCost(run.cost_usd)}
-                    </span>
-                    {run.x_search_count !== null && (
-                      <span className="text-sm text-muted-foreground">
-                        {run.x_search_count} x_search
-                      </span>
-                    )}
-                    {run.status === "failed" && (
-                      <span className="text-sm text-destructive">Failed</span>
-                    )}
-                  </button>
-
-                  {isExpanded && (
-                    <div className="border-t border-border bg-muted/15">
-                      {run.error_message && (
-                        <div className="px-4 pt-3">
-                          <FieldError>{run.error_message}</FieldError>
-                        </div>
-                      )}
-                      <div className="flex flex-col gap-3 p-4">
-                        {run.items.map((item) => {
-                          const status = itemStatus[item.id] ?? item.status
-                          const tweetUrl = tweetUrls[item.id] ?? item.x_tweet_url
-                          const draftText =
-                            draftTexts[item.id] ??
-                            item.final_text ??
-                            item.drafted_text
-                          const itemPending = pendingItem === item.id
-                          const isPosted = status === "posted"
-                          const primaryTweetId = getTweetId(
-                            item.primary_tweet_url || item.source_urls[0] || "",
-                          )
-
-                          return (
-                            <Card key={item.id}>
-                              <CardContent className="flex flex-col gap-4">
-                                <p className="text-lg font-semibold leading-7 text-foreground">
-                                  {item.story_summary}
-                                </p>
-
-                                <div className="flex flex-col gap-2">
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                                    <Textarea
-                                      value={draftText}
-                                      onChange={(event) =>
-                                        setDraftTexts((prev) => ({
-                                          ...prev,
-                                          [item.id]: event.target.value,
-                                        }))
-                                      }
-                                      rows={4}
-                                      className={cn(
-                                        "min-h-28 flex-1 resize-y text-sm leading-6",
-                                        isPosted && "opacity-80",
-                                      )}
-                                      disabled={isPosted}
-                                    />
-                                    <div className="flex shrink-0 flex-col items-end gap-2">
-                                      <div className="flex gap-2">
-                                        <Button
-                                          type="button"
-                                          pending={itemPending}
-                                          disabled={
-                                            itemPending ||
-                                            isPosted ||
-                                            !canRedraftRun
-                                          }
-                                          onClick={() =>
-                                            void redraftItem(item, canRedraftRun)
-                                          }
-                                        >
-                                          <RefreshCw aria-hidden="true" />
-                                          Redraft
-                                        </Button>
-                                        <Button
-                                          type="button"
-                                          pending={itemPending}
-                                          disabled={
-                                            itemPending || !xConnected || isPosted
-                                          }
-                                          onClick={() => void postItem(item)}
-                                        >
-                                          <Send aria-hidden="true" />
-                                          Post to X
-                                        </Button>
-                                      </div>
-                                      {tweetUrl && (
-                                        <a
-                                          href={tweetUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="text-sm text-link hover:text-link-hover"
-                                        >
-                                          View post
-                                        </a>
-                                      )}
-                                      {!xConnected && (
-                                        <p className="max-w-52 text-right text-sm text-muted-foreground">
-                                          Connect X in Settings to post drafts.
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {itemErrors[item.id] && (
-                                    <FieldError>{itemErrors[item.id]}</FieldError>
-                                  )}
-                                </div>
-
-                                {primaryTweetId ? (
-                                  <CompactTweet
-                                    id={primaryTweetId}
-                                    apiUrl={`/api/tweet/${primaryTweetId}`}
-                                  />
-                                ) : (
-                                  <div className="flex flex-col gap-1">
-                                    {item.source_urls.map((url, index) => (
-                                      <a
-                                        key={url}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="break-all text-sm text-link hover:text-link-hover"
-                                      >
-                                        Source {index + 1}
-                                      </a>
-                                    ))}
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          )
-                        })}
-                      </div>
-                    </div>
                   )}
-                </section>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                  {run.status === "failed" && (
+                    <span className="ws-run-fail">Failed</span>
+                  )}
+                </button>
+
+                {isExpanded && (
+                  <div className="ws-run-items">
+                    {run.error_message && (
+                      <div className="ferr show">{run.error_message}</div>
+                    )}
+                    {run.items.map((item) => {
+                      const status = itemStatus[item.id] ?? item.status
+                      const tweetUrl = tweetUrls[item.id] ?? item.x_tweet_url
+                      const draftText =
+                        draftTexts[item.id] ??
+                        item.final_text ??
+                        item.drafted_text
+                      const itemPending = pendingItem === item.id
+                      const isPosted = status === "posted"
+                      const primaryTweetId = getTweetId(
+                        item.primary_tweet_url || item.source_urls[0] || "",
+                      )
+
+                      return (
+                        <div key={item.id} className="ws-item">
+                          <p className="ws-item-title">{item.story_summary}</p>
+
+                          <textarea
+                            className="ws-textarea"
+                            value={draftText}
+                            onChange={(event) =>
+                              setDraftTexts((prev) => ({
+                                ...prev,
+                                [item.id]: event.target.value,
+                              }))
+                            }
+                            rows={4}
+                            disabled={isPosted}
+                            style={{
+                              minHeight: 110,
+                              opacity: isPosted ? 0.8 : 1,
+                            }}
+                          />
+
+                          <div className="ws-item-actions">
+                            <button
+                              type="button"
+                              className={cn(
+                                "btn btn-secondary btn-sm",
+                                itemPending && "loading",
+                              )}
+                              disabled={
+                                itemPending || isPosted || !canRedraftRun
+                              }
+                              onClick={() => void redraftItem(item, canRedraftRun)}
+                            >
+                              <span className="ld" />
+                              <RefreshCw aria-hidden="true" size={14} />
+                              Redraft
+                            </button>
+                            <button
+                              type="button"
+                              className={cn(
+                                "btn btn-primary btn-sm",
+                                itemPending && "loading",
+                              )}
+                              disabled={itemPending || !xConnected || isPosted}
+                              onClick={() => void postItem(item)}
+                            >
+                              <span className="ld" />
+                              <Send aria-hidden="true" size={14} />
+                              Post to X
+                            </button>
+                            {tweetUrl && (
+                              <a
+                                href={tweetUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="ws-link"
+                              >
+                                View post
+                              </a>
+                            )}
+                            {!xConnected && (
+                              <span className="ws-item-note">
+                                Connect X in Settings to post drafts.
+                              </span>
+                            )}
+                          </div>
+
+                          {itemErrors[item.id] && (
+                            <div className="ferr show">{itemErrors[item.id]}</div>
+                          )}
+
+                          {primaryTweetId ? (
+                            <CompactTweet
+                              id={primaryTweetId}
+                              apiUrl={`/api/tweet/${primaryTweetId}`}
+                            />
+                          ) : (
+                            <div className="ws-sources">
+                              {item.source_urls.map((url, index) => (
+                                <a
+                                  key={url}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="ws-link"
+                                  style={{ wordBreak: "break-all" }}
+                                >
+                                  Source {index + 1}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -4,7 +4,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
 
 /**
  * Sign the user out and return to the landing page. Extracted as a client island
@@ -24,13 +23,14 @@ export function SignOutButton() {
   }
 
   return (
-    <Button
-      variant="outline"
+    <button
+      type="button"
+      className={`btn btn-secondary${pending ? " loading" : ""}`}
       onClick={signOut}
       disabled={pending}
-      pending={pending}
     >
-      Sign out
-    </Button>
+      <span className="ld" />
+      {pending ? "Signing out..." : "Sign out"}
+    </button>
   )
 }

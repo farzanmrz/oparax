@@ -1,7 +1,7 @@
 // Imports
 import { notFound } from "next/navigation"
 import { AgentDetail, type AgentDetailRun } from "@/components/loop/agent-detail"
-import { DashboardPageHeader } from "@/components/dashboard-page-header"
+import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header"
 import { createClient } from "@/lib/supabase/server"
 import type { Json } from "@/lib/types/database"
 import type { Agent, Run, RunItem } from "@/lib/types"
@@ -116,15 +116,13 @@ export default async function AgentDetailPage({
     .maybeSingle<{ id: string }>()
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      <DashboardPageHeader
-        title={agent.name}
-      />
+    <>
+      <WorkspacePageHeader title={agent.name} />
       <AgentDetail
         agent={agent}
         runs={detailRuns}
         xConnected={Boolean(connection)}
       />
-    </div>
+    </>
   )
 }

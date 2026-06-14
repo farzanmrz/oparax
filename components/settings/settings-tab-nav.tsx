@@ -1,6 +1,5 @@
 // Imports
 import Link from "next/link"
-import { cn } from "@/lib/utils"
 
 // The settings sections, in display order — the single source of truth shared
 // with the page's `?section=` validation. The slug is the `?section=` value.
@@ -27,7 +26,7 @@ export function SettingsTabNav({
   activeSection: SettingsSection
 }) {
   return (
-    <nav className="flex gap-1 border-b border-border">
+    <nav className="ws-tabs">
       {SETTINGS_SECTIONS.map(({ slug, label }) => {
         const isActive = slug === activeSection
         return (
@@ -35,12 +34,7 @@ export function SettingsTabNav({
             key={slug}
             href={`?section=${slug}`}
             aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-              isActive
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
+            className={`ws-tab${isActive ? " is-active" : ""}`}
           >
             {label}
           </Link>

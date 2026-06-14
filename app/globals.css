@@ -12,11 +12,12 @@
 :root {
   color-scheme: dark;
 
-  /* surfaces — absolute dark; chrome (header/footer) slightly lifted */
-  --bg:      oklch(0.122 0.006 250);
-  --chrome:  oklch(0.15 0.008 250);
-  --card:    oklch(0.198 0.013 250);
-  --inset:   oklch(0.162 0.010 250);
+  /* surfaces — pure-black canvas, neutral graphite surfaces */
+  --bg:      oklch(0 0 0);          /* pure-black canvas */
+  --chrome:  oklch(0.175 0 0);      /* darker graphite — chrome / sidebar header */
+  --card:    oklch(0.235 0 0);      /* graphite — cards & sidebar body */
+  --inset:   oklch(0.20 0 0);       /* nested surface inside cards */
+  --sidebar: oklch(0.235 0 0);      /* sidebar body (graphite) — :root only, not in @theme */
   --line:        oklch(1 0 0 / 0.12);
   --line-strong: oklch(1 0 0 / 0.25);
   --chrome-line: oklch(1 0 0 / 0.22);
@@ -122,7 +123,14 @@
   .btn:active { transform: translateY(0); }
   .btn-sm { height: 32px; font-size: 0.875rem; padding: 0 15px; }
   .btn-block { width: 100%; }
-  .btn:disabled, .btn[disabled] { opacity: 0.45; pointer-events: none; }
+  /* Disabled keeps the variant's own color (white for primary) but fades it, so
+     a disabled primary reads as a greyed-out white button, not a dark block. */
+  .btn:disabled, .btn[disabled] {
+    opacity: 0.45;
+    box-shadow: none;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 
   /* in-button loading spinner */
   .btn .ld {
@@ -167,9 +175,7 @@
   .dot.green { background: var(--live); }
 
   .label-sm {
-    font: 700 0.6875rem/1 var(--font-sans);
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
+    font: 650 0.75rem/1 var(--font-sans);
     color: var(--faint);
   }
 

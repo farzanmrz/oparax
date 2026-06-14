@@ -2,14 +2,10 @@
 
 // Imports
 import { useState } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Cancel01Icon } from "@hugeicons/core-free-icons"
-import { cn } from "@/lib/utils"
 
 interface HandleInputProps {
   handles: string[]
   maxHandles: number
-  controlClassName?: string
   showCount?: boolean
   onAdd: (handle: string) => void
   onRemove: (index: number) => void
@@ -24,7 +20,6 @@ function isValidHandle(handle: string): boolean {
 }
 
 export function HandleInput({
-  controlClassName,
   handles,
   maxHandles,
   showCount = true,
@@ -88,31 +83,18 @@ export function HandleInput({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div
-        data-slot="handle-input-control"
-        className={cn(
-          "flex min-h-11 flex-wrap items-center gap-1.5 rounded-lg border-2 border-input bg-background/35 px-3 py-1.5 transition-colors hover:border-foreground/35 hover:bg-background/45 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
-          controlClassName,
-        )}
-      >
+    <div className="ws-handle-wrap">
+      <div className="ws-handle-well">
         {handles.map((handle, index) => (
-          <span
-            key={handle}
-            className="inline-flex h-7 items-center gap-1 rounded-md border border-x-handle-border bg-x-handle-bg px-2.5 text-sm font-medium text-x-handle"
-          >
+          <span key={handle} className="ws-handle-chip">
             @{handle}
             <button
               type="button"
               onClick={() => onRemove(index)}
-              className="ml-0.5 inline-flex size-5 items-center justify-center rounded-full text-x-handle/70 transition-colors hover:bg-background/50 hover:text-x-handle-hover"
+              className="ws-handle-x"
               aria-label={`Remove @${handle}`}
             >
-              <HugeiconsIcon
-                icon={Cancel01Icon}
-                strokeWidth={2}
-                className="size-3"
-              />
+              ×
             </button>
           </span>
         ))}
@@ -120,16 +102,22 @@ export function HandleInput({
           value={inputValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder={handles.length === 0 ? "e.g. FabrizioRomano, AlexKayKay" : ""}
-          className="min-w-[10rem] flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+          placeholder={
+            handles.length === 0 ? "e.g. FabrizioRomano, AlexKayKay" : ""
+          }
+          className="ws-handle-input"
           disabled={handles.length >= maxHandles}
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p className="ferr show" style={{ margin: 0 }}>
+          {error}
+        </p>
+      )}
 
       {showCount && handles.length > 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="ws-handle-count">
           {handles.length} of {maxHandles} added
         </p>
       )}

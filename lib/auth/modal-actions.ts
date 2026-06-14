@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { mapAuthError } from "@/lib/auth-errors";
+import { deriveUsernameFromEmail } from "@/lib/user";
 import {
   isValidationError,
   validateAuthForm,
@@ -94,6 +95,9 @@ export async function signupAction(
   const { data, error } = await supabase.auth.signUp({
     email: validated.email,
     password: validated.password,
+    // Seed a username from the email's local part. Stored in user_metadata;
+    // shown in the sidebar and editable later in settings (lib/user.ts).
+    options: { data: { username: deriveUsernameFromEmail(validated.email) } },
   });
 
   if (error) {

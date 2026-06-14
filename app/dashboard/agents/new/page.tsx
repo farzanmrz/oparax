@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation"
-import { DashboardPageHeader } from "@/components/dashboard-page-header"
+import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header"
 import { PromptLab } from "@/components/loop/prompt-lab"
 import { createClient } from "@/lib/supabase/server"
 
 /**
  * New-agent page: configure + run an agent (scan + draft) to preview, then Save.
+ * Gated on a connected X account; renders into the shell from the dashboard layout.
  * @returns the create-agent page
  */
 export default async function NewAgentPage() {
@@ -19,12 +20,9 @@ export default async function NewAgentPage() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      <DashboardPageHeader
-        title="New agent"
-        description="Configure the agent, run it to preview scan + drafts, then save."
-      />
+    <>
+      <WorkspacePageHeader title="New agent" />
       <PromptLab />
-    </div>
+    </>
   )
 }

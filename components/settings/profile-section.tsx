@@ -4,18 +4,9 @@
 import { useActionState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
-  updateDisplayName,
-  type UpdateDisplayNameState,
+  updateUsername,
+  type UpdateUsernameState,
 } from "@/app/dashboard/settings/actions"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import { SubmitButton } from "@/components/submit-button"
 import { SignOutButton } from "@/components/sign-out-button"
 import { ConnectX } from "@/components/loop/connect-x"
@@ -26,29 +17,28 @@ import { DeleteAccountButton } from "@/components/settings/delete-account-button
  * Profile settings section: edit the display name, manage the connected X
  * account, and sign out. Client island because it drives a Server Action via
  * useActionState and refreshes the router so the sidebar name updates on save.
- * @param props.initialDisplayName - current display name (defaultValue)
+ * @param props.initialUsername - current username (defaultValue)
  * @param props.xUsername - connected X handle, if any
  * @param props.xError - X connect/callback error to surface, if any
  * @returns the profile section UI
  */
 export function ProfileSection({
-  initialDisplayName,
+  initialUsername,
   xUsername,
   xError,
   agentCount,
 }: {
-  initialDisplayName: string
+  initialUsername: string
   xUsername?: string
   xError?: string
   agentCount: number
 }) {
-
-  // Router to refresh server components (sidebar name) after a save.
+  // Router to refresh server components (sidebar username) after a save.
   const router = useRouter()
 
-  // Wire the display-name Server Action into a form action.
-  const [state, dispatch] = useActionState<UpdateDisplayNameState, FormData>(
-    updateDisplayName,
+  // Wire the username Server Action into a form action.
+  const [state, dispatch] = useActionState<UpdateUsernameState, FormData>(
+    updateUsername,
     {},
   )
 
@@ -60,68 +50,85 @@ export function ProfileSection({
   }, [state.success, router])
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>
-            This name appears in the sidebar and on your drafts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={dispatch} className="flex flex-col gap-4">
-            <Field>
-              <FieldLabel htmlFor="display_name">Display name</FieldLabel>
-              <Input
-                id="display_name"
-                name="display_name"
-                defaultValue={initialDisplayName}
+    <div className="ws-settings">
+      <div className="ws-panel">
+        <div className="ws-panel-head">
+          <div className="ws-panel-title">
+            <span>Profile</span>
+          </div>
+          <p className="ws-panel-desc">
+            Your username appears in the sidebar and on your drafts.
+          </p>
+        </div>
+        <div className="ws-panel-body">
+          <form action={dispatch} className="ws-settings-form">
+            <div className="ffield-wrap">
+              <label className="flabel" htmlFor="username">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                className={`ws-input${state.error ? " invalid" : ""}`}
+                defaultValue={initialUsername}
                 maxLength={60}
                 aria-invalid={state.error ? true : undefined}
-                placeholder="Your name"
+                placeholder="Your username"
               />
-              <FieldError>{state.error}</FieldError>
+              {state.error && <div className="ferr show">{state.error}</div>}
               {state.success && (
-                <p className="text-sm text-muted-foreground">Saved.</p>
+                <p className="ws-saved-note" style={{ marginTop: 6 }}>
+                  Saved.
+                </p>
               )}
-            </Field>
-            <SubmitButton className="self-start">Save</SubmitButton>
+            </div>
+            <SubmitButton>Save</SubmitButton>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected accounts</CardTitle>
-          <CardDescription>
+      <div className="ws-panel">
+        <div className="ws-panel-head">
+          <div className="ws-panel-title">
+            <span>Connected accounts</span>
+          </div>
+          <p className="ws-panel-desc">
             Link your X (Twitter) account to post drafts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
+          </p>
+        </div>
+        <div className="ws-panel-body">
           {xUsername ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm">
-                Connected as <span className="font-medium">@{xUsername}</span>
+            <div className="ws-account-actions">
+              <p className="ws-connected-line">
+                Connected as <b>@{xUsername}</b>
               </p>
               <DisconnectXButton agentCount={agentCount} />
             </div>
           ) : (
             <ConnectX />
           )}
-          {xError && <p className="text-sm text-destructive">{xError}</p>}
-        </CardContent>
-      </Card>
+          {xError && (
+            <p className="ferr show" style={{ marginTop: 10 }}>
+              {xError}
+            </p>
+          )}
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-          <CardDescription>Your account details and session.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-start gap-3">
-          <SignOutButton />
-          <DeleteAccountButton />
-        </CardContent>
-      </Card>
+      <div className="ws-panel">
+        <div className="ws-panel-head">
+          <div className="ws-panel-title">
+            <span>Account</span>
+          </div>
+          <p className="ws-panel-desc">Your account details and session.</p>
+        </div>
+        <div className="ws-panel-body">
+          <div className="ws-account-actions">
+            <SignOutButton />
+            <DeleteAccountButton />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,33 +1,15 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { AppSidebar } from "@/components/app-sidebar"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
+import { getUsername } from "@/lib/user"
+import { WorkspaceShell } from "@/components/dashboard/workspace-shell"
 
-function getDisplayName({
-  email,
-  metadata,
-}: {
-  email: string
-  metadata: Record<string, unknown>
-}) {
-  const metadataName =
-    typeof metadata.full_name === "string"
-      ? metadata.full_name
-      : typeof metadata.name === "string"
-        ? metadata.name
-        : typeof metadata.display_name === "string"
-          ? metadata.display_name
-          : ""
-
-  if (metadataName.trim()) return metadataName.trim()
-  if (email) return email.split("@")[0]
-
-  return "Reporter"
-}
-
+/**
+ * Dashboard shell + auth guard. Renders the graphite WorkspaceShell once around
+ * every dashboard page (connect-x, agents, settings), so the whole app shares one
+ * connection-aware shell. The user's username (lib/user.ts) shows in the sidebar
+ * footer; only x_username is read from the DB (X tokens never reach the browser).
+ * Pages render just their own main content into the shell's slot.
+ */
 export default async function DashboardLayout({
   children,
 }: {
@@ -37,25 +19,21 @@ export default async function DashboardLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
   if (!user) {
     redirect("/")
   }
 
-  const email = user.email ?? ""
-  const name = getDisplayName({
-    email,
-    metadata: user.user_metadata,
-  })
+  const { data: connection } = await supabase
+    .from("x_connections")
+    .select("x_username")
+    .maybeSingle<{ x_username: string }>()
 
   return (
-    <SidebarProvider>
-      <AppSidebar user={{ email, name }} />
-      <SidebarInset>
-        <div className="flex flex-1 flex-col gap-6 bg-muted/25 p-4 md:p-8">
-          {children}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <WorkspaceShell
+      username={getUsername(user)}
+      xUsername={connection?.x_username ?? null}
+    >
+      {children}
+    </WorkspaceShell>
   )
 }

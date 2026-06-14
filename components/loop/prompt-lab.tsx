@@ -13,16 +13,7 @@ import { DEFAULT_DRAFTING_INSTRUCTIONS } from "@/lib/draft/defaults"
 import { MONITOR_MAX_HANDLES } from "@/lib/scan/handles"
 import { cn } from "@/lib/utils"
 import { HandleInput } from "@/components/handle-input"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { XIcon } from "@/components/icons"
 import type {
   PreviewStory,
   ScanMetrics,
@@ -496,9 +487,9 @@ export function PromptLab() {
         type="button"
         aria-label={`Show ${copy.title.toLowerCase()} help`}
         onClick={() => setHelpTopic(topic)}
-        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="ws-help-btn"
       >
-        <HelpCircle aria-hidden="true" className="size-4" />
+        <HelpCircle aria-hidden="true" size={16} />
       </button>
     )
   }
@@ -510,311 +501,319 @@ export function PromptLab() {
     return (
       <div
         role="presentation"
-        className="fixed inset-0 z-50 flex items-start justify-center bg-background/75 px-4 py-16 backdrop-blur-sm"
+        className="overlay open"
         onClick={() => setHelpTopic(null)}
       >
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="prompt-lab-help-title"
-          className="w-full max-w-lg rounded-lg border border-border bg-popover p-5 text-popover-foreground shadow-xl"
+          className="modal"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <h2
-                id="prompt-lab-help-title"
-                className="text-lg font-semibold leading-6 text-foreground"
-              >
-                {copy.title}
-              </h2>
-              <p className="text-base leading-6 text-muted-foreground">
-                {copy.body}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="form-action"
-              onClick={() => setHelpTopic(null)}
-            >
-              Close
-            </Button>
-          </div>
+          <button
+            type="button"
+            className="modal-x"
+            aria-label="Close"
+            onClick={() => setHelpTopic(null)}
+          >
+            ×
+          </button>
+          <h2 id="prompt-lab-help-title" style={{ textAlign: "left" }}>
+            {copy.title}
+          </h2>
+          <p
+            style={{
+              margin: "10px 0 0",
+              font: "400 0.9375rem/1.55 var(--font-sans)",
+              color: "var(--muted)",
+            }}
+          >
+            {copy.body}
+          </p>
+          <button
+            type="button"
+            className="btn btn-secondary btn-block"
+            style={{ marginTop: 18 }}
+            onClick={() => setHelpTopic(null)}
+          >
+            Close
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-2 md:px-4">
-      <Card>
-        <CardContent>
-          <FieldGroup>
-            <div className="grid gap-6 lg:grid-cols-[minmax(11rem,1fr)_minmax(0,4fr)]">
-              <Field>
-                <FieldLabel htmlFor="prompt-lab-name">Agent Name</FieldLabel>
-                <Input
-                  id="prompt-lab-name"
-                  value={name}
-                  onChange={(event) => {
-                    markDirty()
-                    setNameError(null)
-                    setName(event.target.value)
-                  }}
-                />
-                <FieldError>{nameError}</FieldError>
-              </Field>
+    <div className="ws-create">
+      <div className="desk-card">
+        <div className="card-chrome">
+          <XIcon width={14} height={14} />
+          Oparax Agent
+        </div>
 
-              <Field>
-                <FieldLabel>
-                  X accounts to monitor{" "}
-                  <span className="text-muted-foreground">
-                    ({handles.length} of {MONITOR_MAX_HANDLES})
-                  </span>
-                </FieldLabel>
-                <HandleInput
-                  handles={handles}
-                  maxHandles={MONITOR_MAX_HANDLES}
-                  showCount={false}
-                  onAdd={addHandle}
-                  onRemove={removeHandle}
-                />
-              </Field>
+        <div className="card-body">
+          <div className="top-row">
+            <div className="ffield-wrap">
+              <label className="flabel" htmlFor="prompt-lab-name">
+                Agent name
+              </label>
+              <input
+                id="prompt-lab-name"
+                className={cn("ws-input", nameError && "invalid")}
+                value={name}
+                onChange={(event) => {
+                  markDirty()
+                  setNameError(null)
+                  setName(event.target.value)
+                }}
+              />
+              {nameError && <div className="ferr show">{nameError}</div>}
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Field>
-                <div className="flex items-start gap-1.5">
-                  <FieldLabel htmlFor="prompt-lab-scanning-instructions">
-                    Scanning instructions
-                  </FieldLabel>
-                  {renderHelpButton("scan")}
-                </div>
-                <Textarea
-                  id="prompt-lab-scanning-instructions"
-                  value={scanUserPrompt}
-                  onChange={(event) => {
-                    markDirty()
-                    setScanUserPrompt(event.target.value)
-                  }}
-                  rows={8}
-                  className="min-h-52 resize-y"
-                />
-              </Field>
-
-              <Field>
-                <div className="flex items-start gap-1.5">
-                  <FieldLabel htmlFor="prompt-lab-drafting-instructions">
-                    Drafting instructions
-                  </FieldLabel>
-                  {renderHelpButton("draft")}
-                </div>
-                <Textarea
-                  id="prompt-lab-drafting-instructions"
-                  value={draftingInstructions}
-                  onChange={(event) => {
-                    markDirty()
-                    setDraftingInstructions(event.target.value)
-                  }}
-                  rows={8}
-                  className="min-h-52 resize-y"
-                />
-              </Field>
+            <div className="ffield-wrap">
+              <span className="flabel">
+                X accounts to monitor{" "}
+                <span style={{ color: "var(--faint)", fontWeight: 400 }}>
+                  ({handles.length} of {MONITOR_MAX_HANDLES})
+                </span>
+              </span>
+              <HandleInput
+                handles={handles}
+                maxHandles={MONITOR_MAX_HANDLES}
+                showCount={false}
+                onAdd={addHandle}
+                onRemove={removeHandle}
+              />
             </div>
+          </div>
 
-            <div className="flex justify-start">
-              <Button
-                onClick={runAgent}
-                pending={scanStatus === "running"}
-                disabled={!canRunAgent}
-                variant={isRunCurrent ? "outline" : "default"}
-                size="form-action"
-              >
-                {scanStatus === "running" ? "Running" : runButtonLabel}
-              </Button>
-            </div>
-
-            {hasScanOutput && (
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  aria-expanded={isReasoningOpen}
-                  onClick={() => setIsReasoningOpen((open) => !open)}
-                  className="flex w-full items-center gap-3 py-1 text-left outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          <div className="ffield-row">
+            <div className="ffield-wrap">
+              <span className="flabel-row">
+                <label
+                  className="flabel"
+                  htmlFor="prompt-lab-scanning-instructions"
                 >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "shrink-0 rounded-full",
-                      scanStatus === "running"
-                        ? "size-3 animate-spin border-2 border-success/25 border-t-success"
-                        : "size-2.5 bg-success",
-                    )}
-                  />
-                  <span className="font-semibold text-foreground/90">
-                    Reasoning
-                    {scanStatus === "done" && (
-                      <span className="ml-2 font-normal text-muted-foreground">
-                        ({toolCalls.length} tool call
-                        {toolCalls.length === 1 ? "" : "s"} ·{" "}
-                        {formatScanCost(scanCost)} · {stories.length} item
-                        {stories.length === 1 ? "" : "s"})
-                      </span>
-                    )}
-                  </span>
-                  <ChevronRight
-                    aria-hidden="true"
-                    className={cn(
-                      "ml-auto size-4 shrink-0 text-muted-foreground transition-transform",
-                      isReasoningOpen && "rotate-90",
-                    )}
-                  />
-                </button>
+                  Scanning instructions
+                </label>
+                {renderHelpButton("scan")}
+              </span>
+              <textarea
+                id="prompt-lab-scanning-instructions"
+                className="ws-textarea"
+                value={scanUserPrompt}
+                onChange={(event) => {
+                  markDirty()
+                  setScanUserPrompt(event.target.value)
+                }}
+                rows={8}
+              />
+            </div>
 
-                {isReasoningOpen && (
-                  <div className="flex flex-col gap-2 pl-10">
-                    {reasoning && (
-                      <p className="flex items-start gap-2 whitespace-pre-wrap text-base leading-6 text-foreground/90">
-                        <span
+            <div className="ffield-wrap">
+              <span className="flabel-row">
+                <label
+                  className="flabel"
+                  htmlFor="prompt-lab-drafting-instructions"
+                >
+                  Drafting instructions
+                </label>
+                {renderHelpButton("draft")}
+              </span>
+              <textarea
+                id="prompt-lab-drafting-instructions"
+                className="ws-textarea"
+                value={draftingInstructions}
+                onChange={(event) => {
+                  markDirty()
+                  setDraftingInstructions(event.target.value)
+                }}
+                rows={8}
+              />
+            </div>
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={runAgent}
+              disabled={!canRunAgent && scanStatus !== "running"}
+              className={cn(
+                "btn",
+                isRunCurrent ? "btn-secondary" : "btn-primary",
+                scanStatus === "running" && "loading",
+              )}
+            >
+              <span className="ld" />
+              {scanStatus === "running" ? "Running" : runButtonLabel}
+            </button>
+          </div>
+
+          {hasScanOutput && (
+            <div className="ws-run">
+              <button
+                type="button"
+                aria-expanded={isReasoningOpen}
+                onClick={() => setIsReasoningOpen((open) => !open)}
+                className="ws-run-head"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "dot",
+                    scanStatus === "running" ? "blink" : "green",
+                  )}
+                />
+                <span>
+                  Reasoning
+                  {scanStatus === "done" && (
+                    <span className="ws-run-meta">
+                      ({toolCalls.length} tool call
+                      {toolCalls.length === 1 ? "" : "s"} ·{" "}
+                      {formatScanCost(scanCost)} · {stories.length} item
+                      {stories.length === 1 ? "" : "s"})
+                    </span>
+                  )}
+                </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  size={16}
+                  className={cn("ws-run-chevron", isReasoningOpen && "open")}
+                />
+              </button>
+
+              {isReasoningOpen && (
+                <div className="ws-run-body">
+                  {reasoning && <p className="ws-run-text">{reasoning}</p>}
+
+                  {toolCalls.length > 0 && (
+                    <div>
+                      <button
+                        type="button"
+                        aria-expanded={isToolsOpen}
+                        onClick={() => setIsToolsOpen((open) => !open)}
+                        className="ws-run-head"
+                        style={{ font: "600 0.8125rem/1 var(--font-sans)" }}
+                      >
+                        <span>Calling tools: {toolCalls.length}</span>
+                        <ChevronRight
                           aria-hidden="true"
-                          className="mt-2 size-2 shrink-0 rounded-full bg-success/55"
+                          size={15}
+                          className={cn(
+                            "ws-run-chevron",
+                            isToolsOpen && "open",
+                          )}
                         />
-                        <span>{reasoning}</span>
-                      </p>
-                    )}
+                      </button>
 
-                    {toolCalls.length > 0 && (
-                      <div>
-                        <button
-                          type="button"
-                          aria-expanded={isToolsOpen}
-                          onClick={() => setIsToolsOpen((open) => !open)}
-                          className="flex w-full items-start gap-2 py-1 text-left text-base leading-6 text-foreground/90 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      {isToolsOpen && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            marginTop: 8,
+                          }}
                         >
-                          <span
-                            aria-hidden="true"
-                            className="mt-2 size-2 shrink-0 rounded-full bg-success/55"
-                          />
-                          <span>Calling tools: {toolCalls.length}</span>
-                          <ChevronRight
-                            aria-hidden="true"
-                            className={cn(
-                              "ml-auto size-4 shrink-0 text-muted-foreground transition-transform",
-                              isToolsOpen && "rotate-90",
-                            )}
-                          />
-                        </button>
+                          {toolCalls.map((toolCall) => (
+                            <p key={toolCall.id} className="ws-tool">
+                              <b>{toolCall.name}:</b>{" "}
+                              {toolCall.input || "Waiting for input."}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-                        {isToolsOpen && (
-                          <div className="flex flex-col gap-1.5 pl-5">
-                            {toolCalls.map((toolCall) => (
-                              <p
-                                key={toolCall.id}
-                                className="text-sm leading-6 text-muted-foreground"
-                              >
-                                <span className="font-semibold">
-                                  {toolCall.name}:
-                                </span>{" "}
-                                <span className="whitespace-pre-wrap break-words">
-                                  {toolCall.input || "Waiting for input."}
-                                </span>
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
+          {stories.length > 0 && (
+            <>
+              <div className="draft-divider">
+                <span className="chip">
+                  <span className="dot blink" />
+                  Drafted in your voice
+                </span>
               </div>
-            )}
+              <p className="ws-results-note">
+                Review the generated news and draft previews below before posting
+                on X.
+              </p>
 
-            {stories.length > 0 && (
-              <div className="flex flex-col gap-3" aria-label="Agent results">
-                <p className="text-base font-[525] leading-6 text-foreground/90">
-                  Review the generated news and draft previews below before
-                  posting on X.
-                </p>
+              <div className="ws-stories" aria-label="Agent results">
                 {storyEntries.map(({ story, index, key }) => {
                   const isSelected = selectedStorySet.has(key)
 
                   return (
-                    <div
-                      key={key}
-                      className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]"
-                    >
+                    <div key={key} className="ws-story">
                       <button
                         type="button"
                         aria-pressed={isSelected}
                         onClick={() => toggleStory(story, index)}
-                        className={cn(
-                          "min-w-0 rounded-lg border border-border bg-muted/25 px-3 py-2.5 text-left text-sm leading-5 transition-colors outline-none hover:border-foreground/35 hover:bg-muted/45 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                          isSelected && "border-success/60 bg-success-bg/45",
-                        )}
+                        className={cn("ws-story-item", isSelected && "is-selected")}
                       >
-                        <span className="text-foreground/82">
-                          {story.title}
-                        </span>
-                        {story.sourceUrls.length > 0 ? (
-                          story.sourceUrls.map((url) => (
-                            <span
-                              key={url}
-                              className="ml-2 break-all text-link"
-                            >
-                              {url}
+                        <p>{story.title}</p>
+                        <div className="ws-story-srcs">
+                          {story.sourceUrls.length > 0 ? (
+                            story.sourceUrls.map((url) => (
+                              <span key={url}>↗ {url}</span>
+                            ))
+                          ) : (
+                            <span style={{ color: "var(--faint)" }}>
+                              No source URLs returned.
                             </span>
-                          ))
-                        ) : (
-                          <span className="ml-2 text-muted-foreground">
-                            No source URLs returned.
-                          </span>
-                        )}
+                          )}
+                        </div>
                       </button>
 
-                      <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-background/30 px-3 py-2.5 text-sm leading-5">
-                        <p className="font-[525] text-foreground/90">
-                          Draft preview
-                        </p>
-                        <p className="whitespace-pre-wrap text-foreground/85">
-                          {story.draft}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="form-action"
-                          disabled
-                          className="self-start"
-                        >
-                          Save agent to post
-                        </Button>
+                      <div className="xpost">
+                        <p className="xpost-body">{story.draft}</p>
+                        <div className="xpost-foot">
+                          <XIcon width={15} height={15} />
+                          <span className="spacer" />
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled
+                          >
+                            Save agent to post
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
-            )}
+            </>
+          )}
 
-            {scanError && <FieldError>{scanError}</FieldError>}
-          </FieldGroup>
-        </CardContent>
-      </Card>
+          {scanError && <div className="ferr show">{scanError}</div>}
+        </div>
+      </div>
 
-      <div className="flex flex-col items-start gap-2">
-        <Button
+      <div className="ws-save">
+        <button
+          type="button"
           onClick={saveAgent}
-          pending={saveStatus === "saving"}
-          disabled={!canSaveAgent}
-          variant="success"
+          disabled={!canSaveAgent && saveStatus !== "saving"}
+          className={cn("btn btn-primary", saveStatus === "saving" && "loading")}
         >
+          <span className="ld" />
           {saveStatus === "saving"
             ? "Saving"
             : saveStatus === "saved"
               ? "Saved"
               : "Save Agent"}
-        </Button>
-        {saveError && <FieldError>{saveError}</FieldError>}
+        </button>
+        {saveError && (
+          <p className="ferr show" style={{ margin: 0 }}>
+            {saveError}
+          </p>
+        )}
       </div>
 
       {renderHelpDialog()}

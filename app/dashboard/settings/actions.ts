@@ -6,50 +6,50 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 
 /**
- * Result state for the display-name update action, consumed by useActionState.
+ * Result state for the username update action, consumed by useActionState.
  */
-export type UpdateDisplayNameState = {
+export type UpdateUsernameState = {
   error?: string
   success?: boolean
 }
 
 /**
- * Update the signed-in user's display name in their auth user_metadata. The
- * sidebar + page header derive their name from this metadata, so a successful
- * update is followed by revalidating the settings route.
+ * Update the signed-in user's username in their auth user_metadata. The sidebar
+ * derives its label from this (lib/user.ts getUsername), so on success we
+ * revalidate the whole dashboard layout to refresh the shell.
  * @param prevState - prior action state (unused; required by useActionState)
- * @param formData - form payload carrying the `display_name` field
+ * @param formData - form payload carrying the `username` field
  * @returns an error message, or success
  */
-export async function updateDisplayName(
-  prevState: UpdateDisplayNameState,
+export async function updateUsername(
+  prevState: UpdateUsernameState,
   formData: FormData,
-): Promise<UpdateDisplayNameState> {
+): Promise<UpdateUsernameState> {
 
-  // Read and normalize the submitted name.
-  const raw = formData.get("display_name")
+  // Read and normalize the submitted username.
+  const raw = formData.get("username")
   const value = typeof raw === "string" ? raw.trim() : ""
 
-  // Reject empty or overly long names before hitting Supabase.
+  // Reject empty or overly long usernames before hitting Supabase.
   if (!value) {
-    return { error: "Display name can't be empty." }
+    return { error: "Username can't be empty." }
   }
   if (value.length > 60) {
-    return { error: "Display name must be 60 characters or fewer." }
+    return { error: "Username must be 60 characters or fewer." }
   }
 
   // Persist to auth user_metadata.
   const supabase = await createClient()
   const { error } = await supabase.auth.updateUser({
-    data: { display_name: value },
+    data: { username: value },
   })
 
   if (error) {
     return { error: error.message }
   }
 
-  // Refresh the settings route so server-rendered name reflects the change.
-  revalidatePath("/dashboard/settings")
+  // Refresh the dashboard layout so the sidebar reflects the new username.
+  revalidatePath("/dashboard", "layout")
   return { success: true }
 }
 

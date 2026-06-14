@@ -2,6 +2,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { saveConnection } from "@/lib/x/tokens"
+import { isSafeNextPath } from "@/lib/safe-next"
 
 // Node runtime: token capture + AES encryption use node:crypto.
 export const runtime = "nodejs"
@@ -21,10 +22,7 @@ const REQUESTED_SCOPES = [
  * @returns a safe path (defaults to the Settings page)
  */
 function getSafeNextPath(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/dashboard/settings"
-  }
-  return next
+  return isSafeNextPath(next) ? next : "/dashboard/settings"
 }
 
 /**
