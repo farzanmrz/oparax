@@ -108,34 +108,7 @@
   flex-direction: column;
   gap: 2px;
 }
-.workspace .ws-navitem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 44px;
-  padding: 0 10px;
-  border-radius: 6px;
-  justify-content: flex-start;
-  text-decoration: none;
-  font: 600 0.9375rem/1 var(--font-sans);
-  color: var(--muted);
-}
-.workspace .ws-navitem svg { flex: none; }
-.workspace .ws-navitem-idle { cursor: pointer; transition: background 0.12s, color 0.12s; }
-.workspace .ws-navitem-idle:hover { background: oklch(1 0 0 / 0.07); color: var(--fg); }
-.workspace .ws-navitem.is-active {
-  color: var(--accent);
-  font-weight: 650;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  cursor: default;
-}
-.workspace .ws-navitem.is-disabled {
-  color: var(--faint);
-  opacity: 0.38;
-  cursor: not-allowed;
-}
-.workspace .ws-navitem .ws-navitem-label { flex: 1; }
+.workspace .nav-main .ws-navitem-label { flex: 1; }
 .workspace .ws-soon {
   font: 650 0.625rem/1 var(--font-sans);
   color: var(--faint);
@@ -144,54 +117,25 @@
   padding: 3px 7px;
 }
 
-/* accounts */
-.workspace .ws-section { padding: 16px 10px 16px; margin-top: 6px; }
-.workspace .ws-section-label {
-  font: 650 0.6875rem/1 var(--font-sans);
-  color: var(--faint);
-  padding: 0 2px 10px;
-  opacity: 0.85;
-}
-.workspace .ws-acct-list { display: flex; flex-direction: column; gap: 1px; }
-.workspace .acct-row {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  height: 32px;
-  padding: 0 2px;
-  justify-content: flex-start;
-}
-.workspace .acct-icon { flex: none; opacity: 0.32; }
-.workspace .acct-row[data-state="err"] .acct-icon { opacity: 1; }
-.workspace .acct-row[data-state="ok"] .acct-icon { opacity: 1; }
-.workspace .acct-text {
-  flex: 1;
-  min-width: 0;
-  font: 500 0.8125rem/1 var(--font-sans);
-  color: var(--faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.workspace .acct-row[data-state="err"] .acct-text { color: var(--err); }
-.workspace .acct-row[data-state="ok"] .acct-text { color: var(--fg); }
+/* primary nav rows (.nav-main) + settings sub-nav (.snav) live in globals.css;
+   only the in-shell glyph reset + collapsed-state centering are scoped here. */
+.workspace .ws-nav .nav-main svg,
+.workspace .ws-nav .snav-item svg { flex: none; }
 
-/* footer */
+/* footer — the profile line (.you-line) + icon-only sign out (.foot-signout)
+   come from globals.css; the container + avatar gradient stay scoped here. */
 .workspace .ws-foot {
   flex: none;
   position: relative;
   border-top: 1px solid oklch(1 0 0 / 0.08);
-}
-.workspace .ws-user {
-  padding: 11px 12px;
+  padding: 9px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  justify-content: flex-start;
+  gap: 6px;
 }
 .workspace .ws-avatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   flex: none;
   background:
@@ -202,72 +146,25 @@
 .workspace .ws-username {
   flex: 1;
   min-width: 0;
-  font: 500 0.8125rem/1.3 var(--font-sans);
-  color: var(--muted);
+  font: 650 0.875rem/1.2 var(--font-sans);
+  color: var(--fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.workspace .ws-gear {
-  width: 28px;
-  height: 28px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  background: none;
-  border: 0;
-  border-radius: 6px;
-  color: var(--faint);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-}
-.workspace .ws-gear:hover { background: oklch(1 0 0 / 0.09); color: var(--fg); }
 
-/* settings popup (anchored top-right of the gear) */
-.workspace .ws-menu-scrim { position: fixed; inset: 0; z-index: 90; background: transparent; }
-.workspace .ws-menu {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  right: 10px;
-  width: 200px;
-  z-index: 95;
-  background: oklch(0.265 0 0);
-  border: 1px solid oklch(1 0 0 / 0.16);
-  border-radius: 12px;
-  box-shadow: 0 20px 50px -16px oklch(0 0 0 / 0.9), 0 0 0 1px oklch(1 0 0 / 0.04);
-  overflow: hidden;
-  padding: 5px;
+/* collapsed: center the nav glyphs, hide the sign-out, let the avatar sit alone */
+.workspace .ws-aside[data-collapsed="true"] .nav-main {
+  justify-content: center;
+  padding: 0;
 }
-.workspace .ws-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 10px;
-  border-radius: 7px;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  color: var(--muted);
-  font: 600 0.875rem/1 var(--font-sans);
-  text-align: left;
-  text-decoration: none;
-  transition: background 0.1s, color 0.1s;
+.workspace .ws-aside[data-collapsed="true"] .ws-foot { justify-content: center; }
+.workspace .ws-aside[data-collapsed="true"] .you-line {
+  flex: none;
+  justify-content: center;
+  padding: 8px;
 }
-.workspace .ws-menu-item svg { flex: none; opacity: 0.7; }
-.workspace .ws-menu-item:hover { background: oklch(1 0 0 / 0.07); color: var(--fg); }
-.workspace .ws-menu-item:disabled { cursor: default; opacity: 0.6; }
-.workspace .ws-menu-div { height: 1px; background: oklch(1 0 0 / 0.08); margin: 5px 6px; }
-.workspace .ws-menu-link {
-  display: block;
-  padding: 7px 10px;
-  border-radius: 6px;
-  color: var(--faint);
-  font: 400 0.8125rem/1 var(--font-sans);
-  text-decoration: none;
-  transition: background 0.1s;
-}
-.workspace .ws-menu-link:hover { background: oklch(1 0 0 / 0.05); color: var(--muted); }
+.workspace .ws-aside[data-collapsed="true"] .foot-signout { display: none; }
 
 /* ------------------------------------------------ main */
 .workspace .ws-main {
