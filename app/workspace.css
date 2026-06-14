@@ -419,6 +419,47 @@
 .workspace .ws-mock-toggle { width: 36px; height: 20px; border-radius: 999px; flex: none; background: var(--accent-soft); border: 1px solid var(--accent-line); }
 .workspace .ws-mock-toggle.off { background: oklch(1 0 0 / 0.07); border-color: var(--line); }
 
+/* ---------- single-scroll settings page (#24) ---------- */
+/* Vertical stack of section cards (.card-sec lives in globals.css). */
+.workspace .set-stack { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+/* Offset hash-jump targets so a section heading clears the page header. */
+.workspace .set-sec { scroll-margin-top: 24px; }
+
+/* Profile: avatar on the left, the field grid filling the rest. */
+.workspace .set-profile { display: flex; align-items: flex-start; gap: 22px; }
+/* Reuse the sidebar avatar gradient at the large click-to-upload size. The
+   .avatar-up box (88px, hover overlay) comes from globals.css; only the fill +
+   visually-hidden file input are added here. */
+.workspace .set-profile .avatar-up {
+  background:
+    radial-gradient(circle at 30% 22%, #8fccff 0%, transparent 56%),
+    conic-gradient(from 205deg at 50% 50%, #3b6fd4, #7a5be0, #2bbfa6, #3b6fd4);
+}
+.workspace .set-avatar-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* Name / Email / Phone side-by-side; stacks on narrow widths. */
+.workspace .set-grid {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: start;
+}
+
+/* Inline field notes (saved / error) under the Name input. */
+.workspace .set-note { margin: 2px 0 0; font: 500 0.78125rem/1.3 var(--font-sans); }
+.workspace .set-note-ok { color: var(--live); }
+.workspace .set-note-err { color: var(--err); }
+
+/* Notification / account row lists (.arow lives in globals.css). */
+.workspace .set-rows { display: flex; flex-direction: column; gap: 10px; }
+
+@media (max-width: 860px) {
+  .workspace .set-grid { grid-template-columns: 1fr; }
+  .workspace .set-profile { flex-direction: column; align-items: stretch; gap: 18px; }
+}
+
 /* responsive: stack the form's two-column rows */
 @media (max-width: 1020px) {
   .workspace .top-row,
