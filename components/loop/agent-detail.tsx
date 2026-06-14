@@ -541,18 +541,22 @@ export function AgentDetail({
   return (
     <div className="ws-create">
       <div className="ws-stats">
-        <span>
-          <b>{runs.length}</b> scans
-        </span>
-        <span>
-          <b>{totalItems}</b> drafts
-        </span>
-        <span>
-          <b>{postedItems}</b> posted
-        </span>
-        <span>
-          <b>{formatCost(totalCost)}</b> total cost
-        </span>
+        <div className="ws-stat">
+          <b>{runs.length}</b>
+          <span>scans</span>
+        </div>
+        <div className="ws-stat">
+          <b>{totalItems}</b>
+          <span>drafts</span>
+        </div>
+        <div className="ws-stat">
+          <b>{postedItems}</b>
+          <span>posted</span>
+        </div>
+        <div className="ws-stat">
+          <b>{formatCost(totalCost)}</b>
+          <span>total cost</span>
+        </div>
       </div>
 
       <div className="desk-card">
@@ -709,11 +713,31 @@ export function AgentDetail({
                         item.primary_tweet_url || item.source_urls[0] || "",
                       )
 
+                      const statusLabel =
+                        status === "posted"
+                          ? "Posted"
+                          : status === "failed"
+                            ? "Failed"
+                            : "Draft"
+
                       return (
                         <div key={item.id} className="ws-item">
-                          <p className="ws-item-title">{item.story_summary}</p>
+                          <div className="ws-item-head">
+                            <p className="ws-item-title">{item.story_summary}</p>
+                            <span
+                              className="ws-item-status"
+                              data-status={status}
+                            >
+                              <span className="dot" />
+                              {statusLabel}
+                            </span>
+                          </div>
 
+                          <label className="flabel" htmlFor={`draft-${item.id}`}>
+                            Draft in your voice
+                          </label>
                           <textarea
+                            id={`draft-${item.id}`}
                             className="ws-textarea"
                             value={draftText}
                             onChange={(event) =>
@@ -781,25 +805,37 @@ export function AgentDetail({
                           )}
 
                           {primaryTweetId ? (
-                            <CompactTweet
-                              id={primaryTweetId}
-                              apiUrl={`/api/tweet/${primaryTweetId}`}
-                            />
-                          ) : (
-                            <div className="ws-sources">
-                              {item.source_urls.map((url, index) => (
-                                <a
-                                  key={url}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="ws-link"
-                                  style={{ wordBreak: "break-all" }}
-                                >
-                                  Source {index + 1}
-                                </a>
-                              ))}
+                            <div className="ws-item-source">
+                              <span className="ws-item-source-label">Source</span>
+                              <CompactTweet
+                                id={primaryTweetId}
+                                apiUrl={`/api/tweet/${primaryTweetId}`}
+                              />
                             </div>
+                          ) : (
+                            item.source_urls.length > 0 && (
+                              <div className="ws-item-source">
+                                <span className="ws-item-source-label">
+                                  {item.source_urls.length === 1
+                                    ? "Source"
+                                    : "Sources"}
+                                </span>
+                                <div className="ws-sources">
+                                  {item.source_urls.map((url, index) => (
+                                    <a
+                                      key={url}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="ws-link"
+                                      style={{ wordBreak: "break-all" }}
+                                    >
+                                      <b className="arr">↗</b>Source {index + 1}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )
                           )}
                         </div>
                       )
