@@ -73,7 +73,12 @@ export function XConnectionPill({
         } | null
         throw new Error(data?.error || "Failed to disconnect.")
       }
+      // The pill stays mounted across the refresh (it renders both states), so
+      // close the modal + clear pending ourselves; the refresh flips the pill to
+      // its "Connect" state. Without this the confirm button hangs on loading.
       router.refresh()
+      setOpen(false)
+      setPending(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disconnect.")
       setPending(false)
