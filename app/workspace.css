@@ -108,34 +108,7 @@
   flex-direction: column;
   gap: 2px;
 }
-.workspace .ws-navitem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 44px;
-  padding: 0 10px;
-  border-radius: 6px;
-  justify-content: flex-start;
-  text-decoration: none;
-  font: 600 0.9375rem/1 var(--font-sans);
-  color: var(--muted);
-}
-.workspace .ws-navitem svg { flex: none; }
-.workspace .ws-navitem-idle { cursor: pointer; transition: background 0.12s, color 0.12s; }
-.workspace .ws-navitem-idle:hover { background: oklch(1 0 0 / 0.07); color: var(--fg); }
-.workspace .ws-navitem.is-active {
-  color: var(--accent);
-  font-weight: 650;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  cursor: default;
-}
-.workspace .ws-navitem.is-disabled {
-  color: var(--faint);
-  opacity: 0.38;
-  cursor: not-allowed;
-}
-.workspace .ws-navitem .ws-navitem-label { flex: 1; }
+.workspace .nav-main .ws-navitem-label { flex: 1; }
 .workspace .ws-soon {
   font: 650 0.625rem/1 var(--font-sans);
   color: var(--faint);
@@ -144,54 +117,25 @@
   padding: 3px 7px;
 }
 
-/* accounts */
-.workspace .ws-section { padding: 16px 10px 16px; margin-top: 6px; }
-.workspace .ws-section-label {
-  font: 650 0.6875rem/1 var(--font-sans);
-  color: var(--faint);
-  padding: 0 2px 10px;
-  opacity: 0.85;
-}
-.workspace .ws-acct-list { display: flex; flex-direction: column; gap: 1px; }
-.workspace .acct-row {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  height: 32px;
-  padding: 0 2px;
-  justify-content: flex-start;
-}
-.workspace .acct-icon { flex: none; opacity: 0.32; }
-.workspace .acct-row[data-state="err"] .acct-icon { opacity: 1; }
-.workspace .acct-row[data-state="ok"] .acct-icon { opacity: 1; }
-.workspace .acct-text {
-  flex: 1;
-  min-width: 0;
-  font: 500 0.8125rem/1 var(--font-sans);
-  color: var(--faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.workspace .acct-row[data-state="err"] .acct-text { color: var(--err); }
-.workspace .acct-row[data-state="ok"] .acct-text { color: var(--fg); }
+/* primary nav rows (.nav-main) + settings sub-nav (.snav) live in globals.css;
+   only the in-shell glyph reset + collapsed-state centering are scoped here. */
+.workspace .ws-nav .nav-main svg,
+.workspace .ws-nav .snav-item svg { flex: none; }
 
-/* footer */
+/* footer — the profile line (.you-line) + icon-only sign out (.foot-signout)
+   come from globals.css; the container + avatar gradient stay scoped here. */
 .workspace .ws-foot {
   flex: none;
   position: relative;
   border-top: 1px solid oklch(1 0 0 / 0.08);
-}
-.workspace .ws-user {
-  padding: 11px 12px;
+  padding: 9px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  justify-content: flex-start;
+  gap: 6px;
 }
 .workspace .ws-avatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   flex: none;
   background:
@@ -202,72 +146,25 @@
 .workspace .ws-username {
   flex: 1;
   min-width: 0;
-  font: 500 0.8125rem/1.3 var(--font-sans);
-  color: var(--muted);
+  font: 650 0.875rem/1.2 var(--font-sans);
+  color: var(--fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.workspace .ws-gear {
-  width: 28px;
-  height: 28px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  background: none;
-  border: 0;
-  border-radius: 6px;
-  color: var(--faint);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-}
-.workspace .ws-gear:hover { background: oklch(1 0 0 / 0.09); color: var(--fg); }
 
-/* settings popup (anchored top-right of the gear) */
-.workspace .ws-menu-scrim { position: fixed; inset: 0; z-index: 90; background: transparent; }
-.workspace .ws-menu {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  right: 10px;
-  width: 200px;
-  z-index: 95;
-  background: oklch(0.265 0 0);
-  border: 1px solid oklch(1 0 0 / 0.16);
-  border-radius: 12px;
-  box-shadow: 0 20px 50px -16px oklch(0 0 0 / 0.9), 0 0 0 1px oklch(1 0 0 / 0.04);
-  overflow: hidden;
-  padding: 5px;
+/* collapsed: center the nav glyphs, hide the sign-out, let the avatar sit alone */
+.workspace .ws-aside[data-collapsed="true"] .nav-main {
+  justify-content: center;
+  padding: 0;
 }
-.workspace .ws-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 10px;
-  border-radius: 7px;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  color: var(--muted);
-  font: 600 0.875rem/1 var(--font-sans);
-  text-align: left;
-  text-decoration: none;
-  transition: background 0.1s, color 0.1s;
+.workspace .ws-aside[data-collapsed="true"] .ws-foot { justify-content: center; }
+.workspace .ws-aside[data-collapsed="true"] .you-line {
+  flex: none;
+  justify-content: center;
+  padding: 8px;
 }
-.workspace .ws-menu-item svg { flex: none; opacity: 0.7; }
-.workspace .ws-menu-item:hover { background: oklch(1 0 0 / 0.07); color: var(--fg); }
-.workspace .ws-menu-item:disabled { cursor: default; opacity: 0.6; }
-.workspace .ws-menu-div { height: 1px; background: oklch(1 0 0 / 0.08); margin: 5px 6px; }
-.workspace .ws-menu-link {
-  display: block;
-  padding: 7px 10px;
-  border-radius: 6px;
-  color: var(--faint);
-  font: 400 0.8125rem/1 var(--font-sans);
-  text-decoration: none;
-  transition: background 0.1s;
-}
-.workspace .ws-menu-link:hover { background: oklch(1 0 0 / 0.05); color: var(--muted); }
+.workspace .ws-aside[data-collapsed="true"] .foot-signout { display: none; }
 
 /* ------------------------------------------------ main */
 .workspace .ws-main {
@@ -452,10 +349,19 @@
 
 /* agent detail */
 .workspace .ws-stats {
-  display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 22px;
-  font: 400 0.875rem/1 var(--font-sans); color: var(--faint);
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px; margin-top: 22px;
 }
-.workspace .ws-stats b { color: var(--fg); font-weight: 650; }
+.workspace .ws-stat {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 13px 16px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+}
+.workspace .ws-stat b { font: 700 1.375rem/1.05 var(--font-sans); color: var(--fg); letter-spacing: -0.01em; }
+.workspace .ws-stat span { font: 500 0.8125rem/1 var(--font-sans); color: var(--faint); }
+@media (max-width: 720px) {
+  .workspace .ws-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .workspace .ws-settings-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .workspace .ws-saved-note { font: 500 0.8125rem/1 var(--font-sans); color: var(--live); }
 
@@ -483,12 +389,29 @@
 }
 
 .workspace .ws-item { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+.workspace .ws-item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .workspace .ws-item-title { margin: 0; font: 650 1.0625rem/1.4 var(--font-sans); color: var(--fg); }
+.workspace .ws-item-status {
+  display: inline-flex; align-items: center; gap: 7px; flex: none;
+  font: 650 0.75rem/1 var(--font-sans); color: var(--faint);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 10px; white-space: nowrap; text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.workspace .ws-item-status .dot { background: var(--faint); }
+.workspace .ws-item-status[data-status="posted"] { color: var(--live); border-color: oklch(0.82 0.16 155 / 0.4); }
+.workspace .ws-item-status[data-status="posted"] .dot { background: var(--live); }
+.workspace .ws-item-status[data-status="failed"] { color: var(--err); border-color: oklch(0.7 0.185 25 / 0.4); }
+.workspace .ws-item-status[data-status="failed"] .dot { background: var(--err); }
 .workspace .ws-item-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .workspace .ws-link { font: 400 0.8125rem/1 var(--font-sans); color: var(--accent); }
 .workspace .ws-link:hover { text-decoration: underline; }
 .workspace .ws-item-note { font: 400 0.8125rem/1.4 var(--font-sans); color: var(--faint); }
 .workspace .ws-sources { display: flex; flex-direction: column; gap: 4px; }
+.workspace .ws-sources .ws-link { display: inline-flex; align-items: center; gap: 5px; }
+.workspace .ws-sources .arr { color: var(--accent-vivid); font-weight: 600; }
+.workspace .ws-item-source { display: flex; flex-direction: column; gap: 7px; padding-top: 4px; border-top: 1px solid var(--line); }
+.workspace .ws-item-source-label { font: 650 0.6875rem/1 var(--font-sans); color: var(--faint); text-transform: uppercase; letter-spacing: 0.04em; }
 
 /* settings */
 .workspace .ws-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-top: 22px; }
@@ -521,6 +444,66 @@
 .workspace .ws-mock-row:last-child { padding-bottom: 0; border-bottom: 0; }
 .workspace .ws-mock-toggle { width: 36px; height: 20px; border-radius: 999px; flex: none; background: var(--accent-soft); border: 1px solid var(--accent-line); }
 .workspace .ws-mock-toggle.off { background: oklch(1 0 0 / 0.07); border-color: var(--line); }
+
+/* ---------- single-scroll settings page (#24) ---------- */
+/* Vertical stack of section cards (.card-sec lives in globals.css). */
+.workspace .set-stack { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+/* Offset hash-jump targets so a section heading clears the page header. */
+.workspace .set-sec { scroll-margin-top: 24px; }
+/* Connected accounts (inline in the Profile field stack): flat flex-wrap row of
+   split pills. Sits between the Email/Phone row and the Save button — its own
+   quiet row, no header (the pills carry their own meaning). */
+.workspace .set-pills { display: flex; flex-wrap: wrap; gap: 12px; margin: 2px 0; }
+/* "Coming soon" hint under a section title (notifications). */
+.workspace .set-soon-hint { margin: -8px 0 16px; font: 400 0.875rem/1.4 var(--font-sans); color: var(--faint); }
+
+/* Profile: avatar column on the left, the field block filling the rest. */
+.workspace .set-profile { display: flex; align-items: flex-start; gap: 22px; }
+/* Avatar + "Change photo" stacked, centered under the avatar. */
+.workspace .set-avatar-col { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: none; }
+.workspace .set-avatar-link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: 600 0.8125rem/1 var(--font-sans); color: var(--accent);
+  transition: color 0.12s;
+}
+.workspace .set-avatar-link:hover { color: var(--fg); }
+/* The field block holds the grid + the save row. */
+.workspace .set-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+/* Explicit Save button + inline saved/error note. */
+.workspace .set-save-row { display: flex; align-items: center; gap: 12px; }
+/* Reuse the sidebar avatar gradient at the large click-to-upload size. The
+   .avatar-up box (88px, hover overlay) comes from globals.css; only the fill +
+   visually-hidden file input are added here. */
+.workspace .set-profile .avatar-up {
+  background:
+    radial-gradient(circle at 30% 22%, #8fccff 0%, transparent 56%),
+    conic-gradient(from 205deg at 50% 50%, #3b6fd4, #7a5be0, #2bbfa6, #3b6fd4);
+}
+.workspace .set-avatar-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* Email / Phone paired side-by-side (Name sits full-width above); stacks on
+   narrow widths via the @media rule below. */
+.workspace .set-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: start;
+}
+
+/* Inline field notes (saved / error) under the Name input. */
+.workspace .set-note { margin: 2px 0 0; font: 500 0.78125rem/1.3 var(--font-sans); }
+.workspace .set-note-ok { color: var(--live); }
+.workspace .set-note-err { color: var(--err); }
+
+/* Notification / account row lists (.arow lives in globals.css). */
+.workspace .set-rows { display: flex; flex-direction: column; gap: 10px; }
+/* Inert (coming-soon) notification toggles: greyed + non-interactive. */
+.workspace .set-rows .switch:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 860px) {
+  .workspace .set-grid { grid-template-columns: 1fr; }
+  .workspace .set-profile { flex-direction: column; align-items: stretch; gap: 18px; }
+}
 
 /* responsive: stack the form's two-column rows */
 @media (max-width: 1020px) {
