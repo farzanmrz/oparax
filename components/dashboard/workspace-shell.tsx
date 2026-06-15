@@ -43,48 +43,67 @@ const SETTINGS_SECTIONS: {
 ]
 
 // Scroll-spy: highlight the settings sub-nav item whose section is in view.
-// Watches elements with ids profile/connections/notifications/account via an
-// IntersectionObserver. No-ops when no sections are present (they arrive in
-// #24) and falls back to the current URL hash so the right item is lit even
-// before any scroll happens. `enabled` gates it to the settings route.
+// Uses a "trigger-line" scan (the last section whose top has passed ~35% down
+// the viewport) rather than a center-band IntersectionObserver, so the FIRST
+// section lights at the top and the LAST one lights at the bottom — a short
+// final section can't reach a center band when it sits at the page bottom.
+// The settings page scrolls inside `.ws-main` (not the window), so we listen
+// there. No-ops when no sections exist yet (they arrive in #24), falling back
+// to the URL hash. `enabled` gates it to the settings route.
 function useSettingsScrollSpy(enabled: boolean): string {
   const [active, setActive] = useState<string>("")
 
   useEffect(() => {
     if (!enabled) return
 
-    // Fallback: reflect the current hash (e.g. arriving via /settings#account).
-    const fromHash = () => {
-      const id = window.location.hash.replace(/^#/, "")
-      if (SETTINGS_SECTIONS.some((s) => s.id === id)) setActive(id)
+    const ids = SETTINGS_SECTIONS.map((s) => s.id)
+    // The settings page scrolls inside .ws-main, not the window.
+    const scroller = document.querySelector<HTMLElement>(".ws-main")
+
+    const compute = () => {
+      const els = ids
+        .map((id) => document.getElementById(id))
+        .filter((el): el is HTMLElement => el !== null)
+
+      // Sections absent (this branch, pre-#24): fall back to the URL hash.
+      if (els.length === 0) {
+        const hashId = window.location.hash.replace(/^#/, "")
+        if (ids.includes(hashId)) setActive(hashId)
+        return
+      }
+
+      // At the container's bottom, a short final section can't push its top
+      // past any upper trigger line — so activate the last section explicitly.
+      if (
+        scroller &&
+        scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4
+      ) {
+        setActive(els[els.length - 1].id)
+        return
+      }
+
+      // Otherwise: the last section whose heading has scrolled above a line near
+      // the top of the viewport (defaults to the first section while at top).
+      const triggerLine = window.innerHeight * 0.2
+      let current = els[0].id
+      for (const el of els) {
+        if (el.getBoundingClientRect().top <= triggerLine) current = el.id
+      }
+      setActive(current)
     }
-    fromHash()
 
-    const els = SETTINGS_SECTIONS.map((s) => document.getElementById(s.id)).filter(
-      (el): el is HTMLElement => el !== null,
-    )
-    // Sections absent (this branch, pre-#24): keep the hash fallback, no observer.
-    if (els.length === 0) {
-      window.addEventListener("hashchange", fromHash)
-      return () => window.removeEventListener("hashchange", fromHash)
+    compute()
+
+    // Listen on .ws-main (the scroll container); also cover resize + hash nav.
+    scroller?.addEventListener("scroll", compute, { passive: true })
+    window.addEventListener("resize", compute)
+    window.addEventListener("hashchange", compute)
+
+    return () => {
+      scroller?.removeEventListener("scroll", compute)
+      window.removeEventListener("resize", compute)
+      window.removeEventListener("hashchange", compute)
     }
-
-    const visible = new Set<string>()
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) visible.add(entry.target.id)
-          else visible.delete(entry.target.id)
-        }
-        // Pick the first section (document order) currently in view.
-        const next = SETTINGS_SECTIONS.find((s) => visible.has(s.id))
-        if (next) setActive(next.id)
-      },
-      { rootMargin: "-45% 0px -45% 0px", threshold: 0 },
-    )
-    for (const el of els) observer.observe(el)
-
-    return () => observer.disconnect()
   }, [enabled])
 
   // Gate the returned value so it's empty when the sub-nav isn't shown, without
