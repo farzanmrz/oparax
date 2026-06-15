@@ -1,14 +1,10 @@
 ---
 name: feature
 description: >-
-  Take a non-trivial feature or change from idea to shipped in THIS project.
-  Orchestrates the full lifecycle: brainstorm the design (you approve) → write
-  and approve a plan → build it in parallel on ONE feature branch off dev →
-  /simplify + /code-review → converge for your verification and bug back-and-forth
-  → on "ship it", squash-merge to dev locally and close the issue. Use when the
-  user wants to build, implement, redesign, restructure, or make any multi-step
-  change to the app. Do NOT use for quick questions, one-line fixes, pure
-  analysis, or debugging an existing bug.
+  Use when the user wants to build, implement, redesign, restructure, or make any
+  non-trivial multi-step change to this project's app — anything that needs design
+  + planning + a real build, not a one-off edit. Do NOT use for quick questions,
+  one-line fixes, pure analysis, or debugging an existing bug.
 ---
 
 # Feature — idea to shipped
@@ -21,19 +17,27 @@ per-task branches. No PRs. No CI / GitHub Actions. The user controls integration
 
 ## Running this skill (READ FIRST — this is what keeps cleanup from being skipped)
 
-1. **Before anything else, create a TodoWrite list of all 5 phases below.** This is
-   your durable anchor. You WILL descend into sub-skills (`brainstorming`,
-   `writing-plans`) that each end with their own "you're done / next step is X /
-   open a PR" directive. **Ignore those endings.** They are *steps inside this
-   workflow*, not the end of it. After each one returns, come back to this todo
-   list and continue to the next unchecked phase.
+1. **Before anything else, create a TodoWrite list with these exact 5 items** — your
+   durable anchor (do not collapse or rephrase them):
+   1. `Phase 1 — Design approved by user (✋ gate)`
+   2. `Phase 2 — Plan approved + ONE epic issue created (✋ gate)`
+   3. `Phase 3 — Built on ONE branch ft/<issue#>-<slug>`
+   4. `Phase 4 — Temp worktrees/branches torn down · /simplify + /code-review · build+lint+browser verified · checklist handed to user (✋ gate)`
+   5. `Phase 5 — Squash-merged to dev, pushed, branch deleted, issue closed (✋ gate)`
+   You WILL descend into sub-skills (`superpowers:brainstorming`,
+   `superpowers:writing-plans`) that each end with their own "you're done / next step
+   is X / open a PR" directive. **Ignore those endings.** They are *steps inside this
+   workflow*, not the end of it. After each returns, come back to this list and
+   continue to the next unchecked item.
 2. **YOU are the orchestrator.** Phases 4 (cleanup + QC) and 5 (ship) are MANDATORY
    and owned by THIS skill — they are the steps a naive brainstorm→plan→build run
    skips. Never finish the workflow at a sub-skill's terminal state.
 3. **Do NOT invoke** `superpowers:finishing-a-development-branch`,
-   `requesting-code-review`, or `receiving-code-review` — those push toward PRs and
-   per-branch structure, which this workflow explicitly avoids. Ship is the local
-   squash-merge in Phase 5, owned here.
+   `superpowers:requesting-code-review`, or `superpowers:receiving-code-review` —
+   those push toward PRs and per-branch structure, which this workflow avoids. The
+   `/simplify` and `/code-review` commands in Phase 4 are LOCAL diff reviews and are
+   NOT those skills; they must never open a PR, request external review, or create a
+   review branch. Ship is the local squash-merge in Phase 5, owned here.
 
 Stop at every ✋ gate and wait for the user. The build (Phases 3–4) is autonomous;
 the three gates (design, plan, ship) are user-controlled.
@@ -55,7 +59,8 @@ GATE: do not proceed until the user explicitly approves the design.
 
 Invoke `superpowers:writing-plans` to produce a bite-sized, no-placeholder plan with
 a task **checklist**; save to `docs/superpowers/plans/YYYY-MM-DD-<slug>.md`. Create
-**ONE** GitHub issue (the epic) whose body is the plan + checklist.
+**ONE** GitHub issue (the epic) whose body is the plan + checklist. (Issues are
+fine — only PRs and CI are forbidden.)
 
 When writing-plans offers its execution handoff (subagent-driven vs inline), **do not
 treat that as the end** — its execution belongs to Phase 3 here, on ONE branch. Tick
@@ -87,15 +92,19 @@ GATE: do not proceed until the user approves the plan.
 3. Verify with `superpowers:verification-before-completion`: `pnpm build` +
    `pnpm lint` + a `browser-agent` check of the changed pages (no test runner in
    this repo, per AGENTS.md).
-4. GATE: **STOP.** Hand the user a verification checklist. Iterate on bugs with them
-   **on this one branch** until they say "ship it." Tick Phase 4.
+4. GATE: **STOP. Post the verification checklist to the user and ask, in plain words,
+   "Ready to ship, or are there bugs to fix first?"** Do NOT tick Phase 4 until the
+   user answers, and **NEVER infer "ship it" from a green build** — a passing
+   build/lint is not permission to ship. Iterate on bugs with them **on this one
+   branch**; only the user's explicit "ship it" advances to Phase 5.
 
 ## Phase 5 — Ship ✋ (only when the user says "ship it")
 
 Squash the branch onto dev as one clean commit, push, delete the branch, close issue:
 
 ```bash
-git add -A && git commit -m "wip" || true          # capture any final tweaks
+git add -A
+git diff --cached --quiet || git commit -m "wip"   # commit only if something is staged
 git checkout dev && git pull --ff-only
 git merge --squash ft/<issue#>-<slug>              # fold all work into one staged change
 git commit -m "<feature summary>"                  # ONE clean commit on dev (user's message)
@@ -119,4 +128,6 @@ Tick Phase 5. The workflow is complete only after this phase — not before.
 - Preserve the repo's behavior contracts (server-action field `name`s, the
   auth/connect-x guards + `?next=`, the run → preview → save → post/redraft
   pipeline) — see AGENTS.md.
-- End commit messages with the Co-Authored-By trailer the user uses.
+- End commit messages with the trailer
+  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
+  (or match the most recent trailer in `git log` if it differs).
