@@ -424,6 +424,8 @@
 .workspace .set-stack { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
 /* Offset hash-jump targets so a section heading clears the page header. */
 .workspace .set-sec { scroll-margin-top: 24px; }
+/* Connections (#25): flat flex-wrap row of split connection pills. */
+.workspace .set-pills { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
 
 /* Profile: avatar on the left, the field grid filling the rest. */
 .workspace .set-profile { display: flex; align-items: flex-start; gap: 22px; }
