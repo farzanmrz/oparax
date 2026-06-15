@@ -21,7 +21,7 @@ per-task branches. No PRs. No CI / GitHub Actions. The user controls integration
    durable anchor (do not collapse or rephrase them):
    1. `Phase 1 — Design approved by user (✋ gate)`
    2. `Phase 2 — Plan approved + ONE epic issue created (✋ gate)`
-   3. `Phase 3 — Built on ONE branch ft/<issue#>-<slug>`
+   3. `Phase 3 — Built on ONE branch ft/<issue#>`
    4. `Phase 4 — Temp worktrees/branches torn down · /simplify + /code-review · build+lint+browser verified · checklist handed to user (✋ gate)`
    5. `Phase 5 — Squash-merged to dev, pushed, branch deleted, issue closed (✋ gate)`
    You WILL descend into sub-skills (`superpowers:brainstorming`,
@@ -58,9 +58,14 @@ GATE: do not proceed until the user explicitly approves the design.
 ## Phase 2 — Plan ✋ (approve)
 
 Invoke `superpowers:writing-plans` to produce a bite-sized, no-placeholder plan with
-a task **checklist**; save to `docs/superpowers/plans/YYYY-MM-DD-<slug>.md`. Create
-**ONE** GitHub issue (the epic) whose body is the plan + checklist. (Issues are
-fine — only PRs and CI are forbidden.)
+a task **checklist**; save to `docs/superpowers/plans/YYYY-MM-DD-<slug>.md`. Then
+**create ONE GitHub issue (the epic) and capture its number** — it names the branch
+(`ft/<issue#>`) in Phase 3:
+```bash
+gh issue create --title "<feature name>" \
+  --body-file docs/superpowers/plans/YYYY-MM-DD-<slug>.md
+```
+(Issues are fine — only PRs and CI are forbidden.)
 
 When writing-plans offers its execution handoff (subagent-driven vs inline), **do not
 treat that as the end** — its execution belongs to Phase 3 here, on ONE branch. Tick
@@ -71,23 +76,24 @@ GATE: do not proceed until the user approves the plan.
 ## Phase 3 — Parallel build (one branch)
 
 - Create ONE branch off dev:
-  `git checkout dev && git pull --ff-only && git checkout -b ft/<issue#>-<slug>`
+  `git checkout dev && git pull --ff-only && git checkout -b ft/<issue#>`
 - Split the plan into **independent tracks** (groups of files that don't overlap).
 - If 2+ independent tracks: use `superpowers:dispatching-parallel-agents` to run
   them concurrently, each subagent in an isolated worktree off this branch
   (`superpowers:using-git-worktrees`). One track or low isolation → build inline
   with `superpowers:subagent-driven-development`.
-- Every change **converges back into `ft/<issue#>-<slug>`**. Subagents and worktrees
+- Every change **converges back into `ft/<issue#>`**. Subagents and worktrees
   NEVER push their own branch and NEVER open PRs.
 - Keep `pnpm build` + `pnpm lint` green as tracks land. Tick Phase 3 and continue.
 
 ## Phase 4 — Converge + QC ✋ (MANDATORY — the step naive runs skip)
 
-1. Merge every track's commits into `ft/<issue#>-<slug>`, then **tear down all temp
-   worktrees and temp branches and return to this branch in the main repo dir**:
-   `git worktree remove <path>` for each, `git branch -D <temp>` for each,
-   then `git worktree prune`. Confirm `git worktree list` shows only the main dir
-   and `git branch` shows no leftover temp branches.
+1. Merge every track's commits into `ft/<issue#>`, then **tear down all temp worktrees
+   and return to this branch in the main repo dir** by running, from the repo root:
+   `.claude/skills/feature/scripts/cleanup-tracks.sh`
+   Then delete any leftover temp track branches it lists (`git branch -D <name>`).
+   Confirm `git worktree list` shows only the main dir and `git branch` has no leftover
+   temp branches.
 2. Run `/simplify`, then `/code-review`, over the feature diff. Fix real findings.
 3. Verify with `superpowers:verification-before-completion`: `pnpm build` +
    `pnpm lint` + a `browser-agent` check of the changed pages (no test runner in
@@ -100,20 +106,16 @@ GATE: do not proceed until the user approves the plan.
 
 ## Phase 5 — Ship ✋ (only when the user says "ship it")
 
-Squash the branch onto dev as one clean commit, push, delete the branch, close issue:
+From the repo root, on branch `ft/<issue#>`, run the ship script — it squash-merges
+to dev as one clean commit, pushes, deletes the branch, and closes the issue:
 
 ```bash
-git add -A
-git diff --cached --quiet || git commit -m "wip"   # commit only if something is staged
-git checkout dev && git pull --ff-only
-git merge --squash ft/<issue#>-<slug>              # fold all work into one staged change
-git commit -m "<feature summary>"                  # ONE clean commit on dev (user's message)
-git push origin dev
-git branch -D ft/<issue#>-<slug>                   # delete the local feature branch
-gh issue close <issue#>
+.claude/skills/feature/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
-Tick Phase 5. The workflow is complete only after this phase — not before.
+The script refuses to run if temp worktrees remain (Phase 4 must have cleaned up first)
+or if you're not on `ft/<issue#>`. Tick Phase 5. The workflow is complete only after
+this phase — not before.
 
 ---
 
