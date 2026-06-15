@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUsername } from "@/lib/user"
 import { WorkspaceShell } from "@/components/dashboard/workspace-shell"
+import { UnsavedChangesProvider } from "@/components/dashboard/unsaved-changes"
 
 /**
  * Dashboard shell + auth guard. Renders the graphite WorkspaceShell once around
@@ -29,11 +30,13 @@ export default async function DashboardLayout({
     .maybeSingle<{ x_username: string }>()
 
   return (
-    <WorkspaceShell
-      username={getUsername(user)}
-      xUsername={connection?.x_username ?? null}
-    >
-      {children}
-    </WorkspaceShell>
+    <UnsavedChangesProvider>
+      <WorkspaceShell
+        username={getUsername(user)}
+        xUsername={connection?.x_username ?? null}
+      >
+        {children}
+      </WorkspaceShell>
+    </UnsavedChangesProvider>
   )
 }

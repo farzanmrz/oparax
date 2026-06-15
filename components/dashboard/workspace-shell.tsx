@@ -1,56 +1,114 @@
 "use client"
 
 // Workspace shell — the graphite collapsible sidebar + main slot, ported from
-// the Claude Design prototype (oparax-ds AgentsHome). Rendered once by
-// app/dashboard/layout.tsx so every dashboard page shares it. Connection-aware
-// (the X account row reflects whether X is linked) and route-aware (active nav
-// from usePathname). Surfaces/dimensions live in app/workspace.css (scoped under
-// `.workspace`); the `sc-if expanded` conditionals became React conditional
-// renders driven by collapse state.
+// the Claude Design prototype (oparax-ds AgentsHome / sidebar.html). Rendered
+// once by app/dashboard/layout.tsx so every dashboard page shares it.
+// Connection-aware (Agents gates on whether X is linked) and route-aware (active
+// nav from usePathname). Surfaces/dimensions live in app/workspace.css (scoped
+// under `.workspace`); the DS classes (.nav-main / .snav / .you-line /
+// .foot-signout) come from app/globals.css. The `sc-if expanded` conditionals
+// became React conditional renders driven by collapse state.
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import "@/app/workspace.css"
 import { createClient } from "@/lib/supabase/client"
+import { useUnsavedChanges } from "@/components/dashboard/unsaved-changes"
 import { OparaxMark } from "@/components/logo"
 import {
   AgentIcon,
-  BlueskyTile,
+  BellIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  FacebookTile,
   GearIcon,
-  GlobeTile,
   InsightsIcon,
-  InstagramTile,
-  LinkedInTile,
-  MastodonTile,
   ProfileIcon,
-  RedditTile,
+  ShieldIcon,
   SignOutIcon,
-  ThreadsTile,
-  TikTokTile,
-  WhatsAppTile,
-  XTile,
 } from "@/components/dashboard/shell-icons"
 
-// "Coming soon" destinations under the live X account — order from the prototype.
-const SOON_ACCOUNTS: {
-  Tile: React.ComponentType<React.SVGProps<SVGSVGElement>>
-  text: string
+// Settings sub-nav — one row per settings section. Connections now lives inside
+// Profile, so the sub-nav is three rows (profile/notifications/account); the
+// scroll-spy hook below tracks those ids.
+const SETTINGS_SECTIONS: {
+  id: string
+  label: string
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
 }[] = [
-  { Tile: InstagramTile, text: "Coming soon" },
-  { Tile: LinkedInTile, text: "Coming soon" },
-  { Tile: TikTokTile, text: "Coming soon" },
-  { Tile: FacebookTile, text: "Coming soon" },
-  { Tile: WhatsAppTile, text: "Coming soon" },
-  { Tile: ThreadsTile, text: "Coming soon" },
-  { Tile: RedditTile, text: "Coming soon" },
-  { Tile: BlueskyTile, text: "Coming soon" },
-  { Tile: MastodonTile, text: "Coming soon" },
-  { Tile: GlobeTile, text: "Coming soon" },
+  { id: "profile", label: "Profile", Icon: ProfileIcon },
+  { id: "notifications", label: "Notifications", Icon: BellIcon },
+  { id: "account", label: "Account settings", Icon: ShieldIcon },
 ]
+
+// Scroll-spy: highlight the settings sub-nav item whose section is in view.
+// Uses a "trigger-line" scan (the last section whose top has passed ~35% down
+// the viewport) rather than a center-band IntersectionObserver, so the FIRST
+// section lights at the top and the LAST one lights at the bottom — a short
+// final section can't reach a center band when it sits at the page bottom.
+// The settings page scrolls inside `.ws-main` (not the window), so we listen
+// there. No-ops when no sections exist yet (they arrive in #24), falling back
+// to the URL hash. `enabled` gates it to the settings route.
+function useSettingsScrollSpy(enabled: boolean): string {
+  const [active, setActive] = useState<string>("")
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const ids = SETTINGS_SECTIONS.map((s) => s.id)
+    // The settings page scrolls inside .ws-main, not the window.
+    const scroller = document.querySelector<HTMLElement>(".ws-main")
+
+    const compute = () => {
+      const els = ids
+        .map((id) => document.getElementById(id))
+        .filter((el): el is HTMLElement => el !== null)
+
+      // Sections absent (this branch, pre-#24): fall back to the URL hash.
+      if (els.length === 0) {
+        const hashId = window.location.hash.replace(/^#/, "")
+        if (ids.includes(hashId)) setActive(hashId)
+        return
+      }
+
+      // At the container's bottom, a short final section can't push its top
+      // past any upper trigger line — so activate the last section explicitly.
+      if (
+        scroller &&
+        scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4
+      ) {
+        setActive(els[els.length - 1].id)
+        return
+      }
+
+      // Otherwise: the last section whose heading has scrolled above a line near
+      // the top of the viewport (defaults to the first section while at top).
+      const triggerLine = window.innerHeight * 0.2
+      let current = els[0].id
+      for (const el of els) {
+        if (el.getBoundingClientRect().top <= triggerLine) current = el.id
+      }
+      setActive(current)
+    }
+
+    compute()
+
+    // Listen on .ws-main (the scroll container); also cover resize + hash nav.
+    scroller?.addEventListener("scroll", compute, { passive: true })
+    window.addEventListener("resize", compute)
+    window.addEventListener("hashchange", compute)
+
+    return () => {
+      scroller?.removeEventListener("scroll", compute)
+      window.removeEventListener("resize", compute)
+      window.removeEventListener("hashchange", compute)
+    }
+  }, [enabled])
+
+  // Gate the returned value so it's empty when the sub-nav isn't shown, without
+  // a synchronous setState in the effect (which the lint rule forbids).
+  return enabled ? active : ""
+}
 
 export function WorkspaceShell({
   username,
@@ -63,19 +121,23 @@ export function WorkspaceShell({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const { confirmLeave } = useUnsavedChanges()
   const [collapsed, setCollapsed] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const expanded = !collapsed
 
-  // Agents is the only live nav destination: active on the agents pages and on
-  // the connect-x landing (which is the not-connected agents view). When X isn't
-  // linked the link points at the gate so the user can't slip past it.
+  // Agents is the only live primary destination: active on the agents pages and
+  // on the connect-x landing (which is the not-connected agents view). When X
+  // isn't linked the link points at the gate so the user can't slip past it.
   const agentsActive =
     pathname === "/dashboard/connect-x" || pathname.startsWith("/dashboard/agents")
   const agentsHref = xUsername ? "/dashboard/agents" : "/dashboard/connect-x"
 
+  const settingsActive = pathname.startsWith("/dashboard/settings")
+  const activeSection = useSettingsScrollSpy(settingsActive && expanded)
+
   async function signOut() {
+    if (!confirmLeave()) return
     setSigningOut(true)
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -109,13 +171,18 @@ export function WorkspaceShell({
           <nav className="ws-nav">
             <Link
               href={agentsHref}
-              className={`ws-navitem j-row${agentsActive ? " is-active" : " ws-navitem-idle"}`}
+              className="nav-main j-row"
+              data-active={agentsActive ? "true" : undefined}
               aria-current={agentsActive ? "page" : undefined}
+              onClick={(e) => {
+                if (!confirmLeave()) e.preventDefault()
+              }}
             >
               <AgentIcon width={22} height={22} />
               {expanded && <span>Agents</span>}
             </Link>
-            <span className="ws-navitem is-disabled j-row">
+
+            <span className="nav-main nav-soon j-row" aria-disabled="true">
               <InsightsIcon width={22} height={22} />
               {expanded && (
                 <>
@@ -124,88 +191,61 @@ export function WorkspaceShell({
                 </>
               )}
             </span>
-            <span
-              className="ws-navitem ws-navitem-idle j-row"
-              aria-disabled="true"
-            >
-              <ProfileIcon width={22} height={22} />
-              {expanded && <span>Profile</span>}
-            </span>
-          </nav>
 
-          <div className="ws-section">
-            {expanded && <div className="ws-section-label">Accounts</div>}
-            <div className="ws-acct-list">
-              <div className="acct-row j-row" data-state={xUsername ? "ok" : "err"}>
-                <XTile className="acct-icon" width={22} height={22} />
-                {expanded && (
-                  <span className="acct-text">
-                    {xUsername ? `@${xUsername}` : "Not connected"}
-                  </span>
-                )}
+            <Link
+              href="/dashboard/settings"
+              className="nav-main j-row"
+              data-active={settingsActive ? "true" : undefined}
+              aria-current={settingsActive ? "page" : undefined}
+              onClick={(e) => {
+                if (!confirmLeave()) e.preventDefault()
+              }}
+            >
+              <GearIcon width={22} height={22} />
+              {expanded && <span>Settings</span>}
+            </Link>
+
+            {settingsActive && expanded && (
+              <div className="snav">
+                {SETTINGS_SECTIONS.map(({ id, label, Icon }) => (
+                  <Link
+                    key={id}
+                    href={`/dashboard/settings#${id}`}
+                    className="snav-item"
+                    data-active={activeSection === id ? "true" : undefined}
+                    onClick={(e) => {
+                      if (!confirmLeave()) e.preventDefault()
+                    }}
+                  >
+                    <Icon width={16} height={16} />
+                    {label}
+                  </Link>
+                ))}
               </div>
-              {SOON_ACCOUNTS.map(({ Tile, text }, i) => (
-                <div key={i} className="acct-row j-row" data-state="soon">
-                  <Tile className="acct-icon" width={22} height={22} />
-                  {expanded && <span className="acct-text">{text}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
+            )}
+          </nav>
         </div>
 
         <div className="ws-foot">
-          {menuOpen && (
-            <>
-              <div
-                className="ws-menu-scrim"
-                onClick={() => setMenuOpen(false)}
-              />
-              <div className="ws-menu">
-                <Link
-                  href="/dashboard/settings"
-                  className="ws-menu-item"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <GearIcon width={16} height={16} />
-                  Settings
-                </Link>
-                <button
-                  type="button"
-                  className="ws-menu-item"
-                  disabled={signingOut}
-                  onClick={() => {
-                    setMenuOpen(false)
-                    void signOut()
-                  }}
-                >
-                  <SignOutIcon width={16} height={16} />
-                  {signingOut ? "Signing out..." : "Sign out"}
-                </button>
-                <div className="ws-menu-div" />
-                <a href="#" className="ws-menu-link">Contact us</a>
-                <a href="#" className="ws-menu-link">Terms of service</a>
-                <a href="#" className="ws-menu-link">Privacy policy</a>
-              </div>
-            </>
-          )}
-
-          <div className="ws-user j-row">
+          <Link
+            href="/dashboard/settings#profile"
+            className="you-line"
+            onClick={(e) => {
+              if (!confirmLeave()) e.preventDefault()
+            }}
+          >
             <span className="ws-avatar" />
-            {expanded && (
-              <>
-                <span className="ws-username">{username}</span>
-                <button
-                  type="button"
-                  className="ws-gear"
-                  aria-label="Account menu"
-                  onClick={() => setMenuOpen((o) => !o)}
-                >
-                  <GearIcon width={16} height={16} />
-                </button>
-              </>
-            )}
-          </div>
+            {expanded && <span className="ws-username">{username}</span>}
+          </Link>
+          <button
+            type="button"
+            className="foot-signout"
+            aria-label="Sign out"
+            disabled={signingOut}
+            onClick={() => void signOut()}
+          >
+            <SignOutIcon width={18} height={18} />
+          </button>
         </div>
       </aside>
 

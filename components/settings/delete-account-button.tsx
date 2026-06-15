@@ -35,7 +35,7 @@ export function DeleteAccountButton() {
   return (
     <>
       <button
-        className="btn btn-danger"
+        className="btn btn-danger btn-sm"
         type="button"
         onClick={() => {
           setError(null)
