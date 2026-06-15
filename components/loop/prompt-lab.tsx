@@ -740,8 +740,8 @@ export function PromptLab() {
                 </span>
               </div>
               <p className="ws-results-note">
-                Review the generated news and draft previews below before posting
-                on X.
+                Review each news item and its draft below. Save the agent to post
+                or redraft on X.
               </p>
 
               <div className="ws-stories" aria-label="Agent results">
@@ -760,7 +760,10 @@ export function PromptLab() {
                         <div className="ws-story-srcs">
                           {story.sourceUrls.length > 0 ? (
                             story.sourceUrls.map((url) => (
-                              <span key={url}>↗ {url}</span>
+                              <span key={url}>
+                                <b className="arr">↗</b>
+                                {url}
+                              </span>
                             ))
                           ) : (
                             <span style={{ color: "var(--faint)" }}>
@@ -773,7 +776,8 @@ export function PromptLab() {
                       <div className="xpost">
                         <p className="xpost-body">{story.draft}</p>
                         <div className="xpost-foot">
-                          <XIcon width={15} height={15} />
+                          <XIcon width={15} height={15} fill="#FFFFFF" />
+                          <span className="chars">Draft preview</span>
                           <span className="spacer" />
                           <button
                             type="button"
