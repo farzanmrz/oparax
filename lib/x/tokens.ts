@@ -1,21 +1,21 @@
 // Imports
-import crypto from "node:crypto"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import crypto from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Encryption algorithm and IV size for AES-256-GCM.
-const ALGORITHM = "aes-256-gcm"
-const IV_BYTES = 12
+const ALGORITHM = "aes-256-gcm";
+const IV_BYTES = 12;
 
 /**
  * Derive a 32-byte AES key from X_TOKEN_ENC_KEY (sha256 normalizes any input).
  * @returns the 32-byte key buffer
  */
 function getKey(): Buffer {
-  const raw = process.env.X_TOKEN_ENC_KEY
+  const raw = process.env.X_TOKEN_ENC_KEY;
   if (!raw) {
-    throw new Error("X_TOKEN_ENC_KEY is not set.")
+    throw new Error("X_TOKEN_ENC_KEY is not set.");
   }
-  return crypto.createHash("sha256").update(raw).digest()
+  return crypto.createHash("sha256").update(raw).digest();
 }
 
 /**
@@ -24,19 +24,18 @@ function getKey(): Buffer {
  * @returns base64 "iv:tag:ciphertext"
  */
 export function encrypt(plaintext: string): string {
-
-  const iv = crypto.randomBytes(IV_BYTES)
-  const cipher = crypto.createCipheriv(ALGORITHM, getKey(), iv)
+  const iv = crypto.randomBytes(IV_BYTES);
+  const cipher = crypto.createCipheriv(ALGORITHM, getKey(), iv);
   const encrypted = Buffer.concat([
     cipher.update(plaintext, "utf8"),
     cipher.final(),
-  ])
-  const tag = cipher.getAuthTag()
+  ]);
+  const tag = cipher.getAuthTag();
   return [
     iv.toString("base64"),
     tag.toString("base64"),
     encrypted.toString("base64"),
-  ].join(":")
+  ].join(":");
 }
 
 /**
@@ -45,32 +44,27 @@ export function encrypt(plaintext: string): string {
  * @returns the decrypted plaintext token
  */
 export function decrypt(payload: string): string {
-
-  const [ivB64, tagB64, dataB64] = payload.split(":")
+  const [ivB64, tagB64, dataB64] = payload.split(":");
   if (!ivB64 || !tagB64 || !dataB64) {
-    throw new Error("Malformed encrypted token.")
+    throw new Error("Malformed encrypted token.");
   }
-  const decipher = crypto.createDecipheriv(
-    ALGORITHM,
-    getKey(),
-    Buffer.from(ivB64, "base64"),
-  )
-  decipher.setAuthTag(Buffer.from(tagB64, "base64"))
+  const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), Buffer.from(ivB64, "base64"));
+  decipher.setAuthTag(Buffer.from(tagB64, "base64"));
   return Buffer.concat([
     decipher.update(Buffer.from(dataB64, "base64")),
     decipher.final(),
-  ]).toString("utf8")
+  ]).toString("utf8");
 }
 
 // Fields needed to save an X connection (tokens encrypted before storage).
 export interface SaveConnectionInput {
-  userId: string
-  xUserId: string
-  xUsername: string
-  accessToken: string
-  refreshToken: string
-  scopes: string[]
-  expiresAt: string
+  userId: string;
+  xUserId: string;
+  xUsername: string;
+  accessToken: string;
+  refreshToken: string;
+  scopes: string[];
+  expiresAt: string;
 }
 
 /**
@@ -95,30 +89,34 @@ export async function saveConnection(
       expires_at: input.expiresAt,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "user_id" },
-  )
-  if (error) return error
+    {
+      onConflict: "user_id",
+    },
+  );
+  if (error) return error;
 
   const { error: agentError } = await supabase
     .from("agents")
-    .update({ status: "active" })
+    .update({
+      status: "active",
+    })
     .eq("user_id", input.userId)
-    .eq("status", "inactive")
+    .eq("status", "inactive");
 
-  return agentError
+  return agentError;
 }
 
 // X OAuth2 token endpoint.
-const X_TOKEN_ENDPOINT = "https://api.x.com/2/oauth2/token"
+const X_TOKEN_ENDPOINT = "https://api.x.com/2/oauth2/token";
 
 // Refresh slightly before expiry to avoid edge-case failures.
-const EXPIRY_BUFFER_MS = 60_000
+const EXPIRY_BUFFER_MS = 60_000;
 
 // Encrypted token row fields needed to decide if a refresh is required.
 interface StoredTokens {
-  access_token: string
-  refresh_token: string
-  expires_at: string
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
 }
 
 /**
@@ -127,7 +125,7 @@ interface StoredTokens {
  * @returns true if the token should be refreshed now
  */
 export function isExpired(expiresAt: string): boolean {
-  return new Date(expiresAt).getTime() - EXPIRY_BUFFER_MS <= Date.now()
+  return new Date(expiresAt).getTime() - EXPIRY_BUFFER_MS <= Date.now();
 }
 
 /**
@@ -138,19 +136,18 @@ export function isExpired(expiresAt: string): boolean {
  * @returns the new access + rotated refresh token and the new expiry
  */
 export async function rotateAccessToken(refreshToken: string): Promise<{
-  accessToken: string
-  refreshToken: string
-  expiresAt: string
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
 }> {
-
   // X OAuth credentials for the confidential-client refresh flow.
-  const clientId = process.env.X_CLIENT_ID
-  const clientSecret = process.env.X_CLIENT_SECRET
+  const clientId = process.env.X_CLIENT_ID;
+  const clientSecret = process.env.X_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    throw new Error("X_CLIENT_ID / X_CLIENT_SECRET are not set.")
+    throw new Error("X_CLIENT_ID / X_CLIENT_SECRET are not set.");
   }
 
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const response = await fetch(X_TOKEN_ENDPOINT, {
     method: "POST",
     headers: {
@@ -161,27 +158,27 @@ export async function rotateAccessToken(refreshToken: string): Promise<{
       grant_type: "refresh_token",
       refresh_token: refreshToken,
     }).toString(),
-  })
+  });
   if (!response.ok) {
-    const detail = await response.text().catch(() => "")
-    throw new Error(`X token refresh failed (${response.status}): ${detail}`)
+    const detail = await response.text().catch(() => "");
+    throw new Error(`X token refresh failed (${response.status}): ${detail}`);
   }
 
   const json = (await response.json()) as {
-    access_token?: string
-    refresh_token?: string
-    expires_in?: number
-  }
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
   if (!json.access_token || !json.refresh_token) {
-    throw new Error("X token refresh returned no tokens.")
+    throw new Error("X token refresh returned no tokens.");
   }
 
-  const expiresIn = typeof json.expires_in === "number" ? json.expires_in : 7200
+  const expiresIn = typeof json.expires_in === "number" ? json.expires_in : 7200;
   return {
     accessToken: json.access_token,
     refreshToken: json.refresh_token,
     expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
-  }
+  };
 }
 
 /**
@@ -200,19 +197,19 @@ export async function getFreshAccessToken(
     .from("x_connections")
     .select("access_token, refresh_token, expires_at")
     .eq("user_id", userId)
-    .single()
+    .single();
   if (error || !data) {
-    throw new Error("No X connection for this user.")
+    throw new Error("No X connection for this user.");
   }
-  const stored = data as StoredTokens
+  const stored = data as StoredTokens;
 
   // Reuse the decrypted access token if still fresh (no network call).
   if (!isExpired(stored.expires_at)) {
-    return decrypt(stored.access_token)
+    return decrypt(stored.access_token);
   }
 
   // Expired: refresh, then persist the rotated tokens re-encrypted.
-  const rotated = await rotateAccessToken(decrypt(stored.refresh_token))
+  const rotated = await rotateAccessToken(decrypt(stored.refresh_token));
   const { error: updateError } = await supabase
     .from("x_connections")
     .update({
@@ -221,10 +218,10 @@ export async function getFreshAccessToken(
       expires_at: rotated.expiresAt,
       updated_at: new Date().toISOString(),
     })
-    .eq("user_id", userId)
+    .eq("user_id", userId);
   if (updateError) {
-    throw new Error("Failed to persist refreshed X tokens.")
+    throw new Error("Failed to persist refreshed X tokens.");
   }
 
-  return rotated.accessToken
+  return rotated.accessToken;
 }

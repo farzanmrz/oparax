@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
 // Imports
 import {
   enrichTweet,
-  useTweet,
+  QuotedTweet,
+  TweetBody,
   TweetContainer,
   TweetHeader,
-  TweetInReplyTo,
-  TweetBody,
-  TweetMedia,
   TweetInfo,
+  TweetInReplyTo,
+  TweetMedia,
   TweetNotFound,
   TweetSkeleton,
-  QuotedTweet,
-} from "react-tweet"
-import styles from "./compact-tweet.module.css"
+  useTweet,
+} from "react-tweet";
+import styles from "./compact-tweet.module.css";
 
 /**
  * A trimmed, half-size source embed built from react-tweet's own parts instead
@@ -27,20 +27,20 @@ import styles from "./compact-tweet.module.css"
  * @returns the compact embedded tweet, or a skeleton / not-found fallback
  */
 export function CompactTweet({ id, apiUrl }: { id: string; apiUrl?: string }) {
-  const { data, error, isLoading } = useTweet(id, apiUrl)
+  const { data, error, isLoading } = useTweet(id, apiUrl);
 
   if (isLoading) {
     return (
       <div className={styles.wrapper}>
         <TweetSkeleton />
       </div>
-    )
+    );
   }
   if (error || !data) {
-    return <TweetNotFound error={error} />
+    return <TweetNotFound error={error} />;
   }
 
-  const tweet = enrichTweet(data)
+  const tweet = enrichTweet(data);
   return (
     <div className={styles.wrapper}>
       <TweetContainer>
@@ -52,5 +52,5 @@ export function CompactTweet({ id, apiUrl }: { id: string; apiUrl?: string }) {
         <TweetInfo tweet={tweet} />
       </TweetContainer>
     </div>
-  )
+  );
 }

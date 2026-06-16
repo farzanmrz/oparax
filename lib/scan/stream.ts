@@ -1,45 +1,67 @@
 // Imports
-import type OpenAI from "openai"
+import type OpenAI from "openai";
 
 // One atomic news item from the scan's structured JSON output
 export interface ScanItem {
-  title: string
-  body: string
-  urls: string[]
-  draft: string
+  title: string;
+  body: string;
+  urls: string[];
+  draft: string;
 }
 
 // Server-reported scan metrics from the final response usage
 export interface ScanMetrics {
-  costUsd: number | null
-  elapsedMs: number
-  xSearchCalls: number | null
+  costUsd: number | null;
+  elapsedMs: number;
+  xSearchCalls: number | null;
 }
 
 // A parsed story from the preview terminal event; persisted on form save
 export interface PreviewStory {
-  title: string
-  summary: string
-  sourceUrls: string[]
-  primaryTweetUrl: string
-  dedupeKey: string
-  draft: string
+  title: string;
+  summary: string;
+  sourceUrls: string[];
+  primaryTweetUrl: string;
+  dedupeKey: string;
+  draft: string;
 }
 
 // NDJSON events streamed to the browser: live events + terminal event
 export type ScanStreamEvent =
-  | { type: "reasoning_delta"; text: string }
-  | { type: "tool_call_started"; id: string; name: string }
-  | { type: "tool_call_input_delta"; id: string; text: string }
-  | { type: "tool_call_completed"; id: string; input: string }
   | {
-      type: "persisted"
-      runId: string
-      storyCount: number
-      metrics: ScanMetrics
+      type: "reasoning_delta";
+      text: string;
     }
-  | { type: "preview_complete"; stories: PreviewStory[]; metrics: ScanMetrics }
-  | { type: "error"; message: string }
+  | {
+      type: "tool_call_started";
+      id: string;
+      name: string;
+    }
+  | {
+      type: "tool_call_input_delta";
+      id: string;
+      text: string;
+    }
+  | {
+      type: "tool_call_completed";
+      id: string;
+      input: string;
+    }
+  | {
+      type: "persisted";
+      runId: string;
+      storyCount: number;
+      metrics: ScanMetrics;
+    }
+  | {
+      type: "preview_complete";
+      stories: PreviewStory[];
+      metrics: ScanMetrics;
+    }
+  | {
+      type: "error";
+      message: string;
+    };
 
 /**
  * Encode one scan event as an NDJSON line (one JSON object + newline).
@@ -47,7 +69,7 @@ export type ScanStreamEvent =
  * @returns the newline-terminated JSON string
  */
 export function encodeScanEvent(event: ScanStreamEvent): string {
-  return `${JSON.stringify(event)}\n`
+  return `${JSON.stringify(event)}\n`;
 }
 
 /**
@@ -56,7 +78,7 @@ export function encodeScanEvent(event: ScanStreamEvent): string {
  * @returns true if value is a non-null, non-array object
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -65,18 +87,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * TestScanStreamWriter; the route owns persistence and the terminal event.
  */
 export class ScanStreamWriter {
-  private answerText = ""
-  private finalResponse: OpenAI.Responses.Response | undefined
-  private readonly startedAt: number
-  private readonly toolInputs = new Map<string, string>()
-  private readonly write: (event: ScanStreamEvent) => void
+  private answerText = "";
+  private finalResponse: OpenAI.Responses.Response | undefined;
+  private readonly startedAt: number;
+  private readonly toolInputs = new Map<string, string>();
+  private readonly write: (event: ScanStreamEvent) => void;
 
   /**
    * @param write - callback that writes one event into the response stream
    */
   constructor(write: (event: ScanStreamEvent) => void) {
-    this.startedAt = Date.now()
-    this.write = write
+    this.startedAt = Date.now();
+    this.write = write;
   }
 
   /**
@@ -84,65 +106,70 @@ export class ScanStreamWriter {
    * @param event - one event from the Responses API stream
    */
   handle(event: OpenAI.Responses.ResponseStreamEvent) {
-
     // Route each event type to its handler.
     switch (event.type) {
       case "response.output_item.added":
         if (event.item.type === "custom_tool_call") {
           // Stable id linking later input deltas to this tool call.
-          const toolCallId = event.item.id ?? event.item.call_id
-          this.toolInputs.set(toolCallId, "")
+          const toolCallId = event.item.id ?? event.item.call_id;
+          this.toolInputs.set(toolCallId, "");
           this.write({
             type: "tool_call_started",
             id: toolCallId,
             name: event.item.name,
-          })
+          });
         }
-        break
+        break;
       case "response.reasoning_summary_text.delta":
       case "response.reasoning_text.delta":
-        this.write({ type: "reasoning_delta", text: event.delta })
-        break
+        this.write({
+          type: "reasoning_delta",
+          text: event.delta,
+        });
+        break;
       case "response.custom_tool_call_input.delta":
-        this.appendToolInput(event.item_id, event.delta)
+        this.appendToolInput(event.item_id, event.delta);
         this.write({
           type: "tool_call_input_delta",
           id: event.item_id,
           text: event.delta,
-        })
-        break
+        });
+        break;
       case "response.custom_tool_call_input.done":
-        this.toolInputs.set(event.item_id, event.input)
+        this.toolInputs.set(event.item_id, event.input);
         this.write({
           type: "tool_call_completed",
           id: event.item_id,
           input: event.input,
-        })
-        break
+        });
+        break;
       case "response.output_text.delta":
-        this.answerText += event.delta
-        break
+        this.answerText += event.delta;
+        break;
       case "response.completed":
-        this.finalResponse = event.response
+        this.finalResponse = event.response;
         if (!this.answerText && event.response.output_text) {
-          this.answerText = event.response.output_text
+          this.answerText = event.response.output_text;
         }
-        break
+        break;
       case "error":
-        this.write({ type: "error", message: event.message })
-        break
+        this.write({
+          type: "error",
+          message: event.message,
+        });
+        break;
       case "response.failed":
         this.write({
           type: "error",
           message: event.response.error?.message ?? "Scan response failed.",
-        })
-        break
+        });
+        break;
       case "response.incomplete":
         this.write({
           type: "error",
           message: "Scan response ended before completion.",
-        })
-        break
+        });
+        break;
     }
   }
 
@@ -151,7 +178,7 @@ export class ScanStreamWriter {
    * @returns the raw answer text to be parsed into items
    */
   getAnswerText(): string {
-    return this.answerText
+    return this.answerText;
   }
 
   /**
@@ -159,25 +186,17 @@ export class ScanStreamWriter {
    * @returns cost (ticks/1e10), elapsed ms, and x_search call count
    */
   getMetrics(): ScanMetrics {
-    const usage = isRecord(this.finalResponse?.usage)
-      ? this.finalResponse.usage
-      : null
+    const usage = isRecord(this.finalResponse?.usage) ? this.finalResponse.usage : null;
     const toolUsage = isRecord(usage?.server_side_tool_usage_details)
       ? usage.server_side_tool_usage_details
-      : null
-    const costTicks = usage?.cost_in_usd_ticks
+      : null;
+    const costTicks = usage?.cost_in_usd_ticks;
 
     return {
       elapsedMs: Date.now() - this.startedAt,
-      xSearchCalls:
-        typeof toolUsage?.x_search_calls === "number"
-          ? toolUsage.x_search_calls
-          : null,
-      costUsd:
-        typeof costTicks === "number"
-          ? Number((costTicks / 1e10).toFixed(6))
-          : null,
-    }
+      xSearchCalls: typeof toolUsage?.x_search_calls === "number" ? toolUsage.x_search_calls : null,
+      costUsd: typeof costTicks === "number" ? Number((costTicks / 1e10).toFixed(6)) : null,
+    };
   }
 
   /**
@@ -186,7 +205,7 @@ export class ScanStreamWriter {
    * @param delta - the latest tool input delta
    */
   private appendToolInput(id: string, delta: string) {
-    const previous = this.toolInputs.get(id) ?? ""
-    this.toolInputs.set(id, previous + delta)
+    const previous = this.toolInputs.get(id) ?? "";
+    this.toolInputs.set(id, previous + delta);
   }
 }

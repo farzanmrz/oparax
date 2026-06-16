@@ -1,40 +1,73 @@
-"use client"
+"use client";
 
+import { useRouter } from "next/navigation";
 // Imports
-import { useActionState, useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useActionState, useEffect, useRef, useState } from "react";
+import { type UpdateUsernameState, updateUsername } from "@/app/dashboard/settings/actions";
 import {
-  updateUsername,
-  type UpdateUsernameState,
-} from "@/app/dashboard/settings/actions"
-import { useUnsavedChanges } from "@/components/dashboard/unsaved-changes"
-import { XConnectionPill } from "@/components/settings/x-connection-pill"
-import {
-  InstagramTile,
-  LinkedInTile,
-  RedditTile,
   BlueskyTile,
   FacebookTile,
-  WhatsAppTile,
+  InstagramTile,
+  LinkedInTile,
+  MastodonTile,
+  RedditTile,
   ThreadsTile,
   TikTokTile,
-  MastodonTile,
-} from "@/components/dashboard/shell-icons"
+  WhatsAppTile,
+} from "@/components/dashboard/shell-icons";
+import { useUnsavedChanges } from "@/components/dashboard/unsaved-changes";
+import { XConnectionPill } from "@/components/settings/x-connection-pill";
 
 // The greyed "Soon" pills — one per not-yet-supported platform. The logo
 // carries identity (no platform name), matching the export. Non-interactive:
 // `.pill[data-soon="true"]` dims them + sets cursor:default.
 const SOON_PLATFORMS = [
-  { key: "instagram", label: "Instagram", Tile: InstagramTile },
-  { key: "linkedin", label: "LinkedIn", Tile: LinkedInTile },
-  { key: "reddit", label: "Reddit", Tile: RedditTile },
-  { key: "bluesky", label: "Bluesky", Tile: BlueskyTile },
-  { key: "facebook", label: "Facebook", Tile: FacebookTile },
-  { key: "whatsapp", label: "WhatsApp", Tile: WhatsAppTile },
-  { key: "threads", label: "Threads", Tile: ThreadsTile },
-  { key: "tiktok", label: "TikTok", Tile: TikTokTile },
-  { key: "mastodon", label: "Mastodon", Tile: MastodonTile },
-] as const
+  {
+    key: "instagram",
+    label: "Instagram",
+    Tile: InstagramTile,
+  },
+  {
+    key: "linkedin",
+    label: "LinkedIn",
+    Tile: LinkedInTile,
+  },
+  {
+    key: "reddit",
+    label: "Reddit",
+    Tile: RedditTile,
+  },
+  {
+    key: "bluesky",
+    label: "Bluesky",
+    Tile: BlueskyTile,
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    Tile: FacebookTile,
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    Tile: WhatsAppTile,
+  },
+  {
+    key: "threads",
+    label: "Threads",
+    Tile: ThreadsTile,
+  },
+  {
+    key: "tiktok",
+    label: "TikTok",
+    Tile: TikTokTile,
+  },
+  {
+    key: "mastodon",
+    label: "Mastodon",
+    Tile: MastodonTile,
+  },
+] as const;
 
 /**
  * Profile settings section (id="profile"): identity + connected accounts in one
@@ -62,70 +95,82 @@ export function ProfileSection({
   xError,
   agentCount,
 }: {
-  initialUsername: string
-  email: string
-  xUsername?: string
-  xError?: string
-  agentCount: number
+  initialUsername: string;
+  email: string;
+  xUsername?: string;
+  xError?: string;
+  agentCount: number;
 }) {
   // Router to refresh server components (sidebar username) after a save.
-  const router = useRouter()
+  const router = useRouter();
 
   // Unsaved-changes guard: arm it whenever the form is dirty.
-  const { setDirty } = useUnsavedChanges()
+  const { setDirty } = useUnsavedChanges();
 
   // Wire the username Server Action into a form action. isPending is the
   // third tuple member.
-  const [state, dispatch, isPending] = useActionState<
-    UpdateUsernameState,
-    FormData
-  >(updateUsername, {})
+  const [state, dispatch, isPending] = useActionState<UpdateUsernameState, FormData>(
+    updateUsername,
+    {},
+  );
 
   // Editable field state. Email stays display-only (uncontrolled). Phone joins
   // dirty-tracking (UI-only — it has no `name`, so it never reaches the action).
-  const [name, setName] = useState(initialUsername)
-  const [phone, setPhone] = useState("")
+  const [name, setName] = useState(initialUsername);
+  const [phone, setPhone] = useState("");
 
   // Saved baselines — the last values we believe are persisted. Dirty = the
   // current values differ from these. Both are state, so render stays ref-free.
-  const [savedName, setSavedName] = useState(initialUsername)
-  const [savedPhone, setSavedPhone] = useState("")
+  const [savedName, setSavedName] = useState(initialUsername);
+  const [savedPhone, setSavedPhone] = useState("");
 
   // Stash of the previous baseline so a failed save can revert (re-enabling
   // Save for a retry). Only touched in handlers/effects — never read in render.
-  const prevBaselineRef = useRef<{ name: string; phone: string } | null>(null)
+  const prevBaselineRef = useRef<{
+    name: string;
+    phone: string;
+  } | null>(null);
 
-  const dirty =
-    name.trim() !== savedName.trim() || phone.trim() !== savedPhone.trim()
+  const dirty = name.trim() !== savedName.trim() || phone.trim() !== savedPhone.trim();
 
   // Click "Change photo" → open the decorative (no-op) file input.
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // On submit, optimistically advance the baseline so Save clears immediately;
   // stash the old baseline so a failure can revert it.
   function onSaveClick() {
-    prevBaselineRef.current = { name: savedName, phone: savedPhone }
-    setSavedName(name)
-    setSavedPhone(phone)
+    prevBaselineRef.current = {
+      name: savedName,
+      phone: savedPhone,
+    };
+    setSavedName(name);
+    setSavedPhone(phone);
   }
 
   // On success refresh (sidebar/header re-read the name); on error revert the
   // baseline so the form is dirty again and Save re-enables for a retry.
   useEffect(() => {
     if (state.success) {
-      router.refresh()
+      router.refresh();
     } else if (state.error && prevBaselineRef.current) {
-      setSavedName(prevBaselineRef.current.name)
-      setSavedPhone(prevBaselineRef.current.phone)
-      prevBaselineRef.current = null
+      setSavedName(prevBaselineRef.current.name);
+      setSavedPhone(prevBaselineRef.current.phone);
+      prevBaselineRef.current = null;
     }
-  }, [state.success, state.error, router])
+  }, [
+    state.success,
+    state.error,
+    router,
+  ]);
 
   // Arm/disarm the navigation guard as dirtiness changes; disarm on unmount.
   useEffect(() => {
-    setDirty(dirty)
-    return () => setDirty(false)
-  }, [dirty, setDirty])
+    setDirty(dirty);
+    return () => setDirty(false);
+  }, [
+    dirty,
+    setDirty,
+  ]);
 
   return (
     <section id="profile" className="card-sec set-sec">
@@ -148,7 +193,7 @@ export function ProfileSection({
               aria-label="Upload avatar"
               onChange={(e) => {
                 // No-op: clear the selection so the control stays decorative.
-                e.currentTarget.value = ""
+                e.currentTarget.value = "";
               }}
             />
           </label>
@@ -212,7 +257,10 @@ export function ProfileSection({
             {xError && (
               <p
                 className="ferr show"
-                style={{ flexBasis: "100%", marginTop: 0 }}
+                style={{
+                  flexBasis: "100%",
+                  marginTop: 0,
+                }}
               >
                 {xError}
               </p>
@@ -229,7 +277,12 @@ export function ProfileSection({
                 <span className="pill-logo">
                   <Tile />
                 </span>
-                <span className="pill-body" style={{ color: "var(--faint)" }}>
+                <span
+                  className="pill-body"
+                  style={{
+                    color: "var(--faint)",
+                  }}
+                >
                   Soon
                 </span>
               </span>
@@ -254,7 +307,7 @@ export function ProfileSection({
         </form>
       </div>
     </section>
-  )
+  );
 }
 
 // Small camera glyph for the avatar hover overlay.
@@ -273,5 +326,5 @@ function CameraIcon(props: React.SVGProps<SVGSVGElement>) {
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
       <circle cx="12" cy="13" r="4" />
     </svg>
-  )
+  );
 }

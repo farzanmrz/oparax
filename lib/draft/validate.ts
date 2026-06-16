@@ -1,11 +1,11 @@
 // Imports
-import { TWEET_WEIGHTED_LIMIT, weightedLength } from "@/lib/draft/count"
+import { TWEET_WEIGHTED_LIMIT, weightedLength } from "@/lib/draft/count";
 
 // Raw URL (incl. bare x.com) — drafts must strip these (cost + correctness).
-export const RAW_URL_RE = /(https?:\/\/\S+|(?:^|\s)x\.com\/\S+)/i
+export const RAW_URL_RE = /(https?:\/\/\S+|(?:^|\s)x\.com\/\S+)/i;
 
 // Markdown bold / heading markers — drafts must be plain tweet text.
-export const MARKDOWN_RE = /\*\*|(^|\n)\s*#{1,6}\s+/m
+export const MARKDOWN_RE = /\*\*|(^|\n)\s*#{1,6}\s+/m;
 
 /**
  * Return a human-readable problem with a draft, or null when it is postable.
@@ -15,16 +15,16 @@ export const MARKDOWN_RE = /\*\*|(^|\n)\s*#{1,6}\s+/m
  */
 export function getDraftIssue(text: string): string | null {
   if (!text.trim()) {
-    return "Draft is empty."
+    return "Draft is empty.";
   }
   if (weightedLength(text) > TWEET_WEIGHTED_LIMIT) {
-    return `Draft exceeds ${TWEET_WEIGHTED_LIMIT} weighted characters.`
+    return `Draft exceeds ${TWEET_WEIGHTED_LIMIT} weighted characters.`;
   }
   if (RAW_URL_RE.test(text)) {
-    return "Draft includes raw URLs."
+    return "Draft includes raw URLs.";
   }
   if (MARKDOWN_RE.test(text)) {
-    return "Draft includes markdown or heading formatting."
+    return "Draft includes markdown or heading formatting.";
   }
-  return null
+  return null;
 }

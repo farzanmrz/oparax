@@ -19,7 +19,7 @@ const ROWS = [
     sub: "Occasional news about new Oparax features.",
     on: false,
   },
-] as const
+] as const;
 
 /**
  * Notifications settings section (id="notifications"): a few toggle rows. UI-only
@@ -56,5 +56,5 @@ export function NotificationsSection() {
         ))}
       </div>
     </section>
-  )
+  );
 }

@@ -16,7 +16,7 @@
  * @returns true only for a safe same-origin relative path
  */
 export function isSafeNextPath(next: string | null | undefined): next is string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return false
-  if (/[\\\x00-\x1f]/.test(next)) return false
-  return true
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return false;
+  if (/[\\\x00-\x1f]/.test(next)) return false;
+  return true;
 }

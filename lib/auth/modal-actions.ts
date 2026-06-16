@@ -10,8 +10,8 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { mapAuthError } from "@/lib/auth-errors";
+import { createClient } from "@/lib/supabase/server";
 import { deriveUsernameFromEmail } from "@/lib/user";
 import {
   isValidationError,
@@ -46,27 +46,25 @@ async function getSiteOrigin(): Promise<string> {
     return trimTrailingSlash(origin);
   }
 
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
   if (host) {
     const protocol =
-      requestHeaders.get("x-forwarded-proto") ??
-      (host.includes("localhost") ? "http" : "https");
+      requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
     return `${protocol}://${host}`;
   }
 
-  return trimTrailingSlash(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
-  );
+  return trimTrailingSlash(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
 }
 
 export async function loginAction(
   _prevState: AuthFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthFormState> {
   const validated = validateAuthForm(formData);
   if (isValidationError(validated)) {
-    return { error: validated.message };
+    return {
+      error: validated.message,
+    };
   }
 
   const supabase = await createClient();
@@ -76,7 +74,9 @@ export async function loginAction(
   });
 
   if (error) {
-    return { error: mapAuthError(error.message) };
+    return {
+      error: mapAuthError(error.message),
+    };
   }
 
   redirect("/dashboard");
@@ -84,11 +84,13 @@ export async function loginAction(
 
 export async function signupAction(
   _prevState: AuthFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthFormState> {
   const validated = validateSignupForm(formData);
   if (isValidationError(validated)) {
-    return { error: validated.message };
+    return {
+      error: validated.message,
+    };
   }
 
   const supabase = await createClient();
@@ -97,17 +99,22 @@ export async function signupAction(
     password: validated.password,
     // Seed a username from the email's local part. Stored in user_metadata;
     // shown in the sidebar and editable later in settings (lib/user.ts).
-    options: { data: { username: deriveUsernameFromEmail(validated.email) } },
+    options: {
+      data: {
+        username: deriveUsernameFromEmail(validated.email),
+      },
+    },
   });
 
   if (error) {
-    return { error: mapAuthError(error.message) };
+    return {
+      error: mapAuthError(error.message),
+    };
   }
 
   if (data.user?.identities?.length === 0) {
     return {
-      error:
-        "An account with this email already exists. Please log in instead.",
+      error: "An account with this email already exists. Please log in instead.",
     };
   }
 
@@ -117,35 +124,38 @@ export async function signupAction(
 
   // No session yet — email confirmation pending. The modal swaps the form
   // for a "check your email" notice instead of navigating away.
-  return { signupComplete: true, email: validated.email };
+  return {
+    signupComplete: true,
+    email: validated.email,
+  };
 }
 
 export async function resetPasswordAction(
   _prevState: AuthFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthFormState> {
   const validated = validateEmailForm(formData);
   if (isValidationError(validated)) {
-    return { error: validated.message };
+    return {
+      error: validated.message,
+    };
   }
 
   const supabase = await createClient();
-  const redirectTo = new URL(
-    "/auth/reset-password",
-    await getSiteOrigin()
-  ).toString();
+  const redirectTo = new URL("/auth/reset-password", await getSiteOrigin()).toString();
 
   const { error } = await supabase.auth.resetPasswordForEmail(validated.email, {
     redirectTo,
   });
 
   if (error) {
-    return { error: mapAuthError(error.message) };
+    return {
+      error: mapAuthError(error.message),
+    };
   }
 
   return {
-    message:
-      "If an account exists for this email, we sent a password reset link.",
+    message: "If an account exists for this email, we sent a password reset link.",
   };
 }
 
@@ -154,17 +164,18 @@ const INVALID_RESET_LINK_MESSAGE =
 
 export async function updatePasswordAction(
   _prevState: AuthFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<AuthFormState> {
   const validated = validateResetPasswordForm(formData);
   if (isValidationError(validated)) {
-    return { error: validated.message };
+    return {
+      error: validated.message,
+    };
   }
 
   const tokenHash = formData.get("token_hash");
   const tokenType = formData.get("type");
-  const hasRecoveryToken =
-    typeof tokenHash === "string" && tokenHash.length > 0;
+  const hasRecoveryToken = typeof tokenHash === "string" && tokenHash.length > 0;
   const isRecoveryType = tokenType === "recovery";
 
   const supabase = await createClient();
@@ -184,7 +195,9 @@ export async function updatePasswordAction(
   }
 
   if (!user) {
-    return { error: INVALID_RESET_LINK_MESSAGE };
+    return {
+      error: INVALID_RESET_LINK_MESSAGE,
+    };
   }
 
   const { error } = await supabase.auth.updateUser({
@@ -198,22 +211,22 @@ export async function updatePasswordAction(
   const samePassword =
     error !== null &&
     (error.code === "same_password" ||
-      error.message ===
-        "New password should be different from the old password.");
+      error.message === "New password should be different from the old password.");
 
   if (error && !samePassword) {
     // The recovery session stays alive so the user can correct and resubmit
     // (the token is already consumed); the modal signs out on abandon.
-    return { error: mapAuthError(error.message), recovered: true };
+    return {
+      error: mapAuthError(error.message),
+      recovered: true,
+    };
   }
 
   // Done — drop the recovery session and seed the login modal with the
   // success notice, mirroring the email-verification flow.
   await supabase.auth.signOut();
   redirect(
-    `/?auth=login&message=${encodeURIComponent(
-      "Password updated successfully. Please log in."
-    )}`
+    `/?auth=login&message=${encodeURIComponent("Password updated successfully. Please log in.")}`,
   );
 }
 

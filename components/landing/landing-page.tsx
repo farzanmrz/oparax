@@ -1,16 +1,13 @@
-"use client"
+"use client";
 
 // Landing page — React port of the locked design reference
 // (Oparax Landing v10). Components & tokens come from app/globals.css;
 // page layout lives in app/landing.css. The header login form and the
 // auth modals are wired to the real Supabase Server Actions.
-import Link from "next/link"
-import { useActionState, useEffect, useState } from "react"
+import Link from "next/link";
+import { useActionState, useEffect, useState } from "react";
 
-import "@/app/landing.css"
-import { loginAction } from "@/lib/auth/modal-actions"
-import { AuthModal, type AuthView } from "@/components/landing/auth-modal"
-import { OparaxMark } from "@/components/logo"
+import "@/app/landing.css";
 import {
   BlueskyIcon,
   FacebookIcon,
@@ -20,29 +17,32 @@ import {
   RedditIcon,
   ThreadsIcon,
   XIcon,
-} from "@/components/icons"
+} from "@/components/icons";
+import { AuthModal, type AuthView } from "@/components/landing/auth-modal";
+import { OparaxMark } from "@/components/logo";
+import { loginAction } from "@/lib/auth/modal-actions";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Inline header login (≥1280px). Mirrors the reference behavior: email
 // format checked on blur, submit disabled until both fields are filled,
 // in-button spinner while pending, server error shown under the password.
 function HeaderLogin({ onForgot }: { onForgot: () => void }) {
-  const [state, dispatch, pending] = useActionState(loginAction, {})
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [emailError, setEmailError] = useState(false)
-  const [lastState, setLastState] = useState(state)
-  const [serverErrorHidden, setServerErrorHidden] = useState(false)
+  const [state, dispatch, pending] = useActionState(loginAction, {});
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState(false);
+  const [lastState, setLastState] = useState(state);
+  const [serverErrorHidden, setServerErrorHidden] = useState(false);
 
   // A fresh submission result re-shows the server error until the user edits
   // (state adjusted during render, not in an effect, per React guidance).
   if (state !== lastState) {
-    setLastState(state)
-    setServerErrorHidden(false)
+    setLastState(state);
+    setServerErrorHidden(false);
   }
 
-  const showServerError = Boolean(state.error) && !serverErrorHidden
+  const showServerError = Boolean(state.error) && !serverErrorHidden;
 
   return (
     <form
@@ -51,8 +51,8 @@ function HeaderLogin({ onForgot }: { onForgot: () => void }) {
       action={dispatch}
       onSubmit={(event) => {
         if (!EMAIL_RE.test(email.trim())) {
-          event.preventDefault()
-          setEmailError(true)
+          event.preventDefault();
+          setEmailError(true);
         }
       }}
     >
@@ -66,17 +66,15 @@ function HeaderLogin({ onForgot }: { onForgot: () => void }) {
           aria-label="Email"
           value={email}
           onChange={(event) => {
-            setEmail(event.target.value)
-            setEmailError(false)
-            setServerErrorHidden(true)
+            setEmail(event.target.value);
+            setEmailError(false);
+            setServerErrorHidden(true);
           }}
           onBlur={() => {
-            if (email && !EMAIL_RE.test(email.trim())) setEmailError(true)
+            if (email && !EMAIL_RE.test(email.trim())) setEmailError(true);
           }}
         />
-        <div className={`ferr${emailError ? " show" : ""}`}>
-          Email format incorrect
-        </div>
+        <div className={`ferr${emailError ? " show" : ""}`}>Email format incorrect</div>
       </span>
       <span className="pw-wrap">
         <input
@@ -88,16 +86,14 @@ function HeaderLogin({ onForgot }: { onForgot: () => void }) {
           aria-label="Password"
           value={password}
           onChange={(event) => {
-            setPassword(event.target.value)
-            setServerErrorHidden(true)
+            setPassword(event.target.value);
+            setServerErrorHidden(true);
           }}
         />
         <button className="forgot-link" type="button" onClick={onForgot}>
           Forgot?
         </button>
-        <div className={`ferr${showServerError ? " show" : ""}`}>
-          {state.error}
-        </div>
+        <div className={`ferr${showServerError ? " show" : ""}`}>{state.error}</div>
       </span>
       <button
         className={`btn btn-primary${pending ? " loading" : ""}`}
@@ -108,7 +104,7 @@ function HeaderLogin({ onForgot }: { onForgot: () => void }) {
         Log in
       </button>
     </form>
-  )
+  );
 }
 
 // The static agent-card demo from the reference hero.
@@ -145,9 +141,7 @@ function AgentCardDemo() {
           </div>
           <div className="ffield-wrap">
             <span className="flabel">Drafting instructions</span>
-            <div className="ffield">
-              First person, punchy, no hashtags — sound like me.
-            </div>
+            <div className="ffield">First person, punchy, no hashtags — sound like me.</div>
           </div>
         </div>
 
@@ -161,8 +155,7 @@ function AgentCardDemo() {
         <div className="news-list">
           <div className="news-item">
             <p>
-              Midfielder agrees personal terms on record £90m move — medical
-              booked for Thursday.
+              Midfielder agrees personal terms on record £90m move — medical booked for Thursday.
             </p>
             <div className="srcs">
               <span>
@@ -176,8 +169,7 @@ function AgentCardDemo() {
           </div>
           <div className="news-item">
             <p>
-              Loan deal for England winger collapses after medical flags —
-              clubs back at the table.
+              Loan deal for England winger collapses after medical flags — clubs back at the table.
             </p>
             <div className="srcs">
               <span>
@@ -188,8 +180,8 @@ function AgentCardDemo() {
           </div>
           <div className="news-item">
             <p>
-              Veteran keeper signs one-year extension, announcement expected
-              before Friday&apos;s match.
+              Veteran keeper signs one-year extension, announcement expected before Friday&apos;s
+              match.
             </p>
             <div className="srcs">
               <span>
@@ -212,9 +204,8 @@ function AgentCardDemo() {
 
         <div className="xpost">
           <p className="xpost-body">
-            Here we go — personal terms agreed on the £90m deal. Medical locked
-            in for Thursday, full agreement between clubs reached tonight. More
-            to follow.
+            Here we go — personal terms agreed on the £90m deal. Medical locked in for Thursday,
+            full agreement between clubs reached tonight. More to follow.
             <span className="caret" />
           </p>
           <div className="xpost-foot">
@@ -235,7 +226,13 @@ function AgentCardDemo() {
 
       <div className="card-soon">
         <span className="soon-label">Coming soon:</span>
-        <GlobeIcon width={15} height={15} style={{ color: "#8FBDE8" }} />
+        <GlobeIcon
+          width={15}
+          height={15}
+          style={{
+            color: "#8FBDE8",
+          }}
+        />
         <RedditIcon width={15} height={15} fill="#FF4500" />
         <BlueskyIcon width={15} height={15} fill="#1185FE" />
         <ThreadsIcon width={15} height={15} fill="#F2F5F8" />
@@ -244,7 +241,7 @@ function AgentCardDemo() {
         <LinkedInIcon width={15} height={15} />
       </div>
     </div>
-  )
+  );
 }
 
 export function LandingPage({
@@ -254,24 +251,26 @@ export function LandingPage({
   tokenHash,
   tokenType,
 }: {
-  initialView?: AuthView | null
-  initialError?: string
-  initialMessage?: string
-  tokenHash?: string
-  tokenType?: "recovery"
+  initialView?: AuthView | null;
+  initialError?: string;
+  initialMessage?: string;
+  tokenHash?: string;
+  tokenType?: "recovery";
 } = {}) {
-  const [authView, setAuthView] = useState<AuthView | null>(initialView)
+  const [authView, setAuthView] = useState<AuthView | null>(initialView);
 
   // When the modal was auto-opened via ?auth=... (from the /login etc.
   // redirects), strip those params from the URL so a refresh or close leaves
   // a clean address and the seeded message isn't shown again.
   useEffect(() => {
     if (initialView && typeof window !== "undefined") {
-      window.history.replaceState(null, "", window.location.pathname)
+      window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [initialView])
+  }, [
+    initialView,
+  ]);
 
-  const openAuth = (view: AuthView) => () => setAuthView(view)
+  const openAuth = (view: AuthView) => () => setAuthView(view);
 
   return (
     <div className="landing">
@@ -290,11 +289,7 @@ export function LandingPage({
             >
               Log in
             </button>
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={openAuth("signup")}
-            >
+            <button className="btn btn-secondary" type="button" onClick={openAuth("signup")}>
               Sign up
             </button>
           </div>
@@ -312,10 +307,9 @@ export function LandingPage({
               Be first to <span className="hl">every story.</span>
             </h1>
             <p className="sub">
-              Oparax watches the accounts and sources you can&apos;t keep up
-              with, surfaces breaking stories <b>the moment they land</b>, and
-              drafts posts in your voice — so you&apos;re first, not buried in
-              forty open tabs.
+              Oparax watches the accounts and sources you can&apos;t keep up with, surfaces breaking
+              stories <b>the moment they land</b>, and drafts posts in your voice — so you&apos;re
+              first, not buried in forty open tabs.
             </p>
           </div>
 
@@ -347,5 +341,5 @@ export function LandingPage({
         onChangeView={setAuthView}
       />
     </div>
-  )
+  );
 }

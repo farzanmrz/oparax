@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
 // Imports
-import { useState } from "react"
-import { startXConnect } from "@/lib/x/link-identity"
+import { useState } from "react";
+import { startXConnect } from "@/lib/x/link-identity";
 
 /**
  * Connect-X control for the Settings page: starts the shared X link flow
@@ -12,23 +12,19 @@ import { startXConnect } from "@/lib/x/link-identity"
  * @param props.nextPath - in-app path to return to after X connects
  * @returns the Connect X button + any error
  */
-export function ConnectX({
-  nextPath = "/dashboard/settings",
-}: {
-  nextPath?: string
-}) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export function ConnectX({ nextPath = "/dashboard/settings" }: { nextPath?: string }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function connect() {
-    setPending(true)
-    setError(null)
+    setPending(true);
+    setError(null);
     try {
-      await startXConnect(nextPath)
+      await startXConnect(nextPath);
       // On success the browser redirects to X for consent.
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start X connection.")
-      setPending(false)
+      setError(err instanceof Error ? err.message : "Could not start X connection.");
+      setPending(false);
     }
   }
 
@@ -44,10 +40,15 @@ export function ConnectX({
         Connect X
       </button>
       {error && (
-        <p className="ferr show" style={{ margin: 0 }}>
+        <p
+          className="ferr show"
+          style={{
+            margin: 0,
+          }}
+        >
           {error}
         </p>
       )}
     </div>
-  )
+  );
 }

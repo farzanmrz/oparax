@@ -1,12 +1,12 @@
 // Imports
-import OpenAI from "openai"
-import { getDraftIssue } from "@/lib/draft/validate"
+import OpenAI from "openai";
 import {
   DRAFT_JSON_SCHEMA,
   DRAFT_MODEL,
   DRAFT_REPAIR_SYSTEM_PROMPT,
   DRAFT_SYSTEM_PROMPT,
-} from "@/lib/draft/prompt"
+} from "@/lib/draft/prompt";
+import { getDraftIssue } from "@/lib/draft/validate";
 
 /**
  * Build a Grok client for draft generation (openai SDK @ api.x.ai).
@@ -17,7 +17,7 @@ export function createDraftClient(): OpenAI {
     apiKey: process.env.XAI_API_KEY,
     baseURL: "https://api.x.ai/v1",
     timeout: 60_000,
-  })
+  });
 }
 
 /**
@@ -27,25 +27,36 @@ export function createDraftClient(): OpenAI {
  */
 function extractResponseText(response: OpenAI.Responses.Response): string {
   if (typeof response.output_text === "string" && response.output_text.trim()) {
-    return response.output_text
+    return response.output_text;
   }
 
   // Fallback: walk output[].content[] for the first output_text part
-  const output = (response as { output?: unknown }).output
+  const output = (
+    response as {
+      output?: unknown;
+    }
+  ).output;
   if (Array.isArray(output)) {
     for (const item of output) {
-      const content = (item as { content?: unknown }).content
+      const content = (
+        item as {
+          content?: unknown;
+        }
+      ).content;
       if (Array.isArray(content)) {
         for (const part of content) {
-          const record = part as { type?: unknown; text?: unknown }
+          const record = part as {
+            type?: unknown;
+            text?: unknown;
+          };
           if (record.type === "output_text" && typeof record.text === "string") {
-            return record.text
+            return record.text;
           }
         }
       }
     }
   }
-  return ""
+  return "";
 }
 
 /**
@@ -55,18 +66,26 @@ function extractResponseText(response: OpenAI.Responses.Response): string {
  */
 function parseDraftText(raw: string): string | null {
   try {
-    const parsed = JSON.parse(raw) as unknown
+    const parsed = JSON.parse(raw) as unknown;
     if (
       typeof parsed === "object" &&
       parsed !== null &&
-      typeof (parsed as { text?: unknown }).text === "string"
+      typeof (
+        parsed as {
+          text?: unknown;
+        }
+      ).text === "string"
     ) {
-      return (parsed as { text: string }).text
+      return (
+        parsed as {
+          text: string;
+        }
+      ).text;
     }
   } catch {
-    return null
+    return null;
   }
-  return null
+  return null;
 }
 
 /**
@@ -83,10 +102,18 @@ async function generateOnce(
 ): Promise<string> {
   const response = await client.responses.create({
     model: DRAFT_MODEL,
-    reasoning: { effort: "high" },
+    reasoning: {
+      effort: "high",
+    },
     input: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: userPrompt,
+      },
     ],
     text: {
       format: {
@@ -96,19 +123,19 @@ async function generateOnce(
         strict: true,
       },
     },
-  } as unknown as OpenAI.Responses.ResponseCreateParamsNonStreaming)
+  } as unknown as OpenAI.Responses.ResponseCreateParamsNonStreaming);
 
-  const text = parseDraftText(extractResponseText(response))
+  const text = parseDraftText(extractResponseText(response));
   if (!text) {
-    throw new Error("Drafting service returned an invalid result.")
+    throw new Error("Drafting service returned an invalid result.");
   }
-  return text
+  return text;
 }
 
 // The story content the draft is grounded in (appended to the user content).
 export interface DraftStory {
-  title: string
-  summary: string
+  title: string;
+  summary: string;
 }
 
 /**
@@ -118,13 +145,10 @@ export interface DraftStory {
  * @param story - the selected story
  * @returns the user-message content
  */
-function buildDraftUserContent(
-  draftingInstructions: string,
-  story: DraftStory,
-): string {
-  const guidance = draftingInstructions.trim()
-  const head = guidance ? `Drafting instructions: ${guidance}\n\n` : ""
-  return `${head}Story title: ${story.title}\nStory summary: ${story.summary}`
+function buildDraftUserContent(draftingInstructions: string, story: DraftStory): string {
+  const guidance = draftingInstructions.trim();
+  const head = guidance ? `Drafting instructions: ${guidance}\n\n` : "";
+  return `${head}Story title: ${story.title}\nStory summary: ${story.summary}`;
 }
 
 /**
@@ -135,43 +159,58 @@ function buildDraftUserContent(
  * @returns the valid draft text, or a readable error
  */
 export async function generateDraft(input: {
-  client: OpenAI
-  draftingInstructions: string
-  story: DraftStory
-}): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
-  const userContent = buildDraftUserContent(input.draftingInstructions, input.story)
+  client: OpenAI;
+  draftingInstructions: string;
+  story: DraftStory;
+}): Promise<
+  | {
+      ok: true;
+      text: string;
+    }
+  | {
+      ok: false;
+      error: string;
+    }
+> {
+  const userContent = buildDraftUserContent(input.draftingInstructions, input.story);
 
   // Generate the first draft (system prompt from code).
-  let text: string
+  let text: string;
   try {
-    text = await generateOnce(input.client, DRAFT_SYSTEM_PROMPT, userContent)
+    text = await generateOnce(input.client, DRAFT_SYSTEM_PROMPT, userContent);
   } catch (error) {
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Drafting failed.",
-    }
+    };
   }
 
   // One repair pass if the draft fails validation.
-  let issue = getDraftIssue(text)
+  let issue = getDraftIssue(text);
   if (issue) {
     try {
       text = await generateOnce(
         input.client,
         DRAFT_REPAIR_SYSTEM_PROMPT,
         `${userContent}\n\nYour previous draft was invalid: ${issue} Return only a corrected single tweet body.`,
-      )
+      );
     } catch (error) {
       return {
         ok: false,
         error: error instanceof Error ? error.message : "Draft repair failed.",
-      }
+      };
     }
-    issue = getDraftIssue(text)
+    issue = getDraftIssue(text);
     if (issue) {
-      return { ok: false, error: "Drafting could not produce valid tweet text." }
+      return {
+        ok: false,
+        error: "Drafting could not produce valid tweet text.",
+      };
     }
   }
 
-  return { ok: true, text }
+  return {
+    ok: true,
+    text,
+  };
 }

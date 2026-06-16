@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation"
+import { redirect } from "next/navigation";
 
 // The signup UI now lives in the landing-page auth modal. This route stays as a
 // thin redirect so existing /signup links keep working — it forwards to the
@@ -6,12 +6,16 @@ import { redirect } from "next/navigation"
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{
+    error?: string;
+  }>;
 }) {
-  const { error } = await searchParams
+  const { error } = await searchParams;
 
-  const params = new URLSearchParams({ auth: "signup" })
-  if (error) params.set("error", error)
+  const params = new URLSearchParams({
+    auth: "signup",
+  });
+  if (error) params.set("error", error);
 
-  redirect(`/?${params.toString()}`)
+  redirect(`/?${params.toString()}`);
 }

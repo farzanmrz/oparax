@@ -25,7 +25,9 @@
 /* ------------------------------------------------ header — lifted, stronger border */
 .landing .header {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   background: var(--chrome);
   border-bottom: 1.5px solid var(--chrome-line);
@@ -47,30 +49,66 @@
   font-weight: 600;
   letter-spacing: -0.015em;
 }
-.landing .brand svg { display: block; }
-.landing .auth-zone { display: flex; align-items: flex-start; gap: 9px; }
-.landing .hlogin { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
-.landing .hfield { position: relative; display: inline-flex; flex-direction: column; gap: 4px; }
-.landing .pw-wrap { position: relative; display: inline-flex; flex-direction: column; gap: 4px; }
-.landing .pw-wrap .hl-input { padding-right: 60px; width: 185px; }
-.landing .hlogin .ferr { margin: 0; white-space: nowrap; }
+.landing .brand svg {
+  display: block;
+}
+.landing .auth-zone {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.landing .hlogin {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+.landing .hfield {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.landing .pw-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.landing .pw-wrap .hl-input {
+  padding-right: 60px;
+  width: 185px;
+}
+.landing .hlogin .ferr {
+  margin: 0;
+  white-space: nowrap;
+}
 .landing .forgot-link {
   position: absolute;
   right: 9px;
   top: 18px;
   transform: translateY(-50%);
-  font: 600 0.75rem/1 var(--font-sans);
+  font: 600 0.75rem / 1 var(--font-sans);
   color: var(--accent);
   background: none;
   border: 0;
   padding: 0;
   cursor: pointer;
 }
-.landing .forgot-link:hover { text-decoration: underline; }
-.landing .login-modal-btn { display: none; }
+.landing .forgot-link:hover {
+  text-decoration: underline;
+}
+.landing .login-modal-btn {
+  display: none;
+}
 
 /* ------------------------------------------------ hero */
-.landing main { flex: 1; padding-top: var(--header-h); display: flex; flex-direction: column; }
+.landing main {
+  flex: 1;
+  padding-top: var(--header-h);
+  display: flex;
+  flex-direction: column;
+}
 .landing .hero {
   flex: 1;
   display: grid;
@@ -84,29 +122,37 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font: 600 0.75rem/1 var(--font-sans);
+  font: 600 0.75rem / 1 var(--font-sans);
   letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--accent);
 }
 .landing .intro h1 {
   margin: 18px 0 0;
-  font: 800 clamp(2.9rem, 2.1rem + 2.6vw, 4.2rem)/1.04 var(--font-sans);
+  font: 800 clamp(2.9rem, 2.1rem + 2.6vw, 4.2rem) / 1.04 var(--font-sans);
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
-.landing .intro h1 .hl { color: var(--accent); }
+.landing .intro h1 .hl {
+  color: var(--accent);
+}
 .landing .intro .sub {
   margin: 22px 0 0;
-  font: 400 1.1875rem/1.55 var(--font-sans);
+  font: 400 1.1875rem / 1.55 var(--font-sans);
   color: var(--muted);
   text-wrap: pretty;
   max-width: 52ch;
 }
-.landing .intro .sub b { color: var(--fg); font-weight: 650; }
+.landing .intro .sub b {
+  color: var(--fg);
+  font-weight: 650;
+}
 
 /* ------------------------------------------------ footer — lifted, stronger border */
-.landing .footer { background: var(--chrome); border-top: 1.5px solid var(--chrome-line); }
+.landing .footer {
+  background: var(--chrome);
+  border-top: 1.5px solid var(--chrome-line);
+}
 .landing .footer .shell {
   display: flex;
   align-items: center;
@@ -118,23 +164,50 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font: 400 0.84375rem/1 var(--font-sans);
+  font: 400 0.84375rem / 1 var(--font-sans);
   color: var(--faint);
   white-space: nowrap;
 }
-.landing .footer nav { display: flex; gap: 26px; }
-.landing .footer nav a { font: 400 0.875rem/1 var(--font-sans); color: var(--muted); white-space: nowrap; }
-.landing .footer nav a:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+.landing .footer nav {
+  display: flex;
+  gap: 26px;
+}
+.landing .footer nav a {
+  font: 400 0.875rem / 1 var(--font-sans);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.landing .footer nav a:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 /* ------------------------------------------------ responsive */
 @media (max-width: 1280px) {
-  .landing .hlogin { display: none; }
-  .landing .login-modal-btn { display: inline-flex; }
+  .landing .hlogin {
+    display: none;
+  }
+  .landing .login-modal-btn {
+    display: inline-flex;
+  }
 }
 @media (max-width: 1020px) {
-  .landing .shell { padding-left: 22px; padding-right: 22px; }
-  .landing .hero { grid-template-columns: 1fr; }
-  .landing .ffield-row { grid-template-columns: 1fr; }
-  .landing .top-row { grid-template-columns: 1fr; }
-  .landing .footer .shell { flex-direction: column; gap: 10px; }
+  .landing .shell {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .landing .hero {
+    grid-template-columns: 1fr;
+  }
+  .landing .ffield-row {
+    grid-template-columns: 1fr;
+  }
+  .landing .top-row {
+    grid-template-columns: 1fr;
+  }
+  .landing .footer .shell {
+    flex-direction: column;
+    gap: 10px;
+  }
 }

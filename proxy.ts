@@ -1,5 +1,5 @@
 // Next.js proxy (formerly middleware.ts in older versions). Runs on every request to refresh auth session.
-import { type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function proxy(request: NextRequest) {

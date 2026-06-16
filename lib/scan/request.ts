@@ -1,15 +1,15 @@
 // Imports
-import type OpenAI from "openai"
-import { SCAN_MODEL } from "@/lib/scan/prompt"
+import type OpenAI from "openai";
+import { SCAN_MODEL } from "@/lib/scan/prompt";
 
 // Monitor/scan inputs and Responses API request construction
 // Inputs that vary per monitor/scan; everything else is a fixed scan config
 export interface ScanRequestInput {
-  handles: string[]
-  fromDate: string | null
-  toDate: string | null
-  instructions: string
-  userPrompt: string
+  handles: string[];
+  fromDate: string | null;
+  toDate: string | null;
+  instructions: string;
+  userPrompt: string;
 }
 
 /**
@@ -27,12 +27,12 @@ export function buildScanRequest(
   const xSearch: Record<string, unknown> = {
     type: "x_search",
     allowed_x_handles: input.handles,
-  }
+  };
   if (input.fromDate) {
-    xSearch.from_date = input.fromDate
+    xSearch.from_date = input.fromDate;
   }
   if (input.toDate) {
-    xSearch.to_date = input.toDate
+    xSearch.to_date = input.toDate;
   }
 
   return {
@@ -42,9 +42,16 @@ export function buildScanRequest(
     top_p: 1,
     max_output_tokens: 1_000_000,
     max_turns: 5,
-    reasoning: { effort: "low", summary: "detailed" },
-    include: ["no_inline_citations"],
-    tools: [xSearch],
+    reasoning: {
+      effort: "low",
+      summary: "detailed",
+    },
+    include: [
+      "no_inline_citations",
+    ],
+    tools: [
+      xSearch,
+    ],
     text: {
       format: {
         type: "json_schema",
@@ -60,14 +67,21 @@ export function buildScanRequest(
                 type: "object",
                 additionalProperties: false,
                 properties: {
-                  title: { type: "string" },
-                  body: { type: "string" },
+                  title: {
+                    type: "string",
+                  },
+                  body: {
+                    type: "string",
+                  },
                   urls: {
                     type: "array",
                     minItems: 1,
                     description:
                       "Source URLs for this item, including at least one direct X/Twitter URL.",
-                    items: { type: "string", format: "uri" },
+                    items: {
+                      type: "string",
+                      format: "uri",
+                    },
                   },
                   draft: {
                     type: "string",
@@ -76,15 +90,27 @@ export function buildScanRequest(
                       "A single postable X draft for this item, with no raw URLs or markdown.",
                   },
                 },
-                required: ["title", "body", "urls", "draft"],
+                required: [
+                  "title",
+                  "body",
+                  "urls",
+                  "draft",
+                ],
               },
             },
           },
-          required: ["items"],
+          required: [
+            "items",
+          ],
         },
       },
     },
     stream: true,
-    input: [{ role: "user", content: input.userPrompt }],
-  } as unknown as OpenAI.Responses.ResponseCreateParamsStreaming
+    input: [
+      {
+        role: "user",
+        content: input.userPrompt,
+      },
+    ],
+  } as unknown as OpenAI.Responses.ResponseCreateParamsStreaming;
 }

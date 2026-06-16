@@ -1,17 +1,17 @@
-"use server"
+"use server";
 
 // Imports
-import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Result state for the username update action, consumed by useActionState.
  */
 export type UpdateUsernameState = {
-  error?: string
-  success?: boolean
-}
+  error?: string;
+  success?: boolean;
+};
 
 /**
  * Update the signed-in user's username in their auth user_metadata. The sidebar
@@ -25,32 +25,41 @@ export async function updateUsername(
   prevState: UpdateUsernameState,
   formData: FormData,
 ): Promise<UpdateUsernameState> {
-
   // Read and normalize the submitted username.
-  const raw = formData.get("username")
-  const value = typeof raw === "string" ? raw.trim() : ""
+  const raw = formData.get("username");
+  const value = typeof raw === "string" ? raw.trim() : "";
 
   // Reject empty or overly long usernames before hitting Supabase.
   if (!value) {
-    return { error: "Username can't be empty." }
+    return {
+      error: "Username can't be empty.",
+    };
   }
   if (value.length > 60) {
-    return { error: "Username must be 60 characters or fewer." }
+    return {
+      error: "Username must be 60 characters or fewer.",
+    };
   }
 
   // Persist to auth user_metadata.
-  const supabase = await createClient()
+  const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({
-    data: { username: value },
-  })
+    data: {
+      username: value,
+    },
+  });
 
   if (error) {
-    return { error: error.message }
+    return {
+      error: error.message,
+    };
   }
 
   // Refresh the dashboard layout so the sidebar reflects the new username.
-  revalidatePath("/dashboard", "layout")
-  return { success: true }
+  revalidatePath("/dashboard", "layout");
+  return {
+    success: true,
+  };
 }
 
 /**
@@ -62,25 +71,30 @@ export async function updateUsername(
  * revoke would fail against a user that no longer exists.
  * @returns an error message on failure; redirects to "/" on success
  */
-export async function deleteAccount(): Promise<{ error: string } | void> {
-
-  const supabase = await createClient()
+export async function deleteAccount(): Promise<{
+  error: string;
+} | void> {
+  const supabase = await createClient();
 
   // Confirm there is a signed-in user to delete.
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/")
+    redirect("/");
   }
 
   // Delete the account (and everything cascading from it).
-  const { error } = await supabase.rpc("delete_account")
+  const { error } = await supabase.rpc("delete_account");
   if (error) {
-    return { error: "Could not delete your account. Please try again." }
+    return {
+      error: "Could not delete your account. Please try again.",
+    };
   }
 
   // Drop the now-orphaned session cookies and leave the app.
-  await supabase.auth.signOut({ scope: "local" })
-  redirect("/")
+  await supabase.auth.signOut({
+    scope: "local",
+  });
+  redirect("/");
 }

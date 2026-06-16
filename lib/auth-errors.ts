@@ -7,12 +7,9 @@ const ERROR_MAP: Record<string, string> = {
     "Your session has expired. Please log in again.",
 
   // Signup errors
-  "User already registered":
-    "Unable to create account. Please try again or log in.",
-  "Password should be at least 6 characters":
-    "Password must be at least 6 characters.",
-  "Unable to validate email address: invalid format":
-    "Please enter a valid email address.",
+  "User already registered": "Unable to create account. Please try again or log in.",
+  "Password should be at least 6 characters": "Password must be at least 6 characters.",
+  "Unable to validate email address: invalid format": "Please enter a valid email address.",
 
   // Password reset errors
   "New password should be different from the old password.":

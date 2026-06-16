@@ -1,74 +1,60 @@
-"use client"
+"use client";
 
 // Auth modals (log in / sign up / forgot password / set new password) —
 // React port of the design reference modals, built on the design-system
 // .overlay/.modal/.field classes from app/globals.css. Wired to the stateful
 // Server Actions in lib/auth/modal-actions.ts: failures render inline,
 // successes redirect or swap the form for a notice.
+import { useActionState, useCallback, useEffect, useId, useRef, useState } from "react";
+import { EyeIcon, EyeOffIcon, GoogleIcon, XIcon } from "@/components/icons";
 import {
-  useActionState,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react"
-
-import {
+  type AuthFormState,
   abandonRecoveryAction,
   loginAction,
   resetPasswordAction,
   signupAction,
   updatePasswordAction,
-  type AuthFormState,
-} from "@/lib/auth/modal-actions"
-import { EyeIcon, EyeOffIcon, GoogleIcon, XIcon } from "@/components/icons"
+} from "@/lib/auth/modal-actions";
 
-export type AuthView = "login" | "signup" | "forgot" | "reset"
+export type AuthView = "login" | "signup" | "forgot" | "reset";
 
-const EMPTY_STATE: AuthFormState = {}
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMPTY_STATE: AuthFormState = {};
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const VIEW_LABEL: Record<AuthView, string> = {
   login: "Log in",
   signup: "Sign up",
   forgot: "Reset your password",
   reset: "Set a new password",
-}
+};
 
 function useAutoFocus() {
-  const ref = useRef<HTMLInputElement>(null)
+  const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    const timer = window.setTimeout(() => ref.current?.focus(), 60)
-    return () => window.clearTimeout(timer)
-  }, [])
-  return ref
+    const timer = window.setTimeout(() => ref.current?.focus(), 60);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return ref;
 }
 
 // Re-shows the latest server error/message until the user edits the form.
 function useServerFeedback(state: AuthFormState) {
-  const [lastState, setLastState] = useState(state)
-  const [hidden, setHidden] = useState(false)
+  const [lastState, setLastState] = useState(state);
+  const [hidden, setHidden] = useState(false);
   // A fresh submission result un-hides the feedback (state adjusted during
   // render, not in an effect, per React guidance).
   if (state !== lastState) {
-    setLastState(state)
-    setHidden(false)
+    setLastState(state);
+    setHidden(false);
   }
   return {
     error: !hidden && state.error ? state.error : null,
     message: !hidden && state.message ? state.message : null,
     hide: () => setHidden(true),
-  }
+  };
 }
 
-function FormFeedback({
-  error,
-  message,
-}: {
-  error: string | null
-  message: string | null
-}) {
+function FormFeedback({ error, message }: { error: string | null; message: string | null }) {
   return (
     <>
       <div className={`form-err${error ? " show" : ""}`} role="alert">
@@ -80,7 +66,7 @@ function FormFeedback({
         </p>
       ) : null}
     </>
-  )
+  );
 }
 
 function SubmitButton({
@@ -88,9 +74,9 @@ function SubmitButton({
   disabled,
   children,
 }: {
-  pending: boolean
-  disabled: boolean
-  children: React.ReactNode
+  pending: boolean;
+  disabled: boolean;
+  children: React.ReactNode;
 }) {
   return (
     <button
@@ -101,16 +87,10 @@ function SubmitButton({
       <span className="ld" />
       {children}
     </button>
-  )
+  );
 }
 
-function EyeToggle({
-  visible,
-  onToggle,
-}: {
-  visible: boolean
-  onToggle: () => void
-}) {
+function EyeToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
   return (
     <button
       className="eye"
@@ -119,13 +99,9 @@ function EyeToggle({
       aria-pressed={visible}
       onClick={onToggle}
     >
-      {visible ? (
-        <EyeOffIcon width={16} height={16} />
-      ) : (
-        <EyeIcon width={16} height={16} />
-      )}
+      {visible ? <EyeOffIcon width={16} height={16} /> : <EyeIcon width={16} height={16} />}
     </button>
-  )
+  );
 }
 
 function SocialRow() {
@@ -142,7 +118,7 @@ function SocialRow() {
       </div>
       <p className="sso-note">Google &amp; X sign-in coming soon</p>
     </>
-  )
+  );
 }
 
 function Terms() {
@@ -151,28 +127,25 @@ function Terms() {
       By continuing, you agree to our <a href="#">Terms of Service</a> and{" "}
       <a href="#">Privacy Policy</a>.
     </p>
-  )
+  );
 }
 
 function LoginView({
   onChangeView,
   initialState,
 }: {
-  onChangeView: (view: AuthView) => void
-  initialState?: AuthFormState
+  onChangeView: (view: AuthView) => void;
+  initialState?: AuthFormState;
 }) {
-  const id = useId()
-  const [state, dispatch, pending] = useActionState(
-    loginAction,
-    initialState ?? EMPTY_STATE
-  )
-  const feedback = useServerFeedback(state)
-  const firstRef = useAutoFocus()
+  const id = useId();
+  const [state, dispatch, pending] = useActionState(loginAction, initialState ?? EMPTY_STATE);
+  const feedback = useServerFeedback(state);
+  const firstRef = useAutoFocus();
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [emailError, setEmailError] = useState(false)
-  const [pwVisible, setPwVisible] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState(false);
+  const [pwVisible, setPwVisible] = useState(false);
 
   return (
     <>
@@ -183,8 +156,8 @@ function LoginView({
         action={dispatch}
         onSubmit={(event) => {
           if (!EMAIL_RE.test(email.trim())) {
-            event.preventDefault()
-            setEmailError(true)
+            event.preventDefault();
+            setEmailError(true);
           }
         }}
       >
@@ -199,18 +172,16 @@ function LoginView({
             autoComplete="email"
             value={email}
             onChange={(event) => {
-              setEmail(event.target.value)
-              setEmailError(false)
-              feedback.hide()
+              setEmail(event.target.value);
+              setEmailError(false);
+              feedback.hide();
             }}
             onBlur={() => {
-              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true)
+              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true);
             }}
             required
           />
-          <div className={`ferr${emailError ? " show" : ""}`}>
-            Email format incorrect
-          </div>
+          <div className={`ferr${emailError ? " show" : ""}`}>Email format incorrect</div>
         </div>
         <div className="field">
           <label htmlFor={`${id}-pw`}>Password</label>
@@ -222,29 +193,19 @@ function LoginView({
               autoComplete="current-password"
               value={password}
               onChange={(event) => {
-                setPassword(event.target.value)
-                feedback.hide()
+                setPassword(event.target.value);
+                feedback.hide();
               }}
               required
             />
-            <EyeToggle
-              visible={pwVisible}
-              onToggle={() => setPwVisible((v) => !v)}
-            />
+            <EyeToggle visible={pwVisible} onToggle={() => setPwVisible((v) => !v)} />
           </span>
-          <button
-            className="fhint"
-            type="button"
-            onClick={() => onChangeView("forgot")}
-          >
+          <button className="fhint" type="button" onClick={() => onChangeView("forgot")}>
             Forgot password?
           </button>
         </div>
         <FormFeedback error={feedback.error} message={feedback.message} />
-        <SubmitButton
-          pending={pending}
-          disabled={!email.trim() || !password.trim()}
-        >
+        <SubmitButton pending={pending} disabled={!email.trim() || !password.trim()}>
           Log in
         </SubmitButton>
       </form>
@@ -257,7 +218,7 @@ function LoginView({
       </p>
       <Terms />
     </>
-  )
+  );
 }
 
 function SignupView({
@@ -265,42 +226,35 @@ function SignupView({
   onClose,
   initialState,
 }: {
-  onChangeView: (view: AuthView) => void
-  onClose: () => void
-  initialState?: AuthFormState
+  onChangeView: (view: AuthView) => void;
+  onClose: () => void;
+  initialState?: AuthFormState;
 }) {
-  const id = useId()
-  const [state, dispatch, pending] = useActionState(
-    signupAction,
-    initialState ?? EMPTY_STATE
-  )
-  const feedback = useServerFeedback(state)
-  const firstRef = useAutoFocus()
+  const id = useId();
+  const [state, dispatch, pending] = useActionState(signupAction, initialState ?? EMPTY_STATE);
+  const feedback = useServerFeedback(state);
+  const firstRef = useAutoFocus();
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirm, setConfirm] = useState("")
-  const [emailError, setEmailError] = useState(false)
-  const [confirmError, setConfirmError] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [emailError, setEmailError] = useState(false);
+  const [confirmError, setConfirmError] = useState(false);
   // The eye flips every password field in the form together, per the design.
-  const [pwVisible, setPwVisible] = useState(false)
+  const [pwVisible, setPwVisible] = useState(false);
 
   // Submit unlocks only when the email is present, the password has reached
   // the 6-character server minimum, and the confirmation matches it exactly —
   // not merely when every field has some text.
-  const canSubmit =
-    email.trim() !== "" && password.length >= 6 && confirm === password
+  const canSubmit = email.trim() !== "" && password.length >= 6 && confirm === password;
 
   // Surface the mismatch while typing once the confirmation is as long as
   // the password: with masked fields the user only sees equal dot counts and
   // a dead submit button, so without this they get no clue what's wrong.
   // (Blur still sets confirmError for shorter, abandoned confirmations.)
   const confirmMismatch =
-    password !== "" &&
-    confirm !== "" &&
-    confirm.length >= password.length &&
-    confirm !== password
-  const showConfirmError = confirmError || confirmMismatch
+    password !== "" && confirm !== "" && confirm.length >= password.length && confirm !== password;
+  const showConfirmError = confirmError || confirmMismatch;
 
   // Confirmation email sent — swap the form for the notice. Closing the
   // modal is enough: the email link signs the user in directly.
@@ -309,18 +263,13 @@ function SignupView({
       <>
         <h2>Check your email</h2>
         <p className="msub">
-          We sent a confirmation link to <b>{state.email}</b>. Click it to
-          activate your account.
+          We sent a confirmation link to <b>{state.email}</b>. Click it to activate your account.
         </p>
-        <button
-          className="btn btn-primary btn-block"
-          type="button"
-          onClick={onClose}
-        >
+        <button className="btn btn-primary btn-block" type="button" onClick={onClose}>
           Close
         </button>
       </>
-    )
+    );
   }
 
   return (
@@ -331,16 +280,16 @@ function SignupView({
         noValidate
         action={dispatch}
         onSubmit={(event) => {
-          let ok = true
+          let ok = true;
           if (!EMAIL_RE.test(email.trim())) {
-            setEmailError(true)
-            ok = false
+            setEmailError(true);
+            ok = false;
           }
           if (password && confirm && password !== confirm) {
-            setConfirmError(true)
-            ok = false
+            setConfirmError(true);
+            ok = false;
           }
-          if (!ok) event.preventDefault()
+          if (!ok) event.preventDefault();
         }}
       >
         <div className="field">
@@ -354,18 +303,16 @@ function SignupView({
             autoComplete="email"
             value={email}
             onChange={(event) => {
-              setEmail(event.target.value)
-              setEmailError(false)
-              feedback.hide()
+              setEmail(event.target.value);
+              setEmailError(false);
+              feedback.hide();
             }}
             onBlur={() => {
-              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true)
+              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true);
             }}
             required
           />
-          <div className={`ferr${emailError ? " show" : ""}`}>
-            Email format incorrect
-          </div>
+          <div className={`ferr${emailError ? " show" : ""}`}>Email format incorrect</div>
         </div>
         <div className="field">
           <label htmlFor={`${id}-pw`}>Password</label>
@@ -377,16 +324,13 @@ function SignupView({
               autoComplete="new-password"
               value={password}
               onChange={(event) => {
-                setPassword(event.target.value)
-                setConfirmError(false)
-                feedback.hide()
+                setPassword(event.target.value);
+                setConfirmError(false);
+                feedback.hide();
               }}
               required
             />
-            <EyeToggle
-              visible={pwVisible}
-              onToggle={() => setPwVisible((v) => !v)}
-            />
+            <EyeToggle visible={pwVisible} onToggle={() => setPwVisible((v) => !v)} />
           </span>
         </div>
         <div className="field">
@@ -400,24 +344,18 @@ function SignupView({
               autoComplete="new-password"
               value={confirm}
               onChange={(event) => {
-                setConfirm(event.target.value)
-                setConfirmError(false)
-                feedback.hide()
+                setConfirm(event.target.value);
+                setConfirmError(false);
+                feedback.hide();
               }}
               onBlur={() => {
-                if (confirm && password && password !== confirm)
-                  setConfirmError(true)
+                if (confirm && password && password !== confirm) setConfirmError(true);
               }}
               required
             />
-            <EyeToggle
-              visible={pwVisible}
-              onToggle={() => setPwVisible((v) => !v)}
-            />
+            <EyeToggle visible={pwVisible} onToggle={() => setPwVisible((v) => !v)} />
           </span>
-          <div className={`ferr${showConfirmError ? " show" : ""}`}>
-            Passwords don&apos;t match
-          </div>
+          <div className={`ferr${showConfirmError ? " show" : ""}`}>Passwords don&apos;t match</div>
         </div>
         <FormFeedback error={feedback.error} message={feedback.message} />
         <SubmitButton pending={pending} disabled={!canSubmit}>
@@ -433,26 +371,26 @@ function SignupView({
       </p>
       <Terms />
     </>
-  )
+  );
 }
 
 function ForgotView({
   onChangeView,
   initialState,
 }: {
-  onChangeView: (view: AuthView) => void
-  initialState?: AuthFormState
+  onChangeView: (view: AuthView) => void;
+  initialState?: AuthFormState;
 }) {
-  const id = useId()
+  const id = useId();
   const [state, dispatch, pending] = useActionState(
     resetPasswordAction,
-    initialState ?? EMPTY_STATE
-  )
-  const feedback = useServerFeedback(state)
-  const firstRef = useAutoFocus()
+    initialState ?? EMPTY_STATE,
+  );
+  const feedback = useServerFeedback(state);
+  const firstRef = useAutoFocus();
 
-  const [email, setEmail] = useState("")
-  const [emailError, setEmailError] = useState(false)
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState(false);
 
   return (
     <>
@@ -463,8 +401,8 @@ function ForgotView({
         action={dispatch}
         onSubmit={(event) => {
           if (!EMAIL_RE.test(email.trim())) {
-            event.preventDefault()
-            setEmailError(true)
+            event.preventDefault();
+            setEmailError(true);
           }
         }}
       >
@@ -479,18 +417,16 @@ function ForgotView({
             autoComplete="email"
             value={email}
             onChange={(event) => {
-              setEmail(event.target.value)
-              setEmailError(false)
-              feedback.hide()
+              setEmail(event.target.value);
+              setEmailError(false);
+              feedback.hide();
             }}
             onBlur={() => {
-              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true)
+              if (email && !EMAIL_RE.test(email.trim())) setEmailError(true);
             }}
             required
           />
-          <div className={`ferr${emailError ? " show" : ""}`}>
-            Email format incorrect
-          </div>
+          <div className={`ferr${emailError ? " show" : ""}`}>Email format incorrect</div>
         </div>
         <FormFeedback error={feedback.error} message={feedback.message} />
         <SubmitButton pending={pending} disabled={!email.trim()}>
@@ -504,7 +440,7 @@ function ForgotView({
       </p>
       <Terms />
     </>
-  )
+  );
 }
 
 // Set-new-password view — the landing target of the email recovery link.
@@ -517,65 +453,59 @@ function ResetView({
   tokenType,
   initialState,
 }: {
-  onRecoveryActive: (active: boolean) => void
-  tokenHash?: string
-  tokenType?: "recovery"
-  initialState?: AuthFormState
+  onRecoveryActive: (active: boolean) => void;
+  tokenHash?: string;
+  tokenType?: "recovery";
+  initialState?: AuthFormState;
 }) {
-  const id = useId()
+  const id = useId();
   const [state, dispatch, pending] = useActionState(
     updatePasswordAction,
-    initialState ?? EMPTY_STATE
-  )
-  const feedback = useServerFeedback(state)
-  const firstRef = useAutoFocus()
+    initialState ?? EMPTY_STATE,
+  );
+  const feedback = useServerFeedback(state);
+  const firstRef = useAutoFocus();
 
-  const [password, setPassword] = useState("")
-  const [confirm, setConfirm] = useState("")
-  const [confirmError, setConfirmError] = useState(false)
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [confirmError, setConfirmError] = useState(false);
   // The eye flips every password field in the form together, per the design.
-  const [pwVisible, setPwVisible] = useState(false)
+  const [pwVisible, setPwVisible] = useState(false);
 
-  const canSubmit = password.length >= 6 && confirm === password
+  const canSubmit = password.length >= 6 && confirm === password;
 
   // Surface the mismatch while typing once the confirmation is as long as
   // the password (masked fields otherwise give no clue why submit is dead).
   const confirmMismatch =
-    password !== "" &&
-    confirm !== "" &&
-    confirm.length >= password.length &&
-    confirm !== password
-  const showConfirmError = confirmError || confirmMismatch
+    password !== "" && confirm !== "" && confirm.length >= password.length && confirm !== password;
+  const showConfirmError = confirmError || confirmMismatch;
 
   // Tell the modal whether a consumed-token session is dangling, so closing
   // without finishing signs it out instead of leaving the user logged in.
   // (On success the action redirects to the login modal, so no flag needed.)
   useEffect(() => {
-    onRecoveryActive(Boolean(state.recovered))
-  }, [state, onRecoveryActive])
+    onRecoveryActive(Boolean(state.recovered));
+  }, [
+    state,
+    onRecoveryActive,
+  ]);
 
   return (
     <>
       <h2>Set a new password</h2>
-      <p className="msub">
-        Use at least 6 characters and keep it unique to this account.
-      </p>
+      <p className="msub">Use at least 6 characters and keep it unique to this account.</p>
       <form
         noValidate
         action={dispatch}
         onSubmit={(event) => {
           if (password !== confirm) {
-            event.preventDefault()
-            setConfirmError(true)
+            event.preventDefault();
+            setConfirmError(true);
           }
         }}
       >
-        {tokenHash ? (
-          <input type="hidden" name="token_hash" value={tokenHash} />
-        ) : null}
-        {tokenType ? (
-          <input type="hidden" name="type" value={tokenType} />
-        ) : null}
+        {tokenHash ? <input type="hidden" name="token_hash" value={tokenHash} /> : null}
+        {tokenType ? <input type="hidden" name="type" value={tokenType} /> : null}
         <div className="field">
           <label htmlFor={`${id}-pw`}>New password</label>
           <span className="pw-box">
@@ -587,16 +517,13 @@ function ResetView({
               autoComplete="new-password"
               value={password}
               onChange={(event) => {
-                setPassword(event.target.value)
-                setConfirmError(false)
-                feedback.hide()
+                setPassword(event.target.value);
+                setConfirmError(false);
+                feedback.hide();
               }}
               required
             />
-            <EyeToggle
-              visible={pwVisible}
-              onToggle={() => setPwVisible((v) => !v)}
-            />
+            <EyeToggle visible={pwVisible} onToggle={() => setPwVisible((v) => !v)} />
           </span>
         </div>
         <div className="field">
@@ -610,24 +537,18 @@ function ResetView({
               autoComplete="new-password"
               value={confirm}
               onChange={(event) => {
-                setConfirm(event.target.value)
-                setConfirmError(false)
-                feedback.hide()
+                setConfirm(event.target.value);
+                setConfirmError(false);
+                feedback.hide();
               }}
               onBlur={() => {
-                if (confirm && password && password !== confirm)
-                  setConfirmError(true)
+                if (confirm && password && password !== confirm) setConfirmError(true);
               }}
               required
             />
-            <EyeToggle
-              visible={pwVisible}
-              onToggle={() => setPwVisible((v) => !v)}
-            />
+            <EyeToggle visible={pwVisible} onToggle={() => setPwVisible((v) => !v)} />
           </span>
-          <div className={`ferr${showConfirmError ? " show" : ""}`}>
-            Passwords don&apos;t match
-          </div>
+          <div className={`ferr${showConfirmError ? " show" : ""}`}>Passwords don&apos;t match</div>
         </div>
         <FormFeedback error={feedback.error} message={feedback.message} />
         <SubmitButton pending={pending} disabled={!canSubmit}>
@@ -635,7 +556,7 @@ function ResetView({
         </SubmitButton>
       </form>
     </>
-  )
+  );
 }
 
 export function AuthModal({
@@ -647,27 +568,29 @@ export function AuthModal({
   onClose,
   onChangeView,
 }: {
-  view: AuthView | null
-  initialError?: string
-  initialMessage?: string
-  tokenHash?: string
-  tokenType?: "recovery"
-  onClose: () => void
-  onChangeView: (view: AuthView) => void
+  view: AuthView | null;
+  initialError?: string;
+  initialMessage?: string;
+  tokenHash?: string;
+  tokenType?: "recovery";
+  onClose: () => void;
+  onChangeView: (view: AuthView) => void;
 }) {
-  const open = view !== null
+  const open = view !== null;
 
   // A consumed recovery token leaves a session behind until the password is
   // updated; if the user closes the reset modal mid-flow, sign it out so
   // they are not silently logged in (closing must not equal logging in).
-  const recoveryActiveRef = useRef(false)
+  const recoveryActiveRef = useRef(false);
   const handleClose = useCallback(() => {
     if (recoveryActiveRef.current) {
-      recoveryActiveRef.current = false
-      void abandonRecoveryAction()
+      recoveryActiveRef.current = false;
+      void abandonRecoveryAction();
     }
-    onClose()
-  }, [onClose])
+    onClose();
+  }, [
+    onClose,
+  ]);
 
   // A seeded alert (e.g. "Password updated successfully" after a reset) is
   // bound to the view that was auto-opened on mount, so it only shows there
@@ -681,30 +604,34 @@ export function AuthModal({
             message: initialMessage,
           } as AuthFormState,
         }
-      : null
-  )
-  const seedFor = (target: AuthView) =>
-    seed && seed.view === target ? seed.state : undefined
+      : null,
+  );
+  const seedFor = (target: AuthView) => (seed && seed.view === target ? seed.state : undefined);
 
   // Body scroll lock while open.
   useEffect(() => {
-    if (!open) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [open])
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [
+    open,
+  ]);
 
   // Escape to close.
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") handleClose()
-    }
-    document.addEventListener("keydown", onKeyDown)
-    return () => document.removeEventListener("keydown", onKeyDown)
-  }, [open, handleClose])
+      if (event.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [
+    open,
+    handleClose,
+  ]);
 
   return (
     <div
@@ -714,25 +641,17 @@ export function AuthModal({
       aria-label={view ? VIEW_LABEL[view] : "Account"}
       aria-hidden={open ? undefined : true}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) handleClose()
+        if (event.target === event.currentTarget) handleClose();
       }}
     >
       {open ? (
         <div className="modal">
-          <button
-            className="modal-x"
-            type="button"
-            aria-label="Close"
-            onClick={handleClose}
-          >
+          <button className="modal-x" type="button" aria-label="Close" onClick={handleClose}>
             ✕
           </button>
 
           {view === "login" ? (
-            <LoginView
-              onChangeView={onChangeView}
-              initialState={seedFor("login")}
-            />
+            <LoginView onChangeView={onChangeView} initialState={seedFor("login")} />
           ) : null}
           {view === "signup" ? (
             <SignupView
@@ -742,15 +661,12 @@ export function AuthModal({
             />
           ) : null}
           {view === "forgot" ? (
-            <ForgotView
-              onChangeView={onChangeView}
-              initialState={seedFor("forgot")}
-            />
+            <ForgotView onChangeView={onChangeView} initialState={seedFor("forgot")} />
           ) : null}
           {view === "reset" ? (
             <ResetView
               onRecoveryActive={(active) => {
-                recoveryActiveRef.current = active
+                recoveryActiveRef.current = active;
               }}
               tokenHash={tokenHash}
               tokenType={tokenType}
@@ -760,5 +676,5 @@ export function AuthModal({
         </div>
       ) : null}
     </div>
-  )
+  );
 }

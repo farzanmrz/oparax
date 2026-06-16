@@ -4,4 +4,4 @@
 
 // Default drafting instructions prefilled into the lab (editable, may be cleared).
 export const DEFAULT_DRAFTING_INSTRUCTIONS =
-  "Punchy, factual, concise reporter voice. Lead with the key development."
+  "Punchy, factual, concise reporter voice. Lead with the key development.";

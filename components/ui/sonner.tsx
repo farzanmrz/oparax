@@ -1,8 +1,14 @@
-"use client"
+"use client";
 
-import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { CheckmarkCircle02Icon, InformationCircleIcon, Alert02Icon, MultiplicationSignCircleIcon, Loading03Icon } from "@hugeicons/core-free-icons"
+import {
+  Alert02Icon,
+  CheckmarkCircle02Icon,
+  InformationCircleIcon,
+  Loading03Icon,
+  MultiplicationSignCircleIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
@@ -11,15 +17,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme="dark"
       className="toaster group"
       icons={{
-        success: (
-          <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="size-4" />
-        ),
-        info: (
-          <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} className="size-4" />
-        ),
-        warning: (
-          <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-4" />
-        ),
+        success: <HugeiconsIcon icon={CheckmarkCircle02Icon} strokeWidth={2} className="size-4" />,
+        info: <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} className="size-4" />,
+        warning: <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-4" />,
         error: (
           <HugeiconsIcon icon={MultiplicationSignCircleIcon} strokeWidth={2} className="size-4" />
         ),
@@ -41,7 +41,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         },
       }}
     />
-  )
-}
+  );
+};
 
-export { Toaster }
+export { Toaster };

@@ -1,5 +1,5 @@
 // Grok model used for scans
-export const SCAN_MODEL = "grok-4.3"
+export const SCAN_MODEL = "grok-4.3";
 
 /**
  * Build the system instructions for a combined scan + draft run. The editable
@@ -19,7 +19,7 @@ Rules:
 - Each item's urls array must include at least one direct X/Twitter source post URL, and may include other supporting URLs.
 - Return all distinct, non-overlapping news items you can find in reverse chronological order. Do not cap the list to a top-N summary.
 - For every item, include draft: a single postable X post based only on that item.
-- Drafts must follow the user drafting instructions, contain no raw URLs, contain no markdown, and stay within 280 characters.`
+- Drafts must follow the user drafting instructions, contain no raw URLs, contain no markdown, and stay within 280 characters.`;
 }
 
 /**
@@ -32,8 +32,8 @@ export function buildAgentRunUserPrompt({
   scanningInstructions,
   draftingInstructions,
 }: {
-  scanningInstructions: string
-  draftingInstructions: string
+  scanningInstructions: string;
+  draftingInstructions: string;
 }): string {
   return `<user-scanning-instructions>
 ${scanningInstructions.trim()}
@@ -41,5 +41,5 @@ ${scanningInstructions.trim()}
 
 <user-drafting-instructions>
 ${draftingInstructions.trim()}
-</user-drafting-instructions>`
+</user-drafting-instructions>`;
 }

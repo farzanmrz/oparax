@@ -1,19 +1,19 @@
 // Imports
-import type { ScanItem } from "@/lib/scan/stream"
+import type { ScanItem } from "@/lib/scan/stream";
 
 // Story draft for DB insertion and URL parsing
 // A story ready to insert into the stories table (camelCase; mapped in route)
 export interface StoryDraft {
-  title: string
-  summary: string
-  sourceUrls: string[]
-  primaryTweetUrl: string
-  dedupeKey: string
-  draft: string
+  title: string;
+  summary: string;
+  sourceUrls: string[];
+  primaryTweetUrl: string;
+  dedupeKey: string;
+  draft: string;
 }
 
 // Regex to extract tweet id from X/Twitter status URL
-const X_STATUS_RE = /https?:\/\/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i
+const X_STATUS_RE = /https?:\/\/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i;
 
 /**
  * Extract the numeric tweet id from an X/Twitter status URL.
@@ -21,8 +21,8 @@ const X_STATUS_RE = /https?:\/\/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i
  * @returns the tweet id, or null if the URL is not an X status URL
  */
 export function extractTweetId(url: string): string | null {
-  const match = url.match(X_STATUS_RE)
-  return match ? match[1] : null
+  const match = url.match(X_STATUS_RE);
+  return match ? match[1] : null;
 }
 
 /**
@@ -33,13 +33,13 @@ export function extractTweetId(url: string): string | null {
  * @returns a clean ScanItem or null
  */
 function normalizeItem(value: unknown): ScanItem | null {
-  if (typeof value !== "object" || value === null) return null
-  const record = value as Record<string, unknown>
-  const title = typeof record.title === "string" ? record.title.trim() : ""
-  const body = typeof record.body === "string" ? record.body.trim() : ""
-  const draft = typeof record.draft === "string" ? record.draft.trim() : ""
-  if (!title || !body || !draft) return null
-  if (!Array.isArray(record.urls)) return null
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  const body = typeof record.body === "string" ? record.body.trim() : "";
+  const draft = typeof record.draft === "string" ? record.draft.trim() : "";
+  if (!title || !body || !draft) return null;
+  if (!Array.isArray(record.urls)) return null;
 
   const urls = [
     ...new Set(
@@ -48,10 +48,15 @@ function normalizeItem(value: unknown): ScanItem | null {
         .map((url) => url.trim())
         .filter(Boolean),
     ),
-  ]
-  if (urls.length === 0) return null
+  ];
+  if (urls.length === 0) return null;
 
-  return { title, body, urls, draft }
+  return {
+    title,
+    body,
+    urls,
+    draft,
+  };
 }
 
 /**
@@ -60,20 +65,18 @@ function normalizeItem(value: unknown): ScanItem | null {
  * @returns the array of items, or null if the JSON could not be parsed
  */
 export function parseScanItems(answerText: string): ScanItem[] | null {
-  let parsed: unknown
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(answerText)
+    parsed = JSON.parse(answerText);
   } catch {
-    return null
+    return null;
   }
 
-  if (typeof parsed !== "object" || parsed === null) return null
-  const items = (parsed as Record<string, unknown>).items
-  if (!Array.isArray(items)) return null
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const items = (parsed as Record<string, unknown>).items;
+  if (!Array.isArray(items)) return null;
 
-  return items
-    .map(normalizeItem)
-    .filter((item): item is ScanItem => item !== null)
+  return items.map(normalizeItem).filter((item): item is ScanItem => item !== null);
 }
 
 /**
@@ -84,10 +87,10 @@ export function parseScanItems(answerText: string): ScanItem[] | null {
  * @returns the story draft to insert
  */
 export function toStoryDraft(item: ScanItem): StoryDraft {
-  const primaryTweetUrl = item.urls.find((url) => X_STATUS_RE.test(url)) ?? ""
-  const tweetId = primaryTweetUrl ? extractTweetId(primaryTweetUrl) : null
+  const primaryTweetUrl = item.urls.find((url) => X_STATUS_RE.test(url)) ?? "";
+  const tweetId = primaryTweetUrl ? extractTweetId(primaryTweetUrl) : null;
   // First non-empty wins (|| not ?? — primaryTweetUrl is "" when no X URL).
-  const dedupeKey = tweetId || primaryTweetUrl || item.urls[0] || item.title
+  const dedupeKey = tweetId || primaryTweetUrl || item.urls[0] || item.title;
 
   return {
     title: item.title,
@@ -96,5 +99,5 @@ export function toStoryDraft(item: ScanItem): StoryDraft {
     primaryTweetUrl,
     dedupeKey,
     draft: item.draft,
-  }
+  };
 }

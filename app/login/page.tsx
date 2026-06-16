@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation"
+import { redirect } from "next/navigation";
 
 // The login UI now lives in the landing-page auth modal. This route stays as a
 // thin redirect so existing links (and the password-reset flow, which sends users
@@ -7,13 +7,18 @@ import { redirect } from "next/navigation"
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; message?: string }>
+  searchParams: Promise<{
+    error?: string;
+    message?: string;
+  }>;
 }) {
-  const { error, message } = await searchParams
+  const { error, message } = await searchParams;
 
-  const params = new URLSearchParams({ auth: "login" })
-  if (error) params.set("error", error)
-  if (message) params.set("message", message)
+  const params = new URLSearchParams({
+    auth: "login",
+  });
+  if (error) params.set("error", error);
+  if (message) params.set("message", message);
 
-  redirect(`/?${params.toString()}`)
+  redirect(`/?${params.toString()}`);
 }

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Start the X (Twitter) OAuth link flow from the browser.
@@ -17,24 +17,19 @@ import { createClient } from "@/lib/supabase/client"
  * @param nextPath in-app path to return to after X connects
  */
 export async function startXConnect(nextPath: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = createClient();
 
   // Unlink any stale 'x' identity to avoid an "already linked" error. There's
   // no second chance to read its tokens, so unlink first.
-  const { data: identities, error: identitiesError } =
-    await supabase.auth.getUserIdentities()
+  const { data: identities, error: identitiesError } = await supabase.auth.getUserIdentities();
   if (identitiesError) {
-    throw new Error(identitiesError.message)
+    throw new Error(identitiesError.message);
   }
-  const staleX = identities?.identities.find(
-    (identity) => identity.provider === "x",
-  )
+  const staleX = identities?.identities.find((identity) => identity.provider === "x");
   if (staleX) {
-    const { error: unlinkError } = await supabase.auth.unlinkIdentity(staleX)
+    const { error: unlinkError } = await supabase.auth.unlinkIdentity(staleX);
     if (unlinkError) {
-      throw new Error(
-        `Could not reset the existing X link: ${unlinkError.message}`,
-      )
+      throw new Error(`Could not reset the existing X link: ${unlinkError.message}`);
     }
   }
 
@@ -45,8 +40,8 @@ export async function startXConnect(nextPath: string): Promise<void> {
       scopes: "tweet.write",
       redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
     },
-  })
+  });
   if (linkError) {
-    throw new Error(linkError.message)
+    throw new Error(linkError.message);
   }
 }

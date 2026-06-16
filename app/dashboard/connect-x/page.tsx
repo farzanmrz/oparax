@@ -1,17 +1,17 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
-import { ConnectXButton } from "@/components/dashboard/connect-x-button"
-import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header"
-import { PlusIcon } from "@/components/dashboard/shell-icons"
-import { isSafeNextPath } from "@/lib/safe-next"
+import { redirect } from "next/navigation";
+import { ConnectXButton } from "@/components/dashboard/connect-x-button";
+import { PlusIcon } from "@/components/dashboard/shell-icons";
+import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header";
+import { isSafeNextPath } from "@/lib/safe-next";
+import { createClient } from "@/lib/supabase/server";
 
 // Clamp ?next= to a safe in-app destination (never back to login/signup or to
 // connect-x itself). Preserves the gate's redirect contract.
 function getSafeNextPath(next: string | undefined): string {
-  if (!isSafeNextPath(next)) return "/dashboard/agents"
-  if (next === "/login" || next === "/signup") return "/dashboard/agents"
-  if (next.startsWith("/dashboard/connect-x")) return "/dashboard/agents"
-  return next
+  if (!isSafeNextPath(next)) return "/dashboard/agents";
+  if (next === "/login" || next === "/signup") return "/dashboard/agents";
+  if (next.startsWith("/dashboard/connect-x")) return "/dashboard/agents";
+  return next;
 }
 
 /**
@@ -25,19 +25,21 @@ function getSafeNextPath(next: string | undefined): string {
 export default async function ConnectXPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; reason?: string }>
+  searchParams: Promise<{
+    next?: string;
+    reason?: string;
+  }>;
 }) {
-  const params = await searchParams
-  const nextPath = getSafeNextPath(params.next)
-  const supabase = await createClient()
+  const params = await searchParams;
+  const nextPath = getSafeNextPath(params.next);
+  const supabase = await createClient();
 
-  const { data: connection } = await supabase
-    .from("x_connections")
-    .select("id")
-    .maybeSingle<{ id: string }>()
+  const { data: connection } = await supabase.from("x_connections").select("id").maybeSingle<{
+    id: string;
+  }>();
 
   if (connection) {
-    redirect(nextPath)
+    redirect(nextPath);
   }
 
   return (
@@ -57,5 +59,5 @@ export default async function ConnectXPage({
         <ConnectXButton nextPath={nextPath} />
       </div>
     </>
-  )
+  );
 }

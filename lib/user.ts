@@ -1,4 +1,4 @@
-import type { User } from "@supabase/supabase-js"
+import type { User } from "@supabase/supabase-js";
 
 /**
  * Derive a username from an email's local part (the text before "@"). Used to
@@ -7,11 +7,9 @@ import type { User } from "@supabase/supabase-js"
  * @param email - the user's email (may be missing)
  * @returns the local part, or "reporter" if none
  */
-export function deriveUsernameFromEmail(
-  email: string | null | undefined,
-): string {
-  const local = (email ?? "").split("@")[0]?.trim() ?? ""
-  return local || "reporter"
+export function deriveUsernameFromEmail(email: string | null | undefined): string {
+  const local = (email ?? "").split("@")[0]?.trim() ?? "";
+  return local || "reporter";
 }
 
 /**
@@ -22,10 +20,15 @@ export function deriveUsernameFromEmail(
  * @returns a non-empty username for display
  */
 export function getUsername(user: User | null | undefined): string {
-  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
-  for (const key of ["username", "display_name", "full_name", "name"]) {
-    const value = meta[key]
-    if (typeof value === "string" && value.trim()) return value.trim()
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  for (const key of [
+    "username",
+    "display_name",
+    "full_name",
+    "name",
+  ]) {
+    const value = meta[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
   }
-  return deriveUsernameFromEmail(user?.email)
+  return deriveUsernameFromEmail(user?.email);
 }

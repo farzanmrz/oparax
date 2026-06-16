@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
+import { useRouter } from "next/navigation";
 // Imports
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Sign the user out and return to the landing page. Extracted as a client island
@@ -12,14 +12,14 @@ import { createClient } from "@/lib/supabase/client"
  * @returns the sign-out button
  */
 export function SignOutButton() {
-  const router = useRouter()
-  const [pending, setPending] = useState(false)
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
 
   async function signOut() {
-    setPending(true)
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/")
+    setPending(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
   }
 
   return (
@@ -32,5 +32,5 @@ export function SignOutButton() {
       <span className="ld" />
       {pending ? "Signing out..." : "Sign out"}
     </button>
-  )
+  );
 }

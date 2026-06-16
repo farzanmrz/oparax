@@ -1,5 +1,5 @@
 // Imports
-import { DeleteAccountButton } from "@/components/settings/delete-account-button"
+import { DeleteAccountButton } from "@/components/settings/delete-account-button";
 
 /**
  * Account-settings section (id="account"): a neutral "Change password" row (a
@@ -37,5 +37,5 @@ export function AccountSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

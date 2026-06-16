@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useFormStatus } from "react-dom"
+import { useFormStatus } from "react-dom";
 
 /**
  * Design-system submit button wired to the enclosing form's pending state.
@@ -11,11 +11,11 @@ export function SubmitButton({
   className = "",
   disabled,
 }: {
-  children: React.ReactNode
-  className?: string
-  disabled?: boolean
+  children: React.ReactNode;
+  className?: string;
+  disabled?: boolean;
 }) {
-  const { pending } = useFormStatus()
+  const { pending } = useFormStatus();
 
   return (
     <button
@@ -26,5 +26,5 @@ export function SubmitButton({
       <span className="ld" />
       {children}
     </button>
-  )
+  );
 }

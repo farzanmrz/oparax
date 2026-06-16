@@ -1,9 +1,8 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-
-import { startXConnect } from "@/lib/x/link-identity"
-import { XIcon } from "@/components/icons"
+import { useState } from "react";
+import { XIcon } from "@/components/icons";
+import { startXConnect } from "@/lib/x/link-identity";
 
 /**
  * Design-system "Connect X account" button for the connect-x landing. Reuses
@@ -14,21 +13,19 @@ import { XIcon } from "@/components/icons"
  * @param props.nextPath - safe in-app path to return to after X connects
  */
 export function ConnectXButton({ nextPath }: { nextPath: string }) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function connect() {
-    if (pending) return
-    setPending(true)
-    setError(null)
+    if (pending) return;
+    setPending(true);
+    setError(null);
     try {
-      await startXConnect(nextPath)
+      await startXConnect(nextPath);
       // On success the browser redirects to X for consent.
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not start X connection.",
-      )
-      setPending(false)
+      setError(err instanceof Error ? err.message : "Could not start X connection.");
+      setPending(false);
     }
   }
 
@@ -44,10 +41,15 @@ export function ConnectXButton({ nextPath }: { nextPath: string }) {
         <span>Connect X account</span>
       </button>
       {error && (
-        <p className="ferr show" style={{ margin: "8px 0 0" }}>
+        <p
+          className="ferr show"
+          style={{
+            margin: "8px 0 0",
+          }}
+        >
           {error}
         </p>
       )}
     </div>
-  )
+  );
 }

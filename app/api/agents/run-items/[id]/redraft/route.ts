@@ -1,18 +1,15 @@
 // Imports
-import { NextResponse } from "next/server"
-import { createDraftClient, generateDraft } from "@/lib/draft/generate"
-import { weightedLength } from "@/lib/draft/count"
-import { createClient } from "@/lib/supabase/server"
-import type { Agent, RunItem } from "@/lib/types"
+import { NextResponse } from "next/server";
+import { weightedLength } from "@/lib/draft/count";
+import { createDraftClient, generateDraft } from "@/lib/draft/generate";
+import { createClient } from "@/lib/supabase/server";
+import type { Agent, RunItem } from "@/lib/types";
 
-export const runtime = "nodejs"
-export const maxDuration = 120
+export const runtime = "nodejs";
+export const maxDuration = 120;
 
-type RedraftItem = Pick<
-  RunItem,
-  "id" | "agent_id" | "story_title" | "story_summary"
->
-type RedraftAgent = Pick<Agent, "id" | "drafting_instructions">
+type RedraftItem = Pick<RunItem, "id" | "agent_id" | "story_title" | "story_summary">;
+type RedraftAgent = Pick<Agent, "id" | "drafting_instructions">;
 
 /**
  * Regenerate a draft for one persisted run item using the agent's current
@@ -23,31 +20,53 @@ type RedraftAgent = Pick<Agent, "id" | "drafting_instructions">
  */
 export async function POST(
   _req: Request,
-  context: { params: Promise<{ id: string }> },
+  context: {
+    params: Promise<{
+      id: string;
+    }>;
+  },
 ) {
-  const { id } = await context.params
-  const supabase = await createClient()
+  const { id } = await context.params;
+  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    )
+      {
+        error: "Authentication required.",
+      },
+      {
+        status: 401,
+      },
+    );
   }
 
   const { data: item, error: itemError } = await supabase
     .from("run_items")
     .select("id, agent_id, story_title, story_summary")
     .eq("id", id)
-    .maybeSingle<RedraftItem>()
+    .maybeSingle<RedraftItem>();
 
   if (itemError) {
-    return NextResponse.json({ error: "Failed to load item." }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to load item.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
   if (!item) {
-    return NextResponse.json({ error: "Draft not found." }, { status: 404 })
+    return NextResponse.json(
+      {
+        error: "Draft not found.",
+      },
+      {
+        status: 404,
+      },
+    );
   }
 
   const { data: agent, error: agentError } = await supabase
@@ -55,22 +74,46 @@ export async function POST(
     .select("id, drafting_instructions")
     .eq("id", item.agent_id)
     .eq("user_id", user.id)
-    .maybeSingle<RedraftAgent>()
+    .maybeSingle<RedraftAgent>();
 
   if (agentError) {
-    return NextResponse.json({ error: "Failed to load agent." }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to load agent.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
   if (!agent) {
-    return NextResponse.json({ error: "Agent not found." }, { status: 404 })
+    return NextResponse.json(
+      {
+        error: "Agent not found.",
+      },
+      {
+        status: 404,
+      },
+    );
   }
 
   const result = await generateDraft({
     client: createDraftClient(),
     draftingInstructions: agent.drafting_instructions,
-    story: { title: item.story_title, summary: item.story_summary },
-  })
+    story: {
+      title: item.story_title,
+      summary: item.story_summary,
+    },
+  });
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 502 })
+    return NextResponse.json(
+      {
+        error: result.error,
+      },
+      {
+        status: 502,
+      },
+    );
   }
 
   const { error: updateError } = await supabase
@@ -81,14 +124,21 @@ export async function POST(
       status: "drafted",
       error_message: null,
     })
-    .eq("id", item.id)
+    .eq("id", item.id);
 
   if (updateError) {
-    return NextResponse.json({ error: "Failed to save draft." }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to save draft.",
+      },
+      {
+        status: 500,
+      },
+    );
   }
 
   return NextResponse.json({
     text: result.text,
     weightedLength: weightedLength(result.text),
-  })
+  });
 }

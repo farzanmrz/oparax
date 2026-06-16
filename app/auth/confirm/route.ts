@@ -3,7 +3,7 @@
 // verifies the email, signs the session back out, and seeds the login modal
 // with a success notice (no auto-login); recovery forwards the token to the
 // reset-password modal without consuming it.
-import { type EmailOtpType } from "@supabase/supabase-js";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
       const supabase = await createClient();
       const { data, error } = await supabase.auth.getUser();
       if (!error && data.user) {
-        return redirectTo("/", { auth: "reset" });
+        return redirectTo("/", {
+          auth: "reset",
+        });
       }
     } catch {
       // Network error or unexpected failure — fall through to error redirect
@@ -56,7 +58,10 @@ export async function GET(request: NextRequest) {
   if (token_hash && type) {
     try {
       const supabase = await createClient();
-      const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+      const { error } = await supabase.auth.verifyOtp({
+        type,
+        token_hash,
+      });
 
       if (!error) {
         // Email verified. verifyOtp signs the user in as a side effect —

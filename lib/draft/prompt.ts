@@ -1,7 +1,7 @@
 // Imports
 
 // Grok model used for draft generation.
-export const DRAFT_MODEL = "grok-4.3"
+export const DRAFT_MODEL = "grok-4.3";
 
 // Strict JSON schema for a single tweet draft (the body only).
 export const DRAFT_JSON_SCHEMA = {
@@ -14,8 +14,10 @@ export const DRAFT_JSON_SCHEMA = {
       description: "The drafted tweet body only — no markdown, no raw URLs.",
     },
   },
-  required: ["text"],
-} as const
+  required: [
+    "text",
+  ],
+} as const;
 
 // System prompt for generating one postable tweet from a single story.
 export const DRAFT_SYSTEM_PROMPT = `You draft a single postable X (Twitter) post for a professional reporter, in their voice.
@@ -25,7 +27,7 @@ Rules:
 - Do not include raw URLs.
 - Stay within 280 characters.
 - Use only the provided story as the factual basis; do not invent details.
-- Follow the drafting instructions provided in the user message.`
+- Follow the drafting instructions provided in the user message.`;
 
 // System prompt for the single repair pass when a draft fails validation.
 export const DRAFT_REPAIR_SYSTEM_PROMPT = `You are repairing a drafted X post so it becomes directly postable.
@@ -35,19 +37,19 @@ Rules:
 - Keep the same underlying angle and use only the provided story.
 - Remove headings, markdown, explanations, source footers, and raw URLs.
 - Keep the tweet within 280 characters; if too long, drop secondary detail while preserving the main angle and the drafting instructions.
-- Output only the repaired tweet body.`
+- Output only the repaired tweet body.`;
 
 // The story content fed to the drafting model (trimmed stories: title + summary).
 export interface DraftStoryInput {
-  title: string
-  summary: string
+  title: string;
+  summary: string;
 }
 
 // Shared drafting context from the monitor.
 export interface DraftContext {
-  monitoringDescription: string
-  draftingInstructions: string
-  exampleTweets: string[]
+  monitoringDescription: string;
+  draftingInstructions: string;
+  exampleTweets: string[];
 }
 
 /**
@@ -56,7 +58,9 @@ export interface DraftContext {
  * @returns a JSON string user prompt
  */
 export function buildDraftUserPrompt(
-  input: DraftContext & { story: DraftStoryInput },
+  input: DraftContext & {
+    story: DraftStoryInput;
+  },
 ): string {
   return JSON.stringify(
     {
@@ -70,7 +74,7 @@ export function buildDraftUserPrompt(
     },
     null,
     2,
-  )
+  );
 }
 
 /**
@@ -80,9 +84,9 @@ export function buildDraftUserPrompt(
  */
 export function buildDraftRepairUserPrompt(
   input: DraftContext & {
-    story: DraftStoryInput
-    invalidDraft: string
-    invalidReason: string
+    story: DraftStoryInput;
+    invalidDraft: string;
+    invalidReason: string;
   },
 ): string {
   return JSON.stringify(
@@ -99,5 +103,5 @@ export function buildDraftRepairUserPrompt(
     },
     null,
     2,
-  )
+  );
 }

@@ -4,12 +4,7 @@
 // always plain text next to the mark, never an image.
 export function OparaxMark(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1024 1024"
-      aria-hidden="true"
-      {...props}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" aria-hidden="true" {...props}>
       <path
         d="M 431.77 811.44 A 310 310 0 0 1 431.77 212.56"
         fill="none"
@@ -26,5 +21,5 @@ export function OparaxMark(props: React.SVGProps<SVGSVGElement>) {
       />
       <circle cx="512" cy="512" r="132" fill="currentColor" />
     </svg>
-  )
+  );
 }

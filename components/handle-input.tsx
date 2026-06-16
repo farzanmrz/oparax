@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
 // Imports
-import { useState } from "react"
+import { useState } from "react";
 
 interface HandleInputProps {
-  handles: string[]
-  maxHandles: number
-  showCount?: boolean
-  onAdd: (handle: string) => void
-  onRemove: (index: number) => void
+  handles: string[];
+  maxHandles: number;
+  showCount?: boolean;
+  onAdd: (handle: string) => void;
+  onRemove: (index: number) => void;
 }
 
 function cleanHandle(raw: string): string {
-  return raw.trim().replace(/^@/, "")
+  return raw.trim().replace(/^@/, "");
 }
 
 function isValidHandle(handle: string): boolean {
-  return /^[A-Za-z0-9_]{1,15}$/.test(handle)
+  return /^[A-Za-z0-9_]{1,15}$/.test(handle);
 }
 
 export function HandleInput({
@@ -26,59 +26,59 @@ export function HandleInput({
   onAdd,
   onRemove,
 }: HandleInputProps) {
-  const [inputValue, setInputValue] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [inputValue, setInputValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   function commitHandle(raw: string) {
-    setError(null)
-    const cleaned = cleanHandle(raw)
-    if (!cleaned) return
+    setError(null);
+    const cleaned = cleanHandle(raw);
+    if (!cleaned) return;
 
     if (handles.length >= maxHandles) {
-      setError(`Maximum ${maxHandles} handles allowed.`)
-      return
+      setError(`Maximum ${maxHandles} handles allowed.`);
+      return;
     }
     if (handles.includes(cleaned)) {
-      setError(`@${cleaned} is already added.`)
-      return
+      setError(`@${cleaned} is already added.`);
+      return;
     }
     if (!isValidHandle(cleaned)) {
-      setError(`"${cleaned}" is not a valid X handle.`)
-      return
+      setError(`"${cleaned}" is not a valid X handle.`);
+      return;
     }
 
-    onAdd(cleaned)
+    onAdd(cleaned);
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value
-    setError(null)
+    const value = e.target.value;
+    setError(null);
 
     // Comma or space triggers chip creation
     if (value.includes(",") || value.includes(" ")) {
-      const parts = value.split(/[, ]/)
+      const parts = value.split(/[, ]/);
       for (const part of parts.slice(0, -1)) {
-        if (part.trim()) commitHandle(part)
+        if (part.trim()) commitHandle(part);
       }
-      setInputValue(parts[parts.length - 1])
-      return
+      setInputValue(parts[parts.length - 1]);
+      return;
     }
 
-    setInputValue(value)
+    setInputValue(value);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
-      e.preventDefault()
-      const cleaned = cleanHandle(inputValue)
+      e.preventDefault();
+      const cleaned = cleanHandle(inputValue);
       if (cleaned) {
-        commitHandle(inputValue)
-        setInputValue("")
+        commitHandle(inputValue);
+        setInputValue("");
       }
     }
     // Backspace on empty input removes last chip
     if (e.key === "Backspace" && !inputValue && handles.length > 0) {
-      onRemove(handles.length - 1)
+      onRemove(handles.length - 1);
     }
   }
 
@@ -102,16 +102,19 @@ export function HandleInput({
           value={inputValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder={
-            handles.length === 0 ? "e.g. FabrizioRomano, AlexKayKay" : ""
-          }
+          placeholder={handles.length === 0 ? "e.g. FabrizioRomano, AlexKayKay" : ""}
           className="ws-handle-input"
           disabled={handles.length >= maxHandles}
         />
       </div>
 
       {error && (
-        <p className="ferr show" style={{ margin: 0 }}>
+        <p
+          className="ferr show"
+          style={{
+            margin: 0,
+          }}
+        >
           {error}
         </p>
       )}
@@ -122,5 +125,5 @@ export function HandleInput({
         </p>
       )}
     </div>
-  )
+  );
 }

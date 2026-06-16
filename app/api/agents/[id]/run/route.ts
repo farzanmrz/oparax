@@ -1,17 +1,14 @@
 // Imports
-import { createScanClient } from "@/lib/scan/client"
-import { parseScanItems, toStoryDraft } from "@/lib/scan/parse"
-import {
-  buildAgentRunUserPrompt,
-  buildScanInstructions,
-} from "@/lib/scan/prompt"
-import { buildScanRequest } from "@/lib/scan/request"
-import { encodeScanEvent, ScanStreamWriter } from "@/lib/scan/stream"
-import { createClient } from "@/lib/supabase/server"
-import type { Agent, RunItemInsert } from "@/lib/types"
+import { createScanClient } from "@/lib/scan/client";
+import { parseScanItems, toStoryDraft } from "@/lib/scan/parse";
+import { buildAgentRunUserPrompt, buildScanInstructions } from "@/lib/scan/prompt";
+import { buildScanRequest } from "@/lib/scan/request";
+import { encodeScanEvent, ScanStreamWriter } from "@/lib/scan/stream";
+import { createClient } from "@/lib/supabase/server";
+import type { Agent, RunItemInsert } from "@/lib/types";
 
-export const runtime = "nodejs"
-export const maxDuration = 300
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 type AgentRunConfig = Pick<
   Agent,
@@ -24,7 +21,7 @@ type AgentRunConfig = Pick<
   | "scan_from"
   | "scan_to"
   | "status"
->
+>;
 
 /**
  * Run a saved agent: one streamed Grok scan+draft call, then persisted
@@ -35,15 +32,21 @@ type AgentRunConfig = Pick<
  */
 export async function POST(
   _req: Request,
-  context: { params: Promise<{ id: string }> },
+  context: {
+    params: Promise<{
+      id: string;
+    }>;
+  },
 ) {
-  const { id } = await context.params
-  const supabase = await createClient()
+  const { id } = await context.params;
+  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
   if (!user) {
-    return new Response("Authentication required.", { status: 401 })
+    return new Response("Authentication required.", {
+      status: 401,
+    });
   }
 
   const { data: agent, error: agentError } = await supabase
@@ -53,25 +56,37 @@ export async function POST(
     )
     .eq("id", id)
     .eq("user_id", user.id)
-    .maybeSingle<AgentRunConfig>()
+    .maybeSingle<AgentRunConfig>();
 
   if (agentError) {
-    return new Response("Failed to load agent.", { status: 500 })
+    return new Response("Failed to load agent.", {
+      status: 500,
+    });
   }
   if (!agent) {
-    return new Response("Agent not found.", { status: 404 })
+    return new Response("Agent not found.", {
+      status: 404,
+    });
   }
   if (agent.status === "inactive") {
-    return new Response("Reconnect X to reactivate this agent.", { status: 409 })
+    return new Response("Reconnect X to reactivate this agent.", {
+      status: 409,
+    });
   }
   if (agent.monitored_handles.length === 0) {
-    return new Response("Add at least one handle to monitor.", { status: 400 })
+    return new Response("Add at least one handle to monitor.", {
+      status: 400,
+    });
   }
   if (!agent.monitoring_description.trim()) {
-    return new Response("Scanning instructions are required.", { status: 400 })
+    return new Response("Scanning instructions are required.", {
+      status: 400,
+    });
   }
   if (!agent.drafting_instructions.trim()) {
-    return new Response("Drafting instructions are required.", { status: 400 })
+    return new Response("Drafting instructions are required.", {
+      status: 400,
+    });
   }
 
   const { data: run, error: runError } = await supabase
@@ -87,20 +102,24 @@ export async function POST(
       },
     })
     .select("id")
-    .single<{ id: string }>()
+    .single<{
+      id: string;
+    }>();
 
   if (runError || !run) {
-    return new Response("Failed to create run.", { status: 500 })
+    return new Response("Failed to create run.", {
+      status: 500,
+    });
   }
-  const runId = run.id
+  const runId = run.id;
 
-  const encoder = new TextEncoder()
-  const client = createScanClient()
+  const encoder = new TextEncoder();
+  const client = createScanClient();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       function write(value: string) {
-        controller.enqueue(encoder.encode(value))
+        controller.enqueue(encoder.encode(value));
       }
 
       async function fail(message: string) {
@@ -111,15 +130,20 @@ export async function POST(
             completed_at: new Date().toISOString(),
             error_message: message,
           })
-          .eq("id", runId)
-        write(encodeScanEvent({ type: "error", message }))
-        controller.close()
+          .eq("id", runId);
+        write(
+          encodeScanEvent({
+            type: "error",
+            message,
+          }),
+        );
+        controller.close();
       }
 
       try {
         const writer = new ScanStreamWriter((event) => {
-          write(encodeScanEvent(event))
-        })
+          write(encodeScanEvent(event));
+        });
 
         const responseStream = await client.responses.create(
           buildScanRequest({
@@ -132,25 +156,25 @@ export async function POST(
               draftingInstructions: agent.drafting_instructions,
             }),
           }),
-        )
+        );
 
         for await (const event of responseStream) {
-          writer.handle(event)
+          writer.handle(event);
         }
 
-        const items = parseScanItems(writer.getAnswerText())
-        const metrics = writer.getMetrics()
+        const items = parseScanItems(writer.getAnswerText());
+        const metrics = writer.getMetrics();
         if (!items) {
-          await fail("Run completed, but the final JSON could not be parsed.")
-          return
+          await fail("Run completed, but the final JSON could not be parsed.");
+          return;
         }
 
-        const seen = new Set<string>()
+        const seen = new Set<string>();
         const stories = items.map(toStoryDraft).filter((story) => {
-          if (seen.has(story.dedupeKey)) return false
-          seen.add(story.dedupeKey)
-          return true
-        })
+          if (seen.has(story.dedupeKey)) return false;
+          seen.add(story.dedupeKey);
+          return true;
+        });
 
         const runItems: RunItemInsert[] = stories.map((story) => ({
           run_id: runId,
@@ -163,15 +187,13 @@ export async function POST(
           drafted_text: story.draft,
           final_text: story.draft,
           status: "drafted",
-        }))
+        }));
 
         if (runItems.length > 0) {
-          const { error: itemsError } = await supabase
-            .from("run_items")
-            .insert(runItems)
+          const { error: itemsError } = await supabase.from("run_items").insert(runItems);
           if (itemsError) {
-            await fail("Run completed, but its items could not be saved.")
-            return
+            await fail("Run completed, but its items could not be saved.");
+            return;
           }
         }
 
@@ -185,11 +207,11 @@ export async function POST(
             item_count: runItems.length,
             error_message: null,
           })
-          .eq("id", runId)
+          .eq("id", runId);
 
         if (updateError) {
-          await fail("Run items saved, but the run summary could not be saved.")
-          return
+          await fail("Run items saved, but the run summary could not be saved.");
+          return;
         }
 
         write(
@@ -199,18 +221,18 @@ export async function POST(
             storyCount: runItems.length,
             metrics,
           }),
-        )
-        controller.close()
+        );
+        controller.close();
       } catch (error) {
-        await fail(error instanceof Error ? error.message : "Unknown run error.")
+        await fail(error instanceof Error ? error.message : "Unknown run error.");
       }
     },
-  })
+  });
 
   return new Response(stream, {
     headers: {
       "Cache-Control": "no-store",
       "Content-Type": "application/x-ndjson; charset=utf-8",
     },
-  })
+  });
 }

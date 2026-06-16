@@ -6,8 +6,8 @@ export function WorkspacePageHeader({
   title,
   action,
 }: {
-  title: string
-  action?: React.ReactNode
+  title: string;
+  action?: React.ReactNode;
 }) {
   return (
     <>
@@ -17,5 +17,5 @@ export function WorkspacePageHeader({
       </div>
       <div className="ws-divider" />
     </>
-  )
+  );
 }

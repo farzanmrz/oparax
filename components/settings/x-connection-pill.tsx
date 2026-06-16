@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
+import { useRouter } from "next/navigation";
 // Imports
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { startXConnect } from "@/lib/x/link-identity"
-import { XTile } from "@/components/dashboard/shell-icons"
+import { useEffect, useState } from "react";
+import { XTile } from "@/components/dashboard/shell-icons";
+import { startXConnect } from "@/lib/x/link-identity";
 
 /**
  * X connection pill (issue #25): the only real/interactive connection on the
@@ -27,73 +27,78 @@ export function XConnectionPill({
   xUsername,
   agentCount,
 }: {
-  xUsername?: string
-  agentCount: number
+  xUsername?: string;
+  agentCount: number;
 }) {
   // Router to refresh the page after disconnect.
-  const router = useRouter()
+  const router = useRouter();
 
   // Request pending flag, error message, confirm-modal state.
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   // Escape closes the confirm modal (unless disconnect is in flight).
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) setOpen(false)
-    }
-    document.addEventListener("keydown", onKeyDown)
-    return () => document.removeEventListener("keydown", onKeyDown)
-  }, [open, pending])
+      if (event.key === "Escape" && !pending) setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [
+    open,
+    pending,
+  ]);
 
   // Start the shared X link flow (unlink stale identity → linkIdentity → callback).
   async function connect() {
-    setPending(true)
-    setError(null)
+    setPending(true);
+    setError(null);
     try {
-      await startXConnect("/dashboard/settings")
+      await startXConnect("/dashboard/settings");
       // On success the browser redirects to X for consent.
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start X connection.")
-      setPending(false)
+      setError(err instanceof Error ? err.message : "Could not start X connection.");
+      setPending(false);
     }
   }
 
   // Call /api/x/disconnect, then refresh the page.
   async function disconnect() {
-    setPending(true)
-    setError(null)
+    setPending(true);
+    setError(null);
     try {
-      const response = await fetch("/api/x/disconnect", { method: "POST" })
+      const response = await fetch("/api/x/disconnect", {
+        method: "POST",
+      });
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as {
-          error?: string
-        } | null
-        throw new Error(data?.error || "Failed to disconnect.")
+          error?: string;
+        } | null;
+        throw new Error(data?.error || "Failed to disconnect.");
       }
       // The pill stays mounted across the refresh (it renders both states), so
       // close the modal + clear pending ourselves; the refresh flips the pill to
       // its "Connect" state. Without this the confirm button hangs on loading.
-      router.refresh()
-      setOpen(false)
-      setPending(false)
+      router.refresh();
+      setOpen(false);
+      setPending(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disconnect.")
-      setPending(false)
+      setError(err instanceof Error ? err.message : "Failed to disconnect.");
+      setPending(false);
     }
   }
 
   // Pill click: connected → always open the disconnect confirm modal; not
   // connected → start the connect flow.
   function onTrigger() {
-    if (pending) return
+    if (pending) return;
     if (xUsername) {
-      setError(null)
-      setOpen(true)
+      setError(null);
+      setOpen(true);
     } else {
-      void connect()
+      void connect();
     }
   }
 
@@ -106,7 +111,12 @@ export function XConnectionPill({
         disabled={pending}
         aria-label={xUsername ? `Disconnect @${xUsername}` : "Connect X"}
       >
-        <span className="pill-logo" style={{ background: "#000000" }}>
+        <span
+          className="pill-logo"
+          style={{
+            background: "#000000",
+          }}
+        >
           <XTile />
         </span>
         <span className="pill-body">
@@ -116,7 +126,13 @@ export function XConnectionPill({
       </button>
 
       {error && !open && (
-        <p className="ferr show" style={{ flexBasis: "100%", margin: 0 }}>
+        <p
+          className="ferr show"
+          style={{
+            flexBasis: "100%",
+            margin: 0,
+          }}
+        >
           {error}
         </p>
       )}
@@ -128,7 +144,7 @@ export function XConnectionPill({
         aria-label="Disconnect X"
         aria-hidden={open ? undefined : true}
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !pending) setOpen(false)
+          if (event.target === event.currentTarget && !pending) setOpen(false);
         }}
       >
         {open ? (
@@ -138,14 +154,11 @@ export function XConnectionPill({
               {agentCount > 0 ? (
                 <>
                   This will disable posting for {agentCount} saved agent
-                  {agentCount === 1 ? "" : "s"} and mark them inactive. You can
-                  reconnect X later to reactivate them.
+                  {agentCount === 1 ? "" : "s"} and mark them inactive. You can reconnect X later to
+                  reactivate them.
                 </>
               ) : (
-                <>
-                  Are you sure you want to disconnect your X account? You can
-                  reconnect anytime.
-                </>
+                <>Are you sure you want to disconnect your X account? You can reconnect anytime.</>
               )}
             </p>
             <div className={`form-err${error ? " show" : ""}`} role="alert">
@@ -160,11 +173,7 @@ export function XConnectionPill({
               Disconnect
             </button>
             <p className="mswitch">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => setOpen(false)}
-              >
+              <button type="button" disabled={pending} onClick={() => setOpen(false)}>
                 Cancel
               </button>
             </p>
@@ -172,5 +181,5 @@ export function XConnectionPill({
         ) : null}
       </div>
     </>
-  )
+  );
 }
