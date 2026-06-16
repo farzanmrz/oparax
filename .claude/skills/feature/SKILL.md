@@ -5,6 +5,8 @@ description: >-
   non-trivial multi-step change to this project's app — anything that needs design
   + planning + a real build, not a one-off edit. Do NOT use for quick questions,
   one-line fixes, pure analysis, or debugging an existing bug.
+argument-hint: "[feature description]"
+allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 ---
 
 # Feature — idea to shipped
@@ -20,9 +22,9 @@ per-task branches. No PRs. No CI / GitHub Actions. The user controls integration
 1. **Before anything else, create a TodoWrite list with these exact 5 items** — your
    durable anchor (do not collapse or rephrase them):
    1. `Phase 1 — Design approved by user (✋ gate)`
-   2. `Phase 2 — Plan approved + ONE epic issue created (✋ gate)`
-   3. `Phase 3 — Built on ONE branch ft/<issue#>`
-   4. `Phase 4 — Temp worktrees/branches torn down · /simplify + /code-review · build+lint+browser verified · checklist handed to user (✋ gate)`
+   2. `Phase 2 — Plan approved by user (✋ gate)`
+   3. `Phase 3 — Issue + branch ft/<issue#> created (start.sh), built on that one branch`
+   4. `Phase 4 — Temp worktrees/branches torn down · /simplify + /code-review · build+browser verified · checklist handed to user (✋ gate)`
    5. `Phase 5 — Squash-merged to dev, pushed, branch deleted, issue closed (✋ gate)`
    You WILL descend into sub-skills (`superpowers:brainstorming`,
    `superpowers:writing-plans`) that each end with their own "you're done / next step
@@ -46,6 +48,9 @@ the three gates (design, plan, ship) are user-controlled.
 
 ## Phase 1 — Design ✋ (approve + iterate)
 
+If invoked as `/feature <description>`, that text arrives as `$ARGUMENTS` — seed the
+brainstorming with it. If `$ARGUMENTS` is empty, brainstorm from the conversation.
+
 Invoke `superpowers:brainstorming` to explore intent and shape the design, going
 back and forth until the user approves. Write the agreed design to
 `docs/superpowers/specs/YYYY-MM-DD-<slug>.md`.
@@ -58,25 +63,25 @@ GATE: do not proceed until the user explicitly approves the design.
 ## Phase 2 — Plan ✋ (approve)
 
 Invoke `superpowers:writing-plans` to produce a bite-sized, no-placeholder plan with
-a task **checklist**; save to `docs/superpowers/plans/YYYY-MM-DD-<slug>.md`. Then
-**create ONE GitHub issue (the epic) and capture its number** — it names the branch
-(`ft/<issue#>`) in Phase 3:
-```bash
-gh issue create --title "<feature name>" \
-  --body-file docs/superpowers/plans/YYYY-MM-DD-<slug>.md
-```
-(Issues are fine — only PRs and CI are forbidden.)
+a task **checklist**; save to `docs/superpowers/plans/YYYY-MM-DD-<slug>.md`.
 
 When writing-plans offers its execution handoff (subagent-driven vs inline), **do not
 treat that as the end** — its execution belongs to Phase 3 here, on ONE branch. Tick
 Phase 2 and continue.
 
-GATE: do not proceed until the user approves the plan.
+GATE: do not proceed until the user approves the plan. The issue is created **after**
+this gate (Phase 3 kickoff), so a rejected plan never leaves an orphan issue.
 
 ## Phase 3 — Parallel build (one branch)
 
-- Create ONE branch off dev:
-  `git checkout dev && git pull --ff-only && git checkout -b ft/<issue#>`
+- **Kickoff — creates the issue AND the one branch** (from the repo root):
+  ```bash
+  ${CLAUDE_SKILL_DIR}/scripts/start.sh "<feature name>" docs/superpowers/plans/YYYY-MM-DD-<slug>.md
+  ```
+  It cuts from a clean `dev`, opens the issue, and creates the branch `ft/<issue-number>`
+  (the issue number only — never the title or a slug). **Capture the issue number it
+  prints** (the script's only stdout line); it drives Phase 5.
+  (Issues are fine — only PRs and CI are forbidden.)
 - Split the plan into **independent tracks** (groups of files that don't overlap).
 - If 2+ independent tracks: use `superpowers:dispatching-parallel-agents` to run
   them concurrently, each subagent in an isolated worktree off this branch
@@ -84,21 +89,25 @@ GATE: do not proceed until the user approves the plan.
   with `superpowers:subagent-driven-development`.
 - Every change **converges back into `ft/<issue#>`**. Subagents and worktrees
   NEVER push their own branch and NEVER open PRs.
-- Keep `pnpm build` + `pnpm lint` green as tracks land. Tick Phase 3 and continue.
+- Keep `pnpm build` green as tracks land (Biome auto-formats edits via the global hook). Tick Phase 3 and continue.
 
 ## Phase 4 — Converge + QC ✋ (MANDATORY — the step naive runs skip)
 
 1. Merge every track's commits into `ft/<issue#>`, then **tear down all temp worktrees
    and return to this branch in the main repo dir** by running, from the repo root:
-   `.claude/skills/feature/scripts/cleanup-tracks.sh`
-   Then delete any leftover temp track branches it lists (`git branch -D <name>`).
-   Confirm `git worktree list` shows only the main dir and `git branch` has no leftover
-   temp branches.
+   `${CLAUDE_SKILL_DIR}/scripts/cleanup-tracks.sh`
+   It runs silently; then confirm with `git worktree list` (only the main dir) and
+   `git branch`, deleting any leftover temp track branches (`git branch -D <name>`).
 2. Run `/simplify`, then `/code-review`, over the feature diff. Fix real findings.
-3. Verify with `superpowers:verification-before-completion`: `pnpm build` +
-   `pnpm lint` + a `browser-agent` check of the changed pages (no test runner in
-   this repo, per AGENTS.md).
-4. GATE: **STOP. Post the verification checklist to the user and ask, in plain words,
+3. Run `pnpm lint` (Biome) and fix the real errors it reports — formatting is already
+   applied continuously by the global Biome edit hook, so this step is only the
+   judgment-level lint findings Claude must reason about. If the feature changed
+   user-facing pages/components, optionally run `vercel:react-best-practices` on them
+   (or delegate Core Web Vitals work to the `vercel:performance-optimizer` agent).
+4. Verify with `superpowers:verification-before-completion`: `pnpm build` + a
+   `browser-agent` check of the changed pages (no test runner in this repo, per
+   AGENTS.md). Formatting is handled continuously by the global Biome edit hook.
+5. GATE: **STOP. Post the verification checklist to the user and ask, in plain words,
    "Ready to ship, or are there bugs to fix first?"** Do NOT tick Phase 4 until the
    user answers, and **NEVER infer "ship it" from a green build** — a passing
    build/lint is not permission to ship. Iterate on bugs with them **on this one
@@ -110,7 +119,7 @@ From the repo root, on branch `ft/<issue#>`, run the ship script — it squash-m
 to dev as one clean commit, pushes, deletes the branch, and closes the issue:
 
 ```bash
-.claude/skills/feature/scripts/ship.sh <issue#> "<feature summary>"
+${CLAUDE_SKILL_DIR}/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
 The script refuses to run if temp worktrees remain (Phase 4 must have cleaned up first)
