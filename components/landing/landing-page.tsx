@@ -266,9 +266,7 @@ export function LandingPage({
     if (initialView && typeof window !== "undefined") {
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [
-    initialView,
-  ]);
+  }, [initialView]);
 
   const openAuth = (view: AuthView) => () => setAuthView(view);
 

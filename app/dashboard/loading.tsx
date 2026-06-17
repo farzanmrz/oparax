@@ -41,11 +41,7 @@ export default function DashboardLoading() {
       <div className="ws-divider" />
 
       <div className="ws-list" aria-hidden="true">
-        {[
-          0,
-          1,
-          2,
-        ].map((row) => (
+        {[0, 1, 2].map((row) => (
           <div key={row} className="ws-agent-card">
             <div className="ws-agent-main">
               <div

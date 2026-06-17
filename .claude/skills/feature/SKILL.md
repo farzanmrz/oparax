@@ -82,6 +82,12 @@ this gate (Phase 3 kickoff), so a rejected plan never leaves an orphan issue.
   (the issue number only — never the title or a slug). **Capture the issue number it
   prints** (the script's only stdout line); it drives Phase 5.
   (Issues are fine — only PRs and CI are forbidden.)
+- **Commit the planning docs first.** The spec + plan are still *untracked* when
+  `start.sh` cuts the branch (so they slip past its clean-tree check and ride along);
+  once on `ft/<issue#>`, commit them as the branch's first commit
+  (`git add docs/superpowers/specs/… docs/superpowers/plans/…`) so they are
+  version-controlled and visibly evolve across the build. They are **branch-local
+  scaffolding** — Phase 5's `ship.sh` strips them, so they never land on `dev`.
 - Split the plan into **independent tracks** (groups of files that don't overlap).
 - If 2+ independent tracks: use `superpowers:dispatching-parallel-agents` to run
   them concurrently, each subagent in an isolated worktree off this branch
@@ -89,7 +95,14 @@ this gate (Phase 3 kickoff), so a rejected plan never leaves an orphan issue.
   with `superpowers:subagent-driven-development`.
 - Every change **converges back into `ft/<issue#>`**. Subagents and worktrees
   NEVER push their own branch and NEVER open PRs.
-- Keep `pnpm build` green as tracks land (Biome auto-formats edits via the global hook). Tick Phase 3 and continue.
+- **Tracks only write code — they do NOT run `pnpm build`, `pnpm lint`, or any
+  `biome`/format command.** All verification *and* formatting is centralized in
+  Phase 4. Nothing runs during the build phase: code lands unformatted (there is no
+  per-edit format hook) and is normalized once, in Phase 4.
+- **Ignore mid-session LSP diagnostics** (`<new-diagnostics>` blocks) while tracks
+  are in flight: a subagent's in-progress edit produces stale "cannot find module"
+  / type errors that are NOT ground truth. The only authority is `pnpm build`
+  exit 0 on the committed tree, checked once in Phase 4. Tick Phase 3 and continue.
 
 ## Phase 4 — Converge + QC ✋ (MANDATORY — the step naive runs skip)
 
@@ -98,16 +111,36 @@ this gate (Phase 3 kickoff), so a rejected plan never leaves an orphan issue.
    `${CLAUDE_SKILL_DIR}/scripts/cleanup-tracks.sh`
    It runs silently; then confirm with `git worktree list` (only the main dir) and
    `git branch`, deleting any leftover temp track branches (`git branch -D <name>`).
-2. Run `/simplify`, then `/code-review`, over the feature diff. Fix real findings.
-3. Run `pnpm lint` (Biome) and fix the real errors it reports — formatting is already
-   applied continuously by the global Biome edit hook, so this step is only the
-   judgment-level lint findings Claude must reason about. If the feature changed
-   user-facing pages/components, optionally run `vercel:react-best-practices` on them
-   (or delegate Core Web Vitals work to the `vercel:performance-optimizer` agent).
-4. Verify with `superpowers:verification-before-completion`: `pnpm build` + a
-   `browser-agent` check of the changed pages (no test runner in this repo, per
-   AGENTS.md). Formatting is handled continuously by the global Biome edit hook.
-5. GATE: **STOP. Post the verification checklist to the user and ask, in plain words,
+2. **Now — and only now — run the full-diff QC once, over every track's combined
+   changes on `ft/<issue#>`.** This is a final gate on purpose, not per-track:
+   `/simplify` and `/code-review` read the *whole* feature diff, so a track that
+   finished first is reviewed together with the last — nothing is missed by waiting.
+   In order:
+   - a. `/simplify`, then `/code-review` — fix real findings.
+   - b. **Format + safe-fix the feature's files** (there is no per-edit hook anymore,
+     so this is where formatting happens). Scope it to *this feature's* changed files
+     so the deferred repo-wide reformat is not swept into the feature commit:
+     ```bash
+     git diff --name-only dev...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.json' \
+       | xargs -r pnpm exec biome check --write --no-errors-on-unmatched
+     ```
+     That applies formatting + safe lint fixes and prints the remaining judgment-level
+     findings (unsafe/unfixable rules like `noImgElement`); fix the real ones by hand.
+   - c. `pnpm build` **once**, via `superpowers:verification-before-completion`, plus
+     a `browser-agent` check of the changed pages (no test runner in this repo, per
+     AGENTS.md).
+   This is the **single place** Biome (format + lint) and `pnpm build` run in the
+   whole workflow. `pnpm build` exit 0 here, on the committed tree, is the only authority
+   on correctness — disregard any earlier mid-session diagnostic that disagrees. If
+   the feature changed user-facing pages/components, optionally run
+   `vercel:react-best-practices` (or delegate Core Web Vitals to the
+   `vercel:performance-optimizer` agent).
+3. **Update AGENTS.md if the feature changed anything it documents** — pages/routes,
+   architecture, the Supabase schema shape, env vars, conventions, or gotchas. Edit it
+   as part of this feature's diff (it ships in the same commit). **Never touch
+   CLAUDE.md** — it only imports AGENTS.md and is the user's to edit. If nothing
+   AGENTS.md covers changed, skip this step.
+4. GATE: **STOP. Post the verification checklist to the user and ask, in plain words,
    "Ready to ship, or are there bugs to fix first?"** Do NOT tick Phase 4 until the
    user answers, and **NEVER infer "ship it" from a green build** — a passing
    build/lint is not permission to ship. Iterate on bugs with them **on this one
@@ -123,8 +156,10 @@ ${CLAUDE_SKILL_DIR}/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
 The script refuses to run if temp worktrees remain (Phase 4 must have cleaned up first)
-or if you're not on `ft/<issue#>`. Tick Phase 5. The workflow is complete only after
-this phase — not before.
+or if you're not on `ft/<issue#>`. As part of the squash it **strips the planning docs**
+(`docs/superpowers/specs|plans`) — including any stale ones from earlier runs — so the
+dev commit is code-only and the docs never accumulate. Tick Phase 5. The workflow is
+complete only after this phase — not before.
 
 ---
 
@@ -134,6 +169,10 @@ this phase — not before.
 - NEVER open a PR or rely on GitHub Actions / CI. Quality = local `/simplify` +
   `/code-review` in Phase 4.
 - NEVER push to `main` or `beta`. Ship target is `dev` only.
+- Planning docs (`docs/superpowers/specs|plans`) are **branch-local scaffolding**:
+  committed on `ft/<issue#>` so they're tracked through the build, then stripped by
+  `ship.sh` so they never persist on `dev`. The durable record is the squashed commit
+  message + the closed issue — never AGENTS.md/CLAUDE.md.
 - ALWAYS keep the TodoWrite phase list as your anchor; never end at a sub-skill's
   terminal state. Cleanup (Phase 4) and ship (Phase 5) are non-skippable.
 - Preserve the repo's behavior contracts (server-action field `name`s, the

@@ -46,10 +46,7 @@ export function XConnectionPill({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [
-    open,
-    pending,
-  ]);
+  }, [open, pending]);
 
   // Start the shared X link flow (unlink stale identity → linkIdentity → callback).
   async function connect() {

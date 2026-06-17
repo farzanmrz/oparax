@@ -157,20 +157,13 @@ export function ProfileSection({
       setSavedPhone(prevBaselineRef.current.phone);
       prevBaselineRef.current = null;
     }
-  }, [
-    state.success,
-    state.error,
-    router,
-  ]);
+  }, [state.success, state.error, router]);
 
   // Arm/disarm the navigation guard as dirtiness changes; disarm on unmount.
   useEffect(() => {
     setDirty(dirty);
     return () => setDirty(false);
-  }, [
-    dirty,
-    setDirty,
-  ]);
+  }, [dirty, setDirty]);
 
   return (
     <section id="profile" className="card-sec set-sec">

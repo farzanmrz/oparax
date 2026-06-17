@@ -1,12 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | {
-      [key: string]: Json | undefined;
-    }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -26,9 +18,16 @@ export type Database = {
           monitoring_description: string;
           name: string;
           next_run_at: string | null;
+          preferred_domains: string[];
           scan_cadence_minutes: number | null;
           scan_from: string | null;
           scan_to: string | null;
+          schedule_days: number[];
+          schedule_timezone: string | null;
+          schedule_window_end: string | null;
+          schedule_window_start: string | null;
+          search_web: boolean;
+          search_x: boolean;
           status: Database["public"]["Enums"]["agent_status"];
           updated_at: string;
           user_id: string;
@@ -42,9 +41,16 @@ export type Database = {
           monitoring_description?: string;
           name: string;
           next_run_at?: string | null;
+          preferred_domains?: string[];
           scan_cadence_minutes?: number | null;
           scan_from?: string | null;
           scan_to?: string | null;
+          schedule_days?: number[];
+          schedule_timezone?: string | null;
+          schedule_window_end?: string | null;
+          schedule_window_start?: string | null;
+          search_web?: boolean;
+          search_x?: boolean;
           status?: Database["public"]["Enums"]["agent_status"];
           updated_at?: string;
           user_id: string;
@@ -58,14 +64,99 @@ export type Database = {
           monitoring_description?: string;
           name?: string;
           next_run_at?: string | null;
+          preferred_domains?: string[];
           scan_cadence_minutes?: number | null;
           scan_from?: string | null;
           scan_to?: string | null;
+          schedule_days?: number[];
+          schedule_timezone?: string | null;
+          schedule_window_end?: string | null;
+          schedule_window_start?: string | null;
+          search_web?: boolean;
+          search_x?: boolean;
           status?: Database["public"]["Enums"]["agent_status"];
           updated_at?: string;
           user_id?: string;
         };
         Relationships: [];
+      };
+      api_usage_events: {
+        Row: {
+          agent_id: string | null;
+          cost_usd: number | null;
+          created_at: string;
+          gateway_generation_id: string | null;
+          id: string;
+          input_tokens: number | null;
+          kind: Database["public"]["Enums"]["usage_kind"];
+          message_id: string | null;
+          metadata: Json | null;
+          model: string | null;
+          output_tokens: number | null;
+          provider: Database["public"]["Enums"]["usage_provider"];
+          resolved_provider: string | null;
+          run_id: string | null;
+          session_id: string | null;
+          tool_call_id: string | null;
+          tool_name: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          agent_id?: string | null;
+          cost_usd?: number | null;
+          created_at?: string;
+          gateway_generation_id?: string | null;
+          id?: string;
+          input_tokens?: number | null;
+          kind: Database["public"]["Enums"]["usage_kind"];
+          message_id?: string | null;
+          metadata?: Json | null;
+          model?: string | null;
+          output_tokens?: number | null;
+          provider: Database["public"]["Enums"]["usage_provider"];
+          resolved_provider?: string | null;
+          run_id?: string | null;
+          session_id?: string | null;
+          tool_call_id?: string | null;
+          tool_name?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          agent_id?: string | null;
+          cost_usd?: number | null;
+          created_at?: string;
+          gateway_generation_id?: string | null;
+          id?: string;
+          input_tokens?: number | null;
+          kind?: Database["public"]["Enums"]["usage_kind"];
+          message_id?: string | null;
+          metadata?: Json | null;
+          model?: string | null;
+          output_tokens?: number | null;
+          provider?: Database["public"]["Enums"]["usage_provider"];
+          resolved_provider?: string | null;
+          run_id?: string | null;
+          session_id?: string | null;
+          tool_call_id?: string | null;
+          tool_name?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "api_usage_events_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "api_usage_events_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: false;
+            referencedRelation: "runs";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       run_items: {
         Row: {
@@ -128,25 +219,17 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "run_items_agent_id_fkey";
-            columns: [
-              "agent_id",
-            ];
+            columns: ["agent_id"];
             isOneToOne: false;
             referencedRelation: "agents";
-            referencedColumns: [
-              "id",
-            ];
+            referencedColumns: ["id"];
           },
           {
             foreignKeyName: "run_items_run_id_fkey";
-            columns: [
-              "run_id",
-            ];
+            columns: ["run_id"];
             isOneToOne: false;
             referencedRelation: "runs";
-            referencedColumns: [
-              "id",
-            ];
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -193,16 +276,75 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "runs_agent_id_fkey";
-            columns: [
-              "agent_id",
-            ];
+            columns: ["agent_id"];
             isOneToOne: false;
             referencedRelation: "agents";
-            referencedColumns: [
-              "id",
-            ];
+            referencedColumns: ["id"];
           },
         ];
+      };
+      usage_reconciliations: {
+        Row: {
+          drift_pct: number | null;
+          estimated_usd: number;
+          id: string;
+          period_end: string;
+          period_start: string;
+          provider: string;
+          provider_usd: number | null;
+          raw: Json | null;
+          synced_at: string;
+        };
+        Insert: {
+          drift_pct?: number | null;
+          estimated_usd?: number;
+          id?: string;
+          period_end: string;
+          period_start: string;
+          provider: string;
+          provider_usd?: number | null;
+          raw?: Json | null;
+          synced_at?: string;
+        };
+        Update: {
+          drift_pct?: number | null;
+          estimated_usd?: number;
+          id?: string;
+          period_end?: string;
+          period_start?: string;
+          provider?: string;
+          provider_usd?: number | null;
+          raw?: Json | null;
+          synced_at?: string;
+        };
+        Relationships: [];
+      };
+      verified_x_handles: {
+        Row: {
+          last_checked_at: string;
+          name: string | null;
+          protected: boolean;
+          username: string;
+          verified_at: string;
+          x_user_id: string;
+        };
+        Insert: {
+          last_checked_at?: string;
+          name?: string | null;
+          protected?: boolean;
+          username: string;
+          verified_at?: string;
+          x_user_id: string;
+        };
+        Update: {
+          last_checked_at?: string;
+          name?: string | null;
+          protected?: boolean;
+          username?: string;
+          verified_at?: string;
+          x_user_id?: string;
+        };
+        Relationships: [];
       };
       x_connections: {
         Row: {
@@ -248,13 +390,15 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      delete_account: { Args: never; Returns: undefined };
     };
     Enums: {
       agent_status: "active" | "paused" | "inactive";
       item_status: "drafted" | "posted" | "failed";
       run_source: "manual" | "cron";
       run_status: "running" | "completed" | "failed";
+      usage_kind: "chat" | "scan" | "draft" | "redraft" | "x_verify" | "web_validate";
+      usage_provider: "xai" | "gateway" | "x_api" | "internal" | "deepinfra" | "deepseek";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -269,9 +413,7 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | {
-        schema: keyof DatabaseWithoutInternals;
-      },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -298,9 +440,7 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | {
-        schema: keyof DatabaseWithoutInternals;
-      },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -325,9 +465,7 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | {
-        schema: keyof DatabaseWithoutInternals;
-      },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -352,9 +490,7 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | {
-        schema: keyof DatabaseWithoutInternals;
-      },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -371,9 +507,7 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | {
-        schema: keyof DatabaseWithoutInternals;
-      },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -390,25 +524,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      agent_status: [
-        "active",
-        "paused",
-        "inactive",
-      ],
-      item_status: [
-        "drafted",
-        "posted",
-        "failed",
-      ],
-      run_source: [
-        "manual",
-        "cron",
-      ],
-      run_status: [
-        "running",
-        "completed",
-        "failed",
-      ],
+      agent_status: ["active", "paused", "inactive"],
+      item_status: ["drafted", "posted", "failed"],
+      run_source: ["manual", "cron"],
+      run_status: ["running", "completed", "failed"],
+      usage_kind: ["chat", "scan", "draft", "redraft", "x_verify", "web_validate"],
+      usage_provider: ["xai", "gateway", "x_api", "internal", "deepinfra", "deepseek"],
     },
   },
 } as const;

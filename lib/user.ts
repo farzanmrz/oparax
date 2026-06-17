@@ -21,12 +21,7 @@ export function deriveUsernameFromEmail(email: string | null | undefined): strin
  */
 export function getUsername(user: User | null | undefined): string {
   const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
-  for (const key of [
-    "username",
-    "display_name",
-    "full_name",
-    "name",
-  ]) {
+  for (const key of ["username", "display_name", "full_name", "name"]) {
     const value = meta[key];
     if (typeof value === "string" && value.trim()) return value.trim();
   }

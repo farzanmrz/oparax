@@ -1,6 +1,7 @@
-// X-handle rules shared by the monitor form and create-monitor action.
-// Built fresh per SPEC §5; 20 cap matches the monitors_handles_max_20 DB CHECK.
-export const MONITOR_MAX_HANDLES = 20;
+// X-handle rules shared by the agent config form and the scan/save routes.
+// Capped at 10 to match the @ai-sdk/xai xSearch `allowedXHandles` runtime limit
+// (the DB `monitored_handles <= 20` CHECK remains a looser backstop).
+export const MONITOR_MAX_HANDLES = 10;
 
 // Syntactically valid X username: 1–15 chars of [A-Za-z0-9_].
 export const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;

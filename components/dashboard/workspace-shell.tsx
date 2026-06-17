@@ -114,9 +114,7 @@ function useSettingsScrollSpy(enabled: boolean): string {
       window.removeEventListener("resize", compute);
       window.removeEventListener("hashchange", compute);
     };
-  }, [
-    enabled,
-  ]);
+  }, [enabled]);
 
   // Gate the returned value so it's empty when the sub-nav isn't shown, without
   // a synchronous setState in the effect (which the lint rule forbids).
@@ -125,11 +123,11 @@ function useSettingsScrollSpy(enabled: boolean): string {
 
 export function WorkspaceShell({
   username,
-  xUsername,
+  isAdmin = false,
   children,
 }: {
   username: string;
-  xUsername: string | null;
+  isAdmin?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -140,13 +138,13 @@ export function WorkspaceShell({
   const expanded = !collapsed;
 
   // Agents is the only live primary destination: active on the agents pages and
-  // on the connect-x landing (which is the not-connected agents view). When X
-  // isn't linked the link points at the gate so the user can't slip past it.
+  // on the connect-x landing (which is the not-connected agents view).
   const agentsActive =
     pathname === "/dashboard/connect-x" || pathname.startsWith("/dashboard/agents");
-  const agentsHref = xUsername ? "/dashboard/agents" : "/dashboard/connect-x";
+  const agentsHref = "/dashboard/agents";
 
   const settingsActive = pathname.startsWith("/dashboard/settings");
+  const usageActive = pathname.startsWith("/dashboard/usage");
   const activeSection = useSettingsScrollSpy(settingsActive && expanded);
 
   async function signOut() {
@@ -195,15 +193,20 @@ export function WorkspaceShell({
               {expanded && <span>Agents</span>}
             </Link>
 
-            <span className="nav-main nav-soon j-row" aria-disabled="true">
-              <InsightsIcon width={22} height={22} />
-              {expanded && (
-                <>
-                  <span className="ws-navitem-label">Insights</span>
-                  <span className="ws-soon">Soon</span>
-                </>
-              )}
-            </span>
+            {isAdmin && (
+              <Link
+                href="/dashboard/usage"
+                className="nav-main j-row"
+                data-active={usageActive ? "true" : undefined}
+                aria-current={usageActive ? "page" : undefined}
+                onClick={(e) => {
+                  if (!confirmLeave()) e.preventDefault();
+                }}
+              >
+                <InsightsIcon width={22} height={22} />
+                {expanded && <span>Usage</span>}
+              </Link>
+            )}
 
             <Link
               href="/dashboard/settings"

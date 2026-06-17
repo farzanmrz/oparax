@@ -56,8 +56,5 @@
       "source": "/:path*"
     }
   ],
-  "regions": [
-    "iad1",
-    "sfo1"
-  ]
+  "regions": ["iad1", "sfo1"]
 }

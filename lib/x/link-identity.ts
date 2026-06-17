@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/client";
  * Unlinks any stale `x` identity first — re-linking is the only way to capture
  * fresh provider tokens (Supabase won't re-expose an existing identity's
  * tokens), so we unlink before re-linking — then calls linkIdentity requesting
- * `tweet.write`, returning the user to `/auth/callback?next=<nextPath>` where
- * the callback captures and encrypts the tokens.
+ * read+write scopes (`tweet.read tweet.write users.read offline.access`), returning
+ * the user to `/auth/callback?next=<nextPath>` where the callback captures and
+ * encrypts the tokens.
  *
  * On success the browser redirects to X for consent, so this never resolves in
  * the happy path. It throws on a recoverable error so the caller can surface the
@@ -37,7 +38,7 @@ export async function startXConnect(nextPath: string): Promise<void> {
   const { error: linkError } = await supabase.auth.linkIdentity({
     provider: "x",
     options: {
-      scopes: "tweet.write",
+      scopes: "tweet.read tweet.write users.read offline.access",
       redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
     },
   });

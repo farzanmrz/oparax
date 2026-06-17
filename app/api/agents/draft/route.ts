@@ -1,7 +1,7 @@
 // Imports
 import { NextResponse } from "next/server";
 import { weightedLength } from "@/lib/draft/count";
-import { createDraftClient, generateDraft } from "@/lib/draft/generate";
+import { generateDraft } from "@/lib/draft/generate";
 import { createClient } from "@/lib/supabase/server";
 
 // Node runtime for the OpenAI SDK; generation is reasoning-heavy.
@@ -74,12 +74,12 @@ export async function POST(req: Request) {
 
   // Generate + validate (+ one repair); system prompt comes from code.
   const result = await generateDraft({
-    client: createDraftClient(),
     draftingInstructions,
     story: {
       title: storyTitle,
       summary: storySummary,
     },
+    exampleTweets: [],
   });
   if (!result.ok) {
     return NextResponse.json(

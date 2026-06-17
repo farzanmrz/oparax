@@ -2,6 +2,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isSafeNextPath } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
+import { findConflictingXOwnerMaskedEmail } from "@/lib/x/identity-owner";
 import { saveConnection } from "@/lib/x/tokens";
 
 // Node runtime: token capture + AES encryption use node:crypto.
@@ -15,6 +16,33 @@ const REQUESTED_SCOPES = [
   "offline.access",
   "tweet.write",
 ];
+
+// Where to bounce the user when the X account they authorized is already linked
+// to a different Oparax account. They must unlink it there first, so we land
+// them back on the connect-X gate (not Settings) with a clear error banner.
+const CONNECT_X_PATH = "/dashboard/connect-x";
+
+/**
+ * Detect Supabase's "this X identity already belongs to another user" failure.
+ *
+ * GoTrue rejects `linkIdentity` with error code `identity_already_exists`
+ * (message "Identity is already linked to another user") and bounces back to
+ * this callback as an OAuth error redirect carrying `error_code` /
+ * `error_description` (never the provider id or conflicting email). We match the
+ * stable error code first and fall back to the message text so a wording change
+ * upstream doesn't silently reclassify it as a generic OAuth error.
+ * @param searchParams - the callback URL query params
+ * @returns true if this is the duplicate-identity case
+ */
+function isIdentityAlreadyLinked(searchParams: URLSearchParams): boolean {
+  const code = searchParams.get("error_code")?.toLowerCase() ?? "";
+  const description = searchParams.get("error_description")?.toLowerCase() ?? "";
+  return (
+    code === "identity_already_exists" ||
+    description.includes("identity is already linked") ||
+    description.includes("already linked to another user")
+  );
+}
 
 /**
  * Restrict the post-callback redirect to a safe in-app path.
@@ -45,6 +73,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(url);
   };
 
+  // Supabase client scoped to this request (reused below for the code exchange).
+  const supabase = await createClient();
+
+  // Special-case the "this X account is already linked to a different Oparax
+  // account" failure: route the user back to the connect-X gate with a friendly,
+  // self-service message naming the conflicting account (email masked). GoTrue
+  // doesn't tell us which X account it was, so we look up the owner via the
+  // service-role Admin API (see findConflictingXOwnerMaskedEmail).
+  if (oauthError && isIdentityAlreadyLinked(searchParams)) {
+    const { data: userData } = await supabase.auth.getUser();
+    const maskedEmail = userData.user
+      ? await findConflictingXOwnerMaskedEmail(userData.user.id)
+      : null;
+
+    const url = new URL(CONNECT_X_PATH, origin);
+    url.searchParams.set("x_error", "x_already_linked");
+    if (maskedEmail) {
+      url.searchParams.set("lockedEmail", maskedEmail);
+    }
+    return NextResponse.redirect(url);
+  }
+
   if (oauthError) {
     return redirectWith("x_error", oauthError);
   }
@@ -53,7 +103,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Exchange code for session.
-  const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     return redirectWith("x_error", error.message);

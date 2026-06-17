@@ -34,9 +34,7 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
   const dirtyRef = useRef(dirty);
   useEffect(() => {
     dirtyRef.current = dirty;
-  }, [
-    dirty,
-  ]);
+  }, [dirty]);
 
   // Synchronous confirm for in-app nav / sign-out. Returns true to proceed.
   const confirmLeave = useCallback(() => {
@@ -54,9 +52,7 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [
-    dirty,
-  ]);
+  }, [dirty]);
 
   // Browser Back (best-effort): while dirty, keep a sentinel entry on top of
   // history so a Back press fires popstate here first. On popstate we confirm;
@@ -93,9 +89,7 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [
-    dirty,
-  ]);
+  }, [dirty]);
 
   return (
     <UnsavedChangesContext.Provider

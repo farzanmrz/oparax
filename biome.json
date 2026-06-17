@@ -1,177 +1,39 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
-  "assist": {
-    "actions": {
-      "source": {
-        "noDuplicateClasses": "on",
-        "organizeImports": "on",
-        "useSortedAttributes": "off",
-        "useSortedEnumMembers": "off",
-        "useSortedInterfaceMembers": "off",
-        "useSortedKeys": "off",
-        "useSortedPackageJson": "on",
-        "useSortedProperties": "off",
-        "useSortedSelectionSet": "off",
-        "useSortedTypeFields": "off"
-      }
-    },
-    "enabled": true
-  },
-  "css": {
-    "assist": {
-      "enabled": true
-    },
-    "formatter": {
-      "enabled": true,
-      "indentStyle": "space",
-      "indentWidth": 2,
-      "lineEnding": "lf",
-      "lineWidth": 100,
-      "quoteStyle": "double"
-    },
-    "linter": {
-      "enabled": true
-    },
-    "parser": {
-      "allowWrongLineComments": false,
-      "cssModules": true,
-      "tailwindDirectives": true
-    }
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      "**",
-      "!!**/.next",
-      "!!**/dist",
-      "!!**/build",
-      "!!**/out",
-      "!!**/coverage",
-      "!!**/.pnpm-store",
-      "!!**/.vercel",
-      "!!**/.DS_Store",
-      "!!public",
-      "!next-env.d.ts",
-      "!pnpm-lock.yaml"
-    ]
+    "includes": ["**", "!**/*.css"]
   },
   "formatter": {
-    "attributePosition": "auto",
-    "bracketSameLine": false,
-    "bracketSpacing": true,
-    "delimiterSpacing": false,
     "enabled": true,
-    "expand": "always",
-    "formatWithErrors": false,
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineEnding": "lf",
-    "lineWidth": 100,
-    "trailingNewline": true,
-    "useEditorconfig": false
-  },
-  "html": {
-    "assist": {
-      "enabled": true
-    },
-    "formatter": {
-      "attributePosition": "auto",
-      "bracketSameLine": false,
-      "enabled": true,
-      "indentScriptAndStyle": false,
-      "indentStyle": "space",
-      "indentWidth": 2,
-      "lineEnding": "lf",
-      "lineWidth": 100,
-      "selfCloseVoidElements": "always",
-      "whitespaceSensitivity": "css"
-    },
-    "linter": {
-      "enabled": true
-    },
-    "parser": {
-      "interpolation": false,
-      "vue": false
-    }
+    "lineWidth": 100
   },
   "javascript": {
-    "assist": {
-      "enabled": true
-    },
     "formatter": {
-      "arrowParentheses": "always",
-      "attributePosition": "auto",
-      "bracketSameLine": false,
-      "bracketSpacing": true,
-      "enabled": true,
-      "expand": "always",
-      "jsxQuoteStyle": "double",
-      "quoteProperties": "asNeeded",
       "quoteStyle": "double",
-      "semicolons": "always",
-      "trailingCommas": "all"
-    },
-    "linter": {
-      "enabled": true
-    },
-    "parser": {
-      "gritMetavariables": false,
-      "jsxEverywhere": true,
-      "unsafeParameterDecoratorsEnabled": false
-    }
-  },
-  "json": {
-    "assist": {
-      "enabled": true
-    },
-    "formatter": {
-      "bracketSpacing": true,
-      "enabled": true,
-      "expand": "always",
-      "trailingCommas": "none"
-    },
-    "linter": {
-      "enabled": true
-    },
-    "parser": {
-      "allowComments": false,
-      "allowTrailingCommas": false
+      "semicolons": "always"
     }
   },
   "linter": {
+    "enabled": true,
     "domains": {
       "next": "recommended",
       "react": "recommended"
-    },
-    "enabled": true,
-    "rules": {
-      "a11y": {
-        "noStaticElementInteractions": "warn",
-        "useAriaPropsSupportedByRole": "warn",
-        "useKeyWithClickEvents": "warn",
-        "useValidAnchor": "warn"
-      },
-      "complexity": {
-        "noImportantStyles": "warn",
-        "useOptionalChain": "warn"
-      },
-      "correctness": {
-        "noUnusedFunctionParameters": "warn"
-      },
-      "preset": "recommended",
-      "style": {
-        "noNonNullAssertion": "warn"
-      },
-      "suspicious": {
-        "noConfusingVoidType": "warn",
-        "noControlCharactersInRegex": "warn",
-        "useIterableCallbackReturn": "warn"
-      }
     }
   },
-  "vcs": {
-    "clientKind": "git",
+  "assist": {
     "enabled": true,
-    "useIgnoreFile": true
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   }
 }

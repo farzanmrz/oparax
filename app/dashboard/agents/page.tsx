@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { PlusIcon } from "@/components/dashboard/shell-icons";
 import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header";
 import { createClient } from "@/lib/supabase/server";
@@ -18,26 +17,12 @@ type AgentRow = Pick<Agent, "id" | "name" | "monitored_handles" | "status" | "cr
 export default async function AgentsPage() {
   const supabase = await createClient();
 
-  // Connection gate: the agents list is only for connected users. Without X
-  // linked, send them to the connect-X landing (where "New agent" is disabled) —
-  // matching the index router and the sidebar's Agents link. Closes the gap where
-  // a direct hit / OAuth-cancel redirect to /dashboard/agents showed an active
-  // "New agent" with no connection. Fetched in parallel with the agents list.
-  const [{ data: connection }, { data }] = await Promise.all([
-    supabase.from("x_connections").select("id").maybeSingle<{
-      id: string;
-    }>(),
-    supabase
-      .from("agents")
-      .select("id, name, monitored_handles, status, created_at")
-      .order("created_at", {
-        ascending: false,
-      }),
-  ]);
-
-  if (!connection) {
-    redirect("/dashboard/connect-x");
-  }
+  const { data } = await supabase
+    .from("agents")
+    .select("id, name, monitored_handles, status, created_at")
+    .order("created_at", {
+      ascending: false,
+    });
 
   const agents = (data ?? []) as AgentRow[];
 

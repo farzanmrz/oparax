@@ -1,7 +1,7 @@
 // Imports
 import { NextResponse } from "next/server";
-import { isValidHandle, MONITOR_MAX_HANDLES, normalizeHandle } from "@/lib/scan/handles";
-import type { PreviewStory, ScanMetrics } from "@/lib/scan/stream";
+import { agentConfigSchema, configToColumns } from "@/lib/chat/config";
+import type { PreviewStory, ScanMetrics } from "@/lib/scan/types";
 import { createClient } from "@/lib/supabase/server";
 import type { RunItemInsert } from "@/lib/types";
 
@@ -33,6 +33,7 @@ function normalizeStory(value: unknown): PreviewStory | null {
     primaryTweetUrl,
     dedupeKey,
     draft,
+    sources: [], // sources is preview-only; not persisted to or read from DB
   };
 }
 
@@ -46,19 +47,31 @@ function normalizeMetrics(value: unknown): ScanMetrics | null {
     typeof value.xSearchCalls === "number" && Number.isFinite(value.xSearchCalls)
       ? value.xSearchCalls
       : null;
+  const inputTokens =
+    typeof value.inputTokens === "number" && Number.isFinite(value.inputTokens)
+      ? value.inputTokens
+      : null;
+  const outputTokens =
+    typeof value.outputTokens === "number" && Number.isFinite(value.outputTokens)
+      ? value.outputTokens
+      : null;
 
   return {
     costUsd,
     elapsedMs,
     xSearchCalls,
+    inputTokens,
+    outputTokens,
   };
 }
 
 /**
- * Save the prompt-lab inputs as a real agent configuration after the operator
- * has proven the scan + draft shape in the lab UI.
- * @param req - request carrying the agent name, handles, and instructions
- * @returns the saved agent id, or a JSON error
+ * Save an agent configuration produced by the chat/form UI.
+ * Expects `{ config: AgentConfig, stories?: PreviewStory[], metrics?: ScanMetrics }`.
+ * Validates `config` with the zod schema; keeps plain typeof checks for
+ * `stories` and `metrics`. Preserves auth + ownership + no-duplicate-name
+ * guard and the run → run_items insertion for any preview stories.
+ * @returns `{ id }` on success, or a JSON error.
  */
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -107,7 +120,7 @@ export async function POST(req: Request) {
       },
     );
   }
-  if (typeof body !== "object" || body === null) {
+  if (!isRecord(body)) {
     return NextResponse.json(
       {
         error: "Invalid body.",
@@ -118,67 +131,31 @@ export async function POST(req: Request) {
     );
   }
 
-  const record = body as Record<string, unknown>;
-  const name =
-    typeof record.name === "string" && record.name.trim() ? record.name.trim() : "Prompt lab agent";
-  const monitoringDescription =
-    typeof record.monitoringDescription === "string" ? record.monitoringDescription.trim() : "";
-  const draftingInstructions =
-    typeof record.draftingInstructions === "string" ? record.draftingInstructions.trim() : "";
-  const rawHandles = Array.isArray(record.handles) ? record.handles : [];
-  const stories = Array.isArray(record.stories)
-    ? record.stories.map(normalizeStory).filter((story): story is PreviewStory => story !== null)
+  // Validate the config object via zod.
+  const parsed = agentConfigSchema.safeParse(body.config);
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: "Invalid config.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+  const config = parsed.data;
+
+  const stories = Array.isArray(body.stories)
+    ? body.stories.map(normalizeStory).filter((story): story is PreviewStory => story !== null)
     : [];
-  const metrics = normalizeMetrics(record.metrics);
-  const seenHandles = new Set<string>();
-  const handles = rawHandles
-    .filter((handle): handle is string => typeof handle === "string")
-    .map(normalizeHandle)
-    .filter((handle) => {
-      const key = handle.toLowerCase();
-      if (!handle || seenHandles.has(key)) return false;
-      seenHandles.add(key);
-      return true;
-    });
+  const metrics = normalizeMetrics(body.metrics);
 
-  if (handles.length === 0) {
-    return NextResponse.json(
-      {
-        error: "Add at least one X account to monitor.",
-      },
-      {
-        status: 400,
-      },
-    );
-  }
-  if (handles.length > MONITOR_MAX_HANDLES) {
-    return NextResponse.json(
-      {
-        error: `Use ${MONITOR_MAX_HANDLES} or fewer X accounts.`,
-      },
-      {
-        status: 400,
-      },
-    );
-  }
-
-  const invalidHandle = handles.find((handle) => !isValidHandle(handle));
-  if (invalidHandle) {
-    return NextResponse.json(
-      {
-        error: `@${invalidHandle} is not a valid X handle.`,
-      },
-      {
-        status: 400,
-      },
-    );
-  }
-
+  // No-duplicate-name check.
   const { data: existingAgents, error: existingError } = await supabase
     .from("agents")
     .select("id")
     .eq("user_id", user.id)
-    .eq("name", name)
+    .eq("name", config.name)
     .limit(1);
 
   if (existingError) {
@@ -205,11 +182,7 @@ export async function POST(req: Request) {
   const { data: agent, error } = await supabase
     .from("agents")
     .insert({
-      user_id: user.id,
-      name,
-      monitored_handles: handles,
-      monitoring_description: monitoringDescription,
-      drafting_instructions: draftingInstructions,
+      ...configToColumns(config, user.id),
       status: "active",
     })
     .select("id")
@@ -240,9 +213,9 @@ export async function POST(req: Request) {
         x_search_count: metrics?.xSearchCalls ?? null,
         item_count: stories.length,
         inputs: {
-          handles,
-          monitoringDescription,
-          draftingInstructions,
+          handles: config.sources.x.handles,
+          monitoringDescription: config.scanningInstructions,
+          draftingInstructions: config.draftingInstructions,
         },
       })
       .select("id")
@@ -261,7 +234,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const runItems: RunItemInsert[] = stories.map((story) => ({
+    // Dedupe by dedupeKey before insert to avoid (run_id, dedupe_key) unique constraint collision.
+    const seenKeys = new Set<string>();
+    const dedupedStories = stories.filter((story) => {
+      if (seenKeys.has(story.dedupeKey)) return false;
+      seenKeys.add(story.dedupeKey);
+      return true;
+    });
+
+    const runItems: RunItemInsert[] = dedupedStories.map((story) => ({
       run_id: run.id,
       agent_id: agent.id,
       story_title: story.title,

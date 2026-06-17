@@ -16,11 +16,7 @@ const nextConfig: NextConfig = {
   },
   // Tree-shake barrel-file icon/Radix packages so only the imported symbols ship.
   experimental: {
-    optimizePackageImports: [
-      "@hugeicons/react",
-      "@hugeicons/core-free-icons",
-      "radix-ui",
-    ],
+    optimizePackageImports: ["@hugeicons/react", "@hugeicons/core-free-icons", "radix-ui"],
   },
 };
 

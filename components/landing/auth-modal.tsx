@@ -485,10 +485,7 @@ function ResetView({
   // (On success the action redirects to the login modal, so no flag needed.)
   useEffect(() => {
     onRecoveryActive(Boolean(state.recovered));
-  }, [
-    state,
-    onRecoveryActive,
-  ]);
+  }, [state, onRecoveryActive]);
 
   return (
     <>
@@ -588,9 +585,7 @@ export function AuthModal({
       void abandonRecoveryAction();
     }
     onClose();
-  }, [
-    onClose,
-  ]);
+  }, [onClose]);
 
   // A seeded alert (e.g. "Password updated successfully" after a reset) is
   // bound to the view that was auto-opened on mount, so it only shows there
@@ -616,9 +611,7 @@ export function AuthModal({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [
-    open,
-  ]);
+  }, [open]);
 
   // Escape to close.
   useEffect(() => {
@@ -628,10 +621,7 @@ export function AuthModal({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [
-    open,
-    handleClose,
-  ]);
+  }, [open, handleClose]);
 
   return (
     <div

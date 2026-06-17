@@ -26,16 +26,9 @@ function getKey(): Buffer {
 export function encrypt(plaintext: string): string {
   const iv = crypto.randomBytes(IV_BYTES);
   const cipher = crypto.createCipheriv(ALGORITHM, getKey(), iv);
-  const encrypted = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return [
-    iv.toString("base64"),
-    tag.toString("base64"),
-    encrypted.toString("base64"),
-  ].join(":");
+  return [iv.toString("base64"), tag.toString("base64"), encrypted.toString("base64")].join(":");
 }
 
 /**

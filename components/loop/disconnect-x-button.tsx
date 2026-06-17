@@ -29,10 +29,7 @@ export function DisconnectXButton({ agentCount }: { agentCount: number }) {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [
-    open,
-    pending,
-  ]);
+  }, [open, pending]);
 
   // Call /api/x/disconnect, then refresh the page.
   async function disconnect() {

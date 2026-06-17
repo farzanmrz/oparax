@@ -46,6 +46,10 @@
 
   --radius: 6px;
   --ctl-h: 36px;
+
+  /* brand blue — electric, distinct from the timid --accent */
+  --brand: oklch(0.6 0.19 262);
+  --brand-ring: oklch(0.6 0.19 262 / 0.16);
 }
 
 /* ── Tailwind registration of the design-system vocabulary ── */
@@ -77,6 +81,34 @@
   --color-action: var(--action);
   --color-action-ink: var(--action-ink);
   --color-err: var(--err);
+
+  /* ── shadcn compatibility layer (mapped to graphite tokens) ──
+     AI Elements components consume these utilities (bg-secondary, text-foreground,
+     bg-muted, bg-accent, text-muted-foreground, etc.).  All names are purely additive
+     except --color-muted / --color-accent which are REMAPPED to surface values
+     (safe: grep confirmed no graphite .tsx uses Tailwind bg-muted/bg-accent
+     utilities — they reference var(--muted)/var(--accent) in CSS directly). */
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  /* --color-card already set above (= var(--card)) */
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--chrome);
+  --color-popover-foreground: var(--fg);
+  --color-primary: var(--action);
+  --color-primary-foreground: var(--action-ink);
+  /* Remap muted → inset surface (shadcn expects a dark surface, not light text) */
+  --color-muted: var(--inset);
+  --color-muted-foreground: var(--faint);
+  --color-secondary: oklch(0.27 0 0);
+  --color-secondary-foreground: var(--fg);
+  /* Remap accent → field-focus surface (shadcn expects a hover surface, not blue) */
+  --color-accent: var(--field-focus);
+  --color-accent-foreground: var(--fg);
+  --color-destructive: var(--err);
+  --color-destructive-foreground: var(--fg);
+  --color-border: var(--line);
+  --color-input: var(--field-line);
+  --color-ring: var(--accent-line);
 }
 
 /* ------------------------------------------------ base */
@@ -1004,6 +1036,586 @@
     background: var(--fg);
     flex: none;
     box-shadow: 0 1px 2px oklch(0 0 0 / 0.4);
+  }
+}
+
+/* ------------------------------------------------ agent chat chrome */
+@layer components {
+  .agent-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 36px 12px;
+    border-bottom: 1px solid var(--agent-line, var(--line));
+    flex-shrink: 0;
+  }
+  .agent-head-title {
+    margin: 0;
+    font: 600 1.5rem / 1.2 var(--font-sans);
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  .agent-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+  }
+  .agent-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 7px;
+    border: 0;
+    background: transparent;
+    color: var(--faint);
+    font: 400 0.8125rem / 1 var(--font-sans);
+    cursor: pointer;
+  }
+  .agent-toggle-btn.is-active {
+    background: oklch(0.27 0 0);
+    color: var(--fg);
+    font-weight: 500;
+    box-shadow: inset 0 0 0 1px var(--accent-line);
+  }
+  .agent-chat-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    position: relative;
+  }
+  .agent-chat-col {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 18px 0 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .agent-chat-error {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    background: oklch(0.7 0.185 25 / 0.08);
+    border: 1px solid oklch(0.7 0.185 25 / 0.3);
+    color: var(--err);
+    font: 500 0.9375rem / 1.4 var(--font-sans);
+  }
+  .agent-composer-wrap {
+    position: sticky;
+    bottom: 0;
+    padding: 0 0 16px;
+    background: linear-gradient(to top, var(--bg) 62%, transparent);
+  }
+  .agent-composer {
+    max-width: 600px;
+    margin: 0 auto;
+    background: oklch(0.22 0.025 262);
+    border: 1px solid var(--brand);
+    border-radius: 18px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+  }
+  .agent-composer:focus-within {
+    box-shadow: 0 0 0 3px var(--brand-ring);
+  }
+  .agent-composer-input {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    resize: none;
+    color: var(--fg);
+    font: 1rem/1.5 var(--font-sans);
+    max-height: 180px;
+    overflow-y: auto;
+    field-sizing: content;
+  }
+  .agent-composer-input::placeholder {
+    color: var(--faint);
+  }
+  .agent-composer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  .agent-composer-plus {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid oklch(1 0 0 / 0.12);
+    background: transparent;
+    color: oklch(1 0 0 / 0.35);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+  .agent-composer-send {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 0;
+    background: #3b82f6;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 16px rgb(59 130 246 / 0.5);
+    transition:
+      filter 120ms ease,
+      box-shadow 120ms ease,
+      opacity 120ms ease;
+  }
+  .agent-composer-send:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+  .agent-composer-send:disabled {
+    opacity: 0.4;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  /* ------------------------------------------------ agent message rows */
+  .agent-msg {
+    display: flex;
+    gap: 11px;
+    align-items: flex-start;
+  }
+  /* User: bubble then avatar, pushed to the right edge */
+  .agent-msg.is-user {
+    justify-content: flex-end;
+  }
+  .agent-msg-body {
+    max-width: 82%;
+    padding-top: 4px;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--fg);
+  }
+  .agent-bubble {
+    max-width: 78%;
+    background: oklch(0.28 0.025 262);
+    border: 1px solid oklch(0.6 0.19 262 / 0.18);
+    border-radius: 16px 16px 5px 16px;
+    padding: 10px 15px;
+  }
+  .agent-bubble-text {
+    color: var(--fg);
+    font: 400 1.0625rem/1.55 var(--font-sans);
+    white-space: pre-wrap;
+  }
+}
+
+/* ------------------------------------------------ Wide layout — single column */
+@layer components {
+  .agent-wide {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .agent-wide .agent-chat-col {
+    max-width: min(1400px, 100% - 96px);
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+  .agent-wide .agent-composer {
+    max-width: min(1100px, 100% - 96px);
+  }
+  .agent-wide .agent-actionbar {
+    max-width: min(1100px, 100% - 96px);
+  }
+}
+
+/* ------------------------------------------------ result chips (verifyHandles / validateSites) */
+@layer components {
+  .result-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 0;
+  }
+  .rchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font: 500 0.84375rem / 1 var(--font-sans);
+    border: 1px solid transparent;
+  }
+  .rchip-icon {
+    font-size: 0.8rem;
+  }
+  .rchip-sub {
+    margin-left: 4px;
+    font: 400 0.78125rem / 1 var(--font-sans);
+    opacity: 0.75;
+  }
+  .rchip-ok {
+    background: oklch(0.82 0.16 155 / 0.12);
+    border-color: oklch(0.82 0.16 155 / 0.35);
+    color: var(--live);
+  }
+  .rchip-err {
+    background: oklch(0.7 0.185 25 / 0.1);
+    border-color: oklch(0.7 0.185 25 / 0.3);
+    color: var(--err);
+  }
+  .rchip-warn {
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+    color: var(--accent);
+  }
+  .rchip-note {
+    display: block;
+    width: 100%;
+    font: 400 0.78125rem / 1.4 var(--font-sans);
+    color: var(--faint);
+    padding-left: 2px;
+  }
+
+  /* ------------------------------------------------ source cards (SourceTweetCard / SourceArticleCard) */
+  .src-clamp2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .src-clamp3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .src-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: oklch(0.205 0 0);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .src-card-carousel {
+    flex-shrink: 0;
+    width: 232px;
+  }
+  .src-card-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+  .src-card-name {
+    flex: 1;
+    min-width: 0;
+    font: 500 0.84375rem / 1.2 var(--font-sans);
+    color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .src-card-date {
+    font: 400 0.78125rem / 1 var(--font-sans);
+    color: var(--faint);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .src-card-open {
+    flex-shrink: 0;
+    color: var(--faint);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    padding: 2px;
+    transition: color 120ms ease;
+  }
+  .src-card-open:hover {
+    color: var(--accent);
+  }
+  .src-card-body {
+    margin: 0;
+    font: 400 0.875rem / 1.55 var(--font-sans);
+    color: var(--muted);
+  }
+
+  /* ------------------------------------------------ scan news grid + card */
+  .scan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 11px;
+  }
+  .scan-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: oklch(0.205 0 0);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .scan-summary {
+    margin: 0;
+    font: 400 0.9375rem / 1.55 var(--font-sans);
+    color: var(--fg);
+  }
+  .scan-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .scan-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .scan-pill {
+    font: 500 0.78125rem / 1 var(--font-sans);
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-radius: 999px;
+    padding: 3px 9px;
+  }
+  .scan-avatar-stack {
+    display: flex;
+    align-items: center;
+  }
+  .scan-avatar-wrap {
+    margin-left: -6px;
+    position: relative;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px oklch(0.205 0 0); /* matching-bg ring */
+  }
+  .scan-avatar-wrap:first-child {
+    margin-left: 0;
+  }
+  .scan-view-btn {
+    align-self: flex-start;
+    font: 500 0.84375rem / 1 var(--font-sans);
+    color: var(--accent);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+  .scan-view-btn:hover {
+    color: var(--accent-vivid);
+  }
+  .scan-carousel-wrap {
+    position: relative;
+  }
+  .scan-carousel {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  .scan-carousel-fade {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40px;
+    height: 100%;
+    background: linear-gradient(to right, transparent, oklch(0.205 0 0));
+    pointer-events: none;
+  }
+
+  /* ------------------------------------------------ draft card */
+  .draft-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: oklch(0.205 0 0);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+  .draft-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .draft-head-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .draft-author {
+    font: 600 0.9375rem / 1 var(--font-sans);
+    color: var(--fg);
+  }
+  .draft-handle {
+    font: 400 0.8125rem / 1 var(--font-sans);
+    color: var(--faint);
+  }
+  .draft-text {
+    margin: 0;
+    font: 400 0.9375rem / 1.6 var(--font-sans);
+    color: var(--fg);
+    white-space: pre-wrap;
+  }
+  .draft-edit-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .draft-textarea {
+    width: 100%;
+    resize: vertical;
+    background: var(--field-bg);
+    border: 1px solid var(--field-line);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font: 400 0.9375rem / 1.6 var(--font-sans);
+    color: var(--fg);
+    outline: none;
+    transition:
+      border-color 120ms ease,
+      background 120ms ease;
+  }
+  .draft-textarea:focus {
+    border-color: var(--accent-line);
+    background: var(--field-focus);
+  }
+  .draft-done-btn {
+    align-self: flex-end;
+    font: 500 0.84375rem / 1 var(--font-sans);
+    color: var(--accent);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+  .draft-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .draft-charcount {
+    font: 400 0.8125rem / 1 var(--font-sans);
+    color: var(--faint);
+  }
+  .draft-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font: 500 0.8125rem / 1 var(--font-sans);
+    color: var(--faint);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+  .draft-edit-btn:hover {
+    color: var(--accent);
+  }
+  .draft-connect-hint {
+    margin: 0;
+    font: 400 0.8125rem / 1.4 var(--font-sans);
+    color: var(--faint);
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+
+  /* ------------------------------------------------ shared post/save action bar */
+  .agent-actionbar-wrap {
+    position: sticky;
+    bottom: 0;
+    padding: 8px 0 0;
+    background: linear-gradient(to top, var(--bg) 50%, transparent);
+    z-index: 10;
+  }
+  .agent-actionbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 10px 12px;
+    background: var(--chrome);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  /* ------------------------------------------------ blue-graphite chat surface (scoped — does NOT touch :root or other pages) */
+  .agent-surface {
+    /* Deep blue-graphite backdrop — richer than pure black */
+    --agent-bg: oklch(0.17 0.02 265);
+    --agent-card: oklch(0.2 0.025 262);
+    --agent-line: oklch(0.6 0.19 262 / 0.14);
+    background: var(--agent-bg);
+    display: flex;
+    flex-direction: column;
+  }
+  /*
+   * Full-bleed: break out of .ws-main-inner's padding (24px top, 36px L/R, 56px bottom)
+   * so the blue-graphite bg covers the ENTIRE main pane edge-to-edge.
+   * Negative margins cancel the padding; width compensates for L+R loss.
+   * Height = full viewport so the bg fills top-to-bottom with no black gaps.
+   * The conversation + composer content stays at the reading measure via
+   * .agent-chat-col / .agent-composer max-width centering.
+   */
+  .agent-surface-fullbleed {
+    margin-top: -24px;
+    margin-left: -36px;
+    margin-right: -36px;
+    margin-bottom: -56px;
+    width: calc(100% + 72px);
+    height: 100vh;
+    min-height: 0;
+  }
+  /* Tint the scrollable areas so they sit on the blue-graphite canvas */
+  .agent-surface .agent-wide,
+  .agent-surface .agent-chat-scroll {
+    background: var(--agent-bg);
+  }
+  /* Composer wrap fade should match the blue-graphite bg */
+  .agent-surface .agent-composer-wrap {
+    background: linear-gradient(to top, var(--agent-bg) 62%, transparent);
+  }
+  /* Action bar wrap fade too */
+  .agent-surface .agent-actionbar-wrap {
+    background: linear-gradient(to top, var(--agent-bg) 50%, transparent);
+  }
+  /* Slightly lifted tinted composer */
+  .agent-surface .agent-composer {
+    background: oklch(0.22 0.025 262);
+  }
+  /* Assistant message body text — slightly cooler tint */
+  .agent-surface .agent-msg-body {
+    color: oklch(0.94 0.008 240);
+  }
+}
+
+/* Responsive: at ≤1020px .ws-main-inner padding shrinks to 20px 18px 48px —
+   adjust the fullbleed negative margins to match. */
+@media (max-width: 1020px) {
+  .agent-surface-fullbleed {
+    margin-top: -20px;
+    margin-left: -18px;
+    margin-right: -18px;
+    margin-bottom: -48px;
+    width: calc(100% + 36px);
   }
 }
 

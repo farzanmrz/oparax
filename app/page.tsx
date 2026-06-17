@@ -3,12 +3,7 @@ import type { AuthView } from "@/components/landing/auth-modal";
 import { LandingPage } from "@/components/landing/landing-page";
 import { createClient } from "@/lib/supabase/server";
 
-const AUTH_VIEWS: readonly AuthView[] = [
-  "login",
-  "signup",
-  "forgot",
-  "reset",
-];
+const AUTH_VIEWS: readonly AuthView[] = ["login", "signup", "forgot", "reset"];
 
 export default async function RootPage({
   searchParams,

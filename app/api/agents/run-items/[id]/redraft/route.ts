@@ -1,7 +1,7 @@
 // Imports
 import { NextResponse } from "next/server";
 import { weightedLength } from "@/lib/draft/count";
-import { createDraftClient, generateDraft } from "@/lib/draft/generate";
+import { generateDraft } from "@/lib/draft/generate";
 import { createClient } from "@/lib/supabase/server";
 import type { Agent, RunItem } from "@/lib/types";
 
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 type RedraftItem = Pick<RunItem, "id" | "agent_id" | "story_title" | "story_summary">;
-type RedraftAgent = Pick<Agent, "id" | "drafting_instructions">;
+type RedraftAgent = Pick<Agent, "id" | "drafting_instructions" | "example_tweets">;
 
 /**
  * Regenerate a draft for one persisted run item using the agent's current
@@ -71,7 +71,7 @@ export async function POST(
 
   const { data: agent, error: agentError } = await supabase
     .from("agents")
-    .select("id, drafting_instructions")
+    .select("id, drafting_instructions, example_tweets")
     .eq("id", item.agent_id)
     .eq("user_id", user.id)
     .maybeSingle<RedraftAgent>();
@@ -98,12 +98,12 @@ export async function POST(
   }
 
   const result = await generateDraft({
-    client: createDraftClient(),
     draftingInstructions: agent.drafting_instructions,
     story: {
       title: item.story_title,
       summary: item.story_summary,
     },
+    exampleTweets: agent.example_tweets,
   });
   if (!result.ok) {
     return NextResponse.json(

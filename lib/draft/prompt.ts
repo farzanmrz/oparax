@@ -14,9 +14,7 @@ export const DRAFT_JSON_SCHEMA = {
       description: "The drafted tweet body only — no markdown, no raw URLs.",
     },
   },
-  required: [
-    "text",
-  ],
+  required: ["text"],
 } as const;
 
 // System prompt for generating one postable tweet from a single story.
@@ -50,6 +48,36 @@ export interface DraftContext {
   monitoringDescription: string;
   draftingInstructions: string;
   exampleTweets: string[];
+}
+
+// Minimal story shape for the Gateway draft path.
+export interface DraftStory {
+  title: string;
+  summary: string;
+}
+
+/**
+ * Build the plain-text user content for Gateway draft generation.
+ * When example tweets are provided they are appended as a style-examples block
+ * so the model can match the reporter's voice without copying content.
+ * @param draftingInstructions - operator guidance (may be empty)
+ * @param story - the selected story
+ * @param exampleTweets - previous tweets by this reporter (may be empty)
+ * @returns the user-message content string
+ */
+export function buildDraftUserContent(
+  draftingInstructions: string,
+  story: DraftStory,
+  exampleTweets: string[],
+): string {
+  const guidance = draftingInstructions.trim();
+  const head = guidance ? `Drafting instructions: ${guidance}\n\n` : "";
+  let content = `${head}Story title: ${story.title}\nStory summary: ${story.summary}`;
+  if (exampleTweets.length > 0) {
+    const examples = exampleTweets.map((t) => `- "${t}"`).join("\n");
+    content += `\n\nStyle examples (match this voice; do not copy content):\n${examples}`;
+  }
+  return content;
 }
 
 /**

@@ -19,27 +19,41 @@ Rules:
 - Each item's urls array must include at least one direct X/Twitter source post URL, and may include other supporting URLs.
 - Return all distinct, non-overlapping news items you can find in reverse chronological order. Do not cap the list to a top-N summary.
 - For every item, include draft: a single postable X post based only on that item.
-- Drafts must follow the user drafting instructions, contain no raw URLs, contain no markdown, and stay within 280 characters.`;
+- Drafts must follow the user drafting instructions, contain no raw URLs, contain no markdown, and stay within 280 characters.
+- For every item, include sources: an array with one entry per source URL. For each source:
+  - Set type to "tweet" for X/Twitter post URLs or "article" for web/news URLs.
+  - Set url to the exact source URL.
+  - For tweets: include authorName (display name), handle (username without @), text (tweet text), and postedAt (ISO 8601 date/time) if available.
+  - For articles: include title (headline), authorName (publication or site name), and postedAt (ISO 8601 date/time) if available.
+  - Do NOT invent or fabricate avatars, profile images, or metadata you do not have. Omit optional fields rather than guessing.`;
 }
 
 /**
  * Build the combined user prompt from the operator's scan and draft inputs.
  * @param scanningInstructions - user guidance for what to scan
  * @param draftingInstructions - user guidance for how to draft each item
+ * @param exampleTweets - optional example tweet texts for voice/style matching
  * @returns the tagged user prompt content for the Responses API
  */
 export function buildAgentRunUserPrompt({
   scanningInstructions,
   draftingInstructions,
+  exampleTweets = [],
 }: {
   scanningInstructions: string;
   draftingInstructions: string;
+  exampleTweets?: string[];
 }): string {
+  const styleBlock =
+    exampleTweets.length > 0
+      ? `\n\n<drafting-style-examples>\n${exampleTweets.map((t) => `- "${t}"`).join("\n")}\n</drafting-style-examples>`
+      : "";
+
   return `<user-scanning-instructions>
 ${scanningInstructions.trim()}
 </user-scanning-instructions>
 
 <user-drafting-instructions>
 ${draftingInstructions.trim()}
-</user-drafting-instructions>`;
+</user-drafting-instructions>${styleBlock}`;
 }

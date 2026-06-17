@@ -1,5 +1,5 @@
 // Imports
-import type { ScanItem } from "@/lib/scan/stream";
+import type { ScanItem, StorySourceItem } from "@/lib/scan/schema";
 
 // Story draft for DB insertion and URL parsing
 // A story ready to insert into the stories table (camelCase; mapped in route)
@@ -51,11 +51,23 @@ function normalizeItem(value: unknown): ScanItem | null {
   ];
   if (urls.length === 0) return null;
 
+  // Extract sources array — default to [] if missing or malformed (matches schema .default([])).
+  const sources: StorySourceItem[] = Array.isArray(record.sources)
+    ? (record.sources.filter(
+        (s): s is StorySourceItem =>
+          typeof s === "object" &&
+          s !== null &&
+          ((s as Record<string, unknown>).type === "tweet" ||
+            (s as Record<string, unknown>).type === "article"),
+      ) as StorySourceItem[])
+    : [];
+
   return {
     title,
     body,
     urls,
     draft,
+    sources,
   };
 }
 

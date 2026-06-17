@@ -11,13 +11,8 @@ import "./globals.css";
 // Source Sans 3 is the design system's only font family (--font-sans).
 const sourceSans = Source_Sans_3({
   variable: "--font-source-sans",
-  subsets: [
-    "latin",
-  ],
-  style: [
-    "normal",
-    "italic",
-  ],
+  subsets: ["latin"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {

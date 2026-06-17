@@ -1,11 +1,10 @@
 // Imports
-import { createScanClient } from "@/lib/scan/client";
-import { parseScanItems, toStoryDraft } from "@/lib/scan/parse";
-import { buildAgentRunUserPrompt, buildScanInstructions } from "@/lib/scan/prompt";
-import { buildScanRequest } from "@/lib/scan/request";
-import { encodeScanEvent, ScanStreamWriter } from "@/lib/scan/stream";
+import { SCAN_MODEL } from "@/lib/ai/providers";
+import { runScanStream } from "@/lib/scan/run";
+import { extractMetrics, scanToUIResponse, storiesFromOutput } from "@/lib/scan/ui-stream";
 import { createClient } from "@/lib/supabase/server";
 import type { Agent, RunItemInsert } from "@/lib/types";
+import { logUsage } from "@/lib/usage/log";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -21,14 +20,18 @@ type AgentRunConfig = Pick<
   | "scan_from"
   | "scan_to"
   | "status"
+  | "search_x"
+  | "search_web"
+  | "preferred_domains"
+  | "example_tweets"
 >;
 
 /**
- * Run a saved agent: one streamed Grok scan+draft call, then persisted
+ * Run a saved agent: one streamed AI SDK scan+draft call, then persisted
  * runs/run_items rows for the agent detail page.
  * @param _req - unused request body
  * @param context.params - dynamic agent id
- * @returns NDJSON stream of reasoning/tool events and a persisted terminal event
+ * @returns AI SDK UI message stream response
  */
 export async function POST(
   _req: Request,
@@ -52,7 +55,7 @@ export async function POST(
   const { data: agent, error: agentError } = await supabase
     .from("agents")
     .select(
-      "id, user_id, name, monitored_handles, monitoring_description, drafting_instructions, scan_from, scan_to, status",
+      "id, user_id, name, monitored_handles, monitoring_description, drafting_instructions, scan_from, scan_to, status, search_x, search_web, preferred_domains, example_tweets",
     )
     .eq("id", id)
     .eq("user_id", user.id)
@@ -73,8 +76,11 @@ export async function POST(
       status: 409,
     });
   }
-  if (agent.monitored_handles.length === 0) {
-    return new Response("Add at least one handle to monitor.", {
+  // Require at least one active source. X is active when search_x is on (handles are
+  // optional — empty handles means describe-only X search). Web is active when
+  // search_web is on. Honor search_x: stale handles must not force an X scan.
+  if (!agent.search_x && !agent.search_web) {
+    return new Response("Enable at least one source: turn on X or web search.", {
       status: 400,
     });
   }
@@ -89,6 +95,10 @@ export async function POST(
     });
   }
 
+  // Only scan the configured handles when X is enabled; otherwise X is off entirely.
+  const effectiveHandles = agent.search_x ? agent.monitored_handles : [];
+
+  // Create the run record up front (status: running)
   const { data: run, error: runError } = await supabase
     .from("runs")
     .insert({
@@ -96,7 +106,7 @@ export async function POST(
       source: "manual",
       status: "running",
       inputs: {
-        handles: agent.monitored_handles,
+        handles: effectiveHandles,
         monitoringDescription: agent.monitoring_description,
         draftingInstructions: agent.drafting_instructions,
       },
@@ -113,68 +123,54 @@ export async function POST(
   }
   const runId = run.id;
 
-  const encoder = new TextEncoder();
-  const client = createScanClient();
+  const startedAt = Date.now();
+  const result = runScanStream({
+    searchX: agent.search_x,
+    handles: effectiveHandles,
+    fromDate: agent.scan_from,
+    toDate: agent.scan_to,
+    scanningInstructions: agent.monitoring_description,
+    draftingInstructions: agent.drafting_instructions,
+    exampleTweets: agent.example_tweets ?? [],
+    searchWeb: agent.search_web ?? false,
+    preferredDomains: agent.preferred_domains ?? [],
+  });
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      function write(value: string) {
-        controller.enqueue(encoder.encode(value));
-      }
-
-      async function fail(message: string) {
-        await supabase
-          .from("runs")
-          .update({
-            status: "failed",
-            completed_at: new Date().toISOString(),
-            error_message: message,
-          })
-          .eq("id", runId);
-        write(
-          encodeScanEvent({
-            type: "error",
-            message,
-          }),
-        );
-        controller.close();
-      }
-
+  return scanToUIResponse(result, {
+    onError: (error) => {
+      // Mark the run failed if the stream errors before onFinish can run.
+      // Best-effort — do not await so we don't block the error response.
+      supabase
+        .from("runs")
+        .update({
+          status: "failed",
+          completed_at: new Date().toISOString(),
+          error_message: error instanceof Error ? error.message : "Stream error.",
+        })
+        .eq("id", runId)
+        .then(undefined, (e) => console.error("onError run update failed", e));
+      return error instanceof Error ? error.message : "An error occurred.";
+    },
+    onFinish: async () => {
       try {
-        const writer = new ScanStreamWriter((event) => {
-          write(encodeScanEvent(event));
-        });
+        const [output, metrics] = await Promise.all([
+          result.output,
+          extractMetrics(result, startedAt),
+        ]);
 
-        const responseStream = await client.responses.create(
-          buildScanRequest({
-            handles: agent.monitored_handles,
-            fromDate: agent.scan_from,
-            toDate: agent.scan_to,
-            instructions: buildScanInstructions(),
-            userPrompt: buildAgentRunUserPrompt({
-              scanningInstructions: agent.monitoring_description,
-              draftingInstructions: agent.drafting_instructions,
-            }),
-          }),
-        );
-
-        for await (const event of responseStream) {
-          writer.handle(event);
-        }
-
-        const items = parseScanItems(writer.getAnswerText());
-        const metrics = writer.getMetrics();
-        if (!items) {
-          await fail("Run completed, but the final JSON could not be parsed.");
+        if (!output) {
+          await supabase
+            .from("runs")
+            .update({
+              status: "failed",
+              completed_at: new Date().toISOString(),
+              error_message: "Run completed, but structured output was missing.",
+            })
+            .eq("id", runId);
           return;
         }
 
-        const seen = new Set<string>();
-        const stories = items.map(toStoryDraft).filter((story) => {
-          if (seen.has(story.dedupeKey)) return false;
-          seen.add(story.dedupeKey);
-          return true;
-        });
+        const stories = storiesFromOutput(output);
 
         const runItems: RunItemInsert[] = stories.map((story) => ({
           run_id: runId,
@@ -192,12 +188,19 @@ export async function POST(
         if (runItems.length > 0) {
           const { error: itemsError } = await supabase.from("run_items").insert(runItems);
           if (itemsError) {
-            await fail("Run completed, but its items could not be saved.");
+            await supabase
+              .from("runs")
+              .update({
+                status: "failed",
+                completed_at: new Date().toISOString(),
+                error_message: "Run completed, but its items could not be saved.",
+              })
+              .eq("id", runId);
             return;
           }
         }
 
-        const { error: updateError } = await supabase
+        await supabase
           .from("runs")
           .update({
             status: "completed",
@@ -209,30 +212,36 @@ export async function POST(
           })
           .eq("id", runId);
 
-        if (updateError) {
-          await fail("Run items saved, but the run summary could not be saved.");
-          return;
-        }
-
-        write(
-          encodeScanEvent({
-            type: "persisted",
-            runId,
+        await logUsage({
+          kind: "scan",
+          provider: "xai",
+          resolved_provider: "xai",
+          tool_name: "scan",
+          model: SCAN_MODEL,
+          user_id: user.id,
+          agent_id: agent.id,
+          run_id: runId,
+          input_tokens: metrics.inputTokens,
+          output_tokens: metrics.outputTokens,
+          xSearchCalls: metrics.xSearchCalls,
+          metadata: {
+            elapsedMs: metrics.elapsedMs,
+            xSearchCalls: metrics.xSearchCalls,
             storyCount: runItems.length,
-            metrics,
-          }),
-        );
-        controller.close();
+          },
+        });
       } catch (error) {
-        await fail(error instanceof Error ? error.message : "Unknown run error.");
+        console.error("onFinish error in [id]/run:", error);
+        await supabase
+          .from("runs")
+          .update({
+            status: "failed",
+            completed_at: new Date().toISOString(),
+            error_message: error instanceof Error ? error.message : "Unknown run error.",
+          })
+          .eq("id", runId)
+          .then(undefined, () => {});
       }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Type": "application/x-ndjson; charset=utf-8",
     },
   });
 }

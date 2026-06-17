@@ -38,6 +38,12 @@ if ! git merge --squash "$branch"; then
   echo "ship: squash merge conflicts against dev — rebase $branch on dev, then re-run." >&2
   exit 1
 fi
+
+# Planning docs are branch-local scaffolding — strip this feature's spec/plan (and any
+# stale ones swept in from earlier runs) so the shipped dev commit is code-only and the
+# docs never accumulate. The durable record lives in this commit's message + the issue.
+git rm -rf --ignore-unmatch docs/superpowers/specs docs/superpowers/plans >/dev/null 2>&1 || true
+
 # Append the project's Co-Authored-By trailer so the dev commit always carries it,
 # regardless of what the caller passed (the skill's hard rule, self-enforced here).
 git commit -m "$msg" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"

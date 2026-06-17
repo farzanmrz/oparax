@@ -21,10 +21,7 @@ export function DeleteAccountButton() {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [
-    open,
-    isPending,
-  ]);
+  }, [open, isPending]);
 
   const confirm = () => {
     setError(null);

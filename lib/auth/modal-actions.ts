@@ -119,7 +119,7 @@ export async function signupAction(
   }
 
   if (data.session) {
-    redirect("/dashboard/connect-x");
+    redirect("/dashboard/agents");
   }
 
   // No session yet — email confirmation pending. The modal swaps the form

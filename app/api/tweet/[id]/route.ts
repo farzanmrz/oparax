@@ -31,15 +31,9 @@ function normalizeTweet(tweet: Tweet): Tweet {
 
 // Cache by id (tweet data is public, so the key is user-independent). Avoids
 // re-hitting the syndication API on every page load / UI iteration.
-const getCachedTweet = unstable_cache(
-  async (id: string) => getTweet(id),
-  [
-    "react-tweet",
-  ],
-  {
-    revalidate: 3600 * 24,
-  },
-);
+const getCachedTweet = unstable_cache(async (id: string) => getTweet(id), ["react-tweet"], {
+  revalidate: 3600 * 24,
+});
 
 /**
  * Proxy + normalize a tweet for the client `<Tweet apiUrl>` embed. Fetches from
