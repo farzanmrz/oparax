@@ -27,19 +27,6 @@ export async function POST(req: Request) {
     });
   }
 
-  const { data: connection } = await supabase
-    .from("x_connections")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle<{
-      id: string;
-    }>();
-  if (!connection) {
-    return new Response("Connect X before creating an agent.", {
-      status: 403,
-    });
-  }
-
   // Parse + validate the editable lab fields.
   const rawBody = (await req.json().catch(() => null)) as unknown;
   if (typeof rawBody !== "object" || rawBody === null) {
@@ -113,15 +100,8 @@ export async function POST(req: Request) {
       : typeof body.scanningInstructions === "string"
         ? body.scanningInstructions
         : "";
-  const draftingInstructions =
-    typeof body.draftingInstructions === "string" ? body.draftingInstructions : "";
   if (!scanningInstructions.trim()) {
     return new Response("A scan user prompt is required.", {
-      status: 400,
-    });
-  }
-  if (!draftingInstructions.trim()) {
-    return new Response("Drafting instructions are required.", {
       status: 400,
     });
   }
@@ -129,10 +109,6 @@ export async function POST(req: Request) {
   const preferredDomains = Array.isArray(body.preferredDomains)
     ? body.preferredDomains.filter((d): d is string => typeof d === "string")
     : [];
-  const exampleTweets = Array.isArray(body.exampleTweets)
-    ? body.exampleTweets.filter((t): t is string => typeof t === "string")
-    : [];
-
   const startedAt = Date.now();
   const result = runScanStream({
     searchX: true,
@@ -140,10 +116,9 @@ export async function POST(req: Request) {
     fromDate: typeof body.fromDate === "string" ? body.fromDate : null,
     toDate: typeof body.toDate === "string" ? body.toDate : null,
     scanningInstructions,
-    draftingInstructions,
-    exampleTweets,
     searchWeb,
     preferredDomains,
+    abortSignal: AbortSignal.timeout(240_000),
   });
 
   return scanToUIResponse(result, {

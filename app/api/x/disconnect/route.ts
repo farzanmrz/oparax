@@ -76,25 +76,22 @@ export async function POST() {
     );
   }
 
-  const { error: agentsError } = await supabase
+  // X is optional now (spec §5.1). Disconnecting only turns OFF autonomous posting (a live
+  // token is required to auto-post); manual + scheduled scans still work without X. Do NOT
+  // mark agents inactive. Report the count so the UI can warn "N agents lost auto-post".
+  const { data: affected, error: agentsError } = await supabase
     .from("agents")
-    .update({
-      status: "inactive",
-    })
-    .eq("user_id", user.id);
+    .update({ auto_post: false })
+    .eq("user_id", user.id)
+    .eq("auto_post", true)
+    .select("id");
 
   if (agentsError) {
     return NextResponse.json(
-      {
-        error: "Disconnected X, but failed to mark agents inactive.",
-      },
-      {
-        status: 500,
-      },
+      { error: "Disconnected X, but failed to turn off auto-posting for your agents." },
+      { status: 500 },
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-  });
+  return NextResponse.json({ ok: true, autoPostDisabled: affected?.length ?? 0 });
 }

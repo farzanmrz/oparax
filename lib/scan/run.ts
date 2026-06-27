@@ -12,10 +12,14 @@ export interface RunScanInput {
   fromDate: string | null;
   toDate: string | null;
   scanningInstructions: string;
-  draftingInstructions: string;
-  exampleTweets: string[];
   searchWeb: boolean;
   preferredDomains: string[];
+  /** UX/deadline abort (client stop, cron deadline). Correctness comes from onAbort + the
+   *  consumer's consumeStream/persist wiring, never from this signal alone. */
+  abortSignal?: AbortSignal;
+  /** Fires when the stream aborts (timeout or external signal). The consumer wires the
+   *  run-failed persistence here — onAbort carries no usage/output, so it's a failed run. */
+  onAbort?: () => void;
 }
 
 export function runScanStream(input: RunScanInput) {
@@ -50,14 +54,18 @@ export function runScanStream(input: RunScanInput) {
     system: buildScanInstructions(),
     prompt: buildAgentRunUserPrompt({
       scanningInstructions: input.scanningInstructions,
-      draftingInstructions: input.draftingInstructions,
-      exampleTweets: input.exampleTweets,
     }),
     tools,
     stopWhen: stepCountIs(5),
     temperature: 0,
     topP: 1,
     maxOutputTokens: 1_000_000,
+    // Bound the model call well under maxDuration = 300s so a hung Grok call fails the run
+    // instead of riding to the 300s wall and orphaning it. timeout is a first-class
+    // streamText option (TimeoutConfiguration); onAbort is the failure hook.
+    timeout: { totalMs: 240_000 },
+    abortSignal: input.abortSignal,
+    onAbort: input.onAbort,
     output: Output.object({
       schema: scanResultSchema,
     }),

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { StorySource } from "@/lib/scan/types";
 import { UserAvatar } from "@/components/agents/chat-avatars";
 import { ExternalGlyph } from "@/components/agents/chat-glyphs";
+import type { StorySource } from "@/lib/scan/types";
 
 function formatPostedAt(iso?: string): string {
   if (!iso) return "";
@@ -77,18 +77,12 @@ function FaviconImg({ domain, fallbackText }: { domain: string; fallbackText: st
 
 // ── SourceTweetCard ───────────────────────────────────────────────────────────
 
-export function SourceTweetCard({
-  source,
-  variant = "full",
-}: {
-  source: StorySource;
-  variant?: "carousel" | "full";
-}) {
+export function SourceTweetCard({ source }: { source: StorySource }) {
   const date = formatPostedAt(source.postedAt);
   const displayName = source.authorName ?? source.handle ?? "Unknown";
 
   return (
-    <div className={`src-card src-card-tweet${variant === "carousel" ? " src-card-carousel" : ""}`}>
+    <div className="src-card src-card-tweet">
       {/* Header row: avatar + name + date + open icon */}
       <div className="src-card-head">
         <UserAvatar name={displayName} size={24} />
@@ -112,21 +106,13 @@ export function SourceTweetCard({
 
 // ── SourceArticleCard ─────────────────────────────────────────────────────────
 
-export function SourceArticleCard({
-  source,
-  variant = "full",
-}: {
-  source: StorySource;
-  variant?: "carousel" | "full";
-}) {
+export function SourceArticleCard({ source }: { source: StorySource }) {
   const domain = extractDomain(source.url);
   const date = formatPostedAt(source.postedAt);
   const displayName = source.authorName ?? domain;
 
   return (
-    <div
-      className={`src-card src-card-article${variant === "carousel" ? " src-card-carousel" : ""}`}
-    >
+    <div className="src-card src-card-article">
       {/* Header row: favicon + domain + date + open icon */}
       <div className="src-card-head">
         <FaviconImg domain={domain} fallbackText={displayName} />

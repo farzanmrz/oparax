@@ -19,7 +19,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   GearIcon,
-  InsightsIcon,
   ProfileIcon,
   ShieldIcon,
   SignOutIcon,
@@ -123,11 +122,9 @@ function useSettingsScrollSpy(enabled: boolean): string {
 
 export function WorkspaceShell({
   username,
-  isAdmin = false,
   children,
 }: {
   username: string;
-  isAdmin?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -144,7 +141,6 @@ export function WorkspaceShell({
   const agentsHref = "/dashboard/agents";
 
   const settingsActive = pathname.startsWith("/dashboard/settings");
-  const usageActive = pathname.startsWith("/dashboard/usage");
   const activeSection = useSettingsScrollSpy(settingsActive && expanded);
 
   async function signOut() {
@@ -192,21 +188,6 @@ export function WorkspaceShell({
               <AgentIcon width={22} height={22} />
               {expanded && <span>Agents</span>}
             </Link>
-
-            {isAdmin && (
-              <Link
-                href="/dashboard/usage"
-                className="nav-main j-row"
-                data-active={usageActive ? "true" : undefined}
-                aria-current={usageActive ? "page" : undefined}
-                onClick={(e) => {
-                  if (!confirmLeave()) e.preventDefault();
-                }}
-              >
-                <InsightsIcon width={22} height={22} />
-                {expanded && <span>Usage</span>}
-              </Link>
-            )}
 
             <Link
               href="/dashboard/settings"

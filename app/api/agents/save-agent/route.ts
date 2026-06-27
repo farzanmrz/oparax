@@ -1,6 +1,7 @@
 // Imports
 import { NextResponse } from "next/server";
 import { agentConfigSchema, configToColumns } from "@/lib/chat/config";
+import { buildRunItemInsert } from "@/lib/scan/run-items";
 import type { PreviewStory, ScanMetrics } from "@/lib/scan/types";
 import { createClient } from "@/lib/supabase/server";
 import type { RunItemInsert } from "@/lib/types";
@@ -24,7 +25,9 @@ function normalizeStory(value: unknown): PreviewStory | null {
         .filter(Boolean)
     : [];
 
-  if (!title || !summary || !dedupeKey || !draft) return null;
+  // Keep failed-draft preview items (draft === "") — they persist as status:"failed"
+  // below (recoverable via Redraft). Drop only items missing the core scan fields.
+  if (!title || !summary || !dedupeKey) return null;
 
   return {
     title,
@@ -85,24 +88,6 @@ export async function POST(req: Request) {
       },
       {
         status: 401,
-      },
-    );
-  }
-
-  const { data: connection } = await supabase
-    .from("x_connections")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle<{
-      id: string;
-    }>();
-  if (!connection) {
-    return NextResponse.json(
-      {
-        error: "Connect X before creating an agent.",
-      },
-      {
-        status: 403,
       },
     );
   }
@@ -242,18 +227,22 @@ export async function POST(req: Request) {
       return true;
     });
 
-    const runItems: RunItemInsert[] = dedupedStories.map((story) => ({
-      run_id: run.id,
-      agent_id: agent.id,
-      story_title: story.title,
-      story_summary: story.summary,
-      source_urls: story.sourceUrls,
-      primary_tweet_url: story.primaryTweetUrl,
-      dedupe_key: story.dedupeKey,
-      drafted_text: story.draft,
-      final_text: story.draft,
-      status: "drafted",
-    }));
+    // A failed preview draft arrives as draft:"" — buildRunItemInsert persists it as a
+    // recoverable status:"failed" item (matching the saved-run path), not a blank drafted one.
+    const runItems: RunItemInsert[] = dedupedStories.map((story) =>
+      buildRunItemInsert(
+        {
+          run_id: run.id,
+          agent_id: agent.id,
+          story_title: story.title,
+          story_summary: story.summary,
+          source_urls: story.sourceUrls,
+          primary_tweet_url: story.primaryTweetUrl,
+          dedupe_key: story.dedupeKey,
+        },
+        { text: story.draft || null, error: "Draft failed during creation." },
+      ),
+    );
     const { error: itemsError } = await supabase.from("run_items").insert(runItems);
 
     if (itemsError) {

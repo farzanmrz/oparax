@@ -10,8 +10,7 @@ export const DRAFT_JSON_SCHEMA = {
   properties: {
     text: {
       type: "string",
-      maxLength: 280,
-      description: "The drafted tweet body only — no markdown, no raw URLs.",
+      description: "The drafted post body only — no markdown, no raw URLs.",
     },
   },
   required: ["text"],
@@ -21,9 +20,9 @@ export const DRAFT_JSON_SCHEMA = {
 export const DRAFT_SYSTEM_PROMPT = `You draft a single postable X (Twitter) post for a professional reporter, in their voice.
 
 Rules:
-- Output only the tweet body — no headings, markdown, explanations, or source footers.
+- Output only the post body — no headings, markdown, explanations, or source footers.
 - Do not include raw URLs.
-- Stay within 280 characters.
+- Match the post length the reporter asks for in the drafting instructions; if they give no length, keep it tight and scannable. Do NOT force a 280-character cap — the reporter sets their own limit.
 - Use only the provided story as the factual basis; do not invent details.
 - Follow the drafting instructions provided in the user message.`;
 
@@ -31,11 +30,11 @@ Rules:
 export const DRAFT_REPAIR_SYSTEM_PROMPT = `You are repairing a drafted X post so it becomes directly postable.
 
 Rules:
-- Rewrite the invalid draft into a single clean tweet body.
+- Rewrite the invalid draft into a single clean post body.
 - Keep the same underlying angle and use only the provided story.
 - Remove headings, markdown, explanations, source footers, and raw URLs.
-- Keep the tweet within 280 characters; if too long, drop secondary detail while preserving the main angle and the drafting instructions.
-- Output only the repaired tweet body.`;
+- Match the reporter's requested length; if they gave none, keep it tight — drop secondary detail while preserving the main angle and the drafting instructions.
+- Output only the repaired post body.`;
 
 // The story content fed to the drafting model (trimmed stories: title + summary).
 export interface DraftStoryInput {

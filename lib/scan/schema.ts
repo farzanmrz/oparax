@@ -14,7 +14,6 @@ export const scanItemSchema = z.object({
   title: z.string(),
   body: z.string(),
   urls: z.array(z.url()).min(1).describe("Source URLs incl. at least one direct X/Twitter URL."),
-  draft: z.string().max(280).describe("A single postable X draft; no raw URLs or markdown."),
   sources: z
     .array(storySourceSchema)
     .default([])

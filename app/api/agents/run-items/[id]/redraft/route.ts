@@ -1,9 +1,11 @@
 // Imports
 import { NextResponse } from "next/server";
+import { DRAFT_MODEL } from "@/lib/ai/providers";
 import { weightedLength } from "@/lib/draft/count";
 import { generateDraft } from "@/lib/draft/generate";
 import { createClient } from "@/lib/supabase/server";
 import type { Agent, RunItem } from "@/lib/types";
+import { logUsage } from "@/lib/usage/log";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -136,6 +138,17 @@ export async function POST(
       },
     );
   }
+
+  await logUsage({
+    kind: "redraft",
+    provider: "gateway",
+    resolved_provider: result.resolved ?? null,
+    model: DRAFT_MODEL,
+    user_id: user.id,
+    agent_id: agent.id,
+    gatewayMarketCost: result.marketCost ?? null,
+    source: "manual",
+  });
 
   return NextResponse.json({
     text: result.text,

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { PreviewStory, StorySource } from "@/lib/scan/types";
 import { UserAvatar } from "@/components/agents/chat-avatars";
-import { SourceTweetCard, SourceArticleCard } from "@/components/agents/source-cards";
+import { SourceArticleCard, SourceTweetCard } from "@/components/agents/source-cards";
+import type { RawStory, StorySource } from "@/lib/scan/types";
 
 // ── Type-count pills ──────────────────────────────────────────────────────────
 
@@ -66,43 +66,46 @@ function AvatarStack({ sources }: { sources: StorySource[] }) {
 
 // ── ScanNewsCard ──────────────────────────────────────────────────────────────
 
-export function ScanNewsCard({ story }: { story: PreviewStory }) {
+export function ScanNewsCard({ story }: { story: RawStory }) {
   const [expanded, setExpanded] = useState(false);
+  const hasSources = story.sources.length > 0;
 
   return (
     <div className="scan-card">
-      {/* Summary clamped to 2 lines */}
-      <p className="scan-summary src-clamp2">{story.summary}</p>
+      {/* Headline + summary */}
+      {story.title && <h3 className="scan-title src-clamp2">{story.title}</h3>}
+      <p className="scan-summary src-clamp3">{story.summary}</p>
 
       {/* Pills + avatar stack row */}
-      <div className="scan-meta">
-        <SourcePills sources={story.sources} />
-        <AvatarStack sources={story.sources} />
-      </div>
+      {hasSources && (
+        <div className="scan-meta">
+          <SourcePills sources={story.sources} />
+          <AvatarStack sources={story.sources} />
+        </div>
+      )}
 
-      {/* View sources toggle */}
-      <button
-        type="button"
-        className="scan-view-btn"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-      >
-        {expanded ? "Hide sources" : "View sources"}
-      </button>
+      {/* View sources toggle — only when there are sources to show */}
+      {hasSources && (
+        <button
+          type="button"
+          className="scan-view-btn"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Hide sources" : "View sources"}
+        </button>
+      )}
 
-      {/* Expandable carousel */}
-      {expanded && story.sources.length > 0 && (
-        <div className="scan-carousel-wrap">
-          <div className="scan-carousel">
-            {story.sources.map((src) =>
-              src.type === "tweet" ? (
-                <SourceTweetCard key={src.url} source={src} variant="carousel" />
-              ) : (
-                <SourceArticleCard key={src.url} source={src} variant="carousel" />
-              ),
-            )}
-          </div>
-          <div className="scan-carousel-fade" aria-hidden="true" />
+      {/* Expanded sources — a vertical list of full-width source rows */}
+      {expanded && hasSources && (
+        <div className="scan-sources-list">
+          {story.sources.map((src) =>
+            src.type === "tweet" ? (
+              <SourceTweetCard key={src.url} source={src} />
+            ) : (
+              <SourceArticleCard key={src.url} source={src} />
+            ),
+          )}
         </div>
       )}
     </div>
@@ -111,11 +114,11 @@ export function ScanNewsCard({ story }: { story: PreviewStory }) {
 
 // ── ScanNewsGrid ──────────────────────────────────────────────────────────────
 
-export function ScanNewsGrid({ stories }: { stories: PreviewStory[] }) {
-  if (stories.length === 0) return null;
+export function ScanNewsGrid({ items }: { items: RawStory[] }) {
+  if (items.length === 0) return null;
   return (
     <div className="scan-grid">
-      {stories.map((story) => (
+      {items.map((story) => (
         <ScanNewsCard key={story.dedupeKey} story={story} />
       ))}
     </div>

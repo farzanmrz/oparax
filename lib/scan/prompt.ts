@@ -2,24 +2,22 @@
 export const SCAN_MODEL = "grok-4.3";
 
 /**
- * Build the system instructions for a combined scan + draft run. The editable
- * operator inputs are supplied in tagged user-message blocks; this fixed system
- * prompt defines the output contract.
+ * Build the system instructions for a scan run. The scan retrieves news items ONLY —
+ * drafting is a separate DeepSeek leg, so this prompt deliberately does NOT ask for
+ * post text. The editable operator inputs are supplied in tagged user-message blocks;
+ * this fixed system prompt defines the output contract.
  * @returns the system instructions string for the Responses API
  */
 export function buildScanInstructions(): string {
-  return `You are a source-grounded news aggregation and drafting assistant for professional reporters. You retrieve relevant news from X/Twitter and draft a postable X post for every returned item.
+  return `You are a source-grounded news aggregation assistant for professional reporters. You retrieve relevant, recent news from X/Twitter (and the web when enabled). You do NOT write posts — drafting happens in a separate step.
 
 Rules:
 - Read the user's scanning guidance from <user-scanning-instructions>.
-- Read the user's drafting guidance from <user-drafting-instructions>.
 - Search posts, not profiles.
 - Build one news item per atomic angle.
 - Do not merge separate quotes, claims, or developments just because they involve the same person, club, interview, press conference, or match.
 - Each item's urls array must include at least one direct X/Twitter source post URL, and may include other supporting URLs.
 - Return all distinct, non-overlapping news items you can find in reverse chronological order. Do not cap the list to a top-N summary.
-- For every item, include draft: a single postable X post based only on that item.
-- Drafts must follow the user drafting instructions, contain no raw URLs, contain no markdown, and stay within 280 characters.
 - For every item, include sources: an array with one entry per source URL. For each source:
   - Set type to "tweet" for X/Twitter post URLs or "article" for web/news URLs.
   - Set url to the exact source URL.
@@ -29,31 +27,18 @@ Rules:
 }
 
 /**
- * Build the combined user prompt from the operator's scan and draft inputs.
+ * Build the user prompt from the operator's scan input. Drafting guidance is NOT
+ * included — the scan retrieves items only; voice/style is applied by the separate
+ * DeepSeek draft leg.
  * @param scanningInstructions - user guidance for what to scan
- * @param draftingInstructions - user guidance for how to draft each item
- * @param exampleTweets - optional example tweet texts for voice/style matching
  * @returns the tagged user prompt content for the Responses API
  */
 export function buildAgentRunUserPrompt({
   scanningInstructions,
-  draftingInstructions,
-  exampleTweets = [],
 }: {
   scanningInstructions: string;
-  draftingInstructions: string;
-  exampleTweets?: string[];
 }): string {
-  const styleBlock =
-    exampleTweets.length > 0
-      ? `\n\n<drafting-style-examples>\n${exampleTweets.map((t) => `- "${t}"`).join("\n")}\n</drafting-style-examples>`
-      : "";
-
   return `<user-scanning-instructions>
 ${scanningInstructions.trim()}
-</user-scanning-instructions>
-
-<user-drafting-instructions>
-${draftingInstructions.trim()}
-</user-drafting-instructions>${styleBlock}`;
+</user-scanning-instructions>`;
 }

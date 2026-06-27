@@ -88,6 +88,8 @@ export async function saveConnection(
   );
   if (error) return error;
 
+  // Legacy: reactivate any agents left 'inactive' by an older disconnect. Harmless now
+  // (disconnect no longer inactivates agents — spec §5.1). Kept for legacy rows.
   const { error: agentError } = await supabase
     .from("agents")
     .update({
@@ -151,6 +153,7 @@ export async function rotateAccessToken(refreshToken: string): Promise<{
       grant_type: "refresh_token",
       refresh_token: refreshToken,
     }).toString(),
+    signal: AbortSignal.timeout(8000),
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");

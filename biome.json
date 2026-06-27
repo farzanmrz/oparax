@@ -26,6 +26,9 @@
     "domains": {
       "next": "recommended",
       "react": "recommended"
+    },
+    "rules": {
+      "recommended": true
     }
   },
   "assist": {

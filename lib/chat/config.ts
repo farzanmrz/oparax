@@ -36,6 +36,17 @@ export const agentConfigSchema = z.object({
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
 
+/**
+ * A source counts as "on" when it is explicitly enabled OR the reporter named handles/domains
+ * for it. Single source of truth for the live ConfigCard ("what I'll save") and configToColumns
+ * (what Save persists) so the saved agent scans exactly the sources the card advertised — handles
+ * the reporter gave are never silently dropped.
+ */
+export const xSourceActive = (c: AgentConfig): boolean =>
+  c.sources.x.enabled || c.sources.x.handles.length > 0;
+export const webSourceActive = (c: AgentConfig): boolean =>
+  c.sources.web.enabled || c.sources.web.preferredDomains.length > 0;
+
 export const DEFAULT_CONFIG: AgentConfig = {
   name: "",
   scanningInstructions: "",
@@ -43,7 +54,11 @@ export const DEFAULT_CONFIG: AgentConfig = {
   exampleTweets: [],
   sources: {
     x: {
-      enabled: true,
+      // Off by default so the live "what I'll save" card does not assert an
+      // "X — broad search" the reporter never chose during intake. A real source
+      // choice flips this on via runScan/updateConfig; the runScan tool still
+      // defaults searchX=true at scan time, so picking X is one step, not two.
+      enabled: false,
       handles: [],
     },
     web: {
@@ -116,9 +131,9 @@ export function configToColumns(
     monitoring_description: config.scanningInstructions,
     drafting_instructions: config.draftingInstructions,
     example_tweets: config.exampleTweets.map((t) => t.text),
-    search_x: config.sources.x.enabled,
+    search_x: xSourceActive(config),
     monitored_handles: config.sources.x.handles,
-    search_web: config.sources.web.enabled,
+    search_web: webSourceActive(config),
     preferred_domains: config.sources.web.preferredDomains,
     scan_cadence_minutes: config.schedule.cadenceMinutes,
     schedule_days: config.schedule.daysOfWeek,

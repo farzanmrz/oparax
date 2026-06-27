@@ -3,7 +3,7 @@
 # Runs only after the plan-approval gate, so a rejected plan never leaves an orphan
 # issue. stdout is ONLY the new issue number (git chatter is sent to stderr) so the
 # caller can capture it — it names the branch (ft/<issue-number>, number only) and
-# drives ship.sh in Phase 5.
+# drives ship.sh in Phase 6.
 #
 # Usage:  start.sh "<issue title>" <plan-body-file>
 # Run from the repo root.

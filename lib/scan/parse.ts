@@ -1,16 +1,6 @@
 // Imports
 import type { ScanItem, StorySourceItem } from "@/lib/scan/schema";
-
-// Story draft for DB insertion and URL parsing
-// A story ready to insert into the stories table (camelCase; mapped in route)
-export interface StoryDraft {
-  title: string;
-  summary: string;
-  sourceUrls: string[];
-  primaryTweetUrl: string;
-  dedupeKey: string;
-  draft: string;
-}
+import type { RawStory } from "@/lib/scan/types";
 
 // Regex to extract tweet id from X/Twitter status URL
 const X_STATUS_RE = /https?:\/\/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i;
@@ -37,8 +27,7 @@ function normalizeItem(value: unknown): ScanItem | null {
   const record = value as Record<string, unknown>;
   const title = typeof record.title === "string" ? record.title.trim() : "";
   const body = typeof record.body === "string" ? record.body.trim() : "";
-  const draft = typeof record.draft === "string" ? record.draft.trim() : "";
-  if (!title || !body || !draft) return null;
+  if (!title || !body) return null;
   if (!Array.isArray(record.urls)) return null;
 
   const urls = [
@@ -66,7 +55,6 @@ function normalizeItem(value: unknown): ScanItem | null {
     title,
     body,
     urls,
-    draft,
     sources,
   };
 }
@@ -92,13 +80,14 @@ export function parseScanItems(answerText: string): ScanItem[] | null {
 }
 
 /**
- * Map a clean item to a story draft, choosing the first X status URL as the
- * primary tweet and deriving a stable dedupe key (tweet id → primary url →
- * first url → title) so (scan_id, dedupe_key) stays unique and non-empty.
+ * Map a clean item to its raw (pre-draft) story fields, choosing the first X status URL
+ * as the primary tweet and deriving a stable dedupe key (tweet id → primary url →
+ * first url → title) so (scan_id, dedupe_key) stays unique and non-empty. The draft is
+ * attached later by the separate DeepSeek draft leg.
  * @param item - a normalized scan item
- * @returns the story draft to insert
+ * @returns the raw story fields (no draft; sources are added by storiesFromOutput)
  */
-export function toStoryDraft(item: ScanItem): StoryDraft {
+export function toRawStory(item: ScanItem): Omit<RawStory, "sources"> {
   const primaryTweetUrl = item.urls.find((url) => X_STATUS_RE.test(url)) ?? "";
   const tweetId = primaryTweetUrl ? extractTweetId(primaryTweetUrl) : null;
   // First non-empty wins (|| not ?? — primaryTweetUrl is "" when no X URL).
@@ -110,6 +99,5 @@ export function toStoryDraft(item: ScanItem): StoryDraft {
     sourceUrls: item.urls,
     primaryTweetUrl,
     dedupeKey,
-    draft: item.draft,
   };
 }

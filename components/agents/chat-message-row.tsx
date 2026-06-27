@@ -1,34 +1,33 @@
 "use client";
 
-// ChatMessageRow — renders a single UIMessage in the card-less chat shell.
-// Assistant rows: OparaxAvatar + Reasoning dropdown (AI Elements) + text parts
-//   + result outputs (verifyHandles / validateSites chips, runScan grid+drafts).
-// User rows: bubble + UserAvatar (right-aligned).
+// ChatMessageRow — renders a single UIMessage using stock AI Elements.
+// Assistant rows: plain text on the page (no fill) via <Message>/<MessageContent>,
+//   with the AI Elements Reasoning dropdown for reasoning text plus the rich tool
+//   output — the scan ITEMS list and the per-item draft cards. We deliberately do
+//   NOT render stock <Tool> blocks: the items/drafts already render as cards, so a
+//   raw-JSON tool block (and the model re-listing the same content as text) is pure
+//   duplication. The only on-screen trace of a tool call is its rich card or, while
+//   it runs, the "Scanning…/Drafting…" pill.
+// User rows: the stock AI Elements bubble (<MessageContent> in is-user mode).
 //
-// Reasoning: the AI Elements Reasoning brain+dropdown. The expandable content
-//   holds the reasoning markdown PLUS a compact list of tool-call indicators so
-//   the user can see which tools ran this turn. Only the LAST message is treated
-//   as streaming (per-message), so older messages settle to "Thought for a few
-//   seconds" instead of flipping back to "Thinking…".
+// Reasoning: the AI Elements Reasoning brain+dropdown. Only the LAST message is
+//   treated as streaming (per-message), so older messages settle to "Thought for
+//   a few seconds" instead of flipping back to "Thinking…".
 
 import type { DynamicToolUIPart, UIMessage } from "ai";
-import { MessageResponse } from "@/components/ai-elements/message";
-import { Reasoning, ReasoningTrigger } from "@/components/ai-elements/reasoning";
-import { CollapsibleContent } from "@/components/ui/collapsible";
-import { Spinner } from "@/components/ui/spinner";
-import { OparaxAvatar, UserAvatar } from "@/components/agents/chat-avatars";
-import { WrenchGlyph } from "@/components/agents/chat-glyphs";
-import { ScanNewsGrid } from "@/components/agents/scan-news-card";
 import { DraftCard } from "@/components/agents/draft-card";
-import { VerifyChips, SiteChips } from "@/components/agents/result-chips";
-import type { VerifyHandlesResult } from "@/lib/x/verify";
-import type { SiteValidationResult } from "@/lib/sites/validate";
-import type { PreviewStory, ScanMetrics } from "@/lib/scan/types";
+import { ScanNewsGrid } from "@/components/agents/scan-news-card";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
+import { Spinner } from "@/components/ui/spinner";
+import type { DraftToolResult, ScanToolResult } from "@/lib/scan/types";
 
-interface RunScanOutput {
-  stories: PreviewStory[];
-  metrics?: ScanMetrics | null;
-}
+// Muted line for a gated/empty scan or "scan first" draft notice.
+const NOTICE_STYLE = {
+  margin: 0,
+  font: "400 0.875rem/1.5 var(--font-sans)",
+  color: "var(--muted)",
+} as const;
 
 export interface ChatMessageRowProps {
   message: UIMessage;
@@ -36,26 +35,9 @@ export interface ChatMessageRowProps {
   userAvatarUrl?: string | null;
   isStreaming: boolean;
   isLast: boolean;
-  xConnected: boolean;
   draftEdits: Record<string, string>;
   onDraftChange: (dedupeKey: string, text: string) => void;
-  addToolOutput: (arg: { toolCallId: string; tool: string; output: unknown }) => void;
-  sendMessage: (msg: { text: string }) => void;
 }
-
-// ---------------------------------------------------------------------------
-// Humanized labels for tool-call indicators shown inside the reasoning dropdown.
-// ---------------------------------------------------------------------------
-const TOOL_LABELS: Record<string, string> = {
-  setAgentConfig: "Saved settings",
-  verifyHandles: "Verified handles",
-  validateSites: "Checked sites",
-  discoverHandles: "Searched X for accounts",
-  discoverSites: "Searched the web for sites",
-  fetchExampleTweets: "Read example posts",
-  fetchMyRecentPosts: "Pulled your recent posts",
-  runScan: "Scanned sources",
-};
 
 // ---------------------------------------------------------------------------
 // Helpers to cast DynamicToolUIPart cleanly
@@ -66,34 +48,44 @@ function isToolPart(part: UIMessage["parts"][number]): part is DynamicToolUIPart
   );
 }
 
+/**
+ * The tool's name. AI SDK v6 STATIC tool parts carry the name in `type`
+ * ("tool-runScan") and leave `toolName` null; only DYNAMIC tool parts populate
+ * `toolName`. Deriving from `type` makes both the header label and the
+ * rich-output branches resolve the name in every case (the old code read
+ * `toolName` only, so static parts showed a blank, nameless "Completed" block).
+ */
+function toolNameOf(part: DynamicToolUIPart): string {
+  if (part.toolName) return part.toolName;
+  return typeof part.type === "string" && part.type.startsWith("tool-")
+    ? part.type.slice("tool-".length)
+    : "";
+}
+
 /** Renders one message row for the chat shell. */
 export function ChatMessageRow({
   message,
-  userName,
-  userAvatarUrl,
+  userName: _userName,
+  userAvatarUrl: _userAvatarUrl,
   isStreaming,
   isLast,
-  xConnected,
   draftEdits,
   onDraftChange,
-  addToolOutput: _addToolOutput,
-  sendMessage: _sendMessage,
 }: ChatMessageRowProps) {
   const isUser = message.role === "user";
 
-  // ── User message: simple bubble ──────────────────────────────────────────
+  // ── User message: stock AI Elements bubble ───────────────────────────────
   if (isUser) {
     const text = message.parts
       .filter((p) => p.type === "text")
       .map((p) => (p as { text: string }).text)
       .join("");
     return (
-      <div className="agent-msg is-user">
-        <div className="agent-bubble">
-          <div className="agent-bubble-text">{text}</div>
-        </div>
-        <UserAvatar name={userName} avatarUrl={userAvatarUrl} />
-      </div>
+      <Message from="user">
+        <MessageContent>
+          <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
+        </MessageContent>
+      </Message>
     );
   }
 
@@ -111,36 +103,43 @@ export function ChatMessageRow({
   //    settle so their Reasoning shows "Thought for a few seconds".
   const isTurnStreaming = isLast && isStreaming;
 
-  // 3. Collect tool-call parts (for the indicator list inside the dropdown).
+  // 3. Collect tool-call parts.
   const toolParts = message.parts.filter(isToolPart);
 
   // 4. Render text parts
   const textParts = message.parts
     .filter((p) => p.type === "text")
-    .map((p, i) => (
-      <MessageResponse key={`text-${i}`}>{(p as { text: string }).text}</MessageResponse>
-    ));
+    .map((p, i) => {
+      // biome-ignore lint/suspicious/noArrayIndexKey: text parts within one message are stable and never reordered.
+      return <MessageResponse key={`text-${i}`}>{(p as { text: string }).text}</MessageResponse>;
+    });
 
-  // 5. Render result outputs (chips + scan grid/drafts). No interactive picker
-  //    tools anymore — the flow is text-driven.
+  // 5. Render rich result outputs for the two phases: the SCAN tool (runScan) renders the
+  //    news ITEMS grid; the DRAFT tool (draft) renders one editable post per item. An empty
+  //    result carrying a notice (gated scan, "scan first", or an error) renders the notice.
+  //    updateConfig has no rich output and no on-screen trace — the live ConfigCard is its
+  //    only reflection (we deliberately don't render stock Tool blocks).
   const outputParts = toolParts
-    .map((toolPart, idx) => {
-      const toolName = toolPart.toolName ?? "";
+    .map((toolPart) => {
+      const toolName = toolNameOf(toolPart);
       const toolState = toolPart.state;
-      const partKey = `tool-${toolPart.toolCallId}-${idx}`;
+      const partKey = `tool-${toolPart.toolCallId}`;
+      const isScan = toolName === "runScan";
+      const isDraft = toolName === "draft";
+      if (!isScan && !isDraft) return null;
 
-      // ── verifyHandles ───────────────────────────────────────────────────
-      if (toolName === "verifyHandles" && toolState === "output-available" && toolPart.output) {
-        return <VerifyChips key={partKey} output={toolPart.output as VerifyHandlesResult} />;
+      // ── errored — surface the error instead of a perpetual spinner ──────
+      if (toolState === "output-error") {
+        return (
+          <p key={partKey} style={NOTICE_STYLE}>
+            {toolPart.errorText ??
+              (isDraft ? "Drafting failed — try again." : "The scan failed — try again.")}
+          </p>
+        );
       }
 
-      // ── validateSites ───────────────────────────────────────────────────
-      if (toolName === "validateSites" && toolState === "output-available" && toolPart.output) {
-        return <SiteChips key={partKey} output={toolPart.output as SiteValidationResult[]} />;
-      }
-
-      // ── runScan still running ───────────────────────────────────────────
-      if (toolName === "runScan" && toolState !== "output-available") {
+      // ── still running (genuinely in flight) ────────────────────────────
+      if (toolState !== "output-available") {
         return (
           <div
             key={partKey}
@@ -157,113 +156,90 @@ export function ChatMessageRow({
             }}
           >
             <Spinner className="size-3.5" />
-            Scanning your sources…
+            {isDraft ? "Drafting your posts…" : "Scanning your sources…"}
           </div>
         );
       }
 
-      // ── runScan with output ─────────────────────────────────────────────
-      if (toolName === "runScan" && toolState === "output-available" && toolPart.output) {
-        const result = toolPart.output as RunScanOutput;
-        const stories = result.stories ?? [];
-        return (
-          <div key={partKey} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <ScanNewsGrid stories={stories} />
-            {stories.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {stories.map((story) => (
-                  <DraftCard
-                    key={story.dedupeKey}
-                    story={story}
-                    draft={draftEdits[story.dedupeKey] ?? story.draft}
-                    onDraftChange={(t) => onDraftChange(story.dedupeKey, t)}
-                    xConnected={xConnected}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
+      if (!toolPart.output) return null;
+
+      // ── SCAN phase — news items only (no drafts yet) ───────────────────
+      if (isScan) {
+        const result = toolPart.output as ScanToolResult;
+        const items = result.items ?? [];
+        if (items.length === 0) {
+          return result.notice ? (
+            <p key={partKey} style={NOTICE_STYLE}>
+              {result.notice}
+            </p>
+          ) : null;
+        }
+        return <ScanNewsGrid key={partKey} items={items} />;
       }
 
-      // All other tools without explicit rendering → suppress
-      return null;
+      // ── DRAFT phase — one editable post per item ───────────────────────
+      const result = toolPart.output as DraftToolResult;
+      const stories = result.stories ?? [];
+      if (stories.length === 0) {
+        return result.notice ? (
+          <p key={partKey} style={NOTICE_STYLE}>
+            {result.notice}
+          </p>
+        ) : null;
+      }
+      return (
+        <div key={partKey} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {stories.map((story) => (
+            <DraftCard
+              key={story.dedupeKey}
+              story={story}
+              draft={draftEdits[story.dedupeKey] ?? story.draft}
+              onDraftChange={(t) => onDraftChange(story.dedupeKey, t)}
+            />
+          ))}
+        </div>
+      );
     })
     .filter(Boolean);
 
-  // 6. Tool-call indicator rows for the reasoning dropdown.
-  const toolIndicators = toolParts.map((toolPart, idx) => {
-    const toolName = toolPart.toolName ?? "";
-    const label = TOOL_LABELS[toolName] ?? toolName;
-    return (
-      <div
-        key={`indicator-${toolPart.toolCallId}-${idx}`}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          font: "400 0.8125rem/1.4 var(--font-sans)",
-        }}
-      >
-        <WrenchGlyph />
-        <span>{label}</span>
-      </div>
-    );
-  });
-
-  // Render the Reasoning block whenever there is reasoning text OR a tool call.
-  const showReasoning = Boolean(reasoningText) || toolIndicators.length > 0;
-
   return (
-    <div className="agent-msg is-assistant">
-      <OparaxAvatar />
-      <div className="agent-msg-body">
-        {/* 1. AI Elements Reasoning dropdown — reasoning text + tool indicators */}
-        {showReasoning && (
+    <Message from="assistant">
+      <MessageContent>
+        {/* 1. AI Elements Reasoning dropdown — reasoning text only */}
+        {reasoningText && (
           <Reasoning isStreaming={isTurnStreaming}>
             <ReasoningTrigger />
-            <CollapsibleContent
-              className="mt-4 text-sm text-muted-foreground outline-none data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=open]:animate-in"
-              style={{ display: "flex", flexDirection: "column", gap: 8 }}
-            >
-              {reasoningText && <MessageResponse>{reasoningText}</MessageResponse>}
-              {toolIndicators.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {toolIndicators}
-                </div>
-              )}
-            </CollapsibleContent>
+            <ReasoningContent>{reasoningText}</ReasoningContent>
           </Reasoning>
         )}
 
         {/* 2. Text parts (the visible final message) */}
         {textParts}
 
-        {/* 3. Result outputs */}
+        {/* 3. Rich result outputs — scan items + draft cards */}
         {outputParts}
-      </div>
-    </div>
+      </MessageContent>
+    </Message>
   );
 }
 
 /** Small "Thinking…" indicator rendered while the assistant is generating (before any parts arrive). */
 export function ThinkingRow() {
   return (
-    <div className="agent-msg is-assistant">
-      <OparaxAvatar />
-      <div
-        className="agent-msg-body"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          color: "var(--faint)",
-          paddingTop: 4,
-        }}
-      >
-        <Spinner className="size-4" />
-        <span>Thinking…</span>
-      </div>
-    </div>
+    <Message from="assistant">
+      <MessageContent>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            color: "var(--faint)",
+          }}
+        >
+          <Spinner className="size-4" />
+          <span>Thinking…</span>
+        </div>
+      </MessageContent>
+    </Message>
   );
 }

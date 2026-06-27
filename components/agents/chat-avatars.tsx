@@ -1,28 +1,4 @@
 import Image from "next/image";
-import { OparaxMark } from "@/components/logo";
-
-/** Oparax assistant avatar: white orbit mark on brand-blue circle with ring. */
-export function OparaxAvatar({ size = 36 }: { size?: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        flexShrink: 0,
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: "var(--brand)",
-        color: "oklch(1 0 0)",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        boxShadow: "0 0 0 4px var(--brand-ring)",
-      }}
-    >
-      <OparaxMark width={Math.round(size * 0.5)} height={Math.round(size * 0.5)} />
-    </span>
-  );
-}
 
 /**
  * User avatar: shows the real profile image (avatarUrl) when available,

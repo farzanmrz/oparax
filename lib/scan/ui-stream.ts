@@ -13,12 +13,12 @@
 // - elapsedMs: tracked by the caller via startedAt
 
 import type { StreamTextResult, ToolSet, UIMessageStreamOptions } from "ai";
-import { toStoryDraft } from "@/lib/scan/parse";
+import { toRawStory } from "@/lib/scan/parse";
 import type { ScanItem } from "@/lib/scan/schema";
-import type { PreviewStory, ScanMetrics, StorySource } from "@/lib/scan/types";
+import type { RawStory, ScanMetrics, StorySource } from "@/lib/scan/types";
 
 // biome-ignore lint/suspicious/noExplicitAny: StreamTextResult's OUTPUT generic only affects result.object typing; `unknown` breaks inference that downstream callers rely on.
-type ScanResult = StreamTextResult<ToolSet, any>;
+export type ScanResult = StreamTextResult<ToolSet, any>;
 
 export async function extractMetrics(result: ScanResult, startedAt: number): Promise<ScanMetrics> {
   // providerMetadata is undefined for xai.responses in AI SDK v6 — see file comment.
@@ -72,17 +72,17 @@ function sourcesFromItem(item: ScanItem): StorySource[] {
 }
 
 export function storiesFromOutput(output: {
-  items?: Parameters<typeof toStoryDraft>[0][] | null;
-}): PreviewStory[] {
+  items?: Parameters<typeof toRawStory>[0][] | null;
+}): RawStory[] {
   const items = (output?.items ?? []) as ScanItem[];
   const seen = new Set<string>();
   return items
     .map((item) => {
-      const base = toStoryDraft(item);
+      const base = toRawStory(item);
       return {
         ...base,
         sources: sourcesFromItem(item),
-      } satisfies PreviewStory;
+      } satisfies RawStory;
     })
     .filter((story) => {
       if (seen.has(story.dedupeKey)) return false;

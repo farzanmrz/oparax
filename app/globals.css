@@ -1095,6 +1095,12 @@
     flex-direction: column;
     gap: 18px;
   }
+  /* Tool-call JSON (params + result) wraps instead of overflowing sideways. The
+     stock CodeBlock <pre> sets no inline white-space, so this scoped rule wins. */
+  .agent-chat-col pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
   .agent-chat-error {
     padding: 10px 14px;
     border-radius: var(--radius);
@@ -1112,15 +1118,15 @@
   .agent-composer {
     max-width: 600px;
     margin: 0 auto;
-    background: oklch(0.22 0.025 262);
-    border: 1px solid var(--brand);
-    border-radius: 18px;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 12px;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
   }
   .agent-composer:focus-within {
-    box-shadow: 0 0 0 3px var(--brand-ring);
+    border-color: var(--line-strong);
   }
   .agent-composer-input {
     width: 100%;
@@ -1140,75 +1146,28 @@
   .agent-composer-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-top: 8px;
   }
-  .agent-composer-plus {
+  .agent-composer-send {
     width: 32px;
     height: 32px;
-    border-radius: 50%;
-    border: 1px solid oklch(1 0 0 / 0.12);
+    border-radius: 8px;
+    border: 1px solid var(--line);
     background: transparent;
-    color: oklch(1 0 0 / 0.35);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: default;
-  }
-  .agent-composer-send {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 0;
-    background: #3b82f6;
-    color: #fff;
+    color: var(--fg);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 0 16px rgb(59 130 246 / 0.5);
-    transition:
-      filter 120ms ease,
-      box-shadow 120ms ease,
-      opacity 120ms ease;
+    transition: opacity 120ms ease;
   }
   .agent-composer-send:hover:not(:disabled) {
-    filter: brightness(1.1);
+    border-color: var(--line-strong);
   }
   .agent-composer-send:disabled {
     opacity: 0.4;
-    box-shadow: none;
     cursor: not-allowed;
-  }
-
-  /* ------------------------------------------------ agent message rows */
-  .agent-msg {
-    display: flex;
-    gap: 11px;
-    align-items: flex-start;
-  }
-  /* User: bubble then avatar, pushed to the right edge */
-  .agent-msg.is-user {
-    justify-content: flex-end;
-  }
-  .agent-msg-body {
-    max-width: 82%;
-    padding-top: 4px;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--fg);
-  }
-  .agent-bubble {
-    max-width: 78%;
-    background: oklch(0.28 0.025 262);
-    border: 1px solid oklch(0.6 0.19 262 / 0.18);
-    border-radius: 16px 16px 5px 16px;
-    padding: 10px 15px;
-  }
-  .agent-bubble-text {
-    color: var(--fg);
-    font: 400 1.0625rem/1.55 var(--font-sans);
-    white-space: pre-wrap;
   }
 }
 
@@ -1303,10 +1262,6 @@
     border-radius: 10px;
     padding: 12px 14px;
   }
-  .src-card-carousel {
-    flex-shrink: 0;
-    width: 232px;
-  }
   .src-card-head {
     display: flex;
     align-items: center;
@@ -1347,25 +1302,32 @@
     color: var(--muted);
   }
 
-  /* ------------------------------------------------ scan news grid + card */
+  /* ------------------------------------------------ scan news list + card */
+  /* News items render as a vertical list of full-width rows (like the draft cards),
+     not a horizontal multi-column grid. */
   .scan-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
   .scan-card {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     background: oklch(0.205 0 0);
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 14px 16px;
   }
+  .scan-title {
+    margin: 0;
+    font: 600 0.9375rem / 1.4 var(--font-sans);
+    color: var(--fg);
+  }
   .scan-summary {
     margin: 0;
-    font: 400 0.9375rem / 1.55 var(--font-sans);
-    color: var(--fg);
+    font: 400 0.875rem / 1.55 var(--font-sans);
+    color: var(--muted);
   }
   .scan-meta {
     display: flex;
@@ -1412,25 +1374,11 @@
   .scan-view-btn:hover {
     color: var(--accent-vivid);
   }
-  .scan-carousel-wrap {
-    position: relative;
-  }
-  .scan-carousel {
+  /* Expanded sources — a vertical stack of full-width source rows. */
+  .scan-sources-list {
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--line) transparent;
-  }
-  .scan-carousel-fade {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 40px;
-    height: 100%;
-    background: linear-gradient(to right, transparent, oklch(0.205 0 0));
-    pointer-events: none;
   }
 
   /* ------------------------------------------------ draft card */
@@ -1447,29 +1395,15 @@
       border-color 150ms ease,
       box-shadow 150ms ease;
   }
-  .draft-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .draft-head-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .draft-author {
-    font: 600 0.9375rem / 1 var(--font-sans);
-    color: var(--fg);
-  }
-  .draft-handle {
-    font: 400 0.8125rem / 1 var(--font-sans);
-    color: var(--faint);
-  }
   .draft-text {
     margin: 0;
     font: 400 0.9375rem / 1.6 var(--font-sans);
     color: var(--fg);
     white-space: pre-wrap;
+  }
+  /* #hashtags, @mentions, and links highlighted the way X renders a post. */
+  .post-entity {
+    color: var(--accent);
   }
   .draft-edit-wrap {
     display: flex;
@@ -1557,65 +1491,12 @@
     border-radius: 12px;
   }
 
-  /* ------------------------------------------------ blue-graphite chat surface (scoped — does NOT touch :root or other pages) */
+  /* ------------------------------------------------ chat surface (plain layout container) */
   .agent-surface {
-    /* Deep blue-graphite backdrop — richer than pure black */
-    --agent-bg: oklch(0.17 0.02 265);
-    --agent-card: oklch(0.2 0.025 262);
-    --agent-line: oklch(0.6 0.19 262 / 0.14);
-    background: var(--agent-bg);
     display: flex;
     flex-direction: column;
-  }
-  /*
-   * Full-bleed: break out of .ws-main-inner's padding (24px top, 36px L/R, 56px bottom)
-   * so the blue-graphite bg covers the ENTIRE main pane edge-to-edge.
-   * Negative margins cancel the padding; width compensates for L+R loss.
-   * Height = full viewport so the bg fills top-to-bottom with no black gaps.
-   * The conversation + composer content stays at the reading measure via
-   * .agent-chat-col / .agent-composer max-width centering.
-   */
-  .agent-surface-fullbleed {
-    margin-top: -24px;
-    margin-left: -36px;
-    margin-right: -36px;
-    margin-bottom: -56px;
-    width: calc(100% + 72px);
     height: 100vh;
     min-height: 0;
-  }
-  /* Tint the scrollable areas so they sit on the blue-graphite canvas */
-  .agent-surface .agent-wide,
-  .agent-surface .agent-chat-scroll {
-    background: var(--agent-bg);
-  }
-  /* Composer wrap fade should match the blue-graphite bg */
-  .agent-surface .agent-composer-wrap {
-    background: linear-gradient(to top, var(--agent-bg) 62%, transparent);
-  }
-  /* Action bar wrap fade too */
-  .agent-surface .agent-actionbar-wrap {
-    background: linear-gradient(to top, var(--agent-bg) 50%, transparent);
-  }
-  /* Slightly lifted tinted composer */
-  .agent-surface .agent-composer {
-    background: oklch(0.22 0.025 262);
-  }
-  /* Assistant message body text — slightly cooler tint */
-  .agent-surface .agent-msg-body {
-    color: oklch(0.94 0.008 240);
-  }
-}
-
-/* Responsive: at ≤1020px .ws-main-inner padding shrinks to 20px 18px 48px —
-   adjust the fullbleed negative margins to match. */
-@media (max-width: 1020px) {
-  .agent-surface-fullbleed {
-    margin-top: -20px;
-    margin-left: -18px;
-    margin-right: -18px;
-    margin-bottom: -48px;
-    width: calc(100% + 36px);
   }
 }
 

@@ -285,6 +285,9 @@
   min-width: 0;
 }
 .workspace .ws-agent-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   font: 650 1rem / 1.2 var(--font-sans);
   color: var(--fg);
 }
@@ -799,6 +802,31 @@
 .workspace .ws-tab.is-active {
   color: var(--fg);
   border-bottom-color: var(--accent);
+}
+
+.workspace .ws-connect-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--brand-ring);
+  background: oklch(0.6 0.19 262 / 0.06);
+}
+.workspace .ws-connect-bar .ws-connect-msg {
+  color: var(--faint);
+  font: 400 0.8125rem/1.35 var(--font-sans);
+}
+
+.workspace .ws-newbadge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 600 0.6875rem/1.4 var(--font-sans);
 }
 
 .workspace .ws-settings {

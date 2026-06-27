@@ -24,6 +24,38 @@ export type RunItem = Tables<"run_items">;
 export type RunItemInsert = TablesInsert<"run_items">;
 export type RunItemUpdate = TablesUpdate<"run_items">;
 
+// Column subsets the agent-detail page loads + threads through its panels. Shared
+// so page.tsx, AgentDetail, and DraftsPanel can't drift out of sync.
+export type DetailRunRow = Pick<
+  Run,
+  | "id"
+  | "status"
+  | "started_at"
+  | "completed_at"
+  | "cost_usd"
+  | "x_search_count"
+  | "item_count"
+  | "error_message"
+  | "source"
+>;
+export type DetailItemRow = Pick<
+  RunItem,
+  | "id"
+  | "run_id"
+  | "story_title"
+  | "story_summary"
+  | "source_urls"
+  | "primary_tweet_url"
+  | "drafted_text"
+  | "final_text"
+  | "status"
+  | "x_tweet_url"
+  | "posted_at"
+  | "posted_via"
+  | "error_message"
+  | "created_at"
+>;
+
 // Status unions come straight from the Postgres enums (generated)
 export type AgentStatus = Enums<"agent_status">;
 export type RunSource = Enums<"run_source">;

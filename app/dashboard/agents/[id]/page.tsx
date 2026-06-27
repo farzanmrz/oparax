@@ -4,41 +4,15 @@ import { AgentDetail } from "@/components/agents/agent-detail";
 import { WorkspacePageHeader } from "@/components/dashboard/workspace-page-header";
 import { columnsToConfig } from "@/lib/chat/config";
 import { createClient } from "@/lib/supabase/server";
-import type { Agent, Run, RunItem } from "@/lib/types";
+import type { Agent, DetailItemRow as ItemRow, DetailRunRow as RunRow } from "@/lib/types";
 
 type AgentDetailRow = Agent;
 
-type RunRow = Pick<
-  Run,
-  | "id"
-  | "status"
-  | "started_at"
-  | "completed_at"
-  | "cost_usd"
-  | "x_search_count"
-  | "item_count"
-  | "error_message"
->;
-
-type ItemRow = Pick<
-  RunItem,
-  | "id"
-  | "run_id"
-  | "story_title"
-  | "story_summary"
-  | "source_urls"
-  | "primary_tweet_url"
-  | "drafted_text"
-  | "final_text"
-  | "status"
-  | "x_tweet_url"
-  | "error_message"
->;
-
 /**
- * Saved-agent detail page. Server-loads owner-scoped agent settings, the latest
- * run + its run items, and X-connection state; passes them to the client island.
- * X tokens are never loaded here — only `xConnected` boolean is forwarded.
+ * Saved-agent detail page. Server-loads owner-scoped agent settings, the recent
+ * runs (last ~20) + their run items, and X-connection state; passes them to the
+ * client island. X tokens are never loaded here — only `xConnected` boolean is
+ * forwarded.
  * @param props.params - dynamic agent id
  * @returns the saved-agent workbench
  */
@@ -52,47 +26,43 @@ export default async function AgentDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  // Load agent (all columns — columnsToConfig needs the full row).
-  const { data: agent } = await supabase
-    .from("agents")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle<AgentDetailRow>();
+  // These three loads are independent — fire them concurrently (D4).
+  const [agentRes, runsRes, connectionRes] = await Promise.all([
+    // Load agent (all columns — columnsToConfig needs the full row).
+    supabase.from("agents").select("*").eq("id", id).maybeSingle<AgentDetailRow>(),
+    // Load the recent runs (last ~20) for the Drafts worklist.
+    supabase
+      .from("runs")
+      .select(
+        "id, status, started_at, completed_at, cost_usd, x_search_count, item_count, error_message, source",
+      )
+      .eq("agent_id", id)
+      .order("started_at", { ascending: false })
+      .limit(20),
+    // X connection — boolean only, never expose tokens.
+    supabase.from("x_connections").select("id").maybeSingle<{ id: string }>(),
+  ]);
 
+  const agent = agentRes.data;
   if (!agent) notFound();
 
-  // Load the latest run only (run-history list is deferred to a later track).
-  const { data: latestRunRow } = await supabase
-    .from("runs")
-    .select(
-      "id, status, started_at, completed_at, cost_usd, x_search_count, item_count, error_message",
-    )
-    .eq("agent_id", id)
-    .order("started_at", {
-      ascending: false,
-    })
-    .limit(1)
-    .maybeSingle<RunRow>();
+  const runs = (runsRes.data ?? []) as RunRow[];
 
-  // Load run items for that run (if it exists).
-  let latestRunItems: ItemRow[] = [];
-  if (latestRunRow) {
+  // Load all items for the recent runs in a single `in (runIds)` query.
+  let items: ItemRow[] = [];
+  if (runs.length > 0) {
     const { data: itemRows } = await supabase
       .from("run_items")
       .select(
-        "id, run_id, story_title, story_summary, source_urls, primary_tweet_url, drafted_text, final_text, status, x_tweet_url, error_message",
+        "id, run_id, story_title, story_summary, source_urls, primary_tweet_url, drafted_text, final_text, status, x_tweet_url, posted_at, posted_via, error_message, created_at",
       )
-      .eq("run_id", latestRunRow.id)
-      .order("created_at", {
-        ascending: true,
-      });
-    latestRunItems = (itemRows ?? []) as ItemRow[];
+      .in(
+        "run_id",
+        runs.map((r) => r.id),
+      )
+      .order("created_at", { ascending: false });
+    items = (itemRows ?? []) as ItemRow[];
   }
-
-  // X connection — boolean only, never expose tokens.
-  const { data: connection } = await supabase.from("x_connections").select("id").maybeSingle<{
-    id: string;
-  }>();
 
   const config = columnsToConfig(agent);
 
@@ -102,9 +72,9 @@ export default async function AgentDetailPage({
       <AgentDetail
         agent={agent}
         config={config}
-        latestRun={latestRunRow ?? null}
-        latestRunItems={latestRunItems}
-        xConnected={Boolean(connection)}
+        runs={runs}
+        items={items}
+        xConnected={Boolean(connectionRes.data)}
       />
     </>
   );

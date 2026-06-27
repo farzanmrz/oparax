@@ -10,10 +10,13 @@ export type Database = {
     Tables: {
       agents: {
         Row: {
+          auto_post: boolean;
+          auto_post_daily_cap: number;
           created_at: string;
           drafting_instructions: string;
           example_tweets: string[];
           id: string;
+          last_checked_at: string | null;
           monitored_handles: string[];
           monitoring_description: string;
           name: string;
@@ -33,10 +36,13 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          auto_post?: boolean;
+          auto_post_daily_cap?: number;
           created_at?: string;
           drafting_instructions?: string;
           example_tweets?: string[];
           id?: string;
+          last_checked_at?: string | null;
           monitored_handles?: string[];
           monitoring_description?: string;
           name: string;
@@ -56,10 +62,13 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          auto_post?: boolean;
+          auto_post_daily_cap?: number;
           created_at?: string;
           drafting_instructions?: string;
           example_tweets?: string[];
           id?: string;
+          last_checked_at?: string | null;
           monitored_handles?: string[];
           monitoring_description?: string;
           name?: string;
@@ -80,84 +89,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      api_usage_events: {
-        Row: {
-          agent_id: string | null;
-          cost_usd: number | null;
-          created_at: string;
-          gateway_generation_id: string | null;
-          id: string;
-          input_tokens: number | null;
-          kind: Database["public"]["Enums"]["usage_kind"];
-          message_id: string | null;
-          metadata: Json | null;
-          model: string | null;
-          output_tokens: number | null;
-          provider: Database["public"]["Enums"]["usage_provider"];
-          resolved_provider: string | null;
-          run_id: string | null;
-          session_id: string | null;
-          tool_call_id: string | null;
-          tool_name: string | null;
-          user_id: string | null;
-        };
-        Insert: {
-          agent_id?: string | null;
-          cost_usd?: number | null;
-          created_at?: string;
-          gateway_generation_id?: string | null;
-          id?: string;
-          input_tokens?: number | null;
-          kind: Database["public"]["Enums"]["usage_kind"];
-          message_id?: string | null;
-          metadata?: Json | null;
-          model?: string | null;
-          output_tokens?: number | null;
-          provider: Database["public"]["Enums"]["usage_provider"];
-          resolved_provider?: string | null;
-          run_id?: string | null;
-          session_id?: string | null;
-          tool_call_id?: string | null;
-          tool_name?: string | null;
-          user_id?: string | null;
-        };
-        Update: {
-          agent_id?: string | null;
-          cost_usd?: number | null;
-          created_at?: string;
-          gateway_generation_id?: string | null;
-          id?: string;
-          input_tokens?: number | null;
-          kind?: Database["public"]["Enums"]["usage_kind"];
-          message_id?: string | null;
-          metadata?: Json | null;
-          model?: string | null;
-          output_tokens?: number | null;
-          provider?: Database["public"]["Enums"]["usage_provider"];
-          resolved_provider?: string | null;
-          run_id?: string | null;
-          session_id?: string | null;
-          tool_call_id?: string | null;
-          tool_name?: string | null;
-          user_id?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "api_usage_events_agent_id_fkey";
-            columns: ["agent_id"];
-            isOneToOne: false;
-            referencedRelation: "agents";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "api_usage_events_run_id_fkey";
-            columns: ["run_id"];
-            isOneToOne: false;
-            referencedRelation: "runs";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       run_items: {
         Row: {
           agent_id: string;
@@ -168,6 +99,7 @@ export type Database = {
           final_text: string | null;
           id: string;
           posted_at: string | null;
+          posted_via: string | null;
           primary_tweet_url: string;
           run_id: string;
           source_urls: string[];
@@ -187,6 +119,7 @@ export type Database = {
           final_text?: string | null;
           id?: string;
           posted_at?: string | null;
+          posted_via?: string | null;
           primary_tweet_url?: string;
           run_id: string;
           source_urls?: string[];
@@ -206,6 +139,7 @@ export type Database = {
           final_text?: string | null;
           id?: string;
           posted_at?: string | null;
+          posted_via?: string | null;
           primary_tweet_url?: string;
           run_id?: string;
           source_urls?: string[];
@@ -283,42 +217,6 @@ export type Database = {
           },
         ];
       };
-      usage_reconciliations: {
-        Row: {
-          drift_pct: number | null;
-          estimated_usd: number;
-          id: string;
-          period_end: string;
-          period_start: string;
-          provider: string;
-          provider_usd: number | null;
-          raw: Json | null;
-          synced_at: string;
-        };
-        Insert: {
-          drift_pct?: number | null;
-          estimated_usd?: number;
-          id?: string;
-          period_end: string;
-          period_start: string;
-          provider: string;
-          provider_usd?: number | null;
-          raw?: Json | null;
-          synced_at?: string;
-        };
-        Update: {
-          drift_pct?: number | null;
-          estimated_usd?: number;
-          id?: string;
-          period_end?: string;
-          period_start?: string;
-          provider?: string;
-          provider_usd?: number | null;
-          raw?: Json | null;
-          synced_at?: string;
-        };
-        Relationships: [];
-      };
       verified_x_handles: {
         Row: {
           last_checked_at: string;
@@ -394,11 +292,9 @@ export type Database = {
     };
     Enums: {
       agent_status: "active" | "paused" | "inactive";
-      item_status: "drafted" | "posted" | "failed";
+      item_status: "drafted" | "posted" | "failed" | "posting";
       run_source: "manual" | "cron";
       run_status: "running" | "completed" | "failed";
-      usage_kind: "chat" | "scan" | "draft" | "redraft" | "x_verify" | "web_validate";
-      usage_provider: "xai" | "gateway" | "x_api" | "internal" | "deepinfra" | "deepseek";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -525,11 +421,9 @@ export const Constants = {
   public: {
     Enums: {
       agent_status: ["active", "paused", "inactive"],
-      item_status: ["drafted", "posted", "failed"],
+      item_status: ["drafted", "posted", "failed", "posting"],
       run_source: ["manual", "cron"],
       run_status: ["running", "completed", "failed"],
-      usage_kind: ["chat", "scan", "draft", "redraft", "x_verify", "web_validate"],
-      usage_provider: ["xai", "gateway", "x_api", "internal", "deepinfra", "deepseek"],
     },
   },
 } as const;

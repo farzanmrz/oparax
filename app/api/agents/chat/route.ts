@@ -11,9 +11,8 @@ import { convertToModelMessages } from "ai";
 
 import { CHAT_MODEL } from "@/lib/ai/providers";
 import { buildAgentChatStream } from "@/lib/chat/run-chat";
-import { logChatTurn } from "@/lib/chat/session-log";
+import { collectToolCalls, logChatTurn } from "@/lib/chat/session-log";
 import { createClient } from "@/lib/supabase/server";
-import { getFreshAccessToken } from "@/lib/x/tokens";
 import { withUsageContext } from "@/lib/usage/context";
 import { logUsage } from "@/lib/usage/log";
 
@@ -93,42 +92,17 @@ export async function POST(req: Request) {
   // turnIndex = number of user messages seen so far (0-based: first turn is index 0).
   const turnIndex = Math.max(0, userMessages.length - 1);
 
-  // convertToModelMessages is async in AI SDK v6 — await before passing to streamText.
+  // convertToModelMessages is async in AI SDK v6.
   const modelMessages = await convertToModelMessages(messages);
 
-  // X-connection state for the voice step. RLS scopes this to the current user,
-  // so a row means THIS user has connected X. When connected, fetch a fresh
-  // (auto-refreshed) access token so the voice-read tools authenticate AS the user
-  // (protected-but-followed tweets + their own posts). Tokens stay server-side;
-  // never break the chat on a token failure — fall back to no token.
-  const { data: xConn } = await supabase
-    .from("x_connections")
-    .select("x_username, x_user_id")
-    .maybeSingle<{ x_username: string; x_user_id: string }>();
-  let accessToken: string | null = null;
-  if (xConn) {
-    try {
-      accessToken = await getFreshAccessToken(supabase, user.id);
-    } catch (err) {
-      console.warn("getFreshAccessToken (chat) failed", err);
-    }
-  }
-  const xConnection = {
-    connected: Boolean(xConn),
-    username: xConn?.x_username ?? null,
-    xUserId: xConn?.x_user_id ?? null,
-    accessToken,
-  };
-
   // Stream the chat inside the usage-attribution context so logUsage() (here and
-  // deep inside the verify/validate tools) auto-attributes to this user+session.
-  // The streamText config (model, system prompt, configTools + runScan, stop
-  // condition) is built by buildAgentChatStream — shared with the debug harness.
+  // inside the runScan tool) auto-attributes to this user+session. The streamText
+  // config (model, system prompt, the single runScan tool, stop condition) is
+  // built by buildAgentChatStream — shared with the debug harness.
   return withUsageContext({ userId: user.id, sessionId, messageId }, () => {
     const result = buildAgentChatStream({
       messages: modelMessages,
       userId: user.id,
-      xConnection,
       onFinish: async (event) => {
         // Telemetry — must not break the response (non-throwing).
         try {
@@ -162,18 +136,6 @@ export async function POST(req: Request) {
         // - event.reasoningText → reasoning text (string | undefined)
         // - event.steps         → StepResult[], each with toolCalls + toolResults
         try {
-          // Collect all tool calls across all steps, pairing with their results.
-          const toolCallLog = event.steps.flatMap((step) =>
-            step.toolCalls.map((tc) => {
-              const toolResult = step.toolResults.find((tr) => tr.toolCallId === tc.toolCallId);
-              return {
-                name: tc.toolName,
-                input: tc.input,
-                output: toolResult ? toolResult.output : undefined,
-              };
-            }),
-          );
-
           await logChatTurn({
             userId: user.id,
             sessionId: chatSessionId,
@@ -181,7 +143,7 @@ export async function POST(req: Request) {
             userInput: lastUserText,
             assistantText: event.text || null,
             reasoning: event.reasoningText ?? null,
-            toolCalls: toolCallLog,
+            toolCalls: collectToolCalls(event.steps),
             durationMs: Date.now() - startedAt,
           });
         } catch (err) {

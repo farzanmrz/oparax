@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { UnsavedChangesProvider } from "@/components/dashboard/unsaved-changes";
 import { WorkspaceShell } from "@/components/dashboard/workspace-shell";
-import { isAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getUsername } from "@/lib/user";
 
@@ -22,9 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <UnsavedChangesProvider>
-      <WorkspaceShell username={getUsername(user)} isAdmin={isAdmin(user.email)}>
-        {children}
-      </WorkspaceShell>
+      <WorkspaceShell username={getUsername(user)}>{children}</WorkspaceShell>
     </UnsavedChangesProvider>
   );
 }

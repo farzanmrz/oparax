@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 5 ship — squash-merge the feature branch into dev locally, push, delete the
+# Phase 6 ship — squash-merge the feature branch into dev locally, push, delete the
 # branch, and close the issue. ONE clean commit on dev; no PR, no CI.
 #
 # Usage:  ship.sh <issue-number> "<commit message>"
@@ -21,7 +21,7 @@ if [ "$(git worktree list | wc -l | tr -d ' ')" -ne 1 ]; then
   exit 1
 fi
 
-# Refuse on a dirty tree: Phase 5 ships exactly the reviewed commits on $branch. Any
+# Refuse on a dirty tree: Phase 6 ships exactly the reviewed commits on $branch. Any
 # uncommitted change bypassed the Phase 4 gate (/simplify + /code-review + verify), so
 # stop rather than sweep it into the squash commit.
 if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -44,9 +44,7 @@ fi
 # docs never accumulate. The durable record lives in this commit's message + the issue.
 git rm -rf --ignore-unmatch docs/superpowers/specs docs/superpowers/plans >/dev/null 2>&1 || true
 
-# Append the project's Co-Authored-By trailer so the dev commit always carries it,
-# regardless of what the caller passed (the skill's hard rule, self-enforced here).
-git commit -m "$msg" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+git commit -m "$msg"
 
 # Push BEFORE any irreversible cleanup. If it fails, the commit is safe on local dev.
 if ! git push origin dev; then

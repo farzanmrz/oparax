@@ -2,9 +2,9 @@
 //
 // POST /api/agents/chat-debug
 //
-// Drives the SAME buildAgentChatStream logic the live route uses, but with
-// autoResolveClientTools: true so every tool (including setAgentConfig) resolves
-// server-side. Maintains an in-memory session store across requests so
+// Drives the SAME buildAgentChatStream logic the live route uses. The only tool
+// (runScan) executes server-side, so a whole multi-step turn resolves in one
+// streamText call. Maintains an in-memory session store across requests so
 // multi-turn conversations carry full context.
 //
 // Request body:
@@ -24,8 +24,8 @@
 import type { ModelMessage } from "ai";
 
 import { buildAgentChatStream } from "@/lib/chat/run-chat";
+import { collectToolCalls } from "@/lib/chat/session-log";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { getFreshAccessToken } from "@/lib/x/tokens";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -116,37 +116,12 @@ export async function POST(req: Request) {
 
   const startedAt = Date.now();
 
-  // Reflect the resolved debug user's real X-connection state so the voice step
-  // behaves identically to production. Service-role bypasses RLS, so scope by
-  // user_id explicitly, and fetch a fresh user token so protected reads behave the
-  // same in the harness (getFreshAccessToken persists any rotation). Best-effort.
-  const serviceClient = createServiceRoleClient();
-  const { data: xConn } = await serviceClient
-    .from("x_connections")
-    .select("x_username, x_user_id")
-    .eq("user_id", userId)
-    .maybeSingle<{ x_username: string; x_user_id: string }>();
-  let accessToken: string | null = null;
-  if (xConn) {
-    try {
-      accessToken = await getFreshAccessToken(serviceClient, userId);
-    } catch (err) {
-      console.warn("getFreshAccessToken (debug) failed", err);
-    }
-  }
-  const xConnection = {
-    connected: Boolean(xConn),
-    username: xConn?.x_username ?? null,
-    xUserId: xConn?.x_user_id ?? null,
-    accessToken,
-  };
-
-  // Run the chat stream with server-side tool resolution.
+  // Run the chat stream. The only tool (runScan) executes server-side, so the
+  // whole multi-step turn resolves in one streamText call — no client-tool
+  // resolution to simulate.
   const result = buildAgentChatStream({
     messages,
     userId,
-    autoResolveClientTools: true,
-    xConnection,
   });
 
   // Await the stream to completion and extract structured fields.
@@ -160,17 +135,7 @@ export async function POST(req: Request) {
   const durationMs = Date.now() - startedAt;
 
   // Collect tool calls across all steps, paired with their results.
-  type ToolCallLog = { name: string; input: unknown; output: unknown };
-  const toolCalls: ToolCallLog[] = steps.flatMap((step) =>
-    step.toolCalls.map((tc) => {
-      const tr = step.toolResults.find((r) => r.toolCallId === tc.toolCallId);
-      return {
-        name: tc.toolName,
-        input: tc.input,
-        output: tr ? tr.output : null,
-      };
-    }),
-  );
+  const toolCalls = collectToolCalls(steps);
 
   // Persist the full assistant response (including tool calls/results) into the
   // session so the next turn carries faithful multi-turn context.

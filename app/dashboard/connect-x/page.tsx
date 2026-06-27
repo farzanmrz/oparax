@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConnectXButton } from "@/components/dashboard/connect-x-button";
 import { PlusIcon } from "@/components/dashboard/shell-icons";
@@ -37,11 +38,11 @@ function getConnectError(
 }
 
 /**
- * Required X connection gate — the post-login landing until X is linked. The
- * dashboard layout renders the shell (auth-guarded + connection-aware); this page
- * supplies only the main content: state 1 (X not connected) — an Agents header
- * with a disabled "New agent" and the connect-X empty state. Redirects away once
- * X is connected.
+ * Optional connect-X entry — the OAuth return target and a soft prompt to link X
+ * (for posting + writing samples), no longer a hard gate. The dashboard layout
+ * renders the shell (auth-guarded); this page supplies only the main content: an
+ * Agents header with an ENABLED "New agent" link and the connect-X empty state.
+ * Redirects to nextPath once X is connected (preserves the OAuth ?next= contract).
  * @param props.searchParams - optional next path, reason, and X connect error
  */
 export default async function ConnectXPage({
@@ -72,15 +73,18 @@ export default async function ConnectXPage({
       <WorkspacePageHeader
         title="Agents"
         action={
-          <button type="button" className="btn btn-primary" disabled>
+          <Link href="/dashboard/agents/new" className="btn btn-primary">
             <PlusIcon width={16} height={16} />
             <span>New agent</span>
-          </button>
+          </Link>
         }
       />
 
       <div className="ws-empty">
-        <p>Please connect your X account to create agents.</p>
+        <p>
+          Connect X to post drafts and use your own posts as writing samples — optional. You can
+          create and run agents without it.
+        </p>
         {connectError && (
           <p
             className="ferr show"
