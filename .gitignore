@@ -362,3 +362,7 @@ vite.config.ts.timestamp-*
 # eve build artifacts
 .eve/
 
+
+# eve/WDK runtime run store (committed once by a v0 sandbox run — never track)
+.workflow-data/
+data/
