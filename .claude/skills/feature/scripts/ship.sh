@@ -57,13 +57,6 @@ gh issue close "$issue"
 rm -rf .feature .superpowers
 rmdir .claude/worktrees 2>/dev/null || true
 
-# Mint the next slice's seat off the dev we just pushed: an empty placeholder issue
-# and its branch, for the next /feature session to take over.
-next_url="$(gh issue create --title "next slice — TBD" --body "Placeholder seat. The next /feature session defines this slice: the approved spec+plan lands here at the Phase 1 gate.")"
-next="$(printf '%s\n' "$next_url" | grep -oE '/issues/[0-9]+' | head -n1 | grep -oE '[0-9]+' || true)"
-if [ -n "$next" ]; then
-  git checkout -b "ft/${next}"
-  echo "Shipped $branch -> dev (one squashed commit). Issue #$issue closed. Next seat ready: issue #$next on branch ft/$next."
-else
-  echo "Shipped $branch -> dev (one squashed commit). Issue #$issue closed. Could not mint the next issue — create it and its ft/<n> branch manually." >&2
-fi
+# The repo stays on dev. The next slice creates its own issue + branch via
+# start.sh once its plan is approved (Phase 1 gate).
+echo "Shipped $branch -> dev (one squashed commit). Issue #$issue closed."

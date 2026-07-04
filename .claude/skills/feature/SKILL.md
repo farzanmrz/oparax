@@ -27,7 +27,7 @@ finishes. This checklist is the durable anchor that keeps the tail phases (QC,
 triage, ship) from being skipped; the workflow is complete only when Phase 5 ticks.
 
 1. `Phase 1 — Spec+plan approved by user (✋ gate)`
-2. `Phase 2 — Built on the pre-minted ft/<issue#> branch`
+2. `Phase 2 — Issue + branch created at the gate (start.sh), built on ft/<issue#>`
 3. `Phase 3 — QC: reviews · lint · build · boot smoke`
 4. `Phase 4 — Manual-test feedback triaged (✋ gate)`
 5. `Phase 5 — Shipped via ship.sh (✋ gate)`
@@ -55,9 +55,7 @@ conversation.
 **Preflight.** Read AGENTS.md's eve-build section (hard guards, open questions)
 and state back which frame this feature lives in — the eve build we're iterating
 on, or the untouched legacy flow. Check `docs/triage.md` ("Next slice candidates") when
-choosing the slice. Read the current slice's issue — the branch names it
-(`ft/<n>` → issue `#<n>`, pre-minted as a placeholder by the previous ship); this
-session defines its content.
+choosing the slice.
 
 **Clear the user's thinking first.** If the ask is rambling, confused, or pulling
 in several directions, invoke the **`interview-me`** skill — one question at a
@@ -89,15 +87,15 @@ For an already-clear ask, skip both and design.
 GATE: **paste the complete spec+plan text into chat** — never a pointer to a file or
 the issue; chat is the only review surface. The user revises en-masse, as many
 rounds as they want; only their explicit go advances. On approval:
-`gh issue edit <n> --title "<real title>" --body-file .feature/spec-plan.md`, then
-delete the draft — the issue is now the single source of truth. Tick Phase 1.
+`${CLAUDE_SKILL_DIR}/scripts/start.sh "<feature name>" .feature/spec-plan.md` —
+it cuts `ft/<issue#>` from a clean dev and opens the issue with the approved
+spec+plan as its body (capture the issue number — its only stdout line) — then
+delete the draft; the issue is now the single source of truth. Tick Phase 1.
 
 ## Phase 2 — Build (autonomous, parallel by structure)
 
-- **The issue and branch already exist** (minted by the previous ship; you have
-  been on `ft/<n>` since preflight). **Fallback** (first run ever / no pre-minted
-  seat): `${CLAUDE_SKILL_DIR}/scripts/start.sh "<feature name>" .feature/spec-plan.md`
-  — capture the issue number it prints (its only stdout line).
+- **The issue and branch were created at the Phase 1 gate** (start.sh) — you are
+  on `ft/<issue#>` and the issue number drives ship.
 - **Dependency preflight — before any task is built.** Run `pnpm install` and read
   its output for unmet-peer-dependency warnings involving packages this feature
   touches. An unmet peer on a feature-relevant package is a BLOCKER: stop and
@@ -187,9 +185,9 @@ ${CLAUDE_SKILL_DIR}/scripts/ship.sh <issue#> "<feature summary>"
 It refuses on the wrong branch, stray worktrees, or a dirty tree; squash-merges to
 dev as ONE commit; pushes; deletes the branch; closes the issue (which remains as
 the slice's permanent record); **sweeps all scratch** (`.feature/`, legacy
-`.superpowers/`, the empty worktree mount); and **mints the next slice's seat** —
-placeholder issue `#<n+1>` + branch `ft/<n+1>`, checked out and waiting for the
-next session. Tick Phase 5; only now is the workflow complete.
+`.superpowers/`, the empty worktree mount); and leaves the repo on `dev`. The next
+slice creates its own issue + branch at its Phase 1 gate. Tick Phase 5; only now
+is the workflow complete.
 
 ---
 
