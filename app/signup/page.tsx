@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthAlert, AuthShell } from "@/components/auth-shell";
 import { createClient } from "@/lib/supabase/server";
 import { SignupForm } from "./signup-form";
 
-// Stub signup page — a plain form wired to the existing signupAction. The
-// error param arrives from the email-confirmation handler and renders as
-// plain text above the form. Signed-in users never see auth forms (same
-// bounce the landing page applies).
+// Signup page — branded shell around the existing signupAction form. The
+// error param arrives from the email-confirmation handler and renders as an
+// alert above the form. Signed-in users never see auth forms (same bounce
+// the landing page applies).
 export default async function SignupPage({
   searchParams,
 }: {
@@ -23,13 +24,22 @@ export default async function SignupPage({
   const { error } = await searchParams;
 
   return (
-    <main className="mx-auto max-w-sm space-y-4 p-8">
-      <h1>Sign up</h1>
-      {error && <p role="alert">{error}</p>}
-      <SignupForm />
-      <p>
-        Already have an account? <Link href="/login">Log in</Link>
-      </p>
-    </main>
+    <AuthShell
+      title="Sign up"
+      subtitle="Put an AI news desk on your beat."
+      footer={
+        <p>
+          Already have an account?{" "}
+          <Link href="/login" className="text-foreground underline underline-offset-4">
+            Log in
+          </Link>
+        </p>
+      }
+    >
+      <div className="space-y-4">
+        {error && <AuthAlert tone="error">{error}</AuthAlert>}
+        <SignupForm />
+      </div>
+    </AuthShell>
   );
 }

@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { AuthAlert, AuthShell } from "@/components/auth-shell";
 import { ResetPasswordForm } from "./reset-password-form";
 
-// Stub set-new-password page — recovery email links land here (via
+// Set-new-password page — recovery email links land here (via
 // app/auth/confirm) carrying the one-time token, which the form submits
 // together with the new password so the token is never consumed on GET.
 export default async function ResetPasswordPage({
@@ -16,13 +17,21 @@ export default async function ResetPasswordPage({
   const { error, token_hash, type } = await searchParams;
 
   return (
-    <main className="mx-auto max-w-sm space-y-4 p-8">
-      <h1>Set a new password</h1>
-      {error && <p role="alert">{error}</p>}
-      <ResetPasswordForm tokenHash={token_hash} tokenType={type} />
-      <p>
-        <Link href="/forgot-password">Request a new reset link</Link>
-      </p>
-    </main>
+    <AuthShell
+      title="Set a new password"
+      subtitle="Choose a new password for your account."
+      footer={
+        <p>
+          <Link href="/forgot-password" className="text-foreground underline underline-offset-4">
+            Request a new reset link
+          </Link>
+        </p>
+      }
+    >
+      <div className="space-y-4">
+        {error && <AuthAlert tone="error">{error}</AuthAlert>}
+        <ResetPasswordForm tokenHash={token_hash} tokenType={type} />
+      </div>
+    </AuthShell>
   );
 }
