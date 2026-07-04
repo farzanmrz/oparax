@@ -18,7 +18,7 @@ import type { ScanItem } from "@/lib/scan/schema";
 import type { RawStory, ScanMetrics, StorySource } from "@/lib/scan/types";
 
 // biome-ignore lint/suspicious/noExplicitAny: StreamTextResult's OUTPUT generic only affects result.object typing; `unknown` breaks inference that downstream callers rely on.
-export type ScanResult = StreamTextResult<ToolSet, any>;
+export type ScanResult = StreamTextResult<ToolSet, any, any>;
 
 export async function extractMetrics(result: ScanResult, startedAt: number): Promise<ScanMetrics> {
   // providerMetadata is undefined for xai.responses in AI SDK v6 — see file comment.

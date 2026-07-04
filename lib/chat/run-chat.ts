@@ -19,7 +19,7 @@
 
 import {
   type ModelMessage,
-  type StreamTextOnFinishCallback,
+  type GenerateTextOnEndCallback,
   stepCountIs,
   streamText,
   type ToolSet,
@@ -53,7 +53,7 @@ export interface BuildAgentChatStreamOptions {
    * signature; the event still carries the concrete tool calls/results at
    * runtime — read fields defensively.
    */
-  onFinish?: StreamTextOnFinishCallback<ToolSet>;
+  onFinish?: GenerateTextOnEndCallback<ToolSet>;
 }
 
 /** Ephemeral config patch the updateConfig tool records (no DB write). Partial — the UI
@@ -322,6 +322,6 @@ export function buildAgentChatStream(opts: BuildAgentChatStreamOptions) {
     // concrete inferred tool set so streamText accepts it. The event is structurally
     // compatible at runtime (callers read fields defensively); routed via `unknown` because
     // the invariant tool generic blocks a direct cast.
-    onFinish: onFinish as unknown as StreamTextOnFinishCallback<typeof tools>,
+    onFinish: onFinish as unknown as GenerateTextOnEndCallback<typeof tools>,
   });
 }
