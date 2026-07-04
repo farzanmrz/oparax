@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { LoginForm } from "./login-form";
 
-// The login UI now lives in the landing-page auth modal. This route stays as a
-// thin redirect so existing links (and the password-reset flow, which sends users
-// to /login?message=... or /login?error=...) keep working — it forwards those
-// params to the landing page, which auto-opens the login modal and shows them.
+// Stub login page — a plain form wired to the existing loginAction. The
+// error/message params arrive from the auth email flows (signup verification,
+// password reset) and render as plain text above the form. Signed-in users
+// never see auth forms (same bounce the landing page applies).
 export default async function LoginPage({
   searchParams,
 }: {
@@ -12,13 +15,26 @@ export default async function LoginPage({
     message?: string;
   }>;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) redirect("/dashboard");
+
   const { error, message } = await searchParams;
 
-  const params = new URLSearchParams({
-    auth: "login",
-  });
-  if (error) params.set("error", error);
-  if (message) params.set("message", message);
-
-  redirect(`/?${params.toString()}`);
+  return (
+    <main className="mx-auto max-w-sm space-y-4 p-8">
+      <h1>Log in</h1>
+      {error && <p role="alert">{error}</p>}
+      {message && <p>{message}</p>}
+      <LoginForm />
+      <p>
+        <Link href="/forgot-password">Forgot password?</Link>
+      </p>
+      <p>
+        No account? <Link href="/signup">Sign up</Link>
+      </p>
+    </main>
+  );
 }

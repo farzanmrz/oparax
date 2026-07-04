@@ -1,18 +1,18 @@
 // Form validation — checks email format and password length before sending to Supabase.
-export interface ValidationResult {
+interface ValidationResult {
   email: string;
   password: string;
 }
 
-export interface EmailValidationResult {
+interface EmailValidationResult {
   email: string;
 }
 
-export interface PasswordValidationResult {
+interface PasswordValidationResult {
   password: string;
 }
 
-export interface ValidationError {
+interface ValidationError {
   message: string;
 }
 

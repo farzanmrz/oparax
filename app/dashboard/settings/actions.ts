@@ -14,15 +14,15 @@ export type UpdateUsernameState = {
 };
 
 /**
- * Update the signed-in user's username in their auth user_metadata. The sidebar
- * derives its label from this (lib/user.ts getUsername), so on success we
- * revalidate the whole dashboard layout to refresh the shell.
+ * Update the signed-in user's username in their auth user_metadata. The
+ * dashboard header derives its label from this (lib/user.ts getUsername), so
+ * on success we revalidate the whole dashboard layout to refresh the chrome.
  * @param prevState - prior action state (unused; required by useActionState)
  * @param formData - form payload carrying the `username` field
  * @returns an error message, or success
  */
 export async function updateUsername(
-  prevState: UpdateUsernameState,
+  _prevState: UpdateUsernameState,
   formData: FormData,
 ): Promise<UpdateUsernameState> {
   // Read and normalize the submitted username.
@@ -55,7 +55,7 @@ export async function updateUsername(
     };
   }
 
-  // Refresh the dashboard layout so the sidebar reflects the new username.
+  // Refresh the dashboard layout so the header reflects the new username.
   revalidatePath("/dashboard", "layout");
   return {
     success: true,
@@ -71,9 +71,12 @@ export async function updateUsername(
  * revoke would fail against a user that no longer exists.
  * @returns an error message on failure; redirects to "/" on success
  */
-export async function deleteAccount(): Promise<{
-  error: string;
-} | void> {
+export async function deleteAccount(): Promise<
+  | {
+      error: string;
+    }
+  | undefined
+> {
   const supabase = await createClient();
 
   // Confirm there is a signed-in user to delete.

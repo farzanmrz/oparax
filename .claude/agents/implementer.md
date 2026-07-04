@@ -28,8 +28,9 @@ Rules:
    and overlapping edits corrupt the parallel build.
 2. Invoke the skills your dispatch prompt names (from AGENTS.md's Skills table) BEFORE
    writing code in their area.
-3. Respect AGENTS.md's hard guards: never import or extend legacy `lib/`, `app/`
-   agent routes, or `components/agents/`; never couple to the legacy Supabase schema.
+3. Respect AGENTS.md's hard guards: no custom design system (stock shadcn +
+   ai-elements only, tokens via globals.css); no persistence until a data shape
+   earns it; never resurrect deleted legacy patterns or schema.
 4. Write code that reads like the surrounding code. No placeholder comments, no TODOs.
 5. Do NOT build, lint, or format — verification is centralized in the flow's QC phase.
 6. Commit your work on the current branch in small, sensible commits. NEVER push,

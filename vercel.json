@@ -1,18 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [],
-  "fluid": true,
-  "framework": "nextjs",
-  "git": {
-    "deploymentEnabled": {
-      "chore/**": false,
-      "codex-ft*/**": false,
-      "feat/**": false,
-      "feature/**": false,
-      "fix/**": false,
-      "ft/**": false
-    }
-  },
   "headers": [
     {
       "headers": [
@@ -55,6 +42,5 @@
       "permanent": true,
       "source": "/:path*"
     }
-  ],
-  "regions": ["iad1", "sfo1"]
+  ]
 }

@@ -1,44 +1,27 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { AuthView } from "@/components/landing/auth-modal";
-import { LandingPage } from "@/components/landing/landing-page";
+import { OparaxMark } from "@/components/logo";
 import { createClient } from "@/lib/supabase/server";
 
-const AUTH_VIEWS: readonly AuthView[] = ["login", "signup", "forgot", "reset"];
-
-export default async function RootPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    auth?: string;
-    error?: string;
-    message?: string;
-    token_hash?: string;
-    type?: string;
-  }>;
-}) {
+// Stub landing page — signed-in users go straight to the app; everyone else
+// gets the app name and links into the auth pages. v0 owns the real design.
+export default async function RootPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  // Signed-in users go straight to the app; everyone else sees the landing page.
   if (user) redirect("/dashboard");
 
-  // ?auth=login|signup|forgot|reset (set by the /login, /signup,
-  // /forgot-password redirects and the auth/confirm email handler)
-  // auto-opens the matching auth modal. error/message are surfaced inside it —
-  // e.g. "Email verified successfully" after a signup confirmation — and the
-  // reset view receives the one-time recovery token from the email link.
-  const { auth, error, message, token_hash, type } = await searchParams;
-  const initialView = AUTH_VIEWS.includes(auth as AuthView) ? (auth as AuthView) : null;
-
   return (
-    <LandingPage
-      initialView={initialView}
-      initialError={error}
-      initialMessage={message}
-      tokenHash={token_hash}
-      tokenType={type === "recovery" ? "recovery" : undefined}
-    />
+    <main className="mx-auto max-w-sm space-y-4 p-8">
+      <h1 className="flex items-center gap-2">
+        <OparaxMark className="size-5" />
+        Oparax
+      </h1>
+      <nav className="space-x-4">
+        <Link href="/login">Log in</Link>
+        <Link href="/signup">Sign up</Link>
+      </nav>
+    </main>
   );
 }

@@ -1,58 +1,60 @@
 # Oparax
 
-AI agent for professional news reporters. It watches the reporter's beat on X,
-catches stories as they break, and drafts ready-to-post tweets in the
+AI news desk for professional reporters. It watches the reporter's beat,
+catches stories as they break, and drafts ready-to-post updates in the
 reporter's voice. Assistive by default, autonomous by permission.
 
-**Live:** [oparax.ai](https://oparax.ai)
+**Live:** [oparax.ai](https://oparax.ai) — note: production (`main`) still
+serves the previous legacy app until the next dev→main promote. The tree on
+`dev` is the bare rebuild baseline described below.
 
-## How it works
+## What exists today
 
-1. **Sign up** with email, then **link your X account** — posting happens
-   through it, so it's a required gate before creating agents.
-2. **Create an agent**: the X handles to watch, what counts as news on your
-   beat, drafting instructions, and example tweets that capture your voice.
-3. **Run Agent** — a single Grok (xAI) call searches X live and drafts a tweet
-   for every distinct story it finds.
-4. **Review** story and draft side by side: edit with a live weighted
-   character count, redraft with feedback, then save the agent.
-5. **Post** any item to X in one click. Every run keeps its stories, drafts,
-   cost, and post history.
+The repo is a deliberately bare baseline being rebuilt one primitive at a time
+on [eve](https://github.com/vercel/eve):
 
-Planned next: more sources (news websites, Reddit, Bluesky, LinkedIn, Meta's
-platforms), scheduled background monitoring with breaking-news notifications
-(email / WhatsApp / push), drafts shaped to each destination platform, and an
-autonomous mode for trusted agents that posts and notifies after the fact.
+- **Auth** — password-only Supabase email auth through plain stub pages
+  (`/login`, `/signup`, `/forgot-password`, `/auth/reset-password`).
+- **Dashboard** — two entries: Agents and Settings (username, delete account,
+  sign out).
+- **Agents chat** — a minimal eve chat at `/dashboard/agents`
+  (`useEveAgent` + ai-elements). **Localhost only** for now: deployed
+  `/eve/v1/*` rejects browser requests until a Supabase-session channel auth
+  exists.
+- **Eve TUI** — the agent is built and debugged frontend-free with
+  `npx eve dev`.
+
+The agent itself is three files in `agent/`: a DeepSeek chat orchestrator and
+a Grok xSearch scan tool that searches X for news on the reporter's beat.
 
 ## Tech stack
 
 | Layer | Tech |
 | ----- | ---- |
 | Framework | Next.js 16 (App Router), React 19, TypeScript (strict) |
-| Styling | Tailwind CSS 4 + in-house design system (`app/globals.css`) |
-| Auth & data | Supabase — email auth + Postgres with row-level security |
-| AI | Grok (xAI) via the `openai` SDK — live X search + drafting in one call |
-| X integration | X API v2 (OAuth tokens encrypted at rest, app-managed refresh) · `twitter-text` weighted counting · `react-tweet` embeds |
+| UI | Stock shadcn/ui + vendored ai-elements — no custom design system (design iteration happens in v0) |
+| Auth | Supabase — password-only email auth (Postgres app schema: none — the legacy tables are being dropped) |
+| Agent | eve `0.18.1` (pinned exact; agent in `agent/`, mounted same-origin by `withEve()`) |
+| AI | AI SDK v7 — DeepSeek via AI Gateway (chat orchestrator) + Grok xSearch via `@ai-sdk/xai` (scan tool) |
 | Hosting | Vercel |
 
 ## Project structure
 
 ```text
-app/           # App Router: landing page (all auth modals), dashboard + agents, API routes
-components/    # landing/ (design reference) · logo + icons · legacy dashboard UI pending redesign
-lib/           # supabase/ clients · auth/ actions · scan/ + draft/ (Grok pipeline) · x/ (tokens) · types/
+agent/         # the eve agent: agent.ts (DeepSeek orchestrator) · instructions.md · tools/grok_twitter_search.ts
+app/           # landing + auth pages (login, signup, forgot/reset) · auth/confirm route · dashboard/{agents,settings}
+components/    # ui/ (stock shadcn) · ai-elements/ (vendored chat components) · logo.tsx (brand mark)
+lib/           # supabase/ clients · auth/ server actions · validation
 public/brand/  # exported logo set
-AGENTS.md      # contributor/agent instructions: architecture, data model, design system
+docs/          # triage.md — the deferred-work backlog
+AGENTS.md      # contributor/agent instructions: architecture, the eve build, hard guards
 ```
-
-The database schema is managed directly in Supabase (no migrations in-repo);
-its current shape is the generated types in `lib/types/database.ts`.
 
 ## Getting started
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 24 (pinned via `engines`)
 - [pnpm](https://pnpm.io/) — npm and yarn are blocked by a preinstall guard
 
 ### Setup
@@ -61,7 +63,8 @@ its current shape is the generated types in `lib/types/database.ts`.
 git clone https://github.com/farzanmrz/oparax-chirp.git
 cd oparax-chirp
 pnpm install
-pnpm dev   # → http://localhost:3000
+pnpm dev       # → http://localhost:3000 (Next + eve's dev worker)
+npx eve dev    # optional: the eve TUI, frontend-free agent chat
 ```
 
 ### Environment variables
@@ -69,29 +72,24 @@ pnpm dev   # → http://localhost:3000
 Create `.env.local` at the project root:
 
 ```text
-# Supabase
+# Supabase (auth)
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...        # server-only
 
-# App origin, used in auth redirect links
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Grok (scan + draft)
+# Grok xSearch scan tool (@ai-sdk/xai)
 XAI_API_KEY=...
 
-# X OAuth app (posting) + at-rest token encryption
-X_CLIENT_ID=...
-X_CLIENT_SECRET=...
-X_TOKEN_ENC_KEY=...                  # 32-byte key for AES-256-GCM
+# AI Gateway (DeepSeek chat model) — local dev only; deployed gateway auth is Vercel OIDC
+AI_GATEWAY_API_KEY=...
 ```
 
 ### Supabase auth configuration
 
-Auth email links are handled by `app/auth/confirm`, which routes users into
-the landing-page modals (signup verification → login modal; password recovery
-→ reset modal, with the token consumed only on submit). In the Supabase
-dashboard:
+Auth email links are handled by `app/auth/confirm`, which routes users to the
+auth pages: signup verification signs the session back out and lands on
+`/login` with a success notice; password recovery forwards to
+`/auth/reset-password` with the token consumed only on submit. In the
+Supabase dashboard:
 
 1. **Auth → Email Templates** — point the *Confirm signup* and *Reset
    password* links at the confirm route:

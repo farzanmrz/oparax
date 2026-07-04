@@ -37,7 +37,7 @@ autonomous; the three gates (spec+plan, triage, ship) are user-controlled.
 **Grounding never skips gates**, however much context was adopted.
 
 **Skill grounding (binding, every phase):** before working in any area, invoke the
-matching skill from AGENTS.md's Skills table (`eve`, `vercel:ai-sdk`,
+matching skill from AGENTS.md's Skills table (`vercel:eve`, `vercel:ai-sdk`,
 `vercel:shadcn`, `vercel:nextjs`, …). Dispatched agents do NOT inherit this — every
 dispatch prompt must name the skills that task must invoke before writing code.
 
@@ -204,9 +204,10 @@ is the workflow complete.
   mid-build goes to the spec's **Deferred** list or `docs/triage.md` — it is NOT
   built on the current branch. Phase 4 triage is the firewall.
 - If the dependency preflight or boot smoke reveals the fix requires a dependency
-  MAJOR upgrade, a framework migration, or edits inside guarded areas (`lib/`,
-  `components/agents/`), the workflow STOPS and presents findings + options to the
-  user as an explicit ✋ gate — never fix such things autonomously.
+  MAJOR upgrade, a framework migration, or a schema/data migration, the workflow
+  STOPS and presents findings + options to the user as an explicit ✋ gate — never
+  fix such things autonomously.
 - Preserve the repo's behavior contracts (server-action field `name`s, the
-  auth/connect-x guards + `?next=`, the run → preview → save → post/redraft
-  pipeline) — see AGENTS.md.
+  Supabase auth flows — recovery tokens consumed only on submit, same-password
+  reset treated as success, signed-in users bounced off auth pages — and the eve
+  chat's scaffold-faithful wiring) — see AGENTS.md.

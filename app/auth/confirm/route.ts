@@ -1,8 +1,8 @@
 // Auth email handler — users hit this URL from Supabase signup/recovery links.
-// Both flows land on the landing page's auth modals: signup confirmation
-// verifies the email, signs the session back out, and seeds the login modal
-// with a success notice (no auto-login); recovery forwards the token to the
-// reset-password modal without consuming it.
+// Both flows land on the routed auth pages: signup confirmation verifies the
+// email, signs the session back out, and seeds /login with a success notice
+// (no auto-login); recovery forwards the token to /auth/reset-password
+// without consuming it.
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -28,23 +28,24 @@ export async function GET(request: NextRequest) {
   if (type === "recovery") {
     // Do not consume recovery tokens on GET. Email clients and spam scanners
     // can prefetch links, which would invalidate one-time tokens before users
-    // actually submit their new password. The reset modal submits the token
-    // together with the new password instead.
+    // actually submit their new password. The reset-password form submits the
+    // token together with the new password instead.
     if (token_hash) {
-      return redirectTo("/", {
-        auth: "reset",
+      return redirectTo("/auth/reset-password", {
         token_hash,
         type: "recovery",
       });
     }
 
+    // Defensive net for recovery arrivals WITHOUT a token: unreachable under
+    // README's documented `{{ .TokenHash }}` email templates (every recovery
+    // link carries token_hash); covers misconfigured/legacy templates and
+    // hand-typed URLs. A live session can still reset without a token.
     try {
       const supabase = await createClient();
       const { data, error } = await supabase.auth.getUser();
       if (!error && data.user) {
-        return redirectTo("/", {
-          auth: "reset",
-        });
+        return redirectTo("/auth/reset-password");
       }
     } catch {
       // Network error or unexpected failure — fall through to error redirect
@@ -65,10 +66,9 @@ export async function GET(request: NextRequest) {
 
       if (!error) {
         // Email verified. verifyOtp signs the user in as a side effect —
-        // sign back out so they log in deliberately from the landing page.
+        // sign back out so they log in deliberately from the login page.
         await supabase.auth.signOut();
-        return redirectTo("/", {
-          auth: "login",
+        return redirectTo("/login", {
           message: "Email verified successfully. Please log in.",
         });
       }
@@ -77,8 +77,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return redirectTo("/", {
-    auth: "signup",
+  return redirectTo("/signup", {
     error: "Email confirmation failed. Please try signing up again.",
   });
 }

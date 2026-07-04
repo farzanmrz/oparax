@@ -1,9 +1,9 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ResetPasswordForm } from "./reset-password-form";
 
-// The set-new-password UI now lives in the landing-page reset modal. This
-// route stays as a thin redirect so existing links (and any old recovery
-// emails pointing here) keep working — it forwards the one-time token and
-// any error params to the landing page, which auto-opens the reset modal.
+// Stub set-new-password page — recovery email links land here (via
+// app/auth/confirm) carrying the one-time token, which the form submits
+// together with the new password so the token is never consumed on GET.
 export default async function ResetPasswordPage({
   searchParams,
 }: {
@@ -15,12 +15,14 @@ export default async function ResetPasswordPage({
 }) {
   const { error, token_hash, type } = await searchParams;
 
-  const params = new URLSearchParams({
-    auth: "reset",
-  });
-  if (token_hash) params.set("token_hash", token_hash);
-  if (type) params.set("type", type);
-  if (error) params.set("error", error);
-
-  redirect(`/?${params.toString()}`);
+  return (
+    <main className="mx-auto max-w-sm space-y-4 p-8">
+      <h1>Set a new password</h1>
+      {error && <p role="alert">{error}</p>}
+      <ResetPasswordForm tokenHash={token_hash} tokenType={type} />
+      <p>
+        <Link href="/forgot-password">Request a new reset link</Link>
+      </p>
+    </main>
+  );
 }
