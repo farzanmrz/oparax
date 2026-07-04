@@ -7,6 +7,7 @@ description: >-
   one-line fixes, pure analysis, or debugging an existing bug.
 argument-hint: "[feature description]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
+disable-model-invocation: true
 ---
 
 # Feature — idea to shipped (native flow)
@@ -41,8 +42,8 @@ matching skill from AGENTS.md's Skills table (`vercel:eve`, `vercel:ai-sdk`,
 `vercel:shadcn`, `vercel:nextjs`, …). Dispatched agents do NOT inherit this — every
 dispatch prompt must name the skills that task must invoke before writing code.
 
-**Scratch discipline:** every working file this flow generates lives in `.feature/`
-(create it self-gitignoring: `mkdir -p .feature && printf '*\n' > .feature/.gitignore`).
+**Scratch discipline:** every working file this flow generates lives in `docs/feature/`
+(create it self-gitignoring: `mkdir -p docs/feature && printf '*\n' > docs/feature/.gitignore`).
 The spec+plan draft dies once it reaches the issue; everything else dies at ship.
 
 ---
@@ -61,10 +62,10 @@ choosing the slice.
 in several directions, invoke the **`interview-me`** skill — one question at a
 time, each with your best guess attached, until intent is confirmed. If the
 *direction* itself is genuinely unknown (not just fuzzy), invoke **`idea-refine`**
-for divergent options — override its save path to `.feature/`, never `docs/ideas/`.
+for divergent options — override its save path to `docs/feature/`, never `docs/ideas/`.
 For an already-clear ask, skip both and design.
 
-**Design and plan as ONE document** at `.feature/spec-plan.md`:
+**Design and plan as ONE document** at `docs/feature/spec-plan.md`:
 
 - Opens with a **definition-of-done in ≤2 sentences** — if it can't be said that
   briefly, the slice is too big; cut it before the gate.
@@ -81,13 +82,13 @@ For an already-clear ask, skip both and design.
 - **Big/architectural slices only** (rare): before writing the plan, dispatch 3–4
   parallel subagents in one message, each drafting a 1–2 page plan *sketch* under a
   distinct directive (risk-first, YAGNI-minimal, vertical-slice, verification-first)
-  into `.feature/`. Synthesize: credit what each sketch got right, resolve conflicts
+  into `docs/feature/`. Synthesize: credit what each sketch got right, resolve conflicts
   by checking the installed SDK/docs — never by vibes. Sketches die at the gate.
 
 GATE: **paste the complete spec+plan text into chat** — never a pointer to a file or
 the issue; chat is the only review surface. The user revises en-masse, as many
 rounds as they want; only their explicit go advances. On approval:
-`${CLAUDE_SKILL_DIR}/scripts/start.sh "<feature name>" .feature/spec-plan.md` —
+`${CLAUDE_SKILL_DIR}/scripts/start.sh "<feature name>" docs/feature/spec-plan.md` —
 it cuts `ft/<issue#>` from a clean dev and opens the issue with the approved
 spec+plan as its body (capture the issue number — its only stdout line) — then
 delete the draft; the issue is now the single source of truth. Tick Phase 1.
@@ -117,9 +118,9 @@ delete the draft; the issue is now the single source of truth. Tick Phase 1.
     `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; no automatic file isolation — assign
     disjoint files; watch for task-status lag blocking dependents).
   - **Massive mechanical sweeps** (rare) → the Workflow tool.
-- **Each dispatched task gets a brief** at `.feature/task-<N>-brief.md`: the task's
+- **Each dispatched task gets a brief** at `docs/feature/task-<N>-brief.md`: the task's
   plan text verbatim + interfaces produced by prior tasks + the report path
-  (`.feature/task-<N>-report.md`). The dispatch prompt stays thin — one line of
+  (`docs/feature/task-<N>-report.md`). The dispatch prompt stays thin — one line of
   scene-setting, the brief path, the skills to invoke, the report contract. The
   brief is the implementer's ONLY requirements source.
 - **As each implementer returns, dispatch the `task-reviewer`** agent
@@ -184,7 +185,7 @@ ${CLAUDE_SKILL_DIR}/scripts/ship.sh <issue#> "<feature summary>"
 
 It refuses on the wrong branch, stray worktrees, or a dirty tree; squash-merges to
 dev as ONE commit; pushes; deletes the branch; closes the issue (which remains as
-the slice's permanent record); **sweeps all scratch** (`.feature/`, legacy
+the slice's permanent record); **sweeps all scratch** (`docs/feature/`, legacy
 `.superpowers/`, the empty worktree mount); and leaves the repo on `dev`. The next
 slice creates its own issue + branch at its Phase 1 gate. Tick Phase 5; only now
 is the workflow complete.
@@ -197,7 +198,7 @@ is the workflow complete.
 - NEVER open a PR or rely on GitHub Actions / CI. Quality = Phase 3, locally.
 - NEVER push to `main` or `beta`. Ship target is `dev` only.
 - Planning docs never enter the repo: the spec+plan lives in the slice issue's body
-  (drafted transiently in `.feature/`, deleted once on the issue); deferred work
+  (drafted transiently in `docs/feature/`, deleted once on the issue); deferred work
   lives in `docs/triage.md`. The durable record is the squashed commit message +
   the issue — never AGENTS.md/CLAUDE.md.
 - SCOPE IS FROZEN AT THE PHASE 1 GATE. A new feature/scope idea that surfaces
