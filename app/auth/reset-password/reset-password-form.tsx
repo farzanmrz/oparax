@@ -1,6 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, updatePasswordAction } from "@/lib/auth/actions";
 
 // Client island: drives updatePasswordAction via useActionState. The one-time
@@ -24,36 +27,39 @@ export function ResetPasswordForm({
     <form action={formAction} className="space-y-4">
       {tokenHash && <input type="hidden" name="token_hash" value={tokenHash} />}
       {tokenType && <input type="hidden" name="type" value={tokenType} />}
-      <div className="space-y-1">
-        <label htmlFor="password" className="block">
+      <div className="space-y-1.5">
+        <label htmlFor="password" className="block text-sm font-medium">
           New password
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          className="block w-full border px-2 py-1"
-        />
+        <Input id="password" name="password" type="password" autoComplete="new-password" required />
       </div>
-      <div className="space-y-1">
-        <label htmlFor="confirm-password" className="block">
+      <div className="space-y-1.5">
+        <label htmlFor="confirm-password" className="block text-sm font-medium">
           Confirm new password
         </label>
-        <input
+        <Input
           id="confirm-password"
           name="confirm-password"
           type="password"
           autoComplete="new-password"
           required
-          className="block w-full border px-2 py-1"
         />
       </div>
-      {state.error && <p role="alert">{state.error}</p>}
-      <button type="submit" className="border px-2 py-1" disabled={isPending}>
-        {isPending ? "Updating…" : "Update password"}
-      </button>
+      {state.error && (
+        <p role="alert" className="text-sm leading-relaxed text-destructive">
+          {state.error}
+        </p>
+      )}
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? (
+          <>
+            <Spinner />
+            Updating…
+          </>
+        ) : (
+          "Update password"
+        )}
+      </Button>
     </form>
   );
 }

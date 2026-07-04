@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthAlert, AuthShell } from "@/components/auth-shell";
 import { createClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
-// Stub login page — a plain form wired to the existing loginAction. The
+// Login page — branded shell around the existing loginAction form. The
 // error/message params arrive from the auth email flows (signup verification,
-// password reset) and render as plain text above the form. Signed-in users
+// password reset) and render as alerts above the form. Signed-in users
 // never see auth forms (same bounce the landing page applies).
 export default async function LoginPage({
   searchParams,
@@ -24,17 +25,30 @@ export default async function LoginPage({
   const { error, message } = await searchParams;
 
   return (
-    <main className="mx-auto max-w-sm space-y-4 p-8">
-      <h1>Log in</h1>
-      {error && <p role="alert">{error}</p>}
-      {message && <p>{message}</p>}
-      <LoginForm />
-      <p>
-        <Link href="/forgot-password">Forgot password?</Link>
-      </p>
-      <p>
-        No account? <Link href="/signup">Sign up</Link>
-      </p>
-    </main>
+    <AuthShell
+      title="Log in"
+      subtitle="Back to the desk."
+      footer={
+        <>
+          <p>
+            <Link href="/forgot-password" className="text-foreground underline underline-offset-4">
+              Forgot password?
+            </Link>
+          </p>
+          <p>
+            No account?{" "}
+            <Link href="/signup" className="text-foreground underline underline-offset-4">
+              Sign up
+            </Link>
+          </p>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {error && <AuthAlert tone="error">{error}</AuthAlert>}
+        {message && <AuthAlert tone="notice">{message}</AuthAlert>}
+        <LoginForm />
+      </div>
+    </AuthShell>
   );
 }

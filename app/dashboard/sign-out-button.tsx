@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 // Sign out via the browser Supabase client (the same mechanism the old shell
@@ -23,13 +24,8 @@ export function SignOutButton() {
   }
 
   return (
-    <button
-      type="button"
-      className="border px-2 py-1"
-      disabled={pending}
-      onClick={() => void signOut()}
-    >
+    <Button type="button" variant="outline" disabled={pending} onClick={() => void signOut()}>
       {pending ? "Signing out…" : "Sign out"}
-    </button>
+    </Button>
   );
 }
