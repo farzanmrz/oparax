@@ -1,3 +1,4 @@
+import { withEve } from "eve/next";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -20,4 +21,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Mount the rebuild's eve agent (agent/ at the repo root) into this app:
+// one dev server, same-origin /eve/v1/* routes, one Vercel deploy.
+export default withEve(nextConfig);

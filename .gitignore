@@ -358,3 +358,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# eve build artifacts
+.eve/
+

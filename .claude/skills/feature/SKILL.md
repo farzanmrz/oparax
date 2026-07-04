@@ -9,218 +9,206 @@ argument-hint: "[feature description]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 ---
 
-# Feature — idea to shipped
+# Feature — idea to shipped (native flow)
 
-The end-to-end workflow for building a feature in this repo (oparax-chirp).
+The end-to-end workflow for building a feature in this repo (oparax-chirp), built on
+Claude Code primitives only: this skill orchestrates; project agents implement and
+review; built-in commands do QC. No plugin sub-skills — the judgment patterns worth
+keeping live in this file's own words.
 
 **Core principle:** parallelism is a private implementation detail, never a public
 artifact. **ONE issue · ONE feature branch · ONE squashed commit on `dev`.** No
 per-task branches. No PRs. No CI / GitHub Actions. The user controls integration.
 
-## Running this skill (READ FIRST — this is what keeps cleanup from being skipped)
+## Running this skill
 
-**Track these six phases as a persistent, tickable checklist** — your durable anchor.
-Use whatever task tool this environment exposes (`TaskCreate`/`TaskUpdate` here,
-`TodoWrite` elsewhere); create one item per phase and tick it as you finish. This is
-the ONLY place the task tool is called out — every "create a TodoWrite / tick the
-phase" instruction elsewhere just means update this same list.
+**Track the five phases with TaskCreate** — one task per phase, ticked as each
+finishes. This checklist is the durable anchor that keeps the tail phases (QC,
+triage, ship) from being skipped; the workflow is complete only when Phase 5 ticks.
 
-1. `Phase 1 — Design approved by user (✋ gate)`
-2. `Phase 2 — Plan approved by user (✋ gate)`
-3. `Phase 3 — Issue + branch ft/<issue#> created (start.sh), built on that one branch`
-4. `Phase 4 — Convergence verified (one branch, no strays) · /simplify + /code-review · lint-resolve (biome + residual fixes) + build verified`
-5. `Phase 5 — Manual-test feedback triaged · only "fix now" items built on this branch (✋ gate)`
-6. `Phase 6 — Squash-merged to dev, pushed, branch deleted, issue closed (✋ gate)`
+1. `Phase 1 — Spec+plan approved by user (✋ gate)`
+2. `Phase 2 — Built on the pre-minted ft/<issue#> branch`
+3. `Phase 3 — QC: reviews · lint · build · boot smoke`
+4. `Phase 4 — Manual-test feedback triaged (✋ gate)`
+5. `Phase 5 — Shipped via ship.sh (✋ gate)`
 
-**YOU are the orchestrator.** You WILL descend into sub-skills (`superpowers:brainstorming`,
-`superpowers:writing-plans`, `subagent-driven-development`, `executing-plans`) that each
-end with their own "you're done / open a PR / next step is X" directive. **Those endings
-are steps inside this workflow, not the end of it.** When a sub-skill returns, come back to
-this checklist and continue to the next unticked phase. Phases 4–6 (cleanup, triage, ship)
-are MANDATORY and owned by THIS skill — they are exactly what a naive brainstorm→plan→build
-run skips. Never finish at a sub-skill's terminal state.
+Stop at every ✋ gate and wait for the user's explicit words. Phases 2–3 are
+autonomous; the three gates (spec+plan, triage, ship) are user-controlled.
+**Grounding never skips gates**, however much context was adopted.
 
-**Do NOT invoke** `superpowers:finishing-a-development-branch`,
-`superpowers:requesting-code-review`, or `superpowers:receiving-code-review` — those push
-toward PRs and per-branch structure this workflow avoids. The `/simplify` and `/code-review`
-commands in Phase 4 are LOCAL diff reviews, not those skills; they must never open a PR,
-request external review, or create a review branch. Ship is the local squash-merge in Phase 6.
+**Skill grounding (binding, every phase):** before working in any area, invoke the
+matching skill from AGENTS.md's Skills table (`eve`, `vercel:ai-sdk`,
+`vercel:shadcn`, `vercel:nextjs`, …). Dispatched agents do NOT inherit this — every
+dispatch prompt must name the skills that task must invoke before writing code.
 
-Stop at every ✋ gate and wait for the user. The build (Phases 3–4) is autonomous; the four
-gates (design, plan, triage, ship) are user-controlled.
-
-**Skill grounding (binding, every phase):** before working in any area, invoke the matching
-skill from AGENTS.md's Skills table (`eve`, `vercel:ai-sdk`, `vercel:shadcn`,
-`vercel:nextjs`, …). Dispatched subagents do NOT inherit this discipline — every dispatch
-prompt must explicitly name the skills that track must invoke before writing code.
+**Scratch discipline:** every working file this flow generates lives in `.feature/`
+(create it self-gitignoring: `mkdir -p .feature && printf '*\n' > .feature/.gitignore`).
+The spec+plan draft dies once it reaches the issue; everything else dies at ship.
 
 ---
 
-## Phase 1 — Design ✋ (approve + iterate)
+## Phase 1 — Spec + plan ✋ (one gate)
 
-If invoked as `/feature <description>`, that text arrives as `$ARGUMENTS` — seed the
-brainstorming with it. If `$ARGUMENTS` is empty, brainstorm from the conversation.
+If invoked as `/feature <description>`, seed from `$ARGUMENTS`; else from the
+conversation.
 
-**Preflight — ground in current scope first.** Before brainstorming, read AGENTS.md's
-Rebuild section (decision, hard guards, open questions) and state back which frame this
-feature lives in — the eve rebuild, or the untouched legacy flow. The spec records that
-frame at the top. Also check `docs/triage.md` (the persistent deferred-work backlog) for
-candidates when choosing the slice, and for rebuild-frame work read the rebuild's running
-log — `gh issue view 38` — whose "Current slice" section, when present, is the slice's
-frame and definition of done: adopt it rather than re-deriving scope in brainstorming.
+**Preflight.** Read AGENTS.md's eve-build section (hard guards, open questions)
+and state back which frame this feature lives in — the eve build we're iterating
+on, or the untouched legacy flow. Check `docs/triage.md` ("Next slice candidates") when
+choosing the slice. Read the current slice's issue — the branch names it
+(`ft/<n>` → issue `#<n>`, pre-minted as a placeholder by the previous ship); this
+session defines its content.
 
-Invoke `superpowers:brainstorming` to explore intent, weigh approaches, and agree the
-direction with the user — the human-in-the-loop part: the questions, the trade-offs, the
-WHAT. Brainstorming writes and saves the spec itself (you don't restate its path); present
-it and iterate.
+**Clear the user's thinking first.** If the ask is rambling, confused, or pulling
+in several directions, invoke the **`interview-me`** skill — one question at a
+time, each with your best guess attached, until intent is confirmed. If the
+*direction* itself is genuinely unknown (not just fuzzy), invoke **`idea-refine`**
+for divergent options — override its save path to `.feature/`, never `docs/ideas/`.
+For an already-clear ask, skip both and design.
 
-The spec MUST end with an explicit **In scope (this slice)** / **Deferred (not now)** split
-— brainstorming should actively route every "while we're here" / snowball idea to *Deferred*
-rather than absorbing it. A short, well-cut scope section now is what stops the build from
-sprawling later.
+**Design and plan as ONE document** at `.feature/spec-plan.md`:
 
-**Slice sizing (binding):** the spec opens with a definition-of-done stated in ≤2 sentences;
-if it can't be, the slice is too big — cut it before the gate.
+- Opens with a **definition-of-done in ≤2 sentences** — if it can't be said that
+  briefly, the slice is too big; cut it before the gate.
+- **2–3 approaches considered, one recommended**, with the trade-off that decides it.
+- An explicit **In scope (this slice)** / **Deferred (not now)** split — route every
+  "while we're here" idea to Deferred rather than absorbing it.
+- Then the **plan**, written for an engineer with zero context for this codebase:
+  map the file structure first; then bite-sized tasks, each listing the exact files
+  it owns and the interfaces it consumes/produces; full code in any non-obvious
+  step. **No placeholders** — no TODO, TBD, or "something like" inside task steps.
+  Split tasks only where a reviewer could meaningfully reject one while approving
+  its neighbor. Global constraints (hard guards, conventions) stated once at the
+  top; tasks reference them, never restate them.
+- **Big/architectural slices only** (rare): before writing the plan, dispatch 3–4
+  parallel subagents in one message, each drafting a 1–2 page plan *sketch* under a
+  distinct directive (risk-first, YAGNI-minimal, vertical-slice, verification-first)
+  into `.feature/`. Synthesize: credit what each sketch got right, resolve conflicts
+  by checking the installed SDK/docs — never by vibes. Sketches die at the gate.
 
-**The spec is never a repo file.** Have brainstorming save it to the session scratchpad (or
-any temp path) — nothing under `docs/`. It becomes the GitHub issue body at Phase 3 kickoff,
-which is its durable home.
+GATE: **paste the complete spec+plan text into chat** — never a pointer to a file or
+the issue; chat is the only review surface. The user revises en-masse, as many
+rounds as they want; only their explicit go advances. On approval:
+`gh issue edit <n> --title "<real title>" --body-file .feature/spec-plan.md`, then
+delete the draft — the issue is now the single source of truth. Tick Phase 1.
 
-When brainstorming hands off to writing-plans, that is **Phase 1→2 of this skill, not the
-end.** Tick Phase 1 and continue.
+## Phase 2 — Build (autonomous, parallel by structure)
 
-GATE: do not proceed until the user explicitly approves the design. Make the scope cut part
-of that approval — show the In-scope / Deferred split and confirm it's right, so scope is a
-deliberate decision, not a default.
+- **The issue and branch already exist** (minted by the previous ship; you have
+  been on `ft/<n>` since preflight). **Fallback** (first run ever / no pre-minted
+  seat): `${CLAUDE_SKILL_DIR}/scripts/start.sh "<feature name>" .feature/spec-plan.md`
+  — capture the issue number it prints (its only stdout line).
+- **Dependency preflight — before any task is built.** Run `pnpm install` and read
+  its output for unmet-peer-dependency warnings involving packages this feature
+  touches. An unmet peer on a feature-relevant package is a BLOCKER: stop and
+  present it to the user — it is a runtime failure `pnpm build` cannot see (proven
+  in #39: eve peering `ai ^7` against the repo's `ai ^6` pin crashed the dev worker
+  after a green build).
+- **Mirror the plan into TaskCreate**: one task per plan task, dependencies encoded
+  with `addBlockedBy` (e.g. schema blocks API blocks UI). The task graph — not
+  prose — decides what may run concurrently.
+- **Execution — the smallest shape that fits:**
+  - **1–2 tasks, or tightly coupled** → implement inline in this session.
+  - **3+ unblocked tasks with disjoint file groups** → dispatch the **`implementer`**
+    agent (`.claude/agents/implementer.md`) once per task, all in ONE message so
+    they run in parallel, same working tree. Disjoint file ownership is what makes
+    this safe — do NOT use worktree isolation here (it branches from the default
+    branch, not `ft/<n>`).
+  - **Tasks needing live mutual awareness or negotiation** → an **agent team**:
+    teammates own file groups and share the dependency-gated task list (requires
+    `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; no automatic file isolation — assign
+    disjoint files; watch for task-status lag blocking dependents).
+  - **Massive mechanical sweeps** (rare) → the Workflow tool.
+- **Each dispatched task gets a brief** at `.feature/task-<N>-brief.md`: the task's
+  plan text verbatim + interfaces produced by prior tasks + the report path
+  (`.feature/task-<N>-report.md`). The dispatch prompt stays thin — one line of
+  scene-setting, the brief path, the skills to invoke, the report contract. The
+  brief is the implementer's ONLY requirements source.
+- **As each implementer returns, dispatch the `task-reviewer`** agent
+  (`.claude/agents/task-reviewer.md`) with the brief path, report path, and the
+  task's commit range. It verifies against the diff and never trusts the report.
+  Fix its findings before dependent tasks unblock.
+- Everything converges into `ft/<issue#>` as ordinary commits. Agents NEVER push,
+  NEVER open PRs, NEVER create branches — `git branch` shows only `ft/<issue#>`
+  (plus dev/main/beta).
+- **Implementers write code only** — no builds, lint, or formatting; verification is
+  centralized in Phase 3. Ignore mid-flight LSP diagnostics while parallel edits
+  land; they are not ground truth. Tick Phase 2.
 
-## Phase 2 — Plan ✋ (approve)
+## Phase 3 — QC (autonomous)
 
-Feed the approved design through `superpowers:writing-plans` to produce the canonical
-bite-sized, no-placeholder plan with a task **checklist**. Writing-plans saves the plan
-itself (you don't restate its path).
+Over the whole feature diff, in order:
 
-**The plan is never a repo file either.** Save it beside the spec in the scratchpad; at
-Phase 3 kickoff the combined spec + plan file becomes the issue body via `start.sh`.
+1. **Convergence check**: all commits on `ft/<issue#>`; `git worktree list` shows
+   only the main checkout; no stray branches.
+2. **`/simplify`** (built-in) — cleanup-only pass; apply its fixes.
+3. **`/code-review`** (built-in) — bug hunt over the branch diff; fix real findings.
+   For a large or risky diff, offer the user `/code-review ultra` (cloud fleet).
+4. **`lint-resolve`** skill (scoped to this feature's changed files) — biome format
+   + safe fixes, residual findings via its fast/careful fixer agents, gating on a
+   clean `pnpm build` — the authority on compile correctness.
+5. **Runtime boot smoke** — a build cannot see boot failures: start `pnpm dev` in
+   the background, wait for readiness, assert (a) every mounted service reports
+   ready — today: the Next.js "Ready" line AND eve's dev-server line — and (b) NO
+   failure signatures in startup output (ERROR, "failed", "worker init failed",
+   unmet peer, unhandled rejection). Collect WARNING lines for Phase-4 triage; then
+   kill the dev process. Startup output only — no browser, no page-driving.
+6. **Update AGENTS.md** if the feature changed anything it documents (ships in the
+   same diff). Never touch CLAUDE.md.
 
-When writing-plans offers its execution handoff (subagent-driven vs inline), **that is not
-the end** — its execution belongs to Phase 3 here, on ONE branch. Tick Phase 2 and continue.
+Tick Phase 3. The branch now provably builds AND boots — that is what Phase 4 hands
+to the user.
 
-GATE: do not proceed until the user approves the plan. The issue is created **after** this
-gate (Phase 3 kickoff), so a rejected plan never leaves an orphan issue.
+## Phase 4 — Feedback triage ✋ (the scope firewall)
 
-## Phase 3 — Parallel build (one branch)
+The user manually tests and reports findings informally. For each, exactly one label:
 
-- **Kickoff — creates the issue AND the one branch** (from the repo root):
-  ```bash
-  ${CLAUDE_SKILL_DIR}/scripts/start.sh "<feature name>" <scratchpad>/spec-plan.md
-  ```
-  Concatenate the approved spec + plan into one temp markdown file first — it becomes the
-  **issue body**, the paperwork's durable home. The script cuts from a clean `dev`, opens
-  the issue, and creates the branch `ft/<issue-number>` (the issue number only — never a
-  slug). **Capture the issue number it prints** (the script's only stdout line); it drives
-  Phase 6. (Issues are fine — only PRs and CI are forbidden.)
-- **No planning docs in the repo — ever.** Spec and plan live in the issue; `docs/triage.md`
-  is the only persistent planning file in the tree.
-- Split the plan into **independent tracks** (groups of files that don't overlap).
-- **Inline is the default; parallel is the exception.** One track → build inline with
-  `superpowers:subagent-driven-development`. Genuinely independent tracks → dispatch
-  parallel subagents (or a Workflow) directly; when a track needs file isolation, use the
-  harness's auto-cleaned worktree isolation — NEVER `superpowers:using-git-worktrees`,
-  never hand-made worktrees or temp branches. `git branch` must never show anything beyond
-  `ft/<issue#>` (plus dev/main).
-- Every change **converges back into `ft/<issue#>`** as ordinary commits. Subagents NEVER
-  push branches and NEVER open PRs.
-- **Tracks only write code.** They do NOT build, lint, or format — all verification and
-  formatting is centralized in Phase 4, so code lands unformatted and is normalized once.
-- **Ignore mid-session LSP diagnostics** (`<new-diagnostics>` blocks) while tracks are in
-  flight: a subagent's in-progress edit produces stale "cannot find module" / type errors
-  that are NOT ground truth. The only authority is a clean `pnpm build` on the committed
-  tree, checked once in Phase 4. Tick Phase 3 and continue.
+- **fix now** — it breaks the slice's written definition-of-done (the ≤2-sentence
+  statement from Phase 1). Build it here, then re-run lint-resolve and the boot
+  smoke. If it doesn't break the DoD, it is not a fix-now, however tempting.
+- **next feature / branch** — real, but its own slice → append to `docs/triage.md`
+  ("Next slice candidates").
+- **table for later** — maybe someday → append to `docs/triage.md` ("Later / maybe").
 
-## Phase 4 — Converge + QC (MANDATORY — the step naive runs skip)
+Loop test → triage → fix-now until the user has no fix-nows left.
 
-1. Confirm convergence is clean: all track changes are commits on `ft/<issue#>`,
-   `git worktree list` shows only the main checkout, and `git branch` shows no temp
-   branches. Harness-managed isolation cleans up after itself; if anything leaked, remove
-   it now (`git worktree remove <path>`, `git branch -D <name>`).
-2. **Now — and only now — run the full-diff QC once, over every track's combined changes on
-   `ft/<issue#>`.** This is a final gate on purpose, not per-track: `/simplify` and
-   `/code-review` read the *whole* feature diff, so a track that finished first is reviewed
-   together with the last. In order:
-   - a. `/simplify`, then `/code-review` — fix real findings.
-   - b. Invoke the **`lint-resolve`** skill (scoped to this feature's changed files). It
-     runs `biome check --write` (format + safe fixes), then resolves the residual lint
-     findings in isolated parallel sub-agents — high-risk behavior-changing fixes (e.g.
-     hook-dependency edits) are applied with a stronger model **and flagged for your
-     review** — and gates on a clean `pnpm build`. This is the single place Biome and the
-     build run; that `pnpm build`, on the committed tree, is the only authority on
-     correctness, so disregard any earlier mid-session diagnostic that disagrees. (No test
-     runner and no browser-agent checks in this repo, per AGENTS.md.)
-3. **Update AGENTS.md if the feature changed anything it documents** — pages/routes,
-   architecture, the Supabase schema shape, env vars, conventions, or gotchas. Edit it as
-   part of this feature's diff (it ships in the same commit). **Never touch CLAUDE.md** — it
-   only imports AGENTS.md and is the user's to edit. If nothing AGENTS.md covers changed,
-   skip this step.
+GATE: **STOP and ask, in plain words, "Ready to ship, or more to fix first?"** A
+green build is never permission to ship. Only the user's explicit "ship it"
+advances. Tick Phase 4 when they say so.
 
-This phase produces a green, runnable branch — the thing the user manually tests in Phase 5.
-Tick Phase 4 and continue.
+## Phase 5 — Ship ✋
 
-## Phase 5 — Feedback triage ✋ (the scope firewall)
-
-The branch now builds and runs, so hand it to the user to **manually test**. They'll report
-bugs, observations, and new ideas informally as they exercise the app. This phase decides
-what is acted on — it exists so a single branch can't endlessly absorb new scope (the FT37
-trap).
-
-Maintain a **triage doc at `docs/triage.md`** (a single persistent backlog that survives
-ship — `ship.sh` strips only the specs/plans scaffolding, not this). For every item the user
-surfaces, classify it as exactly one of:
-
-- **fix now** — it breaks the slice's written definition-of-done (the ≤2-sentence statement
-  from Phase 1). Build it on this branch. If it doesn't break the DoD, it is not a fix-now,
-  however tempting.
-- **next feature / branch** — real and worth doing, but its own slice. Append to `docs/triage.md`.
-- **table for later** — maybe someday. Append to `docs/triage.md`.
-
-**Only "fix now" items continue on this branch.** Implement them here, then re-run the
-**`lint-resolve`** skill to re-verify (it re-formats, resolves any new lint findings, and
-gates on a clean `pnpm build`). Everything classified next-branch or later is *captured in
-the triage doc and NOT built* — that capture is what lets you defer without losing the
-idea. Loop testing → triage → fix-now until the user has no more fix-now items.
-
-GATE: **STOP and ask, in plain words, "Ready to ship, or more to fix first?"** Never infer
-"ship it" from a green build — a passing build is not permission to ship. Only the user's
-explicit "ship it" advances to Phase 6. Tick Phase 5 when they say so.
-
-## Phase 6 — Ship ✋ (only when the user says "ship it")
-
-From the repo root, on branch `ft/<issue#>`, run the ship script — it squash-merges to dev
-as one clean commit, pushes, deletes the branch, and closes the issue:
+From the repo root, on `ft/<issue#>`:
 
 ```bash
 ${CLAUDE_SKILL_DIR}/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
-The script refuses to run if stray worktrees remain or if you're not on `ft/<issue#>`. Its
-legacy doc-strip step is now a no-op — planning docs live in the issue, never the repo.
-Tick Phase 6. The workflow is complete only after this phase.
+It refuses on the wrong branch, stray worktrees, or a dirty tree; squash-merges to
+dev as ONE commit; pushes; deletes the branch; closes the issue (which remains as
+the slice's permanent record); **sweeps all scratch** (`.feature/`, legacy
+`.superpowers/`, the empty worktree mount); and **mints the next slice's seat** —
+placeholder issue `#<n+1>` + branch `ft/<n+1>`, checked out and waiting for the
+next session. Tick Phase 5; only now is the workflow complete.
 
 ---
 
 ## Hard rules (never break)
 
 - NEVER create per-task branches or PRs. ONE feature branch only.
-- NEVER open a PR or rely on GitHub Actions / CI. Quality = local `/simplify` + `/code-review`
-  in Phase 4.
+- NEVER open a PR or rely on GitHub Actions / CI. Quality = Phase 3, locally.
 - NEVER push to `main` or `beta`. Ship target is `dev` only.
-- Planning docs never enter the repo: the spec + plan live in the GitHub issue body, and
-  deferred work lives in `docs/triage.md`. The durable record is the squashed commit
-  message + the issue — never AGENTS.md/CLAUDE.md.
-- ALWAYS keep the six-phase checklist as your anchor; never end at a sub-skill's terminal
-  state. Cleanup (Phase 4), triage (Phase 5), and ship (Phase 6) are non-skippable.
-- SCOPE IS FROZEN AT THE PHASE 1 GATE. A new feature/scope idea that surfaces mid-build
-  (Phases 3–5) goes to the spec's **Deferred** list or `docs/triage.md` — it is NOT built on
-  the current branch. Expanding scope mid-build is the snowball this workflow exists to
-  prevent; Phase 5 triage is the firewall.
-- Preserve the repo's behavior contracts (server-action field `name`s, the auth/connect-x
-  guards + `?next=`, the run → preview → save → post/redraft pipeline) — see AGENTS.md.
+- Planning docs never enter the repo: the spec+plan lives in the slice issue's body
+  (drafted transiently in `.feature/`, deleted once on the issue); deferred work
+  lives in `docs/triage.md`. The durable record is the squashed commit message +
+  the issue — never AGENTS.md/CLAUDE.md.
+- SCOPE IS FROZEN AT THE PHASE 1 GATE. A new feature/scope idea that surfaces
+  mid-build goes to the spec's **Deferred** list or `docs/triage.md` — it is NOT
+  built on the current branch. Phase 4 triage is the firewall.
+- If the dependency preflight or boot smoke reveals the fix requires a dependency
+  MAJOR upgrade, a framework migration, or edits inside guarded areas (`lib/`,
+  `components/agents/`), the workflow STOPS and presents findings + options to the
+  user as an explicit ✋ gate — never fix such things autonomously.
+- Preserve the repo's behavior contracts (server-action field `name`s, the
+  auth/connect-x guards + `?next=`, the run → preview → save → post/redraft
+  pipeline) — see AGENTS.md.

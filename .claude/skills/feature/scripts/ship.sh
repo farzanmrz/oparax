@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Phase 6 ship — squash-merge the feature branch into dev locally, push, delete the
-# branch, and close the issue. ONE clean commit on dev; no PR, no CI.
+# branch, close the issue — then sweep session scratch and mint the NEXT slice's
+# empty issue + branch, so the next /feature session takes over an existing seat
+# (rolling chain). ONE clean commit on dev; no PR, no CI.
 #
 # Usage:  ship.sh <issue-number> "<commit message>"
-# Run from the repo root, on branch ft/<issue-number>, after Phase 4 cleanup.
+# Run from the repo root, on branch ft/<issue-number>, after Phase 4 verification.
 set -euo pipefail
 
 issue="${1:?usage: ship.sh <issue-number> \"<commit message>\"}"
@@ -14,16 +16,15 @@ branch="ft/${issue}"
 cur="$(git rev-parse --abbrev-ref HEAD)"
 [ "$cur" = "$branch" ] || { echo "ship: not on $branch (on $cur) — checkout $branch first." >&2; exit 1; }
 
-# Phase 4 must have removed temp worktrees (the main checkout is the only one).
+# No stray worktrees (the main checkout is the only one).
 if [ "$(git worktree list | wc -l | tr -d ' ')" -ne 1 ]; then
-  echo "ship: temp worktrees still exist — run Phase 4 cleanup first:" >&2
+  echo "ship: stray worktrees exist — clean them up first:" >&2
   git worktree list >&2
   exit 1
 fi
 
-# Refuse on a dirty tree: Phase 6 ships exactly the reviewed commits on $branch. Any
-# uncommitted change bypassed the Phase 4 gate (/simplify + /code-review + verify), so
-# stop rather than sweep it into the squash commit.
+# Refuse on a dirty tree: ship exactly the reviewed commits on $branch. Any
+# uncommitted change bypassed the Phase 4 gate, so stop rather than sweep it in.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "ship: uncommitted changes on $branch — commit and re-verify (Phase 4) before shipping." >&2
   exit 1
@@ -38,12 +39,6 @@ if ! git merge --squash "$branch"; then
   echo "ship: squash merge conflicts against dev — rebase $branch on dev, then re-run." >&2
   exit 1
 fi
-
-# Planning docs are branch-local scaffolding — strip this feature's spec/plan (and any
-# stale ones swept in from earlier runs) so the shipped dev commit is code-only and the
-# docs never accumulate. The durable record lives in this commit's message + the issue.
-git rm -rf --ignore-unmatch docs/superpowers/specs docs/superpowers/plans >/dev/null 2>&1 || true
-
 git commit -m "$msg"
 
 # Push BEFORE any irreversible cleanup. If it fails, the commit is safe on local dev.
@@ -57,4 +52,18 @@ fi
 git branch -D "$branch"
 gh issue close "$issue"
 
-echo "Shipped $branch -> dev (one squashed commit). Branch deleted, issue #$issue closed."
+# Sweep session scratch — the flow's working files live in .feature/ (legacy runs
+# used .superpowers/); their phases are over. The empty worktree mount goes too.
+rm -rf .feature .superpowers
+rmdir .claude/worktrees 2>/dev/null || true
+
+# Mint the next slice's seat off the dev we just pushed: an empty placeholder issue
+# and its branch, for the next /feature session to take over.
+next_url="$(gh issue create --title "next slice — TBD" --body "Placeholder seat. The next /feature session defines this slice: the approved spec+plan lands here at the Phase 1 gate.")"
+next="$(printf '%s\n' "$next_url" | grep -oE '/issues/[0-9]+' | head -n1 | grep -oE '[0-9]+' || true)"
+if [ -n "$next" ]; then
+  git checkout -b "ft/${next}"
+  echo "Shipped $branch -> dev (one squashed commit). Issue #$issue closed. Next seat ready: issue #$next on branch ft/$next."
+else
+  echo "Shipped $branch -> dev (one squashed commit). Issue #$issue closed. Could not mint the next issue — create it and its ft/<n> branch manually." >&2
+fi

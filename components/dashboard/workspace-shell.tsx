@@ -20,6 +20,7 @@ import {
   ChevronRightIcon,
   GearIcon,
   ProfileIcon,
+  RebuildIcon,
   ShieldIcon,
   SignOutIcon,
 } from "@/components/dashboard/shell-icons";
@@ -141,6 +142,7 @@ export function WorkspaceShell({
   const agentsHref = "/dashboard/agents";
 
   const settingsActive = pathname.startsWith("/dashboard/settings");
+  const rebuildActive = pathname.startsWith("/dashboard/rebuild");
   const activeSection = useSettingsScrollSpy(settingsActive && expanded);
 
   async function signOut() {
@@ -220,6 +222,19 @@ export function WorkspaceShell({
                 ))}
               </div>
             )}
+
+            <Link
+              href="/dashboard/rebuild"
+              className="nav-main j-row"
+              data-active={rebuildActive ? "true" : undefined}
+              aria-current={rebuildActive ? "page" : undefined}
+              onClick={(e) => {
+                if (!confirmLeave()) e.preventDefault();
+              }}
+            >
+              <RebuildIcon width={22} height={22} />
+              {expanded && <span>Rebuild</span>}
+            </Link>
           </nav>
         </div>
 

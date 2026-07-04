@@ -250,6 +250,24 @@ export function AgentIcon(props: IconProps) {
   );
 }
 
+export function RebuildIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="7.8" stroke="currentColor" strokeWidth="1.9" />
+      <line
+        x1="12"
+        y1="12"
+        x2="17"
+        y2="7"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------ colored account tiles */
 
 export function XTile(props: IconProps) {
