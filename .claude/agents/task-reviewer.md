@@ -1,7 +1,7 @@
 ---
 name: task-reviewer
 description: Use this agent to review exactly ONE implemented feature-plan task against its brief and commit range. Typical triggers are the /feature skill's Phase 2 dispatching a review as each implementer returns, and a re-review after fix commits land. Not for whole-branch review (that is /code-review in QC). See "When to invoke" in the agent body.
-model: inherit
+model: opus
 color: cyan
 tools: ["Read", "Glob", "Grep", "Bash"]
 ---

@@ -40,6 +40,7 @@ We build Oparax on [eve](https://github.com/vercel/eve) inside Next.js, experime
 Known failure loop (this repo's history): scope grows mid-session → complexity disgust → a teardown that becomes its own over-scoped project. Counter it:
 
 - **Two session modes.** *Light*: minor eve/app iteration directly on `dev` — small commits, boot check before push; no ceremony. *Slice*: multi-step features go through `/feature` (explicit invocation only — it never auto-triggers): issue → `ft/<n>` → gates → squash to `dev`.
+- **Model budget.** Fable is for planning only (the session model during a `/feature` Phase 1 or a strategy discussion); after the plan gate, switch the session to Opus. All dispatched agents run Opus or Sonnet — no agent file or dispatch ever pins Fable, so a Fable usage-limit can never strand the flow.
 - One small slice per session; say what "done" means at kickoff in a sentence or two.
 - Mid-session ideas are written down (issue comment or `docs/triage.md`), never built the same session. "While we're here" means stop.
 - Stop-and-ship signals: adding and removing the same thing within one session; a third rework of the same surface; drafting next session's kickoff prompt.

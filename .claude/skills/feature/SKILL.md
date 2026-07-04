@@ -42,6 +42,16 @@ matching skill from AGENTS.md's Skills table (`vercel:eve`, `vercel:ai-sdk`,
 `vercel:shadcn`, `vercel:nextjs`, …). Dispatched agents do NOT inherit this — every
 dispatch prompt must name the skills that task must invoke before writing code.
 
+**Model routing (usage-limit discipline):** Fable is for the plan only — run the
+/feature session on Fable through the Phase 1 gate, then suggest the user switch
+the session to Opus (`/model opus`) for the build phases. Every dispatch runs a
+cheaper tier: `implementer` and `task-reviewer` default to `opus` via their
+frontmatter; /simplify and /code-review finder AND verifier agents dispatch with
+`model: "opus"`; recon/Explore and mechanical-sweep agents use `model: "sonnet"`;
+lint fixers keep their own frontmatter (sonnet/opus). NEVER pin `fable` in an
+agent file or a dispatch — if Fable's usage limit hits, only the session model
+is affected and the user can switch it without breaking the flow.
+
 **Scratch discipline:** every working file this flow generates lives in `docs/feature/`
 (create it self-gitignoring: `mkdir -p docs/feature && printf '*\n' > docs/feature/.gitignore`).
 The spec+plan draft dies once it reaches the issue; everything else dies at ship.
