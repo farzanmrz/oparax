@@ -1,0 +1,41 @@
+{
+  "eventType": "attr_set",
+  "specVersion": 5,
+  "eventData": {
+    "changes": [
+      {
+        "key": "$eve.model",
+        "value": "deepseek/deepseek-v4-flash"
+      },
+      {
+        "key": "$eve.input_tokens",
+        "value": "8477"
+      },
+      {
+        "key": "$eve.output_tokens",
+        "value": "781"
+      },
+      {
+        "key": "$eve.cache_read_tokens",
+        "value": "7552"
+      },
+      {
+        "key": "$eve.cache_write_tokens",
+        "value": "0"
+      },
+      {
+        "key": "$eve.tool_count",
+        "value": "12"
+      }
+    ],
+    "writer": {
+      "type": "step",
+      "stepId": "step_01KWP5KA4GDXAMENRMAN76ZSTN",
+      "attempt": 1
+    },
+    "allowReservedAttributes": true
+  },
+  "runId": "wrun_01KWP5KA4G0GF092EZWFXFAMDF",
+  "eventId": "evnt_01KWP5KZV035AM1TN0XTXSKDE9",
+  "createdAt": "2026-07-04T08:58:43.424Z"
+}

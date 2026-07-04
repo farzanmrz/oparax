@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckIcon, CopyIcon } from "lucide-react";
+import { useState } from "react";
 import type { EveMessage, EveMessagePart } from "eve/react";
 import { useEveAgent } from "eve/react";
 import {
@@ -7,7 +9,13 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import {
+  Message,
+  MessageAction,
+  MessageActions,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import {
   PromptInput,
   type PromptInputMessage,
@@ -15,6 +23,7 @@ import {
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import {
   Tool,
@@ -63,8 +72,17 @@ export function AgentChat() {
     <div className="flex h-full min-h-0 flex-col gap-3">
       {isEmpty ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
-          <OparaxMark className="size-10 text-muted-foreground" />
+          <div className="flex size-16 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+            <OparaxMark className="size-8 text-primary" />
+          </div>
           <div className="space-y-1.5">
+            <div className="mx-auto mb-3 flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              <span aria-hidden="true" className="relative flex size-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+              </span>
+              Desk online
+            </div>
             <h2 className="text-xl font-semibold tracking-tight text-balance">
               What&apos;s moving on your beat?
             </h2>
@@ -85,6 +103,13 @@ export function AgentChat() {
             {agent.data.messages.map((message) => (
               <AgentMessage key={message.id} message={message} />
             ))}
+            {agent.status === "submitted" ? (
+              <Message from="assistant">
+                <MessageContent>
+                  <Shimmer className="text-sm">Scanning the wire…</Shimmer>
+                </MessageContent>
+              </Message>
+            ) : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -103,14 +128,49 @@ export function AgentChat() {
 }
 
 function AgentMessage({ message }: { readonly message: EveMessage }) {
+  const text = message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n\n");
+  const isStreaming = message.parts.some(
+    (part) => "state" in part && part.state === "streaming",
+  );
+  const showActions = message.role === "assistant" && text.length > 0 && !isStreaming;
+
   return (
     <Message from={message.role}>
       <MessageContent>
         {message.parts.map((part, index) => (
           <AgentMessagePart key={partKey(part, index)} part={part} />
         ))}
+        {showActions ? (
+          <MessageActions className="-ml-1.5 text-muted-foreground">
+            <CopyMessageAction text={text} />
+          </MessageActions>
+        ) : null}
       </MessageContent>
     </Message>
+  );
+}
+
+/** Presentation-only copy-to-clipboard action for assistant replies. */
+function CopyMessageAction({ text }: { readonly text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard unavailable (permissions/insecure context); silently ignore.
+    }
+  };
+
+  return (
+    <MessageAction label="Copy message" onClick={handleCopy} tooltip="Copy">
+      {copied ? <CheckIcon className="size-3.5 text-primary" /> : <CopyIcon className="size-3.5" />}
+    </MessageAction>
   );
 }
 
