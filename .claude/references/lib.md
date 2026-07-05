@@ -1,5 +1,7 @@
 # lib/ — Supabase & auth logic
 
+Skill: `supabase:supabase` for Supabase work; `vercel:routing-middleware` when changing proxy/matcher behavior.
+
 - `lib/supabase/` — the three-client pattern:
   - `client.ts` — browser client.
   - `server.ts` — Server Components / Actions / route handlers.

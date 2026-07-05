@@ -1,5 +1,7 @@
 # agent/ — the eve agent
 
+Skill: `vercel:eve` FIRST; `vercel:ai-sdk` for model code in a tool's `execute()`; `vercel:ai-gateway` for provider/model routing.
+
 eve compiles this directory; the filenames are eve conventions.
 
 - `agent/agent.ts` — model config (DeepSeek via the AI Gateway).

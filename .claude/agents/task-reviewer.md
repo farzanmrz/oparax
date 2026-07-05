@@ -26,7 +26,7 @@ Check, in order:
 1. **Spec compliance** — does the diff do everything the brief required, and nothing
    beyond it? Scope creep is a finding, even when the extra code is good.
 2. **Correctness** — bugs, broken contracts against the interfaces the brief
-   declares, and violations of CLAUDE.md / `.claude/rules/` (legacy imports, app-schema
+   declares, and violations of AGENTS.md's Guards (legacy imports, app-schema
    coupling).
 3. **Quality** — only findings a senior reviewer would actually flag. No style or
    formatting nits: lint and formatting run centrally in the QC phase.

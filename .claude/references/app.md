@@ -1,5 +1,7 @@
 # app/ — routes
 
+Skill: `vercel:nextjs` before routing / Server Component / Server Action work.
+
 Next.js App Router: a folder is a URL segment, and its `page.tsx`/`route.ts` is what's served there. Each distinct URL is its own folder.
 
 - `app/page.tsx` — landing; sends signed-in users to `/dashboard`.
@@ -8,7 +10,7 @@ Next.js App Router: a folder is a URL segment, and its `page.tsx`/`route.ts` is 
   - `app/signup/`
   - `app/forgot-password/`
 - `app/auth/` — auth machinery under the `/auth/*` namespace:
-  - `app/auth/confirm/route.ts` — token exchange for Supabase email links, then forwards to reset/login. `/auth/confirm` is hardcoded in the Supabase email templates, so it must never move (enforced in the `nextjs-app` rule).
+  - `app/auth/confirm/route.ts` — token exchange for Supabase email links, then forwards to reset/login. `/auth/confirm` is hardcoded in the Supabase email templates, so it must never move (a hard guard in AGENTS.md).
   - `app/auth/reset-password/` — recovery landing; consumes the one-time token, deliberately unguarded.
   - `app/auth/signout/` — sign-out action.
 - `app/dashboard/` — protected shell:

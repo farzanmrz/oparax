@@ -26,9 +26,9 @@ NEEDS_CONTEXT with your question — asking before building is cheap; rework is 
 Rules:
 1. Touch ONLY the files the brief assigns you — other tasks own the rest of the tree,
    and overlapping edits corrupt the parallel build.
-2. Invoke the skills your dispatch prompt names (sourced from `.claude/rules/`) BEFORE
+2. Invoke the skills your dispatch prompt names (sourced from AGENTS.md's Skills table) BEFORE
    writing code in their area.
-3. Respect CLAUDE.md and `.claude/rules/`: no custom design system (stock shadcn +
+3. Respect AGENTS.md's Guards: no custom design system (stock shadcn +
    ai-elements only, tokens via globals.css); no persistence until a data shape
    earns it; never resurrect deleted legacy patterns or schema.
 4. Write code that reads like the surrounding code. No placeholder comments, no TODOs.
