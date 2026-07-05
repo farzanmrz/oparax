@@ -38,7 +38,7 @@ autonomous; the three gates (spec+plan, triage, ship) are user-controlled.
 **Grounding never skips gates**, however much context was adopted.
 
 **Skill grounding (binding, every phase):** before working in any area, invoke the
-skills named by that area's nested CLAUDE.md (`vercel:eve`, `vercel:ai-sdk`,
+skills named by that area's rule file in `.claude/rules/` (`vercel:eve`, `vercel:ai-sdk`,
 `vercel:shadcn`, `vercel:nextjs`, …). Dispatched agents do NOT inherit this — every
 dispatch prompt must name the skills that task must invoke before writing code.
 
@@ -63,9 +63,9 @@ The spec+plan draft dies once it reaches the issue; everything else dies at ship
 If invoked as `/feature <description>`, seed from `$ARGUMENTS`; else from the
 conversation.
 
-**Preflight.** Read root CLAUDE.md (rules, skills table) and the nested
-CLAUDE.md files in the areas the ask touches. Check `docs/triage.md` ("Next slice
-candidates") when choosing the slice.
+**Preflight.** Read root CLAUDE.md and the `.claude/rules/` files for the areas
+the ask touches. Check `docs/triage.md` ("Next slice candidates") when choosing
+the slice.
 
 **Clear the user's thinking first.** If the ask is rambling, confused, or pulling
 in several directions, interview the user directly — one question at a time, each
@@ -76,7 +76,7 @@ For an already-clear ask, skip both.
 
 **Draft via the `planner` agent** (`.claude/agents/planner.md` — Fable-pinned;
 the flow's ONE top-model step): dispatch it with the confirmed ask + interview
-conclusions; it grounds itself in the CLAUDE.md files, `docs/triage.md`, and the code, and
+conclusions; it grounds itself in CLAUDE.md + `.claude/rules/`, `docs/triage.md`, and the code, and
 returns the complete spec+plan, which you save verbatim to
 `docs/feature/spec-plan.md`. Gate revisions re-dispatch the planner with the
 prior draft + the user's feedback. The document is ONE spec+plan:
@@ -166,8 +166,8 @@ Over the whole feature diff, in order:
    failure signatures in startup output (ERROR, "failed", "worker init failed",
    unmet peer, unhandled rejection). Collect WARNING lines for Phase-4 triage; then
    kill the dev process. Startup output only — no browser, no page-driving.
-6. **Update the relevant CLAUDE.md** (root or the touched area's nested file) if
-   the feature changed anything it documents (ships in the same diff).
+6. **Update root CLAUDE.md or the touched area's `.claude/rules/` file** if the
+   feature changed anything they document (ships in the same diff).
 
 Tick Phase 3. The branch now provably builds AND boots — that is what Phase 4 hands
 to the user.
@@ -214,7 +214,7 @@ is the workflow complete.
 - Planning docs never enter the repo: the spec+plan lives in the slice issue's body
   (drafted transiently in `docs/feature/`, deleted once on the issue); deferred work
   lives in `docs/triage.md`. The durable record is the squashed commit message +
-  the issue — never the CLAUDE.md files.
+  the issue — never CLAUDE.md or `.claude/rules/`.
 - SCOPE IS FROZEN AT THE PHASE 1 GATE. A new feature/scope idea that surfaces
   mid-build goes to the spec's **Deferred** list or `docs/triage.md` — it is NOT
   built on the current branch. Phase 4 triage is the firewall.
@@ -225,4 +225,4 @@ is the workflow complete.
 - Preserve the repo's behavior contracts (server-action field `name`s, the
   Supabase auth flows — recovery tokens consumed only on submit, same-password
   reset treated as success, signed-in users bounced off auth pages — and the eve
-  chat's scaffold-faithful wiring) — see the CLAUDE.md files.
+  chat's scaffold-faithful wiring) — see `.claude/rules/`.

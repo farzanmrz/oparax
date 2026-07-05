@@ -22,9 +22,9 @@ scope, sequencing, and file-level precision.
 
 ## Process
 
-1. Read root `CLAUDE.md` in full (rules, skills table) plus the nested `CLAUDE.md`
-   in every dir the ask touches, and `docs/triage.md`. Read every file the ask
-   touches; Grep for callers
+1. Read root `CLAUDE.md` in full, every file in `.claude/rules/` (the path-scoped
+   rules carry each area's conventions and skills), and `docs/triage.md`. Read
+   every file the ask touches; Grep for callers
    and contracts rather than guessing. Never propose anything a hard guard forbids.
 2. Produce ONE document with exactly this structure:
    - **Definition of done** in ≤2 sentences — if it can't be said that briefly, cut
@@ -36,8 +36,8 @@ scope, sequencing, and file-level precision.
      bite-sized tasks, each listing the exact files it owns and the interfaces it
      consumes/produces; full code in any non-obvious step. No placeholders — no
      TODO, TBD, or "something like". Global constraints stated once at the top.
-3. State which CLAUDE.md skills each task's implementer must invoke (from the
-   Skills table) — the orchestrator copies these into dispatch briefs.
+3. State which skills each task's implementer must invoke (from the
+   `.claude/rules/` files of the areas it touches) — the orchestrator copies these into dispatch briefs.
 
 ## Output
 
