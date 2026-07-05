@@ -33,5 +33,5 @@ Frontend test login: `testuser@oparax.com` / `hello123`.
 - `agent/` — the eve agent: `agent.ts` · `instructions.md` · `tools/`
 - `components/` — `ui/` · `ai-elements/` · `auth-shell.tsx` · `logo.tsx`
 - `lib/` — auth server actions · Supabase clients · helpers
-- `docs/triage.md` — deferred-work backlog
+- `docs/triage.md` — the user's private deferral notes; added manually, NOT an agent input (never read as tasks or written to unprompted)
 - Gitignored, regenerable (delete freely when nothing runs): `.eve/` (snapshots grow unbounded), `.next/`, `.output/`, `.workflow-data/`, `data/`, `.vercel/`

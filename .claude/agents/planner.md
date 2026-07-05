@@ -23,7 +23,7 @@ scope, sequencing, and file-level precision.
 ## Process
 
 1. Read root `CLAUDE.md` in full, every file in `.claude/rules/` (the path-scoped
-   rules carry each area's conventions and skills), and `docs/triage.md`. Read
+   rules carry each area's conventions and skills). Read
    every file the ask touches; Grep for callers
    and contracts rather than guessing. Never propose anything a hard guard forbids.
 2. Produce ONE document with exactly this structure:

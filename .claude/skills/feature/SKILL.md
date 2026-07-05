@@ -64,8 +64,8 @@ If invoked as `/feature <description>`, seed from `$ARGUMENTS`; else from the
 conversation.
 
 **Preflight.** Read root CLAUDE.md and the `.claude/rules/` files for the areas
-the ask touches. Check `docs/triage.md` ("Next slice candidates") when choosing
-the slice.
+the ask touches. (The slice comes from the user's ask — never from
+`docs/triage.md`, which is the user's private notes, not a flow input.)
 
 **Clear the user's thinking first.** If the ask is rambling, confused, or pulling
 in several directions, interview the user directly — one question at a time, each
@@ -76,7 +76,7 @@ For an already-clear ask, skip both.
 
 **Draft via the `planner` agent** (`.claude/agents/planner.md` — Fable-pinned;
 the flow's ONE top-model step): dispatch it with the confirmed ask + interview
-conclusions; it grounds itself in CLAUDE.md + `.claude/rules/`, `docs/triage.md`, and the code, and
+conclusions; it grounds itself in CLAUDE.md + `.claude/rules/` and the code, and
 returns the complete spec+plan, which you save verbatim to
 `docs/feature/spec-plan.md`. Gate revisions re-dispatch the planner with the
 prior draft + the user's feedback. The document is ONE spec+plan:
@@ -179,9 +179,9 @@ The user manually tests and reports findings informally. For each, exactly one l
 - **fix now** — it breaks the slice's written definition-of-done (the ≤2-sentence
   statement from Phase 1). Build it here, then re-run lint-resolve and the boot
   smoke. If it doesn't break the DoD, it is not a fix-now, however tempting.
-- **next feature / branch** — real, but its own slice → append to `docs/triage.md`
-  ("Next slice candidates").
-- **table for later** — maybe someday → append to `docs/triage.md` ("Later / maybe").
+- **next feature / branch** — real, but its own slice → surface it to the user; do
+  not record it anywhere yourself (their `docs/triage.md` is theirs to write).
+- **table for later** — maybe someday → likewise surface it to the user only.
 
 Loop test → triage → fix-now until the user has no fix-nows left.
 
@@ -212,12 +212,12 @@ is the workflow complete.
 - NEVER open a PR or rely on GitHub Actions / CI. Quality = Phase 3, locally.
 - NEVER push to `main` or `beta`. Ship target is `dev` only.
 - Planning docs never enter the repo: the spec+plan lives in the slice issue's body
-  (drafted transiently in `docs/feature/`, deleted once on the issue); deferred work
-  lives in `docs/triage.md`. The durable record is the squashed commit message +
-  the issue — never CLAUDE.md or `.claude/rules/`.
+  (drafted transiently in `docs/feature/`, deleted once on the issue). The durable
+  record is the squashed commit message + the issue — never CLAUDE.md or
+  `.claude/rules/`. Never write to the user's `docs/triage.md`.
 - SCOPE IS FROZEN AT THE PHASE 1 GATE. A new feature/scope idea that surfaces
-  mid-build goes to the spec's **Deferred** list or `docs/triage.md` — it is NOT
-  built on the current branch. Phase 4 triage is the firewall.
+  mid-build goes to the spec's **Deferred** list and is surfaced to the user — it is
+  NOT built on the current branch. Phase 4 triage is the firewall.
 - If the dependency preflight or boot smoke reveals the fix requires a dependency
   MAJOR upgrade, a framework migration, or a schema/data migration, the workflow
   STOPS and presents findings + options to the user as an explicit ✋ gate — never

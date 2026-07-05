@@ -1,5 +1,5 @@
-# Triage — deferred decisions
+# Triage — my deferral notes
 
-The one planning file in the repo: **genuinely deferred decisions** that would otherwise be lost. Not a dumping ground — obvious next steps, dashboard chores, and facts-about-the-code do NOT belong here (durable facts live in `.claude/rules/`). Each `/feature` preflight checks this list when choosing a slice.
+Personal, human-owned scratch: things I catch myself scope-creeping toward mid-session, or just want to park for later. **Not an agent input** — the `/feature` flow does not read this to choose slices, and nothing (CLAUDE.md, rules, skills, agents) treats these as planned tasks or writes here unprompted. I add and remove items myself.
 
 - **Post-login IA: retire `/dashboard`, land on `/agents`** — signed-in users land on `/agents` (agent listing), with `/agents/new` (create) and `/agents/[id]` (detail → the chat); dissolve the `/dashboard/*` shell, relocating its auth guard (currently `dashboard/layout.tsx`) and `settings/`. Keep the route **plural `/agents`** — no collision with the root `agent/` eve dir (different tree, number, and purpose; plural-resource routing is the Next convention). Gated by a **per-user multi-agent data model** (a Supabase table — the first thing to trip the "no persistence until a data shape earns it" guard), so it's a real feature slice, naturally paired with or following the eve channel-auth work (see `.claude/rules/eve-agent.md`). (from #42)

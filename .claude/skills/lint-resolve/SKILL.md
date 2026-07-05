@@ -85,5 +85,5 @@ review** rather than shipped silently.
 
 ## Notes
 - Scope is **changed files only** — never fix pre-existing findings in untouched code.
-  That's scope creep; note them for `docs/triage.md` instead.
+  That's scope creep; surface them to the user instead of fixing them here.
 - This is the single place Biome and `pnpm build` run in the feature workflow.
