@@ -1,6 +1,6 @@
 # agent/ — the eve agent (eve compiles this directory; filenames are eve conventions)
 
-Skills: `vercel:eve` FIRST for any work here; `vercel:ai-sdk` for model code inside a tool's `execute()`; `vercel:ai-gateway` for provider/model routing. Source of truth for the installed version: `node_modules/eve/docs/` (start at its README).
+Skills: `vercel:eve` FIRST for any work here; `vercel:ai-sdk` for model code inside a tool's `execute()`; `vercel:ai-gateway` for provider/model routing; `vercel:workflow` only if we ever drop below eve to WDK directly. Source of truth for the installed version: `node_modules/eve/docs/` (start at its README).
 
 - `agent.ts` — agent + model config (DeepSeek via gateway)
 - `instructions.md` — the chat-orchestrator sysprompt (an eve-native file, not documentation)

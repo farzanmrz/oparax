@@ -38,7 +38,7 @@ autonomous; the three gates (spec+plan, triage, ship) are user-controlled.
 **Grounding never skips gates**, however much context was adopted.
 
 **Skill grounding (binding, every phase):** before working in any area, invoke the
-matching skill from CLAUDE.md's Skills table (`vercel:eve`, `vercel:ai-sdk`,
+skills named by that area's nested CLAUDE.md (`vercel:eve`, `vercel:ai-sdk`,
 `vercel:shadcn`, `vercel:nextjs`, …). Dispatched agents do NOT inherit this — every
 dispatch prompt must name the skills that task must invoke before writing code.
 
