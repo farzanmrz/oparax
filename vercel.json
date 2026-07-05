@@ -1,0 +1,60 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [],
+  "fluid": true,
+  "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": {
+      "chore/**": false,
+      "codex-ft*/**": false,
+      "feat/**": false,
+      "feature/**": false,
+      "fix/**": false,
+      "ft/**": false
+    }
+  },
+  "headers": [
+    {
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ],
+      "source": "/(.*)"
+    }
+  ],
+  "redirects": [
+    {
+      "destination": "https://oparax.ai/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "oparax-chirp-farzanmrzs-projects.vercel.app"
+        }
+      ],
+      "permanent": true,
+      "source": "/:path*"
+    },
+    {
+      "destination": "https://oparax.ai/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "oparax-chirp.vercel.app"
+        }
+      ],
+      "permanent": true,
+      "source": "/:path*"
+    }
+  ],
+  "regions": ["iad1", "sfo1"]
+}

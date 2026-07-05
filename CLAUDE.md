@@ -11,9 +11,14 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 
 ## Commands
 
-- `pnpm dev` — Next.js + eve dev worker (localhost:3000) · `npx eve dev` — agent-only TUI, no frontend
-- `pnpm build` — the automated gate; it never boots eve's worker, so a broken worker still builds green
-- `pnpm lint` / `pnpm lint:fix` / `pnpm format` — Biome
+```bash
+pnpm dev        # Next.js + eve dev worker (localhost:3000)
+npx eve dev     # agent-only TUI, no frontend
+pnpm build      # automated gate — never boots eve's worker, so a broken worker still builds green
+pnpm lint       # Biome check
+pnpm lint:fix   # Biome check --write
+pnpm format     # Biome format --write
+```
 
 ## Environment
 
