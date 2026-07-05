@@ -45,9 +45,8 @@ agent/         # the eve agent: agent.ts (DeepSeek orchestrator) · instructions
 app/           # landing + auth pages (login, signup, forgot/reset) · auth/confirm route · dashboard/{agents,settings}
 components/    # ui/ (stock shadcn) · ai-elements/ (vendored chat components) · logo.tsx (brand mark)
 lib/           # supabase/ clients · auth/ server actions · validation
-public/brand/  # exported logo set
 docs/          # triage.md — the deferred-work backlog
-AGENTS.md      # contributor/agent instructions: architecture, the eve build, hard guards
+CLAUDE.md      # agent instructions: stack, commands, repo map, rules (nested CLAUDE.md files per area)
 ```
 
 ## Getting started

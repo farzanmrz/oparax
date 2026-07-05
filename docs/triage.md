@@ -22,4 +22,4 @@ The one planning file that lives in the repo. Deferred test findings, next-slice
 - **Optional: re-vendor `components/ai-elements`** from the registry post-v7 — the vendored set needed only 3 type renames, but a refresh picks up upstream fixes. (from #39)
 - **xSearch handle cap is 10** — enforced by the `@ai-sdk/xai` runtime schema (docs claim 20); recheck on SDK bumps. Currently inline in the tool's zod schema. (from #39)
 - **Vercel two-service topology note** — `withEve()` splits the deploy into web + eve services at build time, invisible in the committed `vercel.json`; adding `experimentalServices` there later must include BOTH services or the build fails. (from #39 code review)
-- **Schedules, drafting leg, posting** — the rest of the eve build, one primitive at a time (see AGENTS.md, The eve build). (from #39 spec)
+- **Schedules, drafting leg, posting** — the rest of the eve build, one primitive at a time (see agent/CLAUDE.md). (from #39 spec)

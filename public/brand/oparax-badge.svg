@@ -1,8 +1,0 @@
-<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Oparax">
-  <rect width="1024" height="1024" rx="224" fill="#3577B5"></rect>
-  <g transform="translate(512 512) scale(0.66) translate(-512 -512)">
-    <path d="M 431.77 811.44 A 310 310 0 0 1 431.77 212.56" fill="none" stroke="#ffffff" stroke-width="73" stroke-linecap="round"></path>
-    <path d="M 592.23 212.56 A 310 310 0 0 1 592.23 811.44" fill="none" stroke="#ffffff" stroke-width="73" stroke-linecap="round"></path>
-    <circle cx="512" cy="512" r="132" fill="#ffffff"></circle>
-  </g>
-</svg>

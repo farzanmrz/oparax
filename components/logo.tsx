@@ -1,5 +1,4 @@
-// Oparax "orbit" mark — two round-capped arcs + core dot, from the design
-// system (public/brand/ holds the exported badge/mark set). Draws with
+// Oparax "orbit" mark — two round-capped arcs + core dot. Draws with
 // currentColor so it adapts to the surrounding text color. The wordmark is
 // always plain text next to the mark, never an image.
 export function OparaxMark(props: React.SVGProps<SVGSVGElement>) {
