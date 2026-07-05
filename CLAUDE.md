@@ -5,7 +5,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 ## Stack
 
 - Next.js 16 App Router · React 19 · TypeScript strict (`@/*` → repo root) · Vercel (oparax.ai; git-push deploys, `dev` → `main` promote)
-- eve `0.18.1` — the agent lives in `agent/`, mounted same-origin at `/eve/v1/*` by `withEve()` in `next.config.ts`
+- eve `0.19.0` — the agent lives in `agent/`, mounted same-origin at `/eve/v1/*` by `withEve()` in `next.config.ts`
 - AI SDK v7 (`ai ^7`, `@ai-sdk/react ^4`, `@ai-sdk/xai ^4`) · Supabase (auth only)
 - Tailwind v4 · shadcn/ui · vendored ai-elements · Biome · pnpm (a preinstall guard blocks npm/yarn)
 
