@@ -179,9 +179,11 @@ The user manually tests and reports findings informally. For each, exactly one l
 - **fix now** — it breaks the slice's written definition-of-done (the ≤2-sentence
   statement from Phase 1). Build it here, then re-run lint-resolve and the boot
   smoke. If it doesn't break the DoD, it is not a fix-now, however tempting.
-- **next feature / branch** — real, but its own slice → surface it to the user; do
-  not record it anywhere yourself (their `docs/triage.md` is theirs to write).
-- **table for later** — maybe someday → likewise surface it to the user only.
+- **next feature / branch** — real, but its own slice → capture it to the user's
+  `docs/triage.md`. You are scribing the user's deferral (extracting it from their
+  feedback) — this is the ONE place the flow writes to triage, and only to record
+  what the user chose to defer, never your own observations.
+- **table for later** — maybe someday → likewise capture it to the user's `docs/triage.md`.
 
 Loop test → triage → fix-now until the user has no fix-nows left.
 
@@ -214,10 +216,12 @@ is the workflow complete.
 - Planning docs never enter the repo: the spec+plan lives in the slice issue's body
   (drafted transiently in `docs/feature/`, deleted once on the issue). The durable
   record is the squashed commit message + the issue — never CLAUDE.md or
-  `.claude/rules/`. Never write to the user's `docs/triage.md`.
+  `.claude/rules/`. `docs/triage.md` is the user's notebook: write to it ONLY to
+  capture the user's deferrals (Phase 4), and NEVER read it to choose or plan a slice.
 - SCOPE IS FROZEN AT THE PHASE 1 GATE. A new feature/scope idea that surfaces
-  mid-build goes to the spec's **Deferred** list and is surfaced to the user — it is
-  NOT built on the current branch. Phase 4 triage is the firewall.
+  mid-build goes to the spec's **Deferred** list, or — when the user defers it — the
+  user's `docs/triage.md`; it is NOT built on the current branch. Phase 4 triage is
+  the firewall.
 - If the dependency preflight or boot smoke reveals the fix requires a dependency
   MAJOR upgrade, a framework migration, or a schema/data migration, the workflow
   STOPS and presents findings + options to the user as an explicit ✋ gate — never
