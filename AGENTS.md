@@ -39,14 +39,17 @@ pnpm format     # Biome format --write
 
 ### Code map
 
-```text
-agent/        the eve agent              → rule: eve-agent
-app/          routes + /auth/* callbacks → rules: nextjs-app, design-system
-components/   ui/ (shadcn) + ai-elements → rule: design-system
-lib/          Supabase clients + auth    → rule: supabase-auth
-docs/         triage.md, agent-notes.md  (human / agent records)
-.claude/      rules · references · skills · agents
-```
+Top-level folders; deeper structure lives in the linked reference.
+
+- `agent/` — the eve agent (three files). Details: `.claude/references/agent.md`.
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `dashboard/` shell. Details: `.claude/references/app.md`.
+- `components/`
+  - `components/ui/` — stock shadcn kit.
+  - `components/ai-elements/` — chat-surface kit.
+  - `components/auth-shell.tsx`, `components/logo.tsx` — the only bespoke shared components.
+- `lib/` — Supabase clients + auth server actions. Details: `.claude/references/lib.md`.
+- `docs/` — `triage.md` (my deferrals), `agent-notes.md` (the agent's review queue).
+- `.claude/` — `rules/` · `references/` · `skills/` · `agents/`.
 
 - **Rules** (`.claude/rules/`) are always enforced, path-scoped — the behavioral layer.
 - **References** (`.claude/references/`) are progressive deep-dives, pulled only when needed.
