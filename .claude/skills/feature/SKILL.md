@@ -42,15 +42,15 @@ matching skill from AGENTS.md's Skills table (`vercel:eve`, `vercel:ai-sdk`,
 `vercel:shadcn`, `vercel:nextjs`, …). Dispatched agents do NOT inherit this — every
 dispatch prompt must name the skills that task must invoke before writing code.
 
-**Model routing (usage-limit discipline):** Fable is for the plan only — run the
-/feature session on Fable through the Phase 1 gate, then suggest the user switch
-the session to Opus (`/model opus`) for the build phases. Every dispatch runs a
-cheaper tier: `implementer` and `task-reviewer` default to `opus` via their
-frontmatter; /simplify and /code-review finder AND verifier agents dispatch with
-`model: "opus"`; recon/Explore and mechanical-sweep agents use `model: "sonnet"`;
-lint fixers keep their own frontmatter (sonnet/opus). NEVER pin `fable` in an
-agent file or a dispatch — if Fable's usage limit hits, only the session model
-is affected and the user can switch it without breaking the flow.
+**Model routing (fully automatic — the user never switches models):** the session
+runs on whatever model it started with (Opus is the norm; nothing here requires
+more). Fable enters the flow exactly once: the Fable-pinned `planner` agent in
+Phase 1. If that dispatch fails on a usage limit, re-dispatch the planner with
+`model: "opus"` and note the downgrade at the gate — never block on it. Every
+other dispatch is pinned down-tier: `planner`/`implementer`/`task-reviewer` carry
+models in their frontmatter; /simplify and /code-review finder AND verifier
+agents dispatch with `model: "opus"`; recon/Explore and mechanical-sweep agents
+with `model: "sonnet"`; lint fixers keep their own frontmatter (sonnet/opus).
 
 **Scratch discipline:** every working file this flow generates lives in `docs/feature/`
 (create it self-gitignoring: `mkdir -p docs/feature && printf '*\n' > docs/feature/.gitignore`).
@@ -69,13 +69,18 @@ on, or the untouched legacy flow. Check `docs/triage.md` ("Next slice candidates
 choosing the slice.
 
 **Clear the user's thinking first.** If the ask is rambling, confused, or pulling
-in several directions, invoke the **`interview-me`** skill — one question at a
-time, each with your best guess attached, until intent is confirmed. If the
-*direction* itself is genuinely unknown (not just fuzzy), invoke **`idea-refine`**
-for divergent options — override its save path to `docs/feature/`, never `docs/ideas/`.
-For an already-clear ask, skip both and design.
+in several directions, interview the user directly — one question at a time, each
+with your best guess attached, until intent is confirmed. If the *direction*
+itself is genuinely unknown (not just fuzzy), invoke **`idea-refine`** for
+divergent options — override its save path to `docs/feature/`, never `docs/ideas/`.
+For an already-clear ask, skip both.
 
-**Design and plan as ONE document** at `docs/feature/spec-plan.md`:
+**Draft via the `planner` agent** (`.claude/agents/planner.md` — Fable-pinned;
+the flow's ONE top-model step): dispatch it with the confirmed ask + interview
+conclusions; it grounds itself in AGENTS.md, `docs/triage.md`, and the code, and
+returns the complete spec+plan, which you save verbatim to
+`docs/feature/spec-plan.md`. Gate revisions re-dispatch the planner with the
+prior draft + the user's feedback. The document is ONE spec+plan:
 
 - Opens with a **definition-of-done in ≤2 sentences** — if it can't be said that
   briefly, the slice is too big; cut it before the gate.
@@ -89,11 +94,11 @@ For an already-clear ask, skip both and design.
   Split tasks only where a reviewer could meaningfully reject one while approving
   its neighbor. Global constraints (hard guards, conventions) stated once at the
   top; tasks reference them, never restate them.
-- **Big/architectural slices only** (rare): before writing the plan, dispatch 3–4
-  parallel subagents in one message, each drafting a 1–2 page plan *sketch* under a
-  distinct directive (risk-first, YAGNI-minimal, vertical-slice, verification-first)
-  into `docs/feature/`. Synthesize: credit what each sketch got right, resolve conflicts
-  by checking the installed SDK/docs — never by vibes. Sketches die at the gate.
+- **Big/architectural slices only** (rare): before the planner runs, dispatch 3–4
+  parallel subagents (`model: "opus"`) in one message, each drafting a 1–2 page plan
+  *sketch* under a distinct directive (risk-first, YAGNI-minimal, vertical-slice,
+  verification-first) into `docs/feature/`; hand the sketches to the planner as
+  input. Sketches die at the gate.
 
 GATE: **paste the complete spec+plan text into chat** — never a pointer to a file or
 the issue; chat is the only review surface. The user revises en-masse, as many
