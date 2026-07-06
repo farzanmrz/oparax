@@ -7,7 +7,21 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/*.css"]
+    "includes": [
+      "**",
+      "!**/*.css",
+      "!**/node_modules/**",
+      "!.next/**",
+      "!.eve/**",
+      "!.output/**",
+      "!.workflow-data/**",
+      "!.vercel/**",
+      "!out/**",
+      "!data/**",
+      "!components/ui/**",
+      "!components/ai-elements/**",
+      "!.claude/skills/ai-elements/**"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -28,7 +42,10 @@
       "react": "recommended"
     },
     "rules": {
-      "recommended": true
+      "preset": "recommended",
+      "suspicious": {
+        "useBiomeIgnoreFolder": "off"
+      }
     }
   },
   "assist": {

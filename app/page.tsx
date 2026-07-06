@@ -75,8 +75,8 @@ export default async function RootPage() {
                 Breaking, before it breaks
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                When a story starts moving, Oparax flags it immediately with the context you need
-                to decide whether it&apos;s yours to run with.
+                When a story starts moving, Oparax flags it immediately with the context you need to
+                decide whether it&apos;s yours to run with.
               </p>
             </article>
             <article className="bg-background p-6 md:p-8">
@@ -85,8 +85,8 @@ export default async function RootPage() {
               </p>
               <h2 className="mt-3 text-lg font-semibold tracking-tight">Posts in your voice</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Drafts arrive written the way you write — your cadence, your framing — so filing
-                is an edit, not a rewrite.
+                Drafts arrive written the way you write — your cadence, your framing — so filing is
+                an edit, not a rewrite.
               </p>
             </article>
           </div>

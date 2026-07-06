@@ -32,7 +32,13 @@ export function LoginForm() {
         <label htmlFor="password" className="block text-sm font-medium">
           Password
         </label>
-        <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
       </div>
       {state.error && (
         <p role="alert" className="text-sm leading-relaxed text-destructive">
