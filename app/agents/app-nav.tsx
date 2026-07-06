@@ -4,14 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const links = [
-  { href: "/agents", label: "Agents" },
-  { href: "/agents/settings", label: "Settings" },
-] as const;
+const links = [{ href: "/agents", label: "Agents" }] as const;
 
 // Client island for the app top-bar nav: highlights the active section.
-// "Agents" covers the listing, /new and /[id]; "Settings" is the nested
-// /agents/settings — special-cased so it doesn't also light up "Agents".
+// "Agents" covers the listing, /new and /[id]. Settings moved into the
+// account dropdown (user-menu.tsx), so it no longer appears here.
 export function AppNav() {
   const pathname = usePathname();
 

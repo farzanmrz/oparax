@@ -1,35 +1,36 @@
 "use client";
 
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, MessageSquareTextIcon, TablePropertiesIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AgentChat } from "./agent-chat";
 
+const LEAVE_MESSAGE =
+  "Leave this page? Your agent setup conversation will be lost.";
+
 /**
- * Create-agent experience: a slim header (back link + title) over the existing
- * eve-backed AgentChat. Once the reporter sends their first message the page is
- * "dirty"; while dirty we intercept reload / tab close (native beforeunload),
- * browser Back (popstate trap), and in-app navigation (capture-phase clicks on
- * internal links — the back link, the top-bar logo and nav) and confirm before
- * leaving. We only navigate on "Leave anyway".
+ * Create-agent experience: a slim header (back link, title, chat/form view
+ * toggle) over the eve-backed AgentChat. Once the reporter sends their first
+ * message the page is "dirty"; while dirty we use the browser's native
+ * confirmation for every exit path — beforeunload for reload/tab close, and
+ * window.confirm for browser Back and in-app link navigation.
+ *
+ * The Form view is a planned alternative that will transfer the chat state
+ * into structured fields; the toggle ships disabled until that lands.
  */
 export function NewAgentExperience() {
   const router = useRouter();
   const [dirty, setDirty] = useState(false);
-  // A non-null pending target both opens the dialog and remembers where to go.
-  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
-  // Reload / tab close: the browser's native confirmation is the only option.
+  // Reload / tab close: the browser's native confirmation.
   useEffect(() => {
     if (!dirty) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -40,7 +41,8 @@ export function NewAgentExperience() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [dirty]);
 
-  // In-app navigation: catch clicks on internal links before Next routes.
+  // In-app navigation: catch clicks on internal links before Next routes and
+  // put up the native confirm dialog.
   useEffect(() => {
     if (!dirty) return;
     const handleClick = (event: MouseEvent) => {
@@ -52,37 +54,33 @@ export function NewAgentExperience() {
       const target = anchor.getAttribute("target");
       if (!href || !href.startsWith("/") || (target && target !== "_self")) return;
       if (href === window.location.pathname) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setPendingHref(href);
+      if (!window.confirm(LEAVE_MESSAGE)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
     };
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
   }, [dirty]);
 
-  // Browser Back: keep a trap entry on the stack and re-arm it on each attempt
-  // so the reporter stays put until they confirm.
+  // Browser Back: keep a trap entry on the stack; confirm natively, then
+  // either navigate away or re-arm the trap.
   useEffect(() => {
     if (!dirty) return;
     window.history.pushState(null, "", window.location.href);
     const handlePopState = () => {
-      window.history.pushState(null, "", window.location.href);
-      setPendingHref("/agents");
+      if (window.confirm(LEAVE_MESSAGE)) {
+        setDirty(false);
+        router.push("/agents");
+      } else {
+        window.history.pushState(null, "", window.location.href);
+      }
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [dirty]);
+  }, [dirty, router]);
 
-  const handleLeave = useCallback(() => {
-    const href = pendingHref ?? "/agents";
-    setPendingHref(null);
-    // Disarm the guards, then navigate programmatically (not a DOM click, so the
-    // capture handler won't re-fire).
-    setDirty(false);
-    router.push(href);
-  }, [pendingHref, router]);
-
-  const handleStay = useCallback(() => setPendingHref(null), []);
+  const handleDirtyChange = useCallback((next: boolean) => setDirty(next), []);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -95,34 +93,40 @@ export function NewAgentExperience() {
           Agents
         </Link>
         <span aria-hidden="true" className="h-4 w-px bg-border" />
-        <h1 className="text-lg font-semibold leading-none tracking-tight">New agent</h1>
+        <h1 className="text-lg leading-none font-semibold tracking-tight">New agent</h1>
+
+        <ButtonGroup aria-label="Setup mode" className="ml-auto">
+          <Button aria-pressed="true" size="sm" type="button" variant="secondary">
+            <MessageSquareTextIcon />
+            Chat
+          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* span wrapper so the tooltip fires on a disabled button */}
+              <span tabIndex={0}>
+                <Button
+                  aria-disabled="true"
+                  className="pointer-events-none rounded-l-none"
+                  disabled
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <TablePropertiesIcon />
+                  Form
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Form view is coming soon — it will carry this chat over.
+            </TooltipContent>
+          </Tooltip>
+        </ButtonGroup>
       </header>
 
-      <div className="min-h-0 flex-1 py-4">
-        <AgentChat onDirtyChange={setDirty} />
+      <div className="min-h-0 flex-1">
+        <AgentChat onDirtyChange={handleDirtyChange} />
       </div>
-
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open) setPendingHref(null);
-        }}
-        open={pendingHref !== null}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Leave and lose this conversation?</DialogTitle>
-            <DialogDescription>Your progress isn&apos;t saved yet.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={handleStay} variant="outline">
-              Stay
-            </Button>
-            <Button onClick={handleLeave} variant="destructive">
-              Leave anyway
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
