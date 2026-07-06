@@ -22,7 +22,7 @@ export default async function ForgotPasswordPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect("/agents");
 
   const { error, message } = await searchParams;
 

@@ -1,6 +1,6 @@
 # Oparax
 
-AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → dashboard with an eve agent chat (localhost-only) and settings.
+AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → an agent listing, a create-agent eve chat (localhost-only), and settings.
 
 ## Stack
 
@@ -42,13 +42,13 @@ pnpm format     # Biome format --write
 Top-level folders; deeper structure lives in the linked reference, read on demand.
 
 - `agent/` — the eve agent (three files). → `.claude/references/agent.md`
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `dashboard/` shell. → `.claude/references/app.md`
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `agents/` shell (listing · `new/` chat · `[id]` details · `settings/`). → `.claude/references/app.md`
 - `components/`
   - `components/ui/` — stock shadcn kit.
   - `components/ai-elements/` — chat-surface kit.
   - `components/auth-shell.tsx`, `components/logo.tsx` — the only bespoke shared components.
 - `lib/` — Supabase clients + auth server actions. → `.claude/references/lib.md`
-- `docs/` — `triage.md`, `agent-notes.md`.
+- `docs/` — `triage.md`, `agent-notes.md`, `roadmap.md` (the ordered feature flow, for reference — the one docs file that IS a slice source).
 - `.claude/` — `references/` (progressive info) · `skills` · `agents`.
 
 Gitignored, regenerable (delete freely when nothing runs): `.eve/`, `.next/`, `.output/`, `.workflow-data/`, `data/`, `.vercel/`.

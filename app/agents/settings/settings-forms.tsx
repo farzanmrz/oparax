@@ -5,7 +5,7 @@ import {
   deleteAccount,
   type UpdateUsernameState,
   updateUsername,
-} from "@/app/dashboard/settings/actions";
+} from "./actions";
 
 // Username update — drives the existing updateUsername action; `username` is
 // the field name the action reads. The action's revalidatePath already

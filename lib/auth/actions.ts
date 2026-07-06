@@ -76,7 +76,7 @@ export async function loginAction(
     };
   }
 
-  redirect("/dashboard/agents");
+  redirect("/agents");
 }
 
 export async function signupAction(
@@ -120,7 +120,7 @@ export async function signupAction(
   }
 
   if (data.session) {
-    redirect("/dashboard/agents");
+    redirect("/agents");
   }
 
   // No session yet — email confirmation pending. The signup form swaps to a

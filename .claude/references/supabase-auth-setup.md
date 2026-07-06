@@ -1,7 +1,7 @@
 # Supabase auth setup (dashboard-side configuration)
 
 The app-side flow: auth email links land on `/auth/confirm`
-(`app/(auth)/auth/confirm/route.ts`), which routes users onward — signup
+(`app/auth/confirm/route.ts`), which routes users onward — signup
 verification signs the session back out and lands on `/login` with a success
 notice; password recovery forwards to `/auth/reset-password` with the token
 consumed only on submit.

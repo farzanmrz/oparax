@@ -55,8 +55,8 @@ export async function updateUsername(
     };
   }
 
-  // Refresh the dashboard layout so the header reflects the new username.
-  revalidatePath("/dashboard", "layout");
+  // Refresh the app shell so the header reflects the new username.
+  revalidatePath("/agents", "layout");
   return {
     success: true,
   };

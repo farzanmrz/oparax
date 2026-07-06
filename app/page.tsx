@@ -11,7 +11,7 @@ export default async function RootPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect("/agents");
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
