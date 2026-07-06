@@ -1,12 +1,13 @@
 "use client";
 
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { EveMessage, EveMessagePart } from "eve/react";
 import { useEveAgent } from "eve/react";
 import {
   Conversation,
   ConversationContent,
+  ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import {
@@ -18,9 +19,12 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
   type PromptInputMessage,
   PromptInputSubmit,
   PromptInputTextarea,
+  PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
@@ -37,20 +41,34 @@ import { OparaxMark } from "@/components/logo";
 // Starter prompts shown in the empty state; each routes through the same
 // agent.send path the prompt input uses.
 const STARTER_PROMPTS = [
-  "What's breaking on my beat right now?",
-  "Brief me on the biggest story of the last hour",
-  "Draft a post in my voice about the latest development",
+  "Set up a desk covering AI industry news",
+  "I cover US politics — build my agent",
+  "Watch crypto markets and draft posts in my voice",
 ];
 
 /**
- * Minimal chat over the repo's eve agent, adapted from eve's scaffold web
- * template (agent-chat + agent-message, trimmed to text/reasoning/tool parts).
- * Talks to the same-origin /eve/v1/* routes mounted by withEve(); one session
- * per mount, no persistence.
+ * Chat over the repo's eve agent, laid out to mirror the AI Elements chatbot
+ * example: one full-height Conversation (empty state lives inside it) with a
+ * structured PromptInput (body + footer toolbar) pinned below. Talks to the
+ * same-origin /eve/v1/* routes mounted by withEve(); one session per mount,
+ * no persistence. The eve wiring (useEveAgent, send, stop) is unchanged.
  */
-export function AgentChat() {
+export function AgentChat({
+  onDirtyChange,
+}: {
+  /** Fired whenever the conversation gains/loses content, so a parent can guard
+   *  unsaved progress. Additive only — does not alter the eve send wiring. */
+  readonly onDirtyChange?: (dirty: boolean) => void;
+} = {}) {
   const agent = useEveAgent();
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
+
+  // Report dirtiness (has the desk received any messages yet?) to an optional
+  // parent guard. Observation only — the send handlers below are untouched.
+  const messageCount = agent.data.messages.length;
+  useEffect(() => {
+    onDirtyChange?.(messageCount > 0);
+  }, [messageCount, onDirtyChange]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const text = message.text.trim();
@@ -69,60 +87,67 @@ export function AgentChat() {
   const isEmpty = agent.data.messages.length === 0;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      {isEmpty ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
-          <div className="flex size-16 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-            <OparaxMark className="size-8 text-primary" />
-          </div>
-          <div className="space-y-1.5">
-            <div className="mx-auto mb-3 flex w-fit items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              <span aria-hidden="true" className="relative flex size-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-              </span>
-              Desk online
-            </div>
-            <h2 className="text-xl font-semibold tracking-tight text-balance">
-              What&apos;s moving on your beat?
-            </h2>
-            <p className="mx-auto max-w-md text-sm leading-relaxed text-pretty text-muted-foreground">
-              Ask your desk to scan the wire, brief you on a developing story, or draft a post in
-              your voice.
-            </p>
-          </div>
-          <Suggestions className="justify-center">
-            {STARTER_PROMPTS.map((prompt) => (
-              <Suggestion key={prompt} onClick={handleSuggestion} suggestion={prompt} />
-            ))}
-          </Suggestions>
-        </div>
-      ) : (
-        <Conversation className="min-h-0 flex-1">
-          <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-0 py-4">
-            {agent.data.messages.map((message) => (
-              <AgentMessage key={message.id} message={message} />
-            ))}
-            {agent.status === "submitted" ? (
-              <Message from="assistant">
-                <MessageContent>
-                  <Shimmer className="text-sm">Scanning the wire…</Shimmer>
-                </MessageContent>
-              </Message>
-            ) : null}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-      )}
+    <div className="flex h-full min-h-0 flex-col">
+      <Conversation className="min-h-0 flex-1">
+        <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-1 py-6">
+          {isEmpty ? (
+            <ConversationEmptyState
+              description="Describe the beat you cover, the sources that matter, and the voice you post in — your agent takes it from there."
+              icon={
+                <span className="flex size-14 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+                  <OparaxMark className="size-7 text-primary" />
+                </span>
+              }
+              title="Brief your new agent"
+            >
+              <Suggestions className="mt-2 justify-center">
+                {STARTER_PROMPTS.map((prompt) => (
+                  <Suggestion key={prompt} onClick={handleSuggestion} suggestion={prompt} />
+                ))}
+              </Suggestions>
+            </ConversationEmptyState>
+          ) : (
+            <>
+              {agent.data.messages.map((message) => (
+                <AgentMessage key={message.id} message={message} />
+              ))}
+              {agent.status === "submitted" ? (
+                <Message from="assistant">
+                  <MessageContent>
+                    <Shimmer className="text-sm">Thinking…</Shimmer>
+                  </MessageContent>
+                </Message>
+              ) : null}
+            </>
+          )}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
 
       {agent.error ? (
-        <p className="text-destructive text-sm">Request failed: {agent.error.message}</p>
+        <p className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-2 text-sm text-destructive">
+          Request failed: {agent.error.message}
+        </p>
       ) : null}
 
-      <PromptInput onSubmit={handleSubmit} className="shrink-0">
-        <PromptInputTextarea disabled={isBusy} placeholder="Ask your news desk…" />
-        <PromptInputSubmit onStop={agent.stop} status={agent.status} />
-      </PromptInput>
+      <div className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-4">
+        <PromptInput onSubmit={handleSubmit}>
+          <PromptInputBody>
+            <PromptInputTextarea
+              disabled={isBusy}
+              placeholder="Describe the beat your agent should cover…"
+            />
+          </PromptInputBody>
+          <PromptInputFooter>
+            <PromptInputTools>
+              <span className="px-2 font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                Oparax desk agent
+              </span>
+            </PromptInputTools>
+            <PromptInputSubmit onStop={agent.stop} status={agent.status} />
+          </PromptInputFooter>
+        </PromptInput>
+      </div>
     </div>
   );
 }
@@ -183,8 +208,10 @@ function AgentMessagePart({ part }: { readonly part: EveMessagePart }) {
         </MessageResponse>
       );
     case "reasoning":
+      // Mirrors the AI Elements chatbot example: auto-opens while the model is
+      // reasoning, collapses to a "Thought for…" trigger when done.
       return (
-        <Reasoning defaultOpen isStreaming={part.state === "streaming"}>
+        <Reasoning isStreaming={part.state === "streaming"}>
           <ReasoningTrigger />
           <ReasoningContent>{part.text}</ReasoningContent>
         </Reasoning>
