@@ -17,7 +17,9 @@ export function AppNav() {
       {links.map((link) => {
         const isActive =
           link.href === "/agents"
-            ? pathname === "/agents" || pathname.startsWith("/agents/new") || isAgentDetail(pathname)
+            ? pathname === "/agents" ||
+              pathname.startsWith("/agents/new") ||
+              isAgentDetail(pathname)
             : pathname.startsWith(link.href);
         return (
           <Link
@@ -40,12 +42,10 @@ export function AppNav() {
 }
 
 // A detail route (/agents/<id>) but not /agents/new or /agents/settings.
+// Match the first path segment exactly so an id like "newsdesk" isn't
+// mistaken for the /agents/new route.
 function isAgentDetail(pathname: string): boolean {
-  const rest = pathname.slice("/agents/".length);
-  return (
-    pathname.startsWith("/agents/") &&
-    rest.length > 0 &&
-    !rest.startsWith("new") &&
-    !rest.startsWith("settings")
-  );
+  if (!pathname.startsWith("/agents/")) return false;
+  const segment = pathname.slice("/agents/".length).split("/")[0];
+  return segment.length > 0 && segment !== "new" && segment !== "settings";
 }

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { OparaxMark } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OparaxMark } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 export type AgentStatus = "live" | "paused";
@@ -72,11 +72,12 @@ export function AgentsList({
     const filtered = needle
       ? agents.filter(
           (agent) =>
-            agent.name.toLowerCase().includes(needle) ||
-            agent.beat.toLowerCase().includes(needle),
+            agent.name.toLowerCase().includes(needle) || agent.beat.toLowerCase().includes(needle),
         )
       : agents.slice();
-    return [...filtered].sort((a, b) => {
+    // `filtered` is always a fresh array (filter/slice), so sorting in place
+    // never mutates the `agents` prop.
+    return filtered.sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "newest")
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -236,8 +237,8 @@ function EmptyState() {
           Start your first news desk
         </h2>
         <p className="mx-auto max-w-md text-sm leading-relaxed text-pretty text-muted-foreground">
-          A desk is an agent that watches a beat around the clock — aggregating atomic news
-          items, surfacing developing stories, and drafting posts in your voice.
+          A desk is an agent that watches a beat around the clock — aggregating atomic news items,
+          surfacing developing stories, and drafting posts in your voice.
         </p>
       </div>
       <Button asChild size="lg">
@@ -250,13 +251,7 @@ function EmptyState() {
   );
 }
 
-function NoResults({
-  query,
-  onClear,
-}: {
-  readonly query: string;
-  readonly onClear: () => void;
-}) {
+function NoResults({ query, onClear }: { readonly query: string; readonly onClear: () => void }) {
   return (
     <div className="flex min-h-full flex-col items-center justify-center gap-4 px-4 py-12 text-center">
       <span className="flex size-12 items-center justify-center rounded-full border border-border bg-muted/40">

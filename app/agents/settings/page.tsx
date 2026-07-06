@@ -1,13 +1,7 @@
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getUsername } from "@/lib/user";
@@ -36,9 +30,7 @@ export default async function SettingsPage() {
           Agents
         </Link>
         <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your profile and account.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Manage your profile and account.</p>
       </header>
 
       <div className="flex flex-col gap-6 py-6">
@@ -77,8 +69,7 @@ export default async function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-destructive">Danger zone</CardTitle>
             <CardDescription>
-              Permanently delete your account, your agents, and everything they&apos;ve
-              aggregated.
+              Permanently delete your account, your agents, and everything they&apos;ve aggregated.
             </CardDescription>
           </CardHeader>
           <CardContent>

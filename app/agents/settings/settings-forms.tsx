@@ -4,11 +4,7 @@ import { CheckIcon } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  deleteAccount,
-  type UpdateUsernameState,
-  updateUsername,
-} from "./actions";
+import { deleteAccount, type UpdateUsernameState, updateUsername } from "./actions";
 
 // Username update — drives the existing updateUsername action; `username` is
 // the field name the action reads. The action's revalidatePath already
@@ -44,7 +40,7 @@ export function UsernameForm({ initialUsername }: { initialUsername: string }) {
         </p>
       ) : null}
       {state.success ? (
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground" role="status">
           <CheckIcon aria-hidden="true" className="size-3.5 text-primary" />
           Saved.
         </p>

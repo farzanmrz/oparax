@@ -1,9 +1,9 @@
 "use client";
 
-import { CheckIcon, CopyIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 import type { EveMessage, EveMessagePart } from "eve/react";
 import { useEveAgent } from "eve/react";
+import { CheckIcon, CopyIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -157,9 +157,7 @@ function AgentMessage({ message }: { readonly message: EveMessage }) {
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join("\n\n");
-  const isStreaming = message.parts.some(
-    (part) => "state" in part && part.state === "streaming",
-  );
+  const isStreaming = message.parts.some((part) => "state" in part && part.state === "streaming");
   const showActions = message.role === "assistant" && text.length > 0 && !isStreaming;
 
   return (

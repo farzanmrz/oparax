@@ -12,22 +12,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import {
-  Task,
-  TaskContent,
-  TaskItem,
-  TaskTrigger,
-} from "@/components/ai-elements/task";
+import { Task, TaskContent, TaskItem, TaskTrigger } from "@/components/ai-elements/task";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -100,9 +91,7 @@ export function AgentDashboard({ agent }: { readonly agent: AgentDetail }) {
               <Badge
                 className={cn(
                   "font-mono text-[10px] tracking-wider uppercase",
-                  agent.status === "live"
-                    ? "border-live/40 text-live"
-                    : "text-muted-foreground",
+                  agent.status === "live" ? "border-live/40 text-live" : "text-muted-foreground",
                 )}
                 variant="outline"
               >
@@ -169,8 +158,9 @@ function Stat({
       <span aria-hidden="true" className="text-muted-foreground [&_svg]:size-3.5">
         {icon}
       </span>
+      {/* dt precedes dd per the dl spec; order-last keeps the value-then-label visual */}
+      <dt className="order-last text-xs text-muted-foreground">{label}</dt>
       <dd className="font-mono text-sm font-medium">{value}</dd>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
     </div>
   );
 }
@@ -179,13 +169,18 @@ function Stat({
 function ComingSoonButton({
   icon,
   label,
+  variant = "outline",
+  tooltip = "Coming soon",
 }: {
   readonly icon: React.ReactNode;
   readonly label: string;
+  readonly variant?: React.ComponentProps<typeof Button>["variant"];
+  readonly tooltip?: string;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: focusable wrapper so a disabled trigger's tooltip still reaches keyboard users (Radix pattern) */}
         <span tabIndex={0}>
           <Button
             aria-disabled="true"
@@ -193,14 +188,14 @@ function ComingSoonButton({
             disabled
             size="sm"
             type="button"
-            variant="outline"
+            variant={variant}
           >
             {icon}
             {label}
           </Button>
         </span>
       </TooltipTrigger>
-      <TooltipContent side="bottom">Coming soon</TooltipContent>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
     </Tooltip>
   );
 }
@@ -224,12 +219,17 @@ function WireFeed({ items }: { readonly items: readonly WireItem[] }) {
         <li className="flex flex-col gap-1.5 px-4 py-4 sm:px-5" key={item.id}>
           <div className="flex items-center gap-2">
             {item.breaking ? (
-              <Badge className="border-live/40 font-mono text-[10px] tracking-wider text-live uppercase" variant="outline">
+              <Badge
+                className="border-live/40 font-mono text-[10px] tracking-wider text-live uppercase"
+                variant="outline"
+              >
                 Breaking
               </Badge>
             ) : null}
             <span className="font-mono text-xs text-muted-foreground">{item.source}</span>
-            <span aria-hidden="true" className="text-muted-foreground/50">·</span>
+            <span aria-hidden="true" className="text-muted-foreground/50">
+              ·
+            </span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <ClockIcon aria-hidden="true" className="size-3" />
               {item.minutesAgo}m ago
@@ -279,23 +279,12 @@ function DraftsPanel({ drafts }: { readonly drafts: readonly Draft[] }) {
             </span>
             <div className="flex items-center gap-2">
               <ComingSoonButton icon={<PenLineIcon />} label="Draft with agent" />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button
-                      aria-disabled="true"
-                      className="pointer-events-none"
-                      disabled
-                      size="sm"
-                      type="button"
-                    >
-                      <SendIcon />
-                      Post to X
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Posting connects once X is linked</TooltipContent>
-              </Tooltip>
+              <ComingSoonButton
+                icon={<SendIcon />}
+                label="Post to X"
+                tooltip="Posting connects once X is linked"
+                variant="default"
+              />
             </div>
           </div>
         </CardContent>

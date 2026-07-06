@@ -28,13 +28,19 @@ export function UserMenu({ username }: { readonly username: string }) {
 
   async function signOut() {
     setPending(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/");
-    // Invalidate the client router cache (incl. bfcache): without this, the
-    // browser Back button can restore a signed-in dashboard payload with no
-    // server round-trip after sign-out.
-    router.refresh();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/");
+      // Invalidate the client router cache (incl. bfcache): without this, the
+      // browser Back button can restore a signed-in dashboard payload with no
+      // server round-trip after sign-out.
+      router.refresh();
+    } catch {
+      // Sign-out failed (network/transient) — re-enable the control to retry
+      // instead of leaving it stuck on "Signing out…".
+      setPending(false);
+    }
   }
 
   const initials = username
@@ -48,19 +54,13 @@ export function UserMenu({ username }: { readonly username: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          className="gap-2 px-1.5 data-[state=open]:bg-muted"
-          type="button"
-          variant="ghost"
-        >
+        <Button className="gap-2 px-1.5 data-[state=open]:bg-muted" type="button" variant="ghost">
           <Avatar className="size-6">
             <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
               {initials || "?"}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-32 truncate text-sm font-medium sm:inline">
-            {username}
-          </span>
+          <span className="hidden max-w-32 truncate text-sm font-medium sm:inline">{username}</span>
           <ChevronDownIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>

@@ -6,15 +6,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AgentChat } from "./agent-chat";
 
-const LEAVE_MESSAGE =
-  "Leave this page? Your agent setup conversation will be lost.";
+const LEAVE_MESSAGE = "Leave this page? Your agent setup conversation will be lost.";
 
 /**
  * Create-agent experience: a slim header (back link, title, chat/form view
@@ -52,7 +47,7 @@ export function NewAgentExperience() {
       if (!anchor) return;
       const href = anchor.getAttribute("href");
       const target = anchor.getAttribute("target");
-      if (!href || !href.startsWith("/") || (target && target !== "_self")) return;
+      if (!href?.startsWith("/") || (target && target !== "_self")) return;
       if (href === window.location.pathname) return;
       if (!window.confirm(LEAVE_MESSAGE)) {
         event.preventDefault();
@@ -102,7 +97,7 @@ export function NewAgentExperience() {
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
-              {/* span wrapper so the tooltip fires on a disabled button */}
+              {/* biome-ignore lint/a11y/noNoninteractiveTabindex: focusable wrapper so a disabled trigger's tooltip still reaches keyboard users (Radix pattern) */}
               <span tabIndex={0}>
                 <Button
                   aria-disabled="true"

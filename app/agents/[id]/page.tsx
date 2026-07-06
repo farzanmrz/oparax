@@ -1,4 +1,4 @@
-import { type AgentDetail, AgentDashboard } from "./agent-dashboard";
+import { AgentDashboard, type AgentDetail } from "./agent-dashboard";
 
 /**
  * Agent details page — the per-desk dashboard (wire feed, drafts, activity
@@ -6,11 +6,7 @@ import { type AgentDetail, AgentDashboard } from "./agent-dashboard";
  * replaces it with the persisted agent looked up by `id`. The AgentDetail type
  * in agent-dashboard.tsx documents the exact shape that query must produce.
  */
-export default async function AgentDetailsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function AgentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const placeholder: AgentDetail = {
