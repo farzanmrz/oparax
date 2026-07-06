@@ -1,0 +1,8 @@
+# Upstream/vendored skill — do not edit locally (meta-dev provenance marker)
+source:   vercel/ai-elements@ai-elements
+install:  npx skills add vercel/ai-elements@ai-elements
+registry: https://skills.sh/vercel/ai-elements/ai-elements
+
+Vendored copy of Vercel AI Elements component docs (~12.8K installs). Local
+edits drift from the source and are lost on re-sync — fix upstream or re-install.
+Remove this marker only to deliberately adopt the skill as project-owned.
