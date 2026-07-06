@@ -8,7 +8,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 | --- | --- | --- |
 | Framework | Next.js (App Router) | 16.2 |
 | UI | React | 19.2 |
-| Language | TypeScript strict (`@/*` → repo root) | 5 |
+| Language | TypeScript strict (`@/*` → repo root) | 6 |
 | Agent | eve (mounted at `/eve/v1/*` by `withEve()`) | 0.19.0 |
 | AI SDK | `ai` / `@ai-sdk/react` / `@ai-sdk/xai` | 7 / 4 / 4 |
 | Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
