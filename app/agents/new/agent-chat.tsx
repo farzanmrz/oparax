@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { EveMessage, EveMessagePart } from "eve/react";
 import { useEveAgent } from "eve/react";
 import {
@@ -48,9 +48,22 @@ const STARTER_PROMPTS = [
  * Talks to the same-origin /eve/v1/* routes mounted by withEve(); one session
  * per mount, no persistence.
  */
-export function AgentChat() {
+export function AgentChat({
+  onDirtyChange,
+}: {
+  /** Fired whenever the conversation gains/loses content, so a parent can guard
+   *  unsaved progress. Additive only — does not alter the eve send wiring. */
+  readonly onDirtyChange?: (dirty: boolean) => void;
+} = {}) {
   const agent = useEveAgent();
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
+
+  // Report dirtiness (has the desk received any messages yet?) to an optional
+  // parent guard. Observation only — the send handlers below are untouched.
+  const messageCount = agent.data.messages.length;
+  useEffect(() => {
+    onDirtyChange?.(messageCount > 0);
+  }, [messageCount, onDirtyChange]);
 
   const handleSubmit = async (message: PromptInputMessage) => {
     const text = message.text.trim();
