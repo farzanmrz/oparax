@@ -147,4 +147,27 @@
   html {
     @apply font-sans;
   }
+  /* Themed scrollbars — replace the browser-default white bar with a subtle
+     grey thumb on a transparent track, matching the ink palette. Covers
+     WebKit (Chrome/Safari/Edge) and Firefox. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
 }

@@ -24,7 +24,6 @@ import {
   type PromptInputMessage,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
@@ -89,7 +88,7 @@ export function AgentChat({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Conversation className="min-h-0 flex-1">
-        <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-1 py-6">
+        <ConversationContent className="w-full gap-6 px-1 py-4">
           {isEmpty ? (
             <ConversationEmptyState
               description="Describe the beat you cover, the sources that matter, and the voice you post in — your agent takes it from there."
@@ -125,12 +124,12 @@ export function AgentChat({
       </Conversation>
 
       {agent.error ? (
-        <p className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-2 text-sm text-destructive">
+        <p className="w-full shrink-0 px-1 pb-2 text-sm text-destructive">
           Request failed: {agent.error.message}
         </p>
       ) : null}
 
-      <div className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-4">
+      <div className="w-full shrink-0 px-1 pb-4">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputBody>
             <PromptInputTextarea
@@ -138,12 +137,7 @@ export function AgentChat({
               placeholder="Describe the beat your agent should cover…"
             />
           </PromptInputBody>
-          <PromptInputFooter>
-            <PromptInputTools>
-              <span className="px-2 font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-                Oparax desk agent
-              </span>
-            </PromptInputTools>
+          <PromptInputFooter className="justify-end">
             <PromptInputSubmit onStop={agent.stop} status={agent.status} />
           </PromptInputFooter>
         </PromptInput>

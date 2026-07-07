@@ -16,7 +16,7 @@ export default async function RootPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
+        <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <OparaxMark className="size-5" />
             Oparax
@@ -33,7 +33,7 @@ export default async function RootPage() {
       </header>
 
       <main className="flex flex-1 flex-col">
-        <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-20 md:py-28">
+        <section className="mx-auto flex w-full max-w-[81rem] flex-1 flex-col justify-center px-6 py-20 md:py-28">
           <p className="mb-6 flex items-center gap-2 text-sm font-medium tracking-widest text-muted-foreground uppercase">
             <span aria-hidden="true" className="size-2 rounded-full bg-live" />
             The AI news desk
@@ -56,7 +56,7 @@ export default async function RootPage() {
         </section>
 
         <section className="border-t border-border">
-          <div className="mx-auto grid w-full max-w-6xl gap-px bg-border px-0 md:grid-cols-3">
+          <div className="mx-auto grid w-full max-w-[81rem] gap-px bg-border px-0 md:grid-cols-3">
             <article className="bg-background p-6 md:p-8">
               <p className="text-sm font-medium tracking-widest text-muted-foreground uppercase">
                 01 — Watch
@@ -94,7 +94,7 @@ export default async function RootPage() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6 text-sm text-muted-foreground">
+        <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center justify-between px-6 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
             <OparaxMark className="size-4" />
             Oparax

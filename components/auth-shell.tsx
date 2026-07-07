@@ -20,7 +20,7 @@ export function AuthShell({
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center px-6">
+        <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <OparaxMark className="size-5" />
             Oparax

@@ -106,9 +106,9 @@ export function AgentsList({
         </Button>
       </header>
 
-      {hasAgents && !error ? (
+      {!error ? (
         <div className="flex shrink-0 flex-col gap-3 py-4 sm:flex-row sm:items-center">
-          <div className="relative w-full sm:max-w-xs">
+          <div className="relative w-full sm:flex-1">
             <SearchIcon
               aria-hidden="true"
               className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
@@ -116,13 +116,18 @@ export function AgentsList({
             <Input
               aria-label="Search agents by name or beat"
               className="pl-8"
+              disabled={!hasAgents}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search agents…"
               type="search"
               value={query}
             />
           </div>
-          <Select onValueChange={(value) => setSort(value as SortKey)} value={sort}>
+          <Select
+            disabled={!hasAgents}
+            onValueChange={(value) => setSort(value as SortKey)}
+            value={sort}
+          >
             <SelectTrigger aria-label="Sort agents" className="w-full sm:w-[160px]">
               <SelectValue />
             </SelectTrigger>
@@ -229,19 +234,19 @@ function StatusBadge({ status }: { readonly status: AgentStatus }) {
 function EmptyState() {
   return (
     <div className="flex min-h-full flex-col items-center justify-center gap-6 px-4 py-16 text-center">
-      <span className="flex size-16 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-        <OparaxMark className="size-8 text-primary" />
+      <span className="flex size-20 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+        <OparaxMark className="size-10 text-primary" />
       </span>
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold tracking-tight text-balance">
+        <h2 className="text-2xl font-semibold tracking-tight text-balance">
           Start your first news desk
         </h2>
-        <p className="mx-auto max-w-md text-sm leading-relaxed text-pretty text-muted-foreground">
+        <p className="mx-auto max-w-lg text-base leading-relaxed text-pretty text-muted-foreground">
           A desk is an agent that watches a beat around the clock — aggregating atomic news items,
           surfacing developing stories, and drafting posts in your voice.
         </p>
       </div>
-      <Button asChild size="lg">
+      <Button asChild className="h-12 px-6 text-base" size="lg">
         <Link href="/agents/new">
           <PlusIcon />
           Create your first agent

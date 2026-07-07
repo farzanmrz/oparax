@@ -24,9 +24,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <header className="shrink-0 border-b border-border bg-sidebar">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-5 px-4 sm:px-6">
+        <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center gap-5 px-4 sm:px-6">
           <Link href="/agents" className="flex items-center gap-2 font-semibold tracking-tight">
-            <OparaxMark className="size-5 text-primary" />
+            <OparaxMark className="size-5 text-foreground" />
             Oparax
           </Link>
           <span aria-hidden="true" className="h-5 w-px bg-border" />
@@ -37,7 +37,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex h-full w-full max-w-6xl flex-col px-4 sm:px-6">{children}</div>
+        <div className="mx-auto flex h-full w-full max-w-[81rem] flex-col px-4 sm:px-6">
+          {children}
+        </div>
       </main>
     </div>
   );
