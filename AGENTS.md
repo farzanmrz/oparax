@@ -2,6 +2,28 @@
 
 AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → an agent listing, a create-agent eve chat (localhost-only), and settings.
 
+## Current Focus
+
+Active slice: **issue #44 on `ft/44`** — get the create-agent chat conversation working end-to-end on the **local chat only**. No persistence, no schema, no channel auth this slice. (Remove/replace this section when #44 ships.)
+
+Already pre-set on `dev` (verify, then build on — do NOT redo): grok tool returns its full output for debugging; DeepSeek `reasoning` explicitly ON + cheapest-cost gateway routing; DeepSeek passes `fromDate`/`toDate` to the grok tool (dates no longer computed in the tool); `web_fetch` enabled and the shell/FS default tools disabled.
+
+To do in `ft/44`:
+
+- Expand `agent/instructions.md` from scan-only to the full flow — understand the beat → scan setup (web + X handles) → drafting (voice, per-platform format) → scan frequency. System prompt, not a state machine.
+- Add explicit output-format rules to the system prompt (short sentences, no em-dash rambling, a fixed structure for listing found tweets and for showing drafts) with a concrete example. → `.claude/references/prompt-authoring.md`.
+- **Foreign-language sources**: detect and translate/understand non-English tweets AND pasted articles (real user ask — paste a Spanish link → formatted English draft).
+- Tune the grok tool `SYSTEM_PROMPT` for on-beat results after inspecting its full output.
+- Decide the reasoning default empirically (on vs `none` vs adaptive) once evals exist — measure, don't guess. → `.claude/references/eval-notes.md`.
+- Stand up 2–3 flow evals in `evals/` (they need no persistence).
+
+Facts to build on:
+
+- `web_search` works with `deepseek-v4-flash`: eve routes it to Parallel AI via the gateway (gateway-executed, ~$5/1k) — available for web scanning. Footgun: keep the `agent/agent.ts` model a **plain gateway string**; a source-backed model reference makes eve silently drop `web_search`.
+- Verify DeepSeek passes a **correct** `toDate`/`fromDate` — it may not know "today"; if scans come back empty, that's the likely cause, so inject the live date (dynamic instructions).
+
+Out of scope (later slices, in order): Save persistence + Supabase schema (wire the listing/details pages to real data) → eve channel-auth for the deployed chat (currently 401s) → notifications → scheduled scans.
+
 ## Stack
 
 | Layer | Tech | Version |
@@ -66,27 +88,6 @@ Gitignored, regenerable (delete freely when nothing runs): `.eve/`, `.next/`, `.
 | env vars (local or Vercel) | `vercel:env-vars` |
 | deploys / promotes / rollbacks | `vercel:deployments-cicd` |
 | repo-wide Biome findings | `lint-resolve` |
-
-### Guards — never break
-
-- No custom design system: compose UI only from `components/ui/` (shadcn) + `components/ai-elements/`, theme via `app/globals.css` tokens, and don't prune either kit.
-- No app tables: Supabase is auth-only; local files before any schema.
-- Never downgrade the AI SDK below `ai ^7` — an earlier v6 pin broke the worker boot. eve is pinned exact; upgrade deliberately, verifying by boot check.
-- Boot-check any eve/dependency change (`pnpm build` never boots the worker): `pnpm dev`, Next "Ready", no `[env-runner]`/`[nitro]` failures.
-- Never move or rename `app/auth/confirm/` — `/auth/confirm` is hardcoded in the Supabase email templates.
-
-### Working
-
-- Instruction files (this file, references) aren't changed unilaterally — but a change the user explicitly asks for IS the agreement: make it and explain the what/why; don't pause for a separate go-ahead.
-- Two record files, never read as tasks and never a slice source:
-  - `docs/triage.md` — capture only the user's own deferrals (scribe their words).
-  - `docs/agent-notes.md` — the agent's own actionable finds, appended only when they'd otherwise be lost and announced in-session; the user prunes.
-
-### Writing markdown
-
-- Structure only to expose real hierarchy — under-structure beats over-structure.
-- One directive per bullet; headings `#`→`####` for depth; commands/code in fenced blocks; backticks for paths; a table when items share fields.
-- In this file: keep it to always-true facts and rules. Folder/file detail goes to `.claude/references/`, pulled on demand.
 
 ## Cross-tool
 
