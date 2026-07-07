@@ -80,15 +80,14 @@ Already pre-set on `dev` (verify, then build on — do NOT redo): grok tool retu
 To do in `ft/44`:
 
 - Expand `agent/instructions.md` from scan-only to the full flow — understand the beat → scan setup (web + X handles) → drafting (voice, per-platform format) → scan frequency. System prompt, not a state machine.
-- Add explicit output-format rules to the system prompt (short sentences, no em-dash rambling, a fixed structure for listing found tweets and for showing drafts) with a concrete example. → `.claude/references/prompt-authoring.md`.
+- Add explicit output-format rules to the system prompt (short sentences, no em-dash rambling, a fixed structure for listing found tweets and for showing drafts) with a concrete example. → the `prompt-authoring` skill (auto-loads when working on sysprompts).
 - **Foreign-language sources**: detect and translate/understand non-English tweets AND pasted articles (real user ask — paste a Spanish link → formatted English draft).
 - Tune the grok tool `SYSTEM_PROMPT` for on-beat results after inspecting its full output.
 - Decide the reasoning default empirically (on vs `none` vs adaptive) once evals exist — measure, don't guess. → `.claude/references/eval-notes.md`.
 - Stand up 2–3 flow evals in `evals/` (they need no persistence).
 
-Facts to build on:
+Verify on this branch:
 
-- `web_search` works with `deepseek-v4-flash`: eve routes it to Parallel AI via the gateway (gateway-executed, ~$5/1k) — available for web scanning. Footgun: keep the `agent/agent.ts` model a **plain gateway string**; a source-backed model reference makes eve silently drop `web_search`.
-- Verify DeepSeek passes a **correct** `toDate`/`fromDate` — it may not know "today"; if scans come back empty, that's the likely cause, so inject the live date (dynamic instructions).
+- DeepSeek passes a **correct** `toDate`/`fromDate` — it may not know "today"; if scans come back empty, that's the likely cause, so inject the live date (dynamic instructions).
 
 Out of scope (later slices, in order): Save persistence + Supabase schema (wire the listing/details pages to real data) → eve channel-auth for the deployed chat (currently 401s) → notifications → scheduled scans.

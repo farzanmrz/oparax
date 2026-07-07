@@ -36,7 +36,3 @@ Each eval run starts a fresh session and makes real model + tool calls (DeepSeek
 ## Reasoning default — decide here, not by guess
 
 `agent/agent.ts` ships with `reasoning: "medium"` (thinking ON; DeepSeek maps "medium" → effort `high`). To compare, flip to `reasoning: "none"` and run the same flows: watch tool-arg correctness, flow adherence, latency, and output verbosity. Let the eval delta pick the default. (DeepSeek collapses low/medium→high, so only `none` vs on is a meaningful comparison; `"adaptive"` is unverified for V4-flash.)
-
-## web_search — it works with DeepSeek (technical note)
-
-eve's built-in `web_search` is live for `deepseek/deepseek-v4-flash`: eve routes a plain-string gateway model to Parallel AI's search, executed server-side by the Vercel AI Gateway (model-agnostic), ~$5/1k. **Footgun:** keep the `agent/agent.ts` model a plain gateway string — if it's ever re-authored as a source-backed model reference, eve's resolver returns `null` for the `deepseek` prefix and silently drops `web_search`. To pin/control it (domain or recency filters), override `agent/tools/web_search.ts` with a `defineTool` wrapping `gateway.tools.parallelSearch()` / `perplexitySearch()`.
