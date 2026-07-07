@@ -16,9 +16,12 @@ branch="ft/${issue}"
 cur="$(git rev-parse --abbrev-ref HEAD)"
 [ "$cur" = "$branch" ] || { echo "ship: not on $branch (on $cur) — checkout $branch first." >&2; exit 1; }
 
-# No stray worktrees (the main checkout is the only one).
-if [ "$(git worktree list | wc -l | tr -d ' ')" -ne 1 ]; then
-  echo "ship: stray worktrees exist — clean them up first:" >&2
+# No stray worktrees under the flow's OWN mount (.claude/worktrees/). This flow
+# never spawns worktrees for its work, so the only ones it must reject are its
+# own half-cleaned mounts — unrelated worktrees elsewhere (parallel work on
+# other branches) are intentionally left alone.
+if git worktree list --porcelain | grep -q '^worktree .*/\.claude/worktrees/'; then
+  echo "ship: stray flow worktree under .claude/worktrees/ — clean it up first:" >&2
   git worktree list >&2
   exit 1
 fi

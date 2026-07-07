@@ -152,8 +152,9 @@ delete the draft; the issue is now the single source of truth. Tick Phase 1.
 
 Over the whole feature diff, in order:
 
-1. **Convergence check**: all commits on `ft/<issue#>`; `git worktree list` shows
-   only the main checkout; no stray branches.
+1. **Convergence check**: all commits on `ft/<issue#>`; no stray flow worktrees
+   under `.claude/worktrees/` (unrelated worktrees elsewhere are fine); no stray
+   branches.
 2. **`/simplify`** (built-in) — cleanup-only pass; apply its fixes.
 3. **`/code-review`** (built-in) — bug hunt over the branch diff; fix real findings.
    For a large or risky diff, offer the user `/code-review ultra` (cloud fleet).
@@ -199,7 +200,8 @@ From the repo root, on `ft/<issue#>`:
 ${CLAUDE_SKILL_DIR}/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
-It refuses on the wrong branch, stray worktrees, or a dirty tree; squash-merges to
+It refuses on the wrong branch, a stray flow worktree under `.claude/worktrees/`
+(unrelated worktrees elsewhere are ignored), or a dirty tree; squash-merges to
 dev as ONE commit; pushes; deletes the branch; closes the issue (which remains as
 the slice's permanent record); **sweeps all scratch** (`docs/feature/`, legacy
 `.superpowers/`, the empty worktree mount); and leaves the repo on `dev`. The next
