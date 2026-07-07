@@ -19,7 +19,9 @@ The messages you `t.send(...)` are your scripted inputs — use exact text. The 
 
 So for "the agent should ask for handles" → don't assert `reply === "Which handles…"`; judge-assert "the reply requests handles." Survives rewording, still catches regressions.
 
-## Three flows to seed (from real testing)
+## Example flow shapes (illustrative — you'll define the real ones)
+
+These are NOT decided flows; they only show the *shape* an eval takes. Pick and script your own when you decide to build evals.
 
 1. **Beat + handles given** — user states a beat and names handles → agent scans → presents items. Assert: `grok_twitter_search` called once with those handles; items presented.
 2. **No handles** — user gives a beat but no handles → agent asks → user says "you pick" → agent proceeds. Assert: agent asked before calling the tool; tool called only after handles resolved.
