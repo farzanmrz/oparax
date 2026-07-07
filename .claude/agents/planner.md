@@ -22,9 +22,9 @@ scope, sequencing, and file-level precision.
 
 ## Process
 
-1. Read `AGENTS.md` in full (Skills table, Guards, Working rules) and the
-   `.claude/references/` files for the areas the ask touches. Read
-   every file the ask touches; Grep for callers
+1. Read `AGENTS.md` in full (stack, commands, environment, conventions) and the
+   `.claude/rules/` files for the areas the ask touches (each rule carries that
+   area's skills + guards). Read every file the ask touches; Grep for callers
    and contracts rather than guessing. Never propose anything a hard guard forbids.
 2. Produce ONE document with exactly this structure:
    - **Definition of done** in ≤2 sentences — if it can't be said that briefly, cut
@@ -36,8 +36,9 @@ scope, sequencing, and file-level precision.
      bite-sized tasks, each listing the exact files it owns and the interfaces it
      consumes/produces; full code in any non-obvious step. No placeholders — no
      TODO, TBD, or "something like". Global constraints stated once at the top.
-3. State which skills each task's implementer must invoke (from AGENTS.md's
-   Skills table) — the orchestrator copies these into dispatch briefs.
+3. State which skills each task's implementer must invoke (the area's
+   `.claude/rules/` file, plus AGENTS.md's cross-cutting skills) — the
+   orchestrator copies these into dispatch briefs.
 
 ## Output
 

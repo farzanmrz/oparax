@@ -29,7 +29,7 @@ pnpm format     # Biome format --write
 
 ### Environment
 
-`.env.local`, four keys — fresh-clone setup in `.claude/references/supabase-auth-setup.md`. Frontend test login: `testuser@oparax.com` / `hello123`.
+`.env.local`, four keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.com` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |
@@ -39,55 +39,31 @@ pnpm format     # Biome format --write
 
 ## Code map
 
-Top-level folders; deeper structure lives in the linked reference, read on demand.
-
-- `agent/` — the eve agent (three files). → `.claude/references/agent.md`
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `agents/` shell (listing · `new/` chat · `[id]` details · `settings/`). → `.claude/references/app.md`
+- `agent/` — the eve agent (DeepSeek orchestrator + the Grok X-search scan tool).
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `agents/` shell (listing · `new/` chat · `[id]` details · `settings/`).
 - `components/`
   - `components/ui/` — stock shadcn kit.
   - `components/ai-elements/` — chat-surface kit.
   - `components/auth-shell.tsx`, `components/logo.tsx` — the only bespoke shared components.
-- `lib/` — Supabase clients + auth server actions. → `.claude/references/lib.md`
-- `docs/` — `triage.md`, `agent-notes.md`, `roadmap.md` (the ordered feature flow, for reference — the one docs file that IS a slice source).
-- `.claude/` — `references/` (progressive info) · `skills` · `agents`.
+- `lib/` — Supabase clients + auth server actions.
+- `docs/` — the user's own notes: `triage.md` (deferrals), `agent-notes.md` (agent-discovery review queue), `roadmap.md` (their reference ordering of the feature flow). Never a task list and never a slice source — a slice comes only from the user's ask.
+- `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
 
 Gitignored, regenerable (delete freely when nothing runs): `.eve/`, `.next/`, `.output/`, `.workflow-data/`, `data/`, `.vercel/`.
 
 ## Conventions
 
-### Skills — invoke before working in an area
+- **No persistence until a data shape earns it.** Auth is Supabase's own tables only — no app-owned schema exists. Adding the first table is a real feature slice (plan it), not a quick add mid-task.
+- Building a feature slice: `/feature` (spec+plan gate → issue + branch → build → QC → ship as one squashed commit to `dev`).
 
-| Area | Skill |
+### Cross-cutting skills
+
+| Need | Skill |
 | --- | --- |
-| `app/` routing, Server Components / Actions | `vercel:nextjs` |
-| `components/` and any UI | `vercel:shadcn`; `ai-elements` for the chat surface |
-| `lib/` Supabase & auth | `supabase:supabase` (+ `vercel:routing-middleware` for proxy/matcher changes) |
-| `agent/` the eve agent | `vercel:eve` (+ `vercel:ai-sdk` for tool model code, `vercel:ai-gateway` for routing) |
 | env vars (local or Vercel) | `vercel:env-vars` |
 | deploys / promotes / rollbacks | `vercel:deployments-cicd` |
 | repo-wide Biome findings | `lint-resolve` |
 
 ## Cross-tool
 
-`AGENTS.md` is the canonical instruction file — Codex and other agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. There is no `.claude/rules/`: everything that must always apply lives here, and `.claude/references/` holds progressive detail loaded only when a task needs it.
-
-## Current Focus
-
-Active slice: **issue #44 on `ft/44`** — get the create-agent chat conversation working end-to-end on the **local chat only**. No persistence, no schema, no channel auth this slice. (Remove/replace this section when #44 ships.)
-
-Already pre-set on `dev` (verify, then build on — do NOT redo): grok tool returns its full output for debugging; DeepSeek `reasoning` explicitly ON + cheapest-cost gateway routing; DeepSeek passes `fromDate`/`toDate` to the grok tool (dates no longer computed in the tool); `web_fetch` enabled and the shell/FS default tools disabled.
-
-To do in `ft/44`:
-
-- Expand `agent/instructions.md` from scan-only to the full flow — understand the beat → scan setup (web + X handles) → drafting (voice, per-platform format) → scan frequency. System prompt, not a state machine.
-- Add explicit output-format rules to the system prompt (short sentences, no em-dash rambling, a fixed structure for listing found tweets and for showing drafts) with a concrete example. → the `prompt-authoring` skill (auto-loads when working on sysprompts).
-- **Foreign-language sources**: detect and translate/understand non-English tweets AND pasted articles (real user ask — paste a Spanish link → formatted English draft).
-- Tune the grok tool `SYSTEM_PROMPT` for on-beat results after inspecting its full output.
-- Decide the reasoning default empirically (on vs `none` vs adaptive) once evals exist — measure, don't guess. → `.claude/references/eval-notes.md`.
-- Stand up 2–3 flow evals in `evals/` (they need no persistence).
-
-Verify on this branch:
-
-- DeepSeek passes a **correct** `toDate`/`fromDate` — it may not know "today"; if scans come back empty, that's the likely cause, so inject the live date (dynamic instructions).
-
-Out of scope (later slices, in order): Save persistence + Supabase schema (wire the listing/details pages to real data) → eve channel-auth for the deployed chat (currently 401s) → notifications → scheduled scans.
+`AGENTS.md` is the canonical instruction file — Codex and other agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/` (auto-loads when a matching file is read) — there is no `.claude/references/`.
