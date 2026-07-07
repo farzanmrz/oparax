@@ -16,7 +16,7 @@ the conversation.
 Run from the **repo root** (where `.workflow-data/` lives):
 
 ```bash
-# recent runs, newest first — first user message + how many times grok fired
+# recent runs, newest first — first user message + grok's real invocation count
 python3 .claude/skills/eve-session-review/eve_session.py list
 python3 .claude/skills/eve-session-review/eve_session.py list --limit 30   # cap the row count
 
@@ -38,8 +38,11 @@ Each message prints under `### USER` / `### ASSISTANT` / `### TOOL` in order:
 - `[reasoning]` = the model's private reasoning for that step
 - `[tool→] <name> input={…}` = a tool call and its exact arguments
 - `[tool←]` = a tool result
-- a trailing block lists **Tool calls seen** and all **Source URLs** — hard
-  evidence that survives even if a message fails to parse
+- a trailing block reports **Tools invoked** — real per-tool call counts parsed
+  from the `tool-call` parts of the history (e.g. `grok_twitter_search ×1`) —
+  kept SEPARATE from names only **present in the graph** (enabled/available
+  tools and grok's server-side subtools like `x_search`; present ≠ invoked),
+  plus all **Source URLs**. Counts are invocations, never string occurrences.
 
 ## What the data actually is (so you can extend the tool)
 

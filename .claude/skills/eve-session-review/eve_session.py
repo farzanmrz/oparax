@@ -229,6 +229,43 @@ def _render_history(history):
     return "\n".join(lines)
 
 
+# ---- tool usage: INVOKED (real calls) vs PRESENT (enabled/available) --------
+_KNOWN_TOOLS = ("grok_twitter_search", "x_search", "web_search", "web_fetch")
+
+
+def _is_tool_call(p):
+    """A part is a tool INVOCATION (not a tool-result response). Persisted history
+    carries assistant `type:'tool-call'` (input) + tool `type:'tool-result'`
+    (output) as separate parts; count only the calls."""
+    if not isinstance(p, dict):
+        return False
+    t = p.get("type")
+    if t in ("tool-call", "tool_call"):
+        return True
+    if t == "tool-result":
+        return False
+    return "toolName" in p and "input" in p and "output" not in p
+
+
+def _tool_invocations(history):
+    """Real per-tool invocation counts, parsed from tool-call parts in the
+    extracted history — NOT string occurrences in the serialized blob (the tool
+    name repeats in the registry, call, result, and schema, so string-counting
+    wildly over-reports)."""
+    counts = {}
+    for msg in history:
+        if not isinstance(msg, dict):
+            continue
+        content = msg.get("content", msg.get("parts"))
+        if not isinstance(content, list):
+            continue
+        for p in content:
+            if _is_tool_call(p):
+                name = p.get("toolName") or p.get("name") or "?"
+                counts[name] = counts.get(name, 0) + 1
+    return counts
+
+
 def cmd_show(target):
     runs = _all_runs()
     if not runs:
@@ -277,8 +314,17 @@ def cmd_show(target):
     # Always append hard evidence that survives any parsing gap.
     blob = "\n".join(json.dumps(p, default=str, ensure_ascii=False) if not isinstance(p, str) else p for p in pays)
     urls = sorted(set(re.findall(r'https?://[^\s"\\)]+', blob)))
-    tools = sorted(set(re.findall(r'"?(grok_twitter_search|x_search|web_search|web_fetch)"?', blob)))
-    print("\n---\nTool calls seen:", ", ".join(tools) or "none")
+    invoked = _tool_invocations(best[0])
+    present = sorted(set(re.findall(r'"?(grok_twitter_search|x_search|web_search|web_fetch)"?', blob)))
+    print("\n---")
+    print("Tools invoked:",
+          ", ".join(f"{n} ×{c}" for n, c in sorted(invoked.items())) if invoked else "none")
+    # Names present in the serialized graph but NOT invoked as top-level calls:
+    # enabled/available tools and grok's server-side subtools (e.g. x_search).
+    # Presence here is NOT evidence the tool ran in this session.
+    also = [t for t in present if t not in invoked]
+    if also:
+        print("Also present in graph (enabled / subtools, not invoked here):", ", ".join(also))
     if urls:
         print("Source URLs:")
         for u in urls[:40]:
@@ -301,9 +347,12 @@ def cmd_list(limit):
         m = re.search(r'"message"\s*:\s*"([^"\\]{3,120})"', blob)
         if m:
             first = m.group(1)
-        ntool = len(re.findall(r"grok_twitter_search", blob))
+        best = [[]]
+        for p in pays:
+            _walk_find_history(p, best)
+        ngrok = _tool_invocations(best[0]).get("grok_twitter_search", 0)
         when = time.strftime("%b %d %H:%M", time.localtime(mt))
-        print(f"{r:<32}  {when:<20}  {first[:60]}  [grok x{ntool}]")
+        print(f"{r:<32}  {when:<20}  {first[:60]}  [grok x{ngrok}]")
 
 
 def main():
