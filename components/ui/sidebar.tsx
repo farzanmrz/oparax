@@ -76,35 +76,57 @@ function SidebarProvider({
   const [openMobile, setOpenMobile] = React.useState(false)
 
   // Hover-preview ("peek") state: when the sidebar is collapsed, hovering the
-  // trigger shows it as a floating overlay without pinning it open. A short
-  // grace timer lets the pointer travel from the trigger into the overlay.
+  // trigger (and dwelling for a moment) shows it as a floating overlay without
+  // pinning it open. A show timer adds an intentional delay so quick passes
+  // over the trigger don't flash the panel; a hide grace timer lets the
+  // pointer travel from the trigger into the overlay without it closing.
   const [peek, setPeek] = React.useState(false)
-  const peekTimer = React.useRef<number | null>(null)
+  const peekRef = React.useRef(false)
+  peekRef.current = peek
+  const peekShowTimer = React.useRef<number | null>(null)
+  const peekHideTimer = React.useRef<number | null>(null)
 
   const beginPeek = React.useCallback(() => {
-    if (peekTimer.current !== null) {
-      window.clearTimeout(peekTimer.current)
-      peekTimer.current = null
+    if (peekHideTimer.current !== null) {
+      window.clearTimeout(peekHideTimer.current)
+      peekHideTimer.current = null
     }
-    if (!isMobile) {
+    if (isMobile) {
+      return
+    }
+    // Already visible (pointer moved from trigger into the panel):
+    // keep it shown without restarting the dwell delay.
+    if (peekRef.current || peekShowTimer.current !== null) {
+      return
+    }
+    peekShowTimer.current = window.setTimeout(() => {
       setPeek(true)
-    }
+      peekShowTimer.current = null
+    }, 1000)
   }, [isMobile])
 
   const endPeek = React.useCallback(() => {
-    if (peekTimer.current !== null) {
-      window.clearTimeout(peekTimer.current)
+    // Pointer left before the dwell delay elapsed: cancel the pending show.
+    if (peekShowTimer.current !== null) {
+      window.clearTimeout(peekShowTimer.current)
+      peekShowTimer.current = null
     }
-    peekTimer.current = window.setTimeout(() => {
+    if (peekHideTimer.current !== null) {
+      window.clearTimeout(peekHideTimer.current)
+    }
+    peekHideTimer.current = window.setTimeout(() => {
       setPeek(false)
-      peekTimer.current = null
+      peekHideTimer.current = null
     }, 300)
   }, [])
 
   React.useEffect(() => {
     return () => {
-      if (peekTimer.current !== null) {
-        window.clearTimeout(peekTimer.current)
+      if (peekShowTimer.current !== null) {
+        window.clearTimeout(peekShowTimer.current)
+      }
+      if (peekHideTimer.current !== null) {
+        window.clearTimeout(peekHideTimer.current)
       }
     }
   }, [])
@@ -124,9 +146,13 @@ function SidebarProvider({
 
       // Pinning or collapsing always dismisses the hover preview so the
       // overlay never flashes right after a toggle.
-      if (peekTimer.current !== null) {
-        window.clearTimeout(peekTimer.current)
-        peekTimer.current = null
+      if (peekShowTimer.current !== null) {
+        window.clearTimeout(peekShowTimer.current)
+        peekShowTimer.current = null
+      }
+      if (peekHideTimer.current !== null) {
+        window.clearTimeout(peekHideTimer.current)
+        peekHideTimer.current = null
       }
       setPeek(false)
 
@@ -301,16 +327,24 @@ function Sidebar({
         data-side={side}
         onMouseEnter={beginPeek}
         onMouseLeave={endPeek}
+        // Peek overlay geometry uses inline styles so it deterministically
+        // wins over the offcanvas off-screen positioning classes: a floating
+        // panel inset from the edges and below the header row, with no layout
+        // shift (the gap element stays at 0 width).
+        style={
+          isPeeking
+            ? side === "left"
+              ? { top: "3.25rem", bottom: "0.5rem", left: "0.5rem", height: "auto" }
+              : { top: "3.25rem", bottom: "0.5rem", right: "0.5rem", height: "auto" }
+            : undefined
+        }
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          // Peek overlay: floating panel inset from the edges, below the page
-          // header row, with no layout shift. `!` wins over the offcanvas
-          // off-screen positioning above.
-          "group-data-[peek=true]:top-14! group-data-[peek=true]:bottom-2! group-data-[peek=true]:h-auto! group-data-[peek=true]:border-transparent group-data-[peek=true]:data-[side=left]:left-2! group-data-[peek=true]:data-[side=right]:right-2!",
+          isPeeking && "border-transparent",
           className
         )}
         {...props}
@@ -320,7 +354,7 @@ function Sidebar({
           data-slot="sidebar-inner"
           className={cn(
             "flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border",
-            "group-data-[peek=true]:rounded-lg group-data-[peek=true]:shadow-lg group-data-[peek=true]:ring-1 group-data-[peek=true]:ring-sidebar-border"
+            isPeeking && "rounded-lg shadow-lg ring-1 ring-sidebar-border"
           )}
         >
           {children}
