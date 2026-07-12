@@ -1,13 +1,13 @@
 "use client";
 
-import { BotIcon, LogOutIcon, SettingsIcon } from "lucide-react";
+import { ArrowLeftIcon, BotIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { OparaxMark } from "@/components/logo";
+import { PeekSidebar, PeekSidebarTrigger } from "@/components/sidebar-peek";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -32,7 +33,13 @@ import { createClient } from "@/lib/supabase/client";
 export function AppSidebar({ username }: { readonly username: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { setOpenMobile } = useSidebar();
   const [pending, setPending] = useState(false);
+
+  // On mobile the sidebar is a modal sheet that outlives client navigation
+  // (the layout stays mounted), so nav links must dismiss it themselves —
+  // the retired dropdown menu auto-closed on select. No-op on desktop.
+  const closeMobileSidebar = () => setOpenMobile(false);
 
   async function signOut() {
     setPending(true);
@@ -54,6 +61,10 @@ export function AppSidebar({ username }: { readonly username: string }) {
   // "Agents" covers the listing, /new and /[id] — but not /agents/settings.
   const agentsActive =
     pathname === "/agents" || pathname.startsWith("/agents/new") || isAgentDetail(pathname);
+  // Exact segment match — a desk id like "settings-desk" is a detail route,
+  // not the settings page (same reasoning as isAgentDetail below).
+  const settingsActive =
+    pathname === "/agents/settings" || pathname.startsWith("/agents/settings/");
 
   const initials = username
     .split(/\s+/)
@@ -64,7 +75,7 @@ export function AppSidebar({ username }: { readonly username: string }) {
     .toUpperCase();
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <PeekSidebar collapsible="offcanvas">
       {/* Brand zone — deliberately NOT a menu button: it's identity, not nav.
           Same px-2/gap-2 grid as the menu rows below so the mark lines up
           with the nav icons. */}
@@ -80,16 +91,22 @@ export function AppSidebar({ username }: { readonly username: string }) {
       <SidebarSeparator className="mx-2" />
 
       <SidebarContent className="pt-2">
-        <SidebarMenu className="px-2">
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={agentsActive}>
-              <Link aria-current={agentsActive ? "page" : undefined} href="/agents">
-                <BotIcon />
-                Agents
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <nav aria-label="Primary">
+          <SidebarMenu className="px-2">
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={agentsActive}>
+                <Link
+                  aria-current={agentsActive ? "page" : undefined}
+                  href="/agents"
+                  onClick={closeMobileSidebar}
+                >
+                  <BotIcon />
+                  Agents
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </nav>
       </SidebarContent>
 
       <SidebarSeparator className="mx-2" />
@@ -110,8 +127,12 @@ export function AppSidebar({ username }: { readonly username: string }) {
             </div>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname.startsWith("/agents/settings")}>
-              <Link href="/agents/settings">
+            <SidebarMenuButton asChild isActive={settingsActive}>
+              <Link
+                aria-current={settingsActive ? "page" : undefined}
+                href="/agents/settings"
+                onClick={closeMobileSidebar}
+              >
                 <SettingsIcon />
                 Settings
               </Link>
@@ -130,7 +151,42 @@ export function AppSidebar({ username }: { readonly username: string }) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-    </Sidebar>
+    </PeekSidebar>
+  );
+}
+
+/**
+ * Leading chrome for every /agents/* page header: the sidebar trigger (with
+ * hover-peek) and a hairline divider. One shared copy so the -ml-1.5 optical
+ * alignment and divider styling can't drift per page — render it as the first
+ * child of a `flex items-center` header row.
+ */
+export function AppSidebarTrigger() {
+  return (
+    <>
+      <PeekSidebarTrigger className="-ml-1.5" />
+      <span aria-hidden="true" className="h-4 w-px bg-border" />
+    </>
+  );
+}
+
+/**
+ * Secondary-page header lead: the trigger cluster plus a back link to the
+ * agents listing — one shared copy for the [id] dashboard and settings so
+ * their stacked headers can't drift apart.
+ */
+export function AppSidebarBackRow() {
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <AppSidebarTrigger />
+      <Link
+        className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        href="/agents"
+      >
+        <ArrowLeftIcon className="size-4" />
+        Agents
+      </Link>
+    </div>
   );
 }
 

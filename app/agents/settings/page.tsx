@@ -1,5 +1,4 @@
-import { ArrowLeftIcon } from "lucide-react";
-import Link from "next/link";
+import { AppSidebarBackRow } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +10,10 @@ import { DeleteAccountButton, UsernameForm } from "./settings-forms";
  * Settings: profile (username), security (password placeholder — no real flow
  * exists yet), and a danger zone (account deletion). Same server actions and
  * form wiring as before; only the presentation changed. Reads only the
- * signed-in user.
+ * signed-in user. The header spans the full layout column and stays pinned
+ * (matching the other /agents pages, so the sidebar trigger never scrolls
+ * away or jumps position between pages); only the cards scroll, centered in
+ * their narrower column.
  */
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -20,20 +22,14 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
 
   return (
-    <div className="mx-auto w-full max-w-2xl pb-10">
-      <header className="border-b border-border py-5">
-        <Link
-          className="mb-3 flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          href="/agents"
-        >
-          <ArrowLeftIcon className="size-4" />
-          Agents
-        </Link>
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="shrink-0 border-b border-border py-5">
+        <AppSidebarBackRow />
         <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage your profile and account.</p>
       </header>
 
-      <div className="flex flex-col gap-6 py-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-6 overflow-y-auto py-6 pb-10">
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>

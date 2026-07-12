@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowLeftIcon,
   ClockIcon,
   ExternalLinkIcon,
   NewspaperIcon,
@@ -10,9 +9,9 @@ import {
   SendIcon,
   SettingsIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { Task, TaskContent, TaskItem, TaskTrigger } from "@/components/ai-elements/task";
+import { AppSidebarBackRow } from "@/components/app-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,13 +76,7 @@ export function AgentDashboard({ agent }: { readonly agent: AgentDetail }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 border-b border-border py-5">
-        <Link
-          className="mb-3 flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          href="/agents"
-        >
-          <ArrowLeftIcon className="size-4" />
-          Agents
-        </Link>
+        <AppSidebarBackRow />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">

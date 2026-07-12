@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AppSidebarTrigger } from "@/components/app-sidebar";
 import { OparaxMark } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
 export type AgentStatus = "live" | "paused";
@@ -89,11 +89,10 @@ export function AgentsList({
   const hasAgents = agents.length > 0;
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-[81rem] flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border py-5">
         <div className="flex items-center gap-3">
-          <SidebarTrigger className="-ml-1.5" />
-          <span aria-hidden="true" className="h-4 w-px bg-border" />
+          <AppSidebarTrigger />
           <div className="flex items-baseline gap-3">
             <h1 className="text-xl font-semibold tracking-tight">Agents</h1>
             {hasAgents && !error ? (

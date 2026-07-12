@@ -40,12 +40,6 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
-  /** True while the collapsed sidebar is being previewed as a floating overlay. */
-  peek: boolean
-  /** Show the floating preview (hovering the trigger or the overlay itself). */
-  beginPeek: () => void
-  /** Schedule the preview to hide after a short grace period. */
-  endPeek: () => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -75,62 +69,6 @@ function SidebarProvider({
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
-  // Hover-preview ("peek") state: when the sidebar is collapsed, hovering the
-  // trigger (and dwelling for a moment) shows it as a floating overlay without
-  // pinning it open. A show timer adds an intentional delay so quick passes
-  // over the trigger don't flash the panel; a hide grace timer lets the
-  // pointer travel from the trigger into the overlay without it closing.
-  const [peek, setPeek] = React.useState(false)
-  const peekRef = React.useRef(false)
-  peekRef.current = peek
-  const peekShowTimer = React.useRef<number | null>(null)
-  const peekHideTimer = React.useRef<number | null>(null)
-
-  const beginPeek = React.useCallback(() => {
-    if (peekHideTimer.current !== null) {
-      window.clearTimeout(peekHideTimer.current)
-      peekHideTimer.current = null
-    }
-    if (isMobile) {
-      return
-    }
-    // Already visible (pointer moved from trigger into the panel):
-    // keep it shown without restarting the dwell delay.
-    if (peekRef.current || peekShowTimer.current !== null) {
-      return
-    }
-    peekShowTimer.current = window.setTimeout(() => {
-      setPeek(true)
-      peekShowTimer.current = null
-    }, 1000)
-  }, [isMobile])
-
-  const endPeek = React.useCallback(() => {
-    // Pointer left before the dwell delay elapsed: cancel the pending show.
-    if (peekShowTimer.current !== null) {
-      window.clearTimeout(peekShowTimer.current)
-      peekShowTimer.current = null
-    }
-    if (peekHideTimer.current !== null) {
-      window.clearTimeout(peekHideTimer.current)
-    }
-    peekHideTimer.current = window.setTimeout(() => {
-      setPeek(false)
-      peekHideTimer.current = null
-    }, 300)
-  }, [])
-
-  React.useEffect(() => {
-    return () => {
-      if (peekShowTimer.current !== null) {
-        window.clearTimeout(peekShowTimer.current)
-      }
-      if (peekHideTimer.current !== null) {
-        window.clearTimeout(peekHideTimer.current)
-      }
-    }
-  }, [])
-
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
@@ -143,18 +81,6 @@ function SidebarProvider({
       } else {
         _setOpen(openState)
       }
-
-      // Pinning or collapsing always dismisses the hover preview so the
-      // overlay never flashes right after a toggle.
-      if (peekShowTimer.current !== null) {
-        window.clearTimeout(peekShowTimer.current)
-        peekShowTimer.current = null
-      }
-      if (peekHideTimer.current !== null) {
-        window.clearTimeout(peekHideTimer.current)
-        peekHideTimer.current = null
-      }
-      setPeek(false)
 
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
@@ -196,22 +122,8 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
-      peek,
-      beginPeek,
-      endPeek,
     }),
-    [
-      state,
-      open,
-      setOpen,
-      isMobile,
-      openMobile,
-      setOpenMobile,
-      toggleSidebar,
-      peek,
-      beginPeek,
-      endPeek,
-    ]
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
   )
 
   return (
@@ -250,8 +162,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile, peek, beginPeek, endPeek } =
-    useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
   if (collapsible === "none") {
     return (
@@ -294,12 +205,6 @@ function Sidebar({
     )
   }
 
-  // Hover preview: while collapsed and peeking, the fixed container is pulled
-  // back on-screen as a floating panel (inset below the header so the trigger
-  // stays visible and clickable to pin) while the gap stays at 0 width, so the
-  // page content never shifts.
-  const isPeeking = state === "collapsed" && peek
-
   return (
     <div
       className="group peer hidden text-sidebar-foreground md:block"
@@ -307,7 +212,6 @@ function Sidebar({
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}
       data-side={side}
-      data-peek={isPeeking}
       data-slot="sidebar"
     >
       {/* This is what handles the sidebar gap on desktop */}
@@ -325,26 +229,12 @@ function Sidebar({
       <div
         data-slot="sidebar-container"
         data-side={side}
-        onMouseEnter={beginPeek}
-        onMouseLeave={endPeek}
-        // Peek overlay geometry uses inline styles so it deterministically
-        // wins over the offcanvas off-screen positioning classes: a floating
-        // panel inset from the edges and below the header row, with no layout
-        // shift (the gap element stays at 0 width).
-        style={
-          isPeeking
-            ? side === "left"
-              ? { top: "3.25rem", bottom: "0.5rem", left: "0.5rem", height: "auto" }
-              : { top: "3.25rem", bottom: "0.5rem", right: "0.5rem", height: "auto" }
-            : undefined
-        }
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          isPeeking && "border-transparent",
           className
         )}
         {...props}
@@ -352,10 +242,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className={cn(
-            "flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border",
-            isPeeking && "rounded-lg shadow-lg ring-1 ring-sidebar-border"
-          )}
+          className="flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
         >
           {children}
         </div>
@@ -367,11 +254,9 @@ function Sidebar({
 function SidebarTrigger({
   className,
   onClick,
-  onMouseEnter,
-  onMouseLeave,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, beginPeek, endPeek } = useSidebar()
+  const { toggleSidebar } = useSidebar()
 
   return (
     <Button
@@ -383,14 +268,6 @@ function SidebarTrigger({
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
-      }}
-      onMouseEnter={(event) => {
-        onMouseEnter?.(event)
-        beginPeek()
-      }}
-      onMouseLeave={(event) => {
-        onMouseLeave?.(event)
-        endPeek()
       }}
       {...props}
     >
