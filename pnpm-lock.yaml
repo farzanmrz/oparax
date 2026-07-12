@@ -72,8 +72,8 @@ importers:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.7)
       eve:
-        specifier: 0.19.0
-        version: 0.19.0(@opentelemetry/api@1.9.0)(ai@7.0.14(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)
+        specifier: 0.22.5
+        version: 0.22.5(@opentelemetry/api@1.9.0)(ai@7.0.14(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)
       lucide-react:
         specifier: ^1.17.0
         version: 1.17.0(react@19.2.7)
@@ -2700,8 +2700,8 @@ packages:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
 
-  eve@0.19.0:
-    resolution: {integrity: sha512-fZ4gyBUoJ8FWtA+vUz6Q/OWJDXPf++RYsbVL+NrEAn2VJCrZyiuDj4todsBJlDib3+sZtzHMsNSn06EP0j0++w==}
+  eve@0.22.5:
+    resolution: {integrity: sha512-lY3qHgvVNKuTwoH/0AQpztWS53Ub/xAk2KfV38fnfNfgd8idmN9FKbT2jUgs0lNGcFwTUR1/RYWl9JzpCsImeA==}
     engines: {node: '>=24'}
     hasBin: true
     peerDependencies:
@@ -6979,7 +6979,7 @@ snapshots:
 
   etag@1.8.1: {}
 
-  eve@0.19.0(@opentelemetry/api@1.9.0)(ai@7.0.14(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0):
+  eve@0.22.5(@opentelemetry/api@1.9.0)(ai@7.0.14(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0):
     dependencies:
       ai: 7.0.14(zod@4.4.3)
       nitro: 3.0.260610-beta(dotenv@17.4.2)(jiti@2.7.0)
