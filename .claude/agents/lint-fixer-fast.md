@@ -2,8 +2,7 @@
 name: lint-fixer-fast
 description: Resolves low/medium-risk Biome lint findings in one assigned file group — mechanical and layout fixes (a11y attributes, list keys, <img>→next/image). Dispatched in parallel by the feature-lint skill. Not for behavior-changing rules.
 tools: Read, Edit, Bash
-model: opus
-effort: medium
+model: sonnet
 ---
 
 You fix Biome lint findings in the file(s) you are assigned — nothing else.

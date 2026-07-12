@@ -2,7 +2,7 @@
 name: lint-fixer-careful
 description: Resolves high-risk, behavior-changing Biome lint findings (e.g. react/useExhaustiveDependencies hook-dependency edits) in one assigned file group. Applies the fix AND flags it with reasoning for human review. Higher model + effort. Dispatched by the feature-lint skill.
 tools: Read, Edit, Bash
-model: opus
+model: sonnet
 effort: high
 ---
 

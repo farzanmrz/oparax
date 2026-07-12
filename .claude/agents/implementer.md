@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: Use this agent to execute exactly ONE task from an approved feature plan, working from a brief file. Typical triggers are the /feature skill's Phase 2 dispatching one implementer per unblocked plan task (in parallel when file groups are disjoint), and re-dispatch of a single task after review findings. Not for ad-hoc edits outside the feature flow. See "When to invoke" in the agent body.
-model: opus
+model: sonnet
 color: green
 tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "Skill"]
 ---
