@@ -8,6 +8,7 @@ description: >-
   /feature-lint for individual QC passes).
 argument-hint: "[feature description]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
+model: inherit
 disable-model-invocation: true
 ---
 
@@ -35,10 +36,11 @@ honest.
 
 - NEVER create per-task branches or PRs; never push main/beta; ship = dev only.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
-- Scope freezes at the plan gate; mid-build ideas → issue Deferred list or the
-  user's `docs/triage.md` (write there ONLY to scribe the user's deferrals).
+- Scope freezes at the plan gate; mid-build ideas → the issue's Deferred list, or
+  a new GitHub issue titled `triage: <item>` when it's its own slice (created ONLY
+  to scribe the user's deferrals — never self-initiated).
 - Planning docs never enter the repo; the issue body + squashed commit message are
-  the record; scratch lives in self-gitignored `docs/feature/` and dies at ship.
+  the record; scratch lives in self-gitignored `.feature/` and dies at ship.
 - Skill grounding is binding everywhere: invoke the area's `.claude/rules/` skills
   before touching an area; dispatched agents must be told which to invoke.
 - Dependency MAJOR upgrades, framework migrations, schema/data migrations → STOP

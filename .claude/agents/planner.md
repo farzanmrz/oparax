@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Use this agent to author the spec+plan for a /feature slice on the top model. Typical triggers are the /feature skill's Phase 1 dispatching it with the feature ask and grounding paths, and a re-dispatch after the user requests plan revisions at the gate. Not for implementation, review, or ad-hoc questions. See "When to invoke" in the agent body.
-model: inherit
+model: opus
 color: magenta
 tools: ["Read", "Glob", "Grep", "Bash"]
 ---

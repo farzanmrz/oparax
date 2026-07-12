@@ -11,3 +11,7 @@ paths:
 
 - A server component that calls `supabase.auth.getUser()` and redirects to `/` if absent — any route added under `app/agents/**` inherits protection automatically; anything added outside that tree does not.
 - The `/auth/*` routes and their guards live in `.claude/rules/supabase.md`.
+
+## Every `/agents/*` page header leads with the sidebar trigger
+
+- The sidebar is offcanvas (fully hidden when collapsed), so each page's header must open with `<AppSidebarTrigger />` (`<AppSidebarBackRow />` on the `[id]` and settings back-link headers) — a page without one silently loses the only visible way to reopen navigation.

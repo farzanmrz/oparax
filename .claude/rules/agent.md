@@ -1,7 +1,6 @@
 ---
 paths:
-  - "eve/agent/**"
-  - "eve/evals/**"
+  - "eve/**"
 ---
 
 # The eve agent

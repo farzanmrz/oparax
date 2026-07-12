@@ -49,12 +49,13 @@ cd eve && npx eve eval    # run evals against the real pipeline
 - `components/`
   - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
   - `components/ai-elements/` — chat-surface kit.
-  - `components/auth-shell.tsx`, `components/logo.tsx` — the only bespoke shared components.
+  - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
 - `lib/` — Supabase clients + auth server actions.
-- `docs/feature/` — gitignored working specs from the `/feature` flow.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
 
 Gitignored, regenerable (delete freely when nothing runs): `eve/.eve/`, `.next/`, `eve/.output/`, `eve/.workflow-data/`, `data/`, `.vercel/`.
+
+`.feature/` is the `/feature` flow's live scratch — never delete it by hand; `ship.sh` sweeps it when the slice ships.
 
 ## Conventions
 

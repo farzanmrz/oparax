@@ -57,7 +57,7 @@ gh issue close "$issue"
 
 # Sweep session scratch — the flow's working files live in .feature/ (legacy runs
 # used .superpowers/); their phases are over. The empty worktree mount goes too.
-rm -rf docs/feature .feature .superpowers
+rm -rf .feature .superpowers
 rmdir .claude/worktrees 2>/dev/null || true
 
 # The repo stays on dev. The next slice creates its own issue + branch via
