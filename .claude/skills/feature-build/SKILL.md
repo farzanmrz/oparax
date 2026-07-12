@@ -8,7 +8,6 @@ description: >-
 argument-hint: "[issue# | what to build]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
-disable-model-invocation: true
 ---
 
 # /feature-build — build (autonomous, parallel by structure)

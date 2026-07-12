@@ -1,14 +1,12 @@
 ---
 name: feature-ship
 description: >-
-  Phases 4–5 of the feature flow, standalone: triage the user's manual-test
-  feedback (fix-now vs defer), then squash-merge the ft/N branch to dev via
-  ship.sh on their explicit go. Use when the user says /feature-ship, "ship it",
-  "close the slice", or brings manual-test findings on a finished branch.
+  Phases 4–5 of the feature flow, standalone: the triage + ship gates. Use when
+  the user says /feature-ship, "ship it", "close the slice", or brings
+  manual-test findings on a finished branch.
 argument-hint: "[issue#]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
-disable-model-invocation: true
 ---
 
 # /feature-ship — triage ✋ then ship ✋

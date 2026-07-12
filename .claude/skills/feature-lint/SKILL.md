@@ -1,14 +1,13 @@
 ---
 name: feature-lint
 description: >-
-  Resolve residual Biome lint findings on a feature branch's changed files —
-  auto format + safe-fix, then fix what's left (no-autofix / unsafe-fix rules like
-  next/noImgElement and react/useExhaustiveDependencies) in isolated parallel
-  sub-agents, and gate on a clean `pnpm build`. Invoked by /feature-qc as its final pass;
-  also runnable standalone on a branch (/feature-lint). NOT for a one-off lint of a single
-  file — run `pnpm lint:fix` directly for that.
+  Resolve residual Biome lint findings on a feature branch's changed files — the
+  rules `biome check --write` can't safely auto-fix. Invoked by /feature-qc as its
+  final pass; also runnable standalone on a branch (/feature-lint). NOT for a
+  one-off lint of a single file — run `pnpm lint:fix` directly for that.
 argument-hint: "[base ref, default dev]"
 allowed-tools: Bash(git *) Bash(pnpm *)
+model: inherit
 ---
 
 # Lint resolve — clear the residual, safely
@@ -23,8 +22,8 @@ sub-agents and returns only a compact report.
 **Correctness is priority one.** The only automated safety net here is `pnpm build`
 (TypeScript + Next compile) — there is no test runner and browser checks are out. A fix
 that compiles can still change behavior. That single fact drives the design: fixes are
-**risk-tiered**, and the dangerous tier is escalated to a stronger model **and flagged for
-review** rather than shipped silently.
+**risk-tiered**, and the dangerous tier is escalated to a higher-effort pass **and flagged
+for review** rather than shipped silently.
 
 ## Sequence
 
@@ -63,9 +62,8 @@ review** rather than shipped silently.
    fix it inline — dispatch overhead isn't worth it. Otherwise **partition by file** (each
    file is owned by exactly one sub-agent — never two agents in the same file) and dispatch
    in parallel:
-   - **Low/medium tier → `lint-fixer-fast`** (sonnet, medium effort), many in parallel.
-   - **High tier → `lint-fixer-careful`** (opus, high effort) — applies the fix **and
-     flags it** for review.
+   - **Low/medium tier → `lint-fixer-fast`**, many in parallel.
+   - **High tier → `lint-fixer-careful`** — applies the fix **and flags it** for review.
    Give each sub-agent only its file(s) and that file's findings. The agent definitions
    already carry the rules (no `--unsafe`, stay in-assignment, don't build); don't restate
    them — just pass the work.

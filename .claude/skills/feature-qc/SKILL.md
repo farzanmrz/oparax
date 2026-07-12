@@ -2,12 +2,11 @@
 name: feature-qc
 description: >-
   Phase 3 of the feature flow, standalone: the full QC battery over the current
-  feature branch — convergence check, /simplify, /code-review, feature-lint, boot
-  smoke, docs update. Use when the user says /feature-qc, "run QC", "quality pass",
+  feature branch. Use when the user says /feature-qc, "run QC", "quality pass",
   or wants the branch proven buildable+bootable mid-flight. For just one pass, use
   /simplify, /code-review, or /feature-lint directly instead.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
-disable-model-invocation: true
+model: inherit
 ---
 
 # /feature-qc — the QC battery (autonomous)
