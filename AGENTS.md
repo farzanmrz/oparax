@@ -9,7 +9,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 | Framework | Next.js (App Router) | 16.2 |
 | UI | React | 19.2 |
 | Language | TypeScript strict (`@/*` → repo root) | 6 |
-| Agent | eve (mounted at `/eve/v1/*` by `withEve()`) | 0.22.5 |
+| Agent | eve (mounted at `/eve/v1/*` by `withEve()`) | 0.22.1 (pinned — see vercel/eve#693) |
 | AI SDK | `ai` + `@ai-sdk/react` | 7 / 4 |
 | Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
 | Auth | Supabase (auth only, no app tables) | — |
