@@ -1,19 +1,20 @@
 ---
 name: eve-session-review
-description: Use when reviewing or debugging a PAST eve agent run/session in this project — reconstruct offline from the local .workflow-data/ store what the agent said, reasoned, called, and got back, with no running server and without knowing the workflow/session id. Triggers include "review that session", "what did the agent do when I asked about crypto", "debug the last run", "why did the scan return nothing", "show me the tool call from that chat".
+description: Use when reviewing or debugging a PAST eve agent run/session in this project — reconstruct offline from the local eve/.workflow-data/ store what the agent said, reasoned, called, and got back, with no running server and without knowing the workflow/session id. Triggers include "review that session", "what did the agent do when I asked about crypto", "debug the last run", "why did the scan return nothing", "show me the tool call from that chat".
 model: sonnet
 ---
 
 # Reviewing past eve sessions
 
-eve persists every turn to `.workflow-data/` as durable state. This skill reads
+eve persists every turn to `eve/.workflow-data/` as durable state. This skill reads
 it back into a readable transcript so you can debug agent behavior after the
 fact — no live server, and you don't need the workflow id, just a description of
 the conversation.
 
 ## Use the bundled tool
 
-Run from the **repo root** (where `.workflow-data/` lives):
+Run from the **repo root** — the script (which does not itself move) looks for
+`eve/.workflow-data/` relative to your cwd:
 
 ```bash
 # recent runs, newest first — first user message + grok's real invocation count

@@ -1,6 +1,6 @@
 ---
 name: lint-fixer-careful
-description: Resolves high-risk, behavior-changing Biome lint findings (e.g. react/useExhaustiveDependencies hook-dependency edits) in one assigned file group. Applies the fix AND flags it with reasoning for human review. Higher model + effort. Dispatched by the lint-resolve skill.
+description: Resolves high-risk, behavior-changing Biome lint findings (e.g. react/useExhaustiveDependencies hook-dependency edits) in one assigned file group. Applies the fix AND flags it with reasoning for human review. Higher model + effort. Dispatched by the feature-lint skill.
 tools: Read, Edit, Bash
 model: opus
 effort: high
@@ -25,7 +25,7 @@ For each finding (anchor case: `react/useExhaustiveDependencies`):
 Rules:
 - NEVER run `biome --unsafe` — reason and edit by hand.
 - NEVER edit a file outside your assignment.
-- Do NOT run `pnpm build` — the lint-resolve skill runs it once, at the end.
+- Do NOT run `pnpm build` — the feature-lint skill runs it once, at the end.
 
 Return a compact per-finding summary, THEN a section headed `⚠ REVIEW` listing each fix
 that changes behavior, one line of reasoning each, so a human can verify it. This text is

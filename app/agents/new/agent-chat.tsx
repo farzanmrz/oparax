@@ -27,7 +27,6 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import {
   Tool,
   ToolContent,
@@ -36,14 +35,6 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import { OparaxMark } from "@/components/logo";
-
-// Starter prompts shown in the empty state; each routes through the same
-// agent.send path the prompt input uses.
-const STARTER_PROMPTS = [
-  "Set up a desk covering AI industry news",
-  "I cover US politics — build my agent",
-  "Watch crypto markets and draft posts in my voice",
-];
 
 /**
  * Chat over the repo's eve agent, laid out to mirror the AI Elements chatbot
@@ -76,13 +67,6 @@ export function AgentChat({
     await agent.send({ message: text });
   };
 
-  // Presentation-only: starter prompts routed through the same guarded send
-  // the prompt input uses.
-  const handleSuggestion = (suggestion: string) => {
-    if (isBusy) return;
-    void agent.send({ message: suggestion });
-  };
-
   const isEmpty = agent.data.messages.length === 0;
 
   return (
@@ -91,19 +75,28 @@ export function AgentChat({
         <ConversationContent className="w-full gap-6 px-1 py-4">
           {isEmpty ? (
             <ConversationEmptyState
-              description="Describe the beat you cover, the sources that matter, and the voice you post in — your agent takes it from there."
+              description=""
               icon={
                 <span className="flex size-14 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
                   <OparaxMark className="size-7 text-primary" />
                 </span>
               }
-              title="Brief your new agent"
+              title="Set up your news desk"
             >
-              <Suggestions className="mt-2 justify-center">
-                {STARTER_PROMPTS.map((prompt) => (
-                  <Suggestion key={prompt} onClick={handleSuggestion} suggestion={prompt} />
-                ))}
-              </Suggestions>
+              {/* Single welcome block (replaces the old starter-prompt chips) —
+                  phrased as Oparax greeting the reporter, not a feature list. */}
+              <div className="mt-3 max-w-lg space-y-3 rounded-lg border bg-card/40 p-4 text-left text-muted-foreground text-sm leading-relaxed">
+                <p>
+                  Hey, I&apos;m <span className="font-medium text-foreground">Oparax</span> — your
+                  AI news desk. I can watch up to 20 X accounts and any websites you trust, gather
+                  what they publish into distinct news items with every source cited, and draft
+                  posts in your voice, sized for your account.
+                </p>
+                <p>
+                  Tell me your beat and we&apos;ll get started — brief me everything at once, or
+                  we&apos;ll walk through it step by step.
+                </p>
+              </div>
             </ConversationEmptyState>
           ) : (
             <>
@@ -156,9 +149,14 @@ function AgentMessage({ message }: { readonly message: EveMessage }) {
 
   return (
     <Message from={message.role}>
-      <MessageContent>
+      {/* Assistant content is full-width so tool/JSX blocks aren't scrunched to
+          the left; user bubbles keep their content-fit width. */}
+      <MessageContent className={message.role === "assistant" ? "w-full" : undefined}>
+        {/* Render reasoning, tool calls, and text INLINE in the order the model
+            produced them — so a "let me verify…" line reads before its tool, not
+            after a grouped chain-of-thought that ran ahead of it. */}
         {message.parts.map((part, index) => (
-          <AgentMessagePart key={partKey(part, index)} part={part} />
+          <MessagePart key={partKey(part.type, index)} part={part} role={message.role} />
         ))}
         {showActions ? (
           <MessageActions className="-ml-1.5 text-muted-foreground">
@@ -191,17 +189,31 @@ function CopyMessageAction({ text }: { readonly text: string }) {
   );
 }
 
-function AgentMessagePart({ part }: { readonly part: EveMessagePart }) {
+// Stable key for a reasoning/text part. eve message parts only ever append
+// (never reorder or splice mid-stream), so a positional key is safe here — the
+// helper keeps that index out of the JSX so it reads as intentional, not a slip.
+function partKey(prefix: string, index: number): string {
+  return `${prefix}:${index}`;
+}
+
+// One message part, rendered in document order with the stock ai-elements kit.
+// Two deliberate deviations, each rooted in an observed ask: the reporter's own
+// text shows exactly as typed/pasted (markdown would collapse newlines), and the
+// current_time tool call is hidden (pure plumbing).
+function MessagePart({ part, role }: { readonly part: EveMessagePart; readonly role: string }) {
   switch (part.type) {
     case "text":
+      if (role === "user") {
+        return <div className="whitespace-pre-wrap break-words text-sm">{part.text}</div>;
+      }
       return (
         <MessageResponse caret="block" isAnimating={part.state === "streaming"}>
           {part.text}
         </MessageResponse>
       );
     case "reasoning":
-      // Mirrors the AI Elements chatbot example: auto-opens while the model is
-      // reasoning, collapses to a "Thought for…" trigger when done.
+      // Stock behavior: auto-opens while the model reasons, collapses to a
+      // "Thought for…" trigger when done.
       return (
         <Reasoning isStreaming={part.state === "streaming"}>
           <ReasoningTrigger />
@@ -209,6 +221,9 @@ function AgentMessagePart({ part }: { readonly part: EveMessagePart }) {
         </Reasoning>
       );
     case "dynamic-tool":
+      if (part.toolName === "current_time") {
+        return null;
+      }
       return (
         <Tool>
           <ToolHeader
@@ -226,8 +241,4 @@ function AgentMessagePart({ part }: { readonly part: EveMessagePart }) {
     default:
       return null;
   }
-}
-
-function partKey(part: EveMessagePart, index: number): string {
-  return part.type === "dynamic-tool" ? part.toolCallId : `${part.type}:${index}`;
 }

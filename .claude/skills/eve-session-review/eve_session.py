@@ -16,8 +16,8 @@ Usage:
 each run's decoded content (newest run that contains it wins) — so you can say
 `show crypto` without knowing the workflow id.
 
-Run from the repo root (it looks for ./.workflow-data). Needs either the python
-`zstandard` module or the `zstd` CLI on PATH.
+Run from the repo root (it looks for ./eve/.workflow-data). Needs either the
+python `zstandard` module or the `zstd` CLI on PATH.
 """
 import base64
 import glob
@@ -28,7 +28,7 @@ import shutil
 import subprocess
 import sys
 
-WF = ".workflow-data"
+WF = "eve/.workflow-data"
 
 # ---- zstd ----------------------------------------------------------------
 _ZSTD_CLI = shutil.which("zstd")

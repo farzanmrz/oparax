@@ -1,11 +1,11 @@
 ---
-name: lint-resolve
+name: feature-lint
 description: >-
   Resolve residual Biome lint findings on a feature branch's changed files —
   auto format + safe-fix, then fix what's left (no-autofix / unsafe-fix rules like
   next/noImgElement and react/useExhaustiveDependencies) in isolated parallel
-  sub-agents, and gate on a clean `pnpm build`. Invoked by the feature skill's Phase 4
-  QC tail; also runnable standalone on a branch. NOT for a one-off lint of a single
+  sub-agents, and gate on a clean `pnpm build`. Invoked by /feature-qc as its final pass;
+  also runnable standalone on a branch (/feature-lint). NOT for a one-off lint of a single
   file — run `pnpm lint:fix` directly for that.
 argument-hint: "[base ref, default dev]"
 allowed-tools: Bash(git *) Bash(pnpm *)

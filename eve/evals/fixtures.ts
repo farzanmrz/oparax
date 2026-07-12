@@ -1,0 +1,23 @@
+/** The full 20-handle watch set — exercises the max-handles scan path. */
+export const BARCA_HANDLES_20 = [
+  "FabrizioRomano",
+  "DavidOrnstein",
+  "Glongari",
+  "talkfcb_",
+  "fcbarcelona",
+  "BarcaUniversal",
+  "BarcaTimes",
+  "fcbarcelonaes",
+  "Barca_Buzz",
+  "TotalBarca",
+  "BarcaWorld_",
+  "laligaen",
+  "MundoDeportivo",
+  "sport",
+  "managingbarca",
+  "barcacentre",
+  "Gerardanyol",
+  "siegersayss",
+  "AlbertRoge",
+  "footmercato",
+];

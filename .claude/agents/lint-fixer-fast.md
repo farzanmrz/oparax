@@ -1,6 +1,6 @@
 ---
 name: lint-fixer-fast
-description: Resolves low/medium-risk Biome lint findings in one assigned file group — mechanical and layout fixes (a11y attributes, list keys, <img>→next/image). Dispatched in parallel by the lint-resolve skill. Not for behavior-changing rules.
+description: Resolves low/medium-risk Biome lint findings in one assigned file group — mechanical and layout fixes (a11y attributes, list keys, <img>→next/image). Dispatched in parallel by the feature-lint skill. Not for behavior-changing rules.
 tools: Read, Edit, Bash
 model: opus
 effort: medium
@@ -22,7 +22,7 @@ message). For each finding, edit the code the way a careful human would:
 Rules:
 - NEVER run `biome --unsafe` or apply any fix Biome marks unsafe — fix by hand.
 - NEVER edit a file outside your assignment; another agent owns it (avoids conflicts).
-- Do NOT run `pnpm build` — the lint-resolve skill runs it once, at the end.
+- Do NOT run `pnpm build` — the feature-lint skill runs it once, at the end.
 - Match the surrounding code's style and conventions.
 
 Return ONLY a compact summary — one line per finding: `file:line  rule → what you changed`.

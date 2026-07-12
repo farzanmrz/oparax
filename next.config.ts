@@ -39,6 +39,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Mount the rebuild's eve agent (agent/ at the repo root) into this app:
-// one dev server, same-origin /eve/v1/* routes, one Vercel deploy.
-export default withEve(nextConfig);
+// Mount the rebuild's eve agent (eve/agent/, under the top-level eve/ folder)
+// into this app: one dev server, same-origin /eve/v1/* routes, one Vercel deploy.
+export default withEve(nextConfig, { eveRoot: "eve" });

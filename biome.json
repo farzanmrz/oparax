@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -12,9 +12,9 @@
       "!**/*.css",
       "!**/node_modules/**",
       "!.next/**",
-      "!.eve/**",
-      "!.output/**",
-      "!.workflow-data/**",
+      "!**/.eve/**",
+      "!**/.output/**",
+      "!**/.workflow-data/**",
       "!.vercel/**",
       "!out/**",
       "!data/**",
