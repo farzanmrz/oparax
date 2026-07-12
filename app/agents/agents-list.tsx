@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
 export type AgentStatus = "live" | "paused";
@@ -88,15 +89,19 @@ export function AgentsList({
   const hasAgents = agents.length > 0;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[81rem] flex-col">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border py-5">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">Agents</h1>
-          {hasAgents && !error ? (
-            <span className="font-mono text-xs text-muted-foreground">
-              {agents.length} {agents.length === 1 ? "desk" : "desks"}
-            </span>
-          ) : null}
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="-ml-1.5" />
+          <span aria-hidden="true" className="h-4 w-px bg-border" />
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-xl font-semibold tracking-tight">Agents</h1>
+            {hasAgents && !error ? (
+              <span className="font-mono text-xs text-muted-foreground">
+                {agents.length} {agents.length === 1 ? "desk" : "desks"}
+              </span>
+            ) : null}
+          </div>
         </div>
         <Button asChild>
           <Link href="/agents/new">

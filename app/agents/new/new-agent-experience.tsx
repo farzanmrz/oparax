@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AgentChat } from "./agent-chat";
 
@@ -80,6 +81,8 @@ export function NewAgentExperience() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b border-border py-4">
+        <SidebarTrigger className="-ml-1.5" />
+        <span aria-hidden="true" className="h-4 w-px bg-border" />
         <Link
           className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
           href="/agents"
