@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOutIcon, NewspaperIcon, SettingsIcon } from "lucide-react";
+import { BotIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,17 +14,20 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { createClient } from "@/lib/supabase/client";
 
 /**
  * App chrome for /agents/*: a collapsible offcanvas sidebar replacing the old
- * global top header. Header is the brand link, content is the section nav
- * (one item for now), and the footer is deliberately FLAT — an identity row,
- * a Settings link, and Sign out — no dropdown menu. Sign-out behavior is
- * ported verbatim from the retired user-menu.tsx (signOut -> push "/" ->
- * refresh to bust the client router cache so Back can't restore a signed-in
- * view).
+ * global top header. Three visually distinct zones sharing ONE indent grid
+ * (every row is `gap-2 px-2`, icon/avatar slots are 16px wide):
+ *   1. Brand — non-interactive logo + wordmark, separated by a hairline.
+ *   2. Nav — the interactive section menu.
+ *   3. Footer — hairline, then a muted identity row, Settings, Sign out.
+ * Sign-out behavior is ported verbatim from the retired user-menu.tsx
+ * (signOut -> push "/" -> refresh to bust the client router cache so Back
+ * can't restore a signed-in view).
  */
 export function AppSidebar({ username }: { readonly username: string }) {
   const pathname = usePathname();
@@ -62,25 +65,26 @@ export function AppSidebar({ username }: { readonly username: string }) {
 
   return (
     <Sidebar collapsible="offcanvas">
+      {/* Brand zone — deliberately NOT a menu button: it's identity, not nav.
+          Same px-2/gap-2 grid as the menu rows below so the mark lines up
+          with the nav icons. */}
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg">
-              <Link className="font-semibold tracking-tight" href="/agents">
-                <OparaxMark className="!size-5 text-foreground" />
-                Oparax
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex h-10 items-center gap-2 px-2">
+          <span className="flex w-4 justify-center">
+            <OparaxMark className="size-4 text-foreground" />
+          </span>
+          <span className="text-sm font-semibold tracking-tight">Oparax</span>
+        </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarMenu>
+      <SidebarSeparator className="mx-2" />
+
+      <SidebarContent className="pt-2">
+        <SidebarMenu className="px-2">
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={agentsActive}>
               <Link aria-current={agentsActive ? "page" : undefined} href="/agents">
-                <NewspaperIcon />
+                <BotIcon />
                 Agents
               </Link>
             </SidebarMenuButton>
@@ -88,17 +92,21 @@ export function AppSidebar({ username }: { readonly username: string }) {
         </SidebarMenu>
       </SidebarContent>
 
+      <SidebarSeparator className="mx-2" />
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* Identity row — non-interactive, just who's signed in. */}
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <Avatar className="size-6">
-                <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
+            {/* Identity row — non-interactive, muted so it reads as a label
+                rather than another button. Avatar sits in the same 16px icon
+                slot as the icons above it. */}
+            <div className="flex items-center gap-2 rounded-md bg-sidebar-accent/50 p-2">
+              <Avatar className="size-4">
+                <AvatarFallback className="bg-primary/15 text-[8px] font-semibold text-primary">
                   {initials || "?"}
                 </AvatarFallback>
               </Avatar>
-              <span className="min-w-0 truncate text-sm font-medium">{username}</span>
+              <span className="min-w-0 truncate text-sm text-muted-foreground">{username}</span>
             </div>
           </SidebarMenuItem>
           <SidebarMenuItem>
