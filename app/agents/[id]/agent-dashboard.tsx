@@ -3,8 +3,8 @@
 import { AppSidebarBackRow } from "@/components/app-sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Schedule } from "@/lib/agent/cadence";
-import { formatCadence, formatHandles, TIER_LABELS } from "@/lib/agents";
+import type { Schedule } from "@/lib/agent/scan-frequency";
+import { formatHandles, formatScanFrequency, TIER_LABELS } from "@/lib/agents";
 
 /* ------------------------------------------------------------------ */
 /* Types — the persisted desk this page renders. Shaped by the owned-  */
@@ -17,8 +17,8 @@ export type AgentDetail = {
   readonly handles: readonly string[];
   readonly draftingInstructions: string;
   readonly accountTier: "standard" | "premium";
-  /** null when the stored cadence failed to parse — renders as fallback text. */
-  readonly cadence: Schedule | null;
+  /** null when the stored scan frequency failed to parse — renders as fallback text. */
+  readonly scanFrequency: Schedule | null;
   /** ISO timestamp of when the desk was created. */
   readonly createdAt: string;
 };
@@ -48,8 +48,8 @@ export function AgentDashboard({ agent }: { readonly agent: AgentDetail }) {
             <dl className="flex flex-col gap-4">
               <ConfigRow label="Beat">{agent.beat}</ConfigRow>
               <ConfigRow label="Watching">{formatHandles(agent.handles)}</ConfigRow>
-              <ConfigRow label="Cadence">
-                {agent.cadence ? formatCadence(agent.cadence) : "Custom schedule"}
+              <ConfigRow label="Scan frequency">
+                {agent.scanFrequency ? formatScanFrequency(agent.scanFrequency) : "Custom schedule"}
               </ConfigRow>
               <ConfigRow label="Account tier">{TIER_LABELS[agent.accountTier]}</ConfigRow>
               <ConfigRow label="Drafting instructions">

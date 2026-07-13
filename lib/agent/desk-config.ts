@@ -5,9 +5,9 @@
 // action (browser → server boundary). Pure: zod + type-only imports, NO eve
 // imports, NO I/O.
 import { z } from "zod";
-import type { Schedule } from "./cadence";
+import type { Schedule } from "./scan-frequency";
 
-/** The zod face of Schedule in ./cadence.ts — `satisfies` makes drift a compile error. */
+/** The zod face of Schedule in ./scan-frequency.ts — `satisfies` makes drift a compile error. */
 export const scheduleSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("interval"),
@@ -28,7 +28,9 @@ export const scheduleSchema = z.discriminatedUnion("kind", [
         }),
       )
       .min(1)
-      .describe("Every concrete weekly fire the cadence implies, in the reporter's timezone."),
+      .describe(
+        "Every concrete weekly fire the scan frequency implies, in the reporter's timezone.",
+      ),
   }),
 ]) satisfies z.ZodType<Schedule>;
 
@@ -46,8 +48,8 @@ export const deskConfigSchema = z.object({
     .min(1)
     .describe("The reporter's drafting instructions — tone, angle, hashtags, formatting."),
   accountTier: z.enum(["standard", "premium"]).describe("X account tier: 280 vs 25,000 chars."),
-  cadence: scheduleSchema.describe(
-    "The validated schedule, exactly as validate_cadence passed it.",
+  scanFrequency: scheduleSchema.describe(
+    "The validated scan-frequency schedule (hours/days the desk scans).",
   ),
 });
 

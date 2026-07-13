@@ -7,7 +7,7 @@ description: >-
 model: inherit
 ---
 
-# Verify — oparax-chirp
+# Drive the app end-to-end to prove a change
 
 Surfaces and the commands that reach them (all verified working):
 

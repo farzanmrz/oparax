@@ -9,7 +9,7 @@ allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
 ---
 
-# /feature-ship — triage ✋ then ship ✋
+# Triage ✋ then ship ✋
 
 ## Triage (the scope firewall)
 
@@ -39,9 +39,11 @@ From the repo root, on `ft/<issue#>`:
 .claude/skills/feature/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
-It refuses on wrong branch / stray flow worktree / dirty tree; squash-merges to dev
-as ONE commit; pushes; deletes the branch; closes the issue (the permanent record);
-sweeps scratch (`.feature/`, legacy `.superpowers/`) and the empty worktree mount;
-leaves the repo on `dev`.
+It refuses on wrong branch / stray flow worktree; folds any uncommitted tree
+changes on the branch into the squash (your approved manual edits — deletions,
+tweaks — belong to this same-branch slice); squash-merges to dev as ONE commit;
+pushes; deletes the branch; closes the issue (the permanent record); sweeps scratch
+(`.feature/`, legacy `.superpowers/`) and the empty worktree mount; leaves the repo
+on `dev`.
 
 Hard rules: never push to main/beta; ship target is dev only; no PRs, no CI.

@@ -1,50 +1,18 @@
 // lib/agent/tools.ts
 //
-// The three surviving eve tools, ported to AI SDK `tool()`. Descriptions,
-// inputSchemas, and execute bodies are unchanged from their eve originals — they
-// were already eve-free (raw fetch + pure modules). grok's system prompts come
-// from lib/sysprompts instead of inline consts; save_agent's approval hook moves
-// to the agent's toolApproval in agent.ts. SERVER-ONLY (transitively reads fs via
-// lib/sysprompts).
+// The two agent tools, AI SDK `tool()` defs. grok's scan system prompt comes from
+// lib/sysprompts; save_agent's approval hook lives in the agent's toolApproval
+// (agent.ts). SERVER-ONLY (transitively reads fs via lib/sysprompts).
+//
+// There is no handle-verification tool: the reporter's handles are taken as given
+// and passed straight to the scan — a wrong handle simply returns nothing, no
+// pre-check (fuzzy x_user_search couldn't confirm exact handles anyway; see the
+// removed grok_verify_handles / closed issue #57).
 import { tool } from "ai";
 import { z } from "zod";
-import { GROK_SCAN_PROMPT, GROK_VERIFY_PROMPT } from "@/lib/sysprompts";
+import { GROK_SCAN_PROMPT } from "@/lib/sysprompts";
 import { deskConfigSchema } from "./desk-config";
 import { callResponses } from "./xai";
-
-// Handle verification is its OWN tool, separate from scanning. It runs once at
-// agent setup (not per scan): confirm each watched handle maps to a real account,
-// so the scan tool can later trust them. Sysprompt-enforced — grok is told to use
-// ONLY x_user_search (a bare x_search, no scoping params) at count 3.
-//
-// TODO(db): a site-wide database of already-verified X handles will front this.
-// The setup pipeline should: take the handles → check the DB → only pass the
-// UNVERIFIED ones to this tool → write successful verifications back. The DB isn't
-// built yet, so today this verifies whatever handles it's given.
-export const grokVerifyHandles = tool({
-  description:
-    "Verify that watched X (Twitter) handles resolve to real accounts (one x_user_search per handle). Run this at agent setup, before scanning. Returns each handle's VERIFIED/NOT_FOUND status plus similar-username suggestions for misses.",
-  inputSchema: z.object({
-    handles: z.array(z.string()).max(20).describe("Bare X usernames to verify (no @). Max 20."),
-  }),
-  async execute({ handles }) {
-    // TODO(db): check the site-wide verified-handles DB first and only verify the
-    // uncached handles here; write successes back. Not built yet — verify all.
-    const user = `Verify these X handles — one \`x_user_search\` (count 3) per handle:\n${handles
-      .map((h) => `- ${h}`)
-      .join("\n")}`;
-    // Bare x_search (no allowed_x_handles / dates) so x_user_search runs unscoped.
-    // maxTurns gives grok enough agentic turns to run one x_user_search per handle
-    // (up to 20) + headroom, so a large handle set isn't silently truncated by
-    // xAI's server-default turn cap.
-    return callResponses({
-      system: GROK_VERIFY_PROMPT,
-      user,
-      effort: "low",
-      maxTurns: handles.length + 5,
-    });
-  },
-});
 
 // grok is a DUMB EXECUTOR here. DeepSeek (the reasoner) drafts the exact x_search
 // subtool calls per its own strict guardrails (see lib/sysprompts/desk-agent.md);
@@ -101,7 +69,7 @@ export const grokTwitterSearch = tool({
 // signed-in reporter's Save click inserts via a Next server action FIRST, then
 // approves this call — so execute() running doubles as the model's proof the
 // desk was really saved. "Not yet" denies, and the conversation continues. The
-// cadence-based approval decision lives in the agent's toolApproval (agent.ts).
+// scan frequency-based approval decision lives in the agent's toolApproval (agent.ts).
 export const saveAgent = tool({
   description:
     "Present the completed desk for the reporter's final Save. Call ONLY at the save moment — after the desk is complete, read back in plain language, and the reporter has said an explicit yes. Pass the full final configuration. The call pauses on a Save card in the chat: clicking Save persists the desk and approves this call; 'Not yet' denies it — keep adjusting and offer again. Never claim the desk is saved unless this call completed.",

@@ -9,4 +9,3 @@ const load = (name: string) => readFileSync(join(process.cwd(), "lib/sysprompts"
 
 export const DESK_AGENT_PROMPT = load("desk-agent.md");
 export const GROK_SCAN_PROMPT = load("grok-scan.md");
-export const GROK_VERIFY_PROMPT = load("grok-verify.md");

@@ -9,7 +9,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * Agent details page — the per-desk dashboard. Fetches the signed-in reporter's
  * own desk by `id`; RLS scopes the query to rows they own, so an absent row and
  * another user's row are indistinguishable and both 404. A malformed persisted
- * cadence degrades to fallback text rather than crashing the page.
+ * scan frequency degrades to fallback text rather than crashing the page.
  */
 export default async function AgentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,7 +25,8 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
   if (error) throw new Error("Failed to load the desk. Please try again.");
   if (!data) notFound(); // absent OR another user's row — RLS makes them identical
 
-  const cadence = scheduleSchema.safeParse(data.cadence);
+  // `data.cadence` is the DB column (still named cadence); the app concept is scanFrequency.
+  const scanFrequency = scheduleSchema.safeParse(data.cadence);
   return (
     <AgentDashboard
       agent={{
@@ -34,7 +35,7 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
         handles: data.handles,
         draftingInstructions: data.drafting_instructions,
         accountTier: data.account_tier === "premium" ? "premium" : "standard",
-        cadence: cadence.success ? cadence.data : null,
+        scanFrequency: scanFrequency.success ? scanFrequency.data : null,
         createdAt: data.created_at,
       }}
     />

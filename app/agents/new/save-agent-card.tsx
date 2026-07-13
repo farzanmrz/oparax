@@ -13,7 +13,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import type { DeskAgentUIMessage } from "@/lib/agent/agent";
 import { type DeskConfig, deskConfigSchema } from "@/lib/agent/desk-config";
-import { formatCadence, formatHandles, TIER_LABELS } from "@/lib/agents";
+import { formatHandles, formatScanFrequency, TIER_LABELS } from "@/lib/agents";
 
 type SaveAgentPart = Extract<DeskAgentUIMessage["parts"][number], { type: "tool-save_agent" }>;
 
@@ -59,7 +59,9 @@ export function SaveAgentCard({
           <SummaryRow label="Beat">{config.beat}</SummaryRow>
           <SummaryRow label="Handles">{formatHandles(config.handles)}</SummaryRow>
           <SummaryRow label="Account">{TIER_LABELS[config.accountTier]}</SummaryRow>
-          <SummaryRow label="Cadence">{formatCadence(config.cadence)}</SummaryRow>
+          <SummaryRow label="Scan frequency">
+            {formatScanFrequency(config.scanFrequency)}
+          </SummaryRow>
           <SummaryRow label="Drafting">
             <span className="whitespace-pre-wrap">{config.draftingInstructions}</span>
           </SummaryRow>

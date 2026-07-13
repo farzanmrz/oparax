@@ -1,13 +1,13 @@
-// agent/lib/cadence.ts
+// lib/agent/scan-frequency.ts
 //
-// Pure, stateless rate-rail math for the onboarding cadence step. NO eve imports,
+// Pure, stateless rate-rail math for the onboarding scan frequency step. NO eve imports,
 // NO I/O, NO persistence — just the arithmetic behind the two HARD invariants
 // (hourly minimum spacing, 84 scans / rolling 7 days) and the since-window
-// derivation. Imported by `lib/agent/agent.ts` — `validateCadence` backs the
+// derivation. Imported by `lib/agent/agent.ts` — `validateScanFrequency` backs the
 // save-approval gate, `sinceUnixFor` + `DEFAULT_ONBOARDING_INTERVAL_MINUTES`
 // derive the injected clock block.
 
-/** Tightest cadence offered: scans are never < 1h apart. Also floors the since-window. HARD. */
+/** Tightest scan frequency offered: scans are never < 1h apart. Also floors the since-window. HARD. */
 export const MIN_SPACING_MINUTES = 60;
 /** HARD ceiling: 84 scans per rolling 7 days ("12/day × 7"). */
 export const WEEKLY_BUDGET = 84;
@@ -15,7 +15,7 @@ export const WEEKLY_BUDGET = 84;
 export const MINUTES_PER_WEEK = 10_080;
 /** Boundary overlap folded into every since-window so a post on the edge isn't dropped. */
 export const OVERLAP_SECONDS = 120;
-/** Since-window interval for the onboarding scan, before any cadence is saved. */
+/** Since-window interval for the onboarding scan, before any scan frequency is saved. */
 export const DEFAULT_ONBOARDING_INTERVAL_MINUTES = 60;
 
 export type IntervalSchedule = { kind: "interval"; everyMinutes: number };
@@ -23,9 +23,9 @@ export type WeeklyFire = { dayOfWeek: number; hour: number; minute: number };
 export type WeeklySchedule = { kind: "weekly"; fires: WeeklyFire[] };
 export type Schedule = IntervalSchedule | WeeklySchedule;
 
-export type CadenceViolation = "SUB_HOURLY" | "OVER_WEEKLY_BUDGET";
+export type ScanFrequencyViolation = "SUB_HOURLY" | "OVER_WEEKLY_BUDGET";
 
-export type CadenceVerdict = {
+export type ScanFrequencyVerdict = {
   ok: boolean;
   firesPerWeek: number;
   minSpacingMinutes: number;
@@ -37,7 +37,7 @@ export type CadenceVerdict = {
    * and downstream dedup absorbs the overlap.
    */
   intervalMinutes: number;
-  violations: CadenceViolation[];
+  violations: ScanFrequencyViolation[];
 };
 
 function fireToMinuteOfWeek(f: WeeklyFire): number {
@@ -50,7 +50,7 @@ function fireToMinuteOfWeek(f: WeeklyFire): number {
  * daily face of the cap is deliberately NOT enforced here, so the reporter can
  * spend the weekly budget however they like across the week.
  */
-export function validateCadence(schedule: Schedule): CadenceVerdict {
+export function validateScanFrequency(schedule: Schedule): ScanFrequencyVerdict {
   let firesPerWeek: number;
   let minSpacingMinutes: number;
   let maxSpacingMinutes: number;
@@ -84,7 +84,7 @@ export function validateCadence(schedule: Schedule): CadenceVerdict {
     }
   }
 
-  const violations: CadenceViolation[] = [];
+  const violations: ScanFrequencyViolation[] = [];
   if (minSpacingMinutes < MIN_SPACING_MINUTES) violations.push("SUB_HOURLY");
   if (firesPerWeek > WEEKLY_BUDGET) violations.push("OVER_WEEKLY_BUDGET");
 

@@ -58,7 +58,7 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 ## Conventions
 
 - **No persistence until a data shape earns it.** App-owned schema is minimal — today a single `agents` table (RLS owner-only; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
-- Building a feature slice: `/feature` orchestrates the full flow, or drive the phases individually — `/feature-plan` (spec+plan gate → issue + branch) → `/feature-build` → `/feature-qc` (or single passes: `/simplify`, `/code-review`, `/feature-lint`) → `/feature-ship` (triage gate → one squashed commit to `dev`).
+- Building a feature slice: `/feature` orchestrates the full flow, or drive the phases individually — `/feature-plan` (the plan gate — plan is the spec — → issue + branch) → `/feature-build` → `/feature-qc` (or single passes: `/simplify`, `/code-review`, `/feature-lint`) → `/feature-ship` (triage gate → one squashed commit to `dev`).
 
 ### Issue labels
 
