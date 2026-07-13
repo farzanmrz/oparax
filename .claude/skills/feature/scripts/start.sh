@@ -5,13 +5,23 @@
 # caller can capture it — it names the branch (ft/<issue-number>, number only) and
 # drives ship.sh in Phase 6.
 #
-# Usage:  start.sh "<issue title>" <plan-body-file>
+# Usage:  start.sh "<issue title>" [<plan-body-file>]
+#         With no file argument (or "-"), the plan body is read from stdin — the
+#         approved plan pipes straight from the chat gate; no draft file exists.
 # Run from the repo root.
 set -euo pipefail
 
-title="${1:?usage: start.sh \"<issue title>\" <plan-body-file>}"
-body="${2:?usage: start.sh \"<issue title>\" <plan-body-file>}"
-[ -f "$body" ] || { echo "start: plan body file not found: $body" >&2; exit 1; }
+title="${1:?usage: start.sh \"<issue title>\" [<plan-body-file>]}"
+body="${2:--}"
+if [ "$body" = "-" ]; then
+  bodyfile="$(mktemp)"
+  trap 'rm -f "$bodyfile"' EXIT
+  cat > "$bodyfile"
+  [ -s "$bodyfile" ] || { echo "start: empty plan body on stdin" >&2; exit 1; }
+else
+  [ -f "$body" ] || { echo "start: plan body file not found: $body" >&2; exit 1; }
+  bodyfile="$body"
+fi
 
 # Refuse on a dirty tree — Phase 3 starts from a clean dev base.
 if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -25,7 +35,7 @@ git pull --ff-only origin dev >&2
 
 # Create the issue; gh prints its URL (…/issues/<number>). Take the FIRST /issues/<n>
 # match's digits so extra output lines or trailing whitespace can't corrupt the number.
-url="$(gh issue create --title "$title" --body-file "$body")"
+url="$(gh issue create --title "$title" --body-file "$bodyfile")"
 issue="$(printf '%s\n' "$url" | grep -oE '/issues/[0-9]+' | head -n1 | grep -oE '[0-9]+' || true)"
 [ -n "$issue" ] || { echo "start: could not parse issue number from: $url" >&2; exit 1; }
 

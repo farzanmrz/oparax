@@ -12,7 +12,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 | Agent | eve (mounted at `/eve/v1/*` by `withEve()`) | 0.22.1 (pinned — see vercel/eve#693) |
 | AI SDK | `ai` + `@ai-sdk/react` | 7 / 4 |
 | Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
-| Auth | Supabase (auth only, no app tables) | — |
+| Auth + DB | Supabase (auth + owner-scoped app tables — today just `agents`) | — |
 | Tooling | pnpm (a preinstall guard blocks npm/yarn) + Biome | — |
 | Host | Vercel — oparax.ai, `dev` → `main` promote | — |
 
@@ -50,7 +50,8 @@ cd eve && npx eve eval    # run evals against the real pipeline
   - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
   - `components/ai-elements/` — chat-surface kit.
   - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
-- `lib/` — Supabase clients + auth server actions.
+- `lib/` — Supabase clients (typed by the generated `lib/supabase/database.types.ts`) + auth server actions + desk render helpers (`lib/agents.ts`).
+- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here).
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
 
 Gitignored, regenerable (delete freely when nothing runs): `eve/.eve/`, `.next/`, `eve/.output/`, `eve/.workflow-data/`, `data/`, `.vercel/`.
@@ -59,7 +60,7 @@ Gitignored, regenerable (delete freely when nothing runs): `eve/.eve/`, `.next/`
 
 ## Conventions
 
-- **No persistence until a data shape earns it.** Auth is Supabase's own tables only — no app-owned schema exists. Adding the first table is a real feature slice (plan it), not a quick add mid-task.
+- **No persistence until a data shape earns it.** App-owned schema is minimal — today a single `agents` table (RLS owner-only; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
 - Building a feature slice: `/feature` orchestrates the full flow, or drive the phases individually — `/feature-plan` (spec+plan gate → issue + branch) → `/feature-build` → `/feature-qc` (or single passes: `/simplify`, `/code-review`, `/feature-lint`) → `/feature-ship` (triage gate → one squashed commit to `dev`).
 
 ### Cross-cutting skills

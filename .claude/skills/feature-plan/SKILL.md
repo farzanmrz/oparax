@@ -30,8 +30,8 @@ GATE below stays this flow's only approval gate.
 **Draft the spec+plan inline** — authored right here in the chat, inheriting the
 session's model; never delegated to a subagent. Before writing, read every file the ask
 touches and Grep for callers and contracts rather than guessing; never propose
-anything a hard guard forbids. Save the draft to `.feature/spec-plan.md`. Gate
-revisions rework the same draft with the user's feedback. The document:
+anything a hard guard forbids. The plan lives in the chat — no draft file; gate
+revisions rework it in place with the user's feedback. The document:
 
 - Opens with a **definition-of-done in ≤2 sentences** (can't? slice too big — cut).
 - **2–3 approaches, one recommended**, with the deciding trade-off.
@@ -46,10 +46,10 @@ revisions rework the same draft with the user's feedback. The document:
   at the gate.
 
 GATE ✋: **paste the full spec+plan into chat** (never a file pointer). Revise until
-the user's explicit go. On approval:
-`.claude/skills/feature/scripts/start.sh "<feature name>" .feature/spec-plan.md`
-— cuts `ft/<issue#>` from clean dev, opens the issue with the plan as body (capture
-the issue number — its only stdout line) — then delete the draft. The issue is now
+the user's explicit go. On approval, pipe the approved plan — exactly as pasted —
+into `.claude/skills/feature/scripts/start.sh "<feature name>"` on stdin (heredoc;
+no file argument) — cuts `ft/<issue#>` from clean dev, opens the issue with the
+plan as body (capture the issue number — its only stdout line). The issue is now
 the single source of truth.
 
 Rules: scope freezes at this gate. Planning docs never enter the repo — the issue

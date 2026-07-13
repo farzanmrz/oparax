@@ -15,15 +15,16 @@ The agent + evals live under `eve/` (mounted via `withEve(…, { eveRoot: "eve" 
 ## Tool scoping — the sentinel mechanism
 
 - A file at `eve/agent/tools/<name>.ts` only ever disables/overrides a framework tool; **absence of a file means the tool is ON** — check for a tool's *absence*, not its presence.
-- All framework generics are currently sentinel-disabled; the live surface is the four custom tools (`current_time`, `grok_verify_handles`, `grok_twitter_search`, `validate_cadence`). v1 desk is X-only by decision — `web_fetch`/`web_search` return with their own feature slice.
+- All framework generics are currently sentinel-disabled; the live surface is the five custom tools (`current_time`, `grok_verify_handles`, `grok_twitter_search`, `validate_cadence`, `save_agent` — the last approval-gated, validate/echo only, never writes to the DB). v1 desk is X-only by decision — `web_fetch`/`web_search` return with their own feature slice.
 
 ## `agent` (the built-in subagent tool) can't be sentinel-disabled
 
 - `disableTool()` only validates the framework-tool registry; a sentinel file for `agent` throws only at **worker-boot graph resolution** (session creation), never at `pnpm build` or a "Ready" line — never add `eve/agent/tools/agent.ts`.
 
-## Boot-check for any tool/graph change
+## Boot-check for ANY change under `eve/agent/` — including `instructions.md`
 
-- A green build or "Ready" log never exercises graph resolution — validate by actually creating a session (`POST /eve/v1/session`).
+- A green build or "Ready" log never exercises graph resolution — validate by actually creating a session (`POST /eve/v1/session`). Prompt edits count: eve compiles `instructions.md` into authored artifacts, so a markdown-only diff is still a build input (a skipped boot-check here burned a live session on ft/46).
+- Rapid bursts of `eve/agent/` edits can leave the dev watcher's compile cache stale (`UNLOADABLE_DEPENDENCY … compiled-artifacts-bootstrap.mjs` at session creation) — the remedy is the documented cache sweep: delete `eve/.eve/`, `.eve/`, `eve/.output/` with nothing running, reboot, re-smoke.
 
 ## The scan pipeline
 

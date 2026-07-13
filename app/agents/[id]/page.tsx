@@ -1,95 +1,42 @@
-import { AgentDashboard, type AgentDetail } from "./agent-dashboard";
+import { notFound } from "next/navigation";
+import { scheduleSchema } from "@/eve/agent/lib/desk-config";
+import { createClient } from "@/lib/supabase/server";
+import { AgentDashboard } from "./agent-dashboard";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Agent details page — the per-desk dashboard (wire feed, drafts, activity
- * traces). Static placeholder data below visualizes the design; a later slice
- * replaces it with the persisted agent looked up by `id`. The AgentDetail type
- * in agent-dashboard.tsx documents the exact shape that query must produce.
+ * Agent details page — the per-desk dashboard. Fetches the signed-in reporter's
+ * own desk by `id`; RLS scopes the query to rows they own, so an absent row and
+ * another user's row are indistinguishable and both 404. A malformed persisted
+ * cadence degrades to fallback text rather than crashing the page.
  */
 export default async function AgentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!UUID_RE.test(id)) notFound(); // pre-empt a Postgres uuid cast error
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agents")
+    .select("name, beat, handles, drafting_instructions, account_tier, cadence, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  // A failed query is NOT a 404 — a transient error must not tell the reporter
+  // their desk is gone. Throw to the error boundary instead.
+  if (error) throw new Error("Failed to load the desk. Please try again.");
+  if (!data) notFound(); // absent OR another user's row — RLS makes them identical
 
-  const placeholder: AgentDetail = {
-    id,
-    name: humanize(id),
-    beat: "AI industry news — model releases, funding rounds, and policy moves",
-    status: "live",
-    itemsToday: 14,
-    draftsPending: 2,
-    postsPublished: 31,
-    wire: [
-      {
-        id: "w1",
-        headline: "Frontier lab announces new reasoning model with 10x context window",
-        summary:
-          "The release claims state-of-the-art results on long-horizon agentic benchmarks; API access opens next week with tiered pricing.",
-        source: "Company blog",
-        minutesAgo: 12,
-        breaking: true,
-      },
-      {
-        id: "w2",
-        headline: "EU AI Act enforcement guidance published for general-purpose models",
-        summary:
-          "The guidance clarifies documentation duties for GPAI providers and sets the compliance timeline the industry has been waiting on.",
-        source: "Regulatory filing",
-        minutesAgo: 47,
-      },
-      {
-        id: "w3",
-        headline: "Chip startup raises $400M Series C to challenge inference incumbents",
-        summary:
-          "The round values the company at $4.1B; early customers report 3x cost reduction on large-batch inference workloads.",
-        source: "Press release",
-        minutesAgo: 128,
-      },
-    ],
-    drafts: [
-      {
-        id: "d1",
-        text: "New reasoning model just dropped with a 10x context window. If the benchmark numbers hold up, long-horizon agents just got a lot more practical. API opens next week.",
-        status: "draft",
-        minutesAgo: 9,
-      },
-      {
-        id: "d2",
-        text: "The EU's GPAI guidance is out. The headline: documentation duties are now concrete, and the compliance clock starts ticking. Full breakdown in thread.",
-        status: "posted",
-        minutesAgo: 51,
-      },
-    ],
-    runs: [
-      {
-        id: "r1",
-        label: "Aggregation run",
-        minutesAgo: 12,
-        steps: [
-          "Scanned 6 sources on the AI industry beat",
-          "Extracted 3 atomic news items, deduplicated 1",
-          "Flagged 1 item as breaking (model release)",
-          "Drafted 1 post in reporter voice for review",
-        ],
-      },
-      {
-        id: "r2",
-        label: "Aggregation run",
-        minutesAgo: 74,
-        steps: [
-          "Scanned 6 sources on the AI industry beat",
-          "Extracted 2 atomic news items",
-          "No breaking items; queued for the hourly digest",
-        ],
-      },
-    ],
-  };
-
-  return <AgentDashboard agent={placeholder} />;
-}
-
-/** "capitol-wire" -> "Capitol Wire". Placeholder until real names come from the DB. */
-function humanize(slug: string): string {
-  return slug
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  const cadence = scheduleSchema.safeParse(data.cadence);
+  return (
+    <AgentDashboard
+      agent={{
+        name: data.name,
+        beat: data.beat,
+        handles: data.handles,
+        draftingInstructions: data.drafting_instructions,
+        accountTier: data.account_tier === "premium" ? "premium" : "standard",
+        cadence: cadence.success ? cadence.data : null,
+        createdAt: data.created_at,
+      }}
+    />
+  );
 }

@@ -173,9 +173,10 @@ export function AppSidebarTrigger() {
 /**
  * Secondary-page header lead: the trigger cluster plus a back link to the
  * agents listing — one shared copy for the [id] dashboard and settings so
- * their stacked headers can't drift apart.
+ * their stacked headers can't drift apart. An optional title renders after a
+ * divider, same idiom as the new-agent header row.
  */
-export function AppSidebarBackRow() {
+export function AppSidebarBackRow({ title }: { readonly title?: string } = {}) {
   return (
     <div className="mb-3 flex items-center gap-3">
       <AppSidebarTrigger />
@@ -186,6 +187,12 @@ export function AppSidebarBackRow() {
         <ArrowLeftIcon className="size-4" />
         Agents
       </Link>
+      {title ? (
+        <>
+          <span aria-hidden="true" className="h-4 w-px bg-border" />
+          <h1 className="truncate text-lg leading-none font-semibold tracking-tight">{title}</h1>
+        </>
+      ) : null}
     </div>
   );
 }

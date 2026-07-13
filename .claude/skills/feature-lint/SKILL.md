@@ -62,11 +62,11 @@ for review** rather than shipped silently.
    fix it inline — dispatch overhead isn't worth it. Otherwise **partition by file** (each
    file is owned by exactly one sub-agent — never two agents in the same file) and dispatch
    in parallel:
-   - **Low/medium tier → `lint-fixer-fast`**, many in parallel.
-   - **High tier → `lint-fixer-careful`** — applies the fix **and flags it** for review.
-   Give each sub-agent only its file(s) and that file's findings. The agent definitions
-   already carry the rules (no `--unsafe`, stay in-assignment, don't build); don't restate
-   them — just pass the work.
+   - **Every tier → `lint-fixer`**, many in parallel. The one agent handles both kinds:
+     mechanical fixes directly, behavior-changing fixes with care **and a ⚠ REVIEW flag**.
+   Give each sub-agent only its file(s), that file's findings, and each finding's risk
+   tier. The agent definition already carries the rules (no `--unsafe`, stay
+   in-assignment, don't build); don't restate them — just pass the work.
 
 6. **Normalize + gate.** After the sub-agents converge:
    ```bash

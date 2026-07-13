@@ -3,19 +3,16 @@
 import {
   ChevronRightIcon,
   ClockIcon,
-  NewspaperIcon,
   PlusIcon,
   RotateCcwIcon,
   SearchIcon,
   SearchXIcon,
-  SendIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebarTrigger } from "@/components/app-sidebar";
 import { OparaxMark } from "@/components/logo";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,31 +22,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-
-export type AgentStatus = "live" | "paused";
 
 /** A news desk (agent) as shown on the listing. Shaped to render straight from
- *  persisted data once wiring lands — the page passes an array of these. */
+ *  the persisted row — the page passes an array of these. */
 export type Agent = {
   readonly id: string;
   readonly name: string;
   readonly beat: string;
-  readonly status: AgentStatus;
-  /** ISO timestamp of the desk's last aggregation activity. */
-  readonly lastActiveAt: string;
   /** ISO timestamp of when the desk was created. */
   readonly createdAt: string;
-  /** Atomic news items aggregated in the last 24h. */
-  readonly itemsToday: number;
-  /** Posts published to X from this desk (all time). */
-  readonly postsPublished: number;
 };
 
-type SortKey = "recent" | "newest" | "name";
+type SortKey = "newest" | "name";
 
 const SORT_OPTIONS: ReadonlyArray<{ value: SortKey; label: string }> = [
-  { value: "recent", label: "Last active" },
   { value: "newest", label: "Newest first" },
   { value: "name", label: "Name A–Z" },
 ];
@@ -66,7 +52,7 @@ export function AgentsList({
   readonly onRetry?: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortKey>("recent");
+  const [sort, setSort] = useState<SortKey>("newest");
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -80,9 +66,7 @@ export function AgentsList({
     // never mutates the `agents` prop.
     return filtered.sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
-      if (sort === "newest")
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      return new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [agents, query, sort]);
 
@@ -174,26 +158,14 @@ function AgentRow({ agent }: { readonly agent: Agent }) {
         className="group flex w-full items-center gap-4 px-4 py-4 outline-none transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
         href={`/agents/${agent.id}`}
       >
-        <StatusDot status={agent.status} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2.5">
-            <span className="truncate font-medium">{agent.name}</span>
-            <StatusBadge status={agent.status} />
-          </div>
+          <span className="block truncate font-medium">{agent.name}</span>
           <p className="mt-0.5 truncate text-sm text-muted-foreground">{agent.beat}</p>
         </div>
-        <div className="hidden shrink-0 items-center gap-5 text-xs text-muted-foreground md:flex">
-          <span className="flex items-center gap-1.5" title="Items aggregated in the last 24h">
-            <NewspaperIcon aria-hidden="true" className="size-3.5" />
-            <span className="font-mono">{agent.itemsToday}</span> today
-          </span>
-          <span className="flex items-center gap-1.5" title="Posts published to X">
-            <SendIcon aria-hidden="true" className="size-3.5" />
-            <span className="font-mono">{agent.postsPublished}</span> posted
-          </span>
+        <div className="hidden shrink-0 items-center text-xs text-muted-foreground md:flex">
           <span className="flex items-center gap-1.5">
             <ClockIcon aria-hidden="true" className="size-3.5" />
-            <span suppressHydrationWarning>{relativeTime(agent.lastActiveAt)}</span>
+            <span suppressHydrationWarning>Created {relativeTime(agent.createdAt)}</span>
           </span>
         </div>
         <ChevronRightIcon
@@ -202,36 +174,6 @@ function AgentRow({ agent }: { readonly agent: Agent }) {
         />
       </Link>
     </li>
-  );
-}
-
-function StatusDot({ status }: { readonly status: AgentStatus }) {
-  return (
-    <span aria-hidden="true" className="relative flex size-2 shrink-0">
-      {status === "live" ? (
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-live opacity-75" />
-      ) : null}
-      <span
-        className={cn(
-          "relative inline-flex size-2 rounded-full",
-          status === "live" ? "bg-live" : "bg-muted-foreground/50",
-        )}
-      />
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { readonly status: AgentStatus }) {
-  return (
-    <Badge
-      className={cn(
-        "hidden font-mono text-[10px] tracking-wider uppercase sm:inline-flex",
-        status === "live" ? "border-live/40 text-live" : "text-muted-foreground",
-      )}
-      variant="outline"
-    >
-      {status === "live" ? "On the wire" : "Paused"}
-    </Badge>
   );
 }
 
