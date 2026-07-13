@@ -17,13 +17,16 @@ For each finding the user reports, exactly one label:
 - **fix now** — breaks the slice's written definition-of-done (the ≤2-sentence
   statement in the issue). Build it, then re-run `feature-lint` + the boot smoke.
   Not DoD-breaking → not fix-now, however tempting.
-- **next feature / branch** — real, its own slice → capture as a new GitHub issue,
-  `gh issue create --title "triage: <item>" --body "bucket: next slice — <context +
-  origin issue#>"` (scribing the USER's deferral — the only reason this flow ever
-  creates one).
-- **table for later** → same command, body opening `bucket: someday`.
+- **backlog** — real, but not this slice (its own future slice, or a someday item)
+  → capture as a new GitHub issue with a plain title (NO `triage:` prefix — the
+  label carries that now):
+  `gh issue create --title "<item>" --label backlog --body "<context + origin
+  issue#>; <next slice | someday>"`. Add `--label backlog,agent` when the agent's
+  own analysis surfaced it; plain `--label backlog` when scribing the USER's own
+  deferral. Body's first clause says whether it's a likely next slice or someday.
 
-Loop test → triage → fix-now until no fix-nows remain.
+Loop test → triage → fix-now until no fix-nows remain. See AGENTS.md → "Issue
+labels" for the full taxonomy.
 
 GATE ✋: ask in plain words — **"Ready to ship, or more to fix first?"** A green
 build is never permission. Only their explicit "ship it" advances.

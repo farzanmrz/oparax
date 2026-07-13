@@ -63,6 +63,17 @@ Gitignored, regenerable (delete freely when nothing runs): `eve/.eve/`, `.next/`
 - **No persistence until a data shape earns it.** App-owned schema is minimal — today a single `agents` table (RLS owner-only; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
 - Building a feature slice: `/feature` orchestrates the full flow, or drive the phases individually — `/feature-plan` (spec+plan gate → issue + branch) → `/feature-build` → `/feature-qc` (or single passes: `/simplify`, `/code-review`, `/feature-lint`) → `/feature-ship` (triage gate → one squashed commit to `dev`).
 
+### Issue labels
+
+GitHub labels carry issue type and state — never a title prefix (no `triage:` etc.). Every `gh issue create` sets a label; every agent applies them the same way (this is the tool-neutral record — Codex reads it here too).
+
+| Label | Meaning | Applied |
+| --- | --- | --- |
+| `feature` | A decided, plannable slice. | `start.sh` at the plan gate (auto). |
+| `bug` | Something broken. | Whoever files it. |
+| `backlog` | Surfaced but not yet triaged into a plan — a future slice or a someday item; the body says which. | `/feature-ship`'s triage step, or by hand. |
+| `agent` | The item came from an AI agent's own analysis (a review finding, an observed defect), not a human decision. Provenance only — pairs with `backlog`/`bug`, never alone. Tool-neutral (not "claude"): `gh` issues are always authored by the repo owner's token, so this label is the only machine-vs-human signal. | Alongside another label when the agent surfaced it. |
+
 ### Cross-cutting skills
 
 | Need | Skill |
