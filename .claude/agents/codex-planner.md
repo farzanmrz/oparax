@@ -20,13 +20,15 @@ repo="$(git rev-parse --show-toplevel)"; msg="$(mktemp)"
 codex exec -s read-only -C "$repo" -c service_tier=fast [MODEL_FLAGS] -o "$msg" "<prompt>" 1>/dev/null 2>"$msg.err"
 cat "$msg" 2>/dev/null || sed -n '1,40p' "$msg.err"
 ```
+The draft `<prompt>` carries a grounding-efficiency contract (batch file reads, ground from the repo + `AGENTS.md` + Codex's own Supabase/Vercel skills first, web search only for a specific gap). That is deliberate, not filler — pass it through verbatim like the rest of the prompt; it exists because one-file-per-turn sequential reads, not the model tier, are what make an unconstrained Codex draft lag Claude's by minutes.
 
 ### Critique mode — Codex critiques Claude's plan on the same thread
 ```bash
-repo="$(git rev-parse --show-toplevel)"; msg="$(mktemp)"
-codex exec resume --last -s read-only -C "$repo" -c service_tier=fast -o "$msg" "<prompt>" 1>/dev/null 2>"$msg.err"
+msg="$(mktemp)"
+codex exec resume --last -c sandbox_mode="read-only" -c service_tier=fast [MODEL_FLAGS] -o "$msg" "<prompt>" 1>/dev/null 2>"$msg.err"
 cat "$msg" 2>/dev/null || sed -n '1,40p' "$msg.err"
 ```
+`resume` rejects `-s` and `-C` (it inherits the draft session's sandbox and cwd) — set read-only via `-c sandbox_mode` as above, and do not pass `-C`.
 
 `MODEL_FLAGS` come straight from the dispatch prompt's tier map:
 - model → `-m <model>` (e.g. `-m gpt-5.6-sol`); omit the flag to use the Codex config default.
@@ -35,7 +37,7 @@ cat "$msg" 2>/dev/null || sed -n '1,40p' "$msg.err"
 ## Rules
 
 - ONE `codex exec` call. No repo reads, no second call, no follow-up.
-- `-s read-only` ALWAYS — planning never writes. Never add `--write` or a writable sandbox.
+- Read-only ALWAYS — planning never writes. Draft mode uses `-s read-only`; critique mode uses `-c sandbox_mode="read-only"` (resume rejects `-s`). Never add `--write` or a writable sandbox.
 - Always `-c service_tier=fast`.
 - Pass the dispatch prompt's text through unchanged; do not reshape Codex's job.
 - `-o "$msg"` captures Codex's final message; return that (the event stream on stdout is discarded). Return it exactly as-is — no preamble, no summary, no commentary.

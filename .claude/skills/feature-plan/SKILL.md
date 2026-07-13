@@ -44,7 +44,19 @@ it plans while you draft yours.
   model_reasoning_effort=high`; a lighter session → medium. Codex runs the same
   feature-plan process (steps 3a–3b) via its `.agents/skills/` symlink, starting
   from the confirmed ask — it does NOT re-run the thinking gate (it can't converse
-  with the user). It returns a full plan with its own decided approach.
+  with the user). **Name the `feature-plan` skill explicitly** in the dispatch prompt
+  so Codex loads its body directly — invoke-by-name is immune to any 2% skills-list
+  truncation. It returns a full plan with its own decided approach.
+  - **Include the grounding-efficiency contract in the dispatch prompt** — Codex's
+    default is to read one file per shell turn, and 20–30 sequential read-then-reason
+    turns under high effort is what makes its plan lag Claude's by minutes (not the
+    model tier, not web search). Tell it verbatim: *"You already have this repo,
+    `AGENTS.md`, and your Supabase/Vercel skills — ground from those first. Batch your
+    reads: many files per shell command, never one per turn. Read your Supabase/Vercel
+    skill files only for a specific pattern you need, not end to end. Use web search
+    only for a single fact none of the above cover. Produce the plan in one efficient
+    grounding pass."* This preserves every grounding source and the effort tier — it
+    only collapses the sequential-read turn explosion, the actual latency gap.
 - **Your plan:** do 3a then 3b below, concurrently.
 
 ### 3a. Consider approaches — internally, present none
