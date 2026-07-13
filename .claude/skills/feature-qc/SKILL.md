@@ -15,10 +15,14 @@ Over the whole branch diff, in order (skip nothing silently — report each step
 
 1. **Convergence:** all commits on the feature branch; no stray flow worktrees under
    `.claude/worktrees/`; no stray branches.
-2. **Review fan-out** — one `Workflow({ name: "qc-review", args })` call runs ALL
-   finders against the frozen branch diff in a single parallel barrier: the two
-   `cleanup-finder` angles + `conventions-finder` on sonnet, the three `bug-finder`
-   angles on opus (models pinned in the workflow, not prose). Pass `args`:
+2. **Review fan-out** — one `Workflow({ scriptPath: ".claude/workflows/qc-review.mjs",
+   args })` call runs ALL finders against the frozen branch diff in a single parallel
+   barrier: the two `cleanup-finder` angles + `conventions-finder` on sonnet, the
+   three `bug-finder` angles on opus (models pinned in the workflow, not prose).
+   Address it by **`scriptPath`, never `name`** — `Workflow({ name })` resolves only
+   built-in/registered workflows and does NOT scan the repo's `.claude/workflows/`,
+   so `{ name: "qc-review" }` silently 404s and degrades to the unbounded
+   `/code-review` path; the path form runs the repo workflow directly. Pass `args`:
    `{ range: "origin/dev...ft/<N>", generated: "<globs>", vetoes: "<plan-frozen
    decisions>", effort: "medium" }` — set `effort: "high"` when the slice adds a
    table/migration, a new trust boundary (auth, server action, agent tool surface),
@@ -44,7 +48,9 @@ Over the whole branch diff, in order (skip nothing silently — report each step
 
 Hard rules: the review fan-out is one barrier of ≤7 finders (6 today) plus the
 single delta-verify — well under the ≤10-agents-per-fan-out cap; the `qc-review`
-workflow owns finder parallelism and model pins. If any step reveals a dependency
+workflow (invoked by `scriptPath`, see step 2) owns finder parallelism and model
+pins. Never fall back to `/code-review` for the fan-out — its per-candidate verify
+phase is unbounded and defeats the cap the workflow exists to enforce. If any step reveals a dependency
 MAJOR upgrade, framework migration, or schema/data migration is required — STOP and
 present options; never fix those autonomously. End by stating: builds ✓ boots ✓
 findings fixed ✓ (or what remains).

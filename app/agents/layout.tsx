@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     >
       <SidebarPeekProvider>
         <AppSidebar username={getUsername(user)} />
-        <SidebarInset className="h-dvh min-h-0 bg-background text-foreground">
+        <SidebarInset className="h-dvh min-h-0 min-w-0 bg-background text-foreground">
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto flex h-full w-full max-w-[81rem] flex-col px-4 sm:px-6">
               {children}
