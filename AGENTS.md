@@ -1,6 +1,6 @@
 # Oparax
 
-AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → an agent listing, a create-agent eve chat (localhost-only), and settings.
+AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → an agent listing, a create-agent eve chat (Supabase-authed on same-origin `/eve/v1/*`, so it runs deployed, not just localhost), and settings.
 
 ## Stack
 
@@ -37,7 +37,7 @@ cd eve && npx eve eval    # run evals against the real pipeline
 
 | Key | Consumed by |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the `lib/supabase/` clients |
+| `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the `lib/supabase/` clients; `NEXT_PUBLIC_SUPABASE_URL` also by `eve/agent/channels/eve.ts` (route-auth issuer + cookie key) — must be set in the eve service too |
 | `XAI_API_KEY` | the xAI client in `eve/agent/` — Grok scan + handle-verify |
 | `AI_GATEWAY_API_KEY` | AI Gateway for the DeepSeek chat model (local dev; deployed = Vercel OIDC) |
 
@@ -82,6 +82,14 @@ GitHub labels carry issue type and state — never a title prefix (no `triage:` 
 | env vars (local or Vercel) | `vercel:env-vars` |
 | deploys / promotes / rollbacks | `vercel:deployments-cicd` |
 | repo-wide Biome findings | `feature-lint` |
+
+**Inspecting Vercel state — MCP tools first, not the raw CLI.** For deployment
+status, logs, project/env inspection, and even triggering a deploy, reach for the
+Vercel MCP tools (`list_deployments`, `get_deployment`, `get_deployment_build_logs`,
+`get_runtime_logs`, `get_runtime_errors`, `deploy_to_vercel`) — they're API calls
+with no local-filesystem cost. The `vercel` CLI's `deploy` chokes on this repo's
+file count (eve's regenerable `.eve/`/`.workflow-data/` dirs blow past the 15k-file
+upload cap); if you must use the CLI to deploy, pass `--archive=tgz`.
 
 ## Cross-tool
 

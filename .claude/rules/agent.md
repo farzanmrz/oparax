@@ -48,9 +48,11 @@ The agent + evals live under `eve/` (mounted via `withEve(…, { eveRoot: "eve" 
 - Parallel search and xAI `x_search` bill per successful call **application-wide, not per-user** — cap usage before enabling at scale.
 - `web_search` (currently OFF via sentinel) — if ever re-enabled: it only fires for a plain gateway-string model; a source-backed model reference makes eve's resolver return null and **silently** drop the tool.
 
-## Deployed chat (future slice — no `eve/agent/channels/` exists yet)
+## Deployed chat — the authored channel (`eve/agent/channels/eve.ts`)
 
-- `@supabase/ssr` won't drop into an eve channel's AuthFn — it needs nitro-side reassembly of chunked `sb-*` cookies + JWT verify.
+- Route auth is an ordered walk `[supabaseUser(), vercelOidc(), localDev()]` — first match wins, all-skip → 401 (fail closed). `supabaseUser()` verifies the signed-in browser user; `vercelOidc()` keeps eve-CLI access to deployed agents; `localDev()` (loopback-only) never admits deployed traffic.
+- `@supabase/ssr` can't run inside the channel's AuthFn (it expects a framework cookie adapter) — `eve/agent/lib/supabase-cookies.ts` reimplements just its read path: chunked `sb-<ref>-auth-token[.N]` reassembly (first-occurrence-wins, matching the `cookie` pkg the app reads through) + `base64-` decode → `access_token`, then eve's own `verifyOidc()` checks it against Supabase's JWKS (ES256, cached per process; needs only `NEXT_PUBLIC_SUPABASE_URL`, no secrets). That key must be set in the **eve** service too (the two-service split) — if it's missing on a Vercel deploy the AuthFn throws a coded 401 (`supabase_auth_url_missing`) rather than silently skipping.
+- Scheduled/internal runtime paths never pass route auth (they carry the `eve:app` runtime principal) — gating this door cannot affect future background runs; anonymous preview access would be an explicit `none()` entry, deliberately not added.
 - `withEve()` splits the Vercel deploy into two services (web + eve) at build time — new service config must list both or the build fails.
 
 ## Evals (`eve/evals/`)

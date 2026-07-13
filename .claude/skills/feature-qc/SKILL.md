@@ -15,20 +15,23 @@ Over the whole branch diff, in order (skip nothing silently — report each step
 
 1. **Convergence:** all commits on the feature branch; no stray flow worktrees under
    `.claude/worktrees/`; no stray branches.
-2. **`/simplify`** — cleanup-only pass; apply fixes. Dispatch its angle reviewers
-   as **`cleanup-finder`** agents (model pinned in the agent file — the policy is
-   structural, not prose). They report; this session adjudicates and applies, and
-   plan-frozen decisions in the ft issue are vetoes, not findings.
-3. **`/code-review`** — bug hunt over the branch diff; fix real findings. Dispatch
-   correctness angles as **`bug-finder`** agents (inherit — QC recall is the last
-   automated net before dev) and the conventions/docs angle as
-   **`conventions-finder`**. Effort: `medium` by default; `high` when the slice
-   adds a table/migration, a new trust boundary (auth, server action, agent tool
-   surface), or touches posting/money paths. Bounded: ≤10 agents total (fold
-   verification into finders, cap angles). Large/risky diff → offer the user
-   `/code-review ultra`.
-4. **`feature-lint`** (scoped to the feature's changed files — LAST of the three
-   because simplify and review both mutate code; lint formats the final shape) — biome format + safe
+2. **Review fan-out** — one `Workflow({ name: "qc-review", args })` call runs ALL
+   finders against the frozen branch diff in a single parallel barrier: the two
+   `cleanup-finder` angles + `conventions-finder` on sonnet, the three `bug-finder`
+   angles on opus (models pinned in the workflow, not prose). Pass `args`:
+   `{ range: "origin/dev...ft/<N>", generated: "<globs>", vetoes: "<plan-frozen
+   decisions>", effort: "medium" }` — set `effort: "high"` when the slice adds a
+   table/migration, a new trust boundary (auth, server action, agent tool surface),
+   or touches posting/money paths. It returns a consolidated `findings` list.
+3. **Adjudicate + apply (this session).** The workflow only reports — the session
+   decides. Plan-frozen decisions in the ft issue are vetoes, not findings; drop
+   them. Apply the survivors, then **delta-verify**: dispatch ONE `bug-finder`
+   (opus) scoped to just the fix diff to confirm the applied changes introduced no
+   new defect. This single narrow pass is what replaces the old serialize-so-review-
+   sees-simplify's-fixes ordering. Large/risky diff → offer the user
+   `/code-review ultra` before proceeding.
+4. **`feature-lint`** (scoped to the feature's changed files — LAST because the
+   review pass mutates code; lint formats the final shape) — biome format + safe
    fixes + residual fixer agents, gating on a clean `pnpm build` — the authority on
    compile correctness.
 5. **Boot smoke** — builds can't see boot failures: background `pnpm dev`, wait for
@@ -39,9 +42,9 @@ Over the whole branch diff, in order (skip nothing silently — report each step
 6. **Docs:** update AGENTS.md / touched `.claude/rules/` files if the diff changed
    what they document (ships in the same diff).
 
-Hard rules: ≤10 agents total per fan-out. Within a pass, dispatch every finder in
-ONE message (parallel is the default); serialize only across passes — that ordering
-is load-bearing, since each pass reviews the previous pass's applied fixes. If any
-step reveals a dependency MAJOR upgrade, framework migration, or schema/data
-migration is required — STOP and present options; never fix those autonomously.
-End by stating: builds ✓ boots ✓ findings fixed ✓ (or what remains).
+Hard rules: the review fan-out is one barrier of ≤7 finders (6 today) plus the
+single delta-verify — well under the ≤10-agents-per-fan-out cap; the `qc-review`
+workflow owns finder parallelism and model pins. If any step reveals a dependency
+MAJOR upgrade, framework migration, or schema/data migration is required — STOP and
+present options; never fix those autonomously. End by stating: builds ✓ boots ✓
+findings fixed ✓ (or what remains).

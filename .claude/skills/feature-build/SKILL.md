@@ -21,11 +21,16 @@ if it exists; otherwise the user's direct instruction is the plan (small-build m
   build hid a worker crash).
 - **Mirror tasks into TaskCreate**, dependencies via `addBlockedBy`; the task graph
   decides concurrency.
-- **Execution — smallest shape that fits:**
-  - 1–2 tasks or tightly coupled → inline in this session.
-  - 3+ unblocked with disjoint files → dispatch `implementer`
-    (`.claude/agents/implementer.md`) once per task, ALL in one message, same
-    working tree. NO worktree isolation (it branches from the default branch).
+- **Execution — implementer by default:**
+  - Every plan task → dispatch `implementer` (`.claude/agents/implementer.md`)
+    once per task — **including a single task** (its model pin is the point: the
+    session model plans and reviews, the implementer's cheaper pinned model
+    writes the code). Unblocked tasks with disjoint files dispatch ALL in one
+    message, same working tree. NO worktree isolation (it branches from the
+    default branch).
+  - Inline in this session ONLY for trivial mechanical edits the user directly
+    dictated (small-build mode one-liners where writing the brief would exceed
+    the diff).
   - Live mutual negotiation needed → agent team (disjoint file assignment; watch
     task-status lag).
   - Massive mechanical sweep (rare) → Workflow, ≤10 agents TOTAL.
