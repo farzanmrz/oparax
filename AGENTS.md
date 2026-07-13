@@ -53,6 +53,7 @@ cd eve && npx eve eval    # run evals against the real pipeline
 - `lib/` — Supabase clients (typed by the generated `lib/supabase/database.types.ts`) + auth server actions + desk render helpers (`lib/agents.ts`).
 - `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here).
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
+- `.agents/skills/` + `.codex/agents/` — the Codex-side mirrors: symlinks to the tool-neutral `.claude/skills/` entries, and TOML ports of the six `.claude/agents/` workers (kept in behavioral sync — edit both or neither).
 
 Gitignored, regenerable (delete freely when nothing runs): `eve/.eve/`, `.next/`, `eve/.output/`, `eve/.workflow-data/`, `data/`, `.vercel/`.
 
