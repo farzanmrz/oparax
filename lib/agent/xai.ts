@@ -1,11 +1,9 @@
-// agent/lib/xai.ts
+// lib/agent/xai.ts
 //
 // Low-level client for xAI's /responses endpoint — a raw fetch (NOT @ai-sdk/xai,
-// whose responses provider flattens the per-subtool trace away). Shared by BOTH
-// grok tools: the scan executor (grok_twitter_search) and the handle verifier
-// (grok_verify_handles). It lives in lib/ rather than inside one of the tools so
-// neither grok tool depends on the other — the same pattern agent/lib/cadence.ts
-// establishes for the cadence tools.
+// whose responses provider flattens the per-subtool trace away). Used by the scan
+// executor (grok_twitter_search); it lives here rather than inside the tool so the
+// raw-fetch client stays independently testable (the same pattern scan-frequency.ts uses).
 
 const XAI_RESPONSES_URL = "https://api.x.ai/v1/responses";
 

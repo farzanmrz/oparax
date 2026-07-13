@@ -9,7 +9,7 @@ allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
 ---
 
-# /feature-qc — the QC battery (autonomous)
+# The QC battery — autonomous
 
 Over the whole branch diff, in order (skip nothing silently — report each step):
 
@@ -42,8 +42,20 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    readiness, assert Next.js reports "Ready" and NO failure signatures (ERROR,
    "failed", unmet peer, unhandled rejection). Collect WARNINGs for triage; kill the
    process. Startup output only.
-6. **Docs:** update AGENTS.md / touched `.claude/rules/` files if the diff changed
-   what they document (ships in the same diff).
+6. **Doc sync — subtractive first** (the revise-agents-md philosophy at slice scope;
+   ships in the same diff). Default outcome is **no change** — say so plainly rather
+   than invent additions. A fact earns a doc line only if it is durable,
+   action-affecting, and NOT recoverable from the code a fresh session reads; adding
+   is guilty until proven load-bearing. In order:
+   - **Subtract** what the slice made stale — any AGENTS.md / `.claude/rules/` / skill
+     line the diff falsified or made code-recoverable → delete it.
+   - **Add** only a genuine non-recoverable keeper (a new guard, a retired pattern, a
+     new trust boundary): AGENTS.md if always-on, the area's `.claude/rules/<area>.md`
+     if scoped — create a new nested rule file for a brand-new path-area.
+   - **Skills:** if the slice changed what a skill's body documents (a command, a
+     wiring contract), fix that skill; deeper skill bloat → surface it for
+     `/meta-dev:improve-skill`, never inline-rewrite it here.
+   Single-source every fact (one home; cross-reference, never restate).
 
 Hard rules: the review fan-out is one barrier of ≤7 finders (6 today) plus the
 single delta-verify — well under the ≤10-agents-per-fan-out cap; the `qc-review`

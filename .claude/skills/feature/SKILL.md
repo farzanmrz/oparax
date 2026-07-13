@@ -12,7 +12,7 @@ model: inherit
 disable-model-invocation: true
 ---
 
-# /feature — idea to shipped (orchestrator)
+# Idea to shipped — the orchestrator
 
 This skill only conducts; the four phase skills do the work. **ONE issue · ONE
 feature branch · ONE squashed commit on `dev`.** No PRs, no CI. Parallelism is a
@@ -37,8 +37,8 @@ honest.
 - NEVER create per-task branches or PRs; never push main/beta; ship = dev only.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
 - Scope freezes at the plan gate; mid-build ideas → the issue's Deferred list, or
-  a new GitHub issue titled `triage: <item>` when it's its own slice (created ONLY
-  to scribe the user's deferrals — never self-initiated).
+  a new GitHub issue (plain title, `--label backlog`) when it's its own slice
+  (created ONLY to scribe the user's deferrals — never self-initiated).
 - Planning docs never enter the repo; the issue body + squashed commit message are
   the record; scratch lives in self-gitignored `.feature/` and dies at ship.
 - Skill grounding is binding everywhere: invoke the area's `.claude/rules/` skills

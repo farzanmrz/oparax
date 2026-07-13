@@ -26,11 +26,14 @@ if git worktree list --porcelain | grep -q '^worktree .*/\.claude/worktrees/'; t
   exit 1
 fi
 
-# Refuse on a dirty tree: ship exactly the reviewed commits on $branch. Any
-# uncommitted change bypassed the Phase 4 gate, so stop rather than sweep it in.
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "ship: uncommitted changes on $branch — commit and re-verify (Phase 4) before shipping." >&2
-  exit 1
+# Fold in the dirty tree: uncommitted changes on $branch (deletions, manual tweaks)
+# are the user's own approved work on this slice — same branch by design, no
+# separate branch. Stage everything (incl. deletions + untracked) and commit onto
+# $branch so the squash-merge below carries it into dev's one commit.
+if [ -n "$(git status --porcelain)" ]; then
+  echo "ship: folding uncommitted tree changes on $branch into the ship commit." >&2
+  git add -A
+  git commit -m "ship: fold manual tree changes on $branch" >&2
 fi
 
 # Squash-merge into dev as one clean commit.

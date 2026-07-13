@@ -4,7 +4,7 @@ description: Conversational first-principles thinking partner for Oparax work â€
 model: inherit
 ---
 
-# /first-principles-thinking
+# Strip the ask to first principles, then rebuild
 
 ## 1. What first-principles thinking is
 

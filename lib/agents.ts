@@ -1,8 +1,9 @@
 // App-side helpers for rendering a saved desk. The Schedule and DeskConfig
 // types come from the pure lib/agent modules, so app and agent speak one
 // config shape.
-import type { Schedule } from "@/lib/agent/cadence";
+
 import type { DeskConfig } from "@/lib/agent/desk-config";
+import type { Schedule } from "@/lib/agent/scan-frequency";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -19,10 +20,10 @@ export function formatHandles(handles: readonly string[]): string {
 
 /**
  * "Every 2 hours" · "Every day, hourly 9:00–17:00" · "Mondays at 9:00; Thursdays
- * at 14:30" — plain words for a stored cadence. Weekly fires are pattern-compressed
+ * at 14:30" — plain words for a stored scan frequency. Weekly fires are pattern-compressed
  * (a daily hourly window is one phrase, never the raw fire list).
  */
-export function formatCadence(schedule: Schedule): string {
+export function formatScanFrequency(schedule: Schedule): string {
   if (schedule.kind === "interval") {
     const m = schedule.everyMinutes;
     if (m % 1440 === 0) return m === 1440 ? "Every day" : `Every ${m / 1440} days`;

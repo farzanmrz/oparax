@@ -1,8 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { validateCadence } from "@/lib/agent/cadence";
 import { deskConfigSchema } from "@/lib/agent/desk-config";
+import { validateScanFrequency } from "@/lib/agent/scan-frequency";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,12 +26,12 @@ export async function saveAgent(input: {
     return { error: "The desk configuration is incomplete — ask the agent to re-check it." };
   }
 
-  // The chat's save-approval gate already rejects an out-of-rail cadence, but this action is
-  // the actual writer and a directly-callable server action — re-check here so a request that
-  // never passed through the gate can't persist a schedule that violates the rate rail.
-  if (!validateCadence(config.data.cadence).ok) {
+  // The chat's save-approval gate already rejects an out-of-rail scan frequency, but this
+  // action is the actual writer and a directly-callable server action — re-check here so a
+  // request that never passed through the gate can't persist a schedule that breaks the rail.
+  if (!validateScanFrequency(config.data.scanFrequency).ok) {
     return {
-      error: "That scan cadence is outside the allowed limits — ask the agent to adjust it.",
+      error: "That scan frequency is outside the allowed limits — ask the agent to adjust it.",
     };
   }
 
@@ -52,7 +52,9 @@ export async function saveAgent(input: {
       handles: config.data.handles,
       drafting_instructions: config.data.draftingInstructions,
       account_tier: config.data.accountTier,
-      cadence: config.data.cadence,
+      // DB column is still named `cadence`; the app concept is `scanFrequency`.
+      // (Column rename rides with the scan-frequency schema migration.)
+      cadence: config.data.scanFrequency,
       setup_session_id: input.sessionId,
       // The transcript is validated only as a non-empty array; its opaque
       // message shape lands in a Json column, so cast (never `any`).

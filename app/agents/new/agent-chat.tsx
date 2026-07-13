@@ -348,7 +348,7 @@ function MessagePart({
       );
     case "tool-save_agent": {
       // A denial the reporter never clicked is the approval policy's (a
-      // cadence that violates the rate rail) — a model-facing exchange,
+      // scan frequency that violates the rate rail) — a model-facing exchange,
       // nothing for the reporter to act on. v7 sets approval.isAutomatic for
       // exactly this case, so it's the discriminator (render nothing for an
       // automatic/policy deny, the card otherwise).
@@ -368,7 +368,6 @@ function MessagePart({
         />
       );
     }
-    case "tool-grok_verify_handles":
     case "tool-grok_twitter_search":
       return (
         <Tool>

@@ -19,6 +19,8 @@ Those need a human-style edit. This skill clears that residual on the feature's 
 files **without bloating the main conversation** — it fans the fixes out to isolated
 sub-agents and returns only a compact report.
 
+## Correctness is the constraint
+
 **Correctness is priority one.** The only automated safety net here is `pnpm build`
 (TypeScript + Next compile) — there is no test runner and browser checks are out. A fix
 that compiles can still change behavior. That single fact drives the design: fixes are
