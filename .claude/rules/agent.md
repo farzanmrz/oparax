@@ -1,61 +1,46 @@
 ---
 paths:
-  - "eve/**"
+  - "lib/agent/**"
+  - "app/api/chat/**"
 ---
 
-# The eve agent
+# The desk agent
 
-- `vercel:eve` first for anything in `eve/agent/` (all `defineAgent` / `defineTool` / `defineEval` code).
-- `vercel:ai-sdk` for `agent.ts`'s `model` / `modelOptions` surface (AI SDK semantics; the tools' `execute()`s deliberately use raw fetch, not the SDK — see the scan pipeline below).
-- `vercel:ai-gateway` for provider/model routing — `eve/agent/agent.ts` (DeepSeek) and the eval judge (`eve/evals/evals.config.ts`) are plain gateway strings.
-- `eve-session-review` to debug a past onboarding chat/scan offline from `eve/.workflow-data/` ("why did that scan return nothing").
+- `vercel:ai-sdk` for `lib/agent/agent.ts`'s `ToolLoopAgent` (`toolApproval`, `stepCountIs`, `InferAgentUIMessage`) and the `tool()` defs in `lib/agent/tools.ts`.
+- `vercel:ai-gateway` for the DeepSeek model routing — `agent.ts`'s model is a plain gateway string (`"deepseek/deepseek-v4-flash"`, `providerOptions.gateway.sort: "cost"`).
+- `supabase:supabase` for `app/api/chat/route.ts`'s auth gate (`supabase.auth.getUser()`).
+- Prompt-writing conventions and drift guards for `lib/sysprompts/*.md` live in `.claude/rules/sysprompts.md`, not here — this file is the TypeScript/architecture side.
 
-The agent + evals live under `eve/` (mounted via `withEve(…, { eveRoot: "eve" })`). The standalone `eve` CLI (`eve dev`, `eve eval`) resolves the app root relative to its cwd, so **run it from `eve/`** (`cd eve && npx eve eval`) — from the repo root it finds no agent/evals. `pnpm dev`/`build`/`lint` still run from the repo root. eve's own generated dirs (`eve/.eve/`, `eve/.workflow-data/`) therefore land under `eve/`; the `withEve` Next-integration cache (root `.eve/`, `.next/`) stays at the repo root. All are gitignored + Biome-ignored (`**/.eve/**`, `**/.workflow-data/**`).
+## Cadence is enforced in code at two points, never in the prompt
 
-## Tool scoping — the sentinel mechanism
+`validate_cadence` is not a tool anymore — the rails (`validateCadence` in `lib/agent/cadence.ts`) are enforced deterministically in two places: `agent.ts`'s `toolApproval` hook auto-denies an out-of-rail `save_agent` in the chat flow so the model self-corrects, and the `saveAgent` server action (`app/agents/new/actions.ts`) re-checks before the insert. The server action is the actual writer and is directly callable, so it — not the approval gate — is the real persistence-boundary stop; the prompt's own cadence-rail arithmetic is advisory only. Drop either code check and a bad cadence can reach the DB with no compile error.
 
-- A file at `eve/agent/tools/<name>.ts` only ever disables/overrides a framework tool; **absence of a file means the tool is ON** — check for a tool's *absence*, not its presence.
-- All framework generics are currently sentinel-disabled; the live surface is the five custom tools (`current_time`, `grok_verify_handles`, `grok_twitter_search`, `validate_cadence`, `save_agent` — the last approval-gated, validate/echo only, never writes to the DB). v1 desk is X-only by decision — `web_fetch`/`web_search` return with their own feature slice.
+## The clock is prompt-injected, not a tool call
 
-## `agent` (the built-in subagent tool) can't be sentinel-disabled
-
-- `disableTool()` only validates the framework-tool registry; a sentinel file for `agent` throws only at **worker-boot graph resolution** (session creation), never at `pnpm build` or a "Ready" line — never add `eve/agent/tools/agent.ts`.
-
-## Boot-check for ANY change under `eve/agent/` — including `instructions.md`
-
-- A green build or "Ready" log never exercises graph resolution — validate by actually creating a session (`POST /eve/v1/session`). Prompt edits count: eve compiles `instructions.md` into authored artifacts, so a markdown-only diff is still a build input (a skipped boot-check here burned a live session on ft/46).
-- Rapid bursts of `eve/agent/` edits can leave the dev watcher's compile cache stale (`UNLOADABLE_DEPENDENCY … compiled-artifacts-bootstrap.mjs` at session creation) — the remedy is the documented cache sweep: delete `eve/.eve/`, `.eve/`, `eve/.output/` with nothing running, reboot, re-smoke.
+`current_time` is gone too. `agent.ts`'s `clockBlock()` stamps the clock into the system prompt fresh per request — **`createDeskAgent()` must be called once per request**; reusing an instance across requests serves a stale clock. The since-window today always uses the default onboarding interval (`DEFAULT_ONBOARDING_INTERVAL_MINUTES`) — cadence-derived widening for a settled schedule is still the (unbuilt) scheduler's job, unchanged from before.
 
 ## The scan pipeline
 
-- **grok is a verbatim executor.** DeepSeek drafts the exact x_search subtool calls; the tool relays them. All query guardrails (`from:` pinning, `since_time:` exactness, inclusion-only) live in the prompts (`instructions.md` + the tool `SYSTEM_PROMPT`), never in tool code — a guardrail regression is a prompt edit, not a code fix.
-- **Raw fetch, not `@ai-sdk/xai`.** `eve/agent/lib/xai.ts` hits xAI's `/responses` endpoint directly because the SDK's xai responses provider flattens away the per-subtool trace (`subtoolCalls`) the project debugs with — don't "simplify" it to the SDK.
-- **The LLM has no clock.** `fromDate` / `toDate` / `sinceUnix` come from `current_time`, passed through unchanged; a wrong window returns plausible results with no error — empty or subtly-stale scans are the only symptom.
+- **grok is a verbatim executor.** DeepSeek drafts the exact `x_search` subtool calls entirely inside `lib/sysprompts/desk-agent.md` (`from:`/`since_time:` pinning, inclusion-only, the escaped-quote `\"exact phrase\"` operator) — no guardrail logic lives in tool code, so a guardrail regression is always a prompt edit.
+- **Raw fetch, not `@ai-sdk/xai`.** `lib/agent/xai.ts` hits xAI's `/responses` endpoint directly because that SDK provider flattens away the per-subtool trace (`subtoolCalls`) this code depends on for debugging — "simplifying" to the SDK silently loses the trace with no type error. It also hard-times-out at 150s (`AbortSignal.timeout`) — without it a stalled xAI call hangs the tool indefinitely with no error, looking stuck rather than failed.
+- `grok_verify_handles` has a `TODO(db)` for a site-wide verified-handle cache — not built, so every setup re-verifies all handles from scratch.
 
-## Cadence rate-rail (`eve/agent/lib/cadence.ts`)
+## Cadence rate-rail (`lib/agent/cadence.ts`)
 
-- `validate_cadence` is a **stateless** setup-time check on the schedule shape only (hourly-spacing floor + 84 scans / rolling 7 days) — a cron fire-pattern check, no DB, no visibility into scans that fired. Runtime accounting, the scheduler, and the per-user budget are all Deferred (unbuilt) — it is not a live rate limiter.
-- `current_time`'s since-window is cadence-derived: `sinceUnixFor` tiles back the **widest** gap between fires (not the narrowest), floored at 1h + a 2min overlap — the min gap would under-cover a clustered-fire schedule's overnight quiet stretch and silently drop posts.
-- The day-window start it returns (`yesterday`) is `min(sinceUnix, now−24h)`, so a long cadence's coarse `from_date` doesn't clamp the finer `since_time:` and drop older posts.
+- An hourly-spacing floor plus a rolling-week scan budget, checked as a static schedule property — no DB, no visibility into scans that actually fired. Runtime accounting, the scheduler, and the per-user budget are all Deferred (unbuilt).
+- `sinceUnixFor` tiles back the **widest** gap between fires (not the narrowest), floored at the minimum spacing plus a small overlap buffer — the min gap would under-cover a clustered-fire schedule's overnight quiet stretch and silently drop posts.
+- The day-window start (`yesterday`) is `min(sinceUnix, now−24h)`, so a long cadence's coarse day window doesn't clamp the finer since-bound and drop older posts.
 - `firesPerWeek` for an interval is `ceil(week / interval)` — a 119-min interval fits 85 fires in a rolling week and correctly trips the budget; `floor` would false-pass it.
+- `desk-config.ts`'s `scheduleSchema satisfies z.ZodType<Schedule>` is the compile-time guard tying the model-facing zod contract to this file's TS type — editing one without the other now fails the build, not silently at runtime.
 
 ## Foreign-language sources
 
-- Handled at DeepSeek synthesis (translate-then-perceive when clustering; draft in the reporter's language) — grok stays a dumb relay returning raw posts in their original language.
+Handled at DeepSeek synthesis (translate-then-perceive when clustering; draft in the reporter's language) — grok stays a dumb relay returning raw posts in their original language.
 
-## `x_search` billing & web_search footgun
+## `x_search` billing footgun
 
-- Parallel search and xAI `x_search` bill per successful call **application-wide, not per-user** — cap usage before enabling at scale.
-- `web_search` (currently OFF via sentinel) — if ever re-enabled: it only fires for a plain gateway-string model; a source-backed model reference makes eve's resolver return null and **silently** drop the tool.
+Parallel search and xAI `x_search` bill per successful call **application-wide, not per-user** — cap usage before enabling at scale.
 
-## Deployed chat — the authored channel (`eve/agent/channels/eve.ts`)
+## Bundling the prompts for deploy
 
-- Route auth is an ordered walk `[supabaseUser(), vercelOidc(), localDev()]` — first match wins, all-skip → 401 (fail closed). `supabaseUser()` verifies the signed-in browser user; `vercelOidc()` keeps eve-CLI access to deployed agents; `localDev()` (loopback-only) never admits deployed traffic.
-- `@supabase/ssr` can't run inside the channel's AuthFn (it expects a framework cookie adapter) — `eve/agent/lib/supabase-cookies.ts` reimplements just its read path: chunked `sb-<ref>-auth-token[.N]` reassembly (first-occurrence-wins, matching the `cookie` pkg the app reads through) + `base64-` decode → `access_token`, then eve's own `verifyOidc()` checks it against Supabase's JWKS (ES256, cached per process; needs only `NEXT_PUBLIC_SUPABASE_URL`, no secrets). That key must be set in the **eve** service too (the two-service split) — if it's missing on a Vercel deploy the AuthFn throws a coded 401 (`supabase_auth_url_missing`) rather than silently skipping.
-- Scheduled/internal runtime paths never pass route auth (they carry the `eve:app` runtime principal) — gating this door cannot affect future background runs; anonymous preview access would be an explicit `none()` entry, deliberately not added.
-- `withEve()` splits the Vercel deploy into two services (web + eve) at build time — new service config must list both or the build fails.
-
-## Evals (`eve/evals/`)
-
-- The suite is **scaffolding only today**: `evals.config.ts` (the shared judge, a plain gateway string) + `fixtures.ts` (handle fixtures) — zero live `*.eval.ts` files. When writing evals: the suite drives the **real** DeepSeek+grok pipeline over HTTP (cost + latency per run) — keep it small, run it deliberately, and assert behavior/judged quality with `t.judge.*`, never exact wording (the model rewords every run).
-- Determinism belongs in the pure `eve/agent/lib/*.ts` modules, asserted directly with `t.check` and **no** model call — `eve`'s `mockModel` is baked into `defineAgent` and `defineEval` takes no per-eval `model`, so you can't mock one eval while others in the same run hit the real model.
+`lib/agent/tools.ts` and `agent.ts` are transitively server-only (they pull in `lib/sysprompts`, which reads files at module scope) — importing either from a client component breaks the build. `next.config.ts`'s `outputFileTracingIncludes` must list any new `lib/sysprompts/*.md` file or Vercel silently drops it from the deployed function (works locally, breaks in prod).

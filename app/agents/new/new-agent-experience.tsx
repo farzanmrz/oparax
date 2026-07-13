@@ -14,7 +14,7 @@ const LEAVE_MESSAGE = "Leave this page? Your agent setup conversation will be lo
 
 /**
  * Create-agent experience: a slim header (back link, title, chat/form view
- * toggle) over the eve-backed AgentChat. Once the reporter sends their first
+ * toggle) over the AI SDK-backed AgentChat. Once the reporter sends their first
  * message the page is "dirty"; while dirty we use the browser's native
  * confirmation for every exit path — beforeunload for reload/tab close, and
  * window.confirm for browser Back and in-app link navigation.

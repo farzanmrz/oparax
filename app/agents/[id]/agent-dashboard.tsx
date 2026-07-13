@@ -3,7 +3,7 @@
 import { AppSidebarBackRow } from "@/components/app-sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Schedule } from "@/eve/agent/lib/cadence";
+import type { Schedule } from "@/lib/agent/cadence";
 import { formatCadence, formatHandles, TIER_LABELS } from "@/lib/agents";
 
 /* ------------------------------------------------------------------ */

@@ -39,9 +39,8 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    fixes + residual fixer agents, gating on a clean `pnpm build` — the authority on
    compile correctness.
 5. **Boot smoke** — builds can't see boot failures: background `pnpm dev`, wait for
-   readiness, assert every mounted service reports ready (Next.js "Ready" AND eve's
-   dev-server line) and NO failure signatures (ERROR, "failed", "worker init
-   failed", unmet peer, unhandled rejection). Collect WARNINGs for triage; kill the
+   readiness, assert Next.js reports "Ready" and NO failure signatures (ERROR,
+   "failed", unmet peer, unhandled rejection). Collect WARNINGs for triage; kill the
    process. Startup output only.
 6. **Docs:** update AGENTS.md / touched `.claude/rules/` files if the diff changed
    what they document (ships in the same diff).

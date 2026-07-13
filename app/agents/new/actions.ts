@@ -1,7 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { deskConfigSchema } from "@/eve/agent/lib/desk-config";
+import { validateCadence } from "@/lib/agent/cadence";
+import { deskConfigSchema } from "@/lib/agent/desk-config";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,8 +12,8 @@ export type SaveAgentResult = { id: string; error?: never } | { id?: never; erro
 
 /**
  * Insert the completed desk as the signed-in reporter. The transcript is the
- * client's full message array (persisted here because Vercel Workflow retains
- * eve sessions only ~7 days). Returns the new row id for client navigation.
+ * client's full message array (the chat itself is ephemeral — nothing persists
+ * the setup conversation but this insert). Returns the new row id for navigation.
  */
 export async function saveAgent(input: {
   config: unknown;
@@ -23,6 +24,15 @@ export async function saveAgent(input: {
   const transcript = transcriptSchema.safeParse(input.transcript);
   if (!config.success || !transcript.success) {
     return { error: "The desk configuration is incomplete — ask the agent to re-check it." };
+  }
+
+  // The chat's save-approval gate already rejects an out-of-rail cadence, but this action is
+  // the actual writer and a directly-callable server action — re-check here so a request that
+  // never passed through the gate can't persist a schedule that violates the rate rail.
+  if (!validateCadence(config.data.cadence).ok) {
+    return {
+      error: "That scan cadence is outside the allowed limits — ask the agent to adjust it.",
+    };
   }
 
   const supabase = await createClient();

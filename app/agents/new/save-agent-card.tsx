@@ -1,20 +1,21 @@
 "use client";
 
-import type { EveDynamicToolPart } from "eve/react";
 import { type ReactNode, useMemo } from "react";
 import {
   Confirmation,
   ConfirmationAccepted,
   ConfirmationAction,
   ConfirmationActions,
-  type ConfirmationProps,
   ConfirmationRejected,
   ConfirmationRequest,
   ConfirmationTitle,
 } from "@/components/ai-elements/confirmation";
 import { Spinner } from "@/components/ui/spinner";
-import { type DeskConfig, deskConfigSchema } from "@/eve/agent/lib/desk-config";
+import type { DeskAgentUIMessage } from "@/lib/agent/agent";
+import { type DeskConfig, deskConfigSchema } from "@/lib/agent/desk-config";
 import { formatCadence, formatHandles, TIER_LABELS } from "@/lib/agents";
+
+type SaveAgentPart = Extract<DeskAgentUIMessage["parts"][number], { type: "tool-save_agent" }>;
 
 /**
  * The save_agent approval pause rendered as a Save card. Composes the vendored
@@ -23,7 +24,7 @@ import { formatCadence, formatHandles, TIER_LABELS } from "@/lib/agents";
  * accepted / rejected slots each show themselves for their own state), so this
  * component only supplies content. The desk summary is parsed from the part's
  * own input; Save and "Not yet" are handed up to the chat, which inserts the
- * desk first and then answers the eve approval.
+ * desk first and then answers the tool approval.
  */
 export function SaveAgentCard({
   part,
@@ -32,7 +33,7 @@ export function SaveAgentCard({
   onSave,
   onDeny,
 }: {
-  readonly part: EveDynamicToolPart;
+  readonly part: SaveAgentPart;
   readonly saving: boolean;
   readonly error: string | null;
   readonly onSave: (config: DeskConfig) => void;
@@ -46,10 +47,7 @@ export function SaveAgentCard({
   }, [part.input]);
 
   return (
-    // eve loosens the approval-responded `approved` field to optional, which the
-    // vendored kit's stricter prop type does not accept; the runtime shapes match,
-    // so cast to the kit's own prop type rather than reaching for `any`.
-    <Confirmation approval={part.approval as ConfirmationProps["approval"]} state={part.state}>
+    <Confirmation approval={part.approval} state={part.state}>
       <ConfirmationRequest>
         <ConfirmationTitle className="block text-base font-semibold">
           Save this desk?
