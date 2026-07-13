@@ -53,7 +53,7 @@ cd eve && npx eve eval    # run evals against the real pipeline
 - `lib/` — Supabase clients (typed by the generated `lib/supabase/database.types.ts`) + auth server actions + desk render helpers (`lib/agents.ts`).
 - `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here).
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
-- `.agents/skills/` + `.codex/agents/` — the Codex-side mirrors: symlinks to the tool-neutral `.claude/skills/` entries, and TOML ports of the six `.claude/agents/` workers (kept in behavioral sync — edit both or neither).
+- `.agents/skills/` + `.codex/agents/` — the Codex-side mirrors. `.agents/skills/` symlinks **every** `.claude/skills/` entry (Codex reads the body and ignores the Claude-only `model:` frontmatter as inert text) — add a symlink when a new skill lands. `.codex/agents/` holds TOML ports of the six `.claude/agents/` workers (kept in behavioral sync — edit both or neither). Flow skills (`feature*`) are worded in Claude's tool vocabulary; Codex maps their agent references onto its own TOML workers and adapts the tool-call layer.
 
 Gitignored, regenerable (delete freely when nothing runs): `eve/.eve/`, `.next/`, `eve/.output/`, `eve/.workflow-data/`, `data/`, `.vercel/`.
 
