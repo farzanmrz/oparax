@@ -1,6 +1,6 @@
 # Oparax
 
-AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → an agent listing, a create-agent eve chat (Supabase-authed on same-origin `/eve/v1/*`, so it runs deployed, not just localhost), and settings.
+AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → an agent listing, a create-agent chat (an AI SDK agent behind `/api/chat`, Supabase-authed, streaming), and settings.
 
 ## Stack
 
@@ -9,7 +9,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 | Framework | Next.js (App Router) | 16.2 |
 | UI | React | 19.2 |
 | Language | TypeScript strict (`@/*` → repo root) | 6 |
-| Agent | eve (mounted at `/eve/v1/*` by `withEve()`) | 0.22.1 (pinned — 0.22.2–0.22.6 still hard-fail deploy with "Mapping /_middleware not found", open vercel/eve#693; 0.22.6 retested + reverted on ft/53) |
+| Agent | AI SDK `ToolLoopAgent` (DeepSeek via AI Gateway) behind `POST /api/chat` | — |
 | AI SDK | `ai` + `@ai-sdk/react` | 7 / 4 |
 | Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
 | Auth + DB | Supabase (auth + owner-scoped app tables — today just `agents`) | — |
@@ -19,16 +19,11 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 ### Commands
 
 ```bash
-# repo root — the Next.js app (eve mounts in; one dev server, same-origin /eve/v1/*)
-pnpm dev        # Next.js + eve dev worker (localhost:3000)
-pnpm build      # automated gate — never boots eve's worker, so a broken worker still builds green
+pnpm dev        # Next.js (localhost:3000)
+pnpm build      # automated gate — compiles /api/chat but never calls it, so a broken agent still builds green
 pnpm lint       # Biome check
 pnpm lint:fix   # Biome check --write
 pnpm format     # Biome format --write
-
-# from eve/ — the standalone eve CLI (agent + evals resolve relative to eve/)
-cd eve && npx eve dev     # agent-only TUI, no frontend
-cd eve && npx eve eval    # run evals against the real pipeline
 ```
 
 ### Environment
@@ -37,25 +32,26 @@ cd eve && npx eve eval    # run evals against the real pipeline
 
 | Key | Consumed by |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the `lib/supabase/` clients; `NEXT_PUBLIC_SUPABASE_URL` also by `eve/agent/channels/eve.ts` (route-auth issuer + cookie key) — must be set in the eve service too |
-| `XAI_API_KEY` | the xAI client in `eve/agent/` — Grok scan + handle-verify |
+| `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the `lib/supabase/` clients |
+| `XAI_API_KEY` | `lib/agent/xai.ts` — Grok scan + handle-verify |
 | `AI_GATEWAY_API_KEY` | AI Gateway for the DeepSeek chat model (local dev; deployed = Vercel OIDC) |
 
 ## Code map
 
-- `eve/agent/` — the eve agent: DeepSeek orchestrator + Grok X-scan/verify tools, with pure shared modules under `eve/agent/lib/`.
-- `eve/evals/` — eval scaffolding (judge config + fixtures).
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `agents/` shell (listing · `new/` chat · `[id]` details · `settings/`).
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `api/chat` (the agent endpoint), `agents/` shell (listing · `new/` chat · `[id]` details · `settings/`).
 - `components/`
   - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
   - `components/ai-elements/` — chat-surface kit.
   - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
-- `lib/` — Supabase clients (typed by the generated `lib/supabase/database.types.ts`) + auth server actions + desk render helpers (`lib/agents.ts`).
+- `lib/agent/` — the desk agent: model + tools + the save-approval gate, plus its pure modules.
+- `lib/sysprompts/` — the agent's system prompts, as markdown.
+- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`) + auth server actions + desk render helpers (`lib/agents.ts`).
 - `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here).
+- `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
 - `.agents/skills/` + `.codex/agents/` — the Codex-side mirrors. `.agents/skills/` symlinks **every** `.claude/skills/` entry (Codex reads the body and ignores the Claude-only `model:` frontmatter as inert text) — add a symlink when a new skill lands. `.codex/agents/` holds TOML ports of the six `.claude/agents/` workers (kept in behavioral sync — edit both or neither). Flow skills (`feature*`) are worded in Claude's tool vocabulary; Codex maps their agent references onto its own TOML workers and adapts the tool-call layer.
 
-Gitignored, regenerable (delete freely when nothing runs): `eve/.eve/`, `.next/`, `eve/.output/`, `eve/.workflow-data/`, `data/`, `.vercel/`.
+Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.vercel/`.
 
 `.feature/` is the `/feature` flow's live scratch — never delete it by hand; `ship.sh` sweeps it when the slice ships.
 
@@ -87,9 +83,7 @@ GitHub labels carry issue type and state — never a title prefix (no `triage:` 
 status, logs, project/env inspection, and even triggering a deploy, reach for the
 Vercel MCP tools (`list_deployments`, `get_deployment`, `get_deployment_build_logs`,
 `get_runtime_logs`, `get_runtime_errors`, `deploy_to_vercel`) — they're API calls
-with no local-filesystem cost. The `vercel` CLI's `deploy` chokes on this repo's
-file count (eve's regenerable `.eve/`/`.workflow-data/` dirs blow past the 15k-file
-upload cap); if you must use the CLI to deploy, pass `--archive=tgz`.
+with no local-filesystem cost.
 
 ## Cross-tool
 

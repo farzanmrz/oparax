@@ -18,12 +18,7 @@ next-env.d.ts
 # Vercel CLI link metadata
 .vercel
 
-# eve runtime (dev worker state + build output — regenerable)
-.eve/
-.output/
-
-# WDK run store (eve's durability layer — local session history)
-.workflow-data/
+# Local scratch data (regenerable)
 data/
 
 # Logs

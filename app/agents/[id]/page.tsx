@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { scheduleSchema } from "@/eve/agent/lib/desk-config";
+import { scheduleSchema } from "@/lib/agent/desk-config";
 import { createClient } from "@/lib/supabase/server";
 import { AgentDashboard } from "./agent-dashboard";
 

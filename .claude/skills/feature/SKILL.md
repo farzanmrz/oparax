@@ -45,8 +45,8 @@ honest.
   before touching an area; dispatched agents must be told which to invoke.
 - Dependency MAJOR upgrades, framework migrations, schema/data migrations → STOP
   and present options; never autonomous.
-- Preserve behavior contracts (server-action field names, Supabase auth flows, eve
-  chat scaffold wiring) — see AGENTS.md + `.claude/rules/`.
+- Preserve behavior contracts (server-action field names, Supabase auth flows,
+  the chat scaffold wiring) — see AGENTS.md + `.claude/rules/`.
 
 Scripts (`start.sh`, `ship.sh`) live in `.claude/skills/feature/scripts/` and are
 called by feature-plan and feature-ship respectively.

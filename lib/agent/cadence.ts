@@ -3,9 +3,9 @@
 // Pure, stateless rate-rail math for the onboarding cadence step. NO eve imports,
 // NO I/O, NO persistence — just the arithmetic behind the two HARD invariants
 // (hourly minimum spacing, 84 scans / rolling 7 days) and the since-window
-// derivation. Imported by agent/tools/validate_cadence.ts (the tool wrapper),
-// agent/tools/current_time.ts (the since-window), and the evals (deterministic
-// t.check assertions — no model call needed to prove this correct).
+// derivation. Imported by `lib/agent/agent.ts` — `validateCadence` backs the
+// save-approval gate, `sinceUnixFor` + `DEFAULT_ONBOARDING_INTERVAL_MINUTES`
+// derive the injected clock block.
 
 /** Tightest cadence offered: scans are never < 1h apart. Also floors the since-window. HARD. */
 export const MIN_SPACING_MINUTES = 60;

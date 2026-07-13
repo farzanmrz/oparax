@@ -1,10 +1,10 @@
 "use client";
 
-import type { EveMessage, EveMessagePart } from "eve/react";
-import { useEveAgent } from "eve/react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from "ai";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -36,31 +36,36 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import { OparaxMark } from "@/components/logo";
-import type { DeskConfig } from "@/eve/agent/lib/desk-config";
+import type { DeskAgentUIMessage } from "@/lib/agent/agent";
+import type { DeskConfig } from "@/lib/agent/desk-config";
 import { type SaveAgentResult, saveAgent } from "./actions";
 import { SaveAgentCard } from "./save-agent-card";
 
 /**
- * Chat over the repo's eve agent, laid out to mirror the AI Elements chatbot
+ * Chat over the repo's desk agent, laid out to mirror the AI Elements chatbot
  * example: one full-height Conversation (empty state lives inside it) with a
- * structured PromptInput (body + footer toolbar) pinned below. Talks to the
- * same-origin /eve/v1/* routes mounted by withEve(); one session per mount.
- * The conversation itself is ephemeral — the desk persists only through the
- * Save card's server action (insert first, then approve the eve call).
+ * structured PromptInput (body + footer toolbar) pinned below. Talks to
+ * `/api/chat` via `useChat`; one chat session per mount. The conversation
+ * itself is ephemeral — the desk persists only through the Save card's
+ * server action (insert first, then approve the tool call).
  */
 export function AgentChat({
   onDirtyChange,
 }: {
   /** Fired whenever the conversation gains/loses content, so a parent can guard
-   *  unsaved progress. Additive only — does not alter the eve send wiring. */
+   *  unsaved progress. Additive only — does not alter the send wiring. */
   readonly onDirtyChange?: (dirty: boolean) => void;
 } = {}) {
-  const agent = useEveAgent();
+  const { messages, sendMessage, status, error, stop, id, addToolApprovalResponse } =
+    useChat<DeskAgentUIMessage>({
+      transport: new DefaultChatTransport({ api: "/api/chat" }),
+      sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+    });
   const router = useRouter();
-  const isBusy = agent.status === "submitted" || agent.status === "streaming";
+  const isBusy = status === "submitted" || status === "streaming";
 
   // The save_agent approval pause: the reporter's Save inserts the desk (as
-  // themselves) via the server action FIRST, then approves this eve call and
+  // themselves) via the server action FIRST, then approves this tool call and
   // navigates; "Not yet" denies. `saved` gates the parent dirty guard so it
   // drops before we navigate.
   const [saveState, setSaveState] = useState<{
@@ -69,30 +74,20 @@ export function AgentChat({
     error: string | null;
   }>({ saving: false, saved: false, error: null });
 
-  // Approval ids the reporter denied by clicking "Not yet". eve never marks
-  // policy auto-denials client-side (approval.isAutomatic stays unset in
-  // 0.22.1's reducer), so this set is the only way to tell a reporter's deny
-  // (render "Not saved") from the policy's (render nothing). A ref, not
-  // state: the stream event that answers the approval re-renders anyway.
-  const userDenied = useRef(new Set<string>());
-
-  // While a Save card is pending the turn is parked — and eve resolves typed
-  // text against the approval's options first, so a plain "yes" would approve
+  // While a Save card is pending the turn is parked — and the agent resolves
+  // typed text against the approval first, so a plain "yes" would approve
   // save_agent WITHOUT the insert (the model would believe in a desk that was
   // never persisted). The card's buttons are the only safe affordance; the
   // composer locks until it's answered.
-  const hasPendingSave = agent.data.messages.some((message) =>
+  const hasPendingSave = messages.some((message) =>
     message.parts.some(
-      (part) =>
-        part.type === "dynamic-tool" &&
-        part.toolName === "save_agent" &&
-        part.state === "approval-requested",
+      (part) => part.type === "tool-save_agent" && part.state === "approval-requested",
     ),
   );
 
   // Report dirtiness (unsaved conversation) to an optional parent guard.
-  // Observation only — the eve send wiring below is untouched.
-  const messageCount = agent.data.messages.length;
+  // Observation only — the send wiring below is untouched.
+  const messageCount = messages.length;
   useEffect(() => {
     onDirtyChange?.(messageCount > 0 && !saveState.saved);
   }, [messageCount, saveState.saved, onDirtyChange]);
@@ -101,7 +96,7 @@ export function AgentChat({
     const text = message.text.trim();
     if (!text || isBusy || hasPendingSave) return;
 
-    await agent.send({ message: text });
+    await sendMessage({ text });
   };
 
   const handleSave = async (config: DeskConfig, approvalId: string) => {
@@ -112,8 +107,8 @@ export function AgentChat({
     try {
       result = await saveAgent({
         config,
-        sessionId: agent.session?.sessionId ?? null,
-        transcript: agent.data.messages,
+        sessionId: id ?? null,
+        transcript: messages,
       });
     } catch {
       // Transport failure — the action never completed; keep the card retryable.
@@ -131,12 +126,12 @@ export function AgentChat({
     }
     // Row created: the desk exists whatever happens next, so mark saved (drops
     // the dirty guard, and Save can never re-enable into a duplicate insert),
-    // then approve the eve call so execute() runs as the model's proof of the
+    // then approve the tool call so execute() runs as the model's proof of the
     // save. The approve is best-effort — if it fails, the parked session just
     // expires while the reporter lands on their saved desk.
     setSaveState({ saving: false, saved: true, error: null });
     try {
-      await agent.send({ inputResponses: [{ requestId: approvalId, optionId: "approve" }] });
+      addToolApprovalResponse({ id: approvalId, approved: true });
     } catch {
       // Desk already persisted; nothing to recover.
     }
@@ -144,13 +139,11 @@ export function AgentChat({
   };
 
   const handleDeny = async (approvalId: string) => {
-    userDenied.current.add(approvalId);
     // Also clears any stale save error so the model's next card mounts clean.
     setSaveState({ saving: false, saved: false, error: null });
     try {
-      await agent.send({ inputResponses: [{ requestId: approvalId, optionId: "deny" }] });
+      addToolApprovalResponse({ id: approvalId, approved: false });
     } catch {
-      userDenied.current.delete(approvalId);
       setSaveState({ saving: false, saved: false, error: "Couldn't send that — try again." });
     }
   };
@@ -160,10 +153,9 @@ export function AgentChat({
     error: saveState.error,
     onSave: handleSave,
     onDeny: handleDeny,
-    isUserDenied: (approvalId) => userDenied.current.has(approvalId),
   };
 
-  const isEmpty = agent.data.messages.length === 0;
+  const isEmpty = messages.length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -196,10 +188,10 @@ export function AgentChat({
             </ConversationEmptyState>
           ) : (
             <>
-              {agent.data.messages.map((message) => (
+              {messages.map((message) => (
                 <AgentMessage key={message.id} message={message} save={save} />
               ))}
-              {agent.status === "submitted" ? (
+              {status === "submitted" ? (
                 <Message from="assistant">
                   <MessageContent>
                     <Shimmer className="text-sm">Thinking…</Shimmer>
@@ -212,9 +204,9 @@ export function AgentChat({
         <ConversationScrollButton />
       </Conversation>
 
-      {agent.error ? (
+      {error ? (
         <p className="w-full shrink-0 px-1 pb-2 text-sm text-destructive">
-          Request failed: {agent.error.message}
+          Request failed: {error.message}
         </p>
       ) : null}
 
@@ -231,11 +223,7 @@ export function AgentChat({
             />
           </PromptInputBody>
           <PromptInputFooter className="justify-end">
-            <PromptInputSubmit
-              disabled={hasPendingSave}
-              onStop={agent.stop}
-              status={agent.status}
-            />
+            <PromptInputSubmit disabled={hasPendingSave} onStop={stop} status={status} />
           </PromptInputFooter>
         </PromptInput>
       </div>
@@ -251,15 +239,13 @@ type SaveHandlers = {
   readonly error: string | null;
   readonly onSave: (config: DeskConfig, approvalId: string) => void;
   readonly onDeny: (approvalId: string) => void;
-  /** Did the reporter (not the approval policy) deny this approval id? */
-  readonly isUserDenied: (approvalId: string) => boolean;
 };
 
 function AgentMessage({
   message,
   save,
 }: {
-  readonly message: EveMessage;
+  readonly message: DeskAgentUIMessage;
   readonly save: SaveHandlers;
 }) {
   const text = message.parts
@@ -316,7 +302,7 @@ function CopyMessageAction({ text }: { readonly text: string }) {
   );
 }
 
-// Stable key for a reasoning/text part. eve message parts only ever append
+// Stable key for a reasoning/text part. AI SDK message parts only ever append
 // (never reorder or splice mid-stream), so a positional key is safe here — the
 // helper keeps that index out of the JSX so it reads as intentional, not a slip.
 function partKey(prefix: string, index: number): string {
@@ -324,15 +310,14 @@ function partKey(prefix: string, index: number): string {
 }
 
 // One message part, rendered in document order with the stock ai-elements kit.
-// Two deliberate deviations, each rooted in an observed ask: the reporter's own
-// text shows exactly as typed/pasted (markdown would collapse newlines), and the
-// current_time tool call is hidden (pure plumbing).
+// One deliberate deviation: the reporter's own text shows exactly as
+// typed/pasted (markdown would collapse newlines).
 function MessagePart({
   part,
   role,
   save,
 }: {
-  readonly part: EveMessagePart;
+  readonly part: DeskAgentUIMessage["parts"][number];
   readonly role: string;
   readonly save: SaveHandlers;
 }) {
@@ -361,40 +346,33 @@ function MessagePart({
           <ReasoningContent>{part.text}</ReasoningContent>
         </Reasoning>
       );
-    case "dynamic-tool":
-      if (part.toolName === "current_time") {
+    case "tool-save_agent": {
+      // A denial the reporter never clicked is the approval policy's (a
+      // cadence that violates the rate rail) — a model-facing exchange,
+      // nothing for the reporter to act on. v7 sets approval.isAutomatic for
+      // exactly this case, so it's the discriminator (render nothing for an
+      // automatic/policy deny, the card otherwise).
+      const denied =
+        (part.state === "approval-responded" || part.state === "output-denied") &&
+        part.approval?.approved === false;
+      if (denied && part.approval?.isAutomatic) {
         return null;
       }
-      if (part.toolName === "save_agent") {
-        // A denial the reporter never clicked is the approval policy's (a
-        // cadence that slipped past validate_cadence) — a model-facing
-        // exchange, nothing for the reporter to act on. eve 0.22.1 never sets
-        // approval.isAutomatic client-side, so our own deny bookkeeping is the
-        // only reliable discriminator.
-        const denied =
-          (part.state === "approval-responded" || part.state === "output-denied") &&
-          part.approval?.approved === false;
-        if (denied && !(part.approval && save.isUserDenied(part.approval.id))) {
-          return null;
-        }
-        return (
-          <SaveAgentCard
-            error={save.error}
-            onDeny={() => part.approval && save.onDeny(part.approval.id)}
-            onSave={(config) => part.approval && save.onSave(config, part.approval.id)}
-            part={part}
-            saving={save.saving}
-          />
-        );
-      }
+      return (
+        <SaveAgentCard
+          error={save.error}
+          onDeny={() => part.approval && save.onDeny(part.approval.id)}
+          onSave={(config) => part.approval && save.onSave(config, part.approval.id)}
+          part={part}
+          saving={save.saving}
+        />
+      );
+    }
+    case "tool-grok_verify_handles":
+    case "tool-grok_twitter_search":
       return (
         <Tool>
-          <ToolHeader
-            state={part.state}
-            title={part.toolName}
-            toolName={part.toolName}
-            type="dynamic-tool"
-          />
+          <ToolHeader state={part.state} type={part.type} />
           <ToolContent>
             <ToolInput input={part.input} />
             <ToolOutput errorText={part.errorText} output={part.output} />

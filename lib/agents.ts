@@ -1,8 +1,8 @@
 // App-side helpers for rendering a saved desk. The Schedule and DeskConfig
-// types come from the pure eve/agent/lib modules (no eve imports there), so
-// app and agent speak one config shape.
-import type { Schedule } from "@/eve/agent/lib/cadence";
-import type { DeskConfig } from "@/eve/agent/lib/desk-config";
+// types come from the pure lib/agent modules, so app and agent speak one
+// config shape.
+import type { Schedule } from "@/lib/agent/cadence";
+import type { DeskConfig } from "@/lib/agent/desk-config";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
