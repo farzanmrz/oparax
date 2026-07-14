@@ -1,100 +1,113 @@
 // lib/agent/scan-frequency.ts
 //
 // Pure, stateless rate-rail math for the onboarding scan frequency step. NO eve imports,
-// NO I/O, NO persistence — just the arithmetic behind the two HARD invariants
-// (hourly minimum spacing, 84 scans / rolling 7 days) and the since-window
-// derivation. Imported by `lib/agent/agent.ts` — `validateScanFrequency` backs the
-// save-approval gate, `sinceUnixFor` + `DEFAULT_ONBOARDING_INTERVAL_MINUTES`
-// derive the injected clock block.
+// NO I/O, NO persistence — just the schema for the grouped scan-frequency shape
+// ({ timezone, groups: [{ days, start, end, everyHours }] }), the static rail check
+// (`validateScanFrequency`), and the since-window derivation (`sinceUnixFor`). Timezone
+// math (local wall-clock fires ↔ UTC instants) lives in `./next-run.ts`, which imports the
+// schema from here. Imported by `lib/agent/agent.ts` — `validateScanFrequency` backs the
+// save-approval gate, `sinceUnixFor` + `DEFAULT_ONBOARDING_INTERVAL_MINUTES` derive the
+// injected clock block.
+import { z } from "zod";
 
-/** Tightest scan frequency offered: scans are never < 1h apart. Also floors the since-window. HARD. */
+/** Tightest scan frequency offered: scans are never < 1h apart. Also floors the since-window,
+ *  and doubles as the SUB_HOURLY minimum-gap threshold in `validateScanFrequency`. HARD. */
 export const MIN_SPACING_MINUTES = 60;
-/** HARD ceiling: 84 scans per rolling 7 days ("12/day × 7"). */
-export const WEEKLY_BUDGET = 84;
-/** Minutes in a week (7 × 24 × 60). */
-export const MINUTES_PER_WEEK = 10_080;
 /** Boundary overlap folded into every since-window so a post on the edge isn't dropped. */
 export const OVERLAP_SECONDS = 120;
 /** Since-window interval for the onboarding scan, before any scan frequency is saved. */
 export const DEFAULT_ONBOARDING_INTERVAL_MINUTES = 60;
 
-export type IntervalSchedule = { kind: "interval"; everyMinutes: number };
-export type WeeklyFire = { dayOfWeek: number; hour: number; minute: number };
-export type WeeklySchedule = { kind: "weekly"; fires: WeeklyFire[] };
-export type Schedule = IntervalSchedule | WeeklySchedule;
+/** True if `tz` is a valid IANA timezone name — probes `Intl.DateTimeFormat`, which throws a
+ *  RangeError on an unknown zone. Used by the schema's `.refine()` and by `./next-run.ts`. */
+export function isIanaTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-export type ScanFrequencyViolation = "SUB_HOURLY" | "OVER_WEEKLY_BUDGET";
+export const scanFrequencySchema = z.object({
+  timezone: z.string().refine(isIanaTimeZone, "must be a valid IANA timezone"),
+  groups: z
+    .array(
+      z.object({
+        days: z.array(z.number().int().min(0).max(6)).min(1), // 0=Sun..6=Sat
+        start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), // local HH:MM; minutes allowed
+        end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), // start ≤ end; equal = one fire
+        everyHours: z.number().int().min(1),
+      }),
+    )
+    .min(1),
+});
+export type ScanFrequency = z.infer<typeof scanFrequencySchema>;
 
-export type ScanFrequencyVerdict = {
-  ok: boolean;
-  firesPerWeek: number;
-  minSpacingMinutes: number;
-  /**
-   * Look-back for the since-window (fed to current_time → sinceUnixFor): the
-   * WIDEST gap between consecutive fires, floored at MIN_SPACING. Using the max
-   * (not the min) gap guarantees the fire after the longest quiet stretch still
-   * tiles back to the previous scan — no under-coverage. Tighter gaps over-cover,
-   * and downstream dedup absorbs the overlap.
-   */
-  intervalMinutes: number;
-  violations: ScanFrequencyViolation[];
-};
+export type ScanFrequencyViolation = "WINDOW_INVERTED" | "SUB_HOURLY" | "OVER_DAILY_BUDGET";
 
-function fireToMinuteOfWeek(f: WeeklyFire): number {
-  return f.dayOfWeek * 1440 + f.hour * 60 + f.minute;
+export function parseHHMM(hhmm: string): number {
+  const [h, m] = hhmm.split(":");
+  return Number(h) * 60 + Number(m);
 }
 
 /**
- * Validate a proposed schedule as a STATIC property — no scan history, no DB.
- * Checks only the two HARD invariants (hourly spacing, 84/week). The soft ~12/day
- * daily face of the cap is deliberately NOT enforced here, so the reporter can
- * spend the weekly budget however they like across the week.
+ * Validate a proposed scan frequency as a STATIC property — no scan history, no DB. Materializes
+ * the deduped week of local fire-minutes (minute-of-week values across all groups' days and
+ * windows, a fire hit by two groups on the same minute is one fire) and checks it against the
+ * three rails below. `ok` is true iff `violations` is empty.
+ *
+ * - WINDOW_INVERTED — a group whose `end < start`. Overnight windows are DEFERRED (represent as
+ *   two groups); this does not wrap midnight, and an inverted group contributes no fires to the
+ *   other two checks.
+ * - SUB_HOURLY — the minimum gap between distinct weekly fires, across ALL groups and including
+ *   the day-boundary and week-wrap gap (last fire of the week → first fire of the next week), is
+ *   < MIN_SPACING_MINUTES.
+ * - OVER_DAILY_BUDGET — more than 12 distinct fires land on any single local day of the week.
  */
-export function validateScanFrequency(schedule: Schedule): ScanFrequencyVerdict {
-  let firesPerWeek: number;
-  let minSpacingMinutes: number;
-  let maxSpacingMinutes: number;
+export function validateScanFrequency(sf: ScanFrequency): {
+  ok: boolean;
+  violations: ScanFrequencyViolation[];
+} {
+  const WEEK_MINUTES = 7 * 24 * 60;
+  const violations = new Set<ScanFrequencyViolation>();
+  const fireSet = new Set<number>(); // minute-of-week, deduped
 
-  if (schedule.kind === "interval") {
-    const m = schedule.everyMinutes;
-    minSpacingMinutes = m;
-    maxSpacingMinutes = m;
-    // Max fires in ANY rolling 7-day window — a fire can land on the window start,
-    // so it is ceil, not floor. floor under-counts by 1 and would false-pass an
-    // over-budget interval (e.g. 119 min fits 85 fires, but floor(10080/119)=84).
-    firesPerWeek = Math.ceil(MINUTES_PER_WEEK / m);
-  } else {
-    const mins = schedule.fires.map(fireToMinuteOfWeek).sort((a, b) => a - b);
-    firesPerWeek = mins.length;
-    if (mins.length <= 1) {
-      minSpacingMinutes = MINUTES_PER_WEEK; // at most once a week
-      maxSpacingMinutes = MINUTES_PER_WEEK;
-    } else {
-      let smallest = Number.POSITIVE_INFINITY;
-      let largest = 0;
-      for (let i = 1; i < mins.length; i++) {
-        const gap = mins[i] - mins[i - 1];
-        smallest = Math.min(smallest, gap);
-        largest = Math.max(largest, gap);
+  for (const group of sf.groups) {
+    const startMin = parseHHMM(group.start);
+    const endMin = parseHHMM(group.end);
+    if (endMin < startMin) {
+      violations.add("WINDOW_INVERTED");
+      continue;
+    }
+    const stepMinutes = group.everyHours * 60;
+    for (const day of group.days) {
+      for (let t = startMin; t <= endMin; t += stepMinutes) {
+        fireSet.add(day * 1440 + t);
       }
-      // wrap: last fire of the week to the first fire of the next week
-      const wrapGap = MINUTES_PER_WEEK - mins[mins.length - 1] + mins[0];
-      minSpacingMinutes = Math.min(smallest, wrapGap);
-      maxSpacingMinutes = Math.max(largest, wrapGap);
     }
   }
 
-  const violations: ScanFrequencyViolation[] = [];
-  if (minSpacingMinutes < MIN_SPACING_MINUTES) violations.push("SUB_HOURLY");
-  if (firesPerWeek > WEEKLY_BUDGET) violations.push("OVER_WEEKLY_BUDGET");
+  const fires = [...fireSet].sort((a, b) => a - b);
 
-  return {
-    ok: violations.length === 0,
-    firesPerWeek,
-    minSpacingMinutes,
-    intervalMinutes: Math.max(maxSpacingMinutes, MIN_SPACING_MINUTES),
-    violations,
-  };
+  if (fires.length > 1) {
+    let minGap = Number.POSITIVE_INFINITY;
+    for (let i = 1; i < fires.length; i++) {
+      minGap = Math.min(minGap, fires[i] - fires[i - 1]);
+    }
+    const wrapGap = WEEK_MINUTES - fires[fires.length - 1] + fires[0];
+    minGap = Math.min(minGap, wrapGap);
+    if (minGap < MIN_SPACING_MINUTES) violations.add("SUB_HOURLY");
+  }
+
+  const perDayCounts = new Map<number, number>();
+  for (const minuteOfWeek of fires) {
+    const day = Math.floor(minuteOfWeek / 1440);
+    perDayCounts.set(day, (perDayCounts.get(day) ?? 0) + 1);
+  }
+  if ([...perDayCounts.values()].some((count) => count > 12)) violations.add("OVER_DAILY_BUDGET");
+
+  return { ok: violations.size === 0, violations: [...violations] };
 }
 
 /**

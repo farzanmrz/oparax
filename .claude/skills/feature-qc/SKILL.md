@@ -17,7 +17,7 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    `.claude/worktrees/`; no stray branches.
 2. **Review fan-out** — one `Workflow({ scriptPath: ".claude/workflows/qc-review.mjs",
    args })` call runs ALL finders against the frozen branch diff in a single parallel
-   barrier: the two `cleanup-finder` angles + `conventions-finder` on sonnet, the
+   barrier: the four `cleanup-finder` angles + `conventions-finder` on sonnet, the
    three `bug-finder` angles on opus (models pinned in the workflow, not prose).
    Address it by **`scriptPath`, never `name`** — `Workflow({ name })` resolves only
    built-in/registered workflows and does NOT scan the repo's `.claude/workflows/`,
@@ -29,11 +29,14 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    or touches posting/money paths. It returns a consolidated `findings` list.
 3. **Adjudicate + apply (this session).** The workflow only reports — the session
    decides. Plan-frozen decisions in the ft issue are vetoes, not findings; drop
-   them. Apply the survivors, then **delta-verify**: dispatch ONE `bug-finder`
-   (opus) scoped to just the fix diff to confirm the applied changes introduced no
-   new defect. This single narrow pass is what replaces the old serialize-so-review-
-   sees-simplify's-fixes ordering. Large/risky diff → offer the user
-   `/code-review ultra` before proceeding.
+   them. Apply the survivors. A finding that is real but not-this-slice (a bigger
+   refactor, a scale concern that can't bite yet) → append it to the single living
+   backlog via `.claude/skills/feature/scripts/backlog-add.sh "<item; origin
+   #<issue> QC; · agent>"` (never a new per-item issue). Then **delta-verify**:
+   dispatch ONE `bug-finder` (opus) scoped to just the fix diff to confirm the
+   applied changes introduced no new defect. This single narrow pass is what
+   replaces the old serialize-so-review-sees-simplify's-fixes ordering. Large/risky
+   diff → offer the user `/code-review ultra` before proceeding.
 4. **`feature-lint`** (scoped to the feature's changed files — LAST because the
    review pass mutates code; lint formats the final shape) — biome format + safe
    fixes + residual fixer agents, gating on a clean `pnpm build` — the authority on
@@ -57,7 +60,7 @@ Over the whole branch diff, in order (skip nothing silently — report each step
      `/meta-dev:improve-skill`, never inline-rewrite it here.
    Single-source every fact (one home; cross-reference, never restate).
 
-Hard rules: the review fan-out is one barrier of ≤7 finders (6 today) plus the
+Hard rules: the review fan-out is one barrier of ≤8 finders (8 today) plus the
 single delta-verify — well under the ≤10-agents-per-fan-out cap; the `qc-review`
 workflow (invoked by `scriptPath`, see step 2) owns finder parallelism and model
 pins. Never fall back to `/code-review` for the fan-out — its per-candidate verify

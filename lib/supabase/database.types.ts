@@ -15,46 +15,134 @@ export type Database = {
         Row: {
           account_tier: string;
           beat: string;
-          cadence: Json;
           created_at: string;
           drafting_instructions: string;
           handles: string[];
           id: string;
           name: string;
+          next_run_at: string | null;
+          scan_frequency: Json;
           setup_session_id: string | null;
           setup_transcript: Json;
+          status: string;
           updated_at: string;
           user_id: string;
         };
         Insert: {
           account_tier: string;
           beat: string;
-          cadence: Json;
           created_at?: string;
           drafting_instructions: string;
           handles: string[];
           id?: string;
           name: string;
+          next_run_at?: string | null;
+          scan_frequency: Json;
           setup_session_id?: string | null;
           setup_transcript: Json;
+          status?: string;
           updated_at?: string;
           user_id: string;
         };
         Update: {
           account_tier?: string;
           beat?: string;
-          cadence?: Json;
           created_at?: string;
           drafting_instructions?: string;
           handles?: string[];
           id?: string;
           name?: string;
+          next_run_at?: string | null;
+          scan_frequency?: Json;
           setup_session_id?: string | null;
           setup_transcript?: Json;
+          status?: string;
           updated_at?: string;
           user_id?: string;
         };
         Relationships: [];
+      };
+      drafts: {
+        Row: {
+          agent_id: string;
+          created_at: string;
+          id: string;
+          item: Json;
+          text: string;
+          usage: Json | null;
+        };
+        Insert: {
+          agent_id: string;
+          created_at?: string;
+          id?: string;
+          item: Json;
+          text: string;
+          usage?: Json | null;
+        };
+        Update: {
+          agent_id?: string;
+          created_at?: string;
+          id?: string;
+          item?: Json;
+          text?: string;
+          usage?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "drafts_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      runs: {
+        Row: {
+          agent_id: string;
+          cost_usd: number | null;
+          error: string | null;
+          finished_at: string | null;
+          id: string;
+          result: Json | null;
+          started_at: string;
+          status: string;
+          trace: Json | null;
+          usage: Json | null;
+        };
+        Insert: {
+          agent_id: string;
+          cost_usd?: number | null;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          result?: Json | null;
+          started_at?: string;
+          status?: string;
+          trace?: Json | null;
+          usage?: Json | null;
+        };
+        Update: {
+          agent_id?: string;
+          cost_usd?: number | null;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          result?: Json | null;
+          started_at?: string;
+          status?: string;
+          trace?: Json | null;
+          usage?: Json | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "runs_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {

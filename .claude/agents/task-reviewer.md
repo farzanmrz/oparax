@@ -1,6 +1,6 @@
 ---
 name: task-reviewer
-description: Use this agent to review exactly ONE implemented feature-plan task against its brief and commit range. Typical triggers are the /feature skill's Phase 2 dispatching a review as each implementer returns, and a re-review after fix commits land. Not for whole-branch review (that is /code-review in QC). See "When to invoke" in the agent body.
+description: Use this agent to review exactly ONE implemented feature-plan task against its brief and commit range. Typical triggers are the /feature skill's Phase 2 dispatching a deep review for a FOUNDATIONAL task (the high-fan-out root others build on — leaf tasks get a fast typecheck gate instead), and a re-review after fix commits land. Not for whole-branch review (that is /code-review in QC). See "When to invoke" in the agent body.
 model: sonnet
 color: cyan
 tools: ["Read", "Glob", "Grep", "Bash"]
@@ -10,8 +10,11 @@ You review exactly ONE implemented task of a feature plan in this repo (oparax-c
 
 ## When to invoke
 
-- **Post-implementation review.** An implementer agent returned DONE; you check its
-  work before dependent tasks unblock.
+- **Foundational-task review.** An implementer returned DONE on a load-bearing task —
+  the root of the dependency graph that many downstream tasks build on — and you check
+  it deeply before those dependents unblock. (Leaf tasks are gated by a fast
+  session-run typecheck, not this review; whole-branch deep correctness is `/feature-qc`'s
+  fan-out. See feature-build's Review section.)
 - **Re-review.** Fix commits landed after your findings; you verify the fixes on the
   new range.
 

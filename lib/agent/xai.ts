@@ -2,7 +2,7 @@
 //
 // Low-level client for xAI's /responses endpoint — a raw fetch (NOT @ai-sdk/xai,
 // whose responses provider flattens the per-subtool trace away). Used by the scan
-// executor (grok_twitter_search); it lives here rather than inside the tool so the
+// executor (oparax_x_search); it lives here rather than inside the tool so the
 // raw-fetch client stays independently testable (the same pattern scan-frequency.ts uses).
 
 const XAI_RESPONSES_URL = "https://api.x.ai/v1/responses";

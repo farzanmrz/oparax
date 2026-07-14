@@ -368,7 +368,7 @@ function MessagePart({
         />
       );
     }
-    case "tool-grok_twitter_search":
+    case "tool-oparax_x_search":
       return (
         <Tool>
           <ToolHeader state={part.state} type={part.type} />

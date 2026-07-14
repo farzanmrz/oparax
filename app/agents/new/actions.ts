@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { deskConfigSchema } from "@/lib/agent/desk-config";
+import { nextFire } from "@/lib/agent/next-run";
 import { validateScanFrequency } from "@/lib/agent/scan-frequency";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -52,9 +53,9 @@ export async function saveAgent(input: {
       handles: config.data.handles,
       drafting_instructions: config.data.draftingInstructions,
       account_tier: config.data.accountTier,
-      // DB column is still named `cadence`; the app concept is `scanFrequency`.
-      // (Column rename rides with the scan-frequency schema migration.)
-      cadence: config.data.scanFrequency,
+      scan_frequency: config.data.scanFrequency,
+      status: "active",
+      next_run_at: nextFire(config.data.scanFrequency, new Date()).toISOString(),
       setup_session_id: input.sessionId,
       // The transcript is validated only as a non-empty array; its opaque
       // message shape lands in a Json column, so cast (never `any`).
