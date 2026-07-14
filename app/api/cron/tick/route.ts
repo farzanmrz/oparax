@@ -108,16 +108,18 @@ export async function GET(req: Request) {
       if (!run) throw new Error(`cron/tick: failed to insert run row for agent ${agent.id}`);
 
       try {
-        const { items, costUsd, usage, trace } = await runScan(
+        const { items, costUsd, usage, trace, error } = await runScan(
           { beat: agent.beat, handles: agent.handles, scanFrequency: agent.freq },
           new Date(),
           new Date(agent.firedAt),
         );
+        // Soft-fail (Pass-2 structuring gave up) still carries Pass-1's grok cost + trace — persist
+        // them with the failure rather than dropping to a blank run. A clean run stores its items.
         await db
           .from("runs")
           .update({
-            status: "done",
-            result: { items } as Json,
+            status: error ? "failed" : "done",
+            ...(error ? { error } : { result: { items } as Json }),
             cost_usd: costUsd,
             usage: usage as Json,
             trace: trace as Json,
@@ -125,7 +127,7 @@ export async function GET(req: Request) {
           })
           .eq("id", run.id)
           .eq("status", "running"); // guard: sweep may have failed it
-        return "done";
+        return error ? "failed" : "done";
       } catch (e) {
         await db
           .from("runs")

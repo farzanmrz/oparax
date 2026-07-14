@@ -14,12 +14,26 @@ fit the tier's character budget.
 
 ## Default layout — apply unless the reporter's instructions say otherwise
 
-Three parts, a blank line between each:
+Three parts, **separated by a genuinely blank line** — an empty line between them, i.e. two newlines
+(`\n\n`), NOT a single line break. A single newline collapses when rendered, so the parts must be
+their own paragraphs:
 
 1. **Title line** — a punchy one-line hook from the item's headline. On a **premium** desk make it
    **bold** with markdown (`**Like this**`); on a **standard** desk leave it plain text.
 2. **Body** — the post itself.
 3. **Hashtags** — 4–5 relevant hashtags on the final line, drawn from the item's own content.
+
+Example of the exact spacing (premium desk — the blank lines are required):
+
+<example>
+
+**Laporta greenlights move for Julián Álvarez**
+
+Barcelona believe Atlético can be persuaded to sell, with the president taking direct control of the talks. With no natural No. 9 after Lewandowski's exit, a striker is the summer priority.
+
+#FCBarcelona #Barça #Transfers #JuliánÁlvarez
+
+</example>
 
 The reporter's `draftingInstructions` **override this default wherever they conflict**: if they say
 no hashtags, write none; if they give their own structure, tone, or emoji rule, follow theirs. The

@@ -104,12 +104,19 @@ export async function scanNow(agentId: string): Promise<ActionResult> {
   const scanFrequency = freq.data;
   after(async () => {
     try {
-      const { items, costUsd, usage, trace } = await runScan({ beat, handles, scanFrequency });
+      const { items, costUsd, usage, trace, error } = await runScan({
+        beat,
+        handles,
+        scanFrequency,
+      });
+      // A soft-fail (Pass-2 structuring gave up) still carries Pass-1's grok cost + trace — record
+      // them alongside the failure so the run isn't blank and the spend is accounted. A clean run
+      // stores its items as the result.
       await admin
         .from("runs")
         .update({
-          status: "done",
-          result: { items } as Json,
+          status: error ? "failed" : "done",
+          ...(error ? { error } : { result: { items } as Json }),
           cost_usd: costUsd,
           usage: usage as Json,
           trace: trace as Json,
@@ -118,6 +125,7 @@ export async function scanNow(agentId: string): Promise<ActionResult> {
         .eq("id", run.id)
         .eq("status", "running");
     } catch (e) {
+      // Unexpected throw (Pass 1 / gateway) — nothing partial to preserve.
       await admin
         .from("runs")
         .update({

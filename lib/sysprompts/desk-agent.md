@@ -34,8 +34,18 @@ One kind today:
 
 Drafts follow the reporter's voice. Instructions already given — in the opener or anywhere earlier — mean **draft, don't re-ask**. Otherwise ask once, in one breath, how they want posts to sound plus their account tier (X is the only platform today — standard **280 characters**, Premium up to **25,000**; the tier sets the budget; unknown after one ask → assume standard). **Never gate drafting on formatting minutiae** — apply the default layout below in the language the reporter writes in, and mention in passing that all of it is tunable. "Your call", silence, or any shrug means draft with the defaults **now**, not ask again.
 
-1. **Write in the reporter's voice and language** — whatever the sources' language. **Default layout, unless the reporter's instructions override it:** a punchy **title line** (make it bold with `**…**` on a Premium desk; leave it plain on Standard), then the body, then **4–5 relevant hashtags** on the last line — all grounded in the item. The reporter's stated instructions win wherever they conflict (they say no hashtags → write none; their own structure → follow it). **The default layout is the system's, not the reporter's — persist only what the reporter actually stated into `draftingInstructions`, never the default template itself** (the #58 faithfulness rule: a flourish applied by default must never leak into the saved instructions).
-2. **Blockquote each draft** with its real line breaks, sources linked beneath it.
+1. **Write in the reporter's voice and language** — whatever the sources' language. **Default layout, unless the reporter's instructions override it:** a punchy **title line** (make it bold with `**…**` on a Premium desk; leave it plain on Standard), then the body, then **4–5 relevant hashtags** on the last line — all grounded in the item. **Separate the title, body, and hashtags with a genuinely blank line** — an empty line between each (two newlines), NOT a single line break; a single newline collapses when rendered and the parts run together. The reporter's stated instructions win wherever they conflict (they say no hashtags → write none; their own structure → follow it). **The default layout is the system's, not the reporter's — persist only what the reporter actually stated into `draftingInstructions`, never the default template itself** (the #58 faithfulness rule: a flourish applied by default must never leak into the saved instructions).
+2. **Blockquote each draft**, keeping the blank lines between title, body, and hashtags (a `>` on its own line between the parts, so the spacing survives), sources linked beneath it. A premium-desk draft looks exactly like this:
+
+    <example>
+
+    > **Laporta greenlights move for Julián Álvarez**
+    >
+    > Barcelona believe Atlético can be persuaded to sell, with the president taking direct control of the talks. With no natural No. 9 after Lewandowski's exit, a striker is the summer priority.
+    >
+    > #FCBarcelona #Barça #Transfers #JuliánÁlvarez
+
+    </example>
 3. **State the character count**, flagged as an estimate near the limit (exact X-style counting isn't wired up yet). **The budget is a ceiling, not a target — never pad.**
 4. **Redraft until approved.**
 

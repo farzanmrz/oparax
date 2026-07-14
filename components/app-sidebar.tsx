@@ -88,7 +88,11 @@ export function AppSidebar({ username }: { readonly username: string }) {
         </div>
       </SidebarHeader>
 
-      <SidebarSeparator className="mx-2" />
+      {/* data-horizontal:w-auto overrides the base Separator's data-horizontal:w-full (which
+          tailwind-merge keeps alongside the vendored SidebarSeparator's unscoped w-auto): at 100%
+          width the mx-2 left margin pushed the divider's right edge past the panel onto the page.
+          Scoped-variant override makes it width:auto so mx-2 insets both edges symmetrically. */}
+      <SidebarSeparator className="mx-2 data-horizontal:w-auto" />
 
       <SidebarContent className="pt-2">
         <nav aria-label="Primary">
@@ -109,7 +113,11 @@ export function AppSidebar({ username }: { readonly username: string }) {
         </nav>
       </SidebarContent>
 
-      <SidebarSeparator className="mx-2" />
+      {/* data-horizontal:w-auto overrides the base Separator's data-horizontal:w-full (which
+          tailwind-merge keeps alongside the vendored SidebarSeparator's unscoped w-auto): at 100%
+          width the mx-2 left margin pushed the divider's right edge past the panel onto the page.
+          Scoped-variant override makes it width:auto so mx-2 insets both edges symmetrically. */}
+      <SidebarSeparator className="mx-2 data-horizontal:w-auto" />
 
       <SidebarFooter>
         <SidebarMenu>
