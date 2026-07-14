@@ -2,9 +2,10 @@
 name: feature-build
 description: >-
   Phase 2 of the feature flow, standalone: implement the approved plan from the
-  ft/N issue (or a directly-stated small build) with parallel implementers and
-  per-task review. Use when the user says /feature-build, "build the plan",
-  "implement the tasks", or "just build X" mid-flight on a feature branch.
+  ft/N issue (or a directly-stated small build) with parallel implementers, a fast
+  per-task typecheck gate, and deep review reserved for the foundational task. Use
+  when the user says /feature-build, "build the plan", "implement the tasks", or
+  "just build X" mid-flight on a feature branch.
 argument-hint: "[issue# | what to build]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
@@ -32,9 +33,11 @@ if it exists; otherwise the user's direct instruction is the plan (small-build m
   writes the code). Unblocked tasks with disjoint files dispatch ALL in one
   message, same working tree. NO worktree isolation (it branches from the
   default branch).
-- **Inline in this session** ONLY for trivial mechanical edits the user directly
-  dictated (small-build mode one-liners where writing the brief would exceed
-  the diff).
+- **Inline in this session** for any trivial mechanical task where writing the brief
+  would exceed the diff — a rename, a one-line signature change, a mechanical sweep of
+  a few call sites — plan task or user-dictated alike. The implementer's model pin pays
+  off on real code; brief + dispatch + gate around a three-line edit is pure latency.
+  When genuinely unsure whether a task is trivial, dispatch the implementer.
 - Live mutual negotiation needed → **agent team** (disjoint file assignment; watch
   task-status lag).
 - Massive mechanical sweep (rare) → **Workflow**, ≤10 agents TOTAL.
@@ -48,19 +51,36 @@ implementer's ONLY requirements source. Reports are **deviations-only**: the
 implementer writes `.feature/task-<N>-report.md` only when it deviated from the brief
 or noticed out-of-scope work (what + why); no report file means implemented-as-briefed.
 
-## Review
+## Review — typecheck every task, deep-review only the foundational one
 
-As each implementer returns, dispatch `task-reviewer` with brief path, commit range,
-and the report path if one exists — it verifies the diff, never trusts the report (an
-absent report is itself a claim the diff must confirm). Fix findings before dependents
-unblock. Everything converges into the feature branch as ordinary commits.
+As a wave's implementers return, the SESSION (not the implementer) runs a fast
+**typecheck gate**: `pnpm exec tsc --noEmit`, then confirm no error line names any of
+that wave's own files. This catches the interface breaks a bad task propagates to
+dependents — a wrong signature, a missing export, a collapsed generic (all real; the
+last was a #59 build-breaker) — in seconds, not a multi-minute review. The branch as a
+whole may not typecheck until later waves land (a leaf task can reference a not-yet-
+written module) — that is expected; only the wave's OWN files must be clean before its
+dependents unblock.
+
+Dispatch a full **`task-reviewer`** (brief path, commit range, report path if any) ONLY
+for the **foundational task(s)** — the one or two at the root of the dependency graph
+that the most downstream tasks build on. A subtle bug in a load-bearing interface is
+expensive to unwind after four tasks have built on it, so it earns a deep pre-dependency
+review; a leaf task does not. Every other task's deep correctness is caught by the **QC
+review fan-out** (`/feature-qc`), which sees the whole branch diff and is the effective
+net — per-task review of leaf tasks duplicates it more weakly while sitting on the
+critical path (measured on #59: the fan-out caught 14 issues, including a HIGH bug that
+every per-task review had passed). Fix any typecheck failure or foundational-review
+finding before dependents unblock. Everything converges into the feature branch as
+ordinary commits.
 
 ## Hard rules
 
 - Agents never push / branch / open PRs.
 - Implementers write code only — no builds or lint (that's /feature-qc).
 - ≤10 agents total per fan-out.
-- Mid-flight new scope goes to the issue's Deferred list or a new GitHub issue
-  (plain title, `--label backlog` — `backlog,agent` if the agent surfaced it),
-  scribing the user's deferral, never onto the branch.
+- Mid-flight new scope → append to the single living backlog issue via
+  `.claude/skills/feature/scripts/backlog-add.sh "<item; origin #<issue>; · agent
+  if agent-surfaced>"` (never a new per-item issue, never onto the branch). Scribe
+  the user's deferral; don't self-initiate scope.
 - Skill grounding is binding: name the area's `.claude/rules/` skills in every dispatch.

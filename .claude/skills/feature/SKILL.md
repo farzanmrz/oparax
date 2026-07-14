@@ -36,9 +36,10 @@ honest.
 
 - NEVER create per-task branches or PRs; never push main/beta; ship = dev only.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
-- Scope freezes at the plan gate; mid-build ideas → the issue's Deferred list, or
-  a new GitHub issue (plain title, `--label backlog`) when it's its own slice
-  (created ONLY to scribe the user's deferrals — never self-initiated).
+- Scope freezes at the plan gate; mid-build ideas → the single living backlog issue
+  via `.claude/skills/feature/scripts/backlog-add.sh` (never a new per-item issue),
+  ONLY to scribe the user's deferrals — never self-initiated. Plan Deferred migrates
+  into the same backlog at ship. See AGENTS.md → the single-living-backlog rule.
 - Planning docs never enter the repo; the issue body + squashed commit message are
   the record; scratch lives in self-gitignored `.feature/` and dies at ship.
 - Skill grounding is binding everywhere: invoke the area's `.claude/rules/` skills

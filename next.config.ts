@@ -6,9 +6,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["@hugeicons/react", "@hugeicons/core-free-icons", "radix-ui"],
   },
   // The sysprompt markdown is read via readFileSync(process.cwd()/lib/sysprompts/...) at
-  // module load — trace it into the /api/chat serverless function explicitly.
+  // module load — trace it into every serverless function that transitively imports
+  // lib/sysprompts (the chat route, the scan dispatcher, and the [id] draft action).
   outputFileTracingIncludes: {
     "/api/chat": ["./lib/sysprompts/*.md"],
+    "/api/cron/tick": ["./lib/sysprompts/*.md"],
+    "/agents/[id]": ["./lib/sysprompts/*.md"],
   },
   // Security headers on every route (moved from vercel.json — Next config is
   // compiled into the same edge routing manifest on Vercel).

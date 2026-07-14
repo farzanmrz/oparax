@@ -5,7 +5,11 @@ paths:
 
 # The system prompts
 
-`lib/sysprompts/` holds the agent's prompts as markdown — `desk-agent.md` (the DeepSeek orchestrator, the file these conventions were written for) plus the two short grok executor prompts. `index.ts` reads each once at module load — the deploy-bundling gotcha lives in `.claude/rules/agent.md`. Edit only on observed session behavior or a real capability change, never a read-through.
+`lib/sysprompts/` holds the agent's prompts as markdown — `desk-agent.md` (the DeepSeek orchestrator, the file these conventions were written for), `scan-runner.md` + `draft-runner.md` (the per-minute dispatcher's headless scan and draft runners), `scan-protocol.md` (the shared scan procedure — see Composition below), and `x-search-executor.md` (the short grok executor prompt). `index.ts` reads each once at module load — the deploy-bundling gotcha lives in `.claude/rules/agent.md`. Edit only on observed session behavior or a real capability change, never a read-through.
+
+## Composition
+
+`## Running a scan` and `## Clustering` (including the escaped-quote `jsonc` template) live ONCE in `scan-protocol.md` — `index.ts` composes them into both `DESK_AGENT_PROMPT` and `SCAN_RUNNER_PROMPT` via a `{{SCAN_PROTOCOL}}` marker in each file. Editing the scan procedure means editing `scan-protocol.md`; both prompts inherit the change. `draft-runner.md` is standalone — nothing composes into or out of it.
 
 ## Formatting conventions
 
@@ -20,6 +24,6 @@ paths:
 ## Drift guards (each burned a live session)
 
 - **Escaped quotes in search queries** — the keyword query carries X's `"exact phrase"` operator *inside a JSON string*; unescaped, the model emits broken tool-call JSON and burns turns self-repairing. The `\"exact phrase\"` escape must stay BOTH stated in the query-language bullet AND demonstrated verbatim in the `jsonc` template — models copy templates more reliably than they follow prose, so never genericize the escape out of it.
-- **Tool sync** — a diff changing `lib/agent/tools.ts` or any tool's `inputSchema` updates `desk-agent.md` in the same commit. The agent's tool set is a fixed object literal (two tools, no sentinel/registry mechanism) — the prompt's tool list must name exactly `grok_twitter_search` and `save_agent`, and no others.
+- **Tool sync** — a diff changing `lib/agent/tools.ts` or any tool's `inputSchema` updates `desk-agent.md` in the same commit. The agent's tool set is a fixed object literal (two tools, no sentinel/registry mechanism) — the prompt's tool list must name exactly `oparax_x_search` and `save_agent`, and no others.
 - **Reference sync** — renaming or removing a header updates every in-file mention of it; dangling "step N" pointers survived a past header restructure.
-- **One fact, one value** — a number stated twice diverges; the X character limits are one live example, stated once in `desk-agent.md` and once in `desk-config.ts`'s zod `.describe()` — keep both in sync, and check for a second statement (including here) before adding any new constant.
+- **One fact, one value** — a number stated twice diverges. The X character limits (280 / 25,000) live once as the `X_CHAR_LIMITS` constant in `lib/agent/desk-config.ts`; the draft runner enforces it, and `desk-config.ts`'s zod `.describe()` + `lib/agents.ts`'s `TIER_LABELS` render it from that constant (no fresh literals). The prompts restate it in prose in exactly two files — `desk-agent.md` and `draft-runner.md` — which cannot import the constant, so keep those two in sync with it and add no third prose statement or fourth code literal.

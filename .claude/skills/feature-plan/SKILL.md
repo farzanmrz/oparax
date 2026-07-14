@@ -34,10 +34,21 @@ One document, **the plan**: it is the spec and the plan at once. Seed from
 These are conversations, not sign-offs — the ✋ gate in step 5 is this flow's only
 approval gate.
 
-## 3. Two independent plans — in parallel
-The confirmed ask is planned **twice, independently**, by different model families —
-uncorrelated plans are the point. Kick off Codex the moment the ask is confirmed so
-it plans while you draft yours.
+## 3. Plan the slice — dual for risky slices, solo for simple ones
+
+**Gate the second planner on risk — the dual pass is an enrichment for uncertainty, not
+a default.** Run the two-independent-plans pass (Codex + you) when the slice is
+architecturally consequential: a new table or migration, a new trust boundary (auth, a
+server action, an external tool/agent surface, money or posting paths), a cross-cutting
+refactor, or an ask you're genuinely unsure how to shape. For a well-scoped, low-risk
+slice — a contained UI change, a copy edit, a localized fix inside one module — **skip
+Codex and plan solo** (3a + 3b only): a full extra Codex planning round plus the
+cross-critique in step 4 is pure latency when the approach is obvious. When genuinely
+unsure which bucket the slice is in, run the dual pass.
+
+When the dual pass applies, the confirmed ask is planned **twice, independently**, by
+different model families — uncorrelated plans are the point. Kick off Codex the moment
+the ask is confirmed so it plans while you draft yours.
 
 - **Codex's plan:** dispatch `codex-planner` (draft mode) with the confirmed ask
   and the tier map — high-effort/opus session → `-m gpt-5.6-sol -c
@@ -93,6 +104,9 @@ plan:
   approve its neighbor.
 
 ## 4. Reconcile — cross-critique, then synthesize
+*(Solo-planned slices — where step 3's risk gate skipped Codex — skip this section
+entirely; take your single plan straight to the gate.)*
+
 1. **One critique round each way** (no ping-pong): you critique Codex's plan — its
    approach, hidden assumptions, task breakdown — inline; and dispatch
    `codex-planner` (critique mode, `resume`) feeding it your plan for Codex's

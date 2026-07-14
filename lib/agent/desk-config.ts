@@ -2,37 +2,16 @@
 //
 // The desk-completion contract as one zod schema — the single shape shared by
 // the save_agent tool (model → tool boundary) and the app's saveAgent server
-// action (browser → server boundary). Pure: zod + type-only imports, NO eve
-// imports, NO I/O.
+// action (browser → server boundary). Pure: zod schemas only, NO eve imports,
+// NO I/O.
 import { z } from "zod";
-import type { Schedule } from "./scan-frequency";
+import { scanFrequencySchema } from "./scan-frequency";
 
-/** The zod face of Schedule in ./scan-frequency.ts — `satisfies` makes drift a compile error. */
-export const scheduleSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("interval"),
-    everyMinutes: z
-      .number()
-      .int()
-      .positive()
-      .describe("Minutes between scans, e.g. 120 for every 2 hours."),
-  }),
-  z.object({
-    kind: z.literal("weekly"),
-    fires: z
-      .array(
-        z.object({
-          dayOfWeek: z.number().int().min(0).max(6).describe("0 = Sunday … 6 = Saturday."),
-          hour: z.number().int().min(0).max(23),
-          minute: z.number().int().min(0).max(59),
-        }),
-      )
-      .min(1)
-      .describe(
-        "Every concrete weekly fire the scan frequency implies, in the reporter's timezone.",
-      ),
-  }),
-]) satisfies z.ZodType<Schedule>;
+/** The X post character ceiling per account tier — the ONE numeric source of truth. The draft
+ *  runner enforces it, `TIER_LABELS` (lib/agents.ts) and the schema description below render it,
+ *  and the prompts (desk-agent.md, draft-runner.md) restate it in prose (see the drift guard in
+ *  .claude/rules/sysprompts.md). A ceiling, never a target. */
+export const X_CHAR_LIMITS = { standard: 280, premium: 25_000 } as const;
 
 export const deskConfigSchema = z.object({
   name: z.string().trim().min(1).max(120).describe("The desk name the reporter approved."),
@@ -47,9 +26,16 @@ export const deskConfigSchema = z.object({
     .trim()
     .min(1)
     .describe("The reporter's drafting instructions — tone, angle, hashtags, formatting."),
-  accountTier: z.enum(["standard", "premium"]).describe("X account tier: 280 vs 25,000 chars."),
-  scanFrequency: scheduleSchema.describe(
-    "The validated scan-frequency schedule (hours/days the desk scans).",
+  accountTier: z
+    .enum(["standard", "premium"])
+    .describe(
+      `X account tier: ${X_CHAR_LIMITS.standard} vs ${X_CHAR_LIMITS.premium.toLocaleString("en-US")} chars.`,
+    ),
+  scanFrequency: scanFrequencySchema.describe(
+    'The scan frequency, grouped by shared cadence: a timezone (IANA, e.g. "Europe/Madrid") ' +
+      "plus one or more groups, each a set of local weekdays (0=Sun..6=Sat), a local HH:MM " +
+      "start/end window (equal start and end fires exactly once that day), and everyHours " +
+      "(≥ 1) between fires within the window.",
   ),
 });
 

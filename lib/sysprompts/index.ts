@@ -6,6 +6,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const load = (name: string) => readFileSync(join(process.cwd(), "lib/sysprompts", name), "utf8");
+const SCAN_PROTOCOL = load("scan-protocol.md");
+const withProtocol = (t: string) => t.replace("{{SCAN_PROTOCOL}}", SCAN_PROTOCOL);
 
-export const DESK_AGENT_PROMPT = load("desk-agent.md");
-export const GROK_SCAN_PROMPT = load("grok-scan.md");
+export const DESK_AGENT_PROMPT = withProtocol(load("desk-agent.md"));
+export const SCAN_RUNNER_PROMPT = withProtocol(load("scan-runner.md"));
+export const SCAN_STRUCTURE_PROMPT = load("scan-structure.md");
+export const DRAFT_RUNNER_PROMPT = load("draft-runner.md");
+export const X_SEARCH_EXECUTOR_PROMPT = load("x-search-executor.md");

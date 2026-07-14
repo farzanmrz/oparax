@@ -9,7 +9,7 @@ import {
   sinceUnixFor,
   validateScanFrequency,
 } from "./scan-frequency";
-import { grokTwitterSearch, saveAgent } from "./tools";
+import { oparaxXSearch, saveAgent } from "./tools";
 
 // The LLM has no clock. Instead of a tool it must remember to call, every turn gets a
 // stamped # Clock block appended to the system prompt: nowUnix + the derived scan-window
@@ -41,7 +41,7 @@ export function createDeskAgent(now: Date = new Date()) {
     instructions: `${DESK_AGENT_PROMPT}\n\n${clockBlock(now)}`,
     tools: {
       // keys keep the names the prompt commands by name
-      grok_twitter_search: grokTwitterSearch,
+      oparax_x_search: oparaxXSearch,
       save_agent: saveAgent,
     },
     // The save gate: a scan frequency that slipped past the prompt's self-check is auto-denied
@@ -54,7 +54,7 @@ export function createDeskAgent(now: Date = new Date()) {
           ? "user-approval"
           : {
               type: "denied" as const,
-              reason: `Scan frequency violates the rate rail (${verdict.violations.join(", ")}) — correct the schedule, then offer to save again.`,
+              reason: `Scan frequency violates the rate rail (${verdict.violations.join(", ")}) — an inverted window, sub-hourly spacing, or more than 12 fires on one day. Correct the schedule, then offer to save again.`,
             };
       },
     },

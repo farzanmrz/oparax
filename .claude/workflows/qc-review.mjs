@@ -56,12 +56,20 @@ Report findings only (file, line, severity, one-sentence summary, concrete scena
 
 const FINDERS = [
   {
-    class: 'cleanup', angle: 'reuse+simplification', agentType: 'cleanup-finder', model: 'sonnet',
-    prompt: `Assigned angles: REUSE and SIMPLIFICATION. Look for logic the repo already provides, unnecessary abstraction/indirection, behavior-preserving shortening, dead branches.${commonTail}`,
+    class: 'cleanup', angle: 'reuse', agentType: 'cleanup-finder', model: 'sonnet',
+    prompt: `Your ONE angle: REUSE. Look for logic the repo (or its dependencies) already provides that the diff reimplements — a helper, hook, util, or type that already exists, a hand-rolled version of something stock. Report only concrete reuse opportunities, not stylistic preference.${commonTail}`,
   },
   {
-    class: 'cleanup', angle: 'efficiency+altitude', agentType: 'cleanup-finder', model: 'sonnet',
-    prompt: `Assigned angles: EFFICIENCY and ALTITUDE. Efficiency: wasted work / redundant computation / per-request cost that could hoist. Altitude: logic at the right layer, comment density + accuracy vs the surrounding codebase idiom.${commonTail}`,
+    class: 'cleanup', angle: 'simplification', agentType: 'cleanup-finder', model: 'sonnet',
+    prompt: `Your ONE angle: SIMPLIFICATION. Unnecessary abstraction or indirection, behavior-preserving shortening, dead branches, redundant state, over-general code for a single call site. The change must preserve behavior exactly.${commonTail}`,
+  },
+  {
+    class: 'cleanup', angle: 'efficiency', agentType: 'cleanup-finder', model: 'sonnet',
+    prompt: `Your ONE angle: EFFICIENCY. Wasted work, redundant computation or re-fetches, N+1 patterns, per-request cost that could hoist to module scope, unnecessary re-renders or re-parses. Report only measurable/structural waste, not micro-optimization noise.${commonTail}`,
+  },
+  {
+    class: 'cleanup', angle: 'altitude', agentType: 'cleanup-finder', model: 'sonnet',
+    prompt: `Your ONE angle: ALTITUDE. Is each piece of logic at the right layer (not leaking a concern up or down), and does comment density + accuracy match the surrounding codebase idiom (no over- or under-commenting, no stale/aspirational comments the diff introduced)?${commonTail}`,
   },
   {
     class: 'conventions', angle: 'conventions+docs', agentType: 'conventions-finder', model: 'sonnet',

@@ -10,7 +10,7 @@
 // removed grok_verify_handles / closed issue #57).
 import { tool } from "ai";
 import { z } from "zod";
-import { GROK_SCAN_PROMPT } from "@/lib/sysprompts";
+import { X_SEARCH_EXECUTOR_PROMPT } from "@/lib/sysprompts";
 import { deskConfigSchema } from "./desk-config";
 import { callResponses } from "./xai";
 
@@ -28,12 +28,12 @@ const SubtoolCall = z.object({
     .describe("The exact arguments object for that subtool (query, limit, mode, usernames, etc.)."),
 });
 
-/** Input shape for grokTwitterSearch — the drafted calls plus their handle/date scoping. */
+/** Input shape for oparaxXSearch — the drafted calls plus their handle/date scoping. */
 const scanInputSchema = z.object({
   calls: z
     .array(SubtoolCall)
     .describe(
-      "The exact x_search subtool calls to run, in order — drafted by you per your strict guardrails (1 x_keyword_search across all handles + 2 x_semantic_search). grok executes them verbatim.",
+      "The exact x_search subtool calls to run, in order — drafted by you per your strict guardrails (1 x_keyword_search across all handles + 2 x_semantic_search). the search executor runs them verbatim.",
     ),
   handles: z
     .array(z.string())
@@ -45,22 +45,37 @@ const scanInputSchema = z.object({
   toDate: z.string().describe("Day-window end YYYY-MM-DD (UTC) — `today` from current_time."),
 });
 
-export const grokTwitterSearch = tool({
+export const oparaxXSearch = tool({
   description:
-    "Execute a list of X (Twitter) search subtool calls that YOU (the orchestrator) have already drafted per your guardrails, and return the raw retrieved posts for you to synthesize. grok runs the calls verbatim — it does no query planning.",
+    "Execute a list of X (Twitter) search subtool calls that YOU (the orchestrator) have already drafted per your guardrails, and return the raw retrieved posts for you to synthesize. the search executor runs the calls verbatim — it does no query planning.",
   inputSchema: scanInputSchema,
   async execute({ calls, handles, fromDate, toDate }) {
-    const user = `Run these calls in order, exactly as written:\n\n${calls
-      .map((c, i) => `${i + 1}. ${c.tool} ${JSON.stringify(c.args)}`)
-      .join("\n")}`;
-    return callResponses({
-      system: GROK_SCAN_PROMPT,
-      user,
-      handles,
-      fromDate,
-      toDate,
-      effort: "none",
-    });
+    // Fire each drafted search as its OWN grok /responses call, in PARALLEL — one search per
+    // call finishes fast, so wall-clock is the slowest single search, not the sum, and no call
+    // does enough agentic work to hit xai.ts's 150s abort (the bundled all-in-one call is what
+    // timed out on 20-handle scans). Merge the raw posts, per-subtool traces, and costs.
+    const results = await Promise.all(
+      calls.map((c) =>
+        callResponses({
+          system: X_SEARCH_EXECUTOR_PROMPT,
+          user: `Run this X search call exactly as written, and return the raw retrieved posts:\n\n${c.tool} ${JSON.stringify(c.args)}`,
+          handles,
+          fromDate,
+          toDate,
+          effort: "none",
+        }),
+      ),
+    );
+    return {
+      items: results
+        .map((r) => r.items)
+        .filter(Boolean)
+        .join("\n\n"),
+      sources: results.flatMap((r) => r.sources),
+      subtoolCalls: results.flatMap((r) => r.subtoolCalls),
+      costUsd: results.reduce((sum, r) => sum + (r.costUsd ?? 0), 0) || null,
+      usage: results.map((r) => r.usage),
+    };
   },
 });
 
