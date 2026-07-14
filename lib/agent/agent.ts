@@ -36,7 +36,9 @@ export function createDeskAgent(now: Date = new Date()) {
   return new ToolLoopAgent({
     // DeepSeek chat leg via the Vercel AI Gateway (plain gateway string).
     model: "deepseek/deepseek-v4-flash",
-    reasoning: "medium", // v7 top-level, provider-agnostic
+    // No `reasoning`: DeepSeek V4 defaults to thinking ON and self-scales effort by
+    // difficulty (see .claude/rules/agent.md). An explicit level here is a no-op at best
+    // (`medium` just maps to the default `high`) — don't re-add one.
     providerOptions: { gateway: { sort: "cost" } }, // cheapest provider, BYOK no surcharge
     instructions: `${DESK_AGENT_PROMPT}\n\n${clockBlock(now)}`,
     tools: {

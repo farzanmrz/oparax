@@ -42,9 +42,9 @@ pnpm format     # Biome format --write
 
 - `app/` — routes: landing, auth pages, `/auth/*` callbacks, `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard · `settings/`).
 - `components/`
-  - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
-  - `components/ai-elements/` — chat-surface kit.
-  - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
+    - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
+    - `components/ai-elements/` — chat-surface kit.
+    - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
 - `lib/agent/` — the desk agent: model + tools + the save-approval gate; the headless scan runner + draft runner behind the cron dispatcher; `next-run.ts`'s timezone fire math; plus its other pure modules.
 - `lib/sysprompts/` — the agent's system prompts, as markdown.
 - `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts` used only by the cron dispatcher) + auth server actions + desk render helpers (`lib/agents.ts`).
@@ -60,7 +60,6 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 ## Conventions
 
 - **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts` (RLS owner-scoped; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
-- Building a feature slice: `/feature` orchestrates the full flow, or drive the phases individually — `/feature-plan` (the plan gate — plan is the spec — → issue + branch) → `/feature-build` → `/feature-qc` (or single passes: `/simplify`, `/code-review`, `/feature-lint`) → `/feature-ship` (triage gate → one squashed commit to `dev`).
 
 ### Issue labels
 
@@ -81,14 +80,10 @@ GitHub labels carry issue type and state — never a title prefix (no `triage:` 
 | --- | --- |
 | env vars (local or Vercel) | `vercel:env-vars` |
 | deploys / promotes / rollbacks | `vercel:deployments-cicd` |
+| cron on Vercel | `vercel-functions` |
 | repo-wide Biome findings | `feature-lint` |
-
-**Inspecting Vercel state — MCP tools first, not the raw CLI.** For deployment
-status, logs, project/env inspection, and even triggering a deploy, reach for the
-Vercel MCP tools (`list_deployments`, `get_deployment`, `get_deployment_build_logs`,
-`get_runtime_logs`, `get_runtime_errors`, `deploy_to_vercel`) — they're API calls
-with no local-filesystem cost.
 
 ## Cross-tool
 
-`AGENTS.md` is the canonical instruction file — Codex and other agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
+- `AGENTS.md` is the canonical instruction file — Codex and other agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
+- Proactively invoke any installed skill relevant to the current task without waiting for me to name it.

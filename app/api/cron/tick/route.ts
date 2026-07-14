@@ -5,6 +5,7 @@
 // SERVER-ONLY: uses the service-role client (no RLS, no user session — a tick isn't a request
 // from a signed-in reporter).
 import { nextFire } from "@/lib/agent/next-run";
+import { persistScanRun, persistScanRunError } from "@/lib/agent/persist-run";
 import {
   type ScanFrequency,
   scanFrequencySchema,
@@ -12,7 +13,6 @@ import {
 } from "@/lib/agent/scan-frequency";
 import { runScan } from "@/lib/agent/scan-run";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
 
 export const maxDuration = 300;
 
@@ -108,36 +108,15 @@ export async function GET(req: Request) {
       if (!run) throw new Error(`cron/tick: failed to insert run row for agent ${agent.id}`);
 
       try {
-        const { items, costUsd, usage, trace, error } = await runScan(
+        const result = await runScan(
           { beat: agent.beat, handles: agent.handles, scanFrequency: agent.freq },
           new Date(),
           new Date(agent.firedAt),
         );
-        // Soft-fail (Pass-2 structuring gave up) still carries Pass-1's grok cost + trace — persist
-        // them with the failure rather than dropping to a blank run. A clean run stores its items.
-        await db
-          .from("runs")
-          .update({
-            status: error ? "failed" : "done",
-            ...(error ? { error } : { result: { items } as Json }),
-            cost_usd: costUsd,
-            usage: usage as Json,
-            trace: trace as Json,
-            finished_at: new Date().toISOString(),
-          })
-          .eq("id", run.id)
-          .eq("status", "running"); // guard: sweep may have failed it
-        return error ? "failed" : "done";
+        await persistScanRun(db, run.id, result);
+        return result.error ? "failed" : "done";
       } catch (e) {
-        await db
-          .from("runs")
-          .update({
-            status: "failed",
-            error: e instanceof Error ? e.message : String(e),
-            finished_at: new Date().toISOString(),
-          })
-          .eq("id", run.id)
-          .eq("status", "running");
+        await persistScanRunError(db, run.id, e);
         return "failed";
       }
     }),

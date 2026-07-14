@@ -41,7 +41,8 @@ export async function draftItems(input: {
 
   const { output, usage } = await generateText({
     model: "deepseek/deepseek-v4-flash",
-    reasoning: "medium",
+    // No `reasoning`: DeepSeek V4 thinks by default and self-scales effort (see agent.ts).
+    // Drafting in-voice is judgment, so let its native adaptive thinking run.
     providerOptions: { gateway: { sort: "cost" } },
     system: DRAFT_RUNNER_PROMPT,
     prompt: userMessage,

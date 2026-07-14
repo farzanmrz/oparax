@@ -14,6 +14,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { draftItems } from "@/lib/agent/draft-run";
 import { nextFire } from "@/lib/agent/next-run";
+import { persistScanRun, persistScanRunError } from "@/lib/agent/persist-run";
 import { scanFrequencySchema } from "@/lib/agent/scan-frequency";
 import { type NewsItem, newsItemSchema } from "@/lib/agent/scan-result";
 import { runScan } from "@/lib/agent/scan-run";
@@ -104,37 +105,11 @@ export async function scanNow(agentId: string): Promise<ActionResult> {
   const scanFrequency = freq.data;
   after(async () => {
     try {
-      const { items, costUsd, usage, trace, error } = await runScan({
-        beat,
-        handles,
-        scanFrequency,
-      });
-      // A soft-fail (Pass-2 structuring gave up) still carries Pass-1's grok cost + trace — record
-      // them alongside the failure so the run isn't blank and the spend is accounted. A clean run
-      // stores its items as the result.
-      await admin
-        .from("runs")
-        .update({
-          status: error ? "failed" : "done",
-          ...(error ? { error } : { result: { items } as Json }),
-          cost_usd: costUsd,
-          usage: usage as Json,
-          trace: trace as Json,
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", run.id)
-        .eq("status", "running");
+      const result = await runScan({ beat, handles, scanFrequency });
+      await persistScanRun(admin, run.id, result);
     } catch (e) {
       // Unexpected throw (Pass 1 / gateway) — nothing partial to preserve.
-      await admin
-        .from("runs")
-        .update({
-          status: "failed",
-          error: e instanceof Error ? e.message : String(e),
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", run.id)
-        .eq("status", "running");
+      await persistScanRunError(admin, run.id, e);
     }
   });
 

@@ -39,11 +39,11 @@ Drafts follow the reporter's voice. Instructions already given — in the opener
 
     <example>
 
-    > **Laporta greenlights move for Julián Álvarez**
+    > **Club agrees terms for the league's top scorer**
     >
-    > Barcelona believe Atlético can be persuaded to sell, with the president taking direct control of the talks. With no natural No. 9 after Lewandowski's exit, a striker is the summer priority.
+    > Sources say talks are advanced, with the manager driving them personally. After losing their main striker last window, a forward is the priority this summer.
     >
-    > #FCBarcelona #Barça #Transfers #JuliánÁlvarez
+    > #Transfers #TransferNews #Football #DeadlineDay
 
     </example>
 3. **State the character count**, flagged as an estimate near the limit (exact X-style counting isn't wired up yet). **The budget is a ceiling, not a target — never pad.**

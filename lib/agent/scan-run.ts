@@ -50,8 +50,9 @@ function clockBlock(now: Date, scanFrequency: ScanFrequency, firedAt: Date): str
  *  headroom (structuring is pure reformat, so the token cost is bounded by the scan size). */
 const STRUCTURE_MAX_OUTPUT_TOKENS = 16_000;
 /** generateObject occasionally returns unparseable JSON on a large structuring job; a re-sample
- *  usually lands. Cap the attempts so a persistently-bad response fails fast into the soft-fail. */
-const STRUCTURE_ATTEMPTS = 3;
+ *  usually lands. Two attempts (one retry) — enough to clear a transient parse blip, capped low so
+ *  three slow attempts on the failure path can't push the run past the cron function's 300s cap. */
+const STRUCTURE_ATTEMPTS = 2;
 
 /** The runScan outcome. `error` is set ONLY when Pass 2 (structuring) ultimately failed after
  *  retries — a soft failure that still carries Pass 1's grok trace + cost so the spent money and
@@ -78,7 +79,8 @@ export async function runScan(
   // (drafting the searches per the prompt); later steps cluster the raw posts into prose.
   const gen = await generateText({
     model,
-    reasoning: "medium",
+    // No `reasoning`: DeepSeek V4 thinks by default and self-scales effort (see agent.ts).
+    // Clustering is genuine judgment, so let its native adaptive thinking run.
     providerOptions,
     instructions: `${SCAN_RUNNER_PROMPT}\n\n${clockBlock(now, desk.scanFrequency, firedAt)}`,
     prompt: `Beat: ${desk.beat}\nWatched handles: ${desk.handles.join(", ")}`,
@@ -107,16 +109,18 @@ export async function runScan(
   });
 
   // Pass 2 — structure the clustered prose into items. No tools here, so there is no
-  // output-vs-tool-loop race. NO reasoning: this is a mechanical reformat, and a reasoning model
-  // on a structured-output call interleaves its reasoning with the JSON (or spends the output
-  // budget reasoning), which surfaced as `NoObjectGeneratedError: could not parse the response`
-  // only on large 20-handle results — dropping reasoning is what actually fixes the failure. The
-  // high output ceiling (no mid-JSON truncation) and the retry are defense-in-depth on top.
+  // output-vs-tool-loop race. `reasoning: 'none'` (DeepSeek default is thinking ON) is load-
+  // bearing, NOT a cleanup target: this is a mechanical reformat, and with thinking on the model
+  // interleaves its reasoning with the JSON (or spends the output budget reasoning), which
+  // surfaced as `NoObjectGeneratedError: could not parse the response` only on large 20-handle
+  // results. Omitting the param would silently re-enable thinking here — pin it off explicitly.
+  // The high output ceiling (no mid-JSON truncation) and the retry are defense-in-depth on top.
   let lastError: unknown;
   for (let attempt = 1; attempt <= STRUCTURE_ATTEMPTS; attempt++) {
     try {
       const structured = await generateObject({
         model,
+        reasoning: "none",
         providerOptions,
         maxOutputTokens: STRUCTURE_MAX_OUTPUT_TOKENS,
         schema: scanResultSchema,

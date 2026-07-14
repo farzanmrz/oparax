@@ -27,11 +27,11 @@ Example of the exact spacing (premium desk — the blank lines are required):
 
 <example>
 
-**Laporta greenlights move for Julián Álvarez**
+**Club agrees terms for the league's top scorer**
 
-Barcelona believe Atlético can be persuaded to sell, with the president taking direct control of the talks. With no natural No. 9 after Lewandowski's exit, a striker is the summer priority.
+Sources say talks are advanced, with the manager driving them personally. After losing their main striker last window, a forward is the priority this summer.
 
-#FCBarcelona #Barça #Transfers #JuliánÁlvarez
+#Transfers #TransferNews #Football #DeadlineDay
 
 </example>
 
