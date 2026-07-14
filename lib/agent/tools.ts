@@ -33,7 +33,7 @@ const scanInputSchema = z.object({
   calls: z
     .array(SubtoolCall)
     .describe(
-      "The exact x_search subtool calls to run, in order — drafted by you per your strict guardrails (1 x_keyword_search across all handles + 2 x_semantic_search). the search executor runs them verbatim.",
+      "The exact x_search subtool calls to run, in order — drafted by you per your strict guardrails (1 x_keyword_search across all handles + 3–4 x_semantic_search). the search executor runs them verbatim.",
     ),
   handles: z
     .array(z.string())

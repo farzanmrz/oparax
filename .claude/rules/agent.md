@@ -26,7 +26,7 @@ Vercel Cron fires `GET /api/cron/tick` once a minute (`vercel.json`'s `* * * * *
 
 ## The scan pipeline
 
-- **grok is a verbatim executor.** DeepSeek drafts the exact `x_search` subtool calls entirely inside `lib/sysprompts/desk-agent.md` (`from:`/`since_time:` pinning, inclusion-only, the escaped-quote `\"exact phrase\"` operator) — no guardrail logic lives in tool code, so a guardrail regression is always a prompt edit.
+- **grok is a verbatim executor.** DeepSeek drafts the exact `x_search` subtool calls entirely inside `lib/sysprompts/desk-agent.md` (`from:`/`since_time:` pinning, inclusion-only, bare single-word keyword terms — no quoted phrases, which mis-escape into broken tool-call JSON; see `.claude/rules/sysprompts.md`) — no guardrail logic lives in tool code, so a guardrail regression is always a prompt edit.
 - **Raw fetch, not `@ai-sdk/xai`.** `lib/agent/xai.ts` hits xAI's `/responses` endpoint directly because that SDK provider flattens away the per-subtool trace (`subtoolCalls`) this code depends on for debugging — "simplifying" to the SDK silently loses the trace with no type error. It also hard-times-out at 150s (`AbortSignal.timeout`) — without it a stalled xAI call hangs the tool indefinitely with no error, looking stuck rather than failed.
 - **No handle verification.** The reporter's handles are taken as given and passed straight to the scan — a wrong handle just returns nothing for that source. There is no pre-check tool: fuzzy `x_user_search` couldn't confirm exact handles (it drops valid accounts outranked by popular near-matches), so it was removed (closed #57). The live tool surface is two: `oparax_x_search`, `save_agent`.
 
