@@ -62,10 +62,29 @@ export async function postDraftToX(
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
   if (draft.posted_at) return { ok: false, error: "This draft was already posted to X." };
 
-  // Resolve a usable access token BEFORE claiming: a missing account or a failed refresh
-  // means nothing was posted, so there is no claim to release and no double-post risk.
+  const admin = createAdminClient();
+
+  // CAS-claim FIRST: only succeeds if posted_at is still null, so a concurrent double-click
+  // loses here. Claiming before the token refresh also means only the winner ever refreshes
+  // — otherwise two concurrent clicks would both spend the same rotating refresh token,
+  // invalidating one another.
+  const { data: claimed, error: claimError } = await admin
+    .from("drafts")
+    .update({ posted_at: new Date().toISOString() })
+    .eq("id", parsedId.data)
+    .is("posted_at", null)
+    .select("id");
+  if (claimError || !claimed || claimed.length === 0) {
+    return { ok: false, error: "This draft was already posted to X." };
+  }
+
+  // Resolve a usable access token. A missing account or a failed refresh means nothing was
+  // posted, so releasing the claim here is safe and lets the reporter retry after fixing it.
   const account = await getXAccount(user.id);
-  if (!account) return { ok: false, error: "Connect your X account first." };
+  if (!account) {
+    await releaseClaim(admin, parsedId.data);
+    return { ok: false, error: "Connect your X account first." };
+  }
 
   let accessToken = account.access_token;
   if (new Date(account.token_expires_at).getTime() - Date.now() < 60_000) {
@@ -77,24 +96,12 @@ export async function postDraftToX(
       const tokenExpiresAt = new Date(Date.now() + refreshed.expiresInSec * 1000).toISOString();
       await updateXTokens(user.id, { accessToken, refreshToken: newRefresh, tokenExpiresAt });
     } catch {
+      await releaseClaim(admin, parsedId.data);
       return {
         ok: false,
         error: "Your X connection expired — reconnect your X account in settings.",
       };
     }
-  }
-
-  const admin = createAdminClient();
-
-  // CAS-claim: only succeeds if posted_at is still null, so a concurrent double-click loses.
-  const { data: claimed, error: claimError } = await admin
-    .from("drafts")
-    .update({ posted_at: new Date().toISOString() })
-    .eq("id", parsedId.data)
-    .is("posted_at", null)
-    .select("id");
-  if (claimError || !claimed || claimed.length === 0) {
-    return { ok: false, error: "This draft was already posted to X." };
   }
 
   let tweet: { id: string };
