@@ -4,30 +4,12 @@
 // user, and stores the token set. Always redirects to /agents/settings —
 // success sets x_linked=1, any failure sets x_error=<code>. Never puts token
 // material or the auth code in a redirect URL.
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
+import { getSiteOrigin } from "@/lib/site-origin";
 import { exchangeCode, fetchMe } from "@/lib/x/api";
 import { upsertXAccount } from "@/lib/x/store";
 import { createClient } from "@/lib/supabase/server";
-
-/** Mirrors `getSiteOrigin()` in lib/auth/actions.ts — kept local because that
- *  file is "use server" and can't export a plain helper. */
-async function getSiteOrigin(): Promise<string> {
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin");
-  if (origin) {
-    return origin;
-  }
-
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  if (host) {
-    const protocol =
-      requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
-    return `${protocol}://${host}`;
-  }
-
-  return "http://localhost:3000";
-}
 
 export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();

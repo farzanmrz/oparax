@@ -1,7 +1,7 @@
 // Service-role Supabase client — bypasses RLS. SERVER-ONLY: imported by code that must
 // write rows no user session can — the cron dispatcher (a tick is not a request from a
-// signed-in reporter), the `[id]` desk actions' service-role writes, and `lib/x/store.ts`'s
-// token store.
+// signed-in reporter), the `[id]` desk actions' service-role writes, and `lib/x/`'s token
+// store + post/unlink actions (the deny-all `x_accounts` table + the drafts post-state stamp).
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 

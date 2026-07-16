@@ -82,26 +82,19 @@ export function buildAuthorizeUrl(params: {
   return `${X_AUTHORIZE_URL}?${search.toString()}`;
 }
 
-export async function exchangeCode(params: {
-  code: string;
-  codeVerifier: string;
-  redirectUri: string;
-}): Promise<XTokenSet> {
+/** POSTs a form body to X's token endpoint (Basic auth) and normalizes the grant.
+ *  Shared by the auth-code exchange and the refresh — they differ only in the body.
+ *  `refresh_token` MAY be absent on a refresh (rotation undocumented) → null, and the
+ *  caller keeps the prior one. */
+async function tokenRequest(body: URLSearchParams): Promise<XTokenSet> {
   const { header } = xBasicAuth();
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    code: params.code,
-    redirect_uri: params.redirectUri,
-    code_verifier: params.codeVerifier,
-  }).toString();
-
   const res = await xFetch("/2/oauth2/token", X_TOKEN_URL, {
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
       authorization: header,
     },
-    body,
+    body: body.toString(),
   });
   await assertOk("/2/oauth2/token", res);
   const json = (await res.json()) as XTokenResponse;
@@ -113,31 +106,28 @@ export async function exchangeCode(params: {
   };
 }
 
-export async function refreshTokens(refreshToken: string): Promise<XTokenSet> {
-  const { header } = xBasicAuth();
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-  }).toString();
+export function exchangeCode(params: {
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+}): Promise<XTokenSet> {
+  return tokenRequest(
+    new URLSearchParams({
+      grant_type: "authorization_code",
+      code: params.code,
+      redirect_uri: params.redirectUri,
+      code_verifier: params.codeVerifier,
+    }),
+  );
+}
 
-  const res = await xFetch("/2/oauth2/token", X_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-      authorization: header,
-    },
-    body,
-  });
-  await assertOk("/2/oauth2/token", res);
-  const json = (await res.json()) as XTokenResponse;
-  return {
-    accessToken: json.access_token,
-    // refresh_token MAY be absent on a refresh (rotation undocumented) — caller
-    // keeps the prior one.
-    refreshToken: json.refresh_token ?? null,
-    expiresInSec: json.expires_in,
-    scope: json.scope,
-  };
+export function refreshTokens(refreshToken: string): Promise<XTokenSet> {
+  return tokenRequest(
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  );
 }
 
 export async function revokeToken(token: string): Promise<void> {

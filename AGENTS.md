@@ -12,7 +12,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 | Agent | AI SDK `ToolLoopAgent` (DeepSeek via AI Gateway) behind `POST /api/chat` | — |
 | AI SDK | `ai` + `@ai-sdk/react` | 7 / 4 |
 | Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
-| Auth + DB | Supabase (auth + owner-scoped app tables — `agents`, `runs`, `drafts`) | — |
+| Auth + DB | Supabase (auth + owner-scoped app tables — `agents`, `runs`, `drafts`, `x_accounts`) | — |
 | Tooling | pnpm (a preinstall guard blocks npm/yarn) + Biome | — |
 | Host | Vercel — oparax.ai, `dev` → `main` promote | — |
 
@@ -49,7 +49,7 @@ pnpm format     # Biome format --write
 - `lib/agent/` — the desk agent: model + tools + the save-approval gate; the headless scan runner + draft runner behind the cron dispatcher; `next-run.ts`'s timezone fire math; plus its other pure modules.
 - `lib/x/` — the X integration — `api.ts` (raw-fetch OAuth2 + post client), `store.ts` (service-role token store for `x_accounts`; tokens never leave this dir), `link-state.ts` (`getXLinkState()`), `actions.ts` (`postDraftToX`/`unlinkXAccount`).
 - `lib/sysprompts/` — the agent's system prompts, as markdown.
-- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/store.ts`'s token store) + auth server actions + desk render helpers (`lib/agents.ts`).
+- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/`'s token store + post/unlink actions) + auth server actions + desk render helpers (`lib/agents.ts`).
 - `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable and now carries post-outcome columns — `posted_at`, `posted_tweet_id`, `posted_url` — stamped by the service-role client after an RLS ownership check; `x_accounts` has RLS enabled with zero policies, deny-all — read/written only by the service-role client).
 - `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
@@ -61,7 +61,7 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 ## Conventions
 
-- **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts` (RLS owner-scoped; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
+- **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-scoped, except `x_accounts` which is deny-all — service-role-only credential storage; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
 
 ### Issue labels
 

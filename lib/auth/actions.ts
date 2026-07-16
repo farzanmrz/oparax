@@ -7,9 +7,9 @@
 // on failure, so the pages' useActionState forms can show feedback inline
 // without navigating away. Success paths still redirect().
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { mapAuthError } from "@/lib/auth-errors";
+import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
 import { deriveUsernameFromEmail } from "@/lib/user";
 import {
@@ -31,23 +31,6 @@ export interface AuthFormState {
    * state), so the forms repopulate the email field from here.
    */
   email?: string;
-}
-
-async function getSiteOrigin(): Promise<string> {
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin");
-  if (origin) {
-    return origin;
-  }
-
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  if (host) {
-    const protocol =
-      requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
-    return `${protocol}://${host}`;
-  }
-
-  return "http://localhost:3000";
 }
 
 export async function loginAction(
