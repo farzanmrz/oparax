@@ -28,7 +28,7 @@ pnpm format     # Biome format --write
 
 ### Environment
 
-`.env.local`, six keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.com` / `hello123`.
+`.env.local`, eight keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.com` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |
@@ -37,18 +37,20 @@ pnpm format     # Biome format --write
 | `AI_GATEWAY_API_KEY` | AI Gateway for the DeepSeek chat model (local dev; deployed = Vercel OIDC) |
 | `CRON_SECRET` | `app/api/cron/tick/route.ts` — fail-closed `Bearer` auth for the per-minute dispatcher |
 | `SUPABASE_SECRET_KEY` | `lib/supabase/admin.ts` — the service-role dispatcher client |
+| `X_CLIENT_ID` + `X_CLIENT_SECRET` | `lib/x/api.ts` — X OAuth2 confidential-client credentials (link flow + posting) |
 
 ## Code map
 
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard · `settings/`).
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks (including `app/auth/x/*`, the X OAuth link + callback), `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard · `settings/`).
 - `components/`
     - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
     - `components/ai-elements/` — chat-surface kit.
     - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
 - `lib/agent/` — the desk agent: model + tools + the save-approval gate; the headless scan runner + draft runner behind the cron dispatcher; `next-run.ts`'s timezone fire math; plus its other pure modules.
+- `lib/x/` — the X integration — `api.ts` (raw-fetch OAuth2 + post client), `store.ts` (service-role token store for `x_accounts`; tokens never leave this dir), `link-state.ts` (`getXLinkState()`), `actions.ts` (`postDraftToX`/`unlinkXAccount`).
 - `lib/sysprompts/` — the agent's system prompts, as markdown.
-- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts` used only by the cron dispatcher) + auth server actions + desk render helpers (`lib/agents.ts`).
-- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable).
+- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/store.ts`'s token store) + auth server actions + desk render helpers (`lib/agents.ts`).
+- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable and now carries post-outcome columns — `posted_at`, `posted_tweet_id`, `posted_url` — stamped by the service-role client after an RLS ownership check; `x_accounts` has RLS enabled with zero policies, deny-all — read/written only by the service-role client).
 - `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
 - `.agents/skills/` + `.codex/agents/` — the Codex-side mirrors. `.agents/skills/` symlinks **every** `.claude/skills/` entry (Codex reads the body and ignores the Claude-only `model:` frontmatter as inert text) — add a symlink when a new skill lands. `.codex/agents/` holds TOML ports of the six `.claude/agents/` workers — a **best-effort mirror**, not a lockstep one. The `.claude/agents/*.md` are canonical; refresh the TOML when you actually drive the flow from Codex (reconcile it against the `.md` at that point), NOT on every `.claude/agents/` edit — the per-edit sync tax bought nothing while the flow runs from Claude. Flow skills (`feature*`) are worded in Claude's tool vocabulary; Codex maps their agent references onto its own TOML workers and adapts the tool-call layer.

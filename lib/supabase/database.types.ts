@@ -68,6 +68,9 @@ export type Database = {
           created_at: string;
           id: string;
           item: Json;
+          posted_at: string | null;
+          posted_tweet_id: string | null;
+          posted_url: string | null;
           text: string;
           usage: Json | null;
         };
@@ -76,6 +79,9 @@ export type Database = {
           created_at?: string;
           id?: string;
           item: Json;
+          posted_at?: string | null;
+          posted_tweet_id?: string | null;
+          posted_url?: string | null;
           text: string;
           usage?: Json | null;
         };
@@ -84,6 +90,9 @@ export type Database = {
           created_at?: string;
           id?: string;
           item?: Json;
+          posted_at?: string | null;
+          posted_tweet_id?: string | null;
+          posted_url?: string | null;
           text?: string;
           usage?: Json | null;
         };
@@ -143,6 +152,42 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      x_accounts: {
+        Row: {
+          access_token: string;
+          created_at: string;
+          handle: string;
+          refresh_token: string;
+          scopes: string;
+          token_expires_at: string;
+          updated_at: string;
+          user_id: string;
+          x_user_id: string;
+        };
+        Insert: {
+          access_token: string;
+          created_at?: string;
+          handle: string;
+          refresh_token: string;
+          scopes: string;
+          token_expires_at: string;
+          updated_at?: string;
+          user_id: string;
+          x_user_id: string;
+        };
+        Update: {
+          access_token?: string;
+          created_at?: string;
+          handle?: string;
+          refresh_token?: string;
+          scopes?: string;
+          token_expires_at?: string;
+          updated_at?: string;
+          user_id?: string;
+          x_user_id?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {
