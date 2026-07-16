@@ -3,8 +3,9 @@
 // the browser/publishable key), so every function here runs on the admin (service-role) client
 // and always scopes by `user_id`. This module does not itself resolve the current user — callers
 // pass `userId` (see `lib/x/link-state.ts` for the cookie-client-then-store trust pattern).
-import type { Database } from "@/lib/supabase/database.types";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
 
 export type XAccount = Database["public"]["Tables"]["x_accounts"]["Row"];
 

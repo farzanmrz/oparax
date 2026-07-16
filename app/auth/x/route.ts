@@ -2,11 +2,11 @@
 // PKCE link flow: requires a signed-in Oparax user, then redirects to X's
 // authorize endpoint with a fresh PKCE pair + CSRF state stashed in cookies for
 // the callback to verify.
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
-import { buildAuthorizeUrl } from "@/lib/x/api";
 import { createClient } from "@/lib/supabase/server";
+import { buildAuthorizeUrl } from "@/lib/x/api";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
 

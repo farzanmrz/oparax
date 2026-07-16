@@ -7,9 +7,9 @@
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
+import { createClient } from "@/lib/supabase/server";
 import { exchangeCode, fetchMe } from "@/lib/x/api";
 import { upsertXAccount } from "@/lib/x/store";
-import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();
