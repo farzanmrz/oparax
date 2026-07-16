@@ -28,7 +28,7 @@ pnpm format     # Biome format --write
 
 ### Environment
 
-`.env.local`, six keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.com` / `hello123`.
+`.env.local`, six keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |
