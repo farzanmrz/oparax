@@ -51,7 +51,7 @@ pnpm format     # Biome format --write
 - `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable).
 - `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
-- `.agents/skills/` + `.codex/agents/` — the Codex-side mirrors. `.agents/skills/` symlinks **every** `.claude/skills/` entry (Codex reads the body and ignores the Claude-only `model:` frontmatter as inert text) — add a symlink when a new skill lands. `.codex/agents/` holds TOML ports of the six `.claude/agents/` workers — a **best-effort mirror**, not a lockstep one. The `.claude/agents/*.md` are canonical; refresh the TOML when you actually drive the flow from Codex (reconcile it against the `.md` at that point), NOT on every `.claude/agents/` edit — the per-edit sync tax bought nothing while the flow runs from Claude. Flow skills (`feature*`) are worded in Claude's tool vocabulary; Codex maps their agent references onto its own TOML workers and adapts the tool-call layer.
+- `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands.
 
 Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.vercel/`.
 
@@ -63,7 +63,7 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 ### Issue labels
 
-GitHub labels carry issue type and state — never a title prefix (no `triage:` etc.). Every `gh issue create` sets a label; every agent applies them the same way (this is the tool-neutral record — Codex reads it here too).
+GitHub labels carry issue type and state — never a title prefix (no `triage:` etc.). Every `gh issue create` sets a label; every agent applies them the same way.
 
 | Label | Meaning | Applied |
 | --- | --- | --- |
@@ -85,5 +85,5 @@ GitHub labels carry issue type and state — never a title prefix (no `triage:` 
 
 ## Cross-tool
 
-- `AGENTS.md` is the canonical instruction file — Codex and other agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
+- `AGENTS.md` is the canonical instruction file — non-Claude agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
 - Proactively invoke any installed skill relevant to the current task without waiting for me to name it.
