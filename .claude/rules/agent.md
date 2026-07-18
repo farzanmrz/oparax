@@ -7,13 +7,11 @@ paths:
 
 # The desk agent
 
-- `vercel:ai-sdk` for `lib/agent/agent.ts`'s `ToolLoopAgent` (`toolApproval`, `stepCountIs`, `InferAgentUIMessage`) and the `tool()` defs in `lib/agent/tools.ts`.
-- `vercel:ai-gateway` for the DeepSeek model routing — `agent.ts`'s model is a plain gateway string (`"deepseek/deepseek-v4-flash"`, `providerOptions.gateway.sort: "cost"`); `scan-run.ts` and `draft-run.ts` mirror the same model + provider options for their own headless calls.
+- The three headless model callers — `lib/agent/agent.ts`, `lib/agent/scan-run.ts`, `lib/agent/draft-run.ts` — share ONE AI-Gateway model + `providerOptions`; change one without the others and the chat and the scan/draft runners silently diverge onto different models.
 
 ## Reasoning: DeepSeek's own default everywhere except structuring
 
 DeepSeek V4 defaults to thinking ON and self-scales effort by problem difficulty (its native adaptive behavior; the AI SDK's `low`/`medium` both coerce to its `high`, so an explicit mid level is a no-op). So the three judgment calls — the chat agent (`agent.ts`), the scan **cluster** pass (`scan-run.ts` Pass 1), and the draft runner (`draft-run.ts`) — pass **no `reasoning` param** and let native adaptivity run. Do not re-add a level there; it buys nothing. The ONE exception is the scan **structure** pass (`scan-run.ts` Pass 2's `generateObject`), pinned `reasoning: "none"`: with thinking on, the model interleaves reasoning into the JSON and `generateObject` fails to parse it (`NoObjectGeneratedError`) on large scans — an observed production failure, so that `'none'` is load-bearing, not a cleanup target, and omitting it silently re-enables thinking.
-- `supabase:supabase` for `app/api/chat/route.ts`'s auth gate (`supabase.auth.getUser()`) and `app/api/cron/tick/route.ts`'s service-role client.
 - Prompt-writing conventions and drift guards for `lib/sysprompts/*.md` live in `.claude/rules/sysprompts.md`, not here — this file is the TypeScript/architecture side.
 
 ## Scan frequency is enforced in code at three points, never in the prompt
