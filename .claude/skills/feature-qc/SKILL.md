@@ -26,7 +26,9 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    degrades to the unbounded `/code-review` path; the path form runs the repo workflow
    directly. Measure the diff first (`git diff --shortstat <range>`) and pass `args`:
    `{ range: "origin/dev...ft/<N>", generated: "<globs>", vetoes: "<plan-frozen
-   decisions>", large: <bool>, effort: "medium" }` — set `large: true` on a big diff
+   decisions>", criteria: "<the ft issue's 'Stack & design acceptance criteria'
+   section>", large: <bool>, effort: "medium" }` — `criteria` is what `conventions-finder`
+   verifies the built diff against; set `large: true` on a big diff
    (roughly >8 files or >200 changed lines) to add the line-by-line bug angle (it
    returns zero on small diffs), and `effort: "high"` when the slice adds a
    table/migration, a new trust boundary (auth, server action, agent tool surface),

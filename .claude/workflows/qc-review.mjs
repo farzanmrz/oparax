@@ -11,6 +11,7 @@ export const meta = {
 //   { range: string,          // git diff range, e.g. "origin/dev...ft/50"
 //     generated?: string,     // one line naming generated/vendored paths to skip
 //     vetoes?: string,        // plan-frozen decisions that are vetoes, not findings
+//     criteria?: string,      // the plan's "Stack & design acceptance criteria" — conventions-finder verifies the diff against them
 //     large?: boolean,        // large-diff signal — the session measures the diff and sets this
 //                             //   (the workflow sandbox can't shell out); adds the line-by-line bug angle
 //     effort?: 'medium'|'high' } // bug-angle depth; defaults to medium
@@ -22,6 +23,7 @@ export const meta = {
 const range = (args && args.range) || 'origin/dev...HEAD'
 const generated = (args && args.generated) || 'none named — use judgment on obviously generated/vendored files'
 const vetoes = (args && args.vetoes) || 'none supplied'
+const criteria = (args && args.criteria) || 'none supplied — if the plan/issue has a "Stack & design acceptance criteria" section, treat its lines as the criteria'
 const effort = (args && args.effort) === 'high' ? 'high' : 'medium'
 const large = !!(args && args.large) // caller-supplied; gates the line-by-line bug angle (zero yield on small diffs)
 
@@ -67,8 +69,9 @@ const FINDERS = [
     prompt: `Your angles: ALTITUDE (senior lens) + EFFICIENCY (secondary). ALTITUDE: is each piece of logic at the right layer (not leaking a concern up or down), and does comment density + accuracy match the surrounding codebase idiom (no over- or under-commenting, no stale/aspirational comments the diff introduced)? EFFICIENCY: flag only obviously wasteful hot-path work.${commonTail}`,
   },
   {
-    class: 'conventions', angle: 'conventions+docs', agentType: 'conventions-finder', model: 'sonnet',
-    prompt: `Check the diff against the governing instruction files (AGENTS.md, .claude/rules/*). Two directions: (1) rule violations — quote the exact rule line and the exact diff line that breaks it; (2) staleness the diff introduces — instruction-file lines the diff has made wrong or incomplete.${commonTail}`,
+    class: 'conventions', angle: 'conventions+docs+criteria', agentType: 'conventions-finder', model: 'sonnet',
+    prompt: `Check the diff against the governing instruction files (AGENTS.md, .claude/rules/*) AND the plan's frozen acceptance criteria. Three directions: (1) rule violations — quote the exact rule line and the exact diff line that breaks it; (2) staleness the diff introduces — instruction-file lines the diff has made wrong or incomplete; (3) unmet acceptance criteria — for each of the plan's stack & design criteria below, report any the built diff fails to satisfy (name the criterion + the file/line that misses it).
+Plan-frozen acceptance criteria to verify: ${criteria}${commonTail}`,
   },
   // Bug angles: adversarial + cross-file always on opus; line-by-line only on large
   // diffs (zero yield on small ones) and de-pinned to sonnet.

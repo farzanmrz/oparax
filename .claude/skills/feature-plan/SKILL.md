@@ -31,43 +31,45 @@ One document, **the plan**: it is the spec and the plan at once. Seed from
 3. Direction still genuinely unknown → `idea-refine` (save-path override
    `.feature/`).
 
-These are conversations, not sign-offs — the ✋ gate in step 5 is this flow's only
+These are conversations, not sign-offs — the ✋ gate in step 4 is this flow's only
 approval gate.
 
-## 3. Plan the slice
+## 3. Plan the slice — skill-grounded synthesis
 
-### 3a. Consider approaches — internally, present none
-1. Weigh 2–3 candidate approaches through four lenses: **risk-first**,
-   **YAGNI-minimal**, **vertical-slice**, **verification-first**.
-2. Big/architectural slices → run the lenses as 3–4 parallel sketch-agents; smaller
-   slices → weigh them inline.
-3. **Decide the single best approach yourself.** The alternatives are how you
-   choose, not what you present — they never enter the final plan. Sketches die here.
+The plan is synthesized by a fixed workflow, not drafted freehand, so the stack
+skills that apply to the slice are consulted **deterministically** every time (not
+left to whether the session remembers to). One
+`Workflow({ scriptPath: ".claude/workflows/plan-synth.mjs", args })` call runs the
+whole pass — address it by **`scriptPath`, never `name`** (same reason as the QC
+workflow: `{ name }` doesn't scan the repo's `.claude/workflows/`). Pass `args`:
+`{ ask: "<the confirmed ask from step 2>", context: "<any seed worth carrying>" }`.
 
-### 3b. Draft your plan — inline
-Authored right here in the chat, inheriting the session's model; never delegated to
-a subagent. Before writing, read every file the ask touches and Grep for callers and
-contracts rather than guessing; never propose anything a hard guard forbids. Your
-plan:
+It runs three stages: a **scope pre-pass** predicts which stack areas the slice
+touches (there is no diff yet — it infers from the ask + a repo grep) and fires only
+those lenses; a parallel **brief** per fired lens, each invoking its own skill
+(`vercel:nextjs` · `vercel:react-best-practices` · `web-design-guidelines` ·
+`frontend-design` on new surfaces · `vercel:ai-sdk`+`vercel:ai-gateway` ·
+`supabase:supabase`+postgres · always `repo-fit`, which reads AGENTS.md + the
+`.claude/rules/` guards); then a **synthesis** step (opus) that assembles 2–3
+candidate approaches, picks one via the four lenses (**risk-first**,
+**YAGNI-minimal**, **vertical-slice**, **verification-first**), reconciles the briefs
+(additive → merge; conflicting → decide + log why), and returns ONE plan.
 
-- **Definition of done**, up top — summarized however reads clearest: a short
-  paragraph, a bullet list, or both. This is the slice's contract; feature-ship's
-  triage measures every "fix now" against it.
-- **Only the decided approach** — the plan, not a menu of options.
-- **In scope / Deferred split:**
-  1. Everything the user asked for together is **in scope** — multiple asks in one
-     breath (a minimal UI tweak *and* a major schema change) are one slice on one
-     branch, not a forced split.
-  2. **Deferred** is only for work that is a substantial related slice in its own
-     right, genuinely better built *after* this one lands — not a catch-all for
-     incidental additions.
-  3. Incidental "while we're here" ideas the plan itself surfaces (not asked for) →
-     drop or note for backlog; never inflate the slice.
-- **Build steps** for a zero-context engineer: file map first; bite-sized tasks with
-  exact file ownership + interfaces + the `.claude/rules/` skills each implementer
-  must invoke (feature-build copies them into briefs); full code in non-obvious
-  steps; NO placeholders. Split tasks only where a reviewer could reject one and
-  approve its neighbor.
+The returned `plan` markdown carries: **Definition of done** (the slice contract;
+feature-ship's triage measures every "fix now" against it), the **decided approach
+only**, an **In scope / Deferred** split (everything asked for together is in scope —
+a minimal UI tweak *and* a major schema change are one slice; Deferred is only a
+substantial related slice better built after this lands; incidental "while we're
+here" ideas → drop or backlog, never inflate), **Build steps** for a zero-context
+engineer (file map first; bite-sized tasks with exact file ownership + interfaces +
+per-task the skills to invoke and the `.claude/rules/` area-guards to read;
+feature-build copies these into briefs; full code in non-obvious steps; no
+placeholders), and a **## Stack & design acceptance criteria** checklist that
+feature-qc verifies the built diff against.
+
+Read the returned plan critically before the gate — you are the decider; the workflow
+grounds and drafts, you own the final call. Fix anything it got wrong, then present
+it. Never propose anything a hard guard forbids.
 
 ## 4. GATE ✋
 **Paste the full plan into chat** (never a file pointer). Revise until
