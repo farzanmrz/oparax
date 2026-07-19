@@ -1,0 +1,1309 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "handle": "@SamiMokbel_BBC",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Sami Mokbel",
+      "first_name": "Sami",
+      "leanspark_contact": "Sami Mokbel (@SamiMokbel_BBC)"
+    },
+    {
+      "handle": "@MiguelDelaney",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Miguel Delaney",
+      "first_name": "Miguel",
+      "leanspark_contact": "Miguel Delaney (@MiguelDelaney)"
+    },
+    {
+      "handle": "@SkySports_Keith",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Keith Downie",
+      "first_name": "Keith"
+    },
+    {
+      "handle": "@Ekremkonur",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Ekrem KONUR",
+      "first_name": "Ekrem"
+    },
+    {
+      "handle": "@LaurensJulien",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Julien Laurens",
+      "first_name": "Julien"
+    },
+    {
+      "handle": "@DuncanCastles",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Duncan Castles",
+      "first_name": "Duncan",
+      "leanspark_contact": "Duncan Castles (@DuncanCastles)"
+    },
+    {
+      "handle": "@sachatavolieri",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Sacha Tavolieri",
+      "first_name": "Sacha",
+      "leanspark_contact": "Sacha Tavolieri (@sachatavolieri)"
+    },
+    {
+      "handle": "@JacobSteinberg",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Jacob Steinberg",
+      "first_name": "Jacob",
+      "leanspark_contact": "Jacob Steinberg (@JacobSteinberg)"
+    },
+    {
+      "handle": "@JamesHorncastle",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "James Horncastle OSI",
+      "first_name": "James"
+    },
+    {
+      "handle": "@alex_crook",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Alex Crook",
+      "first_name": "Alex"
+    },
+    {
+      "handle": "@jamesbenge",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "James Benge",
+      "first_name": "James",
+      "leanspark_contact": "James Benge (@jamesbenge)"
+    },
+    {
+      "handle": "@skysports_sheth",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Dharmesh Sheth",
+      "first_name": "Dharmesh",
+      "leanspark_contact": "Dharmesh Sheth (@skysports_sheth)"
+    },
+    {
+      "handle": "@JamesOlley",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "James Olley",
+      "first_name": "James"
+    },
+    {
+      "handle": "@AdamCrafton_",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Adam Crafton",
+      "first_name": "Adam"
+    },
+    {
+      "handle": "@_ChrisBascombe",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Chris Bascombe",
+      "first_name": "Chris"
+    },
+    {
+      "handle": "@JBurtTelegraph",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Jason Burt",
+      "first_name": "Jason"
+    },
+    {
+      "handle": "@Ankaman616",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Carl Anka",
+      "first_name": "Carl"
+    },
+    {
+      "handle": "@tombogert",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Tom Bogert",
+      "first_name": "Tom",
+      "leanspark_contact": "Tom Bogert (@tombogert)"
+    },
+    {
+      "handle": "@JNorthcroft",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Jonathan Northcroft",
+      "first_name": "Jonathan"
+    },
+    {
+      "handle": "@GeorgeCaulkin",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "George Caulkin",
+      "first_name": "George"
+    },
+    {
+      "handle": "@SportsPeteO",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Pete O'Rourke",
+      "first_name": "Pete",
+      "leanspark_contact": "Pete O'Rourke (@SportsPeteO)"
+    },
+    {
+      "handle": "@DeanJonesSoccer",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Dean Jones",
+      "first_name": "Dean"
+    },
+    {
+      "handle": "@CraigHope_DM",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Craig Hope",
+      "first_name": "Craig",
+      "leanspark_contact": "Craig Hope (@CraigHope_DM)"
+    },
+    {
+      "handle": "@AlasdairGold",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Alasdair Gold",
+      "first_name": "Alasdair"
+    },
+    {
+      "handle": "@JPercyTelegraph",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "John Percy",
+      "first_name": "John"
+    },
+    {
+      "handle": "@LukeEdwardsTele",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Luke Edwards",
+      "first_name": "Luke"
+    },
+    {
+      "handle": "@lee_ryder",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Lee Ryder",
+      "first_name": "Lee"
+    },
+    {
+      "handle": "@RobDawsonESPN",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Rob Dawson",
+      "first_name": "Rob",
+      "leanspark_contact": "Rob Dawson (@RobDawsonESPN)"
+    },
+    {
+      "handle": "@liam_twomey",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Liam Twomey",
+      "first_name": "Liam",
+      "leanspark_contact": "Liam Twomey (@liam_twomey)"
+    },
+    {
+      "handle": "@MarioCortegana",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Mario Cortegana",
+      "first_name": "Mario",
+      "leanspark_contact": "Mario Cortegana (@MarioCortegana)"
+    },
+    {
+      "handle": "@ChrisWheelerDM",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Chris Wheeler",
+      "first_name": "Chris",
+      "leanspark_contact": "Chris Wheeler (@ChrisWheelerDM)"
+    },
+    {
+      "handle": "@Jack_Gaughan",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Jack Gaughan",
+      "first_name": "Jack",
+      "leanspark_contact": "Jack Gaughan (@Jack_Gaughan)"
+    },
+    {
+      "handle": "@MikeKeegan_DM",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Mike Keegan",
+      "first_name": "Mike"
+    },
+    {
+      "handle": "@PhilHay_",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Phil Hay",
+      "first_name": "Phil"
+    },
+    {
+      "handle": "@SkySportsLyall",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Lyall Thomas",
+      "first_name": "Lyall"
+    },
+    {
+      "handle": "@SamLee",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Sam Lee",
+      "first_name": "Sam",
+      "leanspark_contact": "Sam Lee (@SamLee)"
+    },
+    {
+      "handle": "@ncustisTheSun",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Neil Custis",
+      "first_name": "Neil"
+    },
+    {
+      "handle": "@IanDoyleSport",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Ian Doyle",
+      "first_name": "Ian"
+    },
+    {
+      "handle": "@mjshrimper",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Matt Slater",
+      "first_name": "Matt",
+      "leanspark_contact": "Matt Slater (@mjshrimper)"
+    },
+    {
+      "handle": "@RobHarris",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Rob Harris",
+      "first_name": "Rob",
+      "leanspark_contact": "Rob Harris (@RobHarris)"
+    },
+    {
+      "handle": "@JimBoardman",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Jim Boardman",
+      "first_name": "Jim"
+    },
+    {
+      "handle": "@Dan_KP",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Dan Kilpatrick",
+      "first_name": "Dan",
+      "leanspark_contact": "Dan Kilpatrick (@Dan_KP)"
+    },
+    {
+      "handle": "@KeithSmithNBA",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Keith Smith",
+      "first_name": "Keith"
+    },
+    {
+      "handle": "@JakeLFischer",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Jake Fischer",
+      "first_name": "Jake"
+    },
+    {
+      "handle": "@AlexKennedyNBA",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Alex Kennedy",
+      "first_name": "Alex"
+    },
+    {
+      "handle": "@KCJHoop",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "K.C. Johnson",
+      "first_name": "K.C."
+    },
+    {
+      "handle": "@JonKrawczynski",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Jon Krawczynski",
+      "first_name": "Jon",
+      "leanspark_contact": "Jon Krawczynski (@JonKrawczynski)"
+    },
+    {
+      "handle": "@NickFriedell",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Nick Friedell",
+      "first_name": "Nick"
+    },
+    {
+      "handle": "@ByJayKing",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Jay King",
+      "first_name": "Jay",
+      "leanspark_contact": "Jay King (@ByJayKing)"
+    },
+    {
+      "handle": "@MikeAScotto",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Michael Scotto",
+      "first_name": "Michael"
+    },
+    {
+      "handle": "@EricPincus",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Eric Pincus",
+      "first_name": "Eric",
+      "leanspark_contact": "Eric Pincus (@EricPincus)"
+    },
+    {
+      "handle": "@ChrisFedor",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Chris Fedor",
+      "first_name": "Chris"
+    },
+    {
+      "handle": "@GwashburnGlobe",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Gary Washburn",
+      "first_name": "Gary"
+    },
+    {
+      "handle": "@BrettSiegelNBA",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Brett Siegel",
+      "first_name": "Brett"
+    },
+    {
+      "handle": "@SbondyNBA",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Stefan Bondy",
+      "first_name": "Stefan"
+    },
+    {
+      "handle": "@JaredWeissNBA",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Jared Weiss",
+      "first_name": "Jared",
+      "leanspark_contact": "Jared Weiss (@JaredWeissNBA)"
+    },
+    {
+      "handle": "@GrantAfseth",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Grant Afseth",
+      "first_name": "Grant"
+    },
+    {
+      "handle": "@joevardon",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Joe Vardon",
+      "first_name": "Joe"
+    },
+    {
+      "handle": "@James_HamNBA",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "James Ham",
+      "first_name": "James"
+    },
+    {
+      "handle": "@KellyIko",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Kelly Iko",
+      "first_name": "Kelly"
+    },
+    {
+      "handle": "@DannyLeroux",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Danny Leroux",
+      "first_name": "Danny"
+    },
+    {
+      "handle": "@SteveBHoop",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Steve Bulpett",
+      "first_name": "Steve"
+    },
+    {
+      "handle": "@IanBegley",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Ian Begley",
+      "first_name": "Ian"
+    },
+    {
+      "handle": "@IraHeatBeat",
+      "vertical": "nba",
+      "state": "c_new",
+      "display_name": "Ira Winderman",
+      "first_name": "Ira"
+    },
+    {
+      "handle": "@ThompsonScribe",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Marcus Thompson II",
+      "first_name": "Marcus"
+    },
+    {
+      "handle": "@NotoriousOHM",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Ohm Youngmisuk",
+      "first_name": "Ohm"
+    },
+    {
+      "handle": "@Baxter",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Baxter Holmes",
+      "first_name": "Baxter",
+      "leanspark_contact": "Baxter Holmes (@Baxter)"
+    },
+    {
+      "handle": "@Anthony_Chiang",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Anthony Chiang",
+      "first_name": "Anthony"
+    },
+    {
+      "handle": "@DanWoikeSports",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Dan Woike",
+      "first_name": "Dan"
+    },
+    {
+      "handle": "@taniaganguli",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Tania Ganguli",
+      "first_name": "Tania"
+    },
+    {
+      "handle": "@JLEdwardsIII",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "James L. Edwards III",
+      "first_name": "James",
+      "leanspark_contact": "James L. Edwards III (@JLEdwardsIII)"
+    },
+    {
+      "handle": "@stevekylerNBA",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Steve Kyler",
+      "first_name": "Steve"
+    },
+    {
+      "handle": "@ByTimReynolds",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Tim Reynolds",
+      "first_name": "Tim"
+    },
+    {
+      "handle": "@BenGolliver",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Ben Golliver",
+      "first_name": "Ben",
+      "leanspark_contact": "Ben Golliver (@BenGolliver)"
+    },
+    {
+      "handle": "@tomhaberstroh",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Tom Haberstroh",
+      "first_name": "Tom",
+      "leanspark_contact": "Tom Haberstroh (@tomhaberstroh)"
+    },
+    {
+      "handle": "@talkhoops",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Zach Harper",
+      "first_name": "Zach",
+      "leanspark_contact": "Zach Harper (@talkhoops)"
+    },
+    {
+      "handle": "@TheFrankIsola",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Frank Isola",
+      "first_name": "Frank"
+    },
+    {
+      "handle": "@mikecwright",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Michael C. Wright",
+      "first_name": "Michael",
+      "leanspark_contact": "Michael C. Wright (@mikecwright)"
+    },
+    {
+      "handle": "@FredKatz",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Fred Katz",
+      "first_name": "Fred"
+    },
+    {
+      "handle": "@JoshuaBRobbins",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Josh Robbins",
+      "first_name": "Josh",
+      "leanspark_contact": "Josh Robbins (@JoshuaBRobbins)"
+    },
+    {
+      "handle": "@DarnellMayberry",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Darnell Mayberry",
+      "first_name": "Darnell"
+    },
+    {
+      "handle": "@Krisplashed",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "Kristian Winfield",
+      "first_name": "Kristian",
+      "leanspark_contact": "Kristian Winfield (@Krisplashed)"
+    },
+    {
+      "handle": "@DuaneRankin",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Duane Rankin",
+      "first_name": "Duane"
+    },
+    {
+      "handle": "@JMcDonald_SAEN",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Jeff McDonald",
+      "first_name": "Jeff"
+    },
+    {
+      "handle": "@townbrad",
+      "vertical": "nba",
+      "state": "x_unav",
+      "display_name": "Brad Townsend",
+      "first_name": "Brad"
+    },
+    {
+      "handle": "@JourdanRodrigue",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Jourdan Rodrigue",
+      "first_name": "Jourdan"
+    },
+    {
+      "handle": "@jeffzrebiec",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Jeff Zrebiec",
+      "first_name": "Jeff"
+    },
+    {
+      "handle": "@SeifertESPN",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Kevin Seifert",
+      "first_name": "Kevin"
+    },
+    {
+      "handle": "@CourtneyRCronin",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Courtney Cronin",
+      "first_name": "Courtney",
+      "leanspark_contact": "Courtney Cronin (@CourtneyRCronin)"
+    },
+    {
+      "handle": "@nwagoner",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Nick Wagoner",
+      "first_name": "Nick"
+    },
+    {
+      "handle": "@RichCimini",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Rich Cimini",
+      "first_name": "Rich"
+    },
+    {
+      "handle": "@CameronWolfe",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Cameron Wolfe",
+      "first_name": "Cameron",
+      "leanspark_contact": "Cameron Wolfe (@CameronWolfe)"
+    },
+    {
+      "handle": "@MMehtaSports",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Manish Mehta",
+      "first_name": "Manish",
+      "leanspark_contact": "Manish Mehta (@MMehtaSports)"
+    },
+    {
+      "handle": "@Marcel_LJ",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Marcel Louis-Jacques",
+      "first_name": "Marcel",
+      "leanspark_contact": "Marcel Louis-Jacques (@Marcel_LJ)"
+    },
+    {
+      "handle": "@JennaLaineESPN",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Jenna Laine",
+      "first_name": "Jenna",
+      "leanspark_contact": "Jenna Laine (@JennaLaineESPN)"
+    },
+    {
+      "handle": "@Kat_Terrell",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Katherine Terrell",
+      "first_name": "Katherine"
+    },
+    {
+      "handle": "@toddarcher",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Todd Archer",
+      "first_name": "Todd"
+    },
+    {
+      "handle": "@calvinwatkins",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Calvin Watkins",
+      "first_name": "Calvin",
+      "leanspark_contact": "Calvin Watkins (@calvinwatkins)"
+    },
+    {
+      "handle": "@AaronWilson_NFL",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Aaron Wilson",
+      "first_name": "Aaron"
+    },
+    {
+      "handle": "@BenGoessling",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Ben Goessling",
+      "first_name": "Ben",
+      "leanspark_contact": "Ben Goessling (@BenGoessling)"
+    },
+    {
+      "handle": "@agetzenberg",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Alaina Getzenberg",
+      "first_name": "Alaina",
+      "leanspark_contact": "Alaina Getzenberg (@agetzenberg)"
+    },
+    {
+      "handle": "@bepryor",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Brooke Pryor",
+      "first_name": "Brooke",
+      "leanspark_contact": "Brooke Pryor (@bepryor)"
+    },
+    {
+      "handle": "@RobDemovsky",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Rob Demovsky",
+      "first_name": "Rob",
+      "leanspark_contact": "Rob Demovsky (@RobDemovsky)"
+    },
+    {
+      "handle": "@TDavenport_NFL",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Turron Davenport",
+      "first_name": "Turron",
+      "leanspark_contact": "Turron Davenport (@TDavenport_NFL)"
+    },
+    {
+      "handle": "@BradyHenderson",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Brady Henderson",
+      "first_name": "Brady"
+    },
+    {
+      "handle": "@caplannfl",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Adam Caplan",
+      "first_name": "Adam"
+    },
+    {
+      "handle": "@BradBiggs",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Brad Biggs",
+      "first_name": "Brad"
+    },
+    {
+      "handle": "@AaronNagler",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Aaron Nagler",
+      "first_name": "Aaron"
+    },
+    {
+      "handle": "@mikeklis",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Mike Klis",
+      "first_name": "Mike",
+      "leanspark_contact": "Mike Klis (@mikeklis)"
+    },
+    {
+      "handle": "@mikefreemanNFL",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Mike Freeman",
+      "first_name": "Mike"
+    },
+    {
+      "handle": "@OmarKelly",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Omar Kelly",
+      "first_name": "Omar"
+    },
+    {
+      "handle": "@adamteicher",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Adam Teicher",
+      "first_name": "Adam"
+    },
+    {
+      "handle": "@josephperson",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Joe Person",
+      "first_name": "Joe"
+    },
+    {
+      "handle": "@NickiJhabvala",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Nicki Jhabvala",
+      "first_name": "Nicki",
+      "leanspark_contact": "Nicki Jhabvala (@NickiJhabvala)"
+    },
+    {
+      "handle": "@ESPNdirocco",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Michael DiRocco",
+      "first_name": "Michael",
+      "leanspark_contact": "Michael DiRocco (@ESPNdirocco)"
+    },
+    {
+      "handle": "@john_keim",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "John Keim",
+      "first_name": "John"
+    },
+    {
+      "handle": "@jamisonhensley",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Jamison Hensley",
+      "first_name": "Jamison"
+    },
+    {
+      "handle": "@AkronJackson",
+      "vertical": "nfl",
+      "state": "l_done",
+      "display_name": "Zac Jackson",
+      "first_name": "Zac",
+      "leanspark_contact": "Zac Jackson (@AkronJackson)"
+    },
+    {
+      "handle": "@alec_lewis",
+      "vertical": "nfl",
+      "state": "x_done",
+      "display_name": "Alec Lewis",
+      "first_name": "Alec",
+      "leanspark_contact": "Alec Lewis (@alec_lewis)"
+    },
+    {
+      "handle": "@davebirkett",
+      "vertical": "nfl",
+      "state": "c_new",
+      "display_name": "Dave Birkett",
+      "first_name": "Dave"
+    },
+    {
+      "handle": "@MaioccoNBCS",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Matt Maiocco",
+      "first_name": "Matt"
+    },
+    {
+      "handle": "@judybattista",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Judy Battista",
+      "first_name": "Judy"
+    },
+    {
+      "handle": "@jonmachota",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Jon Machota",
+      "first_name": "Jon"
+    },
+    {
+      "handle": "@clarencehilljr",
+      "vertical": "nfl",
+      "state": "c_new",
+      "display_name": "Clarence Hill Jr",
+      "first_name": "Clarence"
+    },
+    {
+      "handle": "@JoeBuscaglia",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Joe Buscaglia",
+      "first_name": "Joe"
+    },
+    {
+      "handle": "@ZBerm",
+      "vertical": "nfl",
+      "state": "c_new",
+      "display_name": "Zach Berman",
+      "first_name": "Zach"
+    },
+    {
+      "handle": "@Tim_McManus",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Tim McManus",
+      "first_name": "Tim"
+    },
+    {
+      "handle": "@Jeff_McLane",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Jeff McLane",
+      "first_name": "Jeff"
+    },
+    {
+      "handle": "@LombardiHimself",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "David Lombardi",
+      "first_name": "David"
+    },
+    {
+      "handle": "@mattbarrows",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Matt Barrows",
+      "first_name": "Matt"
+    },
+    {
+      "handle": "@danwiederer",
+      "vertical": "nfl",
+      "state": "x_unav",
+      "display_name": "Dan Wiederer",
+      "first_name": "Dan"
+    },
+    {
+      "handle": "@jeffphowe",
+      "vertical": "nfl",
+      "state": "c_new",
+      "display_name": "Jeff Howe",
+      "first_name": "Jeff"
+    },
+    {
+      "handle": "@ShelbyTalcott",
+      "vertical": "politics",
+      "state": "l_done",
+      "display_name": "Shelby Talcott",
+      "first_name": "Shelby",
+      "leanspark_contact": "Shelby Talcott (@ShelbyTalcott)"
+    },
+    {
+      "handle": "@LACaldwellDC",
+      "vertical": "politics",
+      "state": "l_done",
+      "display_name": "Leigh Ann Caldwell",
+      "first_name": "Leigh",
+      "leanspark_contact": "Leigh Ann Caldwell (@LACaldwellDC)"
+    },
+    {
+      "handle": "@AndrewFeinberg",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Andrew Feinberg",
+      "first_name": "Andrew"
+    },
+    {
+      "handle": "@Olivia_Beavers",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Olivia Beavers",
+      "first_name": "Olivia"
+    },
+    {
+      "handle": "@MZanona",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Melanie Zanona",
+      "first_name": "Melanie"
+    },
+    {
+      "handle": "@jessicaelgot",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Jessica Elgot",
+      "first_name": "Jessica"
+    },
+    {
+      "handle": "@breeallegretti",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Aubrey Allegretti",
+      "first_name": "Aubrey"
+    },
+    {
+      "handle": "@reesejgorman",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Reese Gorman",
+      "first_name": "Reese"
+    },
+    {
+      "handle": "@AndrewDesiderio",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Andrew Desiderio",
+      "first_name": "Andrew"
+    },
+    {
+      "handle": "@AndrewSolender",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Andrew Solender",
+      "first_name": "Andrew"
+    },
+    {
+      "handle": "@VaughnHillyard",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Vaughn Hillyard",
+      "first_name": "Vaughn"
+    },
+    {
+      "handle": "@KellieMeyerNews",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Kellie Meyer",
+      "first_name": "Kellie"
+    },
+    {
+      "handle": "@rachaelmbade",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Rachael Bade",
+      "first_name": "Rachael"
+    },
+    {
+      "handle": "@anniekarni",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Annie Karni",
+      "first_name": "Annie"
+    },
+    {
+      "handle": "@sarahnferris",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Sarah Ferris",
+      "first_name": "Sarah"
+    },
+    {
+      "handle": "@MariannaReports",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Marianna Sotomayor",
+      "first_name": "Marianna"
+    },
+    {
+      "handle": "@axiosalex",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Alex Isenstadt",
+      "first_name": "Alex"
+    },
+    {
+      "handle": "@AaronBlake",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Aaron Blake",
+      "first_name": "Aaron"
+    },
+    {
+      "handle": "@josh_wingrove",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Josh Wingrove",
+      "first_name": "Josh"
+    },
+    {
+      "handle": "@siennamarla",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Sienna Rodgers",
+      "first_name": "Sienna"
+    },
+    {
+      "handle": "@JakeSherman",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Jake Sherman",
+      "first_name": "Jake"
+    },
+    {
+      "handle": "@BurgesEvans",
+      "vertical": "politics",
+      "state": "x_unav",
+      "display_name": "Burgess Everett",
+      "first_name": "Burgess"
+    },
+    {
+      "handle": "@alexburnsNYT",
+      "vertical": "politics",
+      "state": "x_unav",
+      "display_name": "Alexander Burns",
+      "first_name": "Alexander"
+    },
+    {
+      "handle": "@mkraju",
+      "vertical": "politics",
+      "state": "x_unav",
+      "display_name": "Manu Raju",
+      "first_name": "Manu"
+    },
+    {
+      "handle": "@ChadPergram",
+      "vertical": "politics",
+      "state": "x_unav",
+      "display_name": "Chad Pergram",
+      "first_name": "Chad"
+    },
+    {
+      "handle": "@KasieHunt",
+      "vertical": "politics",
+      "state": "x_unav",
+      "display_name": "Kasie Hunt",
+      "first_name": "Kasie"
+    },
+    {
+      "handle": "@hugorifkind",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Hugo Rifkind",
+      "first_name": "Hugo"
+    },
+    {
+      "handle": "@PippaCrerar",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Pippa Crerar",
+      "first_name": "Pippa"
+    },
+    {
+      "handle": "@BethRigby",
+      "vertical": "politics",
+      "state": "x_unav",
+      "display_name": "Beth Rigby",
+      "first_name": "Beth"
+    },
+    {
+      "handle": "@RobertPeston",
+      "vertical": "politics",
+      "state": "x_unav",
+      "display_name": "Robert Peston",
+      "first_name": "Robert"
+    },
+    {
+      "handle": "@AlexThomp",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Alex Thompson",
+      "first_name": "Alex"
+    },
+    {
+      "handle": "@kyledcheney",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Kyle Cheney",
+      "first_name": "Kyle"
+    },
+    {
+      "handle": "@scottwongDC",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Scott Wong",
+      "first_name": "Scott"
+    },
+    {
+      "handle": "@meridithmcgraw",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Meridith McGraw",
+      "first_name": "Meridith"
+    },
+    {
+      "handle": "@MyahWard",
+      "vertical": "politics",
+      "state": "c_new",
+      "display_name": "Myah Ward",
+      "first_name": "Myah"
+    },
+    {
+      "handle": "@Plettigoal",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Florian Plettenberg",
+      "first_name": "Florian",
+      "leanspark_contact": "Florian Plettenberg (@Plettigoal)"
+    },
+    {
+      "handle": "@NicoSchira",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Nicolò Schira",
+      "first_name": "Nicolò",
+      "leanspark_contact": "Nicolò Schira (@NicoSchira)"
+    },
+    {
+      "handle": "@JacobsBen",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Ben Jacobs",
+      "first_name": "Ben",
+      "leanspark_contact": "Ben Jacobs (@JacobsBen)"
+    },
+    {
+      "handle": "@RudyGaletti",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Rudy Galetti",
+      "first_name": "Rudy",
+      "leanspark_contact": "Rudy Galetti (@RudyGaletti)"
+    },
+    {
+      "handle": "@mcgrathmike",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Mike McGrath",
+      "first_name": "Mike",
+      "leanspark_contact": "Mike McGrath (@mcgrathmike)"
+    },
+    {
+      "handle": "@Transferzone00",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Football Transfers",
+      "first_name": "Transfer Zone",
+      "leanspark_contact": "Football Transfers (@Transferzone00)"
+    },
+    {
+      "handle": "@actualtransfers",
+      "vertical": "football",
+      "state": "l_done",
+      "display_name": "Transfersthathappened",
+      "first_name": "Actual Transfers",
+      "leanspark_contact": "Transfersthathappened (@actualtransfers)"
+    },
+    {
+      "handle": "@David_Ornstein",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "David Ornstein",
+      "first_name": "David"
+    },
+    {
+      "handle": "@DiMarzio",
+      "vertical": "football",
+      "state": "x_unav",
+      "display_name": "Gianluca Di Marzio",
+      "first_name": "Gianluca"
+    },
+    {
+      "handle": "@NBATradeReport",
+      "vertical": "nba",
+      "state": "l_done",
+      "display_name": "NBA Trade Report",
+      "first_name": "NBA Trade Report",
+      "leanspark_contact": "NBA Trade Report (@NBATradeReport)"
+    },
+    {
+      "handle": "@Yueqi_Yang",
+      "vertical": "crypto",
+      "state": "l_done",
+      "display_name": "Yueqi Yang",
+      "first_name": "Yueqi",
+      "leanspark_contact": "Yueqi Yang (@Yueqi_Yang)"
+    }
+  ]
+}

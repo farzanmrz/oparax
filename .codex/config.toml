@@ -1,0 +1,11 @@
+[agents.x_checker]
+description = "Verify whether queued Oparax contacts can receive X DMs, without sending messages."
+config_file = "agents/x-checker.toml"
+
+[agents.x_sender]
+description = "Send prepared Oparax X DMs sequentially and stop immediately on any X send failure."
+config_file = "agents/x-sender.toml"
+
+[agents.lean_logger]
+description = "Log X-contacted Oparax reporters into the fixed LeanSpark experiment."
+config_file = "agents/lean-logger.toml"

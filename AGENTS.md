@@ -51,7 +51,7 @@ pnpm format     # Biome format --write
 - `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable).
 - `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
-- `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands.
+- `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands. Native `x-check`, `x-dm`, `lean-log`, and `stat` directories are Codex-only operational skills; Claude Code must ignore them and they must not be mirrored into `.claude/skills/`.
 
 Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.vercel/`.
 

@@ -1,0 +1,6 @@
+interface:
+  display_name: "X-check"
+  short_description: "Verify queued X recipients without sending"
+  default_prompt: "Use $x-check to verify new queued X recipients."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,6 @@
+interface:
+  display_name: "X-dm"
+  short_description: "Send prepared X outreach sequentially"
+  default_prompt: "Use $x-dm to send the prepared X outreach queue."
+policy:
+  allow_implicit_invocation: false
