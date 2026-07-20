@@ -1,11 +1,11 @@
 ---
-name: stat
+name: x-stat
 description: Explicitly invoked deterministic status report for the Oparax outreach record store. Never invoke implicitly.
 ---
 
-# STAT
+# X-STAT
 
-Use only when Farzan explicitly invokes `$stat`.
+Use only when Farzan explicitly invokes `$x-stat`.
 
 Run:
 
