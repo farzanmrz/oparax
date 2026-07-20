@@ -2,7 +2,14 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from "ai";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  SearchCheckIcon,
+  SearchIcon,
+  SearchXIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -28,16 +35,12 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
+import { ToolInput, ToolOutput } from "@/components/ai-elements/tool";
 import { OparaxMark } from "@/components/logo";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { DeskAgentUIMessage } from "@/lib/agent/agent";
 import type { DeskConfig } from "@/lib/agent/desk-config";
+import { cn } from "@/lib/utils";
 import { type SaveAgentResult, saveAgent } from "./actions";
 import { SaveAgentCard } from "./save-agent-card";
 
@@ -171,19 +174,39 @@ export function AgentChat({
               }
               title="Set up your news desk"
             >
-              {/* Single welcome block (replaces the old starter-prompt chips) —
-                  phrased as Oparax greeting the reporter, not a feature list. */}
+              {/* Single welcome block (replaces the old starter-prompt chips) — phrased as Oparax
+                  greeting the reporter AND stating everything it needs, so the reporter can brief
+                  it all in one message. Mirrors the agent's own first-turn ask (see desk-agent.md
+                  "Open by introducing the desk") so the chat can pick up from what's given. */}
               <div className="mt-3 max-w-lg space-y-3 rounded-lg border bg-card/40 p-4 text-left text-muted-foreground text-sm leading-relaxed">
                 <p>
                   Hey, I&apos;m <span className="font-medium text-foreground">Oparax</span> — your
-                  AI news desk. I can watch up to 20 X accounts on your beat, gather what they
-                  publish into distinct news items with every source cited, and draft posts in your
-                  voice, sized for your account.
+                  AI news desk. Tell me your beat and I&apos;ll watch it across X, gather what
+                  breaks into distinct news items with every source cited, and draft posts in your
+                  voice.
                 </p>
                 <p>
-                  Tell me your beat and we&apos;ll get started — brief me everything at once, or
-                  we&apos;ll walk through it step by step.
+                  Here&apos;s what I&apos;ll need to set up your desk — send it all in one go, or
+                  we&apos;ll go piece by piece:
                 </p>
+                <ul className="space-y-1.5">
+                  <li>
+                    <span className="font-medium text-foreground">Beat</span> — what to track, and
+                    what counts as a story to you
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">X accounts</span> — up to 20
+                    handles to watch
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Draft voice</span> — how you want
+                    posts to sound
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Scan frequency</span> — how often
+                    I should check for updates
+                  </li>
+                </ul>
               </div>
             </ConversationEmptyState>
           ) : (
@@ -338,10 +361,12 @@ function MessagePart({
         </MessageResponse>
       );
     case "reasoning":
-      // Stock behavior: auto-opens while the model reasons, collapses to a
-      // "Thought for…" trigger when done.
+      // Collapsed by default (`defaultOpen={false}` also suppresses the stock
+      // auto-open-while-streaming) — the reporter sees a quiet "Thinking…" trigger
+      // and expands it only if they want the chain of thought, never a live wall
+      // of streamed reasoning.
       return (
-        <Reasoning isStreaming={part.state === "streaming"}>
+        <Reasoning defaultOpen={false} isStreaming={part.state === "streaming"}>
           <ReasoningTrigger />
           <ReasoningContent>{part.text}</ReasoningContent>
         </Reasoning>
@@ -369,16 +394,50 @@ function MessagePart({
       );
     }
     case "tool-oparax_x_search":
-      return (
-        <Tool>
-          <ToolHeader state={part.state} type={part.type} />
-          <ToolContent>
-            <ToolInput input={part.input} />
-            <ToolOutput errorText={part.errorText} output={part.output} />
-          </ToolContent>
-        </Tool>
-      );
+      return <SearchDisclosure part={part} />;
     default:
       return null;
   }
+}
+
+// The X search, rendered as a reasoning-style disclosure instead of the stock boxed Tool card:
+// same indent and trigger idiom as <Reasoning> (a muted row with an icon, a label, and a chevron),
+// so a scan reads as one of the agent's quiet inline steps, not a separate widget. Collapsed by
+// default; expanding reveals the drafted calls (ToolInput) and the raw result (ToolOutput). The
+// icon + label track the tool state: a pulsing magnifier + "Searching X" shimmer while it runs,
+// then a settled "Searched X" (or a failure) once it lands.
+function SearchDisclosure({
+  part,
+}: {
+  readonly part: Extract<DeskAgentUIMessage["parts"][number], { type: "tool-oparax_x_search" }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const running = part.state === "input-streaming" || part.state === "input-available";
+  const errored = part.state === "output-error";
+
+  return (
+    <Collapsible className="not-prose mb-4" onOpenChange={setOpen} open={open}>
+      <CollapsibleTrigger className="flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground">
+        {running ? (
+          <SearchIcon className="size-4 animate-pulse" />
+        ) : errored ? (
+          <SearchXIcon className="size-4 text-destructive" />
+        ) : (
+          <SearchCheckIcon className="size-4" />
+        )}
+        {running ? (
+          <Shimmer duration={1}>Searching X</Shimmer>
+        ) : (
+          <span>{errored ? "X search failed" : "Searched X"}</span>
+        )}
+        <ChevronDownIcon
+          className={cn("size-4 transition-transform", open ? "rotate-180" : "rotate-0")}
+        />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-4 space-y-4 text-sm data-[state=closed]:animate-out data-[state=open]:animate-in">
+        <ToolInput input={part.input} />
+        <ToolOutput errorText={part.errorText} output={part.output} />
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }

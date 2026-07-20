@@ -1,0 +1,6 @@
+interface:
+  display_name: "X-recheck"
+  short_description: "Recheck previously unavailable X recipients"
+  default_prompt: "Use $x-recheck to recheck every unavailable X recipient."
+policy:
+  allow_implicit_invocation: false

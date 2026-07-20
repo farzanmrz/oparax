@@ -1,0 +1,6 @@
+interface:
+  display_name: "X-stat"
+  short_description: "Show deterministic outreach totals"
+  default_prompt: "Use $x-stat to show the current Oparax outreach status."
+policy:
+  allow_implicit_invocation: false

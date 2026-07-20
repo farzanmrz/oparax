@@ -13,8 +13,8 @@ paths:
 
 # Supabase & auth
 
-- `supabase:supabase` for Supabase client/auth work; `vercel:routing-middleware` when changing `proxy.ts` or its matcher (it delegates to `lib/supabase/middleware.ts`'s `updateSession`).
-- `supabase:supabase-postgres-best-practices` for any table/migration work — see the "no persistence" guard in `AGENTS.md` before adding more; migrations are applied via the Supabase MCP.
+- `vercel:routing-middleware` when changing `proxy.ts` or its matcher (it delegates to `lib/supabase/middleware.ts`'s `updateSession`).
+- Any new table/migration is a real feature slice — check the "no persistence" guard in `AGENTS.md` first.
 
 ## Dashboard-side configuration (not in this repo at all)
 

@@ -46,7 +46,8 @@ if it exists; otherwise the user's direct instruction is the plan (small-build m
 
 Each dispatched task gets `.feature/task-<N>-brief.md` (plan text verbatim + prior
 tasks' interfaces + report path). Thin dispatch prompt: scene line, brief path, the
-`.claude/rules/` skills that task must invoke, report contract. The brief is the
+skills the plan names for that task + the `.claude/rules/` area-guards it must read,
+report contract. The brief is the
 implementer's ONLY requirements source. Reports are **deviations-only**: the
 implementer writes `.feature/task-<N>-report.md` only when it deviated from the brief
 or noticed out-of-scope work (what + why); no report file means implemented-as-briefed.
@@ -83,4 +84,4 @@ ordinary commits.
   `.claude/skills/feature/scripts/backlog-add.sh "<item; origin #<issue>; · agent
   if agent-surfaced>"` (never a new per-item issue, never onto the branch). Scribe
   the user's deferral; don't self-initiate scope.
-- Skill grounding is binding: name the area's `.claude/rules/` skills in every dispatch.
+- Skill grounding is binding: name the skills the plan grounds each task in, plus the area's `.claude/rules/` guards, in every dispatch.

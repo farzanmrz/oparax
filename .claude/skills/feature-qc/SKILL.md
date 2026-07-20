@@ -17,14 +17,20 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    `.claude/worktrees/`; no stray branches.
 2. **Review fan-out** — one `Workflow({ scriptPath: ".claude/workflows/qc-review.mjs",
    args })` call runs ALL finders against the frozen branch diff in a single parallel
-   barrier: the four `cleanup-finder` angles + `conventions-finder` on sonnet, the
-   three `bug-finder` angles on opus (models pinned in the workflow, not prose).
-   Address it by **`scriptPath`, never `name`** — `Workflow({ name })` resolves only
-   built-in/registered workflows and does NOT scan the repo's `.claude/workflows/`,
-   so `{ name: "qc-review" }` silently 404s and degrades to the unbounded
-   `/code-review` path; the path form runs the repo workflow directly. Pass `args`:
+   barrier: the two `cleanup-finder` angles (reuse+simplification, altitude+efficiency)
+   + `conventions-finder` on sonnet; the `bug-finder` adversarial + cross-file angles
+   on opus, plus a line-by-line angle (sonnet) that runs only on large diffs (models
+   pinned in the workflow, not prose). Address it by **`scriptPath`, never `name`** —
+   `Workflow({ name })` resolves only built-in/registered workflows and does NOT scan
+   the repo's `.claude/workflows/`, so `{ name: "qc-review" }` silently 404s and
+   degrades to the unbounded `/code-review` path; the path form runs the repo workflow
+   directly. Measure the diff first (`git diff --shortstat <range>`) and pass `args`:
    `{ range: "origin/dev...ft/<N>", generated: "<globs>", vetoes: "<plan-frozen
-   decisions>", effort: "medium" }` — set `effort: "high"` when the slice adds a
+   decisions>", criteria: "<the ft issue's 'Stack & design acceptance criteria'
+   section>", large: <bool>, effort: "medium" }` — `criteria` is what `conventions-finder`
+   verifies the built diff against; set `large: true` on a big diff
+   (roughly >8 files or >200 changed lines) to add the line-by-line bug angle (it
+   returns zero on small diffs), and `effort: "high"` when the slice adds a
    table/migration, a new trust boundary (auth, server action, agent tool surface),
    or touches posting/money paths. It returns a consolidated `findings` list.
 3. **Adjudicate + apply (this session).** The workflow only reports — the session
@@ -32,11 +38,10 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    them. Apply the survivors. A finding that is real but not-this-slice (a bigger
    refactor, a scale concern that can't bite yet) → append it to the single living
    backlog via `.claude/skills/feature/scripts/backlog-add.sh "<item; origin
-   #<issue> QC; · agent>"` (never a new per-item issue). Then **delta-verify**:
-   dispatch ONE `bug-finder` (opus) scoped to just the fix diff to confirm the
-   applied changes introduced no new defect. This single narrow pass is what
-   replaces the old serialize-so-review-sees-simplify's-fixes ordering. Large/risky
-   diff → offer the user `/code-review ultra` before proceeding.
+   #<issue> QC; · agent>"` (never a new per-item issue). The applied fix diff stays
+   gated by the tsc + lint pass (step 4) and boot smoke (step 5) — no separate
+   delta-verify pass. Large/risky diff → offer the user `/code-review ultra` before
+   proceeding.
 4. **`feature-lint`** (scoped to the feature's changed files — LAST because the
    review pass mutates code; lint formats the final shape) — biome format + safe
    fixes + residual fixer agents, gating on a clean `pnpm build` — the authority on
@@ -60,10 +65,10 @@ Over the whole branch diff, in order (skip nothing silently — report each step
      `/meta-dev:improve-skill`, never inline-rewrite it here.
    Single-source every fact (one home; cross-reference, never restate).
 
-Hard rules: the review fan-out is one barrier of ≤8 finders (8 today) plus the
-single delta-verify — well under the ≤10-agents-per-fan-out cap; the `qc-review`
-workflow (invoked by `scriptPath`, see step 2) owns finder parallelism and model
-pins. Never fall back to `/code-review` for the fan-out — its per-candidate verify
+Hard rules: the review fan-out is one barrier of ≤6 finders (5 on a small diff, 6
+on a large one) with no delta-verify — well under the ≤10-agents-per-fan-out cap;
+the `qc-review` workflow (invoked by `scriptPath`, see step 2) owns finder
+parallelism and model pins. Never fall back to `/code-review` for the fan-out — its per-candidate verify
 phase is unbounded and defeats the cap the workflow exists to enforce. If any step reveals a dependency
 MAJOR upgrade, framework migration, or schema/data migration is required — STOP and
 present options; never fix those autonomously. End by stating: builds ✓ boots ✓

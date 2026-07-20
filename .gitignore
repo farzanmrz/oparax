@@ -27,3 +27,4 @@ npm-debug.log*
 
 # OS junk
 .DS_Store
+.codex/outreach/*.lock
