@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import fcntl
 import json
 import os
@@ -20,11 +22,20 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_RECORDS = ROOT / "records.json"
 DEFAULT_CONFIG = ROOT / "config.json"
 ALLOWED_STATES = {"c_new", "x_av", "x_done", "x_unav", "l_done", "c_inv"}
+QUEUE_STATES = {
+    "check": "c_new",
+    "send": "x_av",
+    "lean": "x_done",
+    "recheck": "x_unav",
+}
 TRANSITIONS = {
     "c_new": {"x_av", "x_unav", "c_inv"},
     "x_av": {"x_done", "x_unav", "c_inv"},
     "x_done": {"l_done"},
-    "x_unav": {"x_av", "x_unav", "c_inv"},
+    # An x_unav record is already known to have failed one availability check.
+    # Its recheck must either recover to x_av or become c_inv; it cannot remain
+    # in the recheck queue indefinitely.
+    "x_unav": {"x_av", "c_inv"},
     "l_done": set(),
     "c_inv": set(),
 }
@@ -156,12 +167,7 @@ def find_record(store: dict[str, Any], handle: str) -> dict[str, Any]:
 
 
 def next_record(store: dict[str, Any], queue: str) -> dict[str, Any] | None:
-    source_state = {
-        "check": "c_new",
-        "send": "x_av",
-        "lean": "x_done",
-        "recheck": "x_unav",
-    }[queue]
+    source_state = QUEUE_STATES[queue]
     for record in store["records"]:
         if record["state"] == source_state:
             if queue in {"check", "recheck"}:
@@ -170,6 +176,77 @@ def next_record(store: dict[str, Any], queue: str) -> dict[str, Any] | None:
                 return {"handle": record["handle"], "message": record["message"]}
             return {"handle": record["handle"], "contact": record["leanspark_contact"]}
     return None
+
+
+def queue_count(store: dict[str, Any], queue: str) -> int:
+    source_state = QUEUE_STATES[queue]
+    return sum(record["state"] == source_state for record in store["records"])
+
+
+def queue_records(store: dict[str, Any], queue: str) -> list[dict[str, Any]]:
+    source_state = QUEUE_STATES[queue]
+    records: list[dict[str, Any]] = []
+    for record in store["records"]:
+        if record["state"] != source_state:
+            continue
+        item = {"handle": record["handle"], "vertical": record["vertical"]}
+        for field in ("display_name", "first_name"):
+            if isinstance(record.get(field), str) and record[field].strip():
+                item[field] = record[field]
+        records.append(item)
+    return records
+
+
+def decode_batch(encoded: str) -> list[dict[str, Any]]:
+    try:
+        raw = base64.b64decode(encoded, validate=True).decode("utf-8")
+        value = json.loads(raw)
+    except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise OutreachError("Invalid base64 JSON batch") from exc
+    if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+        raise OutreachError("Batch must be a JSON array of objects")
+    return value
+
+
+def apply_check_batch(
+    store: dict[str, Any],
+    config: dict[str, Any],
+    queue: str,
+    results: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if queue not in {"check", "recheck"}:
+        raise OutreachError("Check batches support only check or recheck queues")
+
+    expected_state = QUEUE_STATES[queue]
+    seen: set[str] = set()
+    resolved: list[dict[str, Any]] = []
+    for item in results:
+        handle = canonical_handle(str(item.get("handle", "")))
+        key = handle_key(handle)
+        if key in seen:
+            raise OutreachError(f"Duplicate handle in batch: {handle}")
+        seen.add(key)
+
+        record = find_record(store, handle)
+        if record["state"] != expected_state:
+            raise OutreachError(
+                f"Unexpected batch state for {record['handle']}: {record['state']} (expected {expected_state})"
+            )
+
+        outcome = item.get("outcome")
+        if outcome == "available":
+            display_name = item.get("display_name") or record.get("display_name")
+            first_name = item.get("first_name") or record.get("first_name")
+            result = resolve_record(store, config, handle, "x_av", display_name, first_name)
+        elif outcome == "unavailable":
+            target_state = "x_unav" if queue == "check" else "c_inv"
+            result = resolve_record(store, config, handle, target_state, None, None)
+        elif outcome == "invalid":
+            result = resolve_record(store, config, handle, "c_inv", None, None)
+        else:
+            raise OutreachError(f"Invalid batch outcome for {handle}: {outcome!r}")
+        resolved.append(result)
+    return resolved
 
 
 def resolve_record(
@@ -258,7 +335,17 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     next_parser = subparsers.add_parser("next", help="Return the next record for a workflow")
-    next_parser.add_argument("queue", choices=("check", "send", "lean", "recheck"))
+    next_parser.add_argument("queue", choices=tuple(QUEUE_STATES))
+
+    count_parser = subparsers.add_parser("count", help="Return the remaining count for a workflow")
+    count_parser.add_argument("queue", choices=tuple(QUEUE_STATES))
+
+    batch_parser = subparsers.add_parser("batch", help="Return every record for a workflow queue")
+    batch_parser.add_argument("queue", choices=tuple(QUEUE_STATES))
+
+    apply_batch_parser = subparsers.add_parser("apply-check-batch", help="Apply one browser check result batch")
+    apply_batch_parser.add_argument("queue", choices=("check", "recheck"))
+    apply_batch_parser.add_argument("payload", help="Base64-encoded JSON result array")
 
     resolve_parser = subparsers.add_parser("resolve", help="Apply one validated state transition")
     resolve_parser.add_argument("handle")
@@ -279,12 +366,16 @@ def main() -> int:
     args = build_parser().parse_args()
     try:
         config = config_for(args.config)
-        if args.command in {"next", "status", "validate"}:
+        if args.command in {"next", "count", "batch", "status", "validate"}:
             with store_lock(args.records, exclusive=False):
                 store = records_for(args.records)
                 validate_store(store, config)
                 if args.command == "next":
                     print_json({"record": next_record(store, args.queue)})
+                elif args.command == "count":
+                    print_json({"queue": args.queue, "remaining": queue_count(store, args.queue)})
+                elif args.command == "batch":
+                    print_json({"queue": args.queue, "records": queue_records(store, args.queue)})
                 elif args.command == "status":
                     print(status_markdown(store))
                 else:
@@ -303,6 +394,8 @@ def main() -> int:
                     args.display_name,
                     args.first_name,
                 )
+            elif args.command == "apply-check-batch":
+                result = apply_check_batch(store, config, args.queue, decode_batch(args.payload))
             else:
                 result = add_record(store, args.vertical, args.handle)
             validate_store(store, config)

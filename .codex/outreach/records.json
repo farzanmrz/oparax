@@ -20,21 +20,21 @@
     {
       "handle": "@SkySports_Keith",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Keith Downie",
       "first_name": "Keith"
     },
     {
       "handle": "@Ekremkonur",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Ekrem KONUR",
       "first_name": "Ekrem"
     },
     {
       "handle": "@LaurensJulien",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Julien Laurens",
       "first_name": "Julien"
     },
@@ -65,14 +65,14 @@
     {
       "handle": "@JamesHorncastle",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "James Horncastle OSI",
       "first_name": "James"
     },
     {
       "handle": "@alex_crook",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Alex Crook",
       "first_name": "Alex"
     },
@@ -95,35 +95,35 @@
     {
       "handle": "@JamesOlley",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "James Olley",
       "first_name": "James"
     },
     {
       "handle": "@AdamCrafton_",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Adam Crafton",
       "first_name": "Adam"
     },
     {
       "handle": "@_ChrisBascombe",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Chris Bascombe",
       "first_name": "Chris"
     },
     {
       "handle": "@JBurtTelegraph",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jason Burt",
       "first_name": "Jason"
     },
     {
       "handle": "@Ankaman616",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Carl Anka",
       "first_name": "Carl"
     },
@@ -138,14 +138,14 @@
     {
       "handle": "@JNorthcroft",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jonathan Northcroft",
       "first_name": "Jonathan"
     },
     {
       "handle": "@GeorgeCaulkin",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "George Caulkin",
       "first_name": "George"
     },
@@ -160,7 +160,7 @@
     {
       "handle": "@DeanJonesSoccer",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Dean Jones",
       "first_name": "Dean"
     },
@@ -175,28 +175,28 @@
     {
       "handle": "@AlasdairGold",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Alasdair Gold",
       "first_name": "Alasdair"
     },
     {
       "handle": "@JPercyTelegraph",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "John Percy",
       "first_name": "John"
     },
     {
       "handle": "@LukeEdwardsTele",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Luke Edwards",
       "first_name": "Luke"
     },
     {
       "handle": "@lee_ryder",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Lee Ryder",
       "first_name": "Lee"
     },
@@ -243,21 +243,21 @@
     {
       "handle": "@MikeKeegan_DM",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Mike Keegan",
       "first_name": "Mike"
     },
     {
       "handle": "@PhilHay_",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Phil Hay",
       "first_name": "Phil"
     },
     {
       "handle": "@SkySportsLyall",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Lyall Thomas",
       "first_name": "Lyall"
     },
@@ -272,16 +272,18 @@
     {
       "handle": "@ncustisTheSun",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Neil Custis",
       "first_name": "Neil"
     },
     {
       "handle": "@IanDoyleSport",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "x_av",
       "display_name": "Ian Doyle",
-      "first_name": "Ian"
+      "first_name": "Ian",
+      "message": "Hey Ian, I've been watching how transfer reporters work and I'm building something for exactly your situation. Quick question over DM: when you step away from X, what's your current setup for not missing a break? Building before I pitch.",
+      "leanspark_contact": "Ian Doyle (@IanDoyleSport)"
     },
     {
       "handle": "@mjshrimper",
@@ -302,7 +304,7 @@
     {
       "handle": "@JimBoardman",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jim Boardman",
       "first_name": "Jim"
     },
@@ -317,28 +319,28 @@
     {
       "handle": "@KeithSmithNBA",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Keith Smith",
       "first_name": "Keith"
     },
     {
       "handle": "@JakeLFischer",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jake Fischer",
       "first_name": "Jake"
     },
     {
       "handle": "@AlexKennedyNBA",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Alex Kennedy",
       "first_name": "Alex"
     },
     {
       "handle": "@KCJHoop",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "K.C. Johnson",
       "first_name": "K.C."
     },
@@ -353,7 +355,7 @@
     {
       "handle": "@NickFriedell",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Nick Friedell",
       "first_name": "Nick"
     },
@@ -368,7 +370,7 @@
     {
       "handle": "@MikeAScotto",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Michael Scotto",
       "first_name": "Michael"
     },
@@ -383,30 +385,34 @@
     {
       "handle": "@ChrisFedor",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Chris Fedor",
       "first_name": "Chris"
     },
     {
       "handle": "@GwashburnGlobe",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Gary Washburn",
       "first_name": "Gary"
     },
     {
       "handle": "@BrettSiegelNBA",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Brett Siegel",
-      "first_name": "Brett"
+      "first_name": "Brett",
+      "message": "Hey Brett, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Brett Siegel (@BrettSiegelNBA)"
     },
     {
       "handle": "@SbondyNBA",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Stefan Bondy",
-      "first_name": "Stefan"
+      "first_name": "Stefan",
+      "message": "Hey Stefan, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Stefan Bondy (@SbondyNBA)"
     },
     {
       "handle": "@JaredWeissNBA",
@@ -419,70 +425,82 @@
     {
       "handle": "@GrantAfseth",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Grant Afseth",
-      "first_name": "Grant"
+      "first_name": "Grant",
+      "message": "Hey Grant, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Grant Afseth (@GrantAfseth)"
     },
     {
       "handle": "@joevardon",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Joe Vardon",
-      "first_name": "Joe"
+      "first_name": "Joe",
+      "message": "Hey Joe, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Joe Vardon (@joevardon)"
     },
     {
       "handle": "@James_HamNBA",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "James Ham",
       "first_name": "James"
     },
     {
       "handle": "@KellyIko",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Kelly Iko",
       "first_name": "Kelly"
     },
     {
       "handle": "@DannyLeroux",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Danny Leroux",
-      "first_name": "Danny"
+      "first_name": "Danny",
+      "message": "Hey Danny, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Danny Leroux (@DannyLeroux)"
     },
     {
       "handle": "@SteveBHoop",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Steve Bulpett",
-      "first_name": "Steve"
+      "first_name": "Steve",
+      "message": "Hey Steve, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Steve Bulpett (@SteveBHoop)"
     },
     {
       "handle": "@IanBegley",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Ian Begley",
-      "first_name": "Ian"
+      "first_name": "Ian",
+      "message": "Hey Ian, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Ian Begley (@IanBegley)"
     },
     {
       "handle": "@IraHeatBeat",
       "vertical": "nba",
-      "state": "c_new",
+      "state": "c_inv",
       "display_name": "Ira Winderman",
       "first_name": "Ira"
     },
     {
       "handle": "@ThompsonScribe",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "x_av",
       "display_name": "Marcus Thompson II",
-      "first_name": "Marcus"
+      "first_name": "Marcus",
+      "message": "Hey Marcus, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Marcus Thompson II (@ThompsonScribe)"
     },
     {
       "handle": "@NotoriousOHM",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Ohm Youngmisuk",
       "first_name": "Ohm"
     },
@@ -497,21 +515,21 @@
     {
       "handle": "@Anthony_Chiang",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Anthony Chiang",
       "first_name": "Anthony"
     },
     {
       "handle": "@DanWoikeSports",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Dan Woike",
       "first_name": "Dan"
     },
     {
       "handle": "@taniaganguli",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Tania Ganguli",
       "first_name": "Tania"
     },
@@ -526,14 +544,14 @@
     {
       "handle": "@stevekylerNBA",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Steve Kyler",
       "first_name": "Steve"
     },
     {
       "handle": "@ByTimReynolds",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Tim Reynolds",
       "first_name": "Tim"
     },
@@ -564,7 +582,7 @@
     {
       "handle": "@TheFrankIsola",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Frank Isola",
       "first_name": "Frank"
     },
@@ -579,7 +597,7 @@
     {
       "handle": "@FredKatz",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Fred Katz",
       "first_name": "Fred"
     },
@@ -594,7 +612,7 @@
     {
       "handle": "@DarnellMayberry",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Darnell Mayberry",
       "first_name": "Darnell"
     },
@@ -609,42 +627,42 @@
     {
       "handle": "@DuaneRankin",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Duane Rankin",
       "first_name": "Duane"
     },
     {
       "handle": "@JMcDonald_SAEN",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jeff McDonald",
       "first_name": "Jeff"
     },
     {
       "handle": "@townbrad",
       "vertical": "nba",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Brad Townsend",
       "first_name": "Brad"
     },
     {
       "handle": "@JourdanRodrigue",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jourdan Rodrigue",
       "first_name": "Jourdan"
     },
     {
       "handle": "@jeffzrebiec",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jeff Zrebiec",
       "first_name": "Jeff"
     },
     {
       "handle": "@SeifertESPN",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Kevin Seifert",
       "first_name": "Kevin"
     },
@@ -659,14 +677,14 @@
     {
       "handle": "@nwagoner",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Nick Wagoner",
       "first_name": "Nick"
     },
     {
       "handle": "@RichCimini",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Rich Cimini",
       "first_name": "Rich"
     },
@@ -705,14 +723,14 @@
     {
       "handle": "@Kat_Terrell",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Katherine Terrell",
       "first_name": "Katherine"
     },
     {
       "handle": "@toddarcher",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Todd Archer",
       "first_name": "Todd"
     },
@@ -727,7 +745,7 @@
     {
       "handle": "@AaronWilson_NFL",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Aaron Wilson",
       "first_name": "Aaron"
     },
@@ -774,28 +792,28 @@
     {
       "handle": "@BradyHenderson",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Brady Henderson",
       "first_name": "Brady"
     },
     {
       "handle": "@caplannfl",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Adam Caplan",
       "first_name": "Adam"
     },
     {
       "handle": "@BradBiggs",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Brad Biggs",
       "first_name": "Brad"
     },
     {
       "handle": "@AaronNagler",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Aaron Nagler",
       "first_name": "Aaron"
     },
@@ -810,28 +828,28 @@
     {
       "handle": "@mikefreemanNFL",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Mike Freeman",
       "first_name": "Mike"
     },
     {
       "handle": "@OmarKelly",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Omar Kelly",
       "first_name": "Omar"
     },
     {
       "handle": "@adamteicher",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Adam Teicher",
       "first_name": "Adam"
     },
     {
       "handle": "@josephperson",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Joe Person",
       "first_name": "Joe"
     },
@@ -854,14 +872,14 @@
     {
       "handle": "@john_keim",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "John Keim",
       "first_name": "John"
     },
     {
       "handle": "@jamisonhensley",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jamison Hensley",
       "first_name": "Jamison"
     },
@@ -884,91 +902,97 @@
     {
       "handle": "@davebirkett",
       "vertical": "nfl",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Dave Birkett",
-      "first_name": "Dave"
+      "first_name": "Dave",
+      "message": "Hey Dave, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Dave Birkett (@davebirkett)"
     },
     {
       "handle": "@MaioccoNBCS",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Matt Maiocco",
       "first_name": "Matt"
     },
     {
       "handle": "@judybattista",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Judy Battista",
       "first_name": "Judy"
     },
     {
       "handle": "@jonmachota",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jon Machota",
       "first_name": "Jon"
     },
     {
       "handle": "@clarencehilljr",
       "vertical": "nfl",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Clarence Hill Jr",
-      "first_name": "Clarence"
+      "first_name": "Clarence",
+      "message": "Hey Clarence, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Clarence Hill Jr (@clarencehilljr)"
     },
     {
       "handle": "@JoeBuscaglia",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Joe Buscaglia",
       "first_name": "Joe"
     },
     {
       "handle": "@ZBerm",
       "vertical": "nfl",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Zach Berman",
-      "first_name": "Zach"
+      "first_name": "Zach",
+      "message": "Hey Zach, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
+      "leanspark_contact": "Zach Berman (@ZBerm)"
     },
     {
       "handle": "@Tim_McManus",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Tim McManus",
       "first_name": "Tim"
     },
     {
       "handle": "@Jeff_McLane",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Jeff McLane",
       "first_name": "Jeff"
     },
     {
       "handle": "@LombardiHimself",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "David Lombardi",
       "first_name": "David"
     },
     {
       "handle": "@mattbarrows",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Matt Barrows",
       "first_name": "Matt"
     },
     {
       "handle": "@danwiederer",
       "vertical": "nfl",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Dan Wiederer",
       "first_name": "Dan"
     },
     {
       "handle": "@jeffphowe",
       "vertical": "nfl",
-      "state": "c_new",
+      "state": "c_inv",
       "display_name": "Jeff Howe",
       "first_name": "Jeff"
     },
@@ -991,140 +1015,168 @@
     {
       "handle": "@AndrewFeinberg",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Andrew Feinberg",
-      "first_name": "Andrew"
+      "first_name": "Andrew",
+      "message": "Hey Andrew, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Andrew Feinberg (@AndrewFeinberg)"
     },
     {
       "handle": "@Olivia_Beavers",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Olivia Beavers",
-      "first_name": "Olivia"
+      "first_name": "Olivia",
+      "message": "Hey Olivia, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Olivia Beavers (@Olivia_Beavers)"
     },
     {
       "handle": "@MZanona",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Melanie Zanona",
-      "first_name": "Melanie"
+      "first_name": "Melanie",
+      "message": "Hey Melanie, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Melanie Zanona (@MZanona)"
     },
     {
       "handle": "@jessicaelgot",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Jessica Elgot",
-      "first_name": "Jessica"
+      "first_name": "Jessica",
+      "message": "Hey Jessica, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Jessica Elgot (@jessicaelgot)"
     },
     {
       "handle": "@breeallegretti",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Aubrey Allegretti",
-      "first_name": "Aubrey"
+      "first_name": "Aubrey",
+      "message": "Hey Aubrey, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Aubrey Allegretti (@breeallegretti)"
     },
     {
       "handle": "@reesejgorman",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Reese Gorman",
-      "first_name": "Reese"
+      "first_name": "Reese",
+      "message": "Hey Reese, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Reese Gorman (@reesejgorman)"
     },
     {
       "handle": "@AndrewDesiderio",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Andrew Desiderio",
-      "first_name": "Andrew"
+      "first_name": "Andrew",
+      "message": "Hey Andrew, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Andrew Desiderio (@AndrewDesiderio)"
     },
     {
       "handle": "@AndrewSolender",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Andrew Solender",
-      "first_name": "Andrew"
+      "first_name": "Andrew",
+      "message": "Hey Andrew, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Andrew Solender (@AndrewSolender)"
     },
     {
       "handle": "@VaughnHillyard",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Vaughn Hillyard",
-      "first_name": "Vaughn"
+      "first_name": "Vaughn",
+      "message": "Hey Vaughn, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Vaughn Hillyard (@VaughnHillyard)"
     },
     {
       "handle": "@KellieMeyerNews",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "c_inv",
       "display_name": "Kellie Meyer",
       "first_name": "Kellie"
     },
     {
       "handle": "@rachaelmbade",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Rachael Bade",
-      "first_name": "Rachael"
+      "first_name": "Rachael",
+      "message": "Hey Rachael, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Rachael Bade (@rachaelmbade)"
     },
     {
       "handle": "@anniekarni",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "c_inv",
       "display_name": "Annie Karni",
       "first_name": "Annie"
     },
     {
       "handle": "@sarahnferris",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Sarah Ferris",
-      "first_name": "Sarah"
+      "first_name": "Sarah",
+      "message": "Hey Sarah, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Sarah Ferris (@sarahnferris)"
     },
     {
       "handle": "@MariannaReports",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "c_inv",
       "display_name": "Marianna Sotomayor",
       "first_name": "Marianna"
     },
     {
       "handle": "@axiosalex",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "c_inv",
       "display_name": "Alex Isenstadt",
       "first_name": "Alex"
     },
     {
       "handle": "@AaronBlake",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "c_inv",
       "display_name": "Aaron Blake",
       "first_name": "Aaron"
     },
     {
       "handle": "@josh_wingrove",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Josh Wingrove",
-      "first_name": "Josh"
+      "first_name": "Josh",
+      "message": "Hey Josh, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Josh Wingrove (@josh_wingrove)"
     },
     {
       "handle": "@siennamarla",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Sienna Rodgers",
-      "first_name": "Sienna"
+      "first_name": "Sienna",
+      "message": "Hey Sienna, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Sienna Rodgers (@siennamarla)"
     },
     {
       "handle": "@JakeSherman",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Jake Sherman",
-      "first_name": "Jake"
+      "first_name": "Jake",
+      "message": "Hey Jake, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Jake Sherman (@JakeSherman)"
     },
     {
       "handle": "@BurgesEvans",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Burgess Everett",
       "first_name": "Burgess"
     },
@@ -1159,16 +1211,20 @@
     {
       "handle": "@hugorifkind",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Hugo Rifkind",
-      "first_name": "Hugo"
+      "first_name": "Hugo",
+      "message": "Hey Hugo, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Hugo Rifkind (@hugorifkind)"
     },
     {
       "handle": "@PippaCrerar",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Pippa Crerar",
-      "first_name": "Pippa"
+      "first_name": "Pippa",
+      "message": "Hey Pippa, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Pippa Crerar (@PippaCrerar)"
     },
     {
       "handle": "@BethRigby",
@@ -1187,37 +1243,45 @@
     {
       "handle": "@AlexThomp",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Alex Thompson",
-      "first_name": "Alex"
+      "first_name": "Alex",
+      "message": "Hey Alex, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Alex Thompson (@AlexThomp)"
     },
     {
       "handle": "@kyledcheney",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Kyle Cheney",
-      "first_name": "Kyle"
+      "first_name": "Kyle",
+      "message": "Hey Kyle, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Kyle Cheney (@kyledcheney)"
     },
     {
       "handle": "@scottwongDC",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_unav",
       "display_name": "Scott Wong",
       "first_name": "Scott"
     },
     {
       "handle": "@meridithmcgraw",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Meridith McGraw",
-      "first_name": "Meridith"
+      "first_name": "Meridith",
+      "message": "Hey Meridith, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Meridith McGraw (@meridithmcgraw)"
     },
     {
       "handle": "@MyahWard",
       "vertical": "politics",
-      "state": "c_new",
+      "state": "x_av",
       "display_name": "Myah Ward",
-      "first_name": "Myah"
+      "first_name": "Myah",
+      "message": "Hey Myah, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
+      "leanspark_contact": "Myah Ward (@MyahWard)"
     },
     {
       "handle": "@Plettigoal",
