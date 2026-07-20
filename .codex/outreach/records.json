@@ -491,7 +491,7 @@
     {
       "handle": "@ThompsonScribe",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Marcus Thompson II",
       "first_name": "Marcus",
       "message": "Hey Marcus, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -902,7 +902,7 @@
     {
       "handle": "@davebirkett",
       "vertical": "nfl",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Dave Birkett",
       "first_name": "Dave",
       "message": "Hey Dave, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -932,7 +932,7 @@
     {
       "handle": "@clarencehilljr",
       "vertical": "nfl",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Clarence Hill Jr",
       "first_name": "Clarence",
       "message": "Hey Clarence, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -948,7 +948,7 @@
     {
       "handle": "@ZBerm",
       "vertical": "nfl",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Zach Berman",
       "first_name": "Zach",
       "message": "Hey Zach, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -1015,7 +1015,7 @@
     {
       "handle": "@AndrewFeinberg",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Andrew Feinberg",
       "first_name": "Andrew",
       "message": "Hey Andrew, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1024,7 +1024,7 @@
     {
       "handle": "@Olivia_Beavers",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Olivia Beavers",
       "first_name": "Olivia",
       "message": "Hey Olivia, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1033,7 +1033,7 @@
     {
       "handle": "@MZanona",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Melanie Zanona",
       "first_name": "Melanie",
       "message": "Hey Melanie, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
