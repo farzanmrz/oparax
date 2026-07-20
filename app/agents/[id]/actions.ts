@@ -18,6 +18,7 @@ import { persistScanRun, persistScanRunError } from "@/lib/agent/persist-run";
 import { scanFrequencySchema } from "@/lib/agent/scan-frequency";
 import { type NewsItem, newsItemSchema } from "@/lib/agent/scan-result";
 import { runScan } from "@/lib/agent/scan-run";
+import { searchTemplateSchema } from "@/lib/agent/search-template";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -82,7 +83,7 @@ export async function scanNow(agentId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: agent, error } = await supabase
     .from("agents")
-    .select("beat, handles, scan_frequency, status")
+    .select("beat, handles, scan_frequency, status, search_template")
     .eq("id", agentId)
     .maybeSingle();
   if (error || !agent) return { ok: false, error: "Could not load the desk." };
@@ -91,12 +92,16 @@ export async function scanNow(agentId: string): Promise<ActionResult> {
   const freq = scanFrequencySchema.safeParse(agent.scan_frequency);
   if (!freq.success) return { ok: false, error: "This desk's saved schedule is malformed." };
 
+  // A malformed template is not a scan-blocker — fall back to drafting the calls fresh.
+  const template = searchTemplateSchema.safeParse(agent.search_template);
+  const searchTemplate = template.success ? template.data : null;
+
   // Ownership is proven (the RLS select above returned the row); write the run with the admin
   // client since `runs` has no authenticated insert policy — same path the dispatcher uses.
   const admin = createAdminClient();
   const { data: run, error: insertError } = await admin
     .from("runs")
-    .insert({ agent_id: agentId })
+    .insert({ agent_id: agentId, source: "manual" })
     .select("id")
     .single();
   if (insertError || !run) return { ok: false, error: "Could not start a scan. Please try again." };
@@ -105,7 +110,7 @@ export async function scanNow(agentId: string): Promise<ActionResult> {
   const scanFrequency = freq.data;
   after(async () => {
     try {
-      const result = await runScan({ beat, handles, scanFrequency });
+      const result = await runScan({ beat, handles, scanFrequency, searchTemplate });
       await persistScanRun(admin, run.id, result);
     } catch (e) {
       // Unexpected throw (Pass 1 / gateway) — nothing partial to preserve.
@@ -144,8 +149,9 @@ export async function draftSelected(agentId: string, items: NewsItem[]): Promise
   // rejection to the client's startTransition (the other actions all return {ok:false} on failure).
   let drafts: string[];
   let usage: unknown;
+  let costUsd: number | null;
   try {
-    ({ drafts, usage } = await draftItems({
+    ({ drafts, usage, costUsd } = await draftItems({
       draftingInstructions: agent.drafting_instructions,
       accountTier,
       items: parsed.data,
@@ -159,6 +165,8 @@ export async function draftSelected(agentId: string, items: NewsItem[]): Promise
     item: item as Json,
     text: drafts[i],
     usage: usage as Json,
+    source: "manual",
+    cost_deepseek: costUsd != null ? costUsd / parsed.data.length : null,
   }));
 
   const { error: insertError } = await supabase.from("drafts").insert(rows);

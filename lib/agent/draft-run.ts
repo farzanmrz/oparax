@@ -1,14 +1,16 @@
 // lib/agent/draft-run.ts
 //
 // Headless draft runner: ONE structured DeepSeek call drafts a post per news item, in the
-// reporter's saved voice. No tool loop, no persistence — task 8's `draftSelected` server
-// action inserts the resulting `drafts` rows. SERVER-ONLY (transitively reads fs via
-// lib/sysprompts, which loads DRAFT_RUNNER_PROMPT at module scope).
+// reporter's saved voice, and also returns that call's DeepSeek dollar cost. No tool loop,
+// no persistence — task 8's `draftSelected` server action inserts the resulting `drafts`
+// rows. SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads
+// DRAFT_RUNNER_PROMPT at module scope).
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { DRAFT_RUNNER_PROMPT } from "@/lib/sysprompts";
 import { X_CHAR_LIMITS } from "./desk-config";
 import type { NewsItem } from "./scan-result";
+import { rawEstimatedCost } from "./usage-cost";
 
 function newsItemsBlock(items: NewsItem[]): string {
   return items
@@ -27,7 +29,7 @@ export async function draftItems(input: {
   draftingInstructions: string;
   accountTier: "standard" | "premium";
   items: NewsItem[];
-}): Promise<{ drafts: string[]; usage: unknown }> {
+}): Promise<{ drafts: string[]; usage: unknown; costUsd: number | null }> {
   const { draftingInstructions, accountTier, items } = input;
   const ceiling = X_CHAR_LIMITS[accountTier];
 
@@ -39,7 +41,7 @@ export async function draftItems(input: {
     newsItemsBlock(items),
   ].join("\n");
 
-  const { output, usage } = await generateText({
+  const result = await generateText({
     model: "deepseek/deepseek-v4-flash",
     // No `reasoning`: DeepSeek V4 thinks by default and self-scales effort (see agent.ts).
     // Drafting in-voice is judgment, so let its native adaptive thinking run.
@@ -50,6 +52,7 @@ export async function draftItems(input: {
       schema: z.object({ drafts: z.array(z.string()) }),
     }),
   });
+  const { output, usage } = result;
 
   if (output.drafts.length !== items.length) {
     throw new Error(
@@ -57,5 +60,9 @@ export async function draftItems(input: {
     );
   }
 
-  return { drafts: output.drafts, usage };
+  // Belt-and-braces: the draft call is a single no-tools step, so steps[0].usage carries
+  // `.raw`; fall back to the top-level (summed) usage if steps is somehow empty.
+  const costUsd = rawEstimatedCost(result.steps[0]?.usage) ?? rawEstimatedCost(result.usage);
+
+  return { drafts: output.drafts, usage, costUsd };
 }

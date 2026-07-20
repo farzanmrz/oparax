@@ -3,20 +3,32 @@
 // The headless scan runner. TWO deterministic passes, so grok ALWAYS runs (the earlier
 // single `generateText` + `Output.object` let DeepSeek satisfy the output schema with empty
 // items WITHOUT ever calling the tool — verified in a live run):
-//   1. A forced tool loop — `prepareStep` pins `toolChoice: 'required'` on step 0, so the
-//      model MUST call `oparax_x_search` (drafting the searches per SCAN_RUNNER_PROMPT)
-//      before it can respond; it then clusters the raw posts into prose (`gen.text`).
+//   1. Cluster the raw posts into prose (`.text`) — one of TWO acquisition paths:
+//      - **Frozen** (`desk.searchTemplate` set): the drafted `x_search` calls are already known
+//        (captured at desk save) — restamp their date window and run them directly via
+//        `executeSearchCalls`, no tool loop, then a single no-tools `generateText` against
+//        `SCAN_CLUSTER_RUNNER_PROMPT` clusters the already-retrieved posts.
+//      - **Drafted** (no template): a forced tool loop — `prepareStep` pins `toolChoice:
+//        'required'` on step 0, so the model MUST call `oparax_x_search` (drafting the searches
+//        per `SCAN_RUNNER_PROMPT`) before it can respond; it then clusters the raw posts into
+//        prose in the same call.
 //   2. `generateObject` (NO tools, so no output-vs-tool race) turns that prose into the
-//      structured `scanResultSchema` items.
+//      structured `scanResultSchema` items — byte-identical for both paths.
 // Mirrors agent.ts's model + provider options. Called per-desk by the dispatcher and by the
 // dashboard's scanNow action; persistence happens in the caller. SERVER-ONLY.
 import { generateObject, generateText, stepCountIs } from "ai";
-import { SCAN_RUNNER_PROMPT, SCAN_STRUCTURE_PROMPT } from "@/lib/sysprompts";
+import {
+  SCAN_CLUSTER_RUNNER_PROMPT,
+  SCAN_RUNNER_PROMPT,
+  SCAN_STRUCTURE_PROMPT,
+} from "@/lib/sysprompts";
 import { scanWindowFor } from "./next-run";
 import type { ScanFrequency } from "./scan-frequency";
 import type { NewsItem } from "./scan-result";
 import { scanResultSchema } from "./scan-result";
-import { oparaxXSearch } from "./tools";
+import { restampTemplate, type SearchTemplate } from "./search-template";
+import { executeSearchCalls, oparaxXSearch } from "./tools";
+import { rawEstimatedCost, sumCosts } from "./usage-cost";
 
 // Under this `ai` version the `tool()` OUTPUT/INPUT generics collapse to `unknown` on
 // `result.toolResults[].output` / `result.toolCalls[].input`, so narrow them locally to
@@ -55,19 +67,27 @@ const STRUCTURE_MAX_OUTPUT_TOKENS = 16_000;
 const STRUCTURE_ATTEMPTS = 2;
 
 /** The runScan outcome. `error` is set ONLY when Pass 2 (structuring) ultimately failed after
- *  retries — a soft failure that still carries Pass 1's grok trace + cost so the spent money and
+ *  retries — a soft failure that still carries Pass 1's grok cost + trace so the spent money and
  *  the raw search trace are never lost to a structuring hiccup. Pass 1 / gateway failures still
- *  throw (nothing partial to preserve). */
+ *  throw (nothing partial to preserve). `costGrok` is grok's own dollar spend (search + subtool
+ *  calls); `costDeepseek` is DeepSeek's own dollar spend (cluster + structure), read off
+ *  `usage.raw.estimated_cost` per call via `usage-cost.ts` — the two providers bill separately. */
 export type ScanRunResult = {
   items: NewsItem[];
-  costUsd: number | null;
+  costGrok: number | null;
+  costDeepseek: number | null;
   usage: unknown;
   trace: unknown;
   error?: string;
 };
 
 export async function runScan(
-  desk: { beat: string; handles: string[]; scanFrequency: ScanFrequency },
+  desk: {
+    beat: string;
+    handles: string[];
+    scanFrequency: ScanFrequency;
+    searchTemplate?: SearchTemplate | null;
+  },
   now: Date = new Date(),
   firedAt: Date = now,
 ): Promise<ScanRunResult> {
@@ -75,35 +95,80 @@ export async function runScan(
   const model = "deepseek/deepseek-v4-flash";
   const providerOptions = { gateway: { sort: "cost" as const } };
 
-  // Pass 1 — forced tool loop. `toolChoice: 'required'` on step 0 guarantees the grok call
-  // (drafting the searches per the prompt); later steps cluster the raw posts into prose.
-  const gen = await generateText({
-    model,
-    // No `reasoning`: DeepSeek V4 thinks by default and self-scales effort (see agent.ts).
-    // Clustering is genuine judgment, so let its native adaptive thinking run.
-    providerOptions,
-    instructions: `${SCAN_RUNNER_PROMPT}\n\n${clockBlock(now, desk.scanFrequency, firedAt)}`,
-    prompt: `Beat: ${desk.beat}\nWatched handles: ${desk.handles.join(", ")}`,
-    tools: { oparax_x_search: oparaxXSearch },
-    stopWhen: stepCountIs(4),
-    prepareStep: ({ stepNumber }) => (stepNumber === 0 ? { toolChoice: "required" } : {}),
-  });
+  let costGrok: number | null;
+  let clusterText: string;
+  let clusterUsage: unknown;
+  let clusterPerStepCosts: Array<number | null>;
+  let querySource: "frozen" | "drafted";
+  let reasoning: unknown;
+  let draftedCalls: unknown;
+  let subtoolCalls: unknown;
 
-  // Capture Pass 1's cost + trace BEFORE Pass 2 runs. grok has already fired and billed by now,
-  // so a Pass-2 failure must NOT discard this — that loss is exactly what left failed runs with a
-  // null cost and "No trace recorded". Only oparax_x_search exists in the toolset, so every
-  // toolResult is a grok invocation.
-  const costs = gen.toolResults
-    .map((r) => (r.output as XSearchToolOutput).costUsd)
-    .filter((c): c is number => c != null);
-  const costUsd = costs.length > 0 ? costs.reduce((sum, c) => sum + c, 0) : null;
-  const buildTrace = (error?: string) => ({
-    reasoning: gen.reasoningText ?? gen.reasoning,
+  if (desk.searchTemplate) {
+    // Frozen path — the calls are already known (captured at save time); just restamp the date
+    // window and run them directly, no tool loop, no re-drafting.
+    querySource = "frozen";
+    const window = scanWindowFor(desk.scanFrequency, now, firedAt);
+    const restamped = restampTemplate(desk.searchTemplate, { ...window, handles: desk.handles });
+    const exec = await executeSearchCalls(
+      restamped.calls,
+      desk.handles,
+      window.fromDate,
+      window.toDate,
+    );
+    costGrok = exec.costUsd;
+    draftedCalls = restamped.calls;
+    subtoolCalls = exec.subtoolCalls;
+
+    // No `reasoning` param: DeepSeek V4 thinks by default and self-scales effort (see agent.ts).
+    // Clustering is genuine judgment, so let its native adaptive thinking run.
+    const cluster = await generateText({
+      model,
+      providerOptions,
+      instructions: `${SCAN_CLUSTER_RUNNER_PROMPT}\n\n${clockBlock(now, desk.scanFrequency, firedAt)}`,
+      prompt: `Beat: ${desk.beat}\nWatched handles: ${desk.handles.join(", ")}\n\nRetrieved posts:\n${exec.items}`,
+    });
+    clusterText = cluster.text;
+    clusterUsage = cluster.usage;
+    clusterPerStepCosts = cluster.steps.map((s) => rawEstimatedCost(s.usage));
+    reasoning = cluster.reasoningText ?? cluster.reasoning;
+  } else {
+    // Drafted path — forced tool loop. `toolChoice: 'required'` on step 0 guarantees the grok
+    // call (drafting the searches per the prompt); later steps cluster the raw posts into prose.
+    querySource = "drafted";
+    const gen = await generateText({
+      model,
+      // No `reasoning`: DeepSeek V4 thinks by default and self-scales effort (see agent.ts).
+      // Clustering is genuine judgment, so let its native adaptive thinking run.
+      providerOptions,
+      instructions: `${SCAN_RUNNER_PROMPT}\n\n${clockBlock(now, desk.scanFrequency, firedAt)}`,
+      prompt: `Beat: ${desk.beat}\nWatched handles: ${desk.handles.join(", ")}`,
+      tools: { oparax_x_search: oparaxXSearch },
+      stopWhen: stepCountIs(4),
+      prepareStep: ({ stepNumber }) => (stepNumber === 0 ? { toolChoice: "required" } : {}),
+    });
+
+    // Capture Pass 1's cost + trace BEFORE Pass 2 runs. grok has already fired and billed by now,
+    // so a Pass-2 failure must NOT discard this — that loss is exactly what left failed runs with
+    // a null cost and "No trace recorded". Only oparax_x_search exists in the toolset, so every
+    // toolResult is a grok invocation.
+    costGrok = sumCosts(gen.toolResults.map((r) => (r.output as XSearchToolOutput).costUsd));
+    clusterText = gen.text;
+    clusterUsage = gen.usage;
+    clusterPerStepCosts = gen.steps.map((s) => rawEstimatedCost(s.usage));
+    reasoning = gen.reasoningText ?? gen.reasoning;
     // The calls DeepSeek drafted for each oparax_x_search invocation.
-    draftedCalls: gen.toolCalls.map((call) => (call.input as XSearchToolInput).calls),
+    draftedCalls = gen.toolCalls.map((call) => (call.input as XSearchToolInput).calls);
     // The verbatim per-subtool executions grok ran — the raw callResponses trace this
     // whole pipeline exists to preserve (see xai.ts).
-    subtoolCalls: gen.toolResults.map((r) => (r.output as XSearchToolOutput).subtoolCalls),
+    subtoolCalls = gen.toolResults.map((r) => (r.output as XSearchToolOutput).subtoolCalls);
+  }
+
+  const buildTrace = (error?: string) => ({
+    querySource,
+    reasoning,
+    draftedCalls,
+    subtoolCalls,
     ...(error ? { structureError: error } : {}),
     timings: { startedAt, finishedAt: Date.now(), durationMs: Date.now() - startedAt },
   });
@@ -125,12 +190,13 @@ export async function runScan(
         maxOutputTokens: STRUCTURE_MAX_OUTPUT_TOKENS,
         schema: scanResultSchema,
         system: SCAN_STRUCTURE_PROMPT,
-        prompt: gen.text,
+        prompt: clusterText,
       });
       return {
         items: structured.object.items,
-        costUsd,
-        usage: { cluster: gen.usage, structure: structured.usage },
+        costGrok,
+        costDeepseek: sumCosts([...clusterPerStepCosts, rawEstimatedCost(structured.usage)]),
+        usage: { cluster: clusterUsage, structure: structured.usage },
         trace: buildTrace(),
       };
     } catch (e) {
@@ -144,8 +210,9 @@ export async function runScan(
   const message = lastError instanceof Error ? lastError.message : String(lastError);
   return {
     items: [],
-    costUsd,
-    usage: { cluster: gen.usage, structure: null },
+    costGrok,
+    costDeepseek: sumCosts(clusterPerStepCosts),
+    usage: { cluster: clusterUsage, structure: null },
     trace: buildTrace(message),
     error: `structuring failed after ${STRUCTURE_ATTEMPTS} attempts: ${message}`,
   };

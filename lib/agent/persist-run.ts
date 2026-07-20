@@ -14,21 +14,23 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 
 /**
  * Persist a completed `runScan` outcome. A soft-fail (`result.error` set — Pass-2 structuring gave
- * up after retries) still carries Pass 1's grok cost + trace, so record those alongside the failure
- * rather than dropping to a blank run; a clean run stores its `items` as the result.
+ * up after retries) still carries Pass 1's grok + DeepSeek cluster cost and trace, so record those
+ * alongside the failure rather than dropping to a blank run; a clean run stores its `items` as the
+ * result. `costGrok`/`costDeepseek` are the two providers' own dollar spend, split per ft/63.
  */
 export async function persistScanRun(
   client: AdminClient,
   runId: string,
   result: ScanRunResult,
 ): Promise<void> {
-  const { items, costUsd, usage, trace, error } = result;
+  const { items, costGrok, costDeepseek, usage, trace, error } = result;
   await client
     .from("runs")
     .update({
       status: error ? "failed" : "done",
       ...(error ? { error } : { result: { items } as Json }),
-      cost_usd: costUsd,
+      cost_grok: costGrok,
+      cost_deepseek: costDeepseek,
       usage: usage as Json,
       trace: trace as Json,
       finished_at: new Date().toISOString(),
