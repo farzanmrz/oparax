@@ -14,16 +14,19 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Sum non-null `cost_usd` across every row in `rows`, but count only `done` runs as
- * "runs" — a run's spend is incurred whether or not it finished cleanly (xAI/DeepSeek
- * are already billed by the time a run fails), but a completed-work count crediting a
- * still-running or failed attempt would overstate what the desk actually delivered.
+ * Sum non-null cost across every row in `rows` (grok + DeepSeek, ft/63's split), but
+ * count only `done` runs as "runs" — a run's spend is incurred whether or not it
+ * finished cleanly (xAI/DeepSeek are already billed by the time a run fails), but a
+ * completed-work count crediting a still-running or failed attempt would overstate what
+ * the desk actually delivered.
  */
-function rollupWindow(rows: readonly { cost_usd: number | null; status: string }[]): UsageWindow {
+function rollupWindow(
+  rows: readonly { cost_grok: number | null; cost_deepseek: number | null; status: string }[],
+): UsageWindow {
   return rows.reduce<UsageWindow>(
     (acc, row) => ({
       runs: acc.runs + (row.status === "done" ? 1 : 0),
-      costUsd: acc.costUsd + (row.cost_usd ?? 0),
+      costUsd: acc.costUsd + (row.cost_grok ?? 0) + (row.cost_deepseek ?? 0),
     }),
     { runs: 0, costUsd: 0 },
   );
@@ -57,7 +60,7 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
   const [runsResult, draftsResult, usageResult] = await Promise.all([
     supabase
       .from("runs")
-      .select("id, status, started_at, finished_at, cost_usd, result, trace")
+      .select("id, status, started_at, finished_at, cost_grok, cost_deepseek, result, trace")
       .eq("agent_id", id)
       .order("started_at", { ascending: false })
       .limit(50),
@@ -69,7 +72,7 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
       .limit(50),
     // Everything the usage rollup needs, unbounded (unlike the display query above) —
     // "all time" must see every run, not just the latest 50.
-    supabase.from("runs").select("started_at, cost_usd, status").eq("agent_id", id),
+    supabase.from("runs").select("started_at, cost_grok, cost_deepseek, status").eq("agent_id", id),
   ]);
 
   if (runsResult.error) throw new Error("Failed to load the desk's runs. Please try again.");
@@ -78,12 +81,19 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
 
   const runs: DeskRun[] = (runsResult.data ?? []).map((run) => {
     const result = scanResultSchema.safeParse(run.result);
+    // DeskRun.costUsd stays TOTAL run cost (the dashboard, #65's territory, is unchanged):
+    // grok + DeepSeek, but null when BOTH are null so "unknown cost" still renders as such
+    // rather than a misleading $0.00.
+    const costUsd =
+      run.cost_grok == null && run.cost_deepseek == null
+        ? null
+        : (run.cost_grok ?? 0) + (run.cost_deepseek ?? 0);
     return {
       id: run.id,
       status: run.status,
       startedAt: run.started_at,
       finishedAt: run.finished_at,
-      costUsd: run.cost_usd,
+      costUsd,
       result: result.success ? result.data : null,
       trace: run.trace,
     };

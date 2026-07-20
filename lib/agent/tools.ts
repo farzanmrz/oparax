@@ -45,37 +45,49 @@ const scanInputSchema = z.object({
   toDate: z.string().describe("Day-window end YYYY-MM-DD (UTC) — `today` from current_time."),
 });
 
+/** Run an ordered list of drafted x_search subtool calls in parallel and merge their raw posts,
+ *  per-subtool traces, and costs. Shared by the oparaxXSearch tool (chat + drafted-path scan) and
+ *  by scan-run.ts's frozen-template path, which runs stored calls directly without a tool loop. */
+export async function executeSearchCalls(
+  calls: Array<{ tool: string; args: Record<string, unknown> }>,
+  handles: string[],
+  fromDate: string,
+  toDate: string,
+) {
+  // Fire each drafted search as its OWN grok /responses call, in PARALLEL — one search per
+  // call finishes fast, so wall-clock is the slowest single search, not the sum, and no call
+  // does enough agentic work to hit xai.ts's 150s abort (the bundled all-in-one call is what
+  // timed out on 20-handle scans). Merge the raw posts, per-subtool traces, and costs.
+  const results = await Promise.all(
+    calls.map((c) =>
+      callResponses({
+        system: X_SEARCH_EXECUTOR_PROMPT,
+        user: `Run this X search call exactly as written, and return the raw retrieved posts:\n\n${c.tool} ${JSON.stringify(c.args)}`,
+        handles,
+        fromDate,
+        toDate,
+        effort: "none",
+      }),
+    ),
+  );
+  return {
+    items: results
+      .map((r) => r.items)
+      .filter(Boolean)
+      .join("\n\n"),
+    sources: results.flatMap((r) => r.sources),
+    subtoolCalls: results.flatMap((r) => r.subtoolCalls),
+    costUsd: results.reduce((sum, r) => sum + (r.costUsd ?? 0), 0) || null,
+    usage: results.map((r) => r.usage),
+  };
+}
+
 export const oparaxXSearch = tool({
   description:
     "Execute a list of X (Twitter) search subtool calls that YOU (the orchestrator) have already drafted per your guardrails, and return the raw retrieved posts for you to synthesize. the search executor runs the calls verbatim — it does no query planning.",
   inputSchema: scanInputSchema,
   async execute({ calls, handles, fromDate, toDate }) {
-    // Fire each drafted search as its OWN grok /responses call, in PARALLEL — one search per
-    // call finishes fast, so wall-clock is the slowest single search, not the sum, and no call
-    // does enough agentic work to hit xai.ts's 150s abort (the bundled all-in-one call is what
-    // timed out on 20-handle scans). Merge the raw posts, per-subtool traces, and costs.
-    const results = await Promise.all(
-      calls.map((c) =>
-        callResponses({
-          system: X_SEARCH_EXECUTOR_PROMPT,
-          user: `Run this X search call exactly as written, and return the raw retrieved posts:\n\n${c.tool} ${JSON.stringify(c.args)}`,
-          handles,
-          fromDate,
-          toDate,
-          effort: "none",
-        }),
-      ),
-    );
-    return {
-      items: results
-        .map((r) => r.items)
-        .filter(Boolean)
-        .join("\n\n"),
-      sources: results.flatMap((r) => r.sources),
-      subtoolCalls: results.flatMap((r) => r.subtoolCalls),
-      costUsd: results.reduce((sum, r) => sum + (r.costUsd ?? 0), 0) || null,
-      usage: results.map((r) => r.usage),
-    };
+    return executeSearchCalls(calls, handles, fromDate, toDate);
   },
 });
 

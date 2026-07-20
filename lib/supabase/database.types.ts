@@ -22,6 +22,7 @@ export type Database = {
           name: string;
           next_run_at: string | null;
           scan_frequency: Json;
+          search_template: Json | null;
           setup_session_id: string | null;
           setup_transcript: Json;
           status: string;
@@ -38,6 +39,7 @@ export type Database = {
           name: string;
           next_run_at?: string | null;
           scan_frequency: Json;
+          search_template?: Json | null;
           setup_session_id?: string | null;
           setup_transcript: Json;
           status?: string;
@@ -54,6 +56,7 @@ export type Database = {
           name?: string;
           next_run_at?: string | null;
           scan_frequency?: Json;
+          search_template?: Json | null;
           setup_session_id?: string | null;
           setup_transcript?: Json;
           status?: string;
@@ -65,34 +68,40 @@ export type Database = {
       drafts: {
         Row: {
           agent_id: string;
+          cost_deepseek: number | null;
           created_at: string;
           id: string;
           item: Json;
           posted_at: string | null;
           posted_tweet_id: string | null;
           posted_url: string | null;
+          source: string;
           text: string;
           usage: Json | null;
         };
         Insert: {
           agent_id: string;
+          cost_deepseek?: number | null;
           created_at?: string;
           id?: string;
           item: Json;
           posted_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
+          source?: string;
           text: string;
           usage?: Json | null;
         };
         Update: {
           agent_id?: string;
+          cost_deepseek?: number | null;
           created_at?: string;
           id?: string;
           item?: Json;
           posted_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
+          source?: string;
           text?: string;
           usage?: Json | null;
         };
@@ -109,11 +118,13 @@ export type Database = {
       runs: {
         Row: {
           agent_id: string;
-          cost_usd: number | null;
+          cost_deepseek: number | null;
+          cost_grok: number | null;
           error: string | null;
           finished_at: string | null;
           id: string;
           result: Json | null;
+          source: string;
           started_at: string;
           status: string;
           trace: Json | null;
@@ -121,11 +132,13 @@ export type Database = {
         };
         Insert: {
           agent_id: string;
-          cost_usd?: number | null;
+          cost_deepseek?: number | null;
+          cost_grok?: number | null;
           error?: string | null;
           finished_at?: string | null;
           id?: string;
           result?: Json | null;
+          source?: string;
           started_at?: string;
           status?: string;
           trace?: Json | null;
@@ -133,11 +146,13 @@ export type Database = {
         };
         Update: {
           agent_id?: string;
-          cost_usd?: number | null;
+          cost_deepseek?: number | null;
+          cost_grok?: number | null;
           error?: string | null;
           finished_at?: string | null;
           id?: string;
           result?: Json | null;
+          source?: string;
           started_at?: string;
           status?: string;
           trace?: Json | null;

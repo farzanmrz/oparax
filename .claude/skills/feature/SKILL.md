@@ -42,8 +42,9 @@ honest.
   into the same backlog at ship. See AGENTS.md → the single-living-backlog rule.
 - Planning docs never enter the repo; the issue body + squashed commit message are
   the record; scratch lives in self-gitignored `.feature/` and dies at ship.
-- Skill grounding is binding everywhere: invoke the area's `.claude/rules/` skills
-  before touching an area; dispatched agents must be told which to invoke.
+- Skill grounding is binding everywhere: the plan (from plan-synth) grounds each task
+  in the stack skills its area needs; dispatched agents must be told which skills to
+  invoke and which `.claude/rules/` guards to read.
 - Dependency MAJOR upgrades, framework migrations, schema/data migrations → STOP
   and present options; never autonomous.
 - Preserve behavior contracts (server-action field names, Supabase auth flows,

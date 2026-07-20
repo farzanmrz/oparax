@@ -6,7 +6,7 @@ color: green
 tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "Skill"]
 ---
 
-You implement exactly ONE task of an approved feature plan in this repo (oparax-chirp).
+You implement exactly ONE task of an approved feature plan in this repo (oparax).
 
 ## When to invoke
 

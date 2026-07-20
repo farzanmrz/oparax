@@ -5,11 +5,11 @@ paths:
 
 # The system prompts
 
-`lib/sysprompts/` holds the agent's prompts as markdown — `desk-agent.md` (the DeepSeek orchestrator, the file these conventions were written for), `scan-runner.md` + `draft-runner.md` (the per-minute dispatcher's headless scan and draft runners), `scan-protocol.md` (the shared scan procedure — see Composition below), and `x-search-executor.md` (the short grok executor prompt). `index.ts` reads each once at module load — the deploy-bundling gotcha lives in `.claude/rules/agent.md`. Edit only on observed session behavior or a real capability change, never a read-through.
+`lib/sysprompts/` holds the agent's prompts as markdown — `desk-agent.md` (the DeepSeek orchestrator, the file these conventions were written for), `scan-runner.md` + `draft-runner.md` (the per-minute dispatcher's headless scan and draft runners), `scan-protocol.md` (the "Running a scan" procedure) + `scan-clustering.md` (the clustering procedure, composed together — see Composition below), `scan-cluster-runner.md` (the headless cluster-only runner for the frozen-template scan path — no scan composition, no tools), and `x-search-executor.md` (the short grok executor prompt). `index.ts` reads each once at module load — the deploy-bundling gotcha lives in `.claude/rules/agent.md`. Edit only on observed session behavior or a real capability change, never a read-through.
 
 ## Composition
 
-`## Running a scan` and `## Clustering` (including the `jsonc` template) live ONCE in `scan-protocol.md` — `index.ts` composes them into both `DESK_AGENT_PROMPT` and `SCAN_RUNNER_PROMPT` via a `{{SCAN_PROTOCOL}}` marker in each file. Editing the scan procedure means editing `scan-protocol.md`; both prompts inherit the change. `draft-runner.md` is standalone — nothing composes into or out of it.
+`## Running a scan` (`scan-protocol.md`) and `## Clustering` (`scan-clustering.md`, including the `jsonc` template) live ONCE, each in its own file — `index.ts` concatenates them into `SCAN_PROTOCOL` and composes that into both `DESK_AGENT_PROMPT` and `SCAN_RUNNER_PROMPT` via a `{{SCAN_PROTOCOL}}` marker in each file. Editing the scan procedure means editing `scan-protocol.md`; editing the clustering procedure means editing `scan-clustering.md`; both prompts inherit either change. `scan-clustering.md` is ALSO composed standalone into `scan-cluster-runner.md` via a `{{SCAN_CLUSTERING}}` marker, exported as `SCAN_CLUSTER_RUNNER_PROMPT` — the frozen-template scan path clusters already-retrieved posts with no search procedure in scope, so it gets only the clustering half. `draft-runner.md` is standalone — nothing composes into or out of it.
 
 ## Formatting conventions
 
