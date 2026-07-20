@@ -279,7 +279,7 @@
     {
       "handle": "@IanDoyleSport",
       "vertical": "football",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Ian Doyle",
       "first_name": "Ian",
       "message": "Hey Ian, I've been watching how transfer reporters work and I'm building something for exactly your situation. Quick question over DM: when you step away from X, what's your current setup for not missing a break? Building before I pitch.",
@@ -399,7 +399,7 @@
     {
       "handle": "@BrettSiegelNBA",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Brett Siegel",
       "first_name": "Brett",
       "message": "Hey Brett, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -408,7 +408,7 @@
     {
       "handle": "@SbondyNBA",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Stefan Bondy",
       "first_name": "Stefan",
       "message": "Hey Stefan, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -425,7 +425,7 @@
     {
       "handle": "@GrantAfseth",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Grant Afseth",
       "first_name": "Grant",
       "message": "Hey Grant, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -434,7 +434,7 @@
     {
       "handle": "@joevardon",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Joe Vardon",
       "first_name": "Joe",
       "message": "Hey Joe, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -457,7 +457,7 @@
     {
       "handle": "@DannyLeroux",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Danny Leroux",
       "first_name": "Danny",
       "message": "Hey Danny, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -466,7 +466,7 @@
     {
       "handle": "@SteveBHoop",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Steve Bulpett",
       "first_name": "Steve",
       "message": "Hey Steve, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -475,7 +475,7 @@
     {
       "handle": "@IanBegley",
       "vertical": "nba",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Ian Begley",
       "first_name": "Ian",
       "message": "Hey Ian, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.",
@@ -1183,28 +1183,28 @@
     {
       "handle": "@alexburnsNYT",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Alexander Burns",
       "first_name": "Alexander"
     },
     {
       "handle": "@mkraju",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Manu Raju",
       "first_name": "Manu"
     },
     {
       "handle": "@ChadPergram",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Chad Pergram",
       "first_name": "Chad"
     },
     {
       "handle": "@KasieHunt",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Kasie Hunt",
       "first_name": "Kasie"
     },
@@ -1229,14 +1229,14 @@
     {
       "handle": "@BethRigby",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Beth Rigby",
       "first_name": "Beth"
     },
     {
       "handle": "@RobertPeston",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Robert Peston",
       "first_name": "Robert"
     },
@@ -1261,7 +1261,7 @@
     {
       "handle": "@scottwongDC",
       "vertical": "politics",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Scott Wong",
       "first_name": "Scott"
     },
@@ -1342,14 +1342,14 @@
     {
       "handle": "@David_Ornstein",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "David Ornstein",
       "first_name": "David"
     },
     {
       "handle": "@DiMarzio",
       "vertical": "football",
-      "state": "x_unav",
+      "state": "c_inv",
       "display_name": "Gianluca Di Marzio",
       "first_name": "Gianluca"
     },
