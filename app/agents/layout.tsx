@@ -14,7 +14,7 @@ import { getUsername } from "@/lib/user";
  * The sidebar cookie is read server-side so collapse state survives
  * navigation without a flash. The inset keeps the viewport-owning structure:
  * full-height, scrollable region so the chat can own its viewport, with the
- * shared 81rem content cap owned here. The username comes from lib/user.ts,
+ * shared 102rem content cap owned here. The username comes from lib/user.ts,
  * same as before.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     // --sidebar-peek-top: where the peek overlay starts, clearing each page's
-    // header trigger row — the shell owns this geometry, like the 81rem cap.
+    // header trigger row — the shell owns this geometry, like the 102rem cap.
     <SidebarProvider
       defaultOpen={defaultOpen}
       style={{ "--sidebar-peek-top": "3.25rem" } as React.CSSProperties}
@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <AppSidebar username={getUsername(user)} />
         <SidebarInset className="h-dvh min-h-0 min-w-0 bg-background text-foreground">
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto flex h-full w-full max-w-[81rem] flex-col px-4 sm:px-6">
+            <div className="mx-auto flex h-full w-full max-w-[102rem] flex-col px-4 sm:px-6">
               {children}
             </div>
           </div>

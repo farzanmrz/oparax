@@ -6,7 +6,7 @@ color: cyan
 tools: ["Read", "Glob", "Grep", "Bash"]
 ---
 
-You review exactly ONE implemented task of a feature plan in this repo (oparax-chirp).
+You review exactly ONE implemented task of a feature plan in this repo (oparax).
 
 ## When to invoke
 

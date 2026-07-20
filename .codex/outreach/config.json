@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "leanspark_url": "https://leanspark.ai/chats/1iki83pp65d2/sprints/wn2lpqth4pl4/experiments/st82g34oz14r?return_to=now",
+  "verticals": {
+    "football": {
+      "template": "Hey [name], I've been watching how transfer reporters work and I'm building something for exactly your situation. Quick question over DM: when you step away from X, what's your current setup for not missing a break? Building before I pitch."
+    },
+    "nba": {
+      "template": "Hey [name], I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning."
+    },
+    "nfl": {
+      "template": "Hey [name], I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning."
+    },
+    "politics": {
+      "template": "Hey [name], I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more."
+    }
+  }
+}

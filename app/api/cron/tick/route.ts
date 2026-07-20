@@ -5,14 +5,15 @@
 // SERVER-ONLY: uses the service-role client (no RLS, no user session — a tick isn't a request
 // from a signed-in reporter).
 import { nextFire } from "@/lib/agent/next-run";
+import { persistScanRun, persistScanRunError } from "@/lib/agent/persist-run";
 import {
   type ScanFrequency,
   scanFrequencySchema,
   validateScanFrequency,
 } from "@/lib/agent/scan-frequency";
 import { runScan } from "@/lib/agent/scan-run";
+import { type SearchTemplate, searchTemplateSchema } from "@/lib/agent/search-template";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
 
 export const maxDuration = 300;
 
@@ -24,6 +25,9 @@ type Winner = {
   /** The scheduled fire this run services (the claimed `next_run_at`) — the scan window looks
    *  back to the fire before it, so a run started seconds after the fire covers the right span. */
   firedAt: string;
+  /** The frozen search template captured at desk save, or null to fall back to live drafting.
+   *  Invalid stored JSON is treated the same as absent — see the parse below. */
+  searchTemplate: SearchTemplate | null;
 };
 
 export async function GET(req: Request) {
@@ -45,7 +49,7 @@ export async function GET(req: Request) {
   // (3) Select due, bounded.
   const { data: due } = await db
     .from("agents")
-    .select("id, beat, handles, scan_frequency, next_run_at")
+    .select("id, beat, handles, scan_frequency, next_run_at, search_template")
     .eq("status", "active")
     .lte("next_run_at", new Date().toISOString())
     .order("next_run_at", { ascending: true })
@@ -91,7 +95,21 @@ export async function GET(req: Request) {
       .select("id");
     if (!claimed?.length) continue; // lost the race — another tick already advanced it
 
-    winners.push({ id: agent.id, beat: agent.beat, handles: agent.handles, freq, firedAt });
+    // A malformed template is not a schedule fault — fall back to drafting, don't pause the agent.
+    const templateParsed = searchTemplateSchema.safeParse(agent.search_template);
+    if (!templateParsed.success && agent.search_template != null) {
+      console.error(`cron/tick: agent ${agent.id} has an invalid search_template; ignoring`);
+    }
+    const searchTemplate = templateParsed.success ? templateParsed.data : null;
+
+    winners.push({
+      id: agent.id,
+      beat: agent.beat,
+      handles: agent.handles,
+      freq,
+      firedAt,
+      searchTemplate,
+    });
   }
 
   // (5) Run winners, awaited in-route. Each winner RETURNS its own outcome ("done"/"failed")
@@ -102,40 +120,26 @@ export async function GET(req: Request) {
     winners.map(async (agent): Promise<"done" | "failed"> => {
       const { data: run } = await db
         .from("runs")
-        .insert({ agent_id: agent.id })
+        .insert({ agent_id: agent.id, source: "scheduled" })
         .select("id")
         .single();
       if (!run) throw new Error(`cron/tick: failed to insert run row for agent ${agent.id}`);
 
       try {
-        const { items, costUsd, usage, trace } = await runScan(
-          { beat: agent.beat, handles: agent.handles, scanFrequency: agent.freq },
+        const result = await runScan(
+          {
+            beat: agent.beat,
+            handles: agent.handles,
+            scanFrequency: agent.freq,
+            searchTemplate: agent.searchTemplate,
+          },
           new Date(),
           new Date(agent.firedAt),
         );
-        await db
-          .from("runs")
-          .update({
-            status: "done",
-            result: { items } as Json,
-            cost_usd: costUsd,
-            usage: usage as Json,
-            trace: trace as Json,
-            finished_at: new Date().toISOString(),
-          })
-          .eq("id", run.id)
-          .eq("status", "running"); // guard: sweep may have failed it
-        return "done";
+        await persistScanRun(db, run.id, result);
+        return result.error ? "failed" : "done";
       } catch (e) {
-        await db
-          .from("runs")
-          .update({
-            status: "failed",
-            error: e instanceof Error ? e.message : String(e),
-            finished_at: new Date().toISOString(),
-          })
-          .eq("id", run.id)
-          .eq("status", "running");
+        await persistScanRunError(db, run.id, e);
         return "failed";
       }
     }),

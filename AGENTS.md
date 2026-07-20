@@ -12,7 +12,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 | Agent | AI SDK `ToolLoopAgent` (DeepSeek via AI Gateway) behind `POST /api/chat` | — |
 | AI SDK | `ai` + `@ai-sdk/react` | 7 / 4 |
 | Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
-| Auth + DB | Supabase (auth + owner-scoped app tables — `agents`, `runs`, `drafts`) | — |
+| Auth + DB | Supabase (auth + owner-scoped app tables — `agents`, `runs`, `drafts`, `x_accounts`) | — |
 | Tooling | pnpm (a preinstall guard blocks npm/yarn) + Biome | — |
 | Host | Vercel — oparax.ai, `dev` → `main` promote | — |
 
@@ -28,7 +28,7 @@ pnpm format     # Biome format --write
 
 ### Environment
 
-`.env.local`, six keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.com` / `hello123`.
+`.env.local`, eight keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |
@@ -37,21 +37,23 @@ pnpm format     # Biome format --write
 | `AI_GATEWAY_API_KEY` | AI Gateway for the DeepSeek chat model (local dev; deployed = Vercel OIDC) |
 | `CRON_SECRET` | `app/api/cron/tick/route.ts` — fail-closed `Bearer` auth for the per-minute dispatcher |
 | `SUPABASE_SECRET_KEY` | `lib/supabase/admin.ts` — the service-role dispatcher client |
+| `X_CLIENT_ID` + `X_CLIENT_SECRET` | `lib/x/api.ts` — X OAuth2 confidential-client credentials (link flow + posting) |
 
 ## Code map
 
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks, `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard · `settings/`).
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks (including `app/auth/x/*`, the X OAuth link + callback), `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard, incl. the Drafts tab's Connect-X + post-to-X controls · `settings/`).
 - `components/`
-  - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
-  - `components/ai-elements/` — chat-surface kit.
-  - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
+    - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
+    - `components/ai-elements/` — chat-surface kit.
+    - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
 - `lib/agent/` — the desk agent: model + tools + the save-approval gate; the headless scan runner + draft runner behind the cron dispatcher; `next-run.ts`'s timezone fire math; plus its other pure modules.
+- `lib/x/` — the X integration — `api.ts` (raw-fetch OAuth2 + post client), `store.ts` (service-role token store for `x_accounts`; tokens never leave this dir), `link-state.ts` (`getXLinkState()`), `actions.ts` (`postDraftToX`/`unlinkXAccount`).
 - `lib/sysprompts/` — the agent's system prompts, as markdown.
-- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts` used only by the cron dispatcher) + auth server actions + desk render helpers (`lib/agents.ts`).
-- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable).
+- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/`'s token store + post/unlink actions) + auth server actions + desk render helpers (`lib/agents.ts`).
+- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable and now carries post-outcome columns — `posted_at`, `posted_tweet_id`, `posted_url` — stamped by the service-role client after an RLS ownership check; `x_accounts` has RLS enabled with zero policies, deny-all — read/written only by the service-role client).
 - `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
-- `.agents/skills/` + `.codex/agents/` — the Codex-side mirrors. `.agents/skills/` symlinks **every** `.claude/skills/` entry (Codex reads the body and ignores the Claude-only `model:` frontmatter as inert text) — add a symlink when a new skill lands. `.codex/agents/` holds TOML ports of the six `.claude/agents/` workers — a **best-effort mirror**, not a lockstep one. The `.claude/agents/*.md` are canonical; refresh the TOML when you actually drive the flow from Codex (reconcile it against the `.md` at that point), NOT on every `.claude/agents/` edit — the per-edit sync tax bought nothing while the flow runs from Claude. Flow skills (`feature*`) are worded in Claude's tool vocabulary; Codex maps their agent references onto its own TOML workers and adapts the tool-call layer.
+- `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands. Native `x-check`, `x-recheck`, `x-dm`, `x-stat`, and `lean-log` directories are separate Codex workflow skills, outside Claude Code's orchestration and push scope; Claude Code must ignore them and must not mirror or include them when pushing its own work. These five skills always execute inline in the current Codex task and must never delegate to a custom agent; select the desired model in the task before invoking them.
 
 Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.vercel/`.
 
@@ -59,12 +61,11 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 ## Conventions
 
-- **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts` (RLS owner-scoped; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
-- Building a feature slice: `/feature` orchestrates the full flow, or drive the phases individually — `/feature-plan` (the plan gate — plan is the spec — → issue + branch) → `/feature-build` → `/feature-qc` (or single passes: `/simplify`, `/code-review`, `/feature-lint`) → `/feature-ship` (triage gate → one squashed commit to `dev`).
+- **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-scoped, except `x_accounts` which is deny-all — service-role-only credential storage; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
 
 ### Issue labels
 
-GitHub labels carry issue type and state — never a title prefix (no `triage:` etc.). Every `gh issue create` sets a label; every agent applies them the same way (this is the tool-neutral record — Codex reads it here too).
+GitHub labels carry issue type and state — never a title prefix (no `triage:` etc.). Every `gh issue create` sets a label; every agent applies them the same way.
 
 | Label | Meaning | Applied |
 | --- | --- | --- |
@@ -81,14 +82,10 @@ GitHub labels carry issue type and state — never a title prefix (no `triage:` 
 | --- | --- |
 | env vars (local or Vercel) | `vercel:env-vars` |
 | deploys / promotes / rollbacks | `vercel:deployments-cicd` |
+| cron on Vercel | `vercel-functions` |
 | repo-wide Biome findings | `feature-lint` |
-
-**Inspecting Vercel state — MCP tools first, not the raw CLI.** For deployment
-status, logs, project/env inspection, and even triggering a deploy, reach for the
-Vercel MCP tools (`list_deployments`, `get_deployment`, `get_deployment_build_logs`,
-`get_runtime_logs`, `get_runtime_errors`, `deploy_to_vercel`) — they're API calls
-with no local-filesystem cost.
 
 ## Cross-tool
 
-`AGENTS.md` is the canonical instruction file — Codex and other agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
+- `AGENTS.md` is the canonical instruction file — non-Claude agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
+- Proactively invoke any installed skill relevant to the current task without waiting for me to name it.
