@@ -3,15 +3,21 @@
 // authorize endpoint with a fresh PKCE pair + CSRF state stashed in cookies for
 // the callback to verify.
 import { createHash, randomBytes } from "node:crypto";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
 import { buildAuthorizeUrl } from "@/lib/x/api";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();
+
+  // Remember the page that started the flow (a desk) so the callback can return
+  // there. Only an app-internal `/agents/` path is accepted — never an external
+  // origin — so this can't be abused as an open redirect.
+  const rawReturn = request.nextUrl.searchParams.get("returnTo");
+  const returnTo = rawReturn?.startsWith("/agents/") ? rawReturn : null;
 
   const supabase = await createClient();
   const {
@@ -38,6 +44,9 @@ export async function GET() {
   };
   res.cookies.set("x_oauth_state", state, cookieOptions);
   res.cookies.set("x_oauth_verifier", codeVerifier, cookieOptions);
+  if (returnTo) {
+    res.cookies.set("x_oauth_return", returnTo, cookieOptions);
+  }
 
   return res;
 }

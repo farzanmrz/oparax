@@ -1,9 +1,10 @@
 // OAuth callback — GET /auth/x/callback. Verifies the CSRF state + PKCE
 // cookies set by app/auth/x/route.ts, exchanges the auth code (which expires
 // in ~30s, so no slow work runs before the exchange), fetches the linked X
-// user, and stores the token set. Always redirects to /agents/settings —
-// success sets x_linked=1, any failure sets x_error=<code>. Never puts token
-// material or the auth code in a redirect URL.
+// user, and stores the token set. Redirects back to wherever the connect flow
+// started (the x_oauth_return cookie, validated to an internal /agents/ path;
+// falls back to /agents/settings) — success sets x_linked=1, any failure sets
+// x_error=<code>. Never puts token material or the auth code in a redirect URL.
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -14,31 +15,38 @@ import { upsertXAccount } from "@/lib/x/store";
 export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();
   const { searchParams } = request.nextUrl;
+  const cookieStore = await cookies();
 
-  const settingsRedirect = (params: Record<string, string>) => {
-    const url = new URL("/agents/settings", origin);
+  // Return to the page the connect flow started from (a desk), falling back to
+  // settings. Only an app-internal `/agents/` path is honored — never an external
+  // origin — so a tampered cookie can't turn the callback into an open redirect.
+  const rawReturn = cookieStore.get("x_oauth_return")?.value;
+  const returnPath = rawReturn?.startsWith("/agents/") ? rawReturn : "/agents/settings";
+
+  const redirectBack = (params: Record<string, string>) => {
+    const url = new URL(returnPath, origin);
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
     }
     const res = NextResponse.redirect(url);
     res.cookies.set("x_oauth_state", "", { maxAge: 0, path: "/" });
     res.cookies.set("x_oauth_verifier", "", { maxAge: 0, path: "/" });
+    res.cookies.set("x_oauth_return", "", { maxAge: 0, path: "/" });
     return res;
   };
 
   if (searchParams.get("error")) {
-    return settingsRedirect({ x_error: "denied" });
+    return redirectBack({ x_error: "denied" });
   }
 
   const code = searchParams.get("code");
   const state = searchParams.get("state");
 
-  const cookieStore = await cookies();
   const cookieState = cookieStore.get("x_oauth_state")?.value;
   const codeVerifier = cookieStore.get("x_oauth_verifier")?.value;
 
   if (!code || !state || !cookieState || !codeVerifier || state !== cookieState) {
-    return settingsRedirect({ x_error: "state" });
+    return redirectBack({ x_error: "state" });
   }
 
   const supabase = await createClient();
@@ -46,7 +54,7 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return settingsRedirect({ x_error: "auth" });
+    return redirectBack({ x_error: "auth" });
   }
 
   const redirectUri = `${origin}/auth/x/callback`;
@@ -54,7 +62,7 @@ export async function GET(request: NextRequest) {
   try {
     const tokens = await exchangeCode({ code, codeVerifier, redirectUri });
     if (!tokens.refreshToken) {
-      return settingsRedirect({ x_error: "exchange" });
+      return redirectBack({ x_error: "exchange" });
     }
 
     const me = await fetchMe(tokens.accessToken);
@@ -69,8 +77,8 @@ export async function GET(request: NextRequest) {
       scopes: tokens.scope,
     });
   } catch {
-    return settingsRedirect({ x_error: "exchange" });
+    return redirectBack({ x_error: "exchange" });
   }
 
-  return settingsRedirect({ x_linked: "1" });
+  return redirectBack({ x_linked: "1" });
 }

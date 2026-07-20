@@ -243,6 +243,19 @@ export function AgentDashboard({
     return () => clearInterval(interval);
   }, [agent.status, agent.nextRunAt, runs, router]);
 
+  // Surface the X-connect outcome when the OAuth callback returns to this desk
+  // (?x_linked=1 / ?x_error=…), then strip the param so a refresh doesn't re-toast.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("x_linked") === "1") {
+      toast.success("X account connected");
+      router.replace(`/agents/${agent.id}`, { scroll: false });
+    } else if (params.get("x_error")) {
+      toast.error("Couldn't connect your X account. Please try again.");
+      router.replace(`/agents/${agent.id}`, { scroll: false });
+    }
+  }, [agent.id, router]);
+
   function handlePause() {
     setScheduleError(null);
     startScheduleTransition(async () => {
@@ -351,7 +364,7 @@ export function AgentDashboard({
             <ScansTab agentId={agent.id} runs={runs} timezone={timezone} />
           </TabsContent>
           <TabsContent className="py-4" value="drafts">
-            <DraftsTab drafts={drafts} timezone={timezone} xLinked={xLinked} />
+            <DraftsTab agentId={agent.id} drafts={drafts} xLinked={xLinked} />
           </TabsContent>
           <TabsContent className="py-4" value="runs">
             <RunsTab runs={runs} timezone={timezone} usage={usage} />
@@ -533,12 +546,12 @@ function ScansTab({
 /* ------------------------------------------------------------------ */
 
 function DraftsTab({
+  agentId,
   drafts,
-  timezone,
   xLinked,
 }: {
+  readonly agentId: string;
   readonly drafts: readonly DeskDraft[];
-  readonly timezone: string | undefined;
   readonly xLinked: boolean;
 }) {
   return (
@@ -547,8 +560,9 @@ function DraftsTab({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-border p-4">
           <p className="text-sm text-muted-foreground">Connect your X account to publish drafts.</p>
           <Button asChild size="sm" variant="outline">
-            {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X. */}
-            <a href="/auth/x">Connect X</a>
+            {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X. returnTo
+                brings the reporter back to THIS desk after linking, not to settings. */}
+            <a href={`/auth/x?returnTo=${encodeURIComponent(`/agents/${agentId}`)}`}>Connect X</a>
           </Button>
         </div>
       )}
@@ -559,9 +573,7 @@ function DraftsTab({
           title="No drafts yet"
         />
       ) : (
-        drafts.map((draft) => (
-          <DraftCard draft={draft} key={draft.id} timezone={timezone} xLinked={xLinked} />
-        ))
+        drafts.map((draft) => <DraftCard draft={draft} key={draft.id} xLinked={xLinked} />)
       )}
     </div>
   );
@@ -573,15 +585,7 @@ function DraftsTab({
  * draft and revalidates this desk's path, so a successful post re-renders the row into its
  * posted state (the "Posted to X" link) without any client state to track here.
  */
-function DraftCard({
-  draft,
-  timezone,
-  xLinked,
-}: {
-  readonly draft: DeskDraft;
-  readonly timezone: string | undefined;
-  readonly xLinked: boolean;
-}) {
+function DraftCard({ draft, xLinked }: { readonly draft: DeskDraft; readonly xLinked: boolean }) {
   const [isPending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
 
@@ -602,16 +606,13 @@ function DraftCard({
     });
   }
 
+  // Render ONLY the exact post text — no source/metadata caption — so what the reporter sees is
+  // what publishes. The row below is post controls/status, not post content.
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border p-4">
       <p className="text-sm whitespace-pre-wrap">{draft.text}</p>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          {draft.item ? draft.item.headline : "Source item unavailable"} ·{" "}
-          {formatInTz(draft.createdAt, timezone)}
-        </p>
-
-        {draft.postedAt ? (
+      {draft.postedAt ? (
+        <div className="flex items-center justify-end">
           <a
             className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
             href={draft.postedUrl ?? undefined}
@@ -620,26 +621,30 @@ function DraftCard({
           >
             Posted to X ↗
           </a>
-        ) : !xLinked ? null : confirming ? (
-          <span className="flex items-center gap-2">
-            <Button disabled={isPending} onClick={handlePost} size="sm">
-              {isPending ? "Posting…" : "Confirm post"}
+        </div>
+      ) : xLinked ? (
+        <div className="flex items-center justify-end gap-2">
+          {confirming ? (
+            <>
+              <Button disabled={isPending} onClick={handlePost} size="sm">
+                {isPending ? "Posting…" : "Confirm post"}
+              </Button>
+              <Button
+                disabled={isPending}
+                onClick={() => setConfirming(false)}
+                size="sm"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setConfirming(true)} size="sm" variant="outline">
+              Post to X
             </Button>
-            <Button
-              disabled={isPending}
-              onClick={() => setConfirming(false)}
-              size="sm"
-              variant="ghost"
-            >
-              Cancel
-            </Button>
-          </span>
-        ) : (
-          <Button onClick={() => setConfirming(true)} size="sm" variant="outline">
-            Post to X
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
