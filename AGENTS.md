@@ -41,7 +41,7 @@ pnpm format     # Biome format --write
 
 ## Code map
 
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks (including `app/auth/x/*`, the X OAuth link + callback), `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard · `settings/`).
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks (including `app/auth/x/*`, the X OAuth link + callback), `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard, incl. the Drafts tab's Connect-X + post-to-X controls · `settings/`).
 - `components/`
     - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
     - `components/ai-elements/` — chat-surface kit.

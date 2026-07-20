@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { scanFrequencySchema } from "@/lib/agent/scan-frequency";
 import { newsItemSchema, scanResultSchema } from "@/lib/agent/scan-result";
 import { createClient } from "@/lib/supabase/server";
+import { getXLinkState } from "@/lib/x/link-state";
 import {
   AgentDashboard,
   type DeskDraft,
@@ -57,7 +58,7 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
 
   const scanFrequency = scanFrequencySchema.safeParse(data.scan_frequency);
 
-  const [runsResult, draftsResult, usageResult] = await Promise.all([
+  const [runsResult, draftsResult, usageResult, xLink] = await Promise.all([
     supabase
       .from("runs")
       .select("id, status, started_at, finished_at, cost_grok, cost_deepseek, result, trace")
@@ -66,13 +67,15 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
       .limit(50),
     supabase
       .from("drafts")
-      .select("id, text, item, created_at")
+      .select("id, text, item, created_at, posted_at, posted_url")
       .eq("agent_id", id)
       .order("created_at", { ascending: false })
       .limit(50),
     // Everything the usage rollup needs, unbounded (unlike the display query above) —
     // "all time" must see every run, not just the latest 50.
     supabase.from("runs").select("started_at, cost_grok, cost_deepseek, status").eq("agent_id", id),
+    // Server-only link-state — returns { linked, handle } only, never token material.
+    getXLinkState(),
   ]);
 
   if (runsResult.error) throw new Error("Failed to load the desk's runs. Please try again.");
@@ -106,6 +109,8 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
       text: draft.text,
       item: item.success ? item.data : null,
       createdAt: draft.created_at,
+      postedAt: draft.posted_at,
+      postedUrl: draft.posted_url,
     };
   });
 
@@ -136,6 +141,7 @@ export default async function AgentDetailsPage({ params }: { params: Promise<{ i
       drafts={drafts}
       runs={runs}
       usage={usage}
+      xLinked={xLink.linked}
     />
   );
 }

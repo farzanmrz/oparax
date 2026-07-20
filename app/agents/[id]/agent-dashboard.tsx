@@ -3,6 +3,7 @@
 import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Agent, AgentContent, AgentHeader } from "@/components/ai-elements/agent";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import {
@@ -23,6 +24,7 @@ import type { ScanFrequency } from "@/lib/agent/scan-frequency";
 import type { NewsItem, ScanResult } from "@/lib/agent/scan-result";
 import { formatHandles, formatScanFrequency, TIER_LABELS } from "@/lib/agents";
 import { cn } from "@/lib/utils";
+import { postDraftToX } from "@/lib/x/actions";
 import { draftSelected, pauseAgent, resumeAgent, scanNow } from "./actions";
 
 /* ------------------------------------------------------------------ */
@@ -67,6 +69,10 @@ export type DeskDraft = {
   /** null when the stored item failed `newsItemSchema` parsing. */
   readonly item: NewsItem | null;
   readonly createdAt: string;
+  /** ISO timestamp this draft was posted to X, or null if unposted. */
+  readonly postedAt: string | null;
+  /** Public X URL of the post, or null if unposted. */
+  readonly postedUrl: string | null;
 };
 
 export type UsageWindow = { readonly runs: number; readonly costUsd: number };
@@ -210,11 +216,14 @@ export function AgentDashboard({
   runs,
   drafts,
   usage,
+  xLinked,
 }: {
   readonly agent: AgentDetail;
   readonly runs: readonly DeskRun[];
   readonly drafts: readonly DeskDraft[];
   readonly usage: UsageRollup;
+  /** Whether the reporter has linked an X account — gates the Drafts tab's post controls. */
+  readonly xLinked: boolean;
 }) {
   const router = useRouter();
   const [isSchedulePending, startScheduleTransition] = useTransition();
@@ -342,7 +351,7 @@ export function AgentDashboard({
             <ScansTab agentId={agent.id} runs={runs} timezone={timezone} />
           </TabsContent>
           <TabsContent className="py-4" value="drafts">
-            <DraftsTab drafts={drafts} timezone={timezone} />
+            <DraftsTab drafts={drafts} timezone={timezone} xLinked={xLinked} />
           </TabsContent>
           <TabsContent className="py-4" value="runs">
             <RunsTab runs={runs} timezone={timezone} usage={usage} />
@@ -526,29 +535,111 @@ function ScansTab({
 function DraftsTab({
   drafts,
   timezone,
+  xLinked,
 }: {
   readonly drafts: readonly DeskDraft[];
   readonly timezone: string | undefined;
+  readonly xLinked: boolean;
 }) {
-  if (drafts.length === 0) {
-    return (
-      <TabEmpty
-        description="Drafts your agent writes — and posts you publish — will collect here."
-        title="No drafts yet"
-      />
-    );
-  }
   return (
     <div className="flex flex-col gap-3">
-      {drafts.map((draft) => (
-        <div className="flex flex-col gap-2 rounded-xl border border-border p-4" key={draft.id}>
-          <p className="text-sm whitespace-pre-wrap">{draft.text}</p>
-          <p className="text-xs text-muted-foreground">
-            {draft.item ? draft.item.headline : "Source item unavailable"} ·{" "}
-            {formatInTz(draft.createdAt, timezone)}
-          </p>
+      {xLinked ? null : (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed border-border p-4">
+          <p className="text-sm text-muted-foreground">Connect your X account to publish drafts.</p>
+          <Button asChild size="sm" variant="outline">
+            {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X. */}
+            <a href="/auth/x">Connect X</a>
+          </Button>
         </div>
-      ))}
+      )}
+
+      {drafts.length === 0 ? (
+        <TabEmpty
+          description="Drafts your agent writes — and posts you publish — will collect here."
+          title="No drafts yet"
+        />
+      ) : (
+        drafts.map((draft) => (
+          <DraftCard draft={draft} key={draft.id} timezone={timezone} xLinked={xLinked} />
+        ))
+      )}
+    </div>
+  );
+}
+
+/**
+ * One draft row with its post control. Posting to X is real money and irreversible, so the
+ * button flips to an explicit Confirm/Cancel before it fires. `postDraftToX` CAS-claims the
+ * draft and revalidates this desk's path, so a successful post re-renders the row into its
+ * posted state (the "Posted to X" link) without any client state to track here.
+ */
+function DraftCard({
+  draft,
+  timezone,
+  xLinked,
+}: {
+  readonly draft: DeskDraft;
+  readonly timezone: string | undefined;
+  readonly xLinked: boolean;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+
+  function handlePost() {
+    setConfirming(false);
+    startTransition(async () => {
+      const result = await postDraftToX(draft.id);
+      if (result.ok) {
+        toast.success("Posted to X", {
+          action: {
+            label: "View",
+            onClick: () => window.open(result.url, "_blank", "noopener,noreferrer"),
+          },
+        });
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border p-4">
+      <p className="text-sm whitespace-pre-wrap">{draft.text}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {draft.item ? draft.item.headline : "Source item unavailable"} ·{" "}
+          {formatInTz(draft.createdAt, timezone)}
+        </p>
+
+        {draft.postedAt ? (
+          <a
+            className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+            href={draft.postedUrl ?? undefined}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Posted to X ↗
+          </a>
+        ) : !xLinked ? null : confirming ? (
+          <span className="flex items-center gap-2">
+            <Button disabled={isPending} onClick={handlePost} size="sm">
+              {isPending ? "Posting…" : "Confirm post"}
+            </Button>
+            <Button
+              disabled={isPending}
+              onClick={() => setConfirming(false)}
+              size="sm"
+              variant="ghost"
+            >
+              Cancel
+            </Button>
+          </span>
+        ) : (
+          <Button onClick={() => setConfirming(true)} size="sm" variant="outline">
+            Post to X
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
