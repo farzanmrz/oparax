@@ -99,7 +99,7 @@ Beat-radar ran *everything* on Sonnet at low reasoning. The research says: split
 | --- | --- | --- | --- |
 | Clustering (form/extend stories) | **Gemini 3.5 Flash** @ medium | $4–6 (gated) / $10–15 (v1) | Best structured-output score of all candidates; half Sonnet's price; schema-guaranteed |
 | Gate audit + any bulk classification | **GPT-5.6 Luna** @ low | ~$1.50 | OpenAI's purpose-built cheap classification tier ($1/$6); zero-malformed-JSON track record. **Never use it for clustering** — it has a long-context recall cliff (41% MRCR) |
-| Voice drafting | **Claude Sonnet 5** | ~$1.50 | Claude owns style mimicry (GPT-5.6 ranked *last* on the one style-similarity eval); tiny outputs make cost irrelevant. Note: intro pricing ($2/$10) ends Aug 31 → $3/$15 |
+| Voice drafting | **Claude Sonnet 5** — now the *ceiling*, not the pick (see §11) | ~$1.50 | Claude owns style mimicry (GPT-5.6 ranked *last* on the one style-similarity eval). Note: intro pricing ($2/$10) ends Aug 31 → $3/$15. **Superseded in part:** "tiny outputs make cost irrelevant" was wrong — the voice guide makes drafting a ~26:1 input-heavy call, so *input* price dominates and the cheap tier is worth chasing (§11) |
 | Onboarding chat | DeepSeek v4-flash (unchanged for now) | pennies | Its weakness (schema output under pressure) leaves the pipeline entirely in this design |
 
 All of these are live on our Vercel AI Gateway today (verified against the live catalog) — swapping any of them is a config string, not architecture. The Gateway adds zero markup.
@@ -254,6 +254,123 @@ The complete inventory of metering points — nothing bills or happens outside t
 
 ---
 
+## 11. The Voice Lab — how a reporter's voice is learned and reused (decided 2026-07-20/21)
+
+§5 assigns "voice drafting" to a model. That row was a *price* decision made before we
+had any evidence about voice. The Voice Lab (`.voice-lab/`, gitignored working data) is
+the ablation that replaces it with measurement. Everything below is **fixed** — settled by
+a run, not by argument — unless the line says otherwise.
+
+### 11.1 The two-model split
+
+Voice is **not** one model's job. It is two, with completely different economics:
+
+| Stage | Runs | Cost shape | Therefore |
+| --- | --- | --- | --- |
+| **Extraction** — read a reporter's posts, write a voice guide | **once per reporter**, at onboarding | one-time, amortised over every future draft | buy the best model available; effort is nearly free here |
+| **Drafting** — turn one news brief into one post, guide as system prompt | **once per post, forever** | recurring, and the dominant lifetime cost | push as cheap as quality allows |
+
+The guide is the seam between them. Everything the expensive model learns is written down
+once, in text, and then re-read by a cheap model on every draft. That is the whole design.
+
+### 11.2 Extraction — fixed
+
+- **Model: Claude Fable 5.** Chosen on perfect verbatim-quote fidelity across three
+  reporters plus the highest count of unique catches (observations no other model made).
+  Sonnet and Opus were both tested and both lost.
+- **Reasoning: `thinking: { type: "adaptive" }` + `outputConfig: { effort: "high" }`.**
+  Current Anthropic models **reject** the older `{ type: "enabled", budgetTokens }` shape.
+  Adaptive is preferred over a fixed budget — the model decides depth per reporter.
+- **No web search.** Sonnet with search enabled spiralled to 19 searches, 1.08M input
+  tokens and $2.24 for an *empty* guide. The handle is supplied in the prompt instead, with
+  an explicit "use it exactly, never invent a placeholder" instruction.
+- **Prompt:** `.voice-lab/prompt-fable.txt` (≈15.9K chars), harvested from a
+  three-model dimension matrix — each model's unique catches became a named dimension in a
+  single union prompt, so one model now finds what three found separately.
+- **Corpus: 100 posts per reporter**, split **80 train / 20 held-out** (the 20 most recent).
+  The holdout exists so the drafting evaluation can never be scored against a post the
+  extractor already read. Contamination control, not sample size.
+- **Measured cost: $0.855 per reporter** (10/10 reporters, $8.55 total, 80-post corpora).
+  A one-time onboarding cost, roughly six times the Bright Data scrape that feeds it.
+- **Guide format: markdown with XML-tagged examples.** The guide IS a system prompt, so it
+  is written as one — headed markdown sections for the model to navigate, `<post>` tags
+  around each example (one example per tag, never several in one block), and **no post ids**.
+  Code fences and blockquotes were both tried and both lost: fences imply "code", multi-example
+  blockquotes blur where one post ends.
+
+### 11.3 The deploy strip — instrumentation is not deliverable
+
+The guide carries a `## Dimension Coverage` section so the *lab* can verify the extractor
+examined every dimension. The drafting model gains nothing from it and pays for it on every
+single draft. `.voice-lab/deploy-guide.py` strips it at deploy time:
+
+**235,091 → 197,144 chars across 10 guides — 16.1% off every draft, forever, at zero risk.**
+Mean guide 23,509 → 19,714 chars (≈5,900 → ≈4,900 input tokens per draft).
+
+The general rule this establishes: **anything in the guide that exists to verify the
+extractor must be stripped before the guide becomes a prompt.**
+
+### 11.4 The drafting contract — fixed
+
+The guide alone is not a prompt. `.voice-lab/draft-contract.txt` (≈5K chars) is appended
+below every guide and carries the rules the guide cannot: output hygiene (no preamble, no
+wrapping quotes, no alternatives, no markdown, never emit the `<post>` tags), and the
+content rules. The content rules exist because of failures we actually observed:
+
+- **Never invent structure the brief cannot fill** — models produced fabricated
+  `Timestamps:` chapter lists to satisfy a format the guide showed them.
+- **Never point at media that does not exist** — dangling colons introducing an attachment
+  the brief never mentioned.
+- **The carry-over trap** (its own section, with a worked example): when a brief *resembles*
+  a guide example, models carry a handle or a credit across from that example. The output
+  looks flawless and misattributes real information to a real person. The rule is stated
+  absolutely: *every name, handle, number, quote and time in the post must appear in the
+  BRIEF* — the guide supplies voice and structure only, never facts.
+
+### 11.5 The evaluation method — fixed
+
+- **Stimuli are real posts, neutralised.** Each held-out post is rewritten by
+  `openai/gpt-5.6-terra` into a flat wire brief — emoji, caps, slang, opinion and line
+  breaks stripped, third-party quotes preserved verbatim. That yields 200 genuine
+  input→output pairs with a known ground truth (the reporter's actual post). 200/200 built
+  for $0.34, with a leakage tripwire on every one.
+- **Terra is deliberately excluded from the drafting panel** — the model that wrote the
+  briefs may not be judged on them.
+- **Scoring is deterministic first, human second.** A code check traces every handle,
+  figure and timecode in a draft back to the brief before any model or person judges style.
+- **Sonnet 5 is the ceiling, not the floor.** Candidates are only upgraded to a newer tier
+  if the upgrade is still cheaper than Sonnet 5. No new model families are introduced
+  mid-ablation — families are upgraded in place (GPT, Gemini, GLM, Qwen, DeepSeek, MiniMax).
+
+### 11.6 The self-check loop — under test
+
+Two variants per model on identical stimuli: **A** = draft and stop; **B** = draft →
+deterministic code check → if and only if violations are found, one repair call naming each
+violation. The question is whether cheap models plus a repair loop reach expensive-model
+reliability at a fraction of the price. Result pending; the winner becomes §5's drafting row.
+
+### 11.7 Instrumentation rules learned the hard way
+
+Four wrong conclusions this lab reached before the code was fixed. These are now house rules:
+
+1. **`inferenceCost` from the Gateway is a string.** `.toFixed()` on it throws, and the
+   throw happens *after* the work succeeded — twice we reported a job as failed when it had
+   completed perfectly. Always `Number()` it.
+2. **Anthropic thinking tokens are not where the AI SDK puts everyone else's.** They live at
+   `providerMetadata.anthropic.usage.output_tokens_details.thinking_tokens`, not
+   `usage.outputTokenDetails.reasoningTokens`. Reading the wrong field produced a confident,
+   published, wrong claim that these models "weren't reasoning".
+3. **Normalise before comparing text.** HTML entities and literal `\n` escapes made a
+   verbatim quote look fabricated — one model scored 53% when it had actually scored 91%.
+4. **Long jobs must checkpoint and resume.** Four separate runs died mid-flight; the root
+   cause was OOM (exit 137) from high concurrency holding ~20K-char prompts. Every lab
+   script now writes after each batch and skips completed cells on restart.
+
+The generalisation: **a failure report is a claim about our instrumentation as much as about
+the model.** Verify the reader before believing the reading.
+
+---
+
 ## Appendix: the evidence these claims stand on
 
 - **Bright Data X staleness:** Fabrizio's newest post 7d12h old across 347 records/0 errors, reproduced 4× through both API endpoints; fcbarcelona 4 min fresh in the same runs (snapshots `sd_mrts2v1x…`, `sd_mrts8nd2…`, `sd_mrtppb4…`).
@@ -264,3 +381,16 @@ The complete inventory of metering points — nothing bills or happens outside t
 - **X platform:** Filtered Stream on pay-per-use, $0.005/read with 24h dedup, 2M reads/month, 1,000 rules, ~6–7s P99; webhook delivery documented per-post with rule tags; Enterprise-gating contradiction open.
 - **Model prices (Gateway live catalog, 2026-07-20):** Luna $1/$6 · Flash $1.50/$9 · Sonnet 5 $2/$10→$3/$15 · Terra $2.50/$15 · DeepSeek $0.14/$0.28.
 - **Research spend:** ≈$1.20 of Bright Data free credits + ≈$0.28 xAI.
+- **Voice Lab corpus:** 10 reporters across 5 verticals (football, NBA, NFL, politics, crypto),
+  two per vertical, 100 posts each via Bright Data `gd_lwxkxvnf1cynvib9co` — 787 training
+  posts + 200 held-out after the 80/20 split. Politics/crypto handles came from the real
+  outreach records, so the panel is not football-shaped.
+- **Extraction measured:** Fable 5 @ adaptive/high, 10/10 reporters, **$8.55 total /
+  $0.855 per reporter**; guides 20.4K–30.4K chars raw, 16.7K–25.9K after the deploy strip.
+- **Stimuli:** 200/200 neutralised briefs for $0.34; mean brief 166 chars vs 227-char real
+  post; 2/200 leakage flags, both inside deliberately-preserved third-party quotes.
+- **Cache economics (Gateway catalog, 2026-07-20):** Anthropic charges 1.25× to write cache
+  and 0.1× to read, so caching the guide pays back above ~1.3 drafts per cache window;
+  OpenAI, Google, DeepSeek and GLM charge nothing to write. With bursty reporter traffic we
+  cannot guarantee that rate, which is a further argument for a cheap base model over a
+  cached expensive one.
