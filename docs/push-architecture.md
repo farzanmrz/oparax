@@ -155,10 +155,28 @@ Three things about the *shape* of these numbers:
 1. **Fix the structuring failure now** (swap the scan's structuring step to a constrained-decoding model). Biggest single lever on the reporter's experience this week, zero migration required.
 2. **Migrate the X dev console** to the company account (new app under farzan@oparax.ai, new client keys in Vercel env, everyone relinks X once — currently just you).
 3. **Run the webhook tier probe** on the new app. Five minutes; decides the ingestion design.
-4. **Build the push spike**: a standalone form (handles + beat + sites) on a deployed preview — webhook receiver, event buffer, pure-LLM clustering (Flash), Sonnet drafts — **with the `usage_events` metering ledger (§10.2) wired in from the first commit**, so every event and model call is costed from day one. Put it in front of Reshad. *His reaction to "the story appeared 10 seconds after the tweet" is the go/no-go.*
+4. **Build the first slice — the Experiment surface** (scoped 2026-07-20, detailed below): X-only, no clustering, per-post multi-model drafting, full metering. Put it in front of Reshad. *His reaction to "the draft appeared 10 seconds after the tweet" is the go/no-go.*
 5. **Migrate the real desk** to stream-fed acquisition; Grok becomes the fallback flag.
 6. **v2: the embedding gate** — pgvector, shadow-tuned thresholds, Luna audit.
 7. **Later:** Reddit via Bright Data, handle verification at onboarding, per-desk spend caps.
+
+### The first slice, concretely: the "Experiment" surface (decided 2026-07-20)
+
+The MVP that replicates Reshad's literal ask — *"as soon as my sources post, draft it in my voice and tell me"* — with everything else consciously deferred:
+
+**Surface:** a new sidebar section, **Experiment**, separate from the existing agents: a listing page (mirroring the agents listing), a create form, and a details page per experiment. The create form has exactly five fields: beat description, tracked X handles, the reporter's own X handle (for voice), plus **news websites and draft instructions rendered greyed-out/disabled** — visible scope honesty, deferred function.
+
+**What save triggers, in order:**
+1. **Voice corpus** — a Bright Data X-posts scrape of the reporter's *own* handle (a large sample, ~100 posts ≈ $0.15 one-time). Staleness is irrelevant for style sampling, so this is squarely inside what Bright Data is good at.
+2. **The stream** — register/update the per-user Filtered Stream rule for the tracked handles, webhook delivery to our receiver route.
+3. **24h backfill** — one X recent-search pull (`from:` the tracked handles, last 24h) so the experiment shows the full flow immediately instead of waiting for the next post. This is the pull adapter's first appearance (§ "Scan Now" logic), reused as birth-backfill.
+4. **Per-post drafting, multi-model** — every incoming tracked post gets drafted in the reporter's voice by **several models side by side** (Claude Sonnet 5, Gemini, GPT-5.6 tier, DeepSeek v4-flash) so the reporter — and we — can compare voice quality on identical inputs. This is the §5 model bake-off run on real data instead of benchmarks; the winner becomes the default.
+5. **Notification** — email (or similar channel) to the reporter when new drafts land.
+6. **Metering from the first commit** — the `usage_events` ledger (§10.2) stamps every touch point: stream deliveries, backfill reads, the voice scrape, every model call per draft, notifications.
+
+**Explicitly deferred out of this slice:** clustering/stories, the embedding gate, news-site polling, draft instructions, pricing/entitlements, and auto-*posting* (the slice reaches auto-*drafting*; posting stays behind the existing confirm flow and the trust ladder).
+
+**Prerequisite gate inside the slice:** the `POST /2/webhooks` tier probe (§8 risk #1). If webhook delivery turns out Enterprise-gated, the fallback is the persistent stream connection + a small always-on forwarder.
 
 ---
 
