@@ -16,9 +16,7 @@ One document, **the plan**: it is the spec and the plan at once. Seed from
 `$ARGUMENTS` or the conversation, then work the steps in order.
 
 ## 1. Preflight
-- Read AGENTS.md + the `.claude/rules/` files for the areas the ask touches.
-- The slice comes from the user's ask — never self-served from the `backlog`
-  issue list.
+- The slice comes from the user's ask — never self-served.
 - Scratch lives in `.feature/` (self-gitignoring: `mkdir -p .feature && printf
   '*\n' > .feature/.gitignore`).
 
@@ -60,9 +58,9 @@ feature-ship's triage measures every "fix now" against it), the **decided approa
 only**, an **In scope / Deferred** split (everything asked for together is in scope —
 a minimal UI tweak *and* a major schema change are one slice; Deferred is only a
 substantial related slice better built after this lands; incidental "while we're
-here" ideas → drop or backlog, never inflate), **Build steps** for a zero-context
+here" ideas → drop, never inflate), **Build steps** for a zero-context
 engineer (file map first; bite-sized tasks with exact file ownership + interfaces +
-per-task the skills to invoke and the `.claude/rules/` area-guards to read;
+per-task the skills to invoke;
 feature-build copies these into briefs; full code in non-obvious steps; no
 placeholders), and a **## Stack & design acceptance criteria** checklist that
 feature-qc verifies the built diff against.

@@ -36,19 +36,17 @@ honest.
 
 - NEVER create per-task branches or PRs; never push main/beta; ship = dev only.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
-- Scope freezes at the plan gate; mid-build ideas → the single living backlog issue
-  via `.claude/skills/feature/scripts/backlog-add.sh` (never a new per-item issue),
-  ONLY to scribe the user's deferrals — never self-initiated. Plan Deferred migrates
-  into the same backlog at ship. See AGENTS.md → the single-living-backlog rule.
+- Scope freezes at the plan gate; mid-build ideas are out of scope — drop them, never
+  onto this branch. If one matters, the user re-plans it as its own slice later.
 - Planning docs never enter the repo; the issue body + squashed commit message are
   the record; scratch lives in self-gitignored `.feature/` and dies at ship.
 - Skill grounding is binding everywhere: the plan (from plan-synth) grounds each task
   in the stack skills its area needs; dispatched agents must be told which skills to
-  invoke and which `.claude/rules/` guards to read.
+  invoke.
 - Dependency MAJOR upgrades, framework migrations, schema/data migrations → STOP
   and present options; never autonomous.
 - Preserve behavior contracts (server-action field names, Supabase auth flows,
-  the chat scaffold wiring) — see AGENTS.md + `.claude/rules/`.
+  the chat scaffold wiring).
 
 Scripts (`start.sh`, `ship.sh`) live in `.claude/skills/feature/scripts/` and are
 called by feature-plan and feature-ship respectively.

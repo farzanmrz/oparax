@@ -36,9 +36,8 @@ Over the whole branch diff, in order (skip nothing silently — report each step
 3. **Adjudicate + apply (this session).** The workflow only reports — the session
    decides. Plan-frozen decisions in the ft issue are vetoes, not findings; drop
    them. Apply the survivors. A finding that is real but not-this-slice (a bigger
-   refactor, a scale concern that can't bite yet) → append it to the single living
-   backlog via `.claude/skills/feature/scripts/backlog-add.sh "<item; origin
-   #<issue> QC; · agent>"` (never a new per-item issue). The applied fix diff stays
+   refactor, a scale concern that can't bite yet) → surface it to the user and drop
+   it; the flow doesn't track deferrals. The applied fix diff stays
    gated by the tsc + lint pass (step 4) and boot smoke (step 5) — no separate
    delta-verify pass. Large/risky diff → offer the user `/code-review ultra` before
    proceeding.

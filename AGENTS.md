@@ -63,19 +63,6 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 - **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-scoped, except `x_accounts` which is deny-all — service-role-only credential storage; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
 
-### Issue labels
-
-GitHub labels carry issue type and state — never a title prefix (no `triage:` etc.). Every `gh issue create` sets a label; every agent applies them the same way.
-
-| Label | Meaning | Applied |
-| --- | --- | --- |
-| `feature` | A decided, plannable slice. | `start.sh` at the plan gate (auto). |
-| `bug` | Something broken. | Whoever files it. |
-| `backlog` | Marks THE single living backlog issue — the one place every deferred/"someday" item is parked. Not applied to per-item issues (there are none). | Once, on the backlog index issue. |
-| `agent` | The item came from an AI agent's own analysis (a review finding, an observed defect), not a human decision. Provenance only — pairs with `bug` (agent-surfaced bugs are still their own issue), never alone. Tool-neutral (not "claude"): `gh` issues are always authored by the repo owner's token, so this label is the only machine-vs-human signal. Backlog-item provenance is instead noted inline in the backlog list (`· agent`), since backlog items are lines, not issues. | Alongside `bug` when the agent surfaced it. |
-
-**The single living backlog (no per-item issues).** Every deferred item across all feature flows — plan Deferred (migrated at ship), mid-build out-of-scope, QC-surfaced cleanups, ship-triage backlog — is a checklist line in ONE living issue (labeled `backlog`), never its own issue. Append with `.claude/skills/feature/scripts/backlog-add.sh "<item — context; origin #<issue>; · agent if agent-surfaced>"` (it finds the issue, appends a task-list line, prints its number). When later work resolves or obsoletes an item, edit its line out of that issue's body — no opening/closing per-item issues. Farzan picks from the list; a picked item graduates into its own `/feature-plan`.
-
 ### Cross-cutting skills
 
 | Need | Skill |

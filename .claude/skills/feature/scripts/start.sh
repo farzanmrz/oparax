@@ -35,7 +35,7 @@ git pull --ff-only origin dev >&2
 
 # Create the issue; gh prints its URL (…/issues/<number>). Take the FIRST /issues/<n>
 # match's digits so extra output lines or trailing whitespace can't corrupt the number.
-url="$(gh issue create --title "$title" --label feature --body-file "$bodyfile")"
+url="$(gh issue create --title "$title" --body-file "$bodyfile")"
 issue="$(printf '%s\n' "$url" | grep -oE '/issues/[0-9]+' | head -n1 | grep -oE '[0-9]+' || true)"
 [ -n "$issue" ] || { echo "start: could not parse issue number from: $url" >&2; exit 1; }
 
