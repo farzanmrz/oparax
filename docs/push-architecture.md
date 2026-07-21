@@ -27,6 +27,9 @@ Read this section first; everything later uses these words.
 | **Constrained decoding / structured output** | A newer model feature where the model is *physically unable* to produce JSON that breaks the schema. Our current 88% scan-failure rate ("No object generated") is exactly the failure class this eliminates. |
 | **Zone (Bright Data)** | A per-product billing container in their dashboard. Our four (`cli_*`, `sdk_*`) are just duplicates auto-created by two tools. Harmless clutter. |
 | **Credit (Bright Data)** | 1 credit = 1 record or request ≈ $0.0015. We get 5,000 free per month, renewing on the 1st, drained before our $102 balance. |
+| **Metering** | Counting usage and cost at the moment each event happens (a post ingested, a model call made). History you can't reconstruct later — built from day one. |
+| **Entitlement** | What a user's tier allows (source slots, event quota, real-time vs hourly). Enforced through one code chokepoint, driven by a `tier` column. |
+| **Source slot** | The pricing unit: one handle-or-site assigned to one desk. 20 handles + 5 sites on one desk = 25 slots; putting the same handle on a second desk consumes a second slot (because it doubles downstream processing). |
 
 ---
 
@@ -70,8 +73,8 @@ For breaking news, silent staleness is disqualifying. **Bright Data stays in the
 
 **Scenario: Fabrizio posts "HERE WE GO!" at 14:02:00.**
 
-1. **14:02:07 — X delivers it to us.** Our standing Filtered Stream rule (`from:FabrizioRomano OR …`, tagged `desk:barca-watch`) matches. X POSTs the post to our webhook route on Vercel — one post per delivery, already labeled with the desk. *Cost: $0.005.*
-2. **14:02:08 — we ingest it.** The route verifies X's signature, drops duplicates (X warns they happen — we dedup by post id), and inserts an event row in Supabase.
+1. **14:02:07 — X delivers it to us.** Our standing Filtered Stream rule matches. **Design decision (revised): one rule per *user*, not per desk** — all of a user's watched handles in a single `from:h1 OR from:h2 …` rule tagged `user:<id>`. X POSTs the post to our webhook route on Vercel, one post per delivery, tagged with the user. *Cost: $0.005 — billed once per unique post per 24h across our whole account, no matter how many rules or users match it.* Why per-user rules: our plan has 1,000 rules total; per-desk rules would let one enthusiastic user burn dozens of global slots, while per-user rules make desks cost nothing and give us ~1,000 *customers* of headroom.
+2. **14:02:08 — we ingest it and route it to desks ourselves.** The route verifies X's signature, drops duplicates (X warns they happen — we dedup by post id), then fans the post out to whichever of that user's desks watch this handle (we know every desk's handle list — desk routing is our code, not X's). One event row per receiving desk in Supabase, plus a `usage_events` metering row (§10) stamped with the $0.005.
 3. **14:02:08 — the gate routes it** *(v2 — the first version ships without this layer, see below)*:
    - Free checks first: is it a repost? too short? → discard or hold.
    - Embed the text (~free) and compare against the **centroids** of currently-active stories (a centroid = the average embedding of a story's posts — the story's "location" in meaning-space).
@@ -122,7 +125,7 @@ Three things about the *shape* of these numbers:
 
 1. **Almost everything bills per event, not per hour.** A quiet news week costs almost nothing. A hot transfer-deadline week costs the most — exactly when the product is earning its keep.
 2. **Shared sources get cheaper with scale.** X dedups billing per post per 24h across our whole account — when ten Barça reporters all watch Fabrizio, we ingest and pay for his post **once**. Margins improve as customers overlap on a beat.
-3. **Capacity is comfortable for a long time:** the 2M post-reads/month plan cap supports ~100–300 desks; 1,000 stream rules ≈ ~1,000 desks (one packed rule each).
+3. **Capacity is comfortable for a long time:** the 2M post-reads/month plan cap supports ~100–300 active users' beats; with per-user rules (§4), 1,000 stream rules ≈ ~1,000 customers — and desks are free, so users can organize sources however they like.
 
 ---
 
@@ -152,10 +155,84 @@ Three things about the *shape* of these numbers:
 1. **Fix the structuring failure now** (swap the scan's structuring step to a constrained-decoding model). Biggest single lever on the reporter's experience this week, zero migration required.
 2. **Migrate the X dev console** to the company account (new app under farzan@oparax.ai, new client keys in Vercel env, everyone relinks X once — currently just you).
 3. **Run the webhook tier probe** on the new app. Five minutes; decides the ingestion design.
-4. **Build the push spike**: a standalone form (handles + beat + sites) on a deployed preview — webhook receiver, event buffer, pure-LLM clustering (Flash), Sonnet drafts. Put it in front of Reshad. *His reaction to "the story appeared 10 seconds after the tweet" is the go/no-go.*
+4. **Build the push spike**: a standalone form (handles + beat + sites) on a deployed preview — webhook receiver, event buffer, pure-LLM clustering (Flash), Sonnet drafts — **with the `usage_events` metering ledger (§10.2) wired in from the first commit**, so every event and model call is costed from day one. Put it in front of Reshad. *His reaction to "the story appeared 10 seconds after the tweet" is the go/no-go.*
 5. **Migrate the real desk** to stream-fed acquisition; Grok becomes the fallback flag.
 6. **v2: the embedding gate** — pgvector, shadow-tuned thresholds, Luna audit.
 7. **Later:** Reddit via Bright Data, handle verification at onboarding, per-desk spend caps.
+
+---
+
+## 10. Metering, entitlements, and pricing
+
+### 10.1 The law: meter from birth, gate early, bill late
+
+"Adding payments" is three layers with very different retrofit costs, and only the last one is Stripe:
+
+| Layer | What it is | When to build | Why |
+| --- | --- | --- | --- |
+| **Metering** | Recording usage + cost at the instant each event happens | **Day one, in the spike** | History you never recorded cannot be reconstructed; bolting counters on later touches every code path |
+| **Entitlements** | Tier limits enforced in code via one chokepoint | Early — the seam multiplies if cut late | Gating touches every feature path |
+| **Billing (Stripe)** | Checkout, subscriptions, invoices | Later — it's an isolated plug | Its whole job is "payment event → set `user.tier`". First customers get a manual payment link and a conversation |
+
+### 10.2 The metering ledger — every point where cost or usage is born
+
+**Design:** one append-only `usage_events` table. Every row: `ts · user_id · desk_id (nullable) · kind · units · unit_cost_est · cost_est · provider_ref · meta`. Rollup views per desk/user/day feed the dashboard, the entitlement caps, and pricing analytics. Two rules: *never block the pipeline on a metering failure* (log-and-continue, reconcile later), and *all rate constants live in one versioned module* (prices change — e.g. Sonnet's +50% on Aug 31 — and old rows must keep the rate that was true when stamped).
+
+The complete inventory of metering points — nothing bills or happens outside this list:
+
+| # | `kind` | Fires when | Units recorded | Cost stamped | Attribution |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `x.post_ingested` | Webhook delivery accepted | 1 post (+ dedup flag) | **$0.005** on first sighting in a 24h window; **$0** on re-sights/duplicates | User (from rule tag); receiving desks fan-out listed in `meta` |
+| 2 | `x.replay` | 24h replay job after webhook outage | 1 job; replayed posts then meter as #1 | $0 for the job itself | Account |
+| 3 | `x.rule_op` | Stream rule create/update/delete (onboarding, tier change, pause) | 1 op | $0 (but rate-limited 100/15min — usage matters even when cost doesn't) | User |
+| 4 | `site.rss_poll` | Every feed fetch | 1 poll (+ bytes, 304-not-modified flag) | ~$0 (compute only) | Desk + site |
+| 5 | `site.unlocker_fetch` | Bright Data Unlocker fetch of a blocked site | 1 fetch | **$0.0015** | Desk + site |
+| 6 | `bd.record` | Future Bright Data dataset records (Reddit etc.) | Records delivered | **$0.0015/record**; errored inputs $0 (measured) | Desk; `provider_ref` = snapshot id |
+| 7 | `embed.call` | Every embedding batch (gate + voice retrieval) | Tokens | Provider rate (~$0.02/M) | Desk |
+| 8 | `llm.cluster` | Every clustering call | Input / output / cached tokens | **Exact** — AI Gateway returns real usage + cost per call | Desk |
+| 9 | `llm.audit` | Hourly audit batch (account-wide) | Tokens | Exact | Account, prorated to desks by attachments reviewed |
+| 10 | `llm.draft` | Every draft generation | Tokens | Exact | Desk + draft row (extends today's `cost_deepseek` column pattern) |
+| 11 | `llm.onboarding` | Every chat-onboarding turn | Tokens | Exact | User — *this closes backlog #62's known gap (onboarding costs currently reconstructed from untrusted client transcripts)* |
+| 12 | `grok.scan` | Fallback pull scans (while Grok remains the fallback flag) | 1 scan | Exact (`cost_in_usd_ticks/1e10` — today's `cost_grok` pattern) | Desk + run row |
+| 13 | `x.post_created` | Publishing a draft to X | 1 post (+ has-URL flag) | **$0.015**, or **$0.20 if the post contains a URL** | Desk + draft row |
+| 14 | `infra.*` | Vercel compute / Supabase | — | Tracked coarse and monthly, not per-event (negligible at this scale) | Account |
+
+**Reconciliation (the honesty check):** a daily job compares our stamped estimates against each provider's billed truth — X's usage endpoint, Bright Data's `POST /costs/export/json`, the AI Gateway's usage reporting — and records the drift. Alert if any provider diverges >5%. Estimates catch problems in hours; reconciliation catches estimate bugs in a day.
+
+### 10.3 Entitlements — one chokepoint, and what a tier change must switch off
+
+- One `tier` column per user; one limits table per tier: **source slots**, monthly event quota (soft cap), real-time vs hourly delivery, desks **unlimited** on every tier.
+- One `checkEntitlement(user, action)` module, consulted at exactly five places: desk save (slot count), stream-rule reconcile, webhook accept (quota check), poller scheduling, and draft/post actions.
+- **The propagation rule that must never be skipped:** any tier change, cap hit, or lapse → reconcile the user's X rule (pause = *remove* it), pause their site pollers, mark desks paused. Because X bills *us* per delivered post, a lapsed user with a live rule is negative margin — billing state must reach the rule layer, not just the UI.
+- Soft-cap behavior is always **pause + notify**, never a surprise bill. Reporters don't tolerate variable invoices.
+
+### 10.4 Pricing: source slots, desks free
+
+**Decided direction:** tiers cap **source slots** (sum of handle/site assignments across all desks — duplicates consume slots); desks are unlimited pure organization. This works because the measured costs track *sources*, not desks: ingestion bills per unique post account-wide, polling scales per site, and the per-user-rule design (§4) makes desks infrastructurally free. The one desk-shaped cost (smaller clustering batches, the audit pass) is noise or batchable.
+
+**Unit economics** (v2 pipeline, Reshad-shaped ~6,000 posts/month — the LLM lines are in here explicitly):
+
+| Component | Per ingested post | Share |
+| --- | --- | --- |
+| X stream read | $0.0050 | ~65–75% |
+| Clustering (Flash, novel residue only) | ~$0.0008–0.0010 | ~12% |
+| Drafting (Sonnet) + audit (Luna) | ~$0.0005 | ~7% |
+| Embedding | ~$0.0002 | ~3% |
+| Site-polling share | ~$0.0005 | ~7% |
+| **All-in** | **~$0.007–0.008** (v1 pure-Sonnet: ~$0.010) | — |
+
+**The formula** (carried over from the COGS notes, new unit): `included events = price × margin_share ÷ cost_per_event`. At 70% gross margin and ~1¢/event, $149/month funds ~10,000 events — a Reshad-shaped beat with headroom.
+
+**Illustrative ladder** (method > numbers; boundaries get set empirically from the metering data after a few weeks of real desks):
+
+| Tier | Price | Source slots | Included events/mo | Notes |
+| --- | --- | --- | --- | --- |
+| Hourly (trial rung) | free / cheap | ~10 | n/a — pull engine | The old Grok pipeline becomes the trial: *"updated every hour — upgrade to hear it the second it breaks"* |
+| Starter | ~$49 | ~13 | ~3,000 | Quiet/niche beats |
+| Pro | ~$149 | ~30 | ~10,000 | Reshad-shaped beats |
+| Newsroom | custom | pooled | pooled | Teams; shared-source economics shine here |
+
+**Margin tailwinds to remember:** shared handles bill once across the whole account (ten Barça customers ingest Fabrizio's post for one $0.005 — margins improve with beat density; don't pass through as discounts early), and the free 5,000 Bright Data credits/month cover the Unlocker tier of site monitoring for early users. **First price:** a conversation with Reshad after the spike wows him — Stripe is for the tenth customer.
 
 ---
 
