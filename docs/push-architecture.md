@@ -99,7 +99,7 @@ Beat-radar ran *everything* on Sonnet at low reasoning. The research says: split
 | --- | --- | --- | --- |
 | Clustering (form/extend stories) | **Gemini 3.5 Flash** @ medium | $4–6 (gated) / $10–15 (v1) | Best structured-output score of all candidates; half Sonnet's price; schema-guaranteed |
 | Gate audit + any bulk classification | **GPT-5.6 Luna** @ low | ~$1.50 | OpenAI's purpose-built cheap classification tier ($1/$6); zero-malformed-JSON track record. **Never use it for clustering** — it has a long-context recall cliff (41% MRCR) |
-| Voice drafting | **Claude Sonnet 5** — now the *ceiling*, not the pick (see §11) | ~$1.50 | Claude owns style mimicry (GPT-5.6 ranked *last* on the one style-similarity eval). Note: intro pricing ($2/$10) ends Aug 31 → $3/$15. **Superseded in part:** "tiny outputs make cost irrelevant" was wrong — the voice guide makes drafting a ~26:1 input-heavy call, so *input* price dominates and the cheap tier is worth chasing (§11) |
+| Voice drafting | **DeepSeek v4-flash** (decided §11.7; Sonnet 5 was the ceiling it beat on price at equal style) | ~$1.50 | Claude owns style mimicry (GPT-5.6 ranked *last* on the one style-similarity eval). Note: intro pricing ($2/$10) ends Aug 31 → $3/$15. **Superseded in part:** "tiny outputs make cost irrelevant" was wrong — the voice guide makes drafting a ~26:1 input-heavy call, so *input* price dominates and the cheap tier is worth chasing (§11) |
 | Onboarding chat | DeepSeek v4-flash (unchanged for now) | pennies | Its weakness (schema output under pressure) leaves the pipeline entirely in this design |
 
 All of these are live on our Vercel AI Gateway today (verified against the live catalog) — swapping any of them is a config string, not architecture. The Gateway adds zero markup.
@@ -342,14 +342,67 @@ content rules. The content rules exist because of failures we actually observed:
   if the upgrade is still cheaper than Sonnet 5. No new model families are introduced
   mid-ablation — families are upgraded in place (GPT, Gemini, GLM, Qwen, DeepSeek, MiniMax).
 
-### 11.6 The self-check loop — under test
+### 11.6 The self-check loop — settled
 
 Two variants per model on identical stimuli: **A** = draft and stop; **B** = draft →
 deterministic code check → if and only if violations are found, one repair call naming each
-violation. The question is whether cheap models plus a repair loop reach expensive-model
-reliability at a fraction of the price. Result pending; the winner becomes §5's drafting row.
+violation. **The loop works and it is cheap.** It fires on only 6–16% of drafts, so it costs
+1.1–1.4× rather than 2×, and it drove residual violations to zero for every model tested
+except MiniMax. Two models that fabricated badly unassisted (Gemini 3.1 Flash Lite, Gemini
+3.5 Flash: 13 and 21 violations) finished at **zero**. **Fixed: self-check is always on.**
 
-### 11.7 Instrumentation rules learned the hard way
+A related finding worth keeping: **fabrication is padding.** The models that invented facts
+were the ones writing long — ~300–350 chars against clean models' 150–220. Repair shrank
+them to 160–230. They were not misreading the brief; they were filling space it could not fill.
+
+### 11.7 The full run — 5 finalists × 200 held-out stimuli (1,000 drafts, $6.79)
+
+**Style is measured against a human control.** A feature fingerprint (length, line breaks,
+emoji, hashtags, caps ratio, quote style, dashes, ellipses, punctuation, digit density) is
+built from each reporter's **80 training posts**. Every draft is scored as mean absolute
+z-distance from it. The reporter's own **held-out** posts are scored identically — their
+distance is the floor. Without that control a style number is unreadable.
+
+| Config | Residual violations | Style dist. | Dispersion | $/1,000 drafts |
+| --- | --- | --- | --- | --- |
+| **deepseek-v4-flash** | 4 | 0.35 | **0.55** | **$1.23** |
+| sonnet-5 @medium | 1 | 0.35 | 0.53 | $23.07 |
+| qwen3.5-flash | **0** | 0.37 | 0.50 | $2.95 |
+| gpt-5.4-nano @low | 3 | 0.35 | 0.46 | $1.37 |
+| gpt-5.4-mini @low | **0** | 0.33 | 0.44 | $5.34 |
+
+*Human floor: 0.47. Every model scored BELOW it — and that is the finding, not the win.*
+
+**The metric trap, stated plainly.** Distance-to-median is minimised by writing the median
+post every time. Models beat the human floor because humans vary and models do not. The
+honest measure is therefore **dispersion**: the ratio of a model's feature spread to the
+reporter's own. Every model lands at **0.44–0.55 — they use roughly half the reporter's
+range.** They have learned the reporter's *average* post, not their repertoire. This is the
+central open problem of voice drafting, and no model in this panel solves it.
+
+**Two decisions this settles:**
+
+1. **Drafting runs on DeepSeek v4-flash** — best dispersion of the panel, cheapest per
+   draft, and **19× cheaper than Sonnet 5** for the same style distance. It is also already
+   the onboarding-chat model, so the stack gets simpler, not more complex. Sonnet stays
+   available as a per-desk upgrade; it is no longer the default (superseding §5).
+2. **Cost is recorded twice** — the Gateway's `inferenceCost` *and* a token × list-price
+   computation. DeepSeek and GLM return no `inferenceCost`, and a missing reading nearly
+   eliminated the eventual winner from the panel.
+
+**Two prompt bugs the run exposed:**
+
+- **Hashtag dispersion is 0.24–0.25 for every model** — a suspiciously flat constant. The
+  drafting contract says "when in doubt, omit the hashtag", so all five became uniformly
+  conservative. That instruction is buying safety by deleting a real voice feature.
+- **Crypto is the hard vertical for everyone** (0.55–0.64 vs 0.22–0.34 elsewhere, and the
+  only vertical above the human floor). That reporter posts long, threaded, show-promotional
+  content — a repertoire, not a format. It is the sharpest instance of the dispersion problem.
+
+**What this does not measure:** these are surface features, not meaning, wit, or judgment.
+Blind human reading on a sample is still required before the voice claim is made to a user.
+
+### 11.8 Instrumentation rules learned the hard way
 
 Four wrong conclusions this lab reached before the code was fixed. These are now house rules:
 
