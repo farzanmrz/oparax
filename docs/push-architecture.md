@@ -371,33 +371,54 @@ distance is the floor. Without that control a style number is unreadable.
 | gpt-5.4-nano @low | 3 | 0.35 | 0.46 | $1.37 |
 | gpt-5.4-mini @low | **0** | 0.33 | 0.44 | $5.34 |
 
-*Human floor: 0.47. Every model scored BELOW it — and that is the finding, not the win.*
+*Human floor: 0.47. Every model scored below it — which turned out to be a metric artifact,
+not a result. Corrected below.*
 
-**The metric trap, stated plainly.** Distance-to-median is minimised by writing the median
-post every time. Models beat the human floor because humans vary and models do not. The
-honest measure is therefore **dispersion**: the ratio of a model's feature spread to the
-reporter's own. Every model lands at **0.44–0.55 — they use roughly half the reporter's
-range.** They have learned the reporter's *average* post, not their repertoire. This is the
-central open problem of voice drafting, and no model in this panel solves it.
+**The metric trap, and the correction.** Distance-to-median is minimised by writing the
+median post every time, so "beats the human floor" measures blandness, not quality. The
+first reading of this run concluded from a raw dispersion ratio (0.44–0.55) that every model
+uses "half the reporter's range". **That conclusion was wrong**, and three checks that should
+have run before it was published show why:
 
-**Two decisions this settles:**
+- **corr(draft length, real post length) = +0.69.** The model reliably knows when to write
+  twelve characters and when to write four hundred. That is mode-matching.
+- **Emoji decision correct on 178/200 drafts** — used where the reporter used them, withheld
+  where they didn't.
+- **Dispersion corrected for scale (coefficient of variation): 0.73–0.86, not 0.44–0.55.**
 
-1. **Drafting runs on DeepSeek v4-flash** — best dispersion of the panel, cheapest per
-   draft, and **19× cheaper than Sonnet 5** for the same style distance. It is also already
-   the onboarding-chat model, so the stack gets simpler, not more complex. Sonnet stays
-   available as a per-desk upgrade; it is no longer the default (superseding §5).
-2. **Cost is recorded twice** — the Gateway's `inferenceCost` *and* a token × list-price
-   computation. DeepSeek and GLM return no `inferenceCost`, and a missing reading nearly
-   eliminated the eventual winner from the panel.
+Dispersion is a standard deviation, so it shrinks with the mean. Drafts average 146 chars
+against real posts' 226 — the "half the range" finding was mostly *length compression*
+counted twice. And the compression is the harness's, not the model's:
+**corr(draft length, brief length) = +0.88.** The neutraliser emits 166-char briefs for
+226-char posts; the model faithfully reproduced a 27% compression we introduced.
 
-**Two prompt bugs the run exposed:**
+**Read the drafts, not only the table.** Reshad's siren-emoji BREAKING format with club
+colours, his one-word affection posts (`Raphinha ❤️` → `Raphinha. ❤️`), Solender's flat
+lowercase name lists, Zrebiec's bare quote-attribution — all transfer, from separate guides.
+**The guide format works.**
 
-- **Hashtag dispersion is 0.24–0.25 for every model** — a suspiciously flat constant. The
-  drafting contract says "when in doubt, omit the hashtag", so all five became uniformly
-  conservative. That instruction is buying safety by deleting a real voice feature.
-- **Crypto is the hard vertical for everyone** (0.55–0.64 vs 0.22–0.34 elsewhere, and the
-  only vertical above the human floor). That reporter posts long, threaded, show-promotional
-  content — a repertoire, not a format. It is the sharpest instance of the dispersion problem.
+**Most of the residual gap is the stimulus, not the guide.** The visible misses share one
+cause: the model correctly obeying the contract on information the neutraliser removed. No
+dangling colon because the brief carried no attachment; no `Timestamps:` block because it
+carried no timecodes; no "source sends along this photo" because sourcing was stripped.
+**In production none of that is missing** — the pipeline feeds the real source post with its
+media, timestamps and attribution intact. That portion of the gap is a harness artifact and
+will not exist in the product.
+
+**The honest residual:** after scale correction, models still use **15–27% less variation**
+than the reporter. Real, but a refinement rather than a failure — and Sonnet 5 is the
+*flattest* of the five (0.73), a further reason not to pay 19× for it.
+
+**One real prompt bug the run exposed:** hashtag dispersion is 0.24–0.25 for every model — a
+constant that flat across five architectures is an instruction, not a model property. The
+drafting contract says "when in doubt, omit the hashtag", so all five became uniformly
+conservative. That rule buys fabrication safety by deleting a real voice feature, and
+self-check now catches fabrication anyway. Worth revisiting.
+
+**Crypto is the hard vertical for everyone** (0.55–0.64 vs 0.22–0.34 elsewhere) — that
+reporter posts long threaded show-promotional content whose signature element is exactly the
+timecode block the neutraliser strips. Retest against real source posts before treating it
+as a model weakness.
 
 **What this does not measure:** these are surface features, not meaning, wit, or judgment.
 Blind human reading on a sample is still required before the voice claim is made to a user.
