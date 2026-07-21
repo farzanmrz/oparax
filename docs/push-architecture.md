@@ -199,10 +199,27 @@ stream filter is a later feature, not this slice.
 — roughly **40+ handles in one 1,024-char rule**, comfortably one rule per user across all
 their desks. 1,000 rules ÷ 1 per user ≈ 1,000 customers of headroom.
 
-**Blocked on one credential:** `.env.local` holds `X_CLIENT_ID`/`X_CLIENT_SECRET` (the OAuth2
-confidential-client pair used for user-context posting). The stream endpoints need the
-**app-only Bearer Token / API Key & Secret** from the developer portal, which we have never
-stored. Until that lands, the live cap probe cannot run.
+**Probed live against our own app (2026-07-21) — the docs were wrong for us.**
+`GET /2/tweets/search/stream/rules/counts` returns:
+
+```json
+{"cap_per_client_app": "5", "cap_per_project": "15", "project_rules_count": "0"}
+```
+
+**Five rules per app, fifteen per project — not the documented 1,000.** One rule per user
+would cap us at five customers. **Revised design: pack all users into shared rules and route
+by author in Supabase.** One rule holds ~40 handles, so five rules ≈ **~200 distinct tracked
+handles across every customer** — the real ceiling to watch. The `user:<id>` rule tag becomes
+unnecessary: routing was always going to happen in our own tables, and author-based routing
+dedups naturally across users and desks.
+
+**Stream access is CONFIRMED on the existing app.** `GET /2/tweets/search/stream` returns
+`409 RuleConfigurationIssue` — *"You must define rules … before connecting"* — not a 403 tier
+refusal. No Enterprise, no new X app, no migration needed to ship real-time.
+
+**Credential note:** the stream needs the app-only **Bearer Token** (`X_BEARER_TOKEN`), which
+is distinct from the `X_CLIENT_ID`/`X_CLIENT_SECRET` OAuth2 pair used for user-context
+posting. Use it **raw** — URL-decoding the portal's `%2B`/`%3D` escapes produces a 401.
 
 ### The first slice, concretely: the "Experiment" surface (decided 2026-07-20)
 
