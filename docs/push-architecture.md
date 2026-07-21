@@ -160,6 +160,50 @@ Three things about the *shape* of these numbers:
 6. **v2: the embedding gate** — pgvector, shadow-tuned thresholds, Luna audit.
 7. **Later:** Reddit via Bright Data, handle verification at onboarding, per-desk spend caps.
 
+### Ingestion, settled (2026-07-21) — persistent connection, not webhooks
+
+The §8 risk #1 contradiction is resolved, and the two things being conflated are now
+separated for good:
+
+| Mechanism | Endpoint | Tier |
+| --- | --- | --- |
+| **Persistent connection** (what we use) | `GET /2/tweets/search/stream` | **Pay-per-use — 1 simultaneous connection**, 1,000 rules, 1,024-char rules |
+| Webhook delivery (what we don't) | `POST /2/tweets/search/webhooks/:id` | **"currently available to Enterprise developers"** |
+
+Registering a webhook (`POST /2/webhooks`) is *not* tier-gated; **routing filtered-stream
+matches to it is**. Probing the first endpoint would have returned success and taught us
+nothing. **Decision: build the persistent-connection path.** Consequences:
+
+- **No CRC handshake, no HMAC, no hourly re-validation.** That whole apparatus is
+  webhook-only and is now out of scope.
+- **One connection for the entire account** — a single always-on forwarder process holding
+  the stream and POSTing each delivery into Vercel. Not per-user, not per-desk. This is a
+  single point of failure by construction and needs reconnect-with-backoff plus a
+  liveness alarm.
+- The receiver route on our side is identical either way; only the feed changes. If the
+  webhook tier ever opens, the forwarder is deleted and nothing else moves.
+
+**The rule shape is fixed** (docs forbid negating a group — negate each exclusion separately,
+and always parenthesise the author group):
+
+```
+(from:h1 OR from:h2 OR …) -is:retweet -is:quote -is:reply
+```
+
+**No `lang:` filter.** Sources post in multiple languages and we want those posts. Language
+handling moves into the drafting model instead: **translate the source to English, then draft
+in the reporter's voice.** (Reshad monitors English and Spanish.) Offering language as a
+stream filter is a later feature, not this slice.
+
+**Capacity:** X handles are ≤15 *characters*, so a `from:` clause costs ~24 chars worst case
+— roughly **40+ handles in one 1,024-char rule**, comfortably one rule per user across all
+their desks. 1,000 rules ÷ 1 per user ≈ 1,000 customers of headroom.
+
+**Blocked on one credential:** `.env.local` holds `X_CLIENT_ID`/`X_CLIENT_SECRET` (the OAuth2
+confidential-client pair used for user-context posting). The stream endpoints need the
+**app-only Bearer Token / API Key & Secret** from the developer portal, which we have never
+stored. Until that lands, the live cap probe cannot run.
+
 ### The first slice, concretely: the "Experiment" surface (decided 2026-07-20)
 
 The MVP that replicates Reshad's literal ask — *"as soon as my sources post, draft it in my voice and tell me"* — with everything else consciously deferred:
@@ -176,7 +220,12 @@ The MVP that replicates Reshad's literal ask — *"as soon as my sources post, d
 
 **Explicitly deferred out of this slice:** clustering/stories, the embedding gate, news-site polling, draft instructions, pricing/entitlements, and auto-*posting* (the slice reaches auto-*drafting*; posting stays behind the existing confirm flow and the trust ladder).
 
-**Prerequisite gate inside the slice:** the `POST /2/webhooks` tier probe (§8 risk #1). If webhook delivery turns out Enterprise-gated, the fallback is the persistent stream connection + a small always-on forwarder.
+**Prerequisite gate inside the slice: RESOLVED** — webhook delivery is Enterprise-gated; we build the persistent-connection path plus a small always-on forwarder (see "Ingestion, settled" above). The remaining blocker is storing the app-only Bearer Token.
+
+**Locked build tasks that must not get lost:**
+1. **Port `deploy-guide.py` into the extraction path.** Stripping `## Dimension Coverage` is 16.1% off every draft forever; it currently exists only as a lab script in a gitignored folder. If this is missed, the first production guide ships 16% too long.
+2. **Store the app-only Bearer Token** in env — the stream cannot be touched without it.
+3. **Notification: email via Resend, and the reply path is a feature, not a nicety.** Confirmed directly with Reshad: he wants to reply to the email to correct a draft. Inbound-email handling is therefore in scope for the notification design, not deferred.
 
 ---
 
