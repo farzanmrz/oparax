@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Phase 2→3 kickoff — create the issue, then cut the ONE feature branch off dev.
-# Runs only after the plan-approval gate, so a rejected plan never leaves an orphan
-# issue. stdout is ONLY the new issue number (git chatter is sent to stderr) so the
-# caller can capture it — it names the branch (ft/<issue-number>, number only) and
-# drives ship.sh in Phase 6.
+# Phase 1's closing kickoff — create the issue, then cut the ONE feature branch off
+# dev, handing Phase 2 (build) its working branch. Runs only after the plan-approval
+# gate, so a rejected plan never leaves an orphan issue. stdout is ONLY the new issue
+# number (git chatter is sent to stderr) so the caller can capture it — it names the
+# branch (ft/<issue-number>, number only) and drives ship.sh in Phase 4.
 #
 # Usage:  start.sh "<issue title>" [<plan-body-file>]
 #         With no file argument (or "-"), the plan body is read from stdin — the
@@ -23,7 +23,7 @@ else
   bodyfile="$body"
 fi
 
-# Refuse on a dirty tree — Phase 3 starts from a clean dev base.
+# Refuse on a dirty tree — Phase 2 (build) starts from a clean dev base.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "start: working tree not clean — commit or stash first." >&2
   exit 1

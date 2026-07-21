@@ -1,7 +1,7 @@
 ---
 name: feature-ship
 description: >-
-  Phases 4–5 of the feature flow, standalone: the triage + ship gates. Use when
+  Phase 4 of the feature flow, standalone: the triage + ship gates. Use when
   the user says /feature-ship, "ship it", "close the slice", or brings
   manual-test findings on a finished branch.
 argument-hint: "[issue#]"

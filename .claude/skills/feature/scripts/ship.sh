@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Phase 6 ship — squash-merge the feature branch into dev locally, push, delete the
-# branch, close the issue — then sweep session scratch and mint the NEXT slice's
-# empty issue + branch, so the next /feature session takes over an existing seat
-# (rolling chain). ONE clean commit on dev; no PR, no CI.
+# Phase 4 ship — squash-merge the feature branch into dev locally, push, delete the
+# branch, close the issue, then sweep session scratch. ONE clean commit on dev;
+# no PR, no CI. The next slice cuts its own issue + branch via start.sh once its
+# plan is approved (Phase 1 gate) — nothing here pre-mints it.
 #
 # Usage:  ship.sh <issue-number> "<commit message>"
-# Run from the repo root, on branch ft/<issue-number>, after Phase 4 verification.
+# Run from the repo root, on branch ft/<issue-number>, after QC (Phase 3) and the
+# triage gate (Phase 4).
 set -euo pipefail
 
 issue="${1:?usage: ship.sh <issue-number> \"<commit message>\"}"
