@@ -1042,7 +1042,7 @@
     {
       "handle": "@jessicaelgot",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Jessica Elgot",
       "first_name": "Jessica",
       "message": "Hey Jessica, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1051,7 +1051,7 @@
     {
       "handle": "@breeallegretti",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Aubrey Allegretti",
       "first_name": "Aubrey",
       "message": "Hey Aubrey, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
