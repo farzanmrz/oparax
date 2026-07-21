@@ -409,11 +409,14 @@ will not exist in the product.
 than the reporter. Real, but a refinement rather than a failure — and Sonnet 5 is the
 *flattest* of the five (0.73), a further reason not to pay 19× for it.
 
-**One real prompt bug the run exposed:** hashtag dispersion is 0.24–0.25 for every model — a
-constant that flat across five architectures is an instruction, not a model property. The
-drafting contract says "when in doubt, omit the hashtag", so all five became uniformly
-conservative. That rule buys fabrication safety by deleting a real voice feature, and
-self-check now catches fabrication anyway. Worth revisiting.
+**The hashtag "bug" was a seventh instrumentation error, not a prompt bug.** A flat 0.24–0.25
+hashtag dispersion across five architectures looked like our own "when in doubt, omit" rule
+suppressing a voice feature. Checked per reporter, it is the opposite: **seven of ten
+reporters never use a hashtag, and the models correctly never use one.** Reshad tags 50% of
+posts; the models tag 40–45%. The flat ratio was a near-zero variance divided by a near-zero
+variance — a variance ratio is meaningless on a sparse binary feature. **No contract change
+was made**; the rule is working. The only genuine miss is recall on rare taggers
+(Sami Mokbel tags 20%, models 0%) — a sparse-signal limit, not a rule defect.
 
 **Crypto is the hard vertical for everyone** (0.55–0.64 vs 0.22–0.34 elsewhere) — that
 reporter posts long threaded show-promotional content whose signature element is exactly the
