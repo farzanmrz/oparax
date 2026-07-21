@@ -150,8 +150,8 @@ Work in order:
 Emit ONLY the plan as markdown, with these sections:
 - **Definition of done** — up top; the slice's contract.
 - **Approach** — the decided one only, not a menu.
-- **In scope / Deferred** — Deferred is only for a substantial related slice better built after this one; incidental "while we're here" ideas are dropped or noted for backlog, never inflated in.
-- **Build steps** — for a zero-context engineer: file map first; bite-sized tasks with exact file ownership + interfaces; per task, the SKILLS it must invoke (carry them from the briefs) AND the .claude/rules/ area-guards it must read; full code in non-obvious steps; no placeholders.
+- **In scope / Deferred** — Deferred is only for a substantial related slice better built after this one; incidental "while we're here" ideas are dropped, never inflated in.
+- **Build steps** — for a zero-context engineer: file map first; bite-sized tasks with exact file ownership + interfaces; per task, the SKILLS it must invoke (carry them from the briefs); full code in non-obvious steps; no placeholders.
 - **## Stack & design acceptance criteria** — the deduped union of the briefs' acceptanceCriteria, as a concrete checklist. feature-qc verifies the built diff against this section, so every line must be checkable.
 - **Conflicts resolved** — one line per reconciled conflict and the call made (omit if none).`,
   { label: 'synthesis', phase: 'Synthesis', agentType: 'general-purpose', model: 'opus', effort: 'high' },
