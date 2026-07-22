@@ -63,21 +63,19 @@ model + tier**, so the smart spend tracks your budget. There is no `repo-fit` le
 the guards ride in via the Scope digest and via path-rule auto-injection when a lens
 reads a matching file.
 
-The returned `plan` markdown carries: **Definition of done** (the slice contract;
-feature-ship's triage measures every "fix now" against it), the **decided approach
-only**, an **In scope / Deferred** split (everything asked for together is in scope —
-a minimal UI tweak *and* a major schema change are one slice; Deferred is only a
-substantial related slice better built after this lands; incidental "while we're
-here" ideas → drop, never inflate), **Build steps** for a zero-context
-engineer (file map first; bite-sized tasks with exact file ownership + interfaces +
-per-task the skills to invoke;
-feature-build copies these into briefs; full code in non-obvious steps; no
-placeholders), and a **## Stack & design acceptance criteria** checklist that
-feature-qc verifies the built diff against.
+The returned `plan` carries the standard sections the workflow enforces (so they are
+not re-specified here) — Definition of done, Approach, In scope / Deferred, Build steps
+(per-task file ownership + the skills each task invokes), and a **## Stack & design
+acceptance criteria** checklist. Two are load-bearing downstream: feature-ship's triage
+measures every "fix now" against the Definition of done, and feature-qc verifies the
+built diff against the acceptance-criteria checklist.
 
-Read the returned plan critically before the gate — you are the decider; the workflow
-grounds and drafts, you own the final call. Fix anything it got wrong, then present
-it. Never propose anything a hard guard forbids.
+**Scope discipline is yours to enforce at the gate** — the workflow drafts, you decide:
+everything asked for together is one slice (a minimal UI tweak *and* a major schema
+change ship together); Deferred is only a substantial related slice better built after
+this lands; incidental "while we're here" ideas → drop, never inflate. Read the plan
+critically, fix anything it got wrong, and never let it propose what a hard guard
+forbids.
 
 ## 4. GATE ✋
 **Paste the full plan into chat** (never a file pointer). Revise until
