@@ -183,6 +183,15 @@ nothing. **Decision: build the persistent-connection path.** Consequences:
 - The receiver route on our side is identical either way; only the feed changes. If the
   webhook tier ever opens, the forwarder is deleted and nothing else moves.
 
+**Forwarder host (2026-07-21): Railway, replacing the earlier Fly.io lean.** Project
+`oparax-ingest` exists (workspace "Oparax", account farzan@oparax.ai, production env,
+id `15319bb7-…`). Verified pricing: per-second on actual resources (≈$10.15/GB-RAM/mo,
+≈$20.30/vCPU/mo) — a 256MB worker holding one stream connection is ~$3/mo of usage, inside
+the Hobby plan's included allowance, so **~$5/mo flat total; scales with resources, never per
+user or per stream** (one process serves every customer — X caps us at 1 connection anyway).
+The worker service deploys with the ingestion build task, **not before**: the exposed
+`X_BEARER_TOKEN` must be rotated first.
+
 **The rule shape is fixed** (docs forbid negating a group — negate each exclusion separately,
 and always parenthesise the author group):
 
@@ -220,6 +229,16 @@ refusal. No Enterprise, no new X app, no migration needed to ship real-time.
 **Credential note:** the stream needs the app-only **Bearer Token** (`X_BEARER_TOKEN`), which
 is distinct from the `X_CLIENT_ID`/`X_CLIENT_SECRET` OAuth2 pair used for user-context
 posting. Use it **raw** — URL-decoding the portal's `%2B`/`%3D` escapes produces a 401.
+
+**Tier decision (2026-07-21): stay on FREE, deliberately.** The console shows Free because
+pay-per-use is opt-in — a project stays Free until billing is attached; nothing is broken.
+Stream access is confirmed on the free app, and at one user the caps that bind us (5 rules/app)
+are 5× headroom. The exhaustion risk is delivery volume, so the failsafe is a **meter, not a
+pre-emptive upgrade**: the worker counts every delivery into `usage_events` and alarms at 80%
+of the observed cap; upgrading is then a billing flip with zero architecture change. The
+planned company-account app (farzan@oparax.ai) **resets all probe results** — re-probe
+`rules/counts` + a bare stream connect on the new app before cutting keys over. Canonical copy
+with full caveats: `.claude/rules/x.md`.
 
 ### The first slice, concretely: the "Experiment" surface (decided 2026-07-20)
 
@@ -363,6 +382,18 @@ once, in text, and then re-read by a cheap model on every draft. That is the who
   around each example (one example per tag, never several in one block), and **no post ids**.
   Code fences and blockquotes were both tried and both lost: fences imply "code", multi-example
   blockquotes blur where one post ends.
+- **Measured facts, injected (added 2026-07-21).** The measurable half of the guide — length
+  distribution, line-break shares, the exhaustive emoji and hashtag inventories with counts,
+  mention/URL/punctuation/ALL-CAPS rates — is now **computed by code over the full corpus** and
+  prepended to the extraction input as a `MEASURED STYLE FACTS` block; a matching prompt section
+  makes the numbers binding (rules must agree with them and carry the rates; a glyph absent from
+  an inventory may not be taught). Rationale: reading under-counts sparse habits — the extractor
+  called Sami Mokbel hashtag-free when the count is 6/80 (`#AFC×5 #MCFC×4 …`); a count cannot
+  miss that, costs $0, and frees the model's attention for what code can't measure (tone, stance,
+  sourcing, when each habit fires). Lives in `.voice-lab/sdk-lab/extract-fable80.mjs`
+  (`measuredFacts()`, prompt_version `…-mfacts`) + `prompt-fable.txt` `## MEASURED FACTS`.
+  **The production port of the extraction path must carry this block** — it is part of the
+  extraction contract now, same status as the deploy strip.
 
 ### 11.3 The deploy strip — instrumentation is not deliverable
 
@@ -511,6 +542,63 @@ Four wrong conclusions this lab reached before the code was fixed. These are now
 
 The generalisation: **a failure report is a claim about our instrumentation as much as about
 the model.** Verify the reader before believing the reading.
+
+A fifth rule, learned from research rather than a burn: **per-request cost is retrievable
+provider-independently** via `getGenerationInfo()` on `providerMetadata.gateway.generationId`
+(returns `totalCost`, usage, latency server-side). This is the proper fix for the
+DeepSeek/GLM missing-`inferenceCost` gap — the dual-recording workaround stays as a
+cross-check, but production metering should use the generation lookup.
+
+### 11.9 Model design, settled without further ablation (2026-07-21)
+
+Decided from the live catalog (306 models fetched 2026-07-21), our own §11 run data, and
+public benchmarks — **no new experiments**. Standing criterion: a cost difference must be
+justified by a proportional result difference; "newer" and "pricier" are not arguments.
+
+**Drafter — unchanged: `deepseek/deepseek-v4-flash`, with `openai/gpt-5.4-nano` as the
+council's second family.**
+- `deepseek-v4-pro` ($0.435/$0.87) does NOT replace nano: it is the **same family** as the
+  base drafter, and the second slot exists to buy *independent fact blind spots* — flash+pro
+  of one lineage collapses exactly the diversity being paid for. Price is not the criterion
+  for that slot; independence is. (v4-pro is noted as the obvious *single-model upgrade path*
+  if drafting quality ever needs a step up: 3.1× flash, still 19× under Sonnet.)
+- Whole-catalog sweep found no better base: §11.7 showed model spread (0.33–0.37 style) is
+  ~8× smaller than reporter spread, so at equal style price decides. The only cheaper
+  current-gen options (`glm-4.7-flash` $0.07/$0.40, `qwen3.5-flash` $0.10/$0.40) save
+  pennies/month at 1,500 drafts; qwen already ran and did not beat flash. Fails the
+  proportionality criterion in both directions.
+- `gemini-3.6-flash` ($1.50/$7.50) is out for drafting: 27× flash's output rate, flash-tier
+  positioning, no evidence of a style edge. **There is no Gemini 3.6 Pro on the gateway** —
+  the 3.6 generation ships Flash only; the newest Pro is `gemini-3.1-pro-preview` ($2/$12),
+  which already lost the §11.2 extraction ablation.
+- The loosened latency budget (1–3 min, from ~10s) changes nothing: council latency was never
+  binding, cost is — and cost compounds per draft forever.
+
+**Extractor — Fable 5 stays primary; the council, when built, is 2× Fable + Kimi K3 +
+DeepSeek v4-pro (union-and-falsify, Fable synthesizes). ~$3.20–3.50/reporter one-time.**
+- The OpenRouter self-fusion result (+6.7pt, Opus fused with itself) does **not** transfer to
+  extraction as assumed: that gain comes from sampling variance on tasks with a checkable
+  answer. What justifies 2× Fable here is our own observation that different runs *notice*
+  different habits (the unique-catch phenomenon behind the §11.2 dimension-matrix prompt) —
+  union-then-falsify harvests it; the benchmark neither proves nor disproves it.
+- `moonshotai/kimi-k3` ($3/$15, 1M ctx, 30% of Fable's rate) earns a full analyst slot on
+  evidence: #1 on EQ-Bench Creative Writing v3 (Elo 2377, above Fable) with the lowest slop
+  in the top 10; Fable tops the separate Longform board (83.0). K3 is the one candidate
+  plausibly at-tier for style analysis, not a downgrade slot.
+- `deepseek-v4-pro` is the cheap cross-family noticing-bias slot (~$0.02/reporter). If its
+  unique-catch count in the falsify stage is ~0, drop it — the log decides.
+- Gemini is excluded from the council: 3.1-pro-preview lost the ablation at high effort, and
+  no newer Pro tier exists on the gateway. Diminishing returns cap the council at these 4
+  generative passes; a 5th member adds falsification cost linearly for a shrinking union gain.
+
+**Reasoning budgets — a tool we already use; they change no pick.** Three confirmed cap
+mechanisms through the gateway: the AI SDK 7 top-level `reasoning` param (`none`→`xhigh` —
+the lab already runs gpt tiers at `low`), the gateway-level `reasoning: {effort|max_tokens}`,
+and Gemini-native `providerOptions.google.thinkingConfig.thinkingLevel`. WMT25 measured an
+uncapped Gemini Pro inflating output tokens **6.6×** (the most expensive model in its whole
+eval) — matching our own lab observation, so **any future Gemini run must cap reasoning**.
+But caps fix cost, not rank: Gemini lost extraction on quality at full effort, and
+3.6-flash's drafting price floor is its token rate, not its reasoning volume. No pick changes.
 
 ---
 
