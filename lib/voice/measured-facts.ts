@@ -7,18 +7,10 @@
 // agree with them, and a glyph absent from an inventory may not be taught.
 // Ported from the lab original (.voice-lab/sdk-lab/extract-fable80.mjs, prompt fable-prod-…-mfacts).
 
-// One emoji per match, ZWJ sequences and flags intact where the runtime supports the `v` flag.
-// The CONSTRUCTOR form is required and the ignore below is load-bearing: as a literal, `/…/gv`
-// is rejected by tsc under this project's ES2017 target, and on any runtime without `v` it is a
-// PARSE error — which the try/catch could never catch, silently killing the fallback.
-const EMOJI: RegExp = (() => {
-  try {
-    // biome-ignore lint/complexity/useRegexLiterals: a literal defeats the runtime feature-detect
-    return new RegExp("\\p{RGI_Emoji}", "gv");
-  } catch {
-    return /\p{Extended_Pictographic}/gu;
-  }
-})();
+// One emoji per match — the `v` flag keeps ZWJ sequences and flag emoji intact (👨‍⚕️, 🇬🇭 count
+// as one). Requires tsconfig `target: ES2024`+ and a `v`-capable runtime (Node ≥20, all
+// evergreen browsers) — both floor requirements of this stack.
+const EMOJI = /\p{RGI_Emoji}/gv;
 const HASHTAG = /#[\p{L}\p{N}_]+/gu;
 
 function share(texts: string[], re: RegExp): number {

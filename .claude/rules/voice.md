@@ -32,18 +32,14 @@ Reading under-counts sparse habits — the extractor called Sami Mokbel hashtag-
 true count is 6/80 (`#AFC×5 #MCFC×4 #WHUFC×4 #MUFC×1`). A count cannot miss that, costs $0,
 and frees the model for what code can't measure: tone, stance, sourcing, when each habit fires.
 
-**The `EMOJI` regex shape is load-bearing, and so is its `biome-ignore`.** It must stay a
-RegExp *constructor* call: as the literal `/\p{RGI_Emoji}/gv` it fails tsc under the project's
-`target: ES2017`, and on any runtime without `v` support it is a PARSE error — which the
-`try`/`catch` could never catch, silently killing the fallback to
-`\p{Extended_Pictographic}`.
-
-Biome's `lint/complexity/useRegexLiterals` rewrites the constructor to a literal and Biome
-classifies that fix as **safe**, so the format-on-write hook applies it with no `--unsafe`.
-It did exactly that twice during the port. The suppression must sit on the line **immediately
-above the `return`** — placed above the enclosing `const`, it does not bind and the rewrite
-happens anyway (observed, not theorized). If you find a bare `/…/gv` here, it is that
-regression: restore the constructor and re-check the comment's placement.
+**The `EMOJI` regex needs `target: ES2024`.** It is a plain `/\p{RGI_Emoji}/gv` literal —
+the `v` flag is what keeps ZWJ sequences and flag emoji counting as one glyph. tsconfig's
+`target` was bumped to ES2024 for exactly this; downgrading the target re-breaks this file's
+typecheck. (Historical note, kept because it burned two write cycles: under the old ES2017
+target this had to be a RegExp-constructor call, and Biome's `useRegexLiterals` — whose
+constructor→literal rewrite is classified **safe**, so the format-on-write hook applies it —
+kept rewriting it back. A `biome-ignore` only binds when placed on the line immediately above
+the flagged expression, not above the enclosing declaration.)
 
 ## Model configs are decided; don't re-choose them mid-task
 
