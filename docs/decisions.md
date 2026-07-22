@@ -14,16 +14,20 @@ only with a named fact or an explicit owner override, recorded as such.
 
 ## BUILD ORDER — read this first
 
-The LOCKED sections below are the spec; this is the sequence they ship in. **A feature flow
-triggered as "the next slice" builds the first slice marked NEXT — one slice, not the
-whole list.** When a slice ships, mark it DONE and promote the following one to NEXT.
+The LOCKED sections below are the spec; this is the sequence they ship in. Slices 1–2 are
+DONE. **The remaining work — the full UI (slice 4) and the ingestion worker (slice 3) — is
+being built as ONE flow (owner decision, 2026-07-22): plan every remaining slice together
+and build all of it in a single feature run. Do not stop after one slice.** Sequence within
+that run: the UI first (so the product is drivable), the worker after. The per-slice rows
+below are retained as the spec for *what* each part must satisfy — not as a gate that splits
+the build.
 
 | # | Slice | Status | Spec | Done when |
 | --- | --- | --- | --- | --- |
 | 1 | **Schema + voice extraction** — the five tables (incl. the clustering extension point) and the Fable extraction path (`lib/voice/` is already ported: measured-facts + deploy-strip) | **DONE** (#66) — guide extracted, stored, RLS-readable | L4, L2, L11, L12 | A real voice guide for Reshad, extracted from his real corpus, stored and readable |
 | 2 | **Drafting council + notification + metering** — the two-family council and judge, Slack + email delivery, `usage_events` stamped from birth | **DONE** (#67) — council + judge + inbound email corrections behind `POST /api/ingest` | L3, L5, L7, L12 | A hand-seeded source post produces a Slack message carrying a draft in Reshad's voice — **this is the demo** |
-| 3 | **Ingestion worker** — the always-on Railway forwarder: stream connection, shared rules, reconnect-with-backoff, liveness alarm, delivery metering | **NEXT** — it POSTs into the existing `/api/ingest`; nothing else in the app moves | L1 | Live posts replace the hand-seeded one end to end |
-| 4 | **UI** — site chrome, desk sections, feed, council expansion | **BLOCKED** on the Claude-design wireframe → v0 lock | L8 | The reporter reviews and posts from the app instead of from Slack |
+| 3 | **Ingestion worker** — the always-on Railway forwarder: stream connection, shared rules, reconnect-with-backoff, liveness alarm, delivery metering | **QUEUED — after the UI** (reordered 2026-07-22, owner); until it ships the feed runs on hand-seeded posts via `/api/ingest` | L1 | Live posts replace the hand-seeded one end to end |
+| 4 | **UI — the whole surface, one slice** — site chrome, every desk section, feed, council expansion, creation flow | **NEXT** — design locked (Claude-design `Oparax Feed.dc.html`, imported not re-derived); builds all of L8 in a single pass, nothing gated behind another section and nothing deferred *within* the UI | L8 | The reporter reviews and posts from the app instead of from Slack |
 
 Rules for whoever picks this up: the spec is already settled — **plan from these sections,
 do not re-derive, re-price, or re-ask.** The REJECTED list exists so alternatives are not
@@ -35,9 +39,10 @@ model calls or spend must satisfy them explicitly, not inherit them by luck:**
 and **L12** (every model call records its output *and* its reasoning trace, one
 `model_calls` row each, single model or five). If a slice makes a model call and its plan
 does not say where the trace is stored, **the plan is wrong** — that exact omission shipped
-once in slice 1. Slice 3 is deliberately not first: it is the riskiest
-component (a long-lived socket with no backfill safety net on the free tier), so the
-pipeline is proven before the socket is debugged.
+once in slice 1. Slice 3 (the socket worker) is the riskiest component — a long-lived socket
+with no backfill safety net on the free tier — so within the combined run it is sequenced
+last; the pipeline it feeds is already proven (slice 2 done), and until it ships the feed
+runs on hand-seeded posts.
 
 ---
 
