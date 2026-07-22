@@ -8,14 +8,13 @@
 // Ported from the lab original (.voice-lab/sdk-lab/extract-fable80.mjs, prompt fable-prod-…-mfacts).
 
 // One emoji per match, ZWJ sequences and flags intact where the runtime supports the `v` flag.
-// Built via the RegExp CONSTRUCTOR, not a literal, for two reasons that both bite: a literal
-// with an unsupported flag is a PARSE error (the try/catch could never catch it), and the
-// flags must be non-literal or tsc rejects `v` under a pre-es2024 target. Keep it this shape —
-// a formatter or "simplification" back to /…/gv breaks the fallback silently.
-const EMOJI_FLAGS: string = "gv";
+// The CONSTRUCTOR form is required and the ignore below is load-bearing: as a literal, `/…/gv`
+// is rejected by tsc under this project's ES2017 target, and on any runtime without `v` it is a
+// PARSE error — which the try/catch could never catch, silently killing the fallback.
 const EMOJI: RegExp = (() => {
   try {
-    return new RegExp("\\p{RGI_Emoji}", EMOJI_FLAGS);
+    // biome-ignore lint/complexity/useRegexLiterals: a literal defeats the runtime feature-detect
+    return new RegExp("\\p{RGI_Emoji}", "gv");
   } catch {
     return /\p{Extended_Pictographic}/gu;
   }

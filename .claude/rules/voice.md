@@ -32,11 +32,18 @@ Reading under-counts sparse habits — the extractor called Sami Mokbel hashtag-
 true count is 6/80 (`#AFC×5 #MCFC×4 #WHUFC×4 #MUFC×1`). A count cannot miss that, costs $0,
 and frees the model for what code can't measure: tone, stance, sourcing, when each habit fires.
 
-**The `EMOJI` regex shape is load-bearing.** It is built with the RegExp *constructor* and a
-non-literal flags string for two reasons that both bite: a regex *literal* with an unsupported
-flag is a PARSE error (the `try`/`catch` fallback could never catch it), and tsc rejects a
-literal `v` flag under the project's pre-es2024 target. A formatter already rewrote it to
-`/…/gv` once. If you see that shape, it is a regression — restore the constructor.
+**The `EMOJI` regex shape is load-bearing, and so is its `biome-ignore`.** It must stay a
+RegExp *constructor* call: as the literal `/\p{RGI_Emoji}/gv` it fails tsc under the project's
+`target: ES2017`, and on any runtime without `v` support it is a PARSE error — which the
+`try`/`catch` could never catch, silently killing the fallback to
+`\p{Extended_Pictographic}`.
+
+Biome's `lint/complexity/useRegexLiterals` rewrites the constructor to a literal and Biome
+classifies that fix as **safe**, so the format-on-write hook applies it with no `--unsafe`.
+It did exactly that twice during the port. The suppression must sit on the line **immediately
+above the `return`** — placed above the enclosing `const`, it does not bind and the rewrite
+happens anyway (observed, not theorized). If you find a bare `/…/gv` here, it is that
+regression: restore the constructor and re-check the comment's placement.
 
 ## Model configs are decided; don't re-choose them mid-task
 
