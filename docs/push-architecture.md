@@ -619,6 +619,61 @@ Kimi K3, DeepSeek v4-pro, and Qwen3.7-max (union-and-falsify, Fable synthesizes)
 - Build note: K3's exact reasoning-cap knob through the gateway is unverified — confirm at
   council build time; an uncappably verbose analyst inflates the falsify stage.
 
+### 11.10 Budget-constrained final design (2026-07-21, supersedes 11.9 where they conflict)
+
+Two hard ceilings introduced: **extraction ≤ $2.00 one-time per reporter; drafting ≤ $2.00
+per month** (latency 1–2 min acceptable, nowhere binding). Two elimination rules retired:
+"untested" no longer disqualifies (members are admitted within budget and **production data
+retires them** — the retirement rule replaces ablations), and "same family" no longer
+disqualifies (it is a diversity weight, and budget arbitrates). `grok-4.1-fast` is
+deprecated/rerouted to `grok-4.3` per the dev console — that alternate is dead ($2.5/M out
+cannot fit drafting; 4.3 is alternate-listed for extraction analysis only).
+
+**Extraction: $1.95/reporter, diversity moved INTO the council.** The 2×-Fable design is
+dead under $2 ($2.64) — the second *generative* Fable run is what the ceiling cut, which is
+also the answer to "why no family diversity in the council": now there is, everywhere but
+the two roles Fable's on-task win actually justifies.
+
+| Step | Model | $ |
+| --- | --- | --- |
+| 1. Primary guide (cache-write the 34K corpus+prompt prefix) | fable-5 | $0.98 |
+| 2. Blind analysts, parallel, corpus-only in / compact observations out | kimi-k3 · qwen3.7-max · deepseek-v4-pro | $0.14 + $0.05 + $0.02 |
+| 3. Revision + falsify (cache-READ prefix at 0.1× + own guide + observations) | fable-5 | $0.77 |
+| **Total** | | **$1.95** |
+
+Analysts are **blind** (corpus only, never Fable's draft) — cheaper AND anchoring-free, so
+diverse noticing is preserved; the revision pass re-reads the full corpus via cache at 0.1×,
+so falsification never trusts quotes on faith. Cache-miss worst case +$0.31 → $2.26: the
+revision must launch inside the cache TTL (analysts take 1–3 min in parallel; use the 1h TTL
+if the 5-min default ever misses). Alternates on the bench, auditioned by the retirement
+rule as seats open: glm-5.2 ($0.055), grok-4.3 ($0.045), mistral-large-3 ($0.02, the EU
+option). The measured-facts block (§11.2) is $0 and stays.
+
+**Drafting: the budget kills the tested council, not the scaffold.** $2/mo at 50 posts/day
+= **$1.33 per 1k drafts all-in**; the measured `gpt-5.4-nano` second family alone is
+$2.06/mo — dead. What fits:
+
+| Option | Pipeline | $/1k | $/mo | Verdict |
+| --- | --- | --- | --- | --- |
+| A (ship now) | v4-flash + self-check (measured) | $1.23 · ~$0.55 warm-cache | $1.84 · ~$0.82 | **Fits unconditionally** |
+| C (flip later) | v4-flash + gpt-5-nano@low + v4-flash judge@none, temp 0 | $1.13 cached · $1.82 uncached | $1.70 · $2.72 | **Fits only on warm cache — telemetry-gated** |
+| B | cheap trio (gpt-5-nano + glm-4.7-flashx + qwen3.5-flash@capped) + judge | ~$1.50 | ~$2.25 | Over, and drops the tested winner |
+| v4-pro (any role) | | $2.71 | $4.07 | Out on budget — not on family |
+
+**Decision: ship A; build the council scaffold with a config-list of members; flip to C when
+`getGenerationInfo` telemetry shows the base's cached rate ≤ ~$0.85/1k.** DeepSeek charges
+nothing to write cache and $0.0028/M to read — the per-reporter guide is a constant ~5K
+prefix, so warm-cache is the expected production state; bursty traffic is the risk, which is
+why the flip is telemetry-gated, not assumed. Cheap members run **reasoning-capped** (low or
+none) — `qwen3.5-flash` measured $2.95/1k uncapped vs ~$0.5 capped is the difference between
+fitting and not, making reasoning caps load-bearing for the first time.
+
+**The volume flag that the $2/mo cap makes unavoidable:** the budget binds *per volume*. At
+the measured Barça watch-set floor of 134 posts/day, the all-in allowance is $0.50/1k —
+even solo uncached v4-flash ($1.23) fails, and warm-cache solo ($0.55) sits at the line.
+If real tracked volume approaches that, the choice is draft-on-selection instead of
+draft-everything, or a raised cap. $2/mo is safe at ≤ ~50 tracked posts/day.
+
 **Reasoning budgets — a tool we already use; they change no pick.** Three confirmed cap
 mechanisms through the gateway: the AI SDK 7 top-level `reasoning` param (`none`→`xhigh` —
 the lab already runs gpt tiers at `low`), the gateway-level `reasoning: {effort|max_tokens}`,
