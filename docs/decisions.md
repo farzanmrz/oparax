@@ -12,6 +12,27 @@ only with a named fact or an explicit owner override, recorded as such.
 
 ---
 
+## BUILD ORDER — read this first
+
+The LOCKED sections below are the spec; this is the sequence they ship in. **A feature flow
+triggered as "the next slice" builds the first slice marked NEXT — one slice, not the
+whole list.** When a slice ships, mark it DONE and promote the following one to NEXT.
+
+| # | Slice | Status | Spec | Done when |
+| --- | --- | --- | --- | --- |
+| 1 | **Schema + voice extraction** — the five tables (incl. the clustering extension point) and the Fable extraction path (`lib/voice/` is already ported: measured-facts + deploy-strip) | **NEXT** | L4, L2 | A real voice guide for Reshad, extracted from his real corpus, stored and readable |
+| 2 | **Drafting council + notification + metering** — the two-family council and judge, Slack + email delivery, `usage_events` stamped from birth | after 1 | L3, L5, L7 | A hand-seeded source post produces a Slack message carrying a draft in Reshad's voice — **this is the demo** |
+| 3 | **Ingestion worker** — the always-on Railway forwarder: stream connection, shared rules, reconnect-with-backoff, liveness alarm, delivery metering | after 2 | L1 | Live posts replace the hand-seeded one end to end |
+| 4 | **UI** — site chrome, desk sections, feed, council expansion | **BLOCKED** on the Claude-design wireframe → v0 lock | L8 | The reporter reviews and posts from the app instead of from Slack |
+
+Rules for whoever picks this up: the spec is already settled — **plan from these sections,
+do not re-derive, re-price, or re-ask.** The REJECTED list exists so alternatives are not
+reconsidered without a new fact. Slice 3 is deliberately not first: it is the riskiest
+component (a long-lived socket with no backfill safety net on the free tier), so the
+pipeline is proven before the socket is debugged.
+
+---
+
 ## LOCKED
 
 ### L1. Ingestion — a persistent stream connection, one forwarder, shared rules
