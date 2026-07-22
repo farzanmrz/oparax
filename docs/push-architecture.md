@@ -616,8 +616,8 @@ Kimi K3, DeepSeek v4-pro, and Qwen3.7-max (union-and-falsify, Fable synthesizes)
 - Caveat kept honest: K3's seat rests on writing-generation boards, and `gpt-5.6-sol` proves
   those transfer weakly to extraction (81.7 Longform Elo, still lost our panel) — K3 is an
   evidenced bet, not a proven pick; the falsify log is what settles it.
-- Build note: K3's exact reasoning-cap knob through the gateway is unverified — confirm at
-  council build time; an uncappably verbose analyst inflates the falsify stage.
+- Build note: K3's reasoning cap was probed 2026-07-21 — **it has none**; see §11.10 for the
+  `max_completion_tokens` mitigation and the re-priced seat.
 
 ### 11.10 Budget-constrained final design (2026-07-21, supersedes 11.9 where they conflict)
 
@@ -637,9 +637,20 @@ the two roles Fable's on-task win actually justifies.
 | Step | Model | $ |
 | --- | --- | --- |
 | 1. Primary guide (cache-write the 34K corpus+prompt prefix) | fable-5 | $0.98 |
-| 2. Blind analysts, parallel, corpus-only in / compact observations out | kimi-k3 · qwen3.7-max · deepseek-v4-pro | $0.14 + $0.05 + $0.02 |
+| 2. Blind analysts, parallel, corpus-only in / compact observations out | kimi-k3 (capped 6K) · qwen3.7-max · deepseek-v4-pro | $0.18 + $0.05 + $0.02 |
 | 3. Revision + falsify (cache-READ prefix at 0.1× + own guide + observations) | fable-5 | $0.77 |
-| **Total** | | **$1.95** |
+| **Total** | | **$2.00** |
+
+**K3's reasoning is NOT cappable — probed live 2026-07-21, and the budget absorbs it.** Four
+gateway calls on a one-word question: default 70 reasoning tokens, `effort: "high"` 144,
+`effort: "none"` **119**, `max_tokens: 256` 156. Every variant returns HTTP 200 — the param is
+**accepted and silently ignored**, so an "it didn't error" check would have passed while the
+cost assumption stayed wrong. K3 always thinks. The mitigation that does work is
+`max_completion_tokens`, a hard API-enforced ceiling on reasoning + content together: **cap
+the K3 analyst at 6K**, which re-prices it $0.135 → $0.18 worst case and lands the council at
+exactly **$2.00**. If that proves too tight in practice, drop the cap to 4K (observations are
+compact lists) before dropping the seat. Verify any future analyst's cap the same way — by
+reading `reasoning_tokens` back, never by trusting a 200.
 
 Analysts are **blind** (corpus only, never Fable's draft) — cheaper AND anchoring-free, so
 diverse noticing is preserved; the revision pass re-reads the full corpus via cache at 0.1×,
