@@ -52,7 +52,7 @@ pnpm format     # Biome format --write
 - `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/`'s token store + post/unlink actions) + auth server actions + desk render helpers (`lib/agents.ts`).
 - `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable and now carries post-outcome columns — `posted_at`, `posted_tweet_id`, `posted_url` — stamped by the service-role client after an RLS ownership check; `x_accounts` has RLS enabled with zero policies, deny-all — read/written only by the service-role client).
 - `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
-- `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
+- `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/` · `workflows/` · `hooks/` (see Formatting below).
 - `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands. Native `x-check`, `x-recheck`, `x-dm`, `x-stat`, and `lean-log` directories are separate Codex workflow skills, outside Claude Code's orchestration and push scope; Claude Code must ignore them and must not mirror or include them when pushing its own work. These five skills always execute inline in the current Codex task and must never delegate to a custom agent; select the desired model in the task before invoking them.
 
 Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.vercel/`.
@@ -61,6 +61,13 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 ## Conventions
 
+- **Formatting is automatic — never run it by hand.** A `PostToolUse(Edit|Write)` hook
+  (`.claude/hooks/biome-write.sh`, wired in `.claude/settings.json`) runs `biome check
+  --write` on every file as it's written, in this session and in every sub-agent. Don't
+  run `pnpm format` / `pnpm lint:fix` in bulk to "clean up" — it's already done, and a
+  bulk pass only adds churn to the diff. `pnpm lint` stays useful as a read-only check.
+  Only the residual Biome won't auto-fix (no-fix or `--unsafe` rules) needs a human or an
+  agent: that's `feature-lint`'s job.
 - **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-scoped, except `x_accounts` which is deny-all — service-role-only credential storage; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
 
 ### Cross-cutting skills

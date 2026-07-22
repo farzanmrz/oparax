@@ -3,8 +3,8 @@ name: feature-lint
 description: >-
   Resolve residual Biome lint findings on a feature branch's changed files — the
   rules `biome check --write` can't safely auto-fix. Invoked by /feature-qc as its
-  final pass; also runnable standalone on a branch (/feature-lint). NOT for a
-  one-off lint of a single file — run `pnpm lint:fix` directly for that.
+  final pass; also runnable standalone on a branch (/feature-lint). NOT for
+  formatting — the PostToolUse hook already does that on every write.
 argument-hint: "[base ref, default dev]"
 allowed-tools: Bash(git *) Bash(pnpm *)
 model: inherit
@@ -12,12 +12,16 @@ model: inherit
 
 # Lint resolve — clear the residual, safely
 
-`biome check --write` already auto-handles formatting, import order, and every lint rule
-with a **safe** fix in one pass. What's left is the residual: rules with **no fix** (most
-`next` rules, e.g. `noImgElement`) or an **unsafe** fix (`react/useExhaustiveDependencies`).
-Those need a human-style edit. This skill clears that residual on the feature's changed
-files **without bloating the main conversation** — it fans the fixes out to isolated
-sub-agents and returns only a compact report.
+The safe pass is already done. The `PostToolUse(Edit|Write)` hook
+(`.claude/hooks/biome-write.sh`) runs `biome check --write` on every file the moment it's
+written — formatting, import order, and every lint rule with a **safe** fix — so code is
+never unformatted for longer than one tool call, in this session or any sub-agent's.
+
+What reaches this skill is only the residual: rules with **no fix** (most `next` rules,
+e.g. `noImgElement`) or an **unsafe** fix (`react/useExhaustiveDependencies`) — the ones
+`--write` deliberately won't touch without `--unsafe`. Those need a human-style edit. This
+skill clears them on the feature's changed files **without bloating the main
+conversation** — it fans the fixes out to isolated sub-agents and returns a compact report.
 
 ## Correctness is the constraint
 
@@ -38,19 +42,14 @@ for review** rather than shipped silently.
    ```
    Empty → nothing to do; stop.
 
-2. **Auto-pass — format + safe fixes** over those files only:
-   ```bash
-   echo "$files" | xargs pnpm exec biome check --write --no-errors-on-unmatched
-   ```
-
-3. **Extract the residual as JSON** (write to the session scratch dir, not the repo):
+2. **Extract the residual as JSON** (write to the session scratch dir, not the repo):
    ```bash
    echo "$files" | xargs pnpm exec biome lint --reporter=json --no-errors-on-unmatched > <scratch>/residual.json
    ```
    Parse it into `{ file → [findings] }`. Each finding carries a rule id (e.g.
    `lint/correctness/useExhaustiveDependencies`), a location, and a message.
 
-4. **Risk-tier every finding by what its fix can break** — tier by *category*, not a
+3. **Risk-tier every finding by what its fix can break** — tier by *category*, not a
    frozen rule list, so new rules slot in by principle:
    - **High — behavior-changing.** The fix alters runtime semantics: effect/callback
      timing, re-render behavior, control flow. Anchor case
@@ -60,7 +59,7 @@ for review** rather than shipped silently.
      swapping `<img>`→`next/image` (needs real `width`/`height`; can shift layout, but the
      failure is visible/compile-checked, not silent).
 
-5. **Inline vs. fan-out.** If the residual is tiny (≈≤3 findings across ≤2 files), just
+4. **Inline vs. fan-out.** If the residual is tiny (≈≤3 findings across ≤2 files), just
    fix it inline — dispatch overhead isn't worth it. Otherwise **partition by file** (each
    file is owned by exactly one sub-agent — never two agents in the same file) and dispatch
    in parallel:
@@ -70,15 +69,15 @@ for review** rather than shipped silently.
    tier. The agent definition already carries the rules (no `--unsafe`, stay
    in-assignment, don't build); don't restate them — just pass the work.
 
-6. **Normalize + gate.** After the sub-agents converge:
+5. **Gate.** After the sub-agents converge:
    ```bash
-   echo "$files" | xargs pnpm exec biome check --write --no-errors-on-unmatched   # format their edits
-   pnpm build                                                                       # the only authority
+   pnpm build   # the only authority
    ```
-   A clean `pnpm build` is the completion gate. If it fails, the error names the file —
-   fix and re-run build.
+   Their edits are already formatted — `lint-fixer` writes via the Edit tool, so the
+   hook fired on each one. A clean `pnpm build` is the completion gate. If it fails, the
+   error names the file — fix and re-run build.
 
-7. **Report.** Return a compact summary: findings resolved per file, anything still
+6. **Report.** Return a compact summary: findings resolved per file, anything still
    unresolved, and a prominent **⚠ Review these** section collecting every high-tier
    behavior-changing fix the careful lane flagged. Surface that section to the user — those
    are the changes `pnpm build` can't vouch for.
@@ -86,4 +85,7 @@ for review** rather than shipped silently.
 ## Notes
 - Scope is **changed files only** — never fix pre-existing findings in untouched code.
   That's scope creep; surface them to the user instead of fixing them here.
-- This is the single place Biome and `pnpm build` run in the feature workflow.
+- The safe pass is **not** this skill's job — the `PostToolUse` hook owns it, continuously.
+  Never re-run `biome check --write` in bulk here; that would put formatting churn back
+  into the QC diff, which is exactly what moving it to the hook removed.
+- This is the single place `pnpm build` runs in the feature workflow.
