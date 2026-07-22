@@ -10,17 +10,14 @@
 // module scope).
 import { generateText } from "ai";
 import { DRAFT_RUNNER_PROMPT } from "@/lib/sysprompts";
+import {
+  DEEPSEEK_DRAFT_MODEL,
+  DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
+  stripMarkdown,
+} from "./deepseek-draft-config";
 import { X_CHAR_LIMITS } from "./desk-config";
 import type { NewsItem } from "./scan-result";
 import { rawEstimatedCost } from "./usage-cost";
-
-/** X renders no markdown, so a stray `**bold**` posts with literal asterisks. The prompt forbids
- *  it, but a small model still slips one in occasionally — strip the bold markers as a backstop so
- *  the stored draft is exactly what posts. Leaves `#hashtags` and `@handles` (which use `#`/`_`,
- *  not `**`) untouched. */
-function stripMarkdown(text: string): string {
-  return text.replaceAll("**", "");
-}
 
 function newsItemBlock(item: NewsItem): string {
   const sources = item.sources.map((s) => `${s.handle} — ${s.url}`).join("\n  ");
@@ -46,10 +43,10 @@ export async function draftItems(input: {
       ].join("\n");
 
       const result = await generateText({
-        model: "deepseek/deepseek-v4-flash",
+        model: DEEPSEEK_DRAFT_MODEL,
         // No `reasoning`: DeepSeek V4 thinks by default and self-scales effort (see agent.ts).
         // Drafting in-voice is judgment, so let its native adaptive thinking run.
-        providerOptions: { gateway: { sort: "cost" } },
+        providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
         system: DRAFT_RUNNER_PROMPT,
         prompt: userMessage,
         // Plain text, NOT structured output. A draft IS a string, so an `Output.object({ draft })`

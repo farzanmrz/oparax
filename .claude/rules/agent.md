@@ -11,7 +11,18 @@ paths:
 
 ## Reasoning: DeepSeek's own default everywhere except structuring
 
-DeepSeek V4 defaults to thinking ON and self-scales effort by problem difficulty (its native adaptive behavior; the AI SDK's `low`/`medium` both coerce to its `high`, so an explicit mid level is a no-op). So the three judgment calls — the chat agent (`agent.ts`), the scan **cluster** pass (`scan-run.ts` Pass 1), and the draft runner (`draft-run.ts`) — pass **no `reasoning` param** and let native adaptivity run. Do not re-add a level there; it buys nothing. The ONE exception is the scan **structure** pass (`scan-run.ts` Pass 2's `generateObject`), pinned `reasoning: "none"`: with thinking on, the model interleaves reasoning into the JSON and `generateObject` fails to parse it (`NoObjectGeneratedError`) on large scans — an observed production failure, so that `'none'` is load-bearing, not a cleanup target, and omitting it silently re-enables thinking.
+DeepSeek V4 defaults to thinking ON and self-scales effort by problem difficulty (its native adaptive behavior; the AI SDK's `low`/`medium` both coerce to its `high`, so an explicit mid level is a no-op). So the judgment calls — the chat agent (`agent.ts`), the scan **cluster** pass (`scan-run.ts` Pass 1), the draft runner (`draft-run.ts`), and the council's draft/revision calls (`draft-council-run.ts`) — pass **no `reasoning` param** and let native adaptivity run. Do not re-add a level there; it buys nothing.
+
+The exception is any DeepSeek **`generateObject`** call — `scan-run.ts` Pass 2's structuring and `draft-council-run.ts`'s judge. `reasoning: "none"` alone is **not** the fix; it is one leg of a four-part recipe, all load-bearing:
+
+1. `reasoning: "none"` — thinking-on interleaves reasoning into the JSON (`NoObjectGeneratedError`); omitting it silently re-enables thinking.
+2. a prompt that **names each output field imperatively** (as `scan-structure.md` does) — without it the model emits a wrong envelope (prose as a JSON key, or a bare `{}`) *even though it reasoned correctly*. This is the leg the judge shipped without, returning `{}` deterministically.
+3. a retry loop (re-sample on a parse failure).
+4. a high `maxOutputTokens` ceiling — guards large arrays against mid-JSON truncation.
+
+Copy all four into any new DeepSeek `generateObject`. Citing this pattern and carrying only leg 1 is exactly how the judge broke — a proven repo pattern must be copied whole, not one knob at a time.
+
+The council's deterministic self-check (`draftViolations` in `draft-council-run.ts`) is **hygiene-only** — markdown, `<post>` tags, preamble, char ceiling. It does **not** verify the carry-over trap (every name/@handle/number in the draft appears in the brief); fabrication like an invented source tag is caught by the drafting-contract **prompt alone**. A deterministic @handle-against-brief check is available hardening if prompt-guarding proves insufficient.
 - Prompt-writing conventions and drift guards for `lib/sysprompts/*.md` live in `.claude/rules/sysprompts.md`, not here — this file is the TypeScript/architecture side.
 
 ## Scan frequency is enforced in code at three points, never in the prompt
@@ -51,4 +62,4 @@ Parallel search and xAI `x_search` bill per successful call **application-wide, 
 
 ## Bundling the prompts for deploy
 
-`lib/agent/tools.ts`, `agent.ts`, `scan-run.ts`, `draft-run.ts`, and `onboarding-extract.ts` are transitively server-only (they pull in `lib/sysprompts`, which reads files at module scope) — importing any of them from a client component breaks the build. `next.config.ts`'s `outputFileTracingIncludes` must list every serverless function that transitively imports `lib/sysprompts` — today `/api/chat`, `/api/cron/tick`, `/agents/[id]` (the `[id]` page's draft server action), and `/agents/new` (the save action's onboarding-result extraction) — or Vercel silently drops the markdown from that deployed function (works locally, breaks in prod). A new function that imports `lib/sysprompts` needs its own entry added here.
+`lib/agent/tools.ts`, `agent.ts`, `scan-run.ts`, `draft-run.ts`, `onboarding-extract.ts`, `draft-council-run.ts`, and `draft-pipeline.ts` are transitively server-only (they pull in `lib/sysprompts`, which reads files at module scope) — importing any of them from a client component breaks the build. `next.config.ts`'s `outputFileTracingIncludes` must list every serverless function that transitively imports `lib/sysprompts` — today `/api/chat`, `/api/cron/tick`, `/api/ingest` and `/api/email/inbound` (both reach `lib/sysprompts` through `draft-pipeline.ts` → `draft-council-run.ts`), `/agents/[id]` (the `[id]` page's draft server action), and `/agents/new` (the save action's onboarding-result extraction) — or Vercel silently drops the markdown from that deployed function (works locally, breaks in prod). A new function that imports `lib/sysprompts` needs its own entry added here.

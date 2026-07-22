@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/chat": ["./lib/sysprompts/*.md"],
     "/api/cron/tick": ["./lib/sysprompts/*.md"],
+    "/api/ingest": ["./lib/sysprompts/*.md"],
+    "/api/email/inbound": ["./lib/sysprompts/*.md"],
     "/agents/[id]": ["./lib/sysprompts/*.md"],
     "/agents/new": ["./lib/sysprompts/*.md"],
   },

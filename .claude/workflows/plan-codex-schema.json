@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "chosenApproach": {
+      "type": "string",
+      "description": "One-paragraph statement of the single approach this plan commits to."
+    },
+    "plan": {
+      "type": "string",
+      "description": "The full implementation plan as markdown for a zero-context engineer: Definition of done, Approach, In scope / Deferred, Build steps (file map first, then bite-sized tasks with exact file ownership + interfaces), and a Stack & design acceptance-criteria checklist."
+    },
+    "keyConstraints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The hard constraints this plan respects (repo guards, RLS/auth, cost caps, contracts), each phrased as the failure it prevents."
+    },
+    "risksOrDisagreements": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Points where this plan is most likely to diverge from a reasonable alternative, and anything a reconciling reviewer should scrutinize before committing. Empty array is valid."
+    }
+  },
+  "required": ["chosenApproach", "plan", "keyConstraints", "risksOrDisagreements"]
+}

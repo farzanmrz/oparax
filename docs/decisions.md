@@ -21,8 +21,8 @@ whole list.** When a slice ships, mark it DONE and promote the following one to 
 | # | Slice | Status | Spec | Done when |
 | --- | --- | --- | --- | --- |
 | 1 | **Schema + voice extraction** — the five tables (incl. the clustering extension point) and the Fable extraction path (`lib/voice/` is already ported: measured-facts + deploy-strip) | **DONE** (#66) — guide extracted, stored, RLS-readable | L4, L2, L11, L12 | A real voice guide for Reshad, extracted from his real corpus, stored and readable |
-| 2 | **Drafting council + notification + metering** — the two-family council and judge, Slack + email delivery, `usage_events` stamped from birth | **NEXT** | L3, L5, L7, L12 | A hand-seeded source post produces a Slack message carrying a draft in Reshad's voice — **this is the demo** |
-| 3 | **Ingestion worker** — the always-on Railway forwarder: stream connection, shared rules, reconnect-with-backoff, liveness alarm, delivery metering | after 2 | L1 | Live posts replace the hand-seeded one end to end |
+| 2 | **Drafting council + notification + metering** — the two-family council and judge, Slack + email delivery, `usage_events` stamped from birth | **DONE** (#67) — council + judge + inbound email corrections behind `POST /api/ingest` | L3, L5, L7, L12 | A hand-seeded source post produces a Slack message carrying a draft in Reshad's voice — **this is the demo** |
+| 3 | **Ingestion worker** — the always-on Railway forwarder: stream connection, shared rules, reconnect-with-backoff, liveness alarm, delivery metering | **NEXT** — it POSTs into the existing `/api/ingest`; nothing else in the app moves | L1 | Live posts replace the hand-seeded one end to end |
 | 4 | **UI** — site chrome, desk sections, feed, council expansion | **BLOCKED** on the Claude-design wireframe → v0 lock | L8 | The reporter reviews and posts from the app instead of from Slack |
 
 Rules for whoever picks this up: the spec is already settled — **plan from these sections,
@@ -278,10 +278,27 @@ what it concluded, and the trace is the audit trail of the judgment we paid for.
   | `anthropic/claude-fable-5` | **yes, as a summary**, via `display: "summarized"` | verified |
   | `deepseek/deepseek-v4-flash` | yes — 459 chars, no flag needed | verified |
   | `deepseek/deepseek-v4-pro` | yes — 1,117 chars, no flag needed | verified |
-  | `openai/gpt-5-nano` | 0 chars **under default config** | **UNVERIFIED — its own visibility parameter was never tested.** Do not read as incapable |
+  | `openai/gpt-5-nano` | **yes — 641 chars** with a top-level `reasoning: "low"`; no provider-specific visibility knob needed | **verified** (probed 2026-07-22, ft/67) |
+
+  The gpt-5-nano probe closed the row above and is worth keeping as evidence for the rule that
+  follows it: the earlier "0 chars" observation came from a call passing **no reasoning param at
+  all**, and said nothing about the model. Measured across three cells, same prompt:
+  top-level `reasoning: "low"` → 641 chars; `providerOptions.openai.reasoningSummary: "auto"`
+  (+ `reasoningEffort: "low"`) → 1,081; `"detailed"` → 503. The portable top-level param is
+  what ships — it is sufficient, and mixing it with any `providerOptions` reasoning key would
+  silently discard it in full.
 
 - Every call also writes `usage.reasoningWithheldByProvider`, so a null trace stays
   distinguishable from a missed capture — the ambiguity that hid the original gap.
+- **Exemption — lab and probe scripts.** A throwaway, hand-run script whose purpose is to
+  *measure the API itself* (a visibility probe, a cap probe, a bench cell) does not write
+  `model_calls` rows. Its output is a finding, not an artifact: nothing downstream joins to it,
+  and the audit trail it owes is the measured result recorded **in this file**, which is a
+  stronger record than a row nobody reads. The obligation binds every call on a production
+  path — anything a route, runner, cron, or user action can reach — with no exceptions, and a
+  script that persists what a model produced (like `scripts/extract-voice-guide.ts`) is a
+  production path regardless of who types the command. Delete the probe once its finding is
+  recorded; a probe left in the tree is a call site waiting to be reused.
 - **The lesson, and it generalises past this API: an absent value under default configuration
   is not proof that no configuration produces it.** Find the parameter that governs the field
   and test *that* before recording an impossibility. This is the K3 rule's mirror image —
@@ -357,7 +374,8 @@ are needed and the lab costs $0 to keep.
 | D2 | **Clustering** (posts → stories) | additive schema migration (L4) + feed unit becomes a story | After single-post drafting is trusted; the one deferred item touching the object model |
 | D3 | Multi-platform drafting (per-platform drafts; select-many-draft-one) | draft card becomes a pill-row per platform | Needs platform accounts + per-platform contracts; item-level, no IA change |
 | D4 | Rich feed rendering (react-tweet embeds, article cards) | presentation inside the feed item | Cosmetic; after function |
-| D5 | Channels surface (notify prefs, availability, the reply back-and-forth history) | desk **Channels** section | Slice ships its seed (Slack+email config); history UI follows the inbound-reply build |
+| D5 | Channels surface (notify prefs, availability, the reply back-and-forth history) **+ Slack interactive buttons** | desk **Channels** section; buttons need a Slack app + an interactions endpoint | Slice 2 shipped Slack **push only**, deviating from L5's "interactive buttons + push" for two reasons: an incoming webhook (the single-workspace credential we use) structurally **cannot carry actionable components** — buttons require a full Slack app with an interactions URL — and a button's actions (approve/post/edit) have no surface to land in until the desk UI exists. The same single webhook is also **welded to one channel in one workspace**: `SLACK_WEBHOOK_URL` (like `NOTIFY_EMAIL_TO`) is one platform-level destination, so *every* owner's draft goes to the same place and any recipient of that inbox can correct any owner's draft — fine at one reporter, structurally impossible for two. Per-desk credentials (the deny-all `slack_accounts`-style table + `getSlackLinkState()`, mirroring `x_accounts`) are what unweld it. **Wakes with whichever comes first: the L8 Channels section, the posting surface (L6's flag flip), or a second customer** — the last is a hard correctness bound, not a UI nicety. Email replies were NOT deferred with it — inbound reply handling shipped in slice 2 |
+| D15 | **`lib/agent/draft-run.ts` records no `model_calls` rows** — a known L12-violating call site, left in place deliberately | either deletion, or the same ledger-first treatment `draft-pipeline.ts` got | It is the **old** desk drafting path (`agents` → `drafts` → the `[id]` DraftsTab), parallel to and untouched by slice 2's council. Retrofitting L12 onto a pipeline the UI slice replaces spends the work twice; recording the violation is what stops it being re-discovered as a surprise. **Trigger: the old desk drafting path is retired, or carried into the new UI (slice 4)** — that commit fixes or deletes it. Same applies to the whole old pipeline's use of the retired `rawEstimatedCost` cost path (`scan-run.ts`, `draft-run.ts`, `persist-run.ts`, `onboarding-extract.ts`) |
 | D6 | Payments/billing | site-level account | No paying users yet; metering (L7) is already collecting what billing will need |
 | D7 | Extraction council build + audition bench | after the slice ships | Zero effect on ingestion latency; test vs the lab for ~$20 before touching production guides |
 | D8 | Drafting third seat (`glm-4.7-flashx`) and the cheap-tier bake-off (`gpt-5-nano`/`glm` vs `v4-flash`) | config-list flip / lab run | Third seat: cache telemetry confirms room. Bake-off: monthly drafting spend crosses ~$50 (≈40 reporters) |
@@ -367,6 +385,7 @@ are needed and the lab costs $0 to keep.
 | D12 | Reddit via Bright Data · handle verification at onboarding · per-desk spend caps | various | Post-slice hardening |
 | D13 | X Enterprise tier | account migration | Only if webhooks or backfill_minutes become necessary; custom contract, unpublished pricing |
 | D14 | **Earning the `experiments` join row** — a `reporter_handle` grants guide access only once verified (linked X account, or an approved list) | a migration + whatever verification mechanism is chosen | The only *real* fix to L11, and a design problem in its own right. Wakes when guide free-riding stops being negligible, or when extraction gains a user-triggered path (L11's guard) — whichever comes first |
+| D16 | **Ingestion-path concurrency + metering hardening** (surfaced at slice-2 QC, both harmless at one hand-seeded post): (a) a delivery whose author matches no `experiments` row writes **no `usage_events` `stream_delivery`** (the column is `owner_id NOT NULL` and an unmatched delivery has no owner) — so L1's 80%-of-cap alarm undercounts real stream volume; (b) the `already_drafted` guard in `processDelivery` and the idempotency check in `applyCorrection` are **non-atomic select-then-insert with no unique index**, so two concurrent deliveries of the same `x_post_id` (or two of the same Svix reply) both pay a full council/revision | a migration (unique constraints on the dedup keys) + an un-owned "unmatched deliveries received" counter | **Trigger: slice 3** — the always-on forwarder can redeliver on reconnect (its whole failure model is reconnect-with-backoff), which is the first time duplicate/concurrent deliveries are real rather than hypothetical. Both are one-reporter-safe today; neither blocks the slice-2 demo |
 
 ---
 

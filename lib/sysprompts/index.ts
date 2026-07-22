@@ -20,3 +20,6 @@ export const DRAFT_RUNNER_PROMPT = load("draft-runner.md");
 export const X_SEARCH_EXECUTOR_PROMPT = load("x-search-executor.md");
 export const ONBOARDING_EXTRACT_PROMPT = load("onboarding-extract.md");
 export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
+export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
+export const DRAFT_JUDGE_PROMPT = load("draft-judge.md");
+export const DRAFT_REVISE_PROMPT = load("draft-revise.md");

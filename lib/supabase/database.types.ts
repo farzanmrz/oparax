@@ -200,28 +200,34 @@ export type Database = {
         Row: {
           created_at: string;
           experiment_id: string;
+          feedback: string | null;
           id: string;
           is_winner: boolean;
           judge_verdict: Json | null;
           model_call_id: string;
+          parent_draft_id: string | null;
           source_post_id: string;
         };
         Insert: {
           created_at?: string;
           experiment_id: string;
+          feedback?: string | null;
           id?: string;
           is_winner?: boolean;
           judge_verdict?: Json | null;
           model_call_id: string;
+          parent_draft_id?: string | null;
           source_post_id: string;
         };
         Update: {
           created_at?: string;
           experiment_id?: string;
+          feedback?: string | null;
           id?: string;
           is_winner?: boolean;
           judge_verdict?: Json | null;
           model_call_id?: string;
+          parent_draft_id?: string | null;
           source_post_id?: string;
         };
         Relationships: [
@@ -237,6 +243,13 @@ export type Database = {
             columns: ["model_call_id"];
             isOneToOne: false;
             referencedRelation: "model_calls";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_drafts_parent_draft_id_fkey";
+            columns: ["parent_draft_id"];
+            isOneToOne: false;
+            referencedRelation: "post_drafts";
             referencedColumns: ["id"];
           },
           {

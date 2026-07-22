@@ -5,7 +5,8 @@
 // Lab-proven config (.voice-lab/sdk-lab/extract-fable80.mjs — measured $0.855/reporter, 10/10).
 // SERVER-ONLY: imports lib/sysprompts (readFileSync at module scope) — never import from a
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.
-import { gateway, generateText } from "ai";
+import { generateText } from "ai";
+import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
 import { measuredFacts } from "./measured-facts";
 
@@ -14,13 +15,6 @@ export const EXTRACTION_MODEL = "anthropic/claude-fable-5";
 
 const EXTRACT_MAX_OUTPUT_TOKENS = 32_000;
 const EXTRACT_TIMEOUT_MS = 1_800_000; // 30 min — a script, far beyond any Vercel function cap
-
-// A non-finite result (NaN from a junk cost string) is "unknown", not a number — returning it
-// would both suppress the getGenerationInfo fallback and write NaN into cost_usd.
-const num = (v: unknown): number | null => {
-  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : null;
-  return n != null && Number.isFinite(n) ? n : null;
-};
 
 /** One corpus post, carrying the metadata the extraction prompt grades against. */
 export type CorpusPost = {
@@ -110,21 +104,9 @@ export async function extractVoiceGuide(
   const anthropic = result.providerMetadata?.anthropic as
     | { usage?: { output_tokens_details?: { thinking_tokens?: unknown } } }
     | undefined;
-  const thinkingTokens = num(anthropic?.usage?.output_tokens_details?.thinking_tokens);
+  const thinkingTokens = toFiniteOrNull(anthropic?.usage?.output_tokens_details?.thinking_tokens);
 
-  const gw = result.providerMetadata?.gateway as
-    | { inferenceCost?: unknown; cost?: unknown; generationId?: string }
-    | undefined;
-  let costUsd = num(gw?.inferenceCost ?? gw?.cost);
-  const generationId = gw?.generationId ?? null;
-  if (costUsd == null && generationId) {
-    try {
-      const info = await gateway.getGenerationInfo({ id: generationId });
-      costUsd = num(info?.totalCost);
-    } catch {
-      // Non-fatal — cost_usd degrades to null, matching the nullable-cost convention.
-    }
-  }
+  const { costUsd, generationId } = await resolveGatewayCost(result);
 
   return {
     guideRaw: result.text,

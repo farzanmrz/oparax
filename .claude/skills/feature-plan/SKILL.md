@@ -42,16 +42,26 @@ whole pass — address it by **`scriptPath`, never `name`** (same reason as the 
 workflow: `{ name }` doesn't scan the repo's `.claude/workflows/`). Pass `args`:
 `{ ask: "<the confirmed ask from step 2>", context: "<any seed worth carrying>" }`.
 
-It runs three stages: a **scope pre-pass** predicts which stack areas the slice
-touches (there is no diff yet — it infers from the ask + a repo grep) and fires only
-those lenses; a parallel **brief** per fired lens, each invoking its own skill
-(`vercel:nextjs` · `vercel:react-best-practices` · `web-design-guidelines` ·
-`frontend-design` on new surfaces · `vercel:ai-sdk`+`vercel:ai-gateway` ·
-`supabase:supabase`+postgres · always `repo-fit`, which reads AGENTS.md + the
-`.claude/rules/` guards); then a **synthesis** step (opus) that assembles 2–3
-candidate approaches, picks one via the four lenses (**risk-first**,
-**YAGNI-minimal**, **vertical-slice**, **verification-first**), reconciles the briefs
-(additive → merge; conflicting → decide + log why), and returns ONE plan.
+It runs five stages. **Scope** selects the lenses from the **live skill inventory**
+(`list-plan-skills.sh` — the stack plugins + repo build skills, self-updating; not a
+fixed menu) rather than a hardcoded set, so a slice needing `vercel:marketplace` /
+`vercel-connect` / `chat-sdk` / `workflow` actually reaches them; the same pass reads
+AGENTS.md and glob-matches the slice's predicted paths against the `.claude/rules/`
+`paths:` frontmatter to gather the applicable guards into a digest (there is no diff at
+plan time to auto-inject them). **Lenses** fan out **one repo-grounded agent per
+selected skill, named after the skill** (no bundling, no cap below the inventory);
+each invokes its skill and returns hard constraints + acceptance criteria. Then two
+plans are authored **in parallel**: a **Claude track** (consolidate constraints +
+name candidates → flesh each → judge picks one via the four lenses — **risk-first**,
+**YAGNI-minimal**, **vertical-slice**, **verification-first**) and an independent
+**Codex track** (one flat, read-only `codex exec` fed the same skill-grounded
+constraints — best-effort; on any failure the run silently falls back to Claude-only).
+A final **reconcile** merges the two into ONE plan, recording load-bearing
+disagreements. Model policy: the cheap extraction stages are pinned to sonnet; the two
+creative/decision agents (candidate-generation, judge/reconcile) **inherit your session
+model + tier**, so the smart spend tracks your budget. There is no `repo-fit` lens —
+the guards ride in via the Scope digest and via path-rule auto-injection when a lens
+reads a matching file.
 
 The returned `plan` markdown carries: **Definition of done** (the slice contract;
 feature-ship's triage measures every "fix now" against it), the **decided approach

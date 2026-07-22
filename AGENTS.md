@@ -28,7 +28,7 @@ pnpm format     # Biome format --write
 
 ### Environment
 
-`.env.local`, eight keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
+`.env.local`, fifteen keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |
@@ -38,16 +38,22 @@ pnpm format     # Biome format --write
 | `CRON_SECRET` | `app/api/cron/tick/route.ts` — fail-closed `Bearer` auth for the per-minute dispatcher |
 | `SUPABASE_SECRET_KEY` | `lib/supabase/admin.ts` — the service-role dispatcher client |
 | `X_CLIENT_ID` + `X_CLIENT_SECRET` | `lib/x/api.ts` — X OAuth2 confidential-client credentials (link flow + posting) |
+| `INGEST_SECRET` | `app/api/ingest/route.ts` — fail-closed `Bearer` auth on the delivery interface (the ingestion forwarder's entry point) |
+| `SLACK_WEBHOOK_URL` | `lib/notify/slack.ts` — the workspace incoming webhook the draft push posts to |
+| `RESEND_API_KEY` + `RESEND_FROM` + `RESEND_REPLY_DOMAIN` | `lib/notify/email.ts` — Resend REST auth, sender identity, and the plus-addressed reply domain that routes a reply back to its draft |
+| `RESEND_WEBHOOK_SECRET` | `app/api/email/inbound/route.ts` — Svix signature verification (raw body, fail-closed) on inbound replies |
+| `NOTIFY_EMAIL_TO` | `lib/agent/draft-pipeline.ts` — the reporter's address the draft email goes to (per-desk config is D5) |
 
 ## Code map
 
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks (including `app/auth/x/*`, the X OAuth link + callback), `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard, incl. the Drafts tab's Connect-X + post-to-X controls · `settings/`).
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks (including `app/auth/x/*`, the X OAuth link + callback), `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `api/ingest` (**the delivery interface** — the Bearer-authed entry point a source post enters through; the ingestion forwarder POSTs here), `api/email/inbound` (the Svix-verified Resend webhook turning an emailed reply into a draft correction), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard, incl. the Drafts tab's Connect-X + post-to-X controls · `settings/`).
 - `components/`
     - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
     - `components/ai-elements/` — chat-surface kit.
     - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
 - `lib/agent/` — the desk agent: model + tools + the save-approval gate; the headless scan runner + draft runner behind the cron dispatcher; `next-run.ts`'s timezone fire math; plus its other pure modules.
 - `lib/x/` — the X integration — `api.ts` (raw-fetch OAuth2 + post client), `store.ts` (service-role token store for `x_accounts`; tokens never leave this dir), `link-state.ts` (`getXLinkState()`), `actions.ts` (`postDraftToX`/`unlinkXAccount`).
+- `lib/notify/` — draft delivery, raw `fetch` only (no vendor SDKs): `compose.ts` (the message body), `slack.ts` (the incoming-webhook push), `email.ts` (Resend send + the plus-addressed reply encoding **and its decoder** — the pair lives in one file so they cannot drift). Thin senders: they neither persist nor meter — `lib/agent/draft-pipeline.ts` does both.
 - `lib/voice/` — the voice pipeline's pure functions, ported from the gitignored `.voice-lab/`: `deploy-guide.ts` (strips extractor-verification sections before a guide becomes a drafting prompt — 16.1% off every draft) and `measured-facts.ts` (computes the guide's measurable half — length/emoji/hashtag/punctuation frequencies — so the extractor can't miss sparse habits).
 - `lib/sysprompts/` — the agent's system prompts, as markdown.
 - `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/`'s token store + post/unlink actions) + auth server actions + desk render helpers (`lib/agents.ts`).
@@ -72,7 +78,11 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 - **Every model call records its output AND its reasoning trace.** One `model_calls` row per
   call — any stage (extraction, drafting, judge, scan), whether one model runs or five —
   carrying `output`, `reasoning`, `usage`, `cost_usd`, `generation_id`. Storing a token count
-  without the trace is not compliance. **On Claude models the trace is a summary gated on
+  without the trace is not compliance. The row is owed by **any call that completed and billed —
+  including on an error path**: if a later step (a repair, a schema-parse, the judge) throws,
+  capture the finished call's `output`/`usage` off the error and record it anyway. A downstream
+  throw must never discard an already-paid call's row — the slice-1 miss was the happy path; the
+  same invariant fails on error paths. **On Claude models the trace is a summary gated on
   `thinking.display`, which defaults to `"omitted"` — and "omitted" still returns a thinking
   block with an empty `text`, so a default call looks exactly like a model that cannot expose
   reasoning.** Pass `thinking: { type, effort, display: "summarized" }` (effort belongs inside
