@@ -41,10 +41,11 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    gated by the tsc + lint pass (step 4) and boot smoke (step 5) — no separate
    delta-verify pass. Large/risky diff → offer the user `/code-review ultra` before
    proceeding.
-4. **`feature-lint`** (scoped to the feature's changed files — LAST because the
-   review pass mutates code; lint formats the final shape) — biome format + safe
-   fixes + residual fixer agents, gating on a clean `pnpm build` — the authority on
-   compile correctness.
+4. **`feature-lint`** (scoped to the feature's changed files — LAST because the review
+   pass mutates code). Formatting is NOT part of this step: the `PostToolUse` hook
+   already formatted every write, including the fixes applied in step 3. What's left
+   is the residual Biome won't auto-fix (no-fix + `--unsafe` rules) → risk-tiered
+   fixer agents, gating on a clean `pnpm build` — the authority on compile correctness.
 5. **Boot smoke** — builds can't see boot failures: background `pnpm dev`, wait for
    readiness, assert Next.js reports "Ready" and NO failure signatures (ERROR,
    "failed", unmet peer, unhandled rejection). Collect WARNINGs for triage; kill the
