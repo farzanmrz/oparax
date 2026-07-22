@@ -7,8 +7,8 @@ paths:
 
 Pure, dependency-free functions ported out of the gitignored `.voice-lab/` so the production
 extraction/drafting path uses the lab's proven artifacts instead of re-deriving them. Both were
-verified against their originals at port time. Full rationale and measurements: §11 of
-`docs/push-architecture.md`.
+verified against their originals at port time. Full rationale and measurements:
+`docs/decisions.md` (L2/L3).
 
 ## `deployGuide()` — strip before a guide becomes a prompt
 
