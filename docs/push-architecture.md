@@ -235,10 +235,10 @@ pay-per-use is opt-in — a project stays Free until billing is attached; nothin
 Stream access is confirmed on the free app, and at one user the caps that bind us (5 rules/app)
 are 5× headroom. The exhaustion risk is delivery volume, so the failsafe is a **meter, not a
 pre-emptive upgrade**: the worker counts every delivery into `usage_events` and alarms at 80%
-of the observed cap; upgrading is then a billing flip with zero architecture change. The
-planned company-account app (farzan@oparax.ai) **resets all probe results** — re-probe
-`rules/counts` + a bare stream connect on the new app before cutting keys over. Canonical copy
-with full caveats: `.claude/rules/x.md`.
+of the observed cap; upgrading is then a billing flip with zero architecture change. **We stay
+on the existing app** (decided 2026-07-21; the exposed Bearer Token was rotated same day). Any
+future company-account app **resets all probe results** — re-probe `rules/counts` + a bare
+stream connect before cutting keys over. Canonical copy with full caveats: `.claude/rules/x.md`.
 
 ### The first slice, concretely: the "Experiment" surface (decided 2026-07-20)
 
@@ -554,6 +554,11 @@ cross-check, but production metering should use the generation lookup.
 Decided from the live catalog (306 models fetched 2026-07-21), our own §11 run data, and
 public benchmarks — **no new experiments**. Standing criterion: a cost difference must be
 justified by a proportional result difference; "newer" and "pricier" are not arguments.
+**Revised same day after a full-field re-sweep** (every catalog family per stage, no
+candidate privileged by having been suggested): evidence classes ranked on-task (our
+extraction panel / drafting run) → adjacent-task (hygiene in the 1,000-draft run) → public
+benchmarks → price. The re-sweep added a council seat, withdrew an asserted-not-derived
+council-size ceiling, and surfaced `xai/grok-4.1-fast` as the drafting third-family alternate.
 
 **Drafter — unchanged: `deepseek/deepseek-v4-flash`, with `openai/gpt-5.4-nano` as the
 council's second family.**
@@ -563,10 +568,15 @@ council's second family.**
   for that slot; independence is. (v4-pro is noted as the obvious *single-model upgrade path*
   if drafting quality ever needs a step up: 3.1× flash, still 19× under Sonnet.)
 - Whole-catalog sweep found no better base: §11.7 showed model spread (0.33–0.37 style) is
-  ~8× smaller than reporter spread, so at equal style price decides. The only cheaper
-  current-gen options (`glm-4.7-flash` $0.07/$0.40, `qwen3.5-flash` $0.10/$0.40) save
-  pennies/month at 1,500 drafts; qwen already ran and did not beat flash. Fails the
-  proportionality criterion in both directions.
+  ~8× smaller than reporter spread, so at equal style price decides. Every cheaper option
+  (`glm-4.7-flashx` $0.06/$0.40, `glm-4.7-flash`, `gpt-5-nano` $0.05/$0.40) is untested —
+  max saving ~$0.9/1k drafts ≈ $1.35/mo at current volume, failing proportionality for a
+  tested→untested swap; `qwen3.5-flash` ran and did not beat flash. **Revisit trigger:** when
+  monthly drafting spend crosses ~$50 (≈40 reporters), a one-day bake-off of `glm-4.7-flashx`
+  + `gpt-5-nano` pays for itself in weeks. **Third-family alternate, pre-registered:**
+  `xai/grok-4.1-fast` ($0.20/$0.50, 1M ctx, ~price parity with flash) — the only untested
+  family at parity price; first in line if the council ever wants a third voice. Ruled out
+  now only because nano is tested and it is not.
 - `gemini-3.6-flash` ($1.50/$7.50) is out for drafting: 27× flash's output rate, flash-tier
   positioning, no evidence of a style edge. **There is no Gemini 3.6 Pro on the gateway** —
   the 3.6 generation ships Flash only; the newest Pro is `gemini-3.1-pro-preview` ($2/$12),
@@ -574,8 +584,9 @@ council's second family.**
 - The loosened latency budget (1–3 min, from ~10s) changes nothing: council latency was never
   binding, cost is — and cost compounds per draft forever.
 
-**Extractor — Fable 5 stays primary; the council, when built, is 2× Fable + Kimi K3 +
-DeepSeek v4-pro (union-and-falsify, Fable synthesizes). ~$3.20–3.50/reporter one-time.**
+**Extractor — Fable 5 stays primary; the council, when built, is 2× Fable + three analysts:
+Kimi K3, DeepSeek v4-pro, and Qwen3.7-max (union-and-falsify, Fable synthesizes).
+~$3.40–3.90/reporter one-time.**
 - The OpenRouter self-fusion result (+6.7pt, Opus fused with itself) does **not** transfer to
   extraction as assumed: that gain comes from sampling variance on tasks with a checkable
   answer. What justifies 2× Fable here is our own observation that different runs *notice*
@@ -585,11 +596,28 @@ DeepSeek v4-pro (union-and-falsify, Fable synthesizes). ~$3.20–3.50/reporter o
   evidence: #1 on EQ-Bench Creative Writing v3 (Elo 2377, above Fable) with the lowest slop
   in the top 10; Fable tops the separate Longform board (83.0). K3 is the one candidate
   plausibly at-tier for style analysis, not a downgrade slot.
-- `deepseek-v4-pro` is the cheap cross-family noticing-bias slot (~$0.02/reporter). If its
-  unique-catch count in the falsify stage is ~0, drop it — the log decides.
-- Gemini is excluded from the council: 3.1-pro-preview lost the ablation at high effort, and
-  no newer Pro tier exists on the gateway. Diminishing returns cap the council at these 4
-  generative passes; a 5th member adds falsification cost linearly for a shrinking union gain.
+- `deepseek-v4-pro` (~$0.02/reporter) and `qwen3.7-max` (~$0.08/reporter) are the cheap
+  cross-family noticing-bias slots — the re-sweep could not separate them on evidence
+  (v4-pro: flagship of the family we run in production; qwen: its 3.5-flash tier posted the
+  best hygiene of the whole 1,000-draft run, 0 residuals), so both sit, and the **retirement
+  rule** governs: the falsify log counts each analyst's unique catches, and any analyst
+  contributing ~0 across the first reporters is dropped. There is **no fixed council-size
+  ceiling** — an earlier "4 passes max" claim was asserted, not derived, and is withdrawn;
+  membership is governed by the retirement rule, since a cheap analyst's real cost is the
+  falsification of whatever *new* claims it contributes, which is exactly the thing worth
+  paying for when nonzero.
+- Eliminated by the full-field sweep, with reasons: every on-task loser from the §11.2 panel
+  (opus-4.8, sonnet-5, gpt-5.6-sol/terra, gemini-3.1-pro-preview, gemini-3.5-flash,
+  grok-4.5); `gemini-3.6-flash` (family 0-for-2 on-task, no Pro tier exists);
+  `gpt-5.6-luna` (below two tiers of its own family that already lost); `kimi-k2.6` (K3
+  exists — a $0.19 one-time saving cannot justify a tier drop in the quality-dominant stage);
+  `glm-5.2` (no evidence in hand; first alternate); `minimax-m3` (family holds the run's only
+  unfixable residual failure); `mistral-large-3` (absent from every writing board surveyed).
+- Caveat kept honest: K3's seat rests on writing-generation boards, and `gpt-5.6-sol` proves
+  those transfer weakly to extraction (81.7 Longform Elo, still lost our panel) — K3 is an
+  evidenced bet, not a proven pick; the falsify log is what settles it.
+- Build note: K3's exact reasoning-cap knob through the gateway is unverified — confirm at
+  council build time; an uncappably verbose analyst inflates the falsify stage.
 
 **Reasoning budgets — a tool we already use; they change no pick.** Three confirmed cap
 mechanisms through the gateway: the AI SDK 7 top-level `reasoning` param (`none`→`xhigh` —

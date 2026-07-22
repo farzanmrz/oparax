@@ -22,12 +22,13 @@ a billing flip with **zero architecture change** (same endpoint, same code path)
 - **Never trust documented caps.** Docs said 1,000 rules; the live app returns 5/15. After ANY
   account, app, tier, or billing change, re-probe `GET /2/tweets/search/stream/rules/counts`
   and a bare stream connect before trusting anything.
-- **The planned new app under farzan@oparax.ai resets all probe results.** Keep the current
-  app until the new one's probe passes; only then move `X_BEARER_TOKEN` + client keys.
+- **Decided 2026-07-21: stick with the existing app for now.** If a company-account app is
+  ever created, it resets all probe results — re-probe `rules/counts` + a bare stream connect
+  before moving `X_BEARER_TOKEN` + client keys.
 - **`X_BEARER_TOKEN` is used RAW** — URL-decoding the portal's `%2B`/`%3D` escapes produces a
   401. It is app-only (the stream credential), distinct from the `X_CLIENT_ID/SECRET` OAuth2
-  pair. The token pasted in chat on 2026-07-21 is considered exposed — regenerate before the
-  worker ships and never commit it.
+  pair. The token exposed in chat was rotated 2026-07-21; the fresh value lives only in
+  `.env.local` — never commit it.
 
 - `supabase:supabase` for the store/link-state Supabase work; `vercel:nextjs` for the OAuth route handlers + server actions.
 
