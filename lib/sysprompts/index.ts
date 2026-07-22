@@ -19,3 +19,4 @@ export const SCAN_CLUSTER_RUNNER_PROMPT = withClustering(load("scan-cluster-runn
 export const DRAFT_RUNNER_PROMPT = load("draft-runner.md");
 export const X_SEARCH_EXECUTOR_PROMPT = load("x-search-executor.md");
 export const ONBOARDING_EXTRACT_PROMPT = load("onboarding-extract.md");
+export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");

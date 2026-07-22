@@ -115,6 +115,139 @@ export type Database = {
           },
         ];
       };
+      experiments: {
+        Row: {
+          beat: string;
+          created_at: string;
+          id: string;
+          owner_id: string;
+          reporter_handle: string;
+          status: string;
+          tracked_handles: string[];
+          updated_at: string;
+        };
+        Insert: {
+          beat: string;
+          created_at?: string;
+          id?: string;
+          owner_id: string;
+          reporter_handle: string;
+          status?: string;
+          tracked_handles?: string[];
+          updated_at?: string;
+        };
+        Update: {
+          beat?: string;
+          created_at?: string;
+          id?: string;
+          owner_id?: string;
+          reporter_handle?: string;
+          status?: string;
+          tracked_handles?: string[];
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      model_calls: {
+        Row: {
+          cost_usd: number | null;
+          created_at: string;
+          generation_id: string | null;
+          id: string;
+          model: string;
+          output: string | null;
+          owner_id: string;
+          reasoning: string | null;
+          ref_id: string | null;
+          ref_kind: string | null;
+          role: string;
+          stage: string;
+          usage: Json | null;
+        };
+        Insert: {
+          cost_usd?: number | null;
+          created_at?: string;
+          generation_id?: string | null;
+          id?: string;
+          model: string;
+          output?: string | null;
+          owner_id: string;
+          reasoning?: string | null;
+          ref_id?: string | null;
+          ref_kind?: string | null;
+          role?: string;
+          stage: string;
+          usage?: Json | null;
+        };
+        Update: {
+          cost_usd?: number | null;
+          created_at?: string;
+          generation_id?: string | null;
+          id?: string;
+          model?: string;
+          output?: string | null;
+          owner_id?: string;
+          reasoning?: string | null;
+          ref_id?: string | null;
+          ref_kind?: string | null;
+          role?: string;
+          stage?: string;
+          usage?: Json | null;
+        };
+        Relationships: [];
+      };
+      post_drafts: {
+        Row: {
+          created_at: string;
+          experiment_id: string;
+          id: string;
+          is_winner: boolean;
+          judge_verdict: Json | null;
+          model_call_id: string;
+          source_post_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          experiment_id: string;
+          id?: string;
+          is_winner?: boolean;
+          judge_verdict?: Json | null;
+          model_call_id: string;
+          source_post_id: string;
+        };
+        Update: {
+          created_at?: string;
+          experiment_id?: string;
+          id?: string;
+          is_winner?: boolean;
+          judge_verdict?: Json | null;
+          model_call_id?: string;
+          source_post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "post_drafts_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_drafts_model_call_id_fkey";
+            columns: ["model_call_id"];
+            isOneToOne: false;
+            referencedRelation: "model_calls";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_drafts_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: false;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       runs: {
         Row: {
           agent_id: string;
@@ -167,6 +300,102 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      source_posts: {
+        Row: {
+          author_handle: string;
+          created_at: string;
+          id: string;
+          posted_at: string | null;
+          raw: Json | null;
+          text: string;
+          x_post_id: string;
+        };
+        Insert: {
+          author_handle: string;
+          created_at?: string;
+          id?: string;
+          posted_at?: string | null;
+          raw?: Json | null;
+          text: string;
+          x_post_id: string;
+        };
+        Update: {
+          author_handle?: string;
+          created_at?: string;
+          id?: string;
+          posted_at?: string | null;
+          raw?: Json | null;
+          text?: string;
+          x_post_id?: string;
+        };
+        Relationships: [];
+      };
+      usage_events: {
+        Row: {
+          cost_usd: number | null;
+          created_at: string;
+          id: string;
+          kind: string;
+          owner_id: string;
+          ref_id: string | null;
+          units: number | null;
+        };
+        Insert: {
+          cost_usd?: number | null;
+          created_at?: string;
+          id?: string;
+          kind: string;
+          owner_id: string;
+          ref_id?: string | null;
+          units?: number | null;
+        };
+        Update: {
+          cost_usd?: number | null;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          owner_id?: string;
+          ref_id?: string | null;
+          units?: number | null;
+        };
+        Relationships: [];
+      };
+      voice_guides: {
+        Row: {
+          cost_usd: number | null;
+          created_at: string;
+          guide_deploy: string;
+          guide_raw: string;
+          id: string;
+          measured_facts: string;
+          provenance: Json | null;
+          reporter_handle: string;
+          updated_at: string;
+        };
+        Insert: {
+          cost_usd?: number | null;
+          created_at?: string;
+          guide_deploy: string;
+          guide_raw: string;
+          id?: string;
+          measured_facts: string;
+          provenance?: Json | null;
+          reporter_handle: string;
+          updated_at?: string;
+        };
+        Update: {
+          cost_usd?: number | null;
+          created_at?: string;
+          guide_deploy?: string;
+          guide_raw?: string;
+          id?: string;
+          measured_facts?: string;
+          provenance?: Json | null;
+          reporter_handle?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       x_accounts: {
         Row: {

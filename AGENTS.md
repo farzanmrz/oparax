@@ -51,7 +51,7 @@ pnpm format     # Biome format --write
 - `lib/voice/` — the voice pipeline's pure functions, ported from the gitignored `.voice-lab/`: `deploy-guide.ts` (strips extractor-verification sections before a guide becomes a drafting prompt — 16.1% off every draft) and `measured-facts.ts` (computes the guide's measurable half — length/emoji/hashtag/punctuation frequencies — so the extractor can't miss sparse habits).
 - `lib/sysprompts/` — the agent's system prompts, as markdown.
 - `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/`'s token store + post/unlink actions) + auth server actions + desk render helpers (`lib/agents.ts`).
-- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable and now carries post-outcome columns — `posted_at`, `posted_tweet_id`, `posted_url` — stamped by the service-role client after an RLS ownership check; `x_accounts` has RLS enabled with zero policies, deny-all — read/written only by the service-role client).
+- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts`, `x_accounts` + the voice-pipeline five, `experiments`, `voice_guides`, `source_posts`, `post_drafts`, `usage_events`. Every table has RLS enabled, in one of three shapes: **owner-scoped** (`agents`, `experiments` — full 4-policy; `usage_events` select-only), **EXISTS-join through an owner-scoped parent** (`runs`/`drafts` → `agents`; `post_drafts` → `experiments` by `experiment_id`; `voice_guides` → `experiments` by `reporter_handle`, since a guide is paid once per reporter and so carries no `owner_id`), and **deny-all — RLS on, zero policies** (`x_accounts`, `source_posts`). Writes: `runs` is write-only by the service-role dispatcher; `drafts` is also owner-insertable and carries post-outcome columns (`posted_at`, `posted_tweet_id`, `posted_url`) stamped by the service-role client after an RLS ownership check; `voice_guides`, `source_posts` and `usage_events` have **no insert/update/delete policies at all** — service-role writes only, so a browser cannot forge a guide or zero its own spend.
 - `docs/` — `decisions.md` is the **canonical decision record and build plan**: a BUILD ORDER table at the top names the slices in sequence (build the one marked NEXT), followed by LOCKED / DEFERRED / REJECTED entries each carrying its why. Plan and build from it; consult it before re-litigating any architecture or model choice; `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
 - `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/` · `workflows/` · `hooks/` (see Formatting below).
 - `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands. Native `x-check`, `x-recheck`, `x-dm`, `x-stat`, and `lean-log` directories are separate Codex workflow skills, outside Claude Code's orchestration and push scope; Claude Code must ignore them and must not mirror or include them when pushing its own work. These five skills always execute inline in the current Codex task and must never delegate to a custom agent; select the desired model in the task before invoking them.
@@ -69,7 +69,21 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
   bulk pass only adds churn to the diff. `pnpm lint` stays useful as a read-only check.
   Only the residual Biome won't auto-fix (no-fix or `--unsafe` rules) needs a human or an
   agent: that's `feature-lint`'s job.
-- **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-scoped, except `x_accounts` which is deny-all — service-role-only credential storage; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
+- **Every model call records its output AND its reasoning trace.** One `model_calls` row per
+  call — any stage (extraction, drafting, judge, scan), whether one model runs or five —
+  carrying `output`, `reasoning`, `usage`, `cost_usd`, `generation_id`. Storing a token count
+  without the trace is not compliance. **On Claude models the trace is a summary gated on
+  `thinking.display`, which defaults to `"omitted"` — and "omitted" still returns a thinking
+  block with an empty `text`, so a default call looks exactly like a model that cannot expose
+  reasoning.** Pass `thinking: { type, effort, display: "summarized" }` (effort belongs inside
+  that object; a top-level `reasoning` param would be silently ignored whenever
+  `providerOptions` carries any reasoning key). Every call also stamps
+  `usage.reasoningWithheldByProvider` to keep "withheld" distinguishable from "not captured".
+  Write via the service-role client (the table has no insert policy) and never duplicate the
+  output elsewhere: `voice_guides.provenance` is a `{ modelCallId }` pointer and `post_drafts`
+  joins through `model_call_id`. Rationale, per-model status, and the false-impossibility
+  miss: `docs/decisions.md` L12 + L9#7-8.
+- **No persistence until a data shape earns it.** Every new table is a real feature slice (plan it), not a quick add mid-task; a new table also picks one of the three established RLS shapes rather than inventing a fourth. The current tables and their shapes are listed once, in the Code map's `supabase/migrations/` entry above — don't restate them here.
 
 ### Cross-cutting skills
 

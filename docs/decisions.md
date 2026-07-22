@@ -20,14 +20,22 @@ whole list.** When a slice ships, mark it DONE and promote the following one to 
 
 | # | Slice | Status | Spec | Done when |
 | --- | --- | --- | --- | --- |
-| 1 | **Schema + voice extraction** — the five tables (incl. the clustering extension point) and the Fable extraction path (`lib/voice/` is already ported: measured-facts + deploy-strip) | **NEXT** | L4, L2 | A real voice guide for Reshad, extracted from his real corpus, stored and readable |
-| 2 | **Drafting council + notification + metering** — the two-family council and judge, Slack + email delivery, `usage_events` stamped from birth | after 1 | L3, L5, L7 | A hand-seeded source post produces a Slack message carrying a draft in Reshad's voice — **this is the demo** |
+| 1 | **Schema + voice extraction** — the five tables (incl. the clustering extension point) and the Fable extraction path (`lib/voice/` is already ported: measured-facts + deploy-strip) | **DONE** (#66) — guide extracted, stored, RLS-readable | L4, L2, L11, L12 | A real voice guide for Reshad, extracted from his real corpus, stored and readable |
+| 2 | **Drafting council + notification + metering** — the two-family council and judge, Slack + email delivery, `usage_events` stamped from birth | **NEXT** | L3, L5, L7, L12 | A hand-seeded source post produces a Slack message carrying a draft in Reshad's voice — **this is the demo** |
 | 3 | **Ingestion worker** — the always-on Railway forwarder: stream connection, shared rules, reconnect-with-backoff, liveness alarm, delivery metering | after 2 | L1 | Live posts replace the hand-seeded one end to end |
 | 4 | **UI** — site chrome, desk sections, feed, council expansion | **BLOCKED** on the Claude-design wireframe → v0 lock | L8 | The reporter reviews and posts from the app instead of from Slack |
 
 Rules for whoever picks this up: the spec is already settled — **plan from these sections,
 do not re-derive, re-price, or re-ask.** The REJECTED list exists so alternatives are not
-reconsidered without a new fact. Slice 3 is deliberately not first: it is the riskiest
+reconsidered without a new fact.
+
+**Cross-cutting invariants bind every slice, whatever it is about — a plan that touches
+model calls or spend must satisfy them explicitly, not inherit them by luck:**
+**L7** (every touch point stamps `usage_events`), **L9** (the instrumentation house rules),
+and **L12** (every model call records its output *and* its reasoning trace, one
+`model_calls` row each, single model or five). If a slice makes a model call and its plan
+does not say where the trace is stored, **the plan is wrong** — that exact omission shipped
+once in slice 1. Slice 3 is deliberately not first: it is the riskiest
 component (a long-lived socket with no backfill safety net on the free tier), so the
 pipeline is proven before the socket is debugged.
 
@@ -147,9 +155,10 @@ Applied at build time (Supabase MCP needs re-auth). Why each shape:
 | Table | Shape | Why |
 | --- | --- | --- |
 | `experiments` | NEW table: `owner_id`, `beat`, `tracked_handles text[]`, `reporter_handle`, `status` | Not overloaded onto `agents` — agents carry `scan_frequency`/`search_template`, which experiments have no concept of; nullable not-applicable columns are the smell |
-| `voice_guides` | **unique per `reporter_handle`**: `guide_raw`, `guide_deploy`, `measured_facts`, council provenance jsonb, `cost_usd` | Extraction is paid once per reporter — the unique key *encodes the economics*; keying by experiment would re-pay $2 per experiment |
+| `voice_guides` | **unique per `reporter_handle`**: `guide_raw`, `guide_deploy`, `measured_facts`, `cost_usd`, and `provenance` jsonb = **a pointer `{ modelCallId }`, never a copy** (every call's output/reasoning/usage lives in `model_calls` — L12) | Extraction is paid once per reporter — the unique key *encodes the economics*; keying by experiment would re-pay $2 per experiment |
 | `source_posts` | **global, deduped by `x_post_id`**: `author_handle`, `text`, `posted_at`, `raw jsonb` | Shared stream rules mean overlapping tracking; store once, join through drafts |
-| `post_drafts` | **one row per council member per post** (+ a judge row): `source_post_id`, `experiment_id`, `model`, `text`, `cost_usd`, `usage jsonb` (incl. reasoning tokens), `reasoning` trace, `is_winner`, `judge_verdict jsonb` | The retirement rule, per-model cost, and "why did this win" each become ONE query because members are rows, not a json blob |
+| `model_calls` | **one row per model call, every stage**: `owner_id`, `stage`, `role`, `model`, `output`, `reasoning`, `usage jsonb`, `cost_usd`, `generation_id`, `ref_kind`+`ref_id` | The universal record — see **L12**. What a model returned and what it reasoned have exactly ONE home, so a new stage inherits the guarantee instead of re-deriving it |
+| `post_drafts` | **one row per council member per post** (+ a judge row): `source_post_id`, `experiment_id`, `model_call_id` → `model_calls`, `is_winner`, `judge_verdict jsonb` | The retirement rule, per-model cost, and "why did this win" each become ONE query because members are rows, not a json blob. The model's own output/reasoning/cost sit on the joined `model_calls` row, not duplicated here |
 | `usage_events` | `owner_id`, `kind`, `units`, `cost_usd`, `ref_id` | The metering ledger — stamped from birth (see L7) |
 
 **Named extension point — clustering:** the feed's unit later changes from *post* to
@@ -223,6 +232,112 @@ the walls**: no reserved blank chrome; future stages arrive as sections or riche
 6. A parameter accepted with HTTP 200 is not a parameter honored — read the effect back
    (the K3 probe). Generalisation: **a failure/success report is a claim about our
    instrumentation as much as about the model.**
+7. **A thinking-token count is not a thinking trace.** Fable bills thinking tokens (2,317 on
+   the real extraction) while returning the block with `text: ""` — so `reasoningText` is
+   empty with **zero warnings**, and code that logs only the count looks perfectly healthy
+   while capturing nothing. Read the trace's *length* back, never the token count.
+8. **An absent value under default configuration is not proof that no configuration produces
+   it.** The empty trace above was a default (`thinking.display: "omitted"`), not a limit;
+   `display: "summarized"` returns the summary. The wrong conclusion — "Fable cannot expose
+   reasoning" — was reached by testing an unrelated parameter (`thinking.type.enabled`,
+   correctly rejected) and generalising from one default-config observation, then recorded
+   here as a measured fact. **Before writing an impossibility into this file, find the
+   parameter that governs the field and test that parameter.** Rule 6's mirror image: a `200`
+   isn't compliance, and an empty field isn't incapability.
+
+### L12. Model-call recording — every call, every stage, output AND reasoning
+
+**Every model call anywhere in the system writes exactly one `model_calls` row carrying its
+`output` and its `reasoning` trace**, plus `usage` (incl. thinking tokens), `cost_usd`,
+`generation_id`, and a `stage`/`role` pair. This holds regardless of stage (extraction,
+drafting, judge, scan) and regardless of whether one model runs or five. **Storing a token
+count without the trace is not compliance** — a count proves that thinking happened, never
+what it concluded, and the trace is the audit trail of the judgment we paid for.
+
+- **Two different claims, never to be merged again.** The **raw chain of thought is never
+  returned by any Claude model** — permanent, not a setting. A **readable summary** is one
+  opt-in parameter away. Conflating the two produced a false "cannot expose reasoning" entry
+  in this file; see the lesson below.
+- **`thinking.display` is the parameter that governs it.** It defaults to `"omitted"` on
+  Fable 5, Opus 4.8/4.7 and Sonnet 5, and `"omitted"` **still returns a thinking block, with
+  `text: ""`** — indistinguishable by inspection from a model that cannot expose anything, and
+  emitted with zero warnings. `display: "summarized"` returns the summary. Probed on the
+  gateway 2026-07-22, same prompt: `omitted` → 0 chars; `summarized` → 136 and 170 chars.
+  **The extraction call sets `display: "summarized"`, and the summary is what we store.**
+- **SDK shape:** effort sits *inside* the thinking object —
+  `providerOptions.anthropic.thinking = { type: "adaptive", effort: "high", display: "summarized" }`.
+  `output_config` is the REST shape, not the SDK's. And the top-level `reasoning` param and
+  `providerOptions` are **never merged**: any reasoning key in `providerOptions` makes a
+  top-level `reasoning` silently ignored in full, so effort must live in the same object.
+  *Unverified:* whether `effort` measurably changes depth in either placement — a single
+  sample per cell moved thinking tokens 2–7%, inside variance. Do not claim it either way.
+- **Per-model exposure — status, not verdict:**
+
+  | Model | Readable reasoning | Status |
+  | --- | --- | --- |
+  | `anthropic/claude-fable-5` | **yes, as a summary**, via `display: "summarized"` | verified |
+  | `deepseek/deepseek-v4-flash` | yes — 459 chars, no flag needed | verified |
+  | `deepseek/deepseek-v4-pro` | yes — 1,117 chars, no flag needed | verified |
+  | `openai/gpt-5-nano` | 0 chars **under default config** | **UNVERIFIED — its own visibility parameter was never tested.** Do not read as incapable |
+
+- Every call also writes `usage.reasoningWithheldByProvider`, so a null trace stays
+  distinguishable from a missed capture — the ambiguity that hid the original gap.
+- **The lesson, and it generalises past this API: an absent value under default configuration
+  is not proof that no configuration produces it.** Find the parameter that governs the field
+  and test *that* before recording an impossibility. This is the K3 rule's mirror image —
+  there a `200` was mistaken for compliance; here an empty field was mistaken for
+  incapability, and the wrong conclusion was written into this file as a "measured fact",
+  which is worse than a bug because this file exists to stop future sessions re-deriving.
+- **Corollary for model choice:** auditability is a *checkable* property of a model. A swap
+  that trades a trace-exposing model for a silent one is a real loss — but confirm silence
+  against the model's own visibility parameter before calling it silent.
+
+- **Rows, not blobs — L4's argument, generalised.** L4 made `post_drafts` one row per
+  council member so the retirement rule, per-model cost, and "why did this win" each stay
+  ONE query. Extraction takes the same shape the moment the council lands (primary + three
+  analysts + falsify = five calls per reporter), so a provenance blob would have rebuilt the
+  anti-pattern L4 already rejected — on the other stage.
+- **One home per fact.** `post_drafts` carries only draft semantics (`source_post_id`,
+  `experiment_id`, `model_call_id`, `is_winner`, `judge_verdict`); `voice_guides.provenance`
+  is a **pointer** (`{ modelCallId }`), not a second copy. What a model returned lives in
+  `model_calls` and nowhere else.
+- **RLS:** owner-scoped select, zero write policies — service-role only, so a browser can
+  neither forge nor erase the record of what a model produced.
+- Why this is LOCKED rather than left to each slice: it was missed once already. Slice 1
+  shipped extraction storing `thinkingTokens` and no trace, because L4 described
+  `voice_guides` as carrying "council provenance jsonb" — a phrase written for the council
+  era that says nothing about the single-model case, and a plan filled that silence in the
+  lossy direction without flagging it. **An invariant that lives only as one table's column
+  list gets re-derived, and re-missed, by the next plan.**
+
+### L11. Voice-guide access — any signed-in user can read any guide, accepted deliberately
+
+Found at slice-1 QC and **verified by exploit, not by reading**: `voice_guides`'s only read
+policy joins through `experiments`, and `experiments_insert_own` lets any authenticated user
+insert any `reporter_handle` with `owner_id = self`. So the join row is self-minted — an
+attacker reads 0 rows, inserts one `experiments` row, and reads the guide. Reachable via
+PostgREST with the public publishable key; no UI needed.
+
+**Accepted, not fixed.** A guide is derived entirely from public posts: no private data, no
+PII, no credential — it is an analysis anyone could reproduce from a public timeline. L4
+already locks guides as shared infrastructure (unique per `reporter_handle`) *specifically*
+so two customers tracking the same reporter share one guide instead of paying twice, which
+makes a second reader the intended product rather than theft. The real exposure is
+free-riding on accumulated extraction spend, negligible at current scale.
+
+**Spend amplification — separately verified NOT reachable (2026-07-22).** The worse question
+is whether minting an `experiments` row can *trigger* a new paid extraction. It cannot:
+`extractVoiceGuide` has exactly one call site (`scripts/extract-voice-guide.ts`, run by hand
+with service-role credentials); no app or lib code writes `experiments` at all; the cron
+dispatcher selects only `runs` and `agents`; the only triggers on `experiments`/`voice_guides`
+are `moddatetime` stamps; and `pg_net`/`pg_cron`/`http` are **not installed**, so the database
+has no outbound-call capability. Minting rows creates rows and nothing else.
+
+> **Guard — re-check this the moment extraction gains a user-triggered path.** The bound above
+> holds *because* extraction is script-only. The first Server Action, route, agent tool, or
+> create-desk flow that calls `extractVoiceGuide` turns a self-minted `experiments` row into
+> unbounded spend by a free account. That commit must ship a spend gate (per-owner cap read off
+> `usage_events`, or extraction restricted to an earned handle per D14) in the same diff.
 
 ### L10. The lab stays
 
@@ -251,6 +366,7 @@ are needed and the lab costs $0 to keep.
 | D11 | Embedding gate (pgvector, shadow-tuned thresholds) | pipeline v2 | Needs live drafts to tune against |
 | D12 | Reddit via Bright Data · handle verification at onboarding · per-desk spend caps | various | Post-slice hardening |
 | D13 | X Enterprise tier | account migration | Only if webhooks or backfill_minutes become necessary; custom contract, unpublished pricing |
+| D14 | **Earning the `experiments` join row** — a `reporter_handle` grants guide access only once verified (linked X account, or an approved list) | a migration + whatever verification mechanism is chosen | The only *real* fix to L11, and a design problem in its own right. Wakes when guide free-riding stops being negligible, or when extraction gains a user-triggered path (L11's guard) — whichever comes first |
 
 ---
 
@@ -282,3 +398,4 @@ are needed and the lab costs $0 to keep.
 | R22 | Newsroom-IT-approval objection to Slack | Retracted on fact: Reshad is independent and installs apps himself (asked directly) |
 | R23 | Per-user rule = per-desk webhooks/config designs generally | Everything per-user about ingestion collapsed once the 1-connection + 5-rule realities landed; per-user state lives in Supabase, not at X |
 | R24 | `x_user_search` handle verification tool | Fuzzy search drops valid accounts outranked by popular near-matches (closed #57); wrong handle simply returns nothing — verification deferred to D12 with a different mechanism |
+| R25 | Closing L11 by making `voice_guides` deny-all + an explicit ownership check in application code | It asks the **same unsound question**, just in app code instead of RLS: ownership would still be established through the same self-minted `experiments` row. It moves the hole, it doesn't close it — while costing the "RLS is the gate" property. Closing this properly means *earning* the join row (D14) |
