@@ -697,6 +697,64 @@ But caps fix cost, not rank: Gemini lost extraction on quality at full effort, a
 
 ---
 
+## 12. The slice's schema and the sequential build-out log (recorded 2026-07-21)
+
+### 12.1 Schema for the Experiment slice — agreed shape
+
+Five new tables (DDL written at build time; Supabase MCP needs re-auth to apply):
+
+| Table | Holds | Key points |
+| --- | --- | --- |
+| `experiments` | the slice's desk-lite | `owner_id`, `beat`, `tracked_handles text[]`, `reporter_handle`, `status`; NEW table, not overloaded onto `agents` |
+| `voice_guides` | extraction output | **unique per `reporter_handle`** — extraction is paid once per reporter, the key encodes the economics; `guide_raw`, `guide_deploy`, `measured_facts`, council-run provenance as jsonb (promote to rows only if queried), `cost_usd` |
+| `source_posts` | every stream delivery | **global, deduped by `x_post_id`** — shared rules mean overlapping tracking; `author_handle`, `text`, `posted_at`, `raw jsonb` |
+| `post_drafts` | **one row per council member per post** (plus a judge row) | `source_post_id`, `experiment_id`, `model`, `text`, `cost_usd`, `usage jsonb` (incl. reasoning tokens), `reasoning` trace, `is_winner`, `judge_verdict jsonb` — the retirement rule, per-model cost, and "why did this win" are each ONE query because members are rows, not a json blob |
+| `usage_events` | the metering ledger | `owner_id`, `kind`, `units`, `cost_usd`, `ref_id` — stamped from `getGenerationInfo` at write time |
+
+**Named extension point — clustering (the one object-model commitment):** when clustering
+lands, the feed's unit changes from *post* to *story*. The migration is purely additive —
+`CREATE TABLE stories` + nullable `story_id` on `source_posts` (and on `post_drafts` for
+story-level drafts) — instant in Postgres, no rewrite. **Do not add the column early**: a
+nullable FK to a table that doesn't exist yet is worse than the later additive migration.
+The UI carries the same commitment as "feed items may be groups."
+
+### 12.2 Deferred by design — build these sequentially, in roughly this order
+
+Each lands in the container (site → desk → sections → items) without breaking it. Grey-out
+rule: **grey what is promised and specified; omit what is unspecified.**
+
+1. **Multi-source ingestion** (web search for Reshad's sites, more socials) → the desk's
+   **Sources** section; the greyed websites field on the create form is its seed.
+2. **Clustering** → new `stories` table + the feed's unit becomes a story (see 12.1). The
+   only deferred item that touches the object model.
+3. **Multi-platform drafting** (per-platform drafts; select-several-posts-draft-one) → the
+   draft card's unit becomes a pill-row of drafts per platform; item-level, no IA change.
+4. **Rich feed rendering** (react-tweet embeds, article cards) → presentation inside the
+   feed item; cosmetic.
+5. **Notification channels surface** (availability, prefs, the message back-and-forth
+   history) → the desk's **Channels** section; slice ships its seed (Slack + email config).
+6. **Payments/billing** → site-level account; stays out of the desk entirely.
+7. Standing upgrade paths already recorded elsewhere: extraction council retirement/audition
+   bench (§11.10), drafting third family + cheap-tier bake-off triggers (§11.9–11.10),
+   draft-on-selection vs draft-everything at volume (§11.10).
+
+### 12.3 UI decisions from the first-principles pass (feeds the wireframe)
+
+- **The site level is thin** — a desk switcher + account menu; no global sidebar (the
+  current one serves exactly one nav destination — measured, not felt).
+- **The desk owns the chrome**: sections **Feed** (default) · **Voice** · **Sources** ·
+  **Channels** · **Activity** (costs, stream liveness, cap alarms).
+- **Council reasoning is one click deep, never default**: the feed shows the winning draft;
+  a quiet affordance opens both drafts + judge verdict + reasoning traces + per-model cost
+  (vendored ai-elements already cover this: `reasoning`, `chain-of-thought`, `context`,
+  `inline-citation`).
+- **Future stages shape the container, not the walls**: no reserved blank space, no greyed
+  mysteries.
+- Agreed pipeline for locking the UI: needs-brief → Claude-design wireframe → iterate →
+  v0 lock → local CC plumbing.
+
+---
+
 ## Appendix: the evidence these claims stand on
 
 - **Bright Data X staleness:** Fabrizio's newest post 7d12h old across 347 records/0 errors, reproduced 4× through both API endpoints; fcbarcelona 4 min fresh in the same runs (snapshots `sd_mrts2v1x…`, `sd_mrts8nd2…`, `sd_mrtppb4…`).
