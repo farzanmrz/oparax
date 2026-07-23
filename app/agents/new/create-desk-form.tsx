@@ -24,14 +24,10 @@ function normalizeHandle(raw: string): string {
   return raw.trim().replace(/^@/, "");
 }
 
-/** Uppercase micro-label, matching the design's field-label treatment (§7: 10–11.5px/700,
- *  uppercase-by-content) — a Tailwind utility, not a custom token. */
+/** Field micro-label. Sentence case only — never uppercase or all-caps (owner UI rule; see
+ *  AGENTS.md "UI copy casing"). */
 function FieldLabel({ children }: { readonly children: React.ReactNode }) {
-  return (
-    <span className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
-      {children}
-    </span>
-  );
+  return <span className="text-xs font-medium text-muted-foreground">{children}</span>;
 }
 
 export function CreateDeskForm() {
@@ -83,14 +79,9 @@ export function CreateDeskForm() {
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
           <OparaxMark className="size-5" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
-            New desk
-          </p>
-          <h1 className="truncate text-lg font-semibold tracking-tight">
-            Create desk · preview runs through to a draft
-          </h1>
-        </div>
+        <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight">
+          Create desk
+        </h1>
         <Button aria-label="Close" asChild size="icon-sm" variant="ghost">
           <Link href="/agents">
             <XIcon />
@@ -148,7 +139,7 @@ export function CreateDeskForm() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-border/70 p-3 opacity-55">
+            <div className="flex flex-col gap-1.5 opacity-55">
               <div className="flex items-center gap-2">
                 <FieldLabel>Websites</FieldLabel>
                 <Badge className="h-4 px-1.5 text-[10px]" variant="outline">
@@ -158,7 +149,7 @@ export function CreateDeskForm() {
               <Input disabled placeholder="https:// …" />
             </div>
 
-            <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-border/70 p-3 opacity-55">
+            <div className="flex flex-col gap-1.5 opacity-55">
               <div className="flex items-center gap-2">
                 <FieldLabel>Draft instructions</FieldLabel>
                 <Badge className="h-4 px-1.5 text-[10px]" variant="outline">
@@ -206,9 +197,7 @@ function CreateDeskPreview({
     <div className="flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
       <div className="flex items-center gap-2">
         <span aria-hidden="true" className="size-2 rounded-full bg-warning" />
-        <p className="text-[11px] font-bold tracking-wide text-warning uppercase">
-          Live preview — real pipeline
-        </p>
+        <p className="text-xs font-semibold text-warning">Live preview — real pipeline</p>
       </div>
       <p className="text-xs text-muted-foreground">
         Runs as you type — proof of a post in your voice before you commit.

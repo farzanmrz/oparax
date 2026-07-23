@@ -94,6 +94,10 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
   joins through `model_call_id`. Rationale, per-model status, and the false-impossibility
   miss: `docs/decisions.md` L12 + L9#7-8.
 - **No persistence until a data shape earns it.** Every new table is a real feature slice (plan it), not a quick add mid-task; a new table also picks one of the three established RLS shapes rather than inventing a fourth. The current tables and their shapes are listed once, in the Code map's `supabase/migrations/` entry above — don't restate them here.
+- **UI copy & form conventions (owner rule — enforce every time, no exceptions).** These are hard rules for ALL user-facing UI, overriding anything the imported design mock did:
+    1. **Sentence case only — never ALL-CAPS.** No `uppercase` Tailwind utility, no `text-transform: uppercase`, no ALL-CAPS literal strings, anywhere — labels, section headers, badges, eyebrows, buttons, table headers. Capitalize the first word only; keep proper nouns/acronyms as written (`X`, `AI`, `Slack`). The mock's "uppercase-by-content" micro-labels are explicitly rejected.
+    2. **No eyebrow/kicker headers.** Never stack a small muted category label *above* a title (e.g. "New desk" over "Create desk"). A header is one line. A title may carry a *meaningful* description **below** it (e.g. a `DialogDescription`'s helper text) — that is fine — but never a redundant category label above it, and never split one heading across a bold line + a gray subline.
+    3. **Uniform form fields.** Every field in a form shares one visual treatment. A disabled / "coming soon" field is greyed (opacity) + a "Coming soon" badge — it does NOT get a special bordered/dashed container that makes it structurally different from the active fields. Grey it; don't box it.
 
 ### Cross-cutting skills
 

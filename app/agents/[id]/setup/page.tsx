@@ -183,7 +183,7 @@ function NotificationsCard() {
         <SoonBadge />
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 gap-y-3 text-xs font-medium text-muted-foreground uppercase">
+        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 gap-y-3 text-xs font-medium text-muted-foreground">
           <span>Notify me when…</span>
           <span className="text-center">Slack</span>
           <span className="text-center">Email</span>

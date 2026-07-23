@@ -87,9 +87,7 @@ export function SourcesCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            𝕏 X accounts
-          </h3>
+          <h3 className="text-xs font-semibold text-muted-foreground">𝕏 X accounts</h3>
           {trackedHandles.length === 0 ? (
             <p className="text-sm text-muted-foreground">No accounts tracked yet.</p>
           ) : (
@@ -163,9 +161,7 @@ export function SourcesCard({
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              News websites
-            </h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">News websites</h3>
             <SoonBadge />
           </div>
           <Input className="opacity-60" disabled placeholder="Track a news website — example.com" />
