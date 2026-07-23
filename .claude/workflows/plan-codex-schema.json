@@ -19,7 +19,12 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "Points where this plan is most likely to diverge from a reasonable alternative, and anything a reconciling reviewer should scrutinize before committing. Empty array is valid."
+    },
+    "instructionUpdates": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Instruction-file edits this slice makes necessary, each as 'FILE: what to change and why'. Targets: AGENTS.md, docs/decisions.md, and .claude/rules/*.md — NOT the feature-flow skills. Cover facts this slice makes stale (e.g. a table/section now built, a code-map path added) and any new guard the slice introduces. Empty array is valid when nothing goes stale."
     }
   },
-  "required": ["chosenApproach", "plan", "keyConstraints", "risksOrDisagreements"]
+  "required": ["chosenApproach", "plan", "keyConstraints", "risksOrDisagreements", "instructionUpdates"]
 }
