@@ -15,6 +15,7 @@
       "!.vercel/**",
       "!out/**",
       "!data/**",
+      "!ingest/**",
       "!components/ui/**",
       "!components/ai-elements/**",
       "!.claude/skills/ai-elements/**",
