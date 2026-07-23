@@ -18,7 +18,10 @@
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { parseTweet } from "twitter-text";
+// twitter-text 3.x is CommonJS — its ESM interop exposes only a default export (the
+// twttr object), never a named `parseTweet`, so a named import typechecks but fails the
+// bundler at build time. Import the default and read parseTweet off it.
+import twitterText from "twitter-text";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { postDraftToX } from "@/lib/x/actions";
@@ -49,7 +52,7 @@ export function PostToXControl({
     );
   }
 
-  const parsed = parseTweet(draftText);
+  const parsed = twitterText.parseTweet(draftText);
   const overLimit = parsed.weightedLength > WEIGHTED_LIMIT;
   const nearLimit = !overLimit && parsed.weightedLength / WEIGHTED_LIMIT > 0.9;
 

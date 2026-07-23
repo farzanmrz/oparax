@@ -14,6 +14,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -50,20 +51,24 @@ export async function deleteDesk(id: string): Promise<ActionResult> {
   redirect("/agents");
 }
 
-/** Strip a leading `@`, lowercase, and trim — the one normal form every stored handle takes. */
-function normalizeHandle(handle: string): string {
-  return handle.trim().replace(/^@/, "").toLowerCase();
-}
-
 /**
  * Add a tracked X handle. Read-modify-write under RLS (no atomic array-append in
  * PostgREST): fetch the desk's current `tracked_handles`, add the normalized handle if
  * it isn't already tracked, then update. Setup (T8) is this action's first consumer;
  * it's wired here now so that task only needs to build the UI.
+ *
+ * The handle is charset-validated (`normalizeValidHandle`) before it can be stored — a raw
+ * handle would otherwise flow into the ingestion worker's globally-shared X stream rule and let
+ * a single reporter inject stream operators across tenants (see lib/x/handle.ts).
  */
 export async function addTrackedHandle(id: string, handle: string): Promise<ActionResult> {
-  const normalized = normalizeHandle(handle);
-  if (!normalized) return { ok: false, error: "Enter a handle to track." };
+  const normalized = normalizeValidHandle(handle);
+  if (!normalized) {
+    return {
+      ok: false,
+      error: "That isn't a valid X handle — letters, numbers, and underscores, up to 15.",
+    };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase

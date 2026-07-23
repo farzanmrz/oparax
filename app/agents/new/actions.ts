@@ -3,16 +3,9 @@
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
+import { normalizeValidHandle } from "@/lib/x/handle";
 
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
-
-/** X handles are [A-Za-z0-9_], 1-15 chars — same rail create-desk-extraction.ts's
- *  loadCorpus re-checks before turning a handle into a filesystem path. */
-const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
-
-function normalizeHandle(raw: string): string {
-  return raw.trim().replace(/^@/, "");
-}
 
 /**
  * Create a desk (an `experiments` row) as the signed-in reporter, then kick off best-effort
@@ -26,12 +19,27 @@ export async function createDesk(input: {
   reporterHandle: string;
 }): Promise<CreateDeskResult> {
   const beat = input.beat.trim();
-  const reporterHandle = normalizeHandle(input.reporterHandle);
-  const trackedHandles = [...new Set(input.trackedHandles.map(normalizeHandle).filter(Boolean))];
-
   if (!beat) return { error: "Describe the beat this desk should watch." };
-  if (!HANDLE_RE.test(reporterHandle)) {
+
+  const reporterHandle = normalizeValidHandle(input.reporterHandle);
+  if (!reporterHandle) {
     return { error: "Your X handle should be letters, numbers, and underscores only." };
+  }
+
+  // Every tracked handle is charset-validated too — not just normalized. An unvalidated handle
+  // flows into the ingestion worker's globally-shared X stream rule where it could inject stream
+  // operators across tenants (see lib/x/handle.ts). One bad handle rejects the whole submit
+  // rather than being silently dropped or stored.
+  const trackedHandles: string[] = [];
+  for (const raw of input.trackedHandles) {
+    if (!raw.trim()) continue; // drop empty chips from the form
+    const handle = normalizeValidHandle(raw);
+    if (!handle) {
+      return {
+        error: `"${raw.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
+      };
+    }
+    if (!trackedHandles.includes(handle)) trackedHandles.push(handle);
   }
 
   const supabase = await createClient();

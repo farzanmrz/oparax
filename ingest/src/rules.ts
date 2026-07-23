@@ -21,6 +21,15 @@ const MAX_RULES = 5;
 const MAX_HANDLES_PER_RULE = 40;
 const RULE_TAG_PREFIX = "oparax-group-";
 
+// Re-declared, NOT imported: `ingest/` is an isolated package with zero `lib/` imports (the
+// README's "Isolation exception" covers only the Supabase client). Keep this in sync with
+// lib/x/handle.ts's X_HANDLE_RE. This is defense-in-depth: the app-side write paths already
+// validate handles, but the worker must never interpolate an unvalidated handle into a rule
+// value below (`from:${h}`) — a handle carrying stream operators (`) OR (`, spaces, etc.) that
+// reached the DB via pre-existing data or a future unguarded write path could break or hijack
+// the globally-shared rule set for every tenant.
+const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
+
 /** Mirrors the app's own author-routing shape (lib/agent/draft-pipeline.ts): every
  *  experiment's tracked_handles is pulled regardless of status, deduped case-insensitively
  *  (PostgREST's array `contains` filter matches elements exactly, so casing drift would
@@ -34,13 +43,28 @@ export async function fetchTrackedHandles(client: RulesClient): Promise<string[]
 
   const seen = new Set<string>();
   const handles: string[] = [];
+  const invalid: string[] = [];
   for (const row of data ?? []) {
     for (const handle of row.tracked_handles) {
+      // Defense-in-depth: never let an unvalidated handle reach the shared stream rule.
+      if (!X_HANDLE_RE.test(handle)) {
+        invalid.push(handle);
+        continue;
+      }
       const key = handle.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
       handles.push(handle);
     }
+  }
+  if (invalid.length > 0) {
+    logger.error(
+      "dropped tracked_handles failing the X handle shape — stale data or injection attempt",
+      {
+        invalidCount: invalid.length,
+        invalid,
+      },
+    );
   }
   return handles;
 }

@@ -200,72 +200,88 @@ async function draftForExperiment(
     throw claimError;
   }
 
-  const result = await runDraftCouncil({
-    guideDeploy: guide.guide_deploy,
-    accountTier: "standard",
-    brief,
-  });
+  // The claim above is a "drafting started" marker, not "drafting done". Every step below is
+  // paid or fallible; if any throws (a transient gateway 5xx, a DB error), the claim must be
+  // RELEASED — otherwise the worker's retry hits the 23505 above, returns already_drafted, and
+  // permanently drops a draft that the retry would have produced. Release-on-failure reopens the
+  // (source_post, experiment) pair for the retry; the re-run re-bills, which is the right trade
+  // against a silently lost draft. The happy path leaves the claim in place (dedup intact).
+  try {
+    const result = await runDraftCouncil({
+      guideDeploy: guide.guide_deploy,
+      accountTier: "standard",
+      brief,
+    });
 
-  // Ledger-first: model_calls rows before the post_drafts rows that point at them.
-  const callIds = await insertModelCalls(admin, experiment.owner_id, result.calls, sourcePostId);
+    // Ledger-first: model_calls rows before the post_drafts rows that point at them.
+    const callIds = await insertModelCalls(admin, experiment.owner_id, result.calls, sourcePostId);
 
-  let winningPostDraftId: string | null = null;
-  for (const member of result.members) {
-    const { data, error } = await admin
-      .from("post_drafts")
-      .insert({
+    let winningPostDraftId: string | null = null;
+    for (const member of result.members) {
+      const { data, error } = await admin
+        .from("post_drafts")
+        .insert({
+          source_post_id: sourcePostId,
+          experiment_id: experiment.id,
+          model_call_id: callIds[member.finalCallIndex],
+          is_winner: member.isWinner,
+          judge_verdict: null,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      if (member.isWinner) winningPostDraftId = data.id;
+    }
+    if (result.judge) {
+      const { error } = await admin.from("post_drafts").insert({
         source_post_id: sourcePostId,
         experiment_id: experiment.id,
-        model_call_id: callIds[member.finalCallIndex],
-        is_winner: member.isWinner,
-        judge_verdict: null,
-      })
-      .select("id")
-      .single();
-    if (error) throw error;
-    if (member.isWinner) winningPostDraftId = data.id;
-  }
-  if (result.judge) {
-    const { error } = await admin.from("post_drafts").insert({
-      source_post_id: sourcePostId,
-      experiment_id: experiment.id,
-      model_call_id: callIds[result.judge.callIndex],
-      is_winner: false,
-      judge_verdict: result.judge.verdict,
+        model_call_id: callIds[result.judge.callIndex],
+        is_winner: false,
+        judge_verdict: result.judge.verdict,
+      });
+      if (error) throw error;
+    }
+    if (!winningPostDraftId) {
+      throw new Error("draft-pipeline: no winning member produced a post_drafts row");
+    }
+
+    for (const call of result.calls) {
+      await stampUsageEvent(admin, {
+        owner_id: experiment.owner_id,
+        kind: "drafting",
+        units: 1,
+        cost_usd: call.costUsd,
+        ref_id: sourcePostId,
+      });
+    }
+
+    await deliverDraft(admin, {
+      ownerId: experiment.owner_id,
+      authorHandle: brief.authorHandle,
+      sourceText: brief.text,
+      winningText: result.winningText,
+      modelCount: result.members.length,
+      totalCostUsd: sumCosts(result.calls.map((c) => c.costUsd)),
+      winningPostDraftId,
+      sourcePostId,
+      revised: false,
     });
-    if (error) throw error;
-  }
-  if (!winningPostDraftId) {
-    throw new Error("draft-pipeline: no winning member produced a post_drafts row");
-  }
 
-  for (const call of result.calls) {
-    await stampUsageEvent(admin, {
-      owner_id: experiment.owner_id,
-      kind: "drafting",
-      units: 1,
-      cost_usd: call.costUsd,
-      ref_id: sourcePostId,
-    });
+    return {
+      experimentId: experiment.id,
+      winningModel: result.winningModel,
+      degraded: result.degraded,
+    };
+  } catch (err) {
+    // Release the claim so a retry of this delivery can re-attempt (see the comment above).
+    await admin
+      .from("draft_claims")
+      .delete()
+      .eq("source_post_id", sourcePostId)
+      .eq("experiment_id", experiment.id);
+    throw err;
   }
-
-  await deliverDraft(admin, {
-    ownerId: experiment.owner_id,
-    authorHandle: brief.authorHandle,
-    sourceText: brief.text,
-    winningText: result.winningText,
-    modelCount: result.members.length,
-    totalCostUsd: sumCosts(result.calls.map((c) => c.costUsd)),
-    winningPostDraftId,
-    sourcePostId,
-    revised: false,
-  });
-
-  return {
-    experimentId: experiment.id,
-    winningModel: result.winningModel,
-    degraded: result.degraded,
-  };
 }
 
 export async function processDelivery(delivery: IngestDelivery): Promise<ProcessDeliveryResult> {
@@ -469,6 +485,22 @@ export async function applyCorrection(input: {
     });
   }
 
+  // Dethrone the story's CURRENT winner before crowning the revision — NOT just the replied-to
+  // draft. A reporter can reply to a superseded draft (an older email still in the thread);
+  // flipping only input.postDraftId would leave the actual current winner set AND crown the
+  // revision, so one story ends up with two is_winner=true rows, which feed-query renders as
+  // duplicate cards. Unsetting whichever row currently wins this (source_post, experiment) keeps
+  // the one-winner-per-story invariant regardless of which draft the reply targeted. This runs
+  // BEFORE the insert so the new winner below isn't itself caught by this update. Pointer flip
+  // only — a post_drafts row's content stays an immutable record of what a model produced.
+  const { error: dethroneError } = await admin
+    .from("post_drafts")
+    .update({ is_winner: false })
+    .eq("source_post_id", sourcePost.id)
+    .eq("experiment_id", experiment.id)
+    .eq("is_winner", true);
+  if (dethroneError) throw dethroneError;
+
   const { data: newDraft, error: newDraftError } = await admin
     .from("post_drafts")
     .insert({
@@ -483,15 +515,6 @@ export async function applyCorrection(input: {
     .select("id")
     .single();
   if (newDraftError) throw newDraftError;
-
-  // Pointer flip only — never touch a post_drafts row's content (source_post_id,
-  // experiment_id, model_call_id, judge_verdict): it's an immutable record of what a model
-  // produced.
-  const { error: flipError } = await admin
-    .from("post_drafts")
-    .update({ is_winner: false })
-    .eq("id", input.postDraftId);
-  if (flipError) throw flipError;
 
   await deliverDraft(admin, {
     ownerId: experiment.owner_id,

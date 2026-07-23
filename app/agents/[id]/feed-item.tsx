@@ -6,7 +6,10 @@
 // as a React fragment of TWO sibling grid children so the parent's `grid-cols-2` places the
 // news card and its draft card side by side without an extra wrapper div — see `page.tsx`.
 import { ExternalLinkIcon, PencilIcon } from "lucide-react";
-import { parseTweet } from "twitter-text";
+// twitter-text 3.x is CommonJS — its ESM interop exposes only a default export (the
+// twttr object), never a named `parseTweet`, so a named import typechecks but fails the
+// bundler at build time. Import the default and read parseTweet off it.
+import twitterText from "twitter-text";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -142,7 +145,7 @@ function DraftCard({
     );
   }
 
-  const parsed = parseTweet(winner.text);
+  const parsed = twitterText.parseTweet(winner.text);
   const overLimit = parsed.weightedLength > WEIGHTED_LIMIT;
   const nearLimit = !overLimit && parsed.weightedLength / WEIGHTED_LIMIT > 0.9;
   const posted = winner.postedAt !== null;
