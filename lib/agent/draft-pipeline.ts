@@ -47,7 +47,12 @@ export type ProcessDeliveryResult = {
   }>;
 };
 
-type MatchedExperiment = { id: string; owner_id: string; reporter_handle: string };
+type MatchedExperiment = {
+  id: string;
+  owner_id: string;
+  reporter_handle: string;
+  status: string;
+};
 
 /** The ONE place a `CouncilCall` becomes a `model_calls` row. Inserted one row at a time (not
  *  batched) so the returned ids are guaranteed aligned with `calls` BY INDEX — a batched
@@ -328,7 +333,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   // task-7-report.md for why this shape was chosen over the contains filter).
   const { data: allExperiments, error: experimentsError } = await admin
     .from("experiments")
-    .select("id, owner_id, reporter_handle, tracked_handles");
+    .select("id, owner_id, reporter_handle, tracked_handles, status");
   if (experimentsError) throw experimentsError;
   const wantedHandle = delivery.author_handle.toLowerCase();
   const matched: MatchedExperiment[] = (allExperiments ?? []).filter((e) =>
@@ -370,6 +375,13 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
 
   const drafted: ProcessDeliveryResult["drafted"] = [];
   for (const experiment of matched) {
+    // Draft only for ACTIVE desks. A paused desk still appears in `matched` (it tracks this
+    // author, so it still counts for the unmatched check and the delivery metering above — the
+    // stream volume was real), but pausing means "stop watching the beat": no new drafts. Without
+    // this gate the pause control just flips a `status` column that nothing downstream reads. The
+    // worker also drops paused desks' handles from the stream on its next ~5-min rule rebuild;
+    // this is the immediate guard for that lag window and for hand-seeded deliveries.
+    if (experiment.status !== "active") continue;
     drafted.push(await draftForExperiment(admin, experiment, sourcePostId, brief));
   }
 

@@ -30,21 +30,22 @@ const RULE_TAG_PREFIX = "oparax-group-";
 // the globally-shared rule set for every tenant.
 const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 
-/** Mirrors the app's own author-routing shape (lib/agent/draft-pipeline.ts): every
- *  experiment's tracked_handles is pulled regardless of status, deduped case-insensitively
- *  (PostgREST's array `contains` filter matches elements exactly, so casing drift would
- *  silently break routing there too — same reasoning applies here). */
+/** Pulls tracked_handles from ACTIVE desks only — a paused desk "stops watching the beat", so
+ *  its handles must leave the stream — deduped case-insensitively. Mirrors the app's own
+ *  author-routing shape (lib/agent/draft-pipeline.ts), which likewise drafts only for active
+ *  desks: the pipeline is the immediate guard, this rebuild (every ~5 min) is the eventual one. */
 export async function fetchTrackedHandles(client: RulesClient): Promise<string[]> {
   const { data, error } = await client
     .from("experiments")
-    .select("tracked_handles")
-    .returns<{ tracked_handles: string[] }[]>();
+    .select("tracked_handles, status")
+    .returns<{ tracked_handles: string[]; status: string }[]>();
   if (error) throw error;
 
   const seen = new Set<string>();
   const handles: string[] = [];
   const invalid: string[] = [];
   for (const row of data ?? []) {
+    if (row.status !== "active") continue; // paused desks stop watching — drop from the stream
     for (const handle of row.tracked_handles) {
       // Defense-in-depth: never let an unvalidated handle reach the shared stream rule.
       if (!X_HANDLE_RE.test(handle)) {
