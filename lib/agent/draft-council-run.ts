@@ -26,18 +26,6 @@ import { resolveGatewayCost } from "./gateway-cost";
 // any reasoning key in providerOptions makes the top-level param silently ignored in full.
 const GPT5_NANO_MODEL = "openai/gpt-5-nano";
 
-// Third family, owner override of D8 (2026-07-22): decisions.md L3 slates `glm-4.7-flashx` as
-// the third drafting family behind cache telemetry confirming headroom — that gate is skipped
-// here on explicit owner instruction. Gateway id resolved by probe against
-// `gateway.getAvailableModels()`, not assumed: `zai/glm-4.7-flashx` (docs' shorthand
-// "glm-4.7-flashx" maps onto that exact gateway slug). Probe-verified (2026-07-22, this
-// branch, scratchpad — not persisted, per L12's probe-script exemption): GLM exposes full
-// reasoning by DEFAULT, no visibility flag needed (2,911 chars on the demo prompt, same shape
-// as deepseek-v4-flash). Top-level `reasoning: "low"` (matching L3's locked spec) is still
-// accepted AND has a measured effect — reasoningTokens moved 689 → 849 on an identical
-// prompt — satisfying L9 rule 6's read-the-effect-back bar, not just a 200.
-const GLM_DRAFT_MODEL = "zai/glm-4.7-flashx";
-
 export type SourceBrief = {
   sourcePostId: string;
   xPostId: string;
@@ -179,13 +167,6 @@ const FAMILIES: Family[] = [
     // silently suppresses the top-level param in full (probe-verified, see header comment).
     generate: (system, prompt) =>
       generateText({ model: GPT5_NANO_MODEL, reasoning: "low", system, prompt }),
-  },
-  {
-    model: GLM_DRAFT_MODEL,
-    // Top-level `reasoning: "low"` per decisions.md L3's locked spec (probe-verified above:
-    // GLM exposes reasoning by default regardless, but the param still measurably changes it).
-    generate: (system, prompt) =>
-      generateText({ model: GLM_DRAFT_MODEL, reasoning: "low", system, prompt }),
   },
 ];
 

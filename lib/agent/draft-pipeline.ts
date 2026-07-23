@@ -165,9 +165,24 @@ async function draftForExperiment(
   sourcePostId: string,
   brief: SourceBrief,
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
-  // Extraction stays script-only this slice (decisions.md L11) — absent guide, skip. Checked
-  // BEFORE the atomic claim below: a no-guide desk must not burn a draft_claims row it will
-  // never use.
+  // Idempotency: a redelivered post must not re-pay the council.
+  const { data: existing, error: existingError } = await admin
+    .from("post_drafts")
+    .select("id")
+    .eq("source_post_id", sourcePostId)
+    .eq("experiment_id", experiment.id)
+    .limit(1);
+  if (existingError) throw existingError;
+  if (existing && existing.length > 0) {
+    return {
+      experimentId: experiment.id,
+      winningModel: "",
+      degraded: false,
+      skipped: "already_drafted",
+    };
+  }
+
+  // Extraction stays script-only this slice (decisions.md L11) — absent guide, skip.
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
     .select("guide_deploy")
@@ -176,28 +191,6 @@ async function draftForExperiment(
   if (guideError) throw guideError;
   if (!guide) {
     return { experimentId: experiment.id, winningModel: "", degraded: false, skipped: "no_guide" };
-  }
-
-  // Atomic claim (D16): draft_claims carries UNIQUE(source_post_id, experiment_id), so this
-  // insert IS the idempotency check — a non-atomic select-then-check here could let two
-  // concurrent deliveries (or a redelivery racing an in-flight draft) both pass the check and
-  // both pay for runDraftCouncil below. A 23505 unique-violation means another delivery already
-  // claimed this pair — return the same already-drafted shape the old select-then-check
-  // returned; any other error propagates as before.
-  const { error: claimError } = await admin
-    .from("draft_claims")
-    .insert({ source_post_id: sourcePostId, experiment_id: experiment.id })
-    .select("id");
-  if (claimError) {
-    if (claimError.code === "23505") {
-      return {
-        experimentId: experiment.id,
-        winningModel: "",
-        degraded: false,
-        skipped: "already_drafted",
-      };
-    }
-    throw claimError;
   }
 
   const result = await runDraftCouncil({
@@ -319,19 +312,6 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     e.tracked_handles.some((h) => h.toLowerCase() === wantedHandle),
   );
 
-  // D16a: usage_events.owner_id is NOT NULL, so an unmatched delivery (no experiment tracks
-  // this author) is invisible to usage_events and, with it, to the stream-volume alarm — there
-  // is no owner to bill, so there was no row and no signal. Best-effort: a write failure here
-  // must never change processDelivery's response or its drafting outcome.
-  if (matched.length === 0) {
-    const { error: unmatchedError } = await admin
-      .from("unmatched_deliveries")
-      .insert({ x_post_id: delivery.x_post_id, author_handle: delivery.author_handle });
-    if (unmatchedError) {
-      console.error("draft-pipeline: unmatched_deliveries insert failed", unmatchedError);
-    }
-  }
-
   // Stamp the delivery — one row per distinct matched owner; no match, no stamp (a
   // usage_events row requires an owner and there is no one to bill — see task-7-report.md).
   const distinctOwnerIds = [...new Set(matched.map((e) => e.owner_id))];
@@ -392,9 +372,6 @@ export async function applyCorrection(input: {
   // stamp is deliberately deferred past the paid revision call below (see the comment there) —
   // stamping here, before the call, would make any later failure in this function permanently
   // discard the reporter's correction, since every retry would then see the stamp and no-op.
-  // This select is a fast-path only; the actual guarantee is the D16 partial unique index on
-  // usage_events(ref_id) WHERE kind = 'email_reply_received', enforced at the stamp's WRITE
-  // below — two concurrent deliveries of the same Svix message can both pass this select.
   const { data: dup, error: dupError } = await admin
     .from("usage_events")
     .select("id")
@@ -442,22 +419,13 @@ export async function applyCorrection(input: {
   // after the stamp. Tradeoff accepted: a crash in the narrow window between this line and the
   // paid call above can re-pay one ~cent revision on a redelivery, which is strictly preferable
   // to losing a reporter's correction.
-  //
-  // D16's partial unique index on usage_events(ref_id) WHERE kind = 'email_reply_received' makes
-  // THIS insert the real idempotency guard: a 23505 unique-violation means another concurrent
-  // delivery of the same Svix message won the race and already stamped — that's the existing
-  // no-op return, never a 500 (any other error still propagates as before).
-  const { error: stampError } = await admin.from("usage_events").insert({
+  await stampUsageEvent(admin, {
     owner_id: experiment.owner_id,
     kind: "email_reply_received",
     units: 1,
     cost_usd: null,
     ref_id: input.idempotencyKey,
   });
-  if (stampError) {
-    if (stampError.code === "23505") return null;
-    throw stampError;
-  }
 
   for (const call of revision.calls) {
     await stampUsageEvent(admin, {
