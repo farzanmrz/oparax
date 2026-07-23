@@ -15,12 +15,16 @@ export type CreateDeskResult = { id: string; error?: never } | { id?: never; err
  * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
  */
 export async function createDesk(input: {
+  name: string;
   beat: string;
   trackedHandles: string[];
   reporterHandle: string;
 }): Promise<CreateDeskResult> {
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this desk should watch." };
+
+  // Optional — the switcher falls back to a beat-derived label when it's blank.
+  const name = input.name.trim() || null;
 
   const reporterHandle = normalizeValidHandle(input.reporterHandle);
   if (!reporterHandle) {
@@ -56,6 +60,7 @@ export async function createDesk(input: {
     .from("experiments")
     .insert({
       owner_id: user.id,
+      name,
       beat,
       reporter_handle: reporterHandle,
       tracked_handles: trackedHandles,

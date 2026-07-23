@@ -7,10 +7,11 @@ import { DeskSwitcher } from "@/components/desk-switcher";
 import { OparaxMark } from "@/components/logo";
 import { MobileNavSheet } from "@/components/mobile-nav-sheet";
 import { Separator } from "@/components/ui/separator";
-import { deriveDeskLabel } from "@/lib/agent/desk-label";
+import { deskDisplayName } from "@/lib/agent/desk-label";
 
 export type HeaderDesk = {
   id: string;
+  name: string | null;
   beat: string;
   status: string;
   needsReviewCount: number;
@@ -39,7 +40,7 @@ export function SiteHeader({
   const currentDesk = desks.find((desk) => pathname.startsWith(`/agents/${desk.id}`));
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex items-center gap-2">
           <OparaxMark className="size-5 text-foreground" />
@@ -50,19 +51,19 @@ export function SiteHeader({
         {currentDesk ? <DeskControls deskId={currentDesk.id} status={currentDesk.status} /> : null}
       </div>
 
+      {/* Tabs are absolutely centered on the viewport — a plain flex-1 center drifts right when
+          the left cluster (a long desk name + controls) is wider than the right. */}
       {currentDesk ? (
-        <div className="hidden flex-1 justify-center md:flex">
+        <div className="-translate-x-1/2 absolute left-1/2 hidden md:block">
           <DeskTabs deskId={currentDesk.id} needsReviewCount={currentDesk.needsReviewCount} />
         </div>
-      ) : (
-        <div className="flex-1" />
-      )}
+      ) : null}
 
       <div className="flex items-center gap-1.5">
         {currentDesk ? (
           <MobileNavSheet
             deskId={currentDesk.id}
-            deskLabel={deriveDeskLabel(currentDesk.beat)}
+            deskLabel={deskDisplayName(currentDesk)}
             needsReviewCount={currentDesk.needsReviewCount}
           />
         ) : null}

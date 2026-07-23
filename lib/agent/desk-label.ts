@@ -21,3 +21,13 @@ export function deriveDeskLabel(beat: string): string {
   if (trimmed.length <= 40) return trimmed;
   return `${trimmed.slice(0, 40).trim()}…`;
 }
+
+/**
+ * A desk's display name for the switcher/header: the reporter-chosen `name` when set, otherwise
+ * the label derived from its beat. Existing desks (created before the name field) have `name`
+ * null and keep their beat-derived label.
+ */
+export function deskDisplayName(desk: { name: string | null; beat: string }): string {
+  const name = desk.name?.trim();
+  return name ? name : deriveDeskLabel(desk.beat);
+}

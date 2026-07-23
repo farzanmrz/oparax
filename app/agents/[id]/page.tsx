@@ -37,29 +37,32 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 py-4">
-      <div className="grid grid-cols-1 gap-x-7 gap-y-1 md:grid-cols-2">
-        <h2 className="text-sm font-semibold text-foreground">
-          Stories — {stories.length} since the desk went live
-        </h2>
-        <h2 className="text-sm font-semibold text-foreground">
-          Drafts — {readyToReviewCount} ready to review
-        </h2>
-      </div>
-
       {stories.length === 0 ? (
+        // Empty desk: just the empty state — the "Stories / Drafts" count headers only make
+        // sense (and only align) once there are card pairs beneath them.
         <FeedEmptyState />
       ) : (
-        <div className="grid grid-cols-1 gap-x-7 gap-y-4 md:grid-cols-2">
-          {stories.map((story) => (
-            <FeedItemCard
-              experimentId={id}
-              key={story.winner?.postDraftId ?? story.sourcePosts[0]?.id}
-              reporterHandle={reporterHandle}
-              story={story}
-              xLinked={xLink.linked}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-x-7 gap-y-1 md:grid-cols-2">
+            <h2 className="text-sm font-semibold text-foreground">
+              Stories — {stories.length} since the desk went live
+            </h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              Drafts — {readyToReviewCount} ready to review
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-x-7 gap-y-4 md:grid-cols-2">
+            {stories.map((story) => (
+              <FeedItemCard
+                experimentId={id}
+                key={story.winner?.postDraftId ?? story.sourcePosts[0]?.id}
+                reporterHandle={reporterHandle}
+                story={story}
+                xLinked={xLink.linked}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

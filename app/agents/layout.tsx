@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     supabase.auth.getUser(),
     supabase
       .from("experiments")
-      .select("id, beat, status")
+      .select("id, name, beat, status")
       .order("created_at", { ascending: false }),
     // Winner drafts not yet posted, across the owner's desks — owner-scoped by post_drafts'
     // EXISTS-join RLS. Counted per desk in memory below (PostgREST has no GROUP BY here; volume

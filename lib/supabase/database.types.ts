@@ -156,6 +156,7 @@ export type Database = {
           beat: string;
           created_at: string;
           id: string;
+          name: string | null;
           owner_id: string;
           reporter_handle: string;
           status: string;
@@ -166,6 +167,7 @@ export type Database = {
           beat: string;
           created_at?: string;
           id?: string;
+          name?: string | null;
           owner_id: string;
           reporter_handle: string;
           status?: string;
@@ -176,6 +178,7 @@ export type Database = {
           beat?: string;
           created_at?: string;
           id?: string;
+          name?: string | null;
           owner_id?: string;
           reporter_handle?: string;
           status?: string;

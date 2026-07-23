@@ -10,6 +10,8 @@ import type { AuditData } from "./audit-dialog";
 // needed once a reporter opens the audit dialog. `next/dynamic` keeps it out of this
 // route's initial JS.
 const AuditDialog = dynamic(() => import("./audit-dialog"));
+// Streamdown (markdown) is heavy — dynamic-load it so it's not in the route's initial JS.
+const GuideMarkdown = dynamic(() => import("./guide-markdown"));
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -297,9 +299,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
         <CardContent className="flex flex-col gap-4">
           {guide ? (
             <>
-              <div className="whitespace-pre-wrap text-sm text-foreground">
-                {guide.guide_deploy}
-              </div>
+              <GuideMarkdown content={guide.guide_deploy} />
               {facts ? (
                 <MeasuredFactsGrid facts={facts} />
               ) : (

@@ -11,10 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deriveDeskLabel } from "@/lib/agent/desk-label";
+import { deskDisplayName } from "@/lib/agent/desk-label";
 import { cn } from "@/lib/utils";
 
-export type SwitcherDesk = { id: string; beat: string; status: string };
+export type SwitcherDesk = { id: string; name: string | null; beat: string; status: string };
 
 /**
  * Site-header desk switcher: a live-status dot + the current desk's label
@@ -37,7 +37,7 @@ export function DeskSwitcher({ desks }: { readonly desks: SwitcherDesk[] }) {
         >
           <StatusDot active={currentDesk?.status === "active"} />
           <span className="max-w-40 truncate font-medium">
-            {currentDesk ? deriveDeskLabel(currentDesk.beat) : "Desks"}
+            {currentDesk ? deskDisplayName(currentDesk) : "Desks"}
           </span>
           <ChevronDownIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
         </button>
@@ -48,7 +48,7 @@ export function DeskSwitcher({ desks }: { readonly desks: SwitcherDesk[] }) {
           <DropdownMenuItem asChild key={desk.id}>
             <Link href={`/agents/${desk.id}`}>
               <StatusDot active={desk.status === "active"} />
-              <span className="truncate">{deriveDeskLabel(desk.beat)}</span>
+              <span className="truncate">{deskDisplayName(desk)}</span>
             </Link>
           </DropdownMenuItem>
         ))}
