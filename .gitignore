@@ -20,6 +20,7 @@ next-env.d.ts
 
 # Local scratch data (regenerable)
 data/
+.context/
 
 # Logs
 *.log

@@ -35,13 +35,19 @@ Rules:
 5. Do NOT build, lint, or format — verification is centralized in the flow's QC phase.
 6. Commit your work on the current branch in small, sensible commits. NEVER push,
    NEVER create branches, NEVER open PRs.
-7. Write a full report to the report path from your dispatch prompt: what you did,
-   decisions made, interfaces produced, and anything the reviewer must double-check.
+7. Treat the report path from your dispatch prompt as exception-only. Write a report
+   only if you deviated from the brief, hit a blocker or failed check, made a
+   non-obvious decision a reviewer must verify, or found out-of-scope work. Explain
+   what happened, why, and the next action. No report file means the task was
+   implemented exactly as briefed.
 
 ## Output format
 
 Return to the caller in under 10 lines, starting with exactly one of:
-- `DONE` — task complete, report written, commits listed (short shas).
-- `DONE_WITH_CONCERNS` — complete, but flag the concern in one sentence.
-- `BLOCKED` — cannot proceed; name the blocker.
-- `NEEDS_CONTEXT` — need an answer before starting; ask the question.
+- `DONE` — task complete; list short commit SHAs and a short summary. Do not create
+  a report solely to restate the completed work.
+- `DONE_WITH_CONCERNS` — complete; give the report path and flag the concern in one
+  sentence.
+- `BLOCKED` — cannot proceed; give the report path and name the blocker.
+- `NEEDS_CONTEXT` — need an answer before starting; ask the question, and give the
+  report path only if investigation produced details the caller needs.

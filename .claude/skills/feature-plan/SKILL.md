@@ -79,11 +79,33 @@ forbids.
 
 ## 4. GATE ✋
 **Paste the full plan into chat** (never a file pointer). Revise until
-the user's explicit go. On approval, pipe the approved plan — exactly as pasted —
-into `.claude/skills/feature/scripts/start.sh "<feature name>"` on stdin (heredoc; no
-file argument): cuts `ft/<issue#>` from clean dev, opens the issue with the plan as
-body (capture the issue number — its only stdout line). The issue is now the single
-source of truth.
+the user's explicit go. Before acting on that approval, resolve two values from the
+conversation without re-asking if they were already stated:
+
+- **mode** — tracked by default; `current` only when the user explicitly asked to
+  work directly on the current branch and that branch is exactly `dev`. Never use
+  current mode on `beta` or `main`.
+- **terminal target** — `dev` by default, or the explicitly requested `beta` / `main`.
+
+On approval, pipe the approved plan — exactly as pasted — into one kickoff command
+on stdin (heredoc; no file argument):
+
+```bash
+# Default tracked run: stdout is the new issue number.
+.claude/skills/feature/scripts/start.sh --target <dev|beta|main> "<feature name>"
+
+# Explicit direct-dev exception: stdout is "direct:dev".
+.claude/skills/feature/scripts/start.sh --current --target <dev|beta|main> "<feature name>"
+```
+
+Tracked mode opens the issue with the plan as its body and cuts `ft/<issue#>` from
+the fetched `origin/dev` without checking out local `dev`; the issue is the single
+source of truth. Direct mode creates no issue or branch: it requires a clean local
+`dev` exactly at `origin/dev`, saves the exact approved plan to ignored
+`.feature/approved-plan.md`, and records that starting `baseSha` as QC's diff
+boundary. Both modes initialize branch-scoped state with the retained terminal
+target. If tracked branch setup or state initialization fails after issue creation,
+the kickoff closes the new issue rather than leaving an orphan.
 
 Rules: scope freezes at this gate. Planning docs never enter the repo — the issue
-body is the record.
+body is the tracked record; the direct-run copy is ignored runtime scratch.

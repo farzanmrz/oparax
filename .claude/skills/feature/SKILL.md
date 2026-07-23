@@ -14,15 +14,17 @@ disable-model-invocation: true
 
 # Idea to shipped — the orchestrator
 
-This skill only conducts; the four phase skills do the work. **ONE issue · ONE
-feature branch · ONE squashed commit on `dev`.** No PRs, no CI. Parallelism is a
-private implementation detail.
+This skill only conducts; the four phase skills do the work. The default tracked
+run is **ONE issue · ONE feature branch · ONE squashed commit on `dev`.** An
+explicitly requested direct run may instead stay on a clean `dev`; `beta` and
+`main` are promotion destinations, never feature-development branches. No PRs,
+no CI. Parallelism is a private implementation detail.
 
 **Track phases with TaskCreate** — one task each, ticked as each finishes; the flow
 is complete only when the last ticks:
 
-1. `Plan approved + issue/branch cut (✋ gate)` → invoke **`feature-plan`**
-2. `Built on ft/<issue#>` → invoke **`feature-build`**
+1. `Plan approved + tracked branch or direct-dev state started (✋ gate)` → invoke **`feature-plan`**
+2. `Built on ft/<issue#> or the explicit direct dev run` → invoke **`feature-build`**
 3. `QC: reviews · lint · build · boot smoke` → invoke **`feature-qc`**
 4. `Feedback triaged (✋) + shipped via ship.sh (✋)` → invoke **`feature-ship`**
 
@@ -34,7 +36,14 @@ honest.
 
 ## Global hard rules (bind every phase)
 
-- NEVER create per-task branches or PRs; never push main/beta; ship = dev only.
+- NEVER create per-task branches or PRs. Feature work happens on `ft/<issue#>` by
+  default, or directly on `dev` only when the user explicitly chose that mode.
+  `beta` and `main` move only through the ordered `dev → beta → main` promotion
+  path after the target-specific final gate; never develop directly on them and
+  never force-push them.
+- Retain the terminal release target (`dev`, `beta`, or `main`) in branch-scoped
+  feature state. One explicit final authorization names the entire consequence;
+  successful target deployment checks do not create extra approval gates.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
 - Scope freezes at the plan gate; mid-build ideas are out of scope — drop them, never
   onto this branch. If one matters, the user re-plans it as its own slice later.
@@ -48,5 +57,7 @@ honest.
 - Preserve behavior contracts (server-action field names, Supabase auth flows,
   the chat scaffold wiring).
 
-Scripts (`start.sh`, `ship.sh`) live in `.claude/skills/feature/scripts/` and are
-called by feature-plan and feature-ship respectively.
+Branch-scoped state and the bounded fresh-session summary live under ignored
+`.context/features/<exact branch>/`; `/feature-handoff` owns their content. Scripts
+(`start.sh`, `ship.sh`, `promote.sh`) live in
+`.claude/skills/feature/scripts/` and are called by feature-plan and feature-ship.

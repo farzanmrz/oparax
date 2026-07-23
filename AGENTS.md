@@ -14,7 +14,7 @@ AI news desk for reporters: monitors their beat across X and social platforms, c
 | Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
 | Auth + DB | Supabase (auth + owner-scoped app tables — `experiments`, `voice_guides`, `source_posts`, `post_drafts`, `model_calls`, `usage_events`, `x_accounts`; the legacy `agents`/`runs`/`drafts` tables still exist but no live code path reads them — D15) | — |
 | Tooling | pnpm (a preinstall guard blocks npm/yarn) + Biome | — |
-| Host | Vercel — oparax.ai, `dev` → `main` promote | — |
+| Host | Vercel Git integration — `dev` preview; `beta` → beta.oparax.ai; `main` → oparax.ai; promote strictly `dev` → `beta` → `main` | — |
 
 ### Commands
 
@@ -66,6 +66,8 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 `.feature/` is the `/feature` flow's live scratch — never delete it by hand; `ship.sh` sweeps it when the slice ships.
 
+`.context/features/<branch>/` is ignored, branch-scoped continuity state for the feature flow. `state.json` carries the run contract and `handoff.md` is the bounded `/feature-handoff` checkpoint. Never load a different branch's snapshot or treat a stale HEAD/worktree fingerprint as current; shipping removes only the shipped branch's state.
+
 ## Conventions
 
 - **Formatting is automatic — never run it by hand.** A `PostToolUse(Edit|Write)` hook
@@ -111,4 +113,5 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 ## Cross-tool
 
 - `AGENTS.md` is the canonical instruction file — non-Claude agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
+- `.githooks/` is the versioned local Git guardrail (`core.hooksPath=.githooks`). `main`, `dev`, and `beta` are permanent refs: never delete or force-update them. GitHub's active ruleset is the canonical protection; ordinary fast-forward release pushes remain allowed.
 - Proactively invoke any installed skill relevant to the current task without waiting for me to name it.
