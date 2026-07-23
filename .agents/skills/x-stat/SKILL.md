@@ -10,7 +10,7 @@ Use only when Farzan explicitly invokes `$x-stat`.
 Run:
 
 ```bash
-python3 .codex/outreach/outreach.py status
+rtk python3 .codex/outreach/outreach.py status
 ```
 
-Return the program output verbatim. Do not open a browser, delegate to an agent, recount records, or add inferred metrics.
+Return the program output verbatim. This workflow is read-only: do not run the record-sync helper or perform any Git action. Do not open a browser, delegate to an agent, recount records, or add inferred metrics.
