@@ -14,35 +14,67 @@ only with a named fact or an explicit owner override, recorded as such.
 
 ## BUILD ORDER — read this first
 
-The LOCKED sections below are the spec; this is the sequence they ship in. Slices 1–2 are
-DONE. **The remaining work — the full UI (slice 4) and the ingestion worker (slice 3) — is
-being built as ONE flow (owner decision, 2026-07-22): plan every remaining slice together
-and build all of it in a single feature run. Do not stop after one slice.** Sequence within
-that run: the UI first (so the product is drivable), the worker after. The per-slice rows
-below are retained as the spec for *what* each part must satisfy — not as a gate that splits
-the build.
+The LOCKED sections below are the spec (the *how*); this is the sequence they ship in.
 
-| # | Slice | Status | Spec | Done when |
-| --- | --- | --- | --- | --- |
-| 1 | **Schema + voice extraction** — the five tables (incl. the clustering extension point) and the Fable extraction path (`lib/voice/` is already ported: measured-facts + deploy-strip) | **DONE** (#66) — guide extracted, stored, RLS-readable | L4, L2, L11, L12 | A real voice guide for Reshad, extracted from his real corpus, stored and readable |
-| 2 | **Drafting council + notification + metering** — the two-family council and judge, Slack + email delivery, `usage_events` stamped from birth | **DONE** (#67) — council + judge + inbound email corrections behind `POST /api/ingest` | L3, L5, L7, L12 | A hand-seeded source post produces a Slack message carrying a draft in Reshad's voice — **this is the demo** |
-| 3 | **Ingestion worker** — the always-on Railway forwarder: stream connection, shared rules, reconnect-with-backoff, liveness alarm, delivery metering | **BUILT (#68)** — worker code complete under `ingest/` (isolated package); NOT yet deployed to Railway — the live deploy (real X stream + secrets) is an operator-gated step | L1 | Live posts replace the hand-seeded one end to end |
-| 4 | **UI — the whole surface, one slice** — site chrome, every desk section, feed, council expansion, creation flow | **BUILT (#68)** — full L8 surface on `ft/68` (site chrome, Feed/Voice/Setup, feed card pairs, council expansion, creation flow), design imported from `Oparax Feed.dc.html`; pending owner walk before merge | L8 | The reporter reviews and posts from the app instead of from Slack |
+**Slices 1–4 are BUILT** — schema + voice extraction (#66), drafting council + notification +
+metering (#67), the ingestion-worker code, and the full L8 UI surface (#68). What remains is
+**Slice 5 — the full-live product**, and the owner mandate (2026-07-22) is unambiguous:
 
-Rules for whoever picks this up: the spec is already settled — **plan from these sections,
-do not re-derive, re-price, or re-ask.** The REJECTED list exists so alternatives are not
-reconsidered without a new fact.
+> **Build EVERYTHING remaining, live, in one feature run. No slices held back, no gated features,
+> no grey-scaffolds, no "coming soon." Every control the UI currently greys out becomes real; every
+> deferred capability that is code-buildable ships. The DEFERRED list is PROMOTED into this slice —
+> do not treat any of it as "later" unless its precondition is genuinely external: billing needs
+> paying users, X Enterprise needs a contract, and embedding/draft-policy *tuning* needs live stream
+> volume. For those, build the plumbing and defer only the part that literally cannot exist yet.**
 
-**Cross-cutting invariants bind every slice, whatever it is about — a plan that touches
-model calls or spend must satisfy them explicitly, not inherit them by luck:**
-**L7** (every touch point stamps `usage_events`), **L9** (the instrumentation house rules),
-and **L12** (every model call records its output *and* its reasoning trace, one
-`model_calls` row each, single model or five). If a slice makes a model call and its plan
-does not say where the trace is stored, **the plan is wrong** — that exact omission shipped
-once in slice 1. Slice 3 (the socket worker) is the riskiest component — a long-lived socket
-with no backfill safety net on the free tier — so within the combined run it is sequenced
-last; the pipeline it feeds is already proven (slice 2 done), and until it ships the feed
-runs on hand-seeded posts.
+| # | Slice | Status |
+| --- | --- | --- |
+| 1 | Schema + voice extraction | **DONE** (#66) |
+| 2 | Drafting council + notification + metering | **DONE** (#67) |
+| 3 | Ingestion worker (code) | **BUILT** (#68) — the Railway deploy is folded into Slice 5 |
+| 4 | Full L8 UI surface | **BUILT** (#68) |
+| 5 | **The full-live product — NEXT: plan and build ALL of it** | scope below |
+
+**Slice 5 scope — the next feature run plans and builds ALL of this (the LOCKED L-specs say *how*;
+the promoted D-items say *why*). Nothing here is optional or sequenced-away:**
+
+1. **Live voice extraction** (promotes D1 + D14) — `attemptVoiceExtraction` fetches the reporter's
+   real X timeline via the X API as the corpus (NOT a local `.voice-lab` file), extracts, saves. Any
+   handle typed into create-desk → a real guide. Extraction is now user-triggered and can spend in
+   production, so this slice owns L11's guard for real (a per-reporter/day cap and/or D14's
+   verified-handle gate) — the local-corpus accident that made it safe before is gone.
+2. **Multi-source ingestion** (D1) — the greyed **Websites** field goes live: track news sites via
+   web search / scraping; headroom for more socials.
+3. **Clustering** (D2) — posts → stories; a feed unit becomes a story (many source posts → one draft).
+4. **Multi-platform drafting** (D3) — per-platform draft variants (X + LinkedIn …); the draft card's
+   platform pills.
+5. **Per-desk delivery + Channels** (D5) — per-desk Slack/email config (the greyed Connections edit +
+   Send-test become real), the Notifications matrix persists, Slack interactive buttons via a real
+   Slack app; per-desk credentials (a deny-all `slack_accounts`-style table + `getSlackLinkState()`).
+6. **Auto-post** (L6) — the greyed per-source auto-post toggles + the master become real: post
+   autonomously when trusted.
+7. **Voice rules editing** — the greyed "+ Add a rule", per-rule Edit/Delete, and Suggestions
+   accept/dismiss become real; needs a per-rule `voice_rules` table (the guide stops being one opaque
+   markdown blob).
+8. **Create-form AI assistant** (D10) — re-plumb the existing `/api/chat` agent into the create form
+   to clarify fuzzy/garbled beats (e.g. a TTS-mangled beat) before the desk runs.
+9. **In-app draft editing** — the greyed edit pencil becomes real: edit-in-place → a new version on
+   the `parent_draft_id` chain.
+10. **Worker deploy** — deploy `ingest/` to Railway and go live on the X filtered stream (real
+    secrets, cap re-probe).
+11. **Handle verification** (D14) — earn the `voice_guides` join: a `reporter_handle` grants guide
+    access only once verified.
+
+Genuinely external (build the plumbing; the *precondition* is not code): billing/payments (D6 — needs
+paying users), X Enterprise (D13 — needs a contract), the embedding gate (D11) and draft-everything
+policy (D9) — both need live stream volume to tune against.
+
+Rules for whoever picks this up: the L-specs are settled — **plan from them, do not re-derive or
+re-price.** The REJECTED list exists so alternatives are not reconsidered without a new fact.
+**Cross-cutting invariants still bind every model call: L7** (stamp `usage_events`), **L9** (the
+instrumentation house rules), **L12** (one `model_calls` row per call, output + reasoning trace) — a
+plan that makes a model call and doesn't say where the trace is stored is wrong (it shipped once in
+slice 1).
 
 ---
 
@@ -393,6 +425,13 @@ are needed and the lab costs $0 to keep.
 ---
 
 ## DEFERRED — wanted, sequenced, each with its wake-up trigger
+
+> **PROMOTED (owner override, 2026-07-22):** the code-buildable items here (D1, D2, D3, D5, D10,
+> D14, and the L6 auto-post / voice-rules / in-app-edit grey-scaffolds) are folded into **Slice 5**
+> in the BUILD ORDER above and are **no longer deferred** — build them live in the next feature run.
+> Only D6 (billing → needs paying users), D13 (X Enterprise → needs a contract), and the *tuning*
+> halves of D9/D11 (→ need live stream volume) stay genuinely external. The wake-up triggers below
+> are kept as rationale, not as gates.
 
 | # | What | Lands as | Trigger / why not now |
 | --- | --- | --- | --- |
