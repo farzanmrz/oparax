@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { AppSidebarTrigger } from "@/components/app-sidebar";
 import { OparaxMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,7 +75,6 @@ export function AgentsList({
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border py-5">
         <div className="flex items-center gap-3">
-          <AppSidebarTrigger />
           <div className="flex items-baseline gap-3">
             <h1 className="text-xl font-semibold tracking-tight">Agents</h1>
             {hasAgents && !error ? (

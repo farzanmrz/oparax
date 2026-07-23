@@ -13,7 +13,6 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool";
-import { AppSidebarBackRow } from "@/components/app-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -286,7 +285,7 @@ export function AgentDashboard({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 flex-col gap-3 border-b border-border py-5">
-        <AppSidebarBackRow title={agent.name} />
+        <h1 className="truncate text-lg leading-none font-semibold tracking-tight">{agent.name}</h1>
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant={agent.status === "active" ? "default" : "secondary"}>
             {agent.status === "active" ? "Active" : "Paused"}
