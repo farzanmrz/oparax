@@ -2,10 +2,11 @@
 //
 // Server actions for posting a draft to X and unlinking the reporter's X account.
 // postDraftToX follows the same RLS-client-proves-ownership-then-admin-client-writes
-// trust path as app/agents/[id]/actions.ts's scanNow — the draft's post-state columns
-// (posted_at, posted_tweet_id, posted_url) are service-role-write-only, so ownership is
-// proven with an RLS read and the writes run on the admin client. Posting is a per-action
-// user decision, so a double-click must never double-post: the draft is CAS-claimed
+// trust path as app/agents/[id]/actions.ts's scanNow — post_drafts' post-outcome columns
+// (posted_at, posted_tweet_id, posted_url) carry no owner UPDATE policy, so ownership is
+// proven with an RLS read (the post_drafts -> experiments EXISTS-join SELECT policy) and
+// every write runs on the admin (service-role) client. Posting is a per-action user
+// decision, so a double-click must never double-post: the draft is CAS-claimed
 // (posted_at set only if still null) with the admin client before any network call, and
 // the claim is released on any failure so the draft can be retried.
 "use server";
@@ -17,7 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createTweet, refreshTokens, revokeToken } from "@/lib/x/api";
 import { deleteXAccount, getXAccount, updateXTokens } from "@/lib/x/store";
 
-const draftIdSchema = z.string().uuid();
+const postDraftIdSchema = z.string().uuid();
 
 /** Pulls the HTTP status out of an api.ts error ("X <endpoint> <status>: <body>"),
  *  anchored at the start so a status-like number inside the response body can't spoof
@@ -32,19 +33,19 @@ function httpStatusOf(error: unknown): number | null {
  *  draft claimed — it must never throw out of the action. */
 async function releaseClaim(
   admin: ReturnType<typeof createAdminClient>,
-  draftId: string,
+  postDraftId: string,
 ): Promise<void> {
   try {
-    await admin.from("drafts").update({ posted_at: null }).eq("id", draftId);
+    await admin.from("post_drafts").update({ posted_at: null }).eq("id", postDraftId);
   } catch {
     // best-effort — never surface a release failure to the caller.
   }
 }
 
 export async function postDraftToX(
-  draftId: string,
+  postDraftId: string,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  const parsedId = draftIdSchema.safeParse(draftId);
+  const parsedId = postDraftIdSchema.safeParse(postDraftId);
   if (!parsedId.success) return { ok: false, error: "Select a draft to post." };
 
   const supabase = await createClient();
@@ -53,14 +54,19 @@ export async function postDraftToX(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Please sign in again." };
 
-  // RLS-scoped read proves ownership (scoped to the reporter's own agents' drafts).
+  // RLS-scoped read proves ownership via post_drafts' EXISTS-join-through-experiments SELECT
+  // policy. The draft text has no home on post_drafts itself — it's whatever the winning
+  // model call produced, so it's pulled through the model_calls FK in the same read.
   const { data: draft, error: draftError } = await supabase
-    .from("drafts")
-    .select("id, text, agent_id, posted_at")
+    .from("post_drafts")
+    .select("id, experiment_id, posted_at, model_calls(output)")
     .eq("id", parsedId.data)
     .maybeSingle();
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
   if (draft.posted_at) return { ok: false, error: "This draft was already posted to X." };
+
+  const text = draft.model_calls?.output;
+  if (!text) return { ok: false, error: "This draft has no text to post." };
 
   const admin = createAdminClient();
 
@@ -69,7 +75,7 @@ export async function postDraftToX(
   // — otherwise two concurrent clicks would both spend the same rotating refresh token,
   // invalidating one another.
   const { data: claimed, error: claimError } = await admin
-    .from("drafts")
+    .from("post_drafts")
     .update({ posted_at: new Date().toISOString() })
     .eq("id", parsedId.data)
     .is("posted_at", null)
@@ -106,7 +112,7 @@ export async function postDraftToX(
 
   let tweet: { id: string };
   try {
-    tweet = await createTweet(accessToken, draft.text);
+    tweet = await createTweet(accessToken, text);
   } catch (error) {
     // The claim is held. Only release it when X DEFINITELY did not create the post —
     // i.e. it answered with a 4xx client error. On a timeout, dropped connection, or 5xx
@@ -141,14 +147,14 @@ export async function postDraftToX(
   const url = `https://x.com/${account.handle}/status/${tweet.id}`;
   try {
     await admin
-      .from("drafts")
+      .from("post_drafts")
       .update({ posted_tweet_id: tweet.id, posted_url: url })
       .eq("id", parsedId.data);
   } catch {
     // ignore — the post is live.
   }
 
-  revalidatePath(`/agents/${draft.agent_id}`);
+  revalidatePath(`/agents/${draft.experiment_id}`);
   return { ok: true, url };
 }
 

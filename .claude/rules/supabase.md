@@ -16,6 +16,12 @@ paths:
 - `vercel:routing-middleware` when changing `proxy.ts` or its matcher (it delegates to `lib/supabase/middleware.ts`'s `updateSession`).
 - Any new table/migration is a real feature slice — check the "no persistence" guard in `AGENTS.md` first.
 
+## Database-ops tooling: the claude.ai Supabase connector, not the plugin's MCP server
+
+- **Migrations, SQL, advisors, type-gen** (anything that touches the actual project) go through the **claude.ai Supabase connector** — project `oparax-chirp`, project ref `pcgvpypzfwuchyfwdlwe`. This is the durable path; every DB-touching migration since 2026-07-22 records "Applied via the claude.ai Supabase connector" in its own header comment (e.g. `supabase/migrations/20260722234500_d16_dedup_and_post_outcome.sql`).
+- **NOT the `supabase:supabase` plugin's MCP server** — that server is interactive-auth only and 401s headless (no service-role or PAT path this repo's agents can drive non-interactively). Do not reach for it expecting it to apply a migration or run SQL.
+- The plugin's **skills** (`supabase:supabase`, `supabase:supabase-postgres-best-practices`) stay in use for guidance — best-practice checks, schema/RLS review, client-library patterns — this split is about the *tool* that executes DB operations, not the skills that inform them.
+
 ## Dashboard-side configuration (not in this repo at all)
 
 - Auth → Email Templates: *Confirm signup* / *Reset password* links must route to `/auth/confirm` with `token_hash` + `type` (`signup`/`recovery`) params — a misconfigured template silently breaks signup/reset with correct app code.

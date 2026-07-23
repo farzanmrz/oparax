@@ -1,11 +1,14 @@
-import { NewAgentExperience } from "./new-agent-experience";
+import { CreateDeskForm } from "./create-desk-form";
+
+// Mirrors app/api/ingest/route.ts's maxDuration: the `after()` voice-extraction call this
+// page's create action kicks off needs the function alive long enough to run.
+export const maxDuration = 300;
 
 /**
- * New-agent page — a focused, full-height chat for spinning up a desk. The chat
- * body is the AI SDK-backed AgentChat; NewAgentExperience wraps it with a
- * slim header and the unsaved-progress guard (reload, tab close, browser Back,
- * and in-app navigation all confirm before discarding the conversation).
+ * New-desk page — the create-desk form + live preview (create-desk-form.tsx). Replaces the
+ * old chat-based create flow (new-agent-experience.tsx + agent-chat.tsx, deleted alongside
+ * this rewrite).
  */
-export default function NewAgentPage() {
-  return <NewAgentExperience />;
+export default function NewDeskPage() {
+  return <CreateDeskForm />;
 }

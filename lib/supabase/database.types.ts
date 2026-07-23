@@ -65,6 +65,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      draft_claims: {
+        Row: {
+          created_at: string;
+          experiment_id: string;
+          id: string;
+          source_post_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          experiment_id: string;
+          id?: string;
+          source_post_id: string;
+        };
+        Update: {
+          created_at?: string;
+          experiment_id?: string;
+          id?: string;
+          source_post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "draft_claims_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "draft_claims_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: false;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       drafts: {
         Row: {
           agent_id: string;
@@ -120,6 +156,7 @@ export type Database = {
           beat: string;
           created_at: string;
           id: string;
+          name: string | null;
           owner_id: string;
           reporter_handle: string;
           status: string;
@@ -130,6 +167,7 @@ export type Database = {
           beat: string;
           created_at?: string;
           id?: string;
+          name?: string | null;
           owner_id: string;
           reporter_handle: string;
           status?: string;
@@ -140,6 +178,7 @@ export type Database = {
           beat?: string;
           created_at?: string;
           id?: string;
+          name?: string | null;
           owner_id?: string;
           reporter_handle?: string;
           status?: string;
@@ -206,6 +245,9 @@ export type Database = {
           judge_verdict: Json | null;
           model_call_id: string;
           parent_draft_id: string | null;
+          posted_at: string | null;
+          posted_tweet_id: string | null;
+          posted_url: string | null;
           source_post_id: string;
         };
         Insert: {
@@ -217,6 +259,9 @@ export type Database = {
           judge_verdict?: Json | null;
           model_call_id: string;
           parent_draft_id?: string | null;
+          posted_at?: string | null;
+          posted_tweet_id?: string | null;
+          posted_url?: string | null;
           source_post_id: string;
         };
         Update: {
@@ -228,6 +273,9 @@ export type Database = {
           judge_verdict?: Json | null;
           model_call_id?: string;
           parent_draft_id?: string | null;
+          posted_at?: string | null;
+          posted_tweet_id?: string | null;
+          posted_url?: string | null;
           source_post_id?: string;
         };
         Relationships: [
@@ -340,6 +388,27 @@ export type Database = {
           posted_at?: string | null;
           raw?: Json | null;
           text?: string;
+          x_post_id?: string;
+        };
+        Relationships: [];
+      };
+      unmatched_deliveries: {
+        Row: {
+          author_handle: string;
+          created_at: string;
+          id: string;
+          x_post_id: string;
+        };
+        Insert: {
+          author_handle: string;
+          created_at?: string;
+          id?: string;
+          x_post_id: string;
+        };
+        Update: {
+          author_handle?: string;
+          created_at?: string;
+          id?: string;
           x_post_id?: string;
         };
         Relationships: [];

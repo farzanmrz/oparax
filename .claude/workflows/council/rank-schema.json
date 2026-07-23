@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ranking": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "All plan labels (Plan-1, Plan-2, … one per plan shown) ordered best-to-worst on overall coverage + detail + correctness for the ask."
+    },
+    "thinnest": {
+      "type": "string",
+      "description": "The plan label that is MATERIALLY thinner in coverage/detail than the others, or 'none' if all three cover essentially the same ground."
+    },
+    "coverageParity": {
+      "type": "string",
+      "description": "One of: 'all-equal' (the plans cover the same ground, differences are style only), 'minor-gaps' (a plan misses a few non-critical items), 'material-gaps' (a plan omits load-bearing work the others include)."
+    },
+    "rationale": {
+      "type": "string",
+      "description": "2-4 sentences: what specifically each weaker plan misses versus the strongest, grounded in concrete plan elements."
+    }
+  },
+  "required": ["ranking", "thinnest", "coverageParity", "rationale"]
+}

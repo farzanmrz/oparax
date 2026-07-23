@@ -1,49 +1,51 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { z } from "zod";
-import { deskConfigSchema } from "@/lib/agent/desk-config";
-import { nextFire } from "@/lib/agent/next-run";
-import { extractOnboardingResults } from "@/lib/agent/onboarding-extract";
-import { validateScanFrequency } from "@/lib/agent/scan-frequency";
-import {
-  collectAssistantText,
-  executedSearchParts,
-  extractSearchTemplate,
-} from "@/lib/agent/search-template";
-import { sumCosts } from "@/lib/agent/usage-cost";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
+import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
 
-const transcriptSchema = z.array(z.unknown()).min(1);
-
-export type SaveAgentResult = { id: string; error?: never } | { id?: never; error: string };
+export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
 /**
- * Insert the completed desk as the signed-in reporter. The transcript is the client's full message
- * array, stored verbatim on the desk and also mined here for its frozen search template and, on a
- * successful insert, the chat's own preview scan + drafts (persisted best-effort below so they don't
- * remain ephemeral). Returns the new row id for navigation.
+ * Create a desk (an `experiments` row) as the signed-in reporter, then kick off best-effort
+ * voice extraction for their handle in `after()` — the request finishes and the client
+ * navigates before extraction resolves; a failure there never rolls back the desk (see
+ * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
  */
-export async function saveAgent(input: {
-  config: unknown;
-  sessionId: string | null;
-  transcript: unknown;
-}): Promise<SaveAgentResult> {
-  const config = deskConfigSchema.safeParse(input.config);
-  const transcript = transcriptSchema.safeParse(input.transcript);
-  if (!config.success || !transcript.success) {
-    return { error: "The desk configuration is incomplete — ask the agent to re-check it." };
+export async function createDesk(input: {
+  name: string;
+  beat: string;
+  trackedHandles: string[];
+  reporterHandle: string;
+}): Promise<CreateDeskResult> {
+  const beat = input.beat.trim();
+  if (!beat) return { error: "Describe the beat this desk should watch." };
+
+  // Optional — the switcher falls back to a beat-derived label when it's blank.
+  const name = input.name.trim() || null;
+
+  const reporterHandle = normalizeValidHandle(input.reporterHandle);
+  if (!reporterHandle) {
+    return { error: "Your X handle should be letters, numbers, and underscores only." };
   }
 
-  // The chat's save-approval gate already rejects an out-of-rail scan frequency, but this
-  // action is the actual writer and a directly-callable server action — re-check here so a
-  // request that never passed through the gate can't persist a schedule that breaks the rail.
-  if (!validateScanFrequency(config.data.scanFrequency).ok) {
-    return {
-      error: "That scan frequency is outside the allowed limits — ask the agent to adjust it.",
-    };
+  // Every tracked handle is charset-validated too — not just normalized. An unvalidated handle
+  // flows into the ingestion worker's globally-shared X stream rule where it could inject stream
+  // operators across tenants (see lib/x/handle.ts). One bad handle rejects the whole submit
+  // rather than being silently dropped or stored.
+  const trackedHandles: string[] = [];
+  for (const raw of input.trackedHandles) {
+    if (!raw.trim()) continue; // drop empty chips from the form
+    if (trackedHandles.length >= MAX_TRACKED_HANDLES) break; // cap (client enforces too)
+    const handle = normalizeValidHandle(raw);
+    if (!handle) {
+      return {
+        error: `"${raw.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
+      };
+    }
+    if (!trackedHandles.includes(handle)) trackedHandles.push(handle);
   }
 
   const supabase = await createClient();
@@ -51,108 +53,30 @@ export async function saveAgent(input: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "Your session expired — sign in again to save this desk." };
+    return { error: "Your session expired — sign in again to create this desk." };
   }
 
-  // The frozen search template: the drafted x_search calls the chat's scan actually executed,
-  // captured once here so scheduled/manual runs replay them instead of re-drafting a query.
-  const searchTemplate = extractSearchTemplate(transcript.data);
-
   const { data, error } = await supabase
-    .from("agents")
+    .from("experiments")
     .insert({
-      user_id: user.id,
-      name: config.data.name,
-      beat: config.data.beat,
-      handles: config.data.handles,
-      drafting_instructions: config.data.draftingInstructions,
-      account_tier: config.data.accountTier,
-      scan_frequency: config.data.scanFrequency,
-      status: "active",
-      next_run_at: nextFire(config.data.scanFrequency, new Date()).toISOString(),
-      setup_session_id: input.sessionId,
-      // The transcript is validated only as a non-empty array; its opaque
-      // message shape lands in a Json column, so cast (never `any`).
-      setup_transcript: transcript.data as Json,
-      search_template: searchTemplate as Json,
+      owner_id: user.id,
+      name,
+      beat,
+      reporter_handle: reporterHandle,
+      tracked_handles: trackedHandles,
     })
     .select("id")
     .single();
 
   if (error || !data) {
-    return { error: "Could not save your desk. Please try again." };
+    return { error: "Could not create your desk. Please try again." };
   }
 
-  // Persist the onboarding chat's preview scan + drafts to the new desk so its detail page shows them
-  // immediately (they were ephemeral before ft/63). Best-effort: any failure here must NOT fail the
-  // save — the desk already exists. Runs/drafts are written with the admin client (runs is
-  // service-role-write-only; ownership is already proven by the desk insert above as this user) — the
-  // same trust path scanNow uses.
-  const executedScans = executedSearchParts(transcript.data);
-  if (executedScans.length > 0) {
-    try {
-      const admin = createAdminClient();
-      const { data: run } = await admin
-        .from("runs")
-        .insert({ agent_id: data.id, source: "onboarding" })
-        .select("id")
-        .single();
-      if (run) {
-        after(async () => {
-          // The desk's real onboarding grok spend — summed from the executed searches' own costUsd.
-          const grokCost = sumCosts(executedScans.map((p) => p.costUsd));
-          try {
-            const extracted = await extractOnboardingResults({
-              assistantText: collectAssistantText(transcript.data),
-            });
-            await admin
-              .from("runs")
-              .update({
-                status: "done",
-                result: { items: extracted.items } as Json,
-                cost_grok: grokCost,
-                cost_deepseek: extracted.costUsd,
-                usage: { extract: extracted.usage } as Json,
-                finished_at: new Date().toISOString(),
-              })
-              .eq("id", run.id)
-              .eq("status", "running");
+  after(() => attemptVoiceExtraction(reporterHandle, user.id));
 
-            // One drafts row per draft that resolves to a presented item; unmatched drafts are dropped
-            // (there is nowhere to attach a draft with no item snapshot).
-            const draftRows = extracted.drafts
-              .filter(
-                (d): d is { itemIndex: number; text: string } =>
-                  d.itemIndex != null && d.itemIndex >= 0 && d.itemIndex < extracted.items.length,
-              )
-              .map((d) => ({
-                agent_id: data.id,
-                item: extracted.items[d.itemIndex] as Json,
-                text: d.text,
-                source: "onboarding" as const,
-                cost_deepseek: null,
-              }));
-            if (draftRows.length > 0) await admin.from("drafts").insert(draftRows);
-          } catch (e) {
-            // Extraction/gateway failed — preserve the real onboarding grok spend on a failed run
-            // rather than dropping to a blank one (mirrors scan-run's soft-fail intent).
-            await admin
-              .from("runs")
-              .update({
-                status: "failed",
-                error: e instanceof Error ? e.message : String(e),
-                cost_grok: grokCost,
-                finished_at: new Date().toISOString(),
-              })
-              .eq("id", run.id)
-              .eq("status", "running");
-          }
-        });
-      }
-    } catch {
-      // Could not even start the onboarding run — the desk is saved; nothing else to do.
-    }
-  }
+  // Refresh the /agents layout so the site header's desk switcher includes this new desk
+  // immediately — without this the switcher renders its stale list and falls back to "Desks".
+  revalidatePath("/agents", "layout");
 
   return { id: data.id };
 }

@@ -1,147 +1,69 @@
-import { notFound } from "next/navigation";
-import { scanFrequencySchema } from "@/lib/agent/scan-frequency";
-import { newsItemSchema, scanResultSchema } from "@/lib/agent/scan-result";
+import { fetchFeedPage } from "@/lib/agent/feed-query";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
-import {
-  AgentDashboard,
-  type DeskDraft,
-  type DeskRun,
-  type UsageRollup,
-  type UsageWindow,
-} from "./agent-dashboard";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { FeedEmptyState, FeedItemCard } from "./feed-item";
 
 /**
- * Sum non-null cost across every row in `rows` (grok + DeepSeek, ft/63's split), but
- * count only `done` runs as "runs" — a run's spend is incurred whether or not it
- * finished cleanly (xAI/DeepSeek are already billed by the time a run fails), but a
- * completed-work count crediting a still-running or failed attempt would overstate what
- * the desk actually delivered.
+ * The Feed — this desk's story/draft card pairs, reverse chronological (unposted stories
+ * first, then most-recently-posted). `app/agents/[id]/layout.tsx` already resolved and
+ * owner-checked this `id` before this page can render at all (its own `experiments` read
+ * 404s on a foreign or malformed id), so this page trusts it and does its own small
+ * `reporter_handle` read via the owner-scoped cookie client. `fetchFeedPage` runs on the
+ * SERVICE-ROLE client instead — `source_posts` carries deny-all RLS (no SELECT policy),
+ * so the cookie client would silently return zero rows for the news-card side; every query
+ * inside `fetchFeedPage` re-scopes to this `experimentId` explicitly, so the elevated client
+ * never reads outside this desk.
  */
-function rollupWindow(
-  rows: readonly { cost_grok: number | null; cost_deepseek: number | null; status: string }[],
-): UsageWindow {
-  return rows.reduce<UsageWindow>(
-    (acc, row) => ({
-      runs: acc.runs + (row.status === "done" ? 1 : 0),
-      costUsd: acc.costUsd + (row.cost_grok ?? 0) + (row.cost_deepseek ?? 0),
-    }),
-    { runs: 0, costUsd: 0 },
-  );
-}
-
-/**
- * Agent details page — the per-desk dashboard. Fetches the signed-in reporter's own
- * desk by `id` plus its runs, drafts, and a usage rollup; RLS scopes every query to
- * rows they own, so an absent row and another user's row are indistinguishable and
- * both 404. A malformed persisted scan frequency, run result, or draft item degrades
- * to fallback text/null rather than crashing the page.
- */
-export default async function AgentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FeedPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!UUID_RE.test(id)) notFound(); // pre-empt a Postgres uuid cast error
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agents")
-    .select(
-      "name, beat, handles, drafting_instructions, account_tier, scan_frequency, status, next_run_at, created_at",
-    )
-    .eq("id", id)
-    .maybeSingle();
-  // A failed query is NOT a 404 — a transient error must not tell the reporter
-  // their desk is gone. Throw to the error boundary instead.
-  if (error) throw new Error("Failed to load the desk. Please try again.");
-  if (!data) notFound(); // absent OR another user's row — RLS makes them identical
+  const admin = createAdminClient();
 
-  const scanFrequency = scanFrequencySchema.safeParse(data.scan_frequency);
-
-  const [runsResult, draftsResult, usageResult, xLink] = await Promise.all([
-    supabase
-      .from("runs")
-      .select("id, status, started_at, finished_at, cost_grok, cost_deepseek, result, trace")
-      .eq("agent_id", id)
-      .order("started_at", { ascending: false })
-      .limit(50),
-    supabase
-      .from("drafts")
-      .select("id, text, item, created_at, posted_at, posted_url")
-      .eq("agent_id", id)
-      .order("created_at", { ascending: false })
-      .limit(50),
-    // Everything the usage rollup needs, unbounded (unlike the display query above) —
-    // "all time" must see every run, not just the latest 50.
-    supabase.from("runs").select("started_at, cost_grok, cost_deepseek, status").eq("agent_id", id),
-    // Server-only link-state — returns { linked, handle } only, never token material.
+  const [experimentResult, stories, xLink] = await Promise.all([
+    supabase.from("experiments").select("reporter_handle").eq("id", id).maybeSingle(),
+    fetchFeedPage(admin, id),
     getXLinkState(),
   ]);
 
-  if (runsResult.error) throw new Error("Failed to load the desk's runs. Please try again.");
-  if (draftsResult.error) throw new Error("Failed to load the desk's drafts. Please try again.");
-  if (usageResult.error) throw new Error("Failed to load the desk's usage. Please try again.");
+  if (experimentResult.error || !experimentResult.data) {
+    throw new Error("Failed to load the desk. Please try again.");
+  }
+  const reporterHandle = experimentResult.data.reporter_handle;
 
-  const runs: DeskRun[] = (runsResult.data ?? []).map((run) => {
-    const result = scanResultSchema.safeParse(run.result);
-    // DeskRun.costUsd stays TOTAL run cost (the dashboard, #65's territory, is unchanged):
-    // grok + DeepSeek, but null when BOTH are null so "unknown cost" still renders as such
-    // rather than a misleading $0.00.
-    const costUsd =
-      run.cost_grok == null && run.cost_deepseek == null
-        ? null
-        : (run.cost_grok ?? 0) + (run.cost_deepseek ?? 0);
-    return {
-      id: run.id,
-      status: run.status,
-      startedAt: run.started_at,
-      finishedAt: run.finished_at,
-      costUsd,
-      result: result.success ? result.data : null,
-      trace: run.trace,
-    };
-  });
-
-  const drafts: DeskDraft[] = (draftsResult.data ?? []).map((draft) => {
-    const item = newsItemSchema.safeParse(draft.item);
-    return {
-      id: draft.id,
-      text: draft.text,
-      item: item.success ? item.data : null,
-      createdAt: draft.created_at,
-      postedAt: draft.posted_at,
-      postedUrl: draft.posted_url,
-    };
-  });
-
-  const now = Date.now();
-  const usageRows = usageResult.data ?? [];
-  const within = (days: number) =>
-    usageRows.filter((row) => now - new Date(row.started_at).getTime() <= days * DAY_MS);
-  const usage: UsageRollup = {
-    allTime: rollupWindow(usageRows),
-    last30d: rollupWindow(within(30)),
-    last7d: rollupWindow(within(7)),
-  };
+  const readyToReviewCount = stories.filter(
+    (story) => story.winner !== null && story.winner.postedAt === null,
+  ).length;
 
   return (
-    <AgentDashboard
-      agent={{
-        id,
-        name: data.name,
-        beat: data.beat,
-        handles: data.handles,
-        draftingInstructions: data.drafting_instructions,
-        accountTier: data.account_tier === "premium" ? "premium" : "standard",
-        scanFrequency: scanFrequency.success ? scanFrequency.data : null,
-        createdAt: data.created_at,
-        status: data.status === "paused" ? "paused" : "active",
-        nextRunAt: data.next_run_at,
-      }}
-      drafts={drafts}
-      runs={runs}
-      usage={usage}
-      xLinked={xLink.linked}
-    />
+    <div className="flex min-h-0 flex-1 flex-col gap-4 py-4">
+      {stories.length === 0 ? (
+        // Empty desk: just the empty state — the "Stories / Drafts" count headers only make
+        // sense (and only align) once there are card pairs beneath them.
+        <FeedEmptyState />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-x-7 gap-y-1 md:grid-cols-2">
+            <h2 className="text-sm font-semibold text-foreground">
+              Stories — {stories.length} since the desk went live
+            </h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              Drafts — {readyToReviewCount} ready to review
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-x-7 gap-y-4 md:grid-cols-2">
+            {stories.map((story) => (
+              <FeedItemCard
+                experimentId={id}
+                key={story.winner?.postDraftId ?? story.sourcePosts[0]?.id}
+                reporterHandle={reporterHandle}
+                story={story}
+                xLinked={xLink.linked}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
