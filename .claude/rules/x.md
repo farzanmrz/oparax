@@ -44,9 +44,9 @@ Always persist a new `refresh_token` when X returns one, keep the stored one whe
 
 Token/revoke calls use HTTP Basic auth with `X_CLIENT_ID:X_CLIENT_SECRET`. The auth code from the callback expires in ~30s — exchange it before any DB work.
 
-## The reporter's post surface is the desk Drafts tab
+## The reporter's post surface is the feed draft card
 
-`app/agents/[id]` (`agent-dashboard.tsx`'s `DraftsTab`) is where a reporter links X and posts. A **Connect X** control (a plain link to `GET /auth/x`) shows when `getXLinkState().linked` is false; when linked, each unposted draft gets a **Post to X** button — behind an explicit Confirm step, since posting is real money and irreversible — that calls `postDraftToX`. A posted draft renders a link to its `posted_url` instead. `postDraftToX` / `unlinkXAccount` are `"use server"` actions invoked straight from that client component; `page.tsx` feeds it `getXLinkState().linked` plus each draft's `posted_at` / `posted_url`.
+`app/agents/[id]` (the desk Feed) is where a reporter links X and posts — `agent-dashboard.tsx` and its `DraftsTab` are gone, deleted with the rest of the old desk pipeline (D15). Each story's draft card (`app/agents/[id]/feed-item.tsx`'s `DraftCard`) renders `PostToXControl` (`app/agents/[id]/post-to-x-control.tsx`) in place of an unposted draft's actions: a **Connect X** link (`GET /auth/x?returnTo=<pathname>`) when `getXLinkState().linked` is false; when linked, a **Post** button that flips to an inline Confirm/Cancel panel (no modal — the confirm-before-Confirm gate ported from the old `DraftsTab` pattern) before calling `postDraftToX`, disabled the moment `twitter-text` says the draft would 4xx at X. A posted draft's card instead shows a "Posted to X" pill and, when captured, a link to `posted_url`. `postDraftToX` / `unlinkXAccount` (`lib/x/actions.ts`, `"use server"`) are invoked straight from `PostToXControl`; `page.tsx` feeds each `FeedItemCard` `getXLinkState().linked` plus the story's winning draft `posted_at` / `posted_url` off `post_drafts`.
 
 ## Dashboard-side config (not in this repo)
 
