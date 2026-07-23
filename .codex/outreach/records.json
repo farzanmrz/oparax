@@ -1167,7 +1167,7 @@
     {
       "handle": "@JakeSherman",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Jake Sherman",
       "first_name": "Jake",
       "message": "Hey Jake, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1211,7 +1211,7 @@
     {
       "handle": "@hugorifkind",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Hugo Rifkind",
       "first_name": "Hugo",
       "message": "Hey Hugo, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1220,7 +1220,7 @@
     {
       "handle": "@PippaCrerar",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Pippa Crerar",
       "first_name": "Pippa",
       "message": "Hey Pippa, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",

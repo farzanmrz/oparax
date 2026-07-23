@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string", "description": "repo-relative path" },
+          "line": { "type": "number", "description": "1-indexed anchor line" },
+          "severity": { "type": "string", "description": "high | medium | low" },
+          "summary": { "type": "string", "description": "one-sentence statement of the finding" },
+          "scenario": { "type": "string", "description": "concrete failing input/state → wrong outcome, or the concrete rule/scenario broken" }
+        },
+        "required": ["file", "summary", "scenario"]
+      }
+    }
+  },
+  "required": ["findings"]
+}

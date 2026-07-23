@@ -7,8 +7,9 @@ description: >-
   when the user says /feature-build, "build the plan", "implement the tasks", or
   "just build X" mid-flight on a feature branch.
 argument-hint: "[issue# | what to build]"
-allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
-model: inherit
+allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *)
+model: opus
+effort: medium
 ---
 
 # Build — autonomous, parallel by structure
@@ -19,11 +20,19 @@ if it exists; otherwise the user's direct instruction is the plan (small-build m
 
 ## Preflight
 
-- **Dependency preflight before any task:** `pnpm install`; an unmet-peer warning on
-  a feature-relevant package is a BLOCKER — stop and present (proven in #39: a green
-  build hid a worker crash).
+- Read existing state for the exact current branch with `state.mjs show`. When it
+  exists, update it to phase `building` and gate `implement`; never initialize
+  guessed state here. A standalone small build without state may continue.
+- **Dependency preflight before any task:** the SESSION runs
+  `pnpm install --frozen-lockfile`; an unmet-peer warning on a feature-relevant
+  package is a BLOCKER — stop and present (proven in #39: a green build hid a
+  worker crash). Dependency installation is coordination, not an implementer task.
 - **Mirror tasks into TaskCreate**, dependencies via `addBlockedBy`; the task graph
-  decides concurrency.
+  decides concurrency. Before dispatch, identify every repository-mutating
+  prerequisite needed by later tasks (for example, adding stock shadcn components
+  or running code generation). Make each prerequisite an explicit foundational
+  implementer task, assign every file it may create or update, and block all
+  consumers on it. The SESSION never performs these setup writes itself.
 
 ## Execution — implementer by default
 
@@ -41,15 +50,21 @@ if it exists; otherwise the user's direct instruction is the plan (small-build m
 - Live mutual negotiation needed → **agent team** (disjoint file assignment; watch
   task-status lag).
 - Massive mechanical sweep (rare) → **Workflow**, ≤10 agents TOTAL.
+- Do not add a second background coordinator. Dependency installation, task-graph
+  updates, dispatch, and per-wave typecheck gates stay in this SESSION; implementers
+  own code and repository-mutating setup.
 
 ## Briefs and reports
 
 Each dispatched task gets `.feature/task-<N>-brief.md` (plan text verbatim + prior
-tasks' interfaces + report path). Thin dispatch prompt: scene line, brief path, the
-skills the plan names for that task, report contract. The brief is the
-implementer's ONLY requirements source. Reports are **deviations-only**: the
-implementer writes `.feature/task-<N>-report.md` only when it deviated from the brief
-or noticed out-of-scope work (what + why); no report file means implemented-as-briefed.
+tasks' interfaces + reserved report path). Thin dispatch prompt: scene line, brief
+path, the skills the plan names for that task, report contract. The brief is the
+implementer's ONLY requirements source. Reports are **exception-only**: the
+implementer writes `.feature/task-<N>-report.md` only for a deviation, blocker,
+failed check, non-obvious decision a reviewer must verify, or out-of-scope finding
+(what + why). No report file means implemented-as-briefed. Its return message stays
+under 10 lines: status, short commit SHAs, and at most a short summary; put necessary
+detail in the exception report rather than the dispatch result.
 
 ## Review — typecheck every task, deep-review only the foundational one
 
@@ -82,3 +97,7 @@ ordinary commits.
 - Mid-flight new scope stays off the branch — drop it. Don't self-initiate scope; a
   deferral the user names is a future slice, not tracked here.
 - Skill grounding is binding: name the skills the plan grounds each task in, in every dispatch.
+
+After all tasks and foundational reviews pass, update existing state to phase
+`built` and gate `qc`. This intentionally marks an older prose handoff stale until
+`/feature-handoff` captures the new checkpoint.

@@ -21,9 +21,10 @@ Run the whole queue in one task turn:
 6. If the exact result is muted/greyed and disabled/unselectable, append `{handle, outcome: "invalid"}` without clicking it.
 7. If no exact result appears after five seconds, including when X still shows only loading skeletons, append `{handle, outcome: "invalid"}` and continue to the next record.
 8. Return the complete results array from that single Browser execution, encode its JSON as base64 in the task runtime, and run `rtk python3 .codex/outreach/outreach.py apply-check-batch recheck <base64-payload>` exactly once.
+9. Immediately run `rtk .codex/outreach/sync-records.sh`.
 
 Do not create a goal, subagent, parallel worker, or per-account shell/browser loop. Do not split a complete queue into arbitrary batches.
 
-Stop immediately without changing the unapplied batch on logout, X warning, rate limit, changed UI, closed New message modal, recipient mismatch, or another genuine browser failure. Do not open LeanSpark.
+Stop immediately without changing the unapplied batch on logout, X warning, rate limit, changed UI, closed New message modal, recipient mismatch, or another genuine browser failure. Before reporting any normal completion, early empty queue, stop, or tool/browser failure, run `rtk .codex/outreach/sync-records.sh` if step 9 has not already run. The helper commits only `.codex/outreach/records.json` with its fixed message and pushes the current branch; never stage, commit, or push any other path. If it fails, report whether the commit was created and the push failed; do not claim the record update is remote. Do not open LeanSpark.
 
-Before reporting, run `rtk python3 .codex/outreach/outreach.py count recheck`. Return rechecked handles, resulting states, any stop reason, and that exact global remaining count.
+Before reporting, run `rtk python3 .codex/outreach/outreach.py count recheck`. Return rechecked handles, resulting states, any stop reason, that exact global remaining count, and the record-sync result.
