@@ -23,7 +23,10 @@ export async function pauseDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("experiments").update({ status: "paused" }).eq("id", id);
   if (error) return { ok: false, error: "Could not pause the desk. Please try again." };
-  revalidatePath(`/agents/${id}`, "layout");
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
   return { ok: true };
 }
 
@@ -32,7 +35,10 @@ export async function resumeDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("experiments").update({ status: "active" }).eq("id", id);
   if (error) return { ok: false, error: "Could not resume the desk. Please try again." };
-  revalidatePath(`/agents/${id}`, "layout");
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
   return { ok: true };
 }
 
@@ -100,7 +106,10 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
     .update({ tracked_handles: merged })
     .eq("id", id);
   if (updateError) return { ok: false, error: "Could not add those handles. Please try again." };
-  revalidatePath(`/agents/${id}`, "layout");
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
   return { ok: true };
 }
 
@@ -121,6 +130,9 @@ export async function removeTrackedHandle(id: string, handle: string): Promise<A
     .update({ tracked_handles: nextHandles })
     .eq("id", id);
   if (updateError) return { ok: false, error: "Could not remove that handle. Please try again." };
-  revalidatePath(`/agents/${id}`, "layout");
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
   return { ok: true };
 }

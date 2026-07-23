@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
@@ -67,6 +68,10 @@ export async function createDesk(input: {
   }
 
   after(() => attemptVoiceExtraction(reporterHandle, user.id));
+
+  // Refresh the /agents layout so the site header's desk switcher includes this new desk
+  // immediately — without this the switcher renders its stale list and falls back to "Desks".
+  revalidatePath("/agents", "layout");
 
   return { id: data.id };
 }
