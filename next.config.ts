@@ -7,14 +7,17 @@ const nextConfig: NextConfig = {
   },
   // The sysprompt markdown is read via readFileSync(process.cwd()/lib/sysprompts/...) at
   // module load — trace it into every serverless function that transitively imports
-  // lib/sysprompts (the chat route, the scan dispatcher, the [id] draft action, and the
-  // new-desk save action, which extracts the onboarding chat's scan + drafts on save).
+  // lib/sysprompts (the chat route; the delivery interface + the inbound-email webhook, both
+  // via draft-pipeline.ts -> draft-council-run.ts; and the new-desk create action, whose
+  // after() voice-extraction call reaches lib/sysprompts via lib/voice/extract-guide.ts). The
+  // per-minute cron dispatcher this list once traced (/api/cron/tick) was deleted with the
+  // retired scan/draft pipeline (D15) — do not re-add it without a route to match. /agents/[id]
+  // reads persisted model_calls text only (no sysprompt import on that read path), so it
+  // carries no include. See .claude/rules/agent.md's "Bundling the prompts for deploy".
   outputFileTracingIncludes: {
     "/api/chat": ["./lib/sysprompts/*.md"],
-    "/api/cron/tick": ["./lib/sysprompts/*.md"],
     "/api/ingest": ["./lib/sysprompts/*.md"],
     "/api/email/inbound": ["./lib/sysprompts/*.md"],
-    "/agents/[id]": ["./lib/sysprompts/*.md"],
     "/agents/new": ["./lib/sysprompts/*.md"],
   },
   // Security headers on every route (moved from vercel.json — Next config is
