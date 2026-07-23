@@ -5,7 +5,10 @@
 // (@/lib/supabase/server) against `experiments`, which carries full 4-policy owner RLS —
 // there is no service-role client here, unlike the old agents/[id] actions this file
 // replaces. Every mutation revalidates the desk's own path on success so the layout and
-// its children re-render with the fresh row.
+// its children re-render with the fresh row. The revalidate is `"layout"`-scoped, not the
+// default `"page"`: DeskControls lives in the shared desk layout (rendered on Feed, Voice,
+// and Setup alike), so a page-scoped revalidate would leave the status pill stale when the
+// user pauses/resumes from a tab other than Feed — matches settings/actions.ts's precedent.
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -19,7 +22,7 @@ export async function pauseDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("experiments").update({ status: "paused" }).eq("id", id);
   if (error) return { ok: false, error: "Could not pause the desk. Please try again." };
-  revalidatePath(`/agents/${id}`);
+  revalidatePath(`/agents/${id}`, "layout");
   return { ok: true };
 }
 
@@ -28,7 +31,7 @@ export async function resumeDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("experiments").update({ status: "active" }).eq("id", id);
   if (error) return { ok: false, error: "Could not resume the desk. Please try again." };
-  revalidatePath(`/agents/${id}`);
+  revalidatePath(`/agents/${id}`, "layout");
   return { ok: true };
 }
 
@@ -76,7 +79,7 @@ export async function addTrackedHandle(id: string, handle: string): Promise<Acti
     .update({ tracked_handles: nextHandles })
     .eq("id", id);
   if (updateError) return { ok: false, error: "Could not add that handle. Please try again." };
-  revalidatePath(`/agents/${id}`);
+  revalidatePath(`/agents/${id}`, "layout");
   return { ok: true };
 }
 
@@ -97,6 +100,6 @@ export async function removeTrackedHandle(id: string, handle: string): Promise<A
     .update({ tracked_handles: nextHandles })
     .eq("id", id);
   if (updateError) return { ok: false, error: "Could not remove that handle. Please try again." };
-  revalidatePath(`/agents/${id}`);
+  revalidatePath(`/agents/${id}`, "layout");
   return { ok: true };
 }

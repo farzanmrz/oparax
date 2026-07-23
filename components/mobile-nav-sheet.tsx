@@ -43,7 +43,9 @@ export function MobileNavSheet({
         <nav aria-label="Desk sections" className="flex flex-col gap-1 px-4 pb-4">
           {DESK_TABS.map((tab) => {
             const href = tab.href(deskId);
-            const active = tab.exact ? pathname === href : pathname.startsWith(href);
+            const active = tab.exact
+              ? pathname === href
+              : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 className={cn(

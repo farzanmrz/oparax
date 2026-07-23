@@ -55,7 +55,9 @@ export function DeskTabs({
     <nav aria-label="Desk sections" className="flex items-center gap-1">
       {DESK_TABS.map((tab) => {
         const href = tab.href(deskId);
-        const active = tab.exact ? pathname === href : pathname.startsWith(href);
+        const active = tab.exact
+          ? pathname === href
+          : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             className={cn(
