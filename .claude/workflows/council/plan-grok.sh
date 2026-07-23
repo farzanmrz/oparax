@@ -9,6 +9,7 @@ SECONDS=0  # bash stopwatch: wall-seconds for this member (folded into OUT as .e
 PF="$1"; SCHEMA="$2"; EFF="${3:-high}"; OUT="$4"
 REPO="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 DEPTH="${COUNCIL_DEPTH:-simple}"
+KEY="${COUNCIL_CHECK_KEY:-plan}"  # QC's find/verify stages pass "findings" / "verdict"
 raw="$(mktemp)"
 # DEEP: let grok explore ft/68 at native depth — subagents ON (no --no-subagents), generous --max-turns,
 #       and NO --disallowed-tools (that flag named a non-existent tool anyway; read-only sandbox still
@@ -22,7 +23,7 @@ else
        --disallowed-tools run_terminal_cmd --always-approve --effort "$EFF" -m grok-4.5 \
        --output-format json > "$raw" 2>&1
 fi
-if jq -e '.structuredOutput.plan|length' "$raw" >/dev/null 2>&1; then
+if jq -e --arg k "$KEY" '.structuredOutput[$k]|length' "$raw" >/dev/null 2>&1; then
   jq --argjson t "$SECONDS" --arg tier "$EFF" '.structuredOutput + {elapsed_s:$t, tier:$tier}' "$raw" > "$OUT"
   rm -f "$raw"; exit 0
 else echo "GROK_FAILED (${SECONDS}s)" >&2; rm -f "$raw"; exit 1; fi

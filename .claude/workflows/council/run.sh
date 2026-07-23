@@ -12,13 +12,14 @@
 #
 # Grounding repo comes from CLAUDE_PROJECT_DIR (shown once in the display — useful).
 # Fixed by convention so they DON'T bloat the command:
-#   - schema   : ../plan-codex-schema.json (next to this dir)
+#   - schema   : ../plan-codex-schema.json (next to this dir), override with COUNCIL_SCHEMA
+#                (e.g. QC's verify stage points this at ../verify-schema.json)
 #   - scratch  : $COUNCIL_SCRATCH, else <repo>/.feature/council
 #   - tier     : the LOCKED production tier per family (override with COUNCIL_TIER)
 set -uo pipefail
 FAM="${1:?family}"; LABEL="${2:?label}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCHEMA="$HERE/../plan-codex-schema.json"
+SCHEMA="${COUNCIL_SCHEMA:-$HERE/../plan-codex-schema.json}"
 SCRATCH="${COUNCIL_SCRATCH:-${CLAUDE_PROJECT_DIR:-$(pwd)}/.feature/council}"
 mkdir -p "$SCRATCH"
 case "$FAM" in

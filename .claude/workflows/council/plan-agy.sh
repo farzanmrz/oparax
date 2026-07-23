@@ -12,6 +12,7 @@ SECONDS=0  # bash stopwatch: wall-seconds for this member (folded into OUT as .e
 PF="$1"; SCHEMA="$2"; MODEL="${3:-gemini-3.1-pro-high}"; OUT="$4"
 REPO="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 DEPTH="${COUNCIL_DEPTH:-simple}"
+KEY="${COUNCIL_CHECK_KEY:-plan}"  # QC's find/verify stages pass "findings" / "verdict"
 # DEEP: invite agy to explore the ft/68 tree (--add-dir already exposes it) at its own depth.
 # SIMPLE: the old anti-exploration suffix — answer from the fed context only.
 if [ "$DEPTH" = "deep" ]; then
@@ -25,7 +26,7 @@ $SUFFIX"
 raw="$(mktemp)"
 agy --print "$PROMPT" --sandbox --print-timeout 5m --json-schema "$SCHEMA" --output-format json \
     --model "$MODEL" --add-dir "$REPO" > "$raw" 2>&1
-if jq -e '.structured_output.plan|length' "$raw" >/dev/null 2>&1; then
+if jq -e --arg k "$KEY" '.structured_output[$k]|length' "$raw" >/dev/null 2>&1; then
   jq --argjson t "$SECONDS" --arg tier "$MODEL" '.structured_output + {elapsed_s:$t, tier:$tier}' "$raw" > "$OUT"
   rm -f "$raw"; exit 0
 else echo "AGY_FAILED (${SECONDS}s)" >&2; rm -f "$raw"; exit 1; fi

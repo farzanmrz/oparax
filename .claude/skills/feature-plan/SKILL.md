@@ -42,26 +42,47 @@ whole pass — address it by **`scriptPath`, never `name`** (same reason as the 
 workflow: `{ name }` doesn't scan the repo's `.claude/workflows/`). Pass `args`:
 `{ ask: "<the confirmed ask from step 2>", context: "<any seed worth carrying>" }`.
 
-It runs five stages. **Scope** selects the lenses from the **live skill inventory**
-(`list-plan-skills.sh` — the stack plugins + repo build skills, self-updating; not a
-fixed menu) rather than a hardcoded set, so a slice needing `vercel:marketplace` /
-`vercel-connect` / `chat-sdk` / `workflow` actually reaches them; the same pass reads
-AGENTS.md and glob-matches the slice's predicted paths against the `.claude/rules/`
-`paths:` frontmatter to gather the applicable guards into a digest (there is no diff at
-plan time to auto-inject them). **Lenses** fan out **one repo-grounded agent per
-selected skill, named after the skill** (no bundling, no cap below the inventory);
-each invokes its skill and returns hard constraints + acceptance criteria. Then two
-plans are authored **in parallel**: a **Claude track** (consolidate constraints +
-name candidates → flesh each → judge picks one via the four lenses — **risk-first**,
-**YAGNI-minimal**, **vertical-slice**, **verification-first**) and an independent
-**Codex track** (one flat, read-only `codex exec` fed the same skill-grounded
-constraints — best-effort; on any failure the run silently falls back to Claude-only).
-A final **reconcile** merges the two into ONE plan, recording load-bearing
-disagreements. Model policy: the cheap extraction stages are pinned to sonnet; the two
-creative/decision agents (candidate-generation, judge/reconcile) **inherit your session
-model + tier**, so the smart spend tracks your budget. There is no `repo-fit` lens —
-the guards ride in via the Scope digest and via path-rule auto-injection when a lens
-reads a matching file.
+It runs five stages, grounded **once** (Scope + Lenses), then synthesized across
+**four independent model families** (Draft council), not one model reasoning alone.
+
+**Scope** selects the lenses from the **live skill inventory** (`list-plan-skills.sh`
+— the stack plugins + repo build skills, self-updating; not a fixed menu) rather than
+a hardcoded set, so a slice needing `vercel:marketplace` / `vercel-connect` /
+`chat-sdk` / `workflow` actually reaches them; the same pass reads AGENTS.md and
+glob-matches the slice's predicted paths against the `.claude/rules/` `paths:`
+frontmatter to gather the applicable guards into a digest (there is no diff at plan
+time to auto-inject them). This digest is also the **only** ground truth the three
+external families get in Draft council — they do not explore the filesystem — so its
+thoroughness is load-bearing.
+
+**Lenses** fan out **one repo-grounded agent per selected skill, named after the
+skill** (no bundling, no cap below the inventory); each invokes its skill and returns
+hard constraints + acceptance criteria + conflicts to watch.
+
+**Consolidate** merges every lens's constraints into one deduped constraint set and
+names a **2–3 candidate menu** — a seed for Draft council, not a ceiling; a family is
+free to deviate from it if it sees a stronger spine.
+
+**Draft council** fans out **one fleshed plan per family, concurrent, no per-candidate
+multiplication**: Claude (pinned opus) + Codex/gpt-5.6-sol (pinned medium) +
+Grok-4.5 (pinned medium) + Gemini-3.1-pro via `agy` (pinned high). Best-effort per
+family — a CLI that errors, times out, or returns malformed JSON is dropped; the
+Claude draft is the guaranteed floor.
+
+**Synthesize** folds the surviving drafts into ONE final plan: best-reasoned spine,
+graft only compatible wins, record load-bearing disagreements under "Conflicts
+resolved" rather than averaging them away.
+
+**Model policy (the Fable discipline — locked with Farzan):** Scope and Lenses are
+extraction/comprehension, not generation — **pinned sonnet, effort medium** (depth is
+bought with effort, not tier; Lenses is also the highest-fan-out stage in this
+workflow, so it must never inherit — that would multiply spend N skills wide). The
+external draft tiers are fixed production values, never re-litigated per run. Exactly
+**two** stages inherit your session model + tier and may spend Fable: **Consolidate**
+(candidate-menu generation) and **Synthesize** (the final judge) — both generative,
+single-call, ceiling-setting acts. Nothing else in this workflow can spend Fable, by
+design. There is no `repo-fit` lens — the guards ride in via the Scope digest and via
+path-rule auto-injection when a lens reads a matching file.
 
 The returned `plan` carries the standard sections the workflow enforces (so they are
 not re-specified here) — Definition of done, Approach, In scope / Deferred, Build steps

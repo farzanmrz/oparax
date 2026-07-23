@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["CONFIRMED", "REFUTED"],
+      "description": "CONFIRMED: read the actual code and the finding holds. REFUTED: read the actual code and the finding does not hold (wrong, already guarded, or not reachable)."
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "One or two sentences citing the actual code (file/line) that justify the verdict."
+    }
+  },
+  "required": ["verdict", "reasoning"]
+}
