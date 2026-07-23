@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
-import { normalizeValidHandle } from "@/lib/x/handle";
+import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
 
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
@@ -33,6 +33,7 @@ export async function createDesk(input: {
   const trackedHandles: string[] = [];
   for (const raw of input.trackedHandles) {
     if (!raw.trim()) continue; // drop empty chips from the form
+    if (trackedHandles.length >= MAX_TRACKED_HANDLES) break; // cap (client enforces too)
     const handle = normalizeValidHandle(raw);
     if (!handle) {
       return {

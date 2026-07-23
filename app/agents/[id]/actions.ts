@@ -14,7 +14,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
+import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -61,12 +61,17 @@ export async function deleteDesk(id: string): Promise<ActionResult> {
  * handle would otherwise flow into the ingestion worker's globally-shared X stream rule and let
  * a single reporter inject stream operators across tenants (see lib/x/handle.ts).
  */
-export async function addTrackedHandle(id: string, handle: string): Promise<ActionResult> {
-  const normalized = normalizeValidHandle(handle);
-  if (!normalized) {
+export async function addTrackedHandles(id: string, raw: string): Promise<ActionResult> {
+  // Split a raw blob (comma / whitespace / newline separated, @ optional) into candidate
+  // handles; each is charset-validated via normalizeValidHandle (invalid tokens dropped).
+  const candidates = raw
+    .split(/[\s,]+/)
+    .map(normalizeValidHandle)
+    .filter((h): h is string => h !== null);
+  if (candidates.length === 0) {
     return {
       ok: false,
-      error: "That isn't a valid X handle — letters, numbers, and underscores, up to 15.",
+      error: "Enter a valid X handle — letters, numbers, and underscores, up to 15.",
     };
   }
 
@@ -78,12 +83,23 @@ export async function addTrackedHandle(id: string, handle: string): Promise<Acti
     .maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the desk's tracked handles." };
 
-  const nextHandles = Array.from(new Set([...data.tracked_handles, normalized]));
+  const merged = [...data.tracked_handles];
+  for (const handle of candidates) {
+    if (merged.length >= MAX_TRACKED_HANDLES) break; // cap (client enforces too)
+    if (!merged.includes(handle)) merged.push(handle);
+  }
+  if (merged.length === data.tracked_handles.length) {
+    // Nothing new landed — either all duplicates (a benign no-op) or the desk is already full.
+    return data.tracked_handles.length >= MAX_TRACKED_HANDLES
+      ? { ok: false, error: `A desk can track up to ${MAX_TRACKED_HANDLES} accounts.` }
+      : { ok: true };
+  }
+
   const { error: updateError } = await supabase
     .from("experiments")
-    .update({ tracked_handles: nextHandles })
+    .update({ tracked_handles: merged })
     .eq("id", id);
-  if (updateError) return { ok: false, error: "Could not add that handle. Please try again." };
+  if (updateError) return { ok: false, error: "Could not add those handles. Please try again." };
   revalidatePath(`/agents/${id}`, "layout");
   return { ok: true };
 }

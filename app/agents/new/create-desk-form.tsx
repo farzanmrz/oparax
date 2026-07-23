@@ -2,32 +2,93 @@
 
 // app/agents/new/create-desk-form.tsx
 //
-// The create-desk screen: a form (Beat, Tracked X accounts, Your X handle, plus the
-// grey-scaffolded Websites + Draft instructions fields) alongside a live preview panel that
-// binds only to live form state — tracked-handle count and the first/second handle — per the
-// locked design digest (.feature/design/design-digest.md §5). No scan or model call runs from
-// this screen; the checklist and drafted/drafting cards are illustrative, matching the mock's
-// own static panel.
+// The create-desk screen: a single-column form grouped into Beat / Sources / Voice, with a
+// short "what happens next" panel below (form-first, not a side-by-side split). Tracked
+// accounts accept comma/space/newline paste with or without a leading @, capped at MAX_TRACKED;
+// the server (createDesk) re-validates + re-caps. No model call runs from this screen.
 
-import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
+import { InfoIcon, Loader2Icon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, useState, useTransition } from "react";
+import {
+  type ClipboardEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useState,
+  useTransition,
+} from "react";
 import { OparaxMark } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { createDesk } from "./actions";
 
-function normalizeHandle(raw: string): string {
-  return raw.trim().replace(/^@/, "");
+/** Strip leading @(s) + whitespace. Case is preserved for display; the server lowercases and
+ *  charset-validates on save (lib/x/handle.ts). */
+function cleanHandle(raw: string): string {
+  return raw.trim().replace(/^@+/, "");
 }
 
-/** Field micro-label. Sentence case only — never uppercase or all-caps (owner UI rule; see
- *  AGENTS.md "UI copy casing"). */
-function FieldLabel({ children }: { readonly children: React.ReactNode }) {
-  return <span className="text-xs font-medium text-muted-foreground">{children}</span>;
+/** Split a typed/pasted blob into candidate handles — comma / whitespace / newline separated,
+ *  each with or without a leading @. */
+function splitHandles(raw: string): string[] {
+  return raw
+    .split(/[\s,]+/)
+    .map(cleanHandle)
+    .filter(Boolean);
+}
+
+/** Merge new handles into an existing list: case-insensitive dedupe, capped at MAX_TRACKED. */
+function mergeHandles(existing: readonly string[], incoming: readonly string[]): string[] {
+  const next = [...existing];
+  for (const handle of incoming) {
+    if (next.length >= MAX_TRACKED) break;
+    if (!next.some((h) => h.toLowerCase() === handle.toLowerCase())) next.push(handle);
+  }
+  return next;
+}
+
+/** Sentence-case field label with an optional ⓘ hover-help and an optional trailing badge. */
+function FieldLabel({
+  children,
+  help,
+  badge,
+}: {
+  readonly children: ReactNode;
+  readonly help?: string;
+  readonly badge?: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{children}</span>
+      {help ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              aria-label="What is this for?"
+              className="text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+              type="button"
+            >
+              <InfoIcon className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">{help}</TooltipContent>
+        </Tooltip>
+      ) : null}
+      {badge}
+    </div>
+  );
+}
+
+function SoonBadge() {
+  return (
+    <Badge className="h-4 px-1.5 text-[10px]" variant="outline">
+      Coming soon
+    </Badge>
+  );
 }
 
 export function CreateDeskForm() {
@@ -40,29 +101,41 @@ export function CreateDeskForm() {
   const [reporterHandle, setReporterHandle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
-  function addHandle() {
-    const next = normalizeHandle(handleDraft);
-    if (!next) return;
-    setHandles((prev) => (prev.includes(next) ? prev : [...prev, next]));
+  const atLimit = handles.length >= MAX_TRACKED;
+
+  function commitDraft() {
+    const parts = splitHandles(handleDraft);
+    if (parts.length > 0) setHandles((prev) => mergeHandles(prev, parts));
     setHandleDraft("");
+  }
+
+  function onTrackedKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commitDraft();
+    }
+  }
+
+  function onTrackedPaste(e: ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    if (/[\s,]/.test(text)) {
+      e.preventDefault();
+      setHandles((prev) => mergeHandles(prev, splitHandles(`${handleDraft} ${text}`)));
+      setHandleDraft("");
+    }
   }
 
   function removeHandle(handle: string) {
     setHandles((prev) => prev.filter((h) => h !== handle));
   }
 
-  function handleChipKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addHandle();
-    }
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
+    // Fold any uncommitted draft into the handles before sending.
+    const finalHandles = mergeHandles(handles, splitHandles(handleDraft));
     startTransition(async () => {
-      const result = await createDesk({ beat, trackedHandles: handles, reporterHandle });
+      const result = await createDesk({ beat, trackedHandles: finalHandles, reporterHandle });
       if (result.error) {
         setFormError(result.error);
         return;
@@ -90,168 +163,112 @@ export function CreateDeskForm() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-6 pb-10">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel>Beat</FieldLabel>
-              <Textarea
-                onChange={(e) => setBeat(e.target.value)}
-                placeholder="US AI regulation — agencies, hearings, enforcement. Skip product launches."
-                rows={3}
-                value={beat}
-              />
-            </div>
+        <form className="mx-auto flex w-full max-w-xl flex-col gap-6" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel help="The topic this desk watches. Be specific — it steers what counts as a story worth drafting.">
+              Beat
+            </FieldLabel>
+            <Textarea
+              onChange={(e) => setBeat(e.target.value)}
+              placeholder="e.g. US AI regulation — agencies, hearings, enforcement. Skip product launches."
+              rows={3}
+              value={beat}
+            />
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <p className="text-sm font-semibold text-foreground">Sources</p>
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel>Tracked X accounts</FieldLabel>
-              <div className="flex flex-wrap gap-1.5">
-                {handles.map((handle) => (
-                  <Badge className="gap-1 pr-1" key={handle} variant="secondary">
-                    @{handle}
-                    <button
-                      aria-label={`Remove @${handle}`}
-                      className="rounded-full p-0.5 hover:bg-foreground/10"
-                      onClick={() => removeHandle(handle)}
-                      type="button"
-                    >
-                      <XIcon className="size-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+              <FieldLabel help="The X accounts this desk watches for breaking stories. Paste several at once — comma- or space-separated, with or without the @.">
+                Tracked X accounts ({handles.length}/{MAX_TRACKED})
+              </FieldLabel>
+              {handles.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {handles.map((handle) => (
+                    <Badge className="gap-1 pr-1" key={handle} variant="secondary">
+                      @{handle}
+                      <button
+                        aria-label={`Remove @${handle}`}
+                        className="rounded-full p-0.5 hover:bg-foreground/10"
+                        onClick={() => removeHandle(handle)}
+                        type="button"
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
               <Input
+                disabled={atLimit}
+                onBlur={commitDraft}
                 onChange={(e) => setHandleDraft(e.target.value)}
-                onKeyDown={handleChipKeyDown}
-                placeholder="@…"
+                onKeyDown={onTrackedKeyDown}
+                onPaste={onTrackedPaste}
+                placeholder={
+                  atLimit
+                    ? `Up to ${MAX_TRACKED} accounts`
+                    : "Paste handles — comma-separated, @ optional"
+                }
                 value={handleDraft}
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel>Your X handle — for the voice guide</FieldLabel>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm text-muted-foreground">@</span>
-                <Input
-                  onChange={(e) => setReporterHandle(e.target.value)}
-                  placeholder="mirakwrites"
-                  value={reporterHandle}
-                />
-              </div>
-            </div>
-
             <div className="flex flex-col gap-1.5 opacity-55">
-              <div className="flex items-center gap-2">
-                <FieldLabel>Websites</FieldLabel>
-                <Badge className="h-4 px-1.5 text-[10px]" variant="outline">
-                  Coming soon
-                </Badge>
-              </div>
+              <FieldLabel badge={<SoonBadge />}>Websites</FieldLabel>
               <Input disabled placeholder="https:// …" />
             </div>
+          </div>
 
-            <div className="flex flex-col gap-1.5 opacity-55">
-              <div className="flex items-center gap-2">
-                <FieldLabel>Draft instructions</FieldLabel>
-                <Badge className="h-4 px-1.5 text-[10px]" variant="outline">
-                  Coming soon
-                </Badge>
-              </div>
-              <Textarea disabled placeholder='e.g. "never speculate on outcomes"' rows={2} />
+          <div className="flex flex-col gap-4">
+            <p className="text-sm font-semibold text-foreground">Voice</p>
+
+            <div className="flex flex-col gap-1.5">
+              <FieldLabel help="Your own X handle. Oparax reads your recent posts to learn how you write, so drafts land in your voice — not a generic tone.">
+                Your X handle
+              </FieldLabel>
+              <Input
+                onChange={(e) => setReporterHandle(e.target.value)}
+                placeholder="yourhandle (@ optional)"
+                value={reporterHandle}
+              />
             </div>
 
-            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+            <div className="flex flex-col gap-1.5 opacity-55">
+              <FieldLabel badge={<SoonBadge />}>Draft instructions</FieldLabel>
+              <Textarea disabled placeholder='e.g. "never speculate on outcomes"' rows={2} />
+            </div>
+          </div>
 
-            <Button className="mt-1 w-full" disabled={!canSubmit} size="lg" type="submit">
-              {isPending ? <Loader2Icon className="animate-spin" /> : null}
-              Create desk
-            </Button>
-          </form>
+          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
-          <CreateDeskPreview
-            firstHandle={handles[0]}
-            secondHandle={handles[1]}
-            sourceCount={handles.length}
-          />
-        </div>
+          <Button className="w-full" disabled={!canSubmit} size="lg" type="submit">
+            {isPending ? <Loader2Icon className="animate-spin" /> : null}
+            Create desk
+          </Button>
+
+          <div className="rounded-xl border border-border bg-card/40 p-5">
+            <p className="text-sm font-semibold text-foreground">
+              What happens when you create this desk
+            </p>
+            <ol className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
+              <li>
+                1. Oparax builds your writing voice from{" "}
+                {reporterHandle.trim() ? `@${cleanHandle(reporterHandle)}` : "your"} recent posts.
+              </li>
+              <li>
+                2. It watches{" "}
+                {handles.length > 0
+                  ? `${handles.length} tracked account${handles.length === 1 ? "" : "s"}`
+                  : "your tracked accounts"}{" "}
+                for breaking stories on this beat.
+              </li>
+              <li>3. Each story gets a draft in your voice — you review and post from the Feed.</li>
+            </ol>
+          </div>
+        </form>
       </div>
-    </div>
-  );
-}
-
-function CreateDeskPreview({
-  sourceCount,
-  firstHandle,
-  secondHandle,
-}: {
-  readonly sourceCount: number;
-  readonly firstHandle: string | undefined;
-  readonly secondHandle: string | undefined;
-}) {
-  const checklist = [
-    `connected to ${sourceCount} sources`,
-    `${sourceCount} posts found`,
-    "drafted in your voice",
-  ];
-
-  return (
-    <div className="flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-      <div className="flex items-center gap-2">
-        <span aria-hidden="true" className="size-2 rounded-full bg-warning" />
-        <p className="text-xs font-semibold text-warning">Live preview — real pipeline</p>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Runs as you type — proof of a post in your voice before you commit.
-      </p>
-
-      <ul className="flex flex-col gap-1.5">
-        {checklist.map((item) => (
-          <li className="flex items-center gap-2 text-sm text-foreground" key={item}>
-            <CheckIcon className="size-3.5 shrink-0 text-success" />
-            {item}
-          </li>
-        ))}
-      </ul>
-
-      {firstHandle ? (
-        <div className="rounded-lg border border-border bg-background p-3">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-muted-foreground">@{firstHandle} · 12:41</span>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed text-foreground">
-            New filing signals a shift in enforcement posture — sources describe internal
-            disagreement over how far the agency is willing to go. More being confirmed.
-          </p>
-          <div className="mt-3 flex items-center justify-between">
-            <span
-              className="cursor-not-allowed rounded-md border border-dashed border-border px-2 py-1 text-xs text-muted-foreground"
-              title="Posting is disabled in preview"
-            >
-              Post to X
-            </span>
-            <span className="font-mono text-xs text-muted-foreground">198 / 280</span>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">why this draft ›</p>
-        </div>
-      ) : (
-        <p className="rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
-          Add a tracked X account to preview a draft.
-        </p>
-      )}
-
-      {secondHandle ? (
-        <div className="rounded-lg border border-border bg-background p-3">
-          <span className="font-mono text-xs text-muted-foreground">@{secondHandle} · 11:20</span>
-          <div className="mt-2 flex flex-col gap-1.5">
-            <span className="h-3 w-full animate-pulse rounded bg-muted" />
-            <span className="h-3 w-2/3 animate-pulse rounded bg-muted" />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">drafting…</p>
-        </div>
-      ) : null}
-
-      <p className="text-xs text-muted-foreground">
-        Posting is disabled in preview — enabled once the desk exists.
-      </p>
     </div>
   );
 }

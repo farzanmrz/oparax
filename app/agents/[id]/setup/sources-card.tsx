@@ -17,7 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { addTrackedHandle, removeTrackedHandle } from "../actions";
+import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
+import { addTrackedHandles, removeTrackedHandle } from "../actions";
 
 function initialsFor(handle: string): string {
   return handle.slice(0, 2).toUpperCase();
@@ -48,11 +49,12 @@ export function SourcesCard({
   const [isPending, startTransition] = useTransition();
 
   function handleAdd() {
-    const handle = input.trim();
-    if (!handle) return;
+    const raw = input.trim();
+    if (!raw) return;
     setError(null);
     startTransition(async () => {
-      const result = await addTrackedHandle(deskId, handle);
+      // Pass the whole blob — the action splits comma/space-separated handles, strips @, and caps.
+      const result = await addTrackedHandles(deskId, raw);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -60,6 +62,8 @@ export function SourcesCard({
       setInput("");
     });
   }
+
+  const atLimit = trackedHandles.length >= MAX_TRACKED_HANDLES;
 
   function handleRemove(handle: string) {
     setError(null);
@@ -87,7 +91,9 @@ export function SourcesCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold text-muted-foreground">𝕏 X accounts</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground">
+            𝕏 X accounts ({trackedHandles.length}/{MAX_TRACKED_HANDLES})
+          </h3>
           {trackedHandles.length === 0 ? (
             <p className="text-sm text-muted-foreground">No accounts tracked yet.</p>
           ) : (
@@ -140,7 +146,7 @@ export function SourcesCard({
             <PlusIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             <Input
               className="h-7 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
-              disabled={isPending}
+              disabled={isPending || atLimit}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -148,7 +154,11 @@ export function SourcesCard({
                   handleAdd();
                 }
               }}
-              placeholder="Add an X account — type a handle, press Enter"
+              placeholder={
+                atLimit
+                  ? `Up to ${MAX_TRACKED_HANDLES} accounts`
+                  : "Add X accounts — paste comma-separated, @ optional, press Enter"
+              }
               value={input}
             />
           </div>
