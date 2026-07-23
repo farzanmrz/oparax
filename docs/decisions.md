@@ -153,6 +153,15 @@ runs on hand-seeded posts.
 - **Governance:** retirement rule — a family whose drafts never win the judge is dropped;
   `gpt-5-nano`'s estimate is confirmed or killed by first-weeks telemetry.
 
+> **Owner override, 2026-07-22 — D8's third seat activated, cap note revised.** `glm-4.7-flashx`
+> ships as the council's third drafting family (`lib/agent/draft-council-run.ts`) ahead of D8's
+> "cache telemetry confirms room" trigger, on explicit owner instruction — see D8's annotation
+> below for the gateway-id probe and reasoning-visibility verification. **Worst case moves from
+> $2.73/mo (two families) to ~$3.3/mo** (three: $1.82 + $0.41 = $2.23/1k drafts × 1,500
+> drafts/mo) — over this section's original $3 cap, accepted alongside the third-seat
+> activation. The judge, self-check, and carry-over-trap contract are unchanged by the third
+> seat; it only adds one more candidate for the judge to score.
+
 ### L4. Schema — five tables for the slice
 
 Applied at build time (Supabase MCP needs re-auth). Why each shape:
@@ -361,6 +370,18 @@ has no outbound-call capability. Minting rows creates rows and nothing else.
 > unbounded spend by a free account. That commit must ship a spend gate (per-owner cap read off
 > `usage_events`, or extraction restricted to an earned handle per D14) in the same diff.
 
+> **Owner override, 2026-07-22 — the guard fired, no spend gate shipped this slice.**
+> `createDesk`'s `after()` callback (`app/agents/new/actions.ts` → `attemptVoiceExtraction`,
+> `lib/voice/create-desk-extraction.ts`) is exactly the "first Server Action... that calls
+> `extractVoiceGuide`" this guard warned about, and it ships without the spend gate the guard
+> demands — on explicit owner instruction, not an oversight. Safe THIS slice for a checkable
+> reason, not a waived one: `loadCorpus` only ever resolves a file under the gitignored
+> `.voice-lab/corpora/`, which does not exist in any deployed environment, so a self-minted
+> `experiments` row can trigger no paid extraction in production today (mirrored in
+> `create-desk-extraction.ts`'s own header comment). **The guard re-arms at D1** — the first
+> commit that widens `loadCorpus` to a real corpus fetch owes the spend gate this override
+> deferred, in the same diff.
+
 ### L10. The lab stays
 
 `.voice-lab/` (gitignored) is kept: it holds the 10 extraction guides, the 200 neutralized
@@ -391,6 +412,19 @@ are needed and the lab costs $0 to keep.
 | D13 | X Enterprise tier | account migration | Only if webhooks or backfill_minutes become necessary; custom contract, unpublished pricing |
 | D14 | **Earning the `experiments` join row** — a `reporter_handle` grants guide access only once verified (linked X account, or an approved list) | a migration + whatever verification mechanism is chosen | The only *real* fix to L11, and a design problem in its own right. Wakes when guide free-riding stops being negligible, or when extraction gains a user-triggered path (L11's guard) — whichever comes first |
 | D16 | **Ingestion-path concurrency + metering hardening** (surfaced at slice-2 QC, both harmless at one hand-seeded post): (a) a delivery whose author matches no `experiments` row writes **no `usage_events` `stream_delivery`** (the column is `owner_id NOT NULL` and an unmatched delivery has no owner) — so L1's 80%-of-cap alarm undercounts real stream volume; (b) the `already_drafted` guard in `processDelivery` and the idempotency check in `applyCorrection` are **non-atomic select-then-insert with no unique index**, so two concurrent deliveries of the same `x_post_id` (or two of the same Svix reply) both pay a full council/revision | a migration (unique constraints on the dedup keys) + an un-owned "unmatched deliveries received" counter | **Trigger: slice 3** — the always-on forwarder can redeliver on reconnect (its whole failure model is reconnect-with-backoff), which is the first time duplicate/concurrent deliveries are real rather than hypothetical. Both are one-reporter-safe today; neither blocks the slice-2 demo |
+
+> **Owner override, 2026-07-22 — D8's third seat activated ahead of its trigger.** The
+> "cache telemetry confirms room" gate above is explicitly skipped: `zai/glm-4.7-flashx` ships
+> today as the drafting council's third family (`lib/agent/draft-council-run.ts`), on owner
+> instruction. Verified, not assumed: the gateway id was resolved by probe against
+> `gateway.getAvailableModels()` (`glm-4.7-flashx` maps to that exact slug — docs' shorthand is
+> not the literal id); GLM exposes full reasoning by default, no visibility flag needed (2,911
+> chars on the demo prompt, same trace shape as `deepseek-v4-flash`); and a top-level
+> `reasoning: "low"` has a measured effect (`reasoningTokens` moved 689 → 849 on an identical
+> prompt), satisfying L9 rule 6's read-the-effect-back bar rather than trusting a 200. L3's cap
+> note is updated alongside this (see its own annotation): worst case moves to ~$3.3/mo,
+> over the original $3 cap. D8's other half — the cheap-tier bake-off (`gpt-5-nano`/`glm` vs
+> `v4-flash`) — is untouched, still gated on ~$50/mo drafting spend.
 
 ---
 
@@ -423,3 +457,13 @@ are needed and the lab costs $0 to keep.
 | R23 | Per-user rule = per-desk webhooks/config designs generally | Everything per-user about ingestion collapsed once the 1-connection + 5-rule realities landed; per-user state lives in Supabase, not at X |
 | R24 | `x_user_search` handle verification tool | Fuzzy search drops valid accounts outranked by popular near-matches (closed #57); wrong handle simply returns nothing — verification deferred to D12 with a different mechanism |
 | R25 | Closing L11 by making `voice_guides` deny-all + an explicit ownership check in application code | It asks the **same unsound question**, just in app code instead of RLS: ownership would still be established through the same self-minted `experiments` row. It moves the hole, it doesn't close it — while costing the "RLS is the gate" property. Closing this properly means *earning* the join row (D14) |
+
+> **Owner override, 2026-07-22 — R21 partially reversed, for specified-and-coming surfaces.**
+> R21 killed greying for an *unspecified* future stage (clustering had no control to draw). The
+> shipped Setup tab (`app/agents/[id]/setup/page.tsx`) greys surfaces that ARE specified in the
+> plan — Connections' edit/Send-test controls, the whole Notifications matrix, the websites
+> field, auto-post — just not yet backed by a data shape (D5, L6). For those, the owner
+> overrides R21: reserve the slot, grey the control, back nothing that has no column yet (see
+> that file's own header comment for the "grey-scaffolded per the owner rule" phrasing this
+> override authorizes). R21's original kill stands for genuinely unspecified stages — there is
+> still no greyed control for clustering (D2), because there is still nothing named to draw.
