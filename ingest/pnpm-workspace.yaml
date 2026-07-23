@@ -1,0 +1,5 @@
+# Standalone package, not part of the app's root workspace (see README.md "Isolation").
+# This file exists only so pnpm 10+ reads onlyBuiltDependencies from here — pnpm no longer
+# honors the package.json `pnpm` field for that setting.
+onlyBuiltDependencies:
+  - esbuild
