@@ -14,8 +14,11 @@
 // Ledger-first ordering throughout, copied from scripts/extract-voice-guide.ts: `model_calls`
 // rows are written BEFORE the artifact rows (`post_drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
+import { assignToStory } from "@/lib/agent/cluster";
+import { PLATFORMS, type Platform } from "@/lib/agent/desk-config";
 import {
   type CouncilCall,
+  type CouncilResult,
   reviseDraft,
   runDraftCouncil,
   type SourceBrief,
@@ -25,17 +28,33 @@ import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
+import { postDraftToXForOwner } from "@/lib/x/actions";
 import { sumCosts } from "./usage-cost";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-export type IngestDelivery = {
-  x_post_id: string;
-  author_handle: string;
-  text: string;
-  posted_at: string; // ISO
-  raw?: unknown;
-};
+// Part A (T2.4b): source_posts / IngestDelivery now carries a source discriminator —
+// app/api/ingest/route.ts's ingestBodySchema (already locked) validates this exact shape and
+// passes parsed.data straight through, so this type must match it field-for-field.
+export type IngestDelivery =
+  | {
+      source: "x";
+      x_post_id: string;
+      author_handle: string;
+      text: string;
+      posted_at: string; // ISO
+      raw?: unknown;
+    }
+  | {
+      source: "website";
+      external_id: string;
+      url: string;
+      title: string;
+      text: string;
+      author_handle: string | null;
+      published_at: string | null;
+      raw?: unknown;
+    };
 
 export type ProcessDeliveryResult = {
   sourcePostId: string;
@@ -52,7 +71,33 @@ type MatchedExperiment = {
   owner_id: string;
   reporter_handle: string;
   status: string;
+  auto_post_master: boolean;
+  auto_post_sources: Json;
 };
+
+/** Best-effort hostname extraction — used both for the website-source experiment match key
+ *  (an experiment's `websites` array holds tracked site URLs, an incoming delivery's `url` is
+ *  a specific article on that site, so matching by hostname/origin is the right key, not an
+ *  exact URL match) and as the author-handle fallback for a website post with a null
+ *  `author_handle` (see the brief-context comment on `assignToStory`'s call site below).
+ *  Malformed input degrades to "" rather than throwing — every caller treats "" as no-match /
+ *  no-fallback. */
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/** A "website" delivery is tracked via `experiments.websites` (a desk's own list of tracked
+ *  site URLs, saved in Wave 3), NOT via `tracked_handles`/`author_handle` — see the matching
+ *  branch in `processDelivery` below. */
+function matchesTrackedWebsite(websites: Json, deliveryUrl: string): boolean {
+  const host = hostnameOf(deliveryUrl);
+  if (!host || !Array.isArray(websites)) return false;
+  return websites.some((w) => typeof w === "string" && hostnameOf(w) === host);
+}
 
 /** The ONE place a `CouncilCall` becomes a `model_calls` row. Inserted one row at a time (not
  *  batched) so the returned ids are guaranteed aligned with `calls` BY INDEX — a batched
@@ -169,6 +214,7 @@ async function draftForExperiment(
   experiment: MatchedExperiment,
   sourcePostId: string,
   brief: SourceBrief,
+  deliverySource: IngestDelivery["source"],
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
   // Extraction stays script-only this slice (decisions.md L11) — absent guide, skip. Checked
   // BEFORE the atomic claim below: a no-guide desk must not burn a draft_claims row it will
@@ -212,71 +258,171 @@ async function draftForExperiment(
   // (source_post, experiment) pair for the retry; the re-run re-bills, which is the right trade
   // against a silently lost draft. The happy path leaves the claim in place (dedup intact).
   try {
-    const result = await runDraftCouncil({
-      guideDeploy: guide.guide_deploy,
-      accountTier: "standard",
-      brief,
+    // Part B: clustering happens per matched ACTIVE experiment (a `stories` row is
+    // experiment_id-scoped — one story belongs to one desk), BEFORE the platform fan-out
+    // below, inside this same try block so a cluster.ts throw hits the release-on-failure
+    // catch below exactly like any other paid step here — no special-cased handling needed.
+    const cluster = await assignToStory({
+      experimentId: experiment.id,
+      sourcePostId,
+      authorHandle: brief.authorHandle,
+      text: brief.text,
     });
+    if (cluster.calls.length > 0) {
+      // Ledger-first, same ordering discipline as every other CouncilCall producer here —
+      // this insert happens BEFORE the platform fan-out's own ledger-first inserts.
+      await insertModelCalls(admin, experiment.owner_id, cluster.calls, sourcePostId);
+    }
 
-    // Ledger-first: model_calls rows before the post_drafts rows that point at them.
-    const callIds = await insertModelCalls(admin, experiment.owner_id, result.calls, sourcePostId);
+    // Part C: one self-contained unit per platform (council -> ledger-first insert ->
+    // post_drafts insert), run in parallel — a DB failure persisting platform B's calls can
+    // never affect platform A's already-committed work because each platform's persistence
+    // lives inside its own thunk, not batched together at the end.
+    const runPlatformDraft = async (
+      platform: Platform,
+    ): Promise<{ platform: Platform; result: CouncilResult; winningPostDraftId: string }> => {
+      const result = await runDraftCouncil({
+        guideDeploy: guide.guide_deploy,
+        accountTier: "standard",
+        brief,
+        platform,
+      });
 
-    let winningPostDraftId: string | null = null;
-    for (const member of result.members) {
-      const { data, error } = await admin
-        .from("post_drafts")
-        .insert({
+      // Ledger-first: model_calls rows before the post_drafts rows that point at them.
+      const callIds = await insertModelCalls(
+        admin,
+        experiment.owner_id,
+        result.calls,
+        sourcePostId,
+      );
+
+      let winningPostDraftId: string | null = null;
+      for (const member of result.members) {
+        const { data, error } = await admin
+          .from("post_drafts")
+          .insert({
+            source_post_id: sourcePostId,
+            experiment_id: experiment.id,
+            story_id: cluster.storyId,
+            platform,
+            model_call_id: callIds[member.finalCallIndex],
+            is_winner: member.isWinner,
+            judge_verdict: null,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        if (member.isWinner) winningPostDraftId = data.id;
+      }
+      if (result.judge) {
+        const { error } = await admin.from("post_drafts").insert({
           source_post_id: sourcePostId,
           experiment_id: experiment.id,
-          model_call_id: callIds[member.finalCallIndex],
-          is_winner: member.isWinner,
-          judge_verdict: null,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      if (member.isWinner) winningPostDraftId = data.id;
-    }
-    if (result.judge) {
-      const { error } = await admin.from("post_drafts").insert({
-        source_post_id: sourcePostId,
-        experiment_id: experiment.id,
-        model_call_id: callIds[result.judge.callIndex],
-        is_winner: false,
-        judge_verdict: result.judge.verdict,
-      });
-      if (error) throw error;
-    }
-    if (!winningPostDraftId) {
-      throw new Error("draft-pipeline: no winning member produced a post_drafts row");
+          story_id: cluster.storyId,
+          platform,
+          model_call_id: callIds[result.judge.callIndex],
+          is_winner: false,
+          judge_verdict: result.judge.verdict,
+        });
+        if (error) throw error;
+      }
+      if (!winningPostDraftId) {
+        throw new Error(
+          `draft-pipeline: no winning member produced a post_drafts row for platform ${platform}`,
+        );
+      }
+
+      for (const call of result.calls) {
+        await stampUsageEvent(admin, {
+          owner_id: experiment.owner_id,
+          kind: "drafting",
+          units: 1,
+          cost_usd: call.costUsd,
+          ref_id: sourcePostId,
+        });
+      }
+
+      return { platform, result, winningPostDraftId };
+    };
+
+    const platformResults = await Promise.allSettled(PLATFORMS.map(runPlatformDraft));
+
+    platformResults.forEach((outcome, i) => {
+      if (outcome.status === "rejected") {
+        console.error(
+          `draft-pipeline: platform ${PLATFORMS[i]} failed for experiment ${experiment.id}`,
+          outcome.reason,
+        );
+      }
+    });
+
+    const fulfilled = platformResults
+      .filter(
+        (
+          outcome,
+        ): outcome is PromiseFulfilledResult<Awaited<ReturnType<typeof runPlatformDraft>>> =>
+          outcome.status === "fulfilled",
+      )
+      .map((outcome) => outcome.value);
+
+    // Zero fulfilled platforms is equivalent to today's total-failure case: propagate so the
+    // outer catch releases draft_claims and allows a retry. runDraftCouncil's members===0 throw
+    // still fires before any CouncilCall is billed (a rejected family means its initial
+    // generate() call itself never completed), so this path never discards a paid call.
+    if (fulfilled.length === 0) {
+      throw new Error(`draft-pipeline: all platforms failed for experiment ${experiment.id}`);
     }
 
-    for (const call of result.calls) {
-      await stampUsageEvent(admin, {
-        owner_id: experiment.owner_id,
-        kind: "drafting",
-        units: 1,
-        cost_usd: call.costUsd,
-        ref_id: sourcePostId,
-      });
-    }
+    // At least one platform succeeded — a partial multi-platform draft is a real, useful
+    // outcome. Do NOT throw and do NOT release the claim past this point: releasing it here
+    // would let a retry re-bill the platforms that already succeeded.
+    const xResult = fulfilled.find((f) => f.platform === "x");
+    // deliverDraft fires ONCE per delivery per experiment (not once per platform) — using the
+    // X platform's winning text when X succeeded, else the first-succeeded platform's winning
+    // text as a reasonable fallback (documented in task-20-report.md). modelCount/totalCostUsd
+    // are summed across every fulfilled platform's calls so the notification reflects the
+    // delivery's actual total spend, not just the chosen platform's.
+    const primary = xResult ?? fulfilled[0];
+    const allFulfilledCalls = fulfilled.flatMap((f) => f.result.calls);
 
     await deliverDraft(admin, {
       ownerId: experiment.owner_id,
       authorHandle: brief.authorHandle,
       sourceText: brief.text,
-      winningText: result.winningText,
-      modelCount: result.members.length,
-      totalCostUsd: sumCosts(result.calls.map((c) => c.costUsd)),
-      winningPostDraftId,
+      winningText: primary.result.winningText,
+      modelCount: fulfilled.reduce((sum, f) => sum + f.result.members.length, 0),
+      totalCostUsd: sumCosts(allFulfilledCalls.map((c) => c.costUsd)),
+      winningPostDraftId: primary.winningPostDraftId,
       sourcePostId,
       revised: false,
     });
 
+    // Part D: auto-post, after the X platform's post_drafts row exists. auto_post_sources is
+    // keyed by delivery source TYPE ({ x?: boolean; website?: boolean }) — a per-source-type
+    // toggle, the natural reading of "master + per-source toggles" given the only two source
+    // types this slice has (documented in task-20-report.md). No model_calls row for the post
+    // itself — posting isn't a model call. A posting failure is logged and left as a
+    // recoverable draft state: never a rollback of drafts or ledgers, never a claim release.
+    const sourcesConfig = (experiment.auto_post_sources ?? {}) as Record<string, boolean>;
+    const autoPostEligible =
+      experiment.auto_post_master === true && sourcesConfig[deliverySource] === true;
+    if (autoPostEligible && xResult) {
+      const postResult = await postDraftToXForOwner(
+        xResult.winningPostDraftId,
+        experiment.owner_id,
+      );
+      if (!postResult.ok) {
+        console.error(
+          `draft-pipeline: auto-post failed for draft ${xResult.winningPostDraftId}`,
+          postResult.error,
+        );
+      }
+    }
+
     return {
       experimentId: experiment.id,
-      winningModel: result.winningModel,
-      degraded: result.degraded,
+      winningModel: primary.result.winningModel,
+      degraded: fulfilled.some((f) => f.result.degraded) || fulfilled.length < PLATFORMS.length,
     };
   } catch (err) {
     // Release the claim so a retry of this delivery can re-attempt (see the comment above).
@@ -299,17 +445,33 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   // existing row's `text`/`author_handle`/`raw` out from under every draft already produced from
   // it, breaking the drafting contract's carry-over guarantee retroactively. A no-op conflict
   // returns no row via RETURNING, so the existing id is fetched separately when that happens.
+  // Part A: the upsert branches on delivery.source — "x" upserts by x_post_id exactly as
+  // before; "website" upserts by external_id (a deterministic hash, per the ingest schema's
+  // comment), storing url/title/author_handle(nullable)/source, x_post_id left null.
+  const onConflictColumn = delivery.source === "x" ? "x_post_id" : "external_id";
   const { data: upserted, error: upsertError } = await admin
     .from("source_posts")
     .upsert(
-      {
-        x_post_id: delivery.x_post_id,
-        author_handle: delivery.author_handle,
-        text: delivery.text,
-        posted_at: delivery.posted_at,
-        raw: (delivery.raw ?? null) as unknown as Json,
-      },
-      { onConflict: "x_post_id", ignoreDuplicates: true },
+      delivery.source === "x"
+        ? {
+            source: "x",
+            x_post_id: delivery.x_post_id,
+            author_handle: delivery.author_handle,
+            text: delivery.text,
+            posted_at: delivery.posted_at,
+            raw: (delivery.raw ?? null) as unknown as Json,
+          }
+        : {
+            source: "website",
+            external_id: delivery.external_id,
+            url: delivery.url,
+            title: delivery.title,
+            author_handle: delivery.author_handle,
+            text: delivery.text,
+            posted_at: delivery.published_at,
+            raw: (delivery.raw ?? null) as unknown as Json,
+          },
+      { onConflict: onConflictColumn, ignoreDuplicates: true },
     )
     .select("id");
   if (upsertError) throw upsertError;
@@ -318,38 +480,58 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   if (upserted && upserted.length > 0) {
     sourcePostId = upserted[0].id;
   } else {
+    const conflictValue = delivery.source === "x" ? delivery.x_post_id : delivery.external_id;
     const { data: existing, error: existingError } = await admin
       .from("source_posts")
       .select("id")
-      .eq("x_post_id", delivery.x_post_id)
+      .eq(onConflictColumn, conflictValue)
       .single();
     if (existingError) throw existingError;
     sourcePostId = existing.id;
   }
 
-  // Route by author. PostgREST's array `contains` filter matches elements exactly, so a
-  // stored handle whose casing differs from the delivery's would silently never match —
-  // fetch every experiment and compare lowercased in application code instead (see
-  // task-7-report.md for why this shape was chosen over the contains filter).
+  // Route by source. An "x" delivery matches tracked_handles exactly as before (PostgREST's
+  // array `contains` filter matches elements exactly, so a stored handle whose casing differs
+  // from the delivery's would silently never match — fetch every experiment and compare
+  // lowercased in application code instead, see task-7-report.md). A "website" delivery has no
+  // author_handle concept — it's tracked via experiments.websites (a desk's own list of
+  // tracked site URLs, saved in Wave 3), matched by hostname (matchesTrackedWebsite above), NOT
+  // forced through the same tracked_handles matching function since the match key genuinely
+  // differs between the two source types.
   const { data: allExperiments, error: experimentsError } = await admin
     .from("experiments")
-    .select("id, owner_id, reporter_handle, tracked_handles, status");
+    .select(
+      "id, owner_id, reporter_handle, tracked_handles, websites, status, auto_post_master, auto_post_sources",
+    );
   if (experimentsError) throw experimentsError;
-  const wantedHandle = delivery.author_handle.toLowerCase();
-  const matched: MatchedExperiment[] = (allExperiments ?? []).filter((e) =>
-    e.tracked_handles.some((h) => h.toLowerCase() === wantedHandle),
-  );
+  const matched: MatchedExperiment[] =
+    delivery.source === "x"
+      ? (() => {
+          const wantedHandle = delivery.author_handle.toLowerCase();
+          return (allExperiments ?? []).filter((e) =>
+            e.tracked_handles.some((h) => h.toLowerCase() === wantedHandle),
+          );
+        })()
+      : (allExperiments ?? []).filter((e) => matchesTrackedWebsite(e.websites, delivery.url));
 
   // D16a: usage_events.owner_id is NOT NULL, so an unmatched delivery (no experiment tracks
   // this author) is invisible to usage_events and, with it, to the stream-volume alarm — there
   // is no owner to bill, so there was no row and no signal. Best-effort: a write failure here
-  // must never change processDelivery's response or its drafting outcome.
+  // must never change processDelivery's response or its drafting outcome. unmatched_deliveries'
+  // columns (x_post_id, author_handle) are both NOT NULL and x-shaped — only an "x"-sourced miss
+  // stamps this table; an unmatched "website" delivery is log-only (see task-20-report.md).
   if (matched.length === 0) {
-    const { error: unmatchedError } = await admin
-      .from("unmatched_deliveries")
-      .insert({ x_post_id: delivery.x_post_id, author_handle: delivery.author_handle });
-    if (unmatchedError) {
-      console.error("draft-pipeline: unmatched_deliveries insert failed", unmatchedError);
+    if (delivery.source === "x") {
+      const { error: unmatchedError } = await admin
+        .from("unmatched_deliveries")
+        .insert({ x_post_id: delivery.x_post_id, author_handle: delivery.author_handle });
+      if (unmatchedError) {
+        console.error("draft-pipeline: unmatched_deliveries insert failed", unmatchedError);
+      }
+    } else {
+      console.error(
+        `draft-pipeline: unmatched website delivery, no experiment tracks ${delivery.url} — not stamped to unmatched_deliveries`,
+      );
     }
   }
 
@@ -366,12 +548,23 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     });
   }
 
-  const brief: SourceBrief = {
-    sourcePostId,
-    xPostId: delivery.x_post_id,
-    authorHandle: delivery.author_handle,
-    text: delivery.text,
-  };
+  const brief: SourceBrief =
+    delivery.source === "x"
+      ? {
+          sourcePostId,
+          xPostId: delivery.x_post_id,
+          authorHandle: delivery.author_handle,
+          text: delivery.text,
+        }
+      : {
+          sourcePostId,
+          // xPostId is unused by draft-council-run.ts's actual logic (never read past being
+          // carried on SourceBrief) — "" for a website delivery rather than widening the type
+          // for a field nothing consumes (documented in task-20-report.md).
+          xPostId: "",
+          authorHandle: delivery.author_handle ?? hostnameOf(delivery.url),
+          text: delivery.text,
+        };
 
   const drafted: ProcessDeliveryResult["drafted"] = [];
   for (const experiment of matched) {
@@ -382,7 +575,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     // worker also drops paused desks' handles from the stream on its next ~5-min rule rebuild;
     // this is the immediate guard for that lag window and for hand-seeded deliveries.
     if (experiment.status !== "active") continue;
-    drafted.push(await draftForExperiment(admin, experiment, sourcePostId, brief));
+    drafted.push(await draftForExperiment(admin, experiment, sourcePostId, brief, delivery.source));
   }
 
   return { sourcePostId, drafted };
@@ -442,10 +635,16 @@ export async function applyCorrection(input: {
     throw new Error(`draft-pipeline: no voice_guides row for @${experiment.reporter_handle}`);
   }
 
+  // source_posts.x_post_id / author_handle are nullable as of this Wave's website-source
+  // support (Part A above) — applyCorrection's own behavior is unchanged (out of scope for
+  // this task per the brief), this is only the minimal null-safety fix required to keep this
+  // file compiling against the widened schema; every draft reachable through this path today
+  // is still "x"-sourced (Wave 3 wires up website drafts' UI), so these fall back to "" in
+  // practice but never actually hit it (documented in task-20-report.md).
   const brief: SourceBrief = {
     sourcePostId: sourcePost.id,
-    xPostId: sourcePost.x_post_id,
-    authorHandle: sourcePost.author_handle,
+    xPostId: sourcePost.x_post_id ?? "",
+    authorHandle: sourcePost.author_handle ?? "",
     text: sourcePost.text,
   };
 
@@ -530,7 +729,7 @@ export async function applyCorrection(input: {
 
   await deliverDraft(admin, {
     ownerId: experiment.owner_id,
-    authorHandle: sourcePost.author_handle,
+    authorHandle: sourcePost.author_handle ?? "",
     sourceText: sourcePost.text,
     winningText: revision.text,
     modelCount: 1,
