@@ -128,6 +128,20 @@ export function flattenRulesToPrompt(rules: VoiceRule[]): string {
   ].join("\n");
 }
 
+/** The drafting call sites' composition step `flattenRulesToPrompt`'s own docstring named as
+ *  "T2.3 / the drafting call sites' job" — done here instead of duplicated at every call site.
+ *  Falls back to the raw deployed guide when no rule is enabled (rules not yet materialized
+ *  for this reporter, or every rule disabled): an empty voice-rules block would leave drafting
+ *  with no style guidance at all, worse than the guide-only behavior it replaces. */
+export function resolveDraftingPrompt(
+  rules: VoiceRule[],
+  measuredFacts: string,
+  guideDeploy: string,
+): string {
+  const flattened = flattenRulesToPrompt(rules);
+  return flattened ? `${flattened}\n\n${measuredFacts}` : guideDeploy;
+}
+
 /** Splits a deployed guide into its `## ` (level-2) sections, each kept whole (heading + body)
  *  as one candidate rule. Drops the bare `# Voice Guide: @handle` title preamble that precedes
  *  the first `## ` heading — it carries no instructional content of its own. Falls back to the

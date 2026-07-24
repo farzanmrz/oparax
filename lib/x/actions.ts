@@ -59,10 +59,18 @@ export async function postDraftToXForOwner(
 
   const { data: draft, error: draftError } = await admin
     .from("post_drafts")
-    .select("id, experiment_id, posted_at, model_calls(output)")
+    .select("id, experiment_id, posted_at, model_calls(output), experiments(owner_id)")
     .eq("id", postDraftId)
     .maybeSingle();
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
+  // Every exported function in a "use server" file is its own reachable endpoint regardless
+  // of which components import it (Next.js treats server actions as public by ID, not by
+  // client-bundle usage) — so `ownerId` can't be trusted just because it was passed in. Both
+  // real callers already derive it from this same draft's experiment row before calling here;
+  // this re-proves that instead of trusting the argument.
+  if (draft.experiments?.owner_id !== ownerId) {
+    return { ok: false, error: "That draft could not be found." };
+  }
   if (draft.posted_at) return { ok: false, error: "This draft was already posted to X." };
 
   const text = draft.model_calls?.output;

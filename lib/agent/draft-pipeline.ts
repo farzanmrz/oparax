@@ -30,6 +30,7 @@ import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
+import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
 import { postDraftToXForOwner } from "@/lib/x/actions";
 import { sumCosts } from "./usage-cost";
 
@@ -169,6 +170,7 @@ async function deliverDraft(
     modelCount: number;
     totalCostUsd: number | null;
     winningPostDraftId: string;
+    winningPlatform: Platform;
     sourcePostId: string;
     revised: boolean;
   },
@@ -188,14 +190,22 @@ async function deliverDraft(
   try {
     const slackAccount = await getSlackAccount(input.experimentId);
     if (slackAccount) {
+      // The interactive button always posts to X (SLACK_POST_TO_X_ACTION_ID ->
+      // postDraftToXForOwner) — only attach it when the winning draft actually IS an X draft.
+      // Otherwise (X's council failed and another platform's draft won instead) this would
+      // wire "Post to X" to a LinkedIn/Bluesky draft, posting the wrong platform's content.
       await postMessage({
         channelId: slackAccount.channel_id,
         accessToken: slackAccount.access_token,
         text: message,
-        blocks: buildDraftBlocks({
-          text: input.winningText,
-          postDraftId: input.winningPostDraftId,
-        }),
+        ...(input.winningPlatform === "x"
+          ? {
+              blocks: buildDraftBlocks({
+                text: input.winningText,
+                postDraftId: input.winningPostDraftId,
+              }),
+            }
+          : {}),
       });
     } else {
       await sendSlackMessage(message);
@@ -245,13 +255,21 @@ async function draftForExperiment(
   // never use.
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
-    .select("guide_deploy")
+    .select("guide_deploy, measured_facts")
     .eq("reporter_handle", experiment.reporter_handle)
     .maybeSingle();
   if (guideError) throw guideError;
   if (!guide) {
     return { experimentId: experiment.id, winningModel: "", degraded: false, skipped: "no_guide" };
   }
+  // rules.ts's own docstring names this composition step "the drafting call sites' job" —
+  // flattened enabled voice_rules + measured facts is the actual drafting input of record,
+  // falling back to the raw deployed guide only when no rule is enabled yet.
+  const voiceGuidance = resolveDraftingPrompt(
+    await listVoiceRules(experiment.reporter_handle),
+    guide.measured_facts,
+    guide.guide_deploy,
+  );
 
   // Atomic claim (D16): draft_claims carries UNIQUE(source_post_id, experiment_id), so this
   // insert IS the idempotency check — a non-atomic select-then-check here could let two
@@ -318,7 +336,7 @@ async function draftForExperiment(
       platform: Platform,
     ): Promise<{ platform: Platform; result: CouncilResult; winningPostDraftId: string }> => {
       const result = await runDraftCouncil({
-        guideDeploy: guide.guide_deploy,
+        voiceGuidance,
         accountTier: "standard",
         brief,
         platform,
@@ -430,6 +448,7 @@ async function draftForExperiment(
       modelCount: fulfilled.reduce((sum, f) => sum + f.result.members.length, 0),
       totalCostUsd: sumCosts(allFulfilledCalls.map((c) => c.costUsd)),
       winningPostDraftId: primary.winningPostDraftId,
+      winningPlatform: primary.platform,
       sourcePostId,
       revised: false,
     });
@@ -670,13 +689,18 @@ export async function applyCorrection(input: {
 
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
-    .select("guide_deploy")
+    .select("guide_deploy, measured_facts")
     .eq("reporter_handle", experiment.reporter_handle)
     .maybeSingle();
   if (guideError) throw guideError;
   if (!guide) {
     throw new Error(`draft-pipeline: no voice_guides row for @${experiment.reporter_handle}`);
   }
+  const voiceGuidance = resolveDraftingPrompt(
+    await listVoiceRules(experiment.reporter_handle),
+    guide.measured_facts,
+    guide.guide_deploy,
+  );
 
   // source_posts.x_post_id / author_handle are nullable as of this Wave's website-source
   // support (Part A above) — applyCorrection's own behavior is unchanged (out of scope for
@@ -692,7 +716,7 @@ export async function applyCorrection(input: {
   };
 
   const revision = await reviseDraft({
-    guideDeploy: guide.guide_deploy,
+    voiceGuidance,
     accountTier: "standard",
     brief,
     previousDraft,
@@ -789,6 +813,7 @@ export async function applyCorrection(input: {
     modelCount: 1,
     totalCostUsd: sumCosts(revision.calls.map((c) => c.costUsd)),
     winningPostDraftId: newDraft.id,
+    winningPlatform: platform as Platform,
     sourcePostId: sourcePost.id,
     revised: true,
   });

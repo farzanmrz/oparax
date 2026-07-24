@@ -10,6 +10,11 @@ import { ExtractionProgress } from "./extraction-progress";
 import { RetryExtractionButton } from "./retry-extraction-button";
 import { RulesEditor } from "./rules-editor";
 
+// Mirrors app/agents/new/page.tsx's maxDuration: this page's capReprobe action awaits
+// attemptVoiceExtraction synchronously (a manual retry, unlike the create flow's after()
+// call), so the function needs the same ceiling to survive a full extraction.
+export const maxDuration = 300;
+
 // The Reasoning block pulls in Streamdown (markdown rendering) — heavy, and only ever
 // needed once a reporter opens the audit dialog. `next/dynamic` keeps it out of this
 // route's initial JS.

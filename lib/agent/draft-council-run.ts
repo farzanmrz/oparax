@@ -256,14 +256,14 @@ const judgeVerdictSchema = z.object({
 });
 
 function buildJudgePrompt(
-  guideDeploy: string,
+  voiceGuidance: string,
   brief: SourceBrief,
   members: CouncilMember[],
 ): string {
   const candidates = members.map((m, i) => `Candidate ${i}:\n${m.text}`).join("\n\n");
   return [
-    "Reporter's voice guide:",
-    guideDeploy,
+    "Reporter's voice guidance:",
+    voiceGuidance,
     "",
     "Drafting contract:",
     DRAFT_COUNCIL_CONTRACT,
@@ -276,15 +276,15 @@ function buildJudgePrompt(
 }
 
 export async function runDraftCouncil(input: {
-  guideDeploy: string;
+  voiceGuidance: string;
   accountTier: "standard" | "premium";
   brief: SourceBrief;
   platform: Platform;
 }): Promise<CouncilResult> {
-  const { guideDeploy, accountTier, brief, platform } = input;
+  const { voiceGuidance, accountTier, brief, platform } = input;
   const ceiling =
     platform === "x" ? X_CHAR_LIMITS[accountTier] : NON_X_PLATFORM_CHAR_LIMITS[platform];
-  const system = `${guideDeploy}\n\n${DRAFT_COUNCIL_CONTRACT}`;
+  const system = `${voiceGuidance}\n\n${DRAFT_COUNCIL_CONTRACT}`;
   const draftPrompt = buildDraftPrompt(brief, ceiling);
 
   const settled = await Promise.allSettled(
@@ -332,7 +332,7 @@ export async function runDraftCouncil(input: {
         temperature: 0,
         schema: judgeVerdictSchema,
         system: DRAFT_JUDGE_PROMPT,
-        prompt: buildJudgePrompt(guideDeploy, brief, members),
+        prompt: buildJudgePrompt(voiceGuidance, brief, members),
       });
 
       const verdict: Json = {
@@ -415,15 +415,15 @@ export async function runDraftCouncil(input: {
  *  same shape so the caller persists it identically. Same DeepSeek config as the drafting
  *  families — no `reasoning` param, native adaptive thinking. */
 export async function reviseDraft(input: {
-  guideDeploy: string;
+  voiceGuidance: string;
   accountTier: "standard" | "premium";
   brief: SourceBrief;
   previousDraft: string;
   feedback: string;
 }): Promise<{ calls: CouncilCall[]; finalCallIndex: number; text: string }> {
-  const { guideDeploy, accountTier, brief, previousDraft, feedback } = input;
+  const { voiceGuidance, accountTier, brief, previousDraft, feedback } = input;
   const ceiling = X_CHAR_LIMITS[accountTier];
-  const system = `${guideDeploy}\n\n${DRAFT_COUNCIL_CONTRACT}\n\n${DRAFT_REVISE_PROMPT}`;
+  const system = `${voiceGuidance}\n\n${DRAFT_COUNCIL_CONTRACT}\n\n${DRAFT_REVISE_PROMPT}`;
   const prompt = [
     `Character ceiling: ${ceiling} (a ceiling, never a target).`,
     formatSourceBrief(brief),
