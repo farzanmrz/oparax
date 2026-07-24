@@ -28,7 +28,7 @@ pnpm format     # Biome format --write
 
 ### Environment
 
-`.env.local`, fifteen keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
+`.env.local`, nineteen keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |
@@ -38,10 +38,12 @@ pnpm format     # Biome format --write
 | `CRON_SECRET` | **retired** — the per-minute cron dispatcher (`app/api/cron/tick`) was deleted (D15); the ingestion worker replaced polling, so no code consumes this key now |
 | `SUPABASE_SECRET_KEY` | `lib/supabase/admin.ts` — the service-role client (the draft pipeline, the `[id]` desk post-outcome stamps, `lib/x/`'s token store, and the voice-extraction ledger) |
 | `X_CLIENT_ID` + `X_CLIENT_SECRET` | `lib/x/api.ts` — X OAuth2 confidential-client credentials (link flow + posting) |
-| `INGEST_SECRET` | `app/api/ingest/route.ts` — fail-closed `Bearer` auth on the delivery interface (the ingestion forwarder's entry point) |
-| `SLACK_WEBHOOK_URL` | `lib/notify/slack.ts` — the workspace incoming webhook the draft push posts to |
-| `RESEND_API_KEY` + `RESEND_FROM` + `RESEND_REPLY_DOMAIN` | `lib/notify/email.ts` — Resend REST auth, sender identity, and the plus-addressed reply domain that routes a reply back to its draft |
-| `RESEND_WEBHOOK_SECRET` | `app/api/email/inbound/route.ts` — Svix signature verification (raw body, fail-closed) on inbound replies |
+| `INGEST_SECRET` | `app/api/ingest/route.ts` — fail-closed `Bearer` auth on the delivery interface (the ingestion forwarder's entry point); Railway-side parity is a Wave 4 deploy requirement (T4.3), not yet proven live |
+| `BRIGHTDATA_API_KEY` | `lib/web/brightdata.ts` — raw-fetch `scrapeUrl`/`pullXTimeline` (voice-extraction corpus + website source scrapes). `BRIGHTDATA_API_TOKEN` was a duplicate of the same value (G3, Slice 5 Wave 1) — dropped; Bright Data's own docs call it "API key," and the app never uses `@brightdata/sdk` |
+| `SLACK_CLIENT_ID` + `SLACK_CLIENT_SECRET` + `SLACK_SIGNING_SECRET` | `lib/slack/*` + `app/auth/slack/*` — per-desk Slack OAuth (owner-provisioned, workspace `oparax`) and the interactions route's raw-body HMAC (G2, Slice 5 Wave 1: `v0:{ts}:{rawBody}`, SHA-256, 5-minute replay window) |
+| `SLACK_WEBHOOK_URL` | `lib/notify/slack.ts` — **legacy ops fallback only** as of Slice 5: the hand-rolled Slack app (`SLACK_CLIENT_*` above) is now the primary per-desk delivery path; this workspace-wide incoming webhook (verified working, slices 67/68) stays as a non-per-desk backstop |
+| `RESEND_API_KEY` + `RESEND_FROM` + `RESEND_REPLY_DOMAIN` | `lib/notify/email.ts` — Resend REST auth, sender identity, and the plus-addressed reply domain that routes a reply back to its draft. **Documented, not yet provisioned** — absent from `.env.local` and Vercel as of Slice 5; the per-desk email config/Notifications-matrix/Send-test ship fully wired regardless, Send-test simply fails cleanly until the owner provisions Resend |
+| `RESEND_WEBHOOK_SECRET` | `app/api/email/inbound/route.ts` — Svix signature verification (raw body, fail-closed) on inbound replies. Same not-yet-provisioned status as the `RESEND_*` row above |
 | `NOTIFY_EMAIL_TO` | `lib/agent/draft-pipeline.ts` — the reporter's address the draft email goes to (per-desk config is D5) |
 
 ## Code map

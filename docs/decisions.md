@@ -116,6 +116,11 @@ slice 1).
 - **Standing caveat:** documented X caps are unreliable — after ANY app/account/billing
   change, re-probe `GET /2/tweets/search/stream/rules/counts` + a bare stream connect
   before trusting anything. (Canonical copy: `.claude/rules/x.md`.)
+- **G1 re-probe (2026-07-23, Slice 5 Wave 1 gate):** both live-probed with the raw
+  `X_BEARER_TOKEN`. `rules/counts` → `200`, caps unchanged at `5/app, 15/project`, `0` rules
+  defined. Bare stream connect → `409 RuleConfigurationIssue` (identical to L1's original
+  proof, not a `403`). Stream access confirmed still live; Slice 5 proceeds on the native
+  stream, no fallback needed.
 
 ### L2. Voice extraction — Fable 5 + measured facts + the $2 council
 
@@ -155,6 +160,21 @@ slice 1).
   ignored. `max_completion_tokens` is the enforcement knob (hard ceiling over reasoning +
   content). General rule: verify a cap by reading `reasoning_tokens` back, never by
   trusting a 200.
+- **G3 re-probe (2026-07-23, Slice 5 Wave 1 gate):** live-confirmed against Bright Data's
+  own docs + one real call. `scrapeUrl` → Web Unlocker API, sync `POST
+  https://api.brightdata.com/request` with `{zone, url, format}`, `Authorization: Bearer
+  <key>`; live-tested against `example.com` on the existing `sdk_unlocker` zone → `200` with
+  raw HTML body, matching the docs exactly. Block-page detection is **status-code based, not
+  body-marker sniffing** — Unlocker resolves CAPTCHAs server-side, so a genuine failure
+  surfaces as `403`/`502`/`503`/`407`/`429`, not text in the body (a deviation from the
+  plan's "marker verification" phrasing — `lib/web/brightdata.ts` should branch on status,
+  not grep the body). `pullXTimeline` → Web Scraper API, Twitter/X posts dataset
+  (`gd_lwxkxvnf1cynvib9co`), async trigger (`POST /datasets/v3/trigger?dataset_id=...`) +
+  poll/webhook, not synchronous — a ~100-post pull should use the async path to avoid the
+  sync endpoint's 1-minute timeout. Same Bearer auth. **`BRIGHTDATA_API_KEY` /
+  `BRIGHTDATA_API_TOKEN` drift resolved: both hold the identical value in `.env.local`** (no
+  functional divergence, pure naming duplication) — standardize on `BRIGHTDATA_API_KEY` (the
+  name Bright Data's own docs/dashboard use throughout) and drop `_TOKEN`.
 
 ### L3. Drafting — the two-family council + judge, $3/mo cap
 
@@ -202,7 +222,7 @@ Applied at build time (Supabase MCP needs re-auth). Why each shape:
 | --- | --- | --- |
 | `experiments` | NEW table: `owner_id`, `beat`, `tracked_handles text[]`, `reporter_handle`, `status` | Not overloaded onto `agents` — agents carry `scan_frequency`/`search_template`, which experiments have no concept of; nullable not-applicable columns are the smell |
 | `voice_guides` | **unique per `reporter_handle`**: `guide_raw`, `guide_deploy`, `measured_facts`, `cost_usd`, and `provenance` jsonb = **a pointer `{ modelCallId }`, never a copy** (every call's output/reasoning/usage lives in `model_calls` — L12) | Extraction is paid once per reporter — the unique key *encodes the economics*; keying by experiment would re-pay $2 per experiment |
-| `source_posts` | **global, deduped by `x_post_id`**: `author_handle`, `text`, `posted_at`, `raw jsonb` | Shared stream rules mean overlapping tracking; store once, join through drafts |
+| `source_posts` | **global, deduped by `x_post_id` OR `external_id`**: `source` (`'x'`\|`'website'`), `author_handle` (nullable), `text`, `posted_at` (nullable), `url`/`title` (website-only), `raw jsonb` | Shared stream rules mean overlapping tracking; store once, join through drafts. **Slice 5, Wave 2 fixup**: none of Wave 1's 7 planned migrations extended this table for item 2 (multi-source ingestion) — `x_post_id`/`author_handle` were still `NOT NULL`, with nowhere to put a website post's `external_id`/`url`/`title`. Discovered wiring T2.4b; fixed same-day (`source_posts_multi_source.sql`) before it blocked the ingest-discriminator wiring. Postgres `UNIQUE` treats `NULL` as distinct-from-every-other-`NULL`, so `x_post_id` and `external_id` coexist as two independent nullable-unique dedup keys with no partial index needed |
 | `model_calls` | **one row per model call, every stage**: `owner_id`, `stage`, `role`, `model`, `output`, `reasoning`, `usage jsonb`, `cost_usd`, `generation_id`, `ref_kind`+`ref_id` | The universal record — see **L12**. What a model returned and what it reasoned have exactly ONE home, so a new stage inherits the guarantee instead of re-deriving it |
 | `post_drafts` | **one row per council member per post** (+ a judge row): `source_post_id`, `experiment_id`, `model_call_id` → `model_calls`, `is_winner`, `judge_verdict jsonb` | The retirement rule, per-model cost, and "why did this win" each become ONE query because members are rows, not a json blob. The model's own output/reasoning/cost sit on the joined `model_calls` row, not duplicated here |
 | `usage_events` | `owner_id`, `kind`, `units`, `cost_usd`, `ref_id` | The metering ledger — stamped from birth (see L7) |
@@ -220,6 +240,15 @@ carries the same commitment as "feed items may be groups."
   (confirmed directly with him).
 - **Email second, via Resend — and inbound reply handling is IN scope**, not a nicety:
   Reshad explicitly wants to reply to the email to correct a draft.
+- **G2 re-probe (2026-07-23, Slice 5 Wave 1 gate):** live Slack docs confirm the plan's
+  signing scheme byte-for-byte — `X-Slack-Signature` header, base string
+  `v0:{timestamp}:{rawBody}`, HMAC-SHA256, `v0=` prefix, constant-time compare, 5-minute
+  (300s) replay window. Ack deadline is exactly 3s. One gap the plan's code block doesn't
+  show: interaction payloads arrive as `application/x-www-form-urlencoded` wrapping a
+  `payload=<json>` field, not raw JSON — HMAC verification still runs over the untouched raw
+  body (correct as planned), but the handler must form-decode *after* verifying, before
+  `JSON.parse`. Scopes: `chat:write` covers posting Block Kit messages with buttons;
+  interactivity itself is an app-config Request URL toggle, not a separate OAuth scope.
 
 ### L6. Auto-posting — scaffolded, greyed, one flag
 
