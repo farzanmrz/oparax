@@ -6,7 +6,7 @@
 // here — both family drafts, any repair call, the judge, and a revision — appears as its
 // own element in `calls`, carrying `output`, `reasoning`, and an explicitly stamped
 // `reasoningWithheldByProvider`. An element missing from that array is a model call whose
-// trace is lost, which is the exact failure this slice exists to prevent (decisions.md L12).
+// trace is lost, which is the exact failure this slice exists to prevent (AGENTS.md's model-call rule).
 // SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
 // scope) — never importable from a client component.
 import { generateObject, generateText, NoObjectGeneratedError } from "ai";
@@ -26,7 +26,7 @@ import { resolveGatewayCost } from "./gateway-cost";
 // any reasoning key in providerOptions makes the top-level param silently ignored in full.
 const GPT5_NANO_MODEL = "openai/gpt-5-nano";
 
-// Third family, owner override of D8 (2026-07-22): decisions.md L3 slates `glm-4.7-flashx` as
+// Third family, owner override of D8 (2026-07-22): .claude/rules/agent.md's drafting council slates `glm-4.7-flashx` as
 // the third drafting family behind cache telemetry confirming headroom — that gate is skipped
 // here on explicit owner instruction. Gateway id resolved by probe against
 // `gateway.getAvailableModels()`, not assumed: `zai/glm-4.7-flashx` (docs' shorthand
@@ -182,7 +182,7 @@ const FAMILIES: Family[] = [
   },
   {
     model: GLM_DRAFT_MODEL,
-    // Top-level `reasoning: "low"` per decisions.md L3's locked spec (probe-verified above:
+    // Top-level `reasoning: "low"` per .claude/rules/agent.md's locked council spec (probe-verified above:
     // GLM exposes reasoning by default regardless, but the param still measurably changes it).
     generate: (system, prompt) =>
       generateText({ model: GLM_DRAFT_MODEL, reasoning: "low", system, prompt }),
@@ -215,7 +215,7 @@ async function draftFamily(
   const violations = checkViolations(finalText, ceiling);
   if (violations.length > 0) {
     // A repair failure must never discard the original draft's CouncilCall pushed above — that
-    // call already completed and was already paid for (decisions.md L12). Without this guard, a
+    // call already completed and was already paid for (AGENTS.md's model-call rule). Without this guard, a
     // throw here propagates out of draftFamily entirely, and Promise.allSettled's caller sees only
     // a rejection reason — the local `calls` array (holding the paid-for original) never reaches
     // the returned CouncilResult. Degrade instead: keep the original draft, violations and all.

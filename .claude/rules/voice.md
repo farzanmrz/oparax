@@ -8,7 +8,7 @@ paths:
 Pure, dependency-free functions ported out of the gitignored `.voice-lab/` so the production
 extraction/drafting path uses the lab's proven artifacts instead of re-deriving them. Both were
 verified against their originals at port time. Full rationale and measurements:
-`docs/decisions.md` (L2/L3).
+`AGENTS.md`'s settled decisions, plus the extraction recipe below.
 
 ## `deployGuide()` — strip before a guide becomes a prompt
 
@@ -41,11 +41,27 @@ constructor→literal rewrite is classified **safe**, so the format-on-write hoo
 kept rewriting it back. A `biome-ignore` only binds when placed on the line immediately above
 the flagged expression, not above the enclosing declaration.)
 
+## The extraction recipe, and why each part is fixed
+
+- **Model: `anthropic/claude-fable-5`, adaptive thinking @ high effort, NO web search.** Won an
+  8-model on-task panel on verbatim-quote fidelity and unique catches; measured **$0.855/reporter**
+  (10/10). Search enabled made a rival model spiral to 19 searches / $2.24 for an *empty* guide —
+  the handle is supplied in-prompt instead. **Rejected as primaries:** opus-4.8, sonnet-5,
+  gpt-5.6-sol/terra, grok-4.5 — all tested, all lost to Fable, sol despite an 81.7 Longform Elo,
+  which is exactly why writing leaderboards don't override on-task results.
+- **Corpus: 100 posts, split 80 train / 20 held-out** (most recent). The holdout exists so drafting
+  evaluation can never score against a post the extractor read — contamination control, not sample
+  size.
+- **Measured facts are computed, not read.** Reading under-counts sparse habits: the extractor
+  called one reporter hashtag-free when the true count was 6/80. A count cannot miss that and
+  costs $0.
+- **Deploy strip:** store the raw guide (audit trail), draft from the stripped one — 16.1% off
+  every draft forever, at zero risk.
+
 ## Model configs are decided; don't re-choose them mid-task
 
-Extraction and drafting model/reasoning picks are fixed in §11.9–11.10 with costs and hard
-ceilings ($2 one-time extraction, $3/mo drafting). Two live-probed facts that outrank any
-documentation you might read:
+Extraction and drafting model/reasoning picks are fixed with costs and hard ceilings ($2 one-time
+extraction, $3/mo drafting). Two live-probed facts that outrank any documentation you might read:
 
 - **`moonshotai/kimi-k3` cannot cap reasoning.** `effort: "none"` still emitted 119 reasoning
   tokens; every variant returned HTTP 200. The param is accepted and silently ignored. Bound

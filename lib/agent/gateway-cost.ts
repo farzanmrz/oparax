@@ -2,7 +2,7 @@
 //
 // THE ONE L7 cost path. Was inline in lib/voice/extract-guide.ts; extracted here so a third
 // copy never gets written alongside it and lib/agent/usage-cost.ts's retired pre-L7 path.
-// See decisions.md L7, L9.1 (inferenceCost is a STRING — Number() it), L9.5.
+// See AGENTS.md's metering + model-call rules (inferenceCost is a STRING — Number() it).
 import { gateway } from "ai";
 
 /** Finite number or null ("unknown") — never NaN, so a junk cost string doesn't suppress the

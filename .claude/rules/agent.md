@@ -9,7 +9,7 @@ paths:
 
 - The create-desk chat agent — `lib/agent/agent.ts` (behind `POST /api/chat`), `tools.ts`'s
   `save_agent`, and `lib/sysprompts/desk-agent.md` — was deleted whole in the create-agent v2
-  continuation (`docs/decisions.md` D10): the assistant panel rendered ai-elements'
+  continuation: the assistant panel rendered ai-elements'
   `PromptInput`, itself a `<form>`, inside the create form's own `<form>`, a nested-form
   hydration bug reproduced in a real browser before the fix. Identity now comes from Connect X
   (OAuth), so there is no fuzzy-beat-clarifying assistant to re-link. `tools.ts` and
@@ -20,8 +20,8 @@ paths:
   and `POST /api/email/inbound` via `draft-pipeline.ts`), alongside `lib/agent/cluster.ts`'s
   clustering `generateObject` call. `lib/agent/scan-run.ts`, `draft-run.ts`, the cron
   dispatcher (`app/api/cron/tick/route.ts`), and `next-run.ts`'s fire math were the desk's
-  other headless callers — all deleted (D15; the retired `agents`/`runs`/`drafts` pipeline the
-  new UI replaces). There is no scan dispatcher and no scan-frequency-driven scheduler
+  other headless callers — all deleted along with the retired `agents`/`runs`/`drafts` pipeline
+  the new UI replaces. There is no scan dispatcher and no scan-frequency-driven scheduler
   anywhere in the app today — every draft now originates from an inbound delivery at
   `POST /api/ingest` (the always-on ingestion worker, or a hand-seeded demo post), not from a
   polled scan.
@@ -29,8 +29,8 @@ paths:
   plain form that inserts straight into `experiments` (no `scan_frequency` — the table has no
   such column, that concept belonged only to the retired `agents` table): no typed handle
   field, no assistant. `createDesk` reads `reporter_handle` off the reporter's linked
-  `x_accounts` row (`getXLinkState()`) and stamps `reporter_verified_at` at insert — see
-  decisions.md D14's "superseded" note.
+  `x_accounts` row (`getXLinkState()`) and stamps `reporter_verified_at` at insert, so every
+  agent is born verified — the old post-create verify gate it replaced is deleted.
 
 ## Reasoning: DeepSeek's own default everywhere except structuring
 
@@ -50,7 +50,16 @@ The council's deterministic self-check (`draftViolations` in `draft-council-run.
 
 ## `scan-frequency.ts` is orphaned rate-rail code, not a live dispatcher input
 
-`lib/agent/scan-frequency.ts` (`validateScanFrequency`, `sinceUnixFor`, the grouped `{ timezone, groups: [{ days, start, end, everyHours }] }` shape) is still real, still imported (`lib/agents.ts`'s display formatter, `desk-config.ts`'s `deskConfigSchema`), and still enforces its three static rails (`WINDOW_INVERTED`, `SUB_HOURLY`, `OVER_DAILY_BUDGET`) against a hypothetical schedule nothing in the live app can construct anymore. There is no dispatcher, no `next_run_at`, no fire math (`next-run.ts` was deleted with the rest of D15). Do not describe this as a live scheduler in new work; it is dead weight kept alive only by `desk-config.ts`'s unrelated `deskConfigSchema` and `lib/agents.ts`'s display formatter.
+`lib/agent/scan-frequency.ts` (`validateScanFrequency`, `sinceUnixFor`, the grouped `{ timezone, groups: [{ days, start, end, everyHours }] }` shape) is still real, still imported (`lib/agents.ts`'s display formatter, `desk-config.ts`'s `deskConfigSchema`), and still enforces its three static rails (`WINDOW_INVERTED`, `SUB_HOURLY`, `OVER_DAILY_BUDGET`) against a hypothetical schedule nothing in the live app can construct anymore. There is no dispatcher, no `next_run_at`, no fire math (`next-run.ts` went with the rest of that pipeline). Do not describe this as a live scheduler in new work; it is dead weight kept alive only by `desk-config.ts`'s unrelated `deskConfigSchema` and `lib/agents.ts`'s display formatter.
+
+## The drafting council is settled — models admitted by budget, retired by data
+
+Why cheap models at all, and the reporter-vs-model measurement, are in `AGENTS.md`. Council-specific:
+
+- **Ships today:** `deepseek-v4-flash` (native adaptive — the tested config, do not add a reasoning param) + `gpt-5-nano` @ `low` + `glm-4.7-flashx` @ `low`, drafting in parallel; the judge is `v4-flash` @ `none`, temp 0, structured verdict, picks a winner and never writes. Worst case ~$3.3/mo at 50 posts/day.
+- **The carry-over trap** (the drafting contract's core rule): every name, handle, number, quote and time must appear in the BRIEF. The guide supplies voice and structure, **never facts**. The deterministic self-check catches hygiene only (markdown, `<post>` tags, preamble, char ceiling) — fabrication is caught by the prompt alone.
+- **Governance — admitted by budget, retired by production data.** "Untested" and "same-family" are NOT elimination rules; family is a diversity *weight* and budget arbitrates. A family whose drafts never win the judge gets dropped. There is no fixed council-size ceiling — that was asserted, never derived, and withdrawn.
+- **Rejected, with the killing fact:** `gpt-5.4-nano` (good at $1.37/1k but the duo breaks the cap even cached — "tested" doesn't beat unaffordable) · `deepseek-v4-pro` ($2.71/1k = $4.07/mo alone; killed by input-token dominance, which is why it sits in *extraction* where input is read once) · Gemini (0-for-2 on-task; no 3.6 Pro exists on the gateway; uncapped reasoning inflated output 6.6× — caps fix cost, not rank) · MiniMax (the only family whose residual violations never cleared across 1,000 drafts) · `qwen3.5-flash` (ran and lost: $2.95 vs $1.23, style 0.37 vs 0.35) · `grok-4.1-fast` (deprecated; its successor can't fit the budget) · `mistral-large-3` (absent from every writing board surveyed; bench-only as the EU option) · `kimi-k2.6` (K3 exists at 3× the price; saving $0.19 one-time to drop a tier in the quality-dominant stage fails proportionality).
 
 ## Foreign-language sources
 
@@ -58,7 +67,7 @@ Handled at drafting only, per `lib/sysprompts/draft-council-contract.md`: transl
 
 ## `x_search` billing footgun
 
-Parallel search and xAI `x_search` bill per successful call **application-wide, not per-user** — cap usage before enabling at scale. `oparax_x_search`'s executor lives in `tools.ts`, but nothing in the app calls it — the create-desk chat that wired it was deleted in the create-agent v2 continuation (D10); re-check this footgun before wiring it into any future scanning tool set.
+Parallel search and xAI `x_search` bill per successful call **application-wide, not per-user** — cap usage before enabling at scale. `oparax_x_search`'s executor lives in `tools.ts`, but nothing in the app calls it — the create-desk chat that wired it was deleted in the create-agent v2 continuation (the deleted create-desk assistant); re-check this footgun before wiring it into any future scanning tool set.
 
 ## Bundling the prompts for deploy
 

@@ -1,5 +1,5 @@
 // Slack interactive-button webhook — POST /api/slack/interactions. Slack requires a 200
-// within 3 seconds of delivering the payload (G2, docs/decisions.md), so this route verifies
+// within 3 seconds of delivering the payload (live-verified against Slack's docs), so this route verifies
 // the raw-body signature synchronously and responds 200 immediately once that passes, then
 // runs the idempotency claim + the actual X post + the Slack follow-up in `after()` (same
 // ack-fast-then-do-the-slow-work pattern as app/agents/new/actions.ts's post-response

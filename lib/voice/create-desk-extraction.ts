@@ -85,7 +85,7 @@ async function insertExtractionModelCall(
       output: ext.guideRaw,
       reasoning: ext.reasoning,
       // reasoningWithheldByProvider distinguishes "the provider gave us no trace" from "we
-      // forgot to capture one" (decisions.md L12) — a null reasoning column alone can't.
+      // forgot to capture one" (AGENTS.md's model-call rule) — a null reasoning column alone can't.
       usage: {
         ...(ext.usage as object),
         thinkingTokens: ext.thinkingTokens,
@@ -156,7 +156,7 @@ function throttledStreamProgress(
  *   (g: finalize) on the full happy path, finalize the claim as `"completed"` with the
  *       extraction call's own resolved cost and `finishedAt` → `"completed"`.
  *
- * The "already-billed call must still get its ledger row" discipline (AGENTS.md, decisions.md
+ * The "already-billed call must still get its ledger row" discipline (AGENTS.md's model-call rule
  * L12) carries over unchanged from the non-streaming version: `insertExtractionModelCall` runs
  * immediately once `extractVoiceGuideStreaming` resolves, BEFORE the `voice_guides` upsert or
  * `materializeRulesFromGuide` — so a throw from either of those later steps can never discard a

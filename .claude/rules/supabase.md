@@ -30,6 +30,14 @@ paths:
 
 - `/auth/confirm` (`app/auth/confirm/route.ts`) is the hardcoded redirect target of the dashboard email templates above — moving or renaming it breaks the same way.
 
+## `voice_guides` is readable by any signed-in user — accepted, not a bug to fix
+
+Found by exploit, not by reading: the read policy joins through `experiments`, and any authenticated user may insert an `experiments` row with any `reporter_handle` and `owner_id = self`. So the join row is self-minted, reachable via PostgREST with the public key, no UI needed.
+
+**Do not "fix" this by making `voice_guides` deny-all plus an ownership check in app code** — that asks the same unsound question one layer up (ownership would still be established through the same self-minted row). It moves the hole while costing the "RLS is the gate" property. The reasoning for accepting it — guides are derived from public posts and are shared infrastructure by design — is in `AGENTS.md`'s settled decisions.
+
+**The spend bound is what matters, and it is enforced elsewhere:** minting rows creates rows and nothing else. `pg_net`/`pg_cron`/`http` are not installed, so the database has no outbound-call capability, and extraction spend is gated by `lib/voice/spend-gate.ts` (one claim per reporter per UTC day, plus a preflight attempt cap). Re-check that bound if extraction ever gains a new user-triggered entry point.
+
 ## Auth-flow contracts (preserve these)
 
 - `updateSession` (`lib/supabase/middleware.ts`) must call `auth.getUser()` — never `getSession()` — with no code between client creation and that call (breaks cookie refresh → random logouts); `proxy.ts` delegates here silently.

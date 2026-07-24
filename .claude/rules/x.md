@@ -46,7 +46,7 @@ Token/revoke calls use HTTP Basic auth with `X_CLIENT_ID:X_CLIENT_SECRET`. The a
 
 ## The reporter's post surface is the feed draft card
 
-`app/agents/[id]` (the desk Feed) is where a reporter links X and posts — `agent-dashboard.tsx` and its `DraftsTab` are gone, deleted with the rest of the old desk pipeline (D15). Each story's draft card (`app/agents/[id]/feed-item.tsx`'s `DraftCard`) renders `PostToXControl` (`app/agents/[id]/post-to-x-control.tsx`) in place of an unposted draft's actions: a **Connect X** link (`GET /auth/x?returnTo=<pathname>`) when `getXLinkState().linked` is false; when linked, a **Post** button that flips to an inline Confirm/Cancel panel (no modal — the confirm-before-Confirm gate ported from the old `DraftsTab` pattern) before calling `postDraftToX`, disabled the moment `twitter-text` says the draft would 4xx at X. A posted draft's card instead shows a "Posted to X" pill and, when captured, a link to `posted_url`. `postDraftToX` / `unlinkXAccount` (`lib/x/actions.ts`, `"use server"`) are invoked straight from `PostToXControl`; `page.tsx` feeds each `FeedItemCard` `getXLinkState().linked` plus the story's winning draft `posted_at` / `posted_url` off `post_drafts`.
+`app/agents/[id]` (the desk Feed) is where a reporter links X and posts — `agent-dashboard.tsx` and its `DraftsTab` are gone, deleted with the rest of the old desk pipeline. Each story's draft card (`app/agents/[id]/feed-item.tsx`'s `DraftCard`) renders `PostToXControl` (`app/agents/[id]/post-to-x-control.tsx`) in place of an unposted draft's actions: a **Connect X** link (`GET /auth/x?returnTo=<pathname>`) when `getXLinkState().linked` is false; when linked, a **Post** button that flips to an inline Confirm/Cancel panel (no modal — the confirm-before-Confirm gate ported from the old `DraftsTab` pattern) before calling `postDraftToX`, disabled the moment `twitter-text` says the draft would 4xx at X. A posted draft's card instead shows a "Posted to X" pill and, when captured, a link to `posted_url`. `postDraftToX` / `unlinkXAccount` (`lib/x/actions.ts`, `"use server"`) are invoked straight from `PostToXControl`; `page.tsx` feeds each `FeedItemCard` `getXLinkState().linked` plus the story's winning draft `posted_at` / `posted_url` off `post_drafts`.
 
 ## Dashboard-side config (not in this repo)
 
@@ -55,3 +55,12 @@ The X developer app must register both callback URIs — `http://localhost:3000/
 ## Cost
 
 X posting is pay-per-use ($0.015/post, $0.20 if the post contains a URL); a negative credit balance blocks posting.
+
+## Settled, with the fact that settled it
+
+The platform-level ingestion architecture (persistent stream, one forwarder, Railway) is in `AGENTS.md`. These are the X-specific ones:
+
+- **Stream rules are shared and routed by author in Supabase — never per-user.** Live caps are **5 rules/app, 15/project** (the docs claimed 1,000). Five customers would exhaust per-user rules immediately, and author-based routing dedups naturally across users. One rule holds ~40 `from:` handles, so ~200 tracked handles of headroom.
+- **Rule shape:** `(from:h1 OR from:h2 …) -is:retweet -is:quote -is:reply` — negate each exclusion separately, always parenthesise the author group.
+- **No `lang:` filter.** It discards posts we want (Reshad monitors English and Spanish). Language is a *drafting* concern: translate the source, then draft in the reporter's voice.
+- **Handle verification is not `x_user_search`.** Fuzzy search drops valid accounts outranked by popular near-matches, and a wrong handle simply returns nothing. Identity now comes from the X OAuth link at agent creation instead — `createDesk` reads `reporter_handle` off `x_accounts` and never from user input.

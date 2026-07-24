@@ -43,7 +43,7 @@ export type VoiceExtraction = {
   /** The MEASURED STYLE FACTS block exactly as the model saw it — store this, don't recompute. */
   measuredFactsBlock: string;
   /**
-   * The reasoning **summary**, persisted to `model_calls.reasoning` (decisions.md L12).
+   * The reasoning **summary**, persisted to `model_calls.reasoning` (AGENTS.md's model-call rule).
    *
    * Claude never returns its raw chain of thought — that is permanent. What is available is a
    * readable summary, gated on `thinking.display`, which defaults to `"omitted"` on this

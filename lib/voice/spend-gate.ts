@@ -13,8 +13,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Reserved per (reporter, UTC day) — Bright Data timeline pull (a few cents on the Web
  *  Scraper API) + one Fable-5 extraction call at L2's measured $0.855/reporter
- *  (docs/decisions.md L2), rounded up to the hard ceiling this pipeline already documents
- *  elsewhere ("$2 one-time extraction", .claude/rules/voice.md / decisions.md §11.9) so this
+ *  (docs/.claude/rules/voice.md's extraction recipe), rounded up to the hard ceiling this pipeline already documents
+ *  elsewhere ("$2 one-time extraction", .claude/rules/voice.md / .claude/rules/voice.md) so this
  *  constant matches the number the rest of the pipeline was designed against rather than
  *  introducing a second, competing estimate. */
 export const EXTRACTION_WORST_CASE_USD = 2.0;
@@ -100,7 +100,7 @@ export async function finalizeExtractionBudget(
  * already-terminal attempt.
  */
 /** Best-effort cap on `fetchXProfile` attempts per reporter/UTC-day. `fetchXProfile` runs
- *  BEFORE `claimExtractionBudget` on purpose (decisions.md L13 — a dead/private/empty handle
+ *  BEFORE `claimExtractionBudget` on purpose (AGENTS.md's settled decisions — a dead/private/empty handle
  *  must not burn the day's extraction claim), which otherwise leaves it completely unbounded:
  *  a signed-in user retrying the same handle (capReprobe, or repeated desk creation) could
  *  trigger unlimited billable Bright Data calls with no gate at all. Counts today's

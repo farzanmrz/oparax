@@ -176,7 +176,7 @@ export async function POST(req: Request) {
   // (forwards, CCs, a screenshot), and a draft id is otherwise a bearer token: whoever emails
   // it can spend a paid revision call and rewrite the draft that posts in the reporter's name.
   // This is the single-tenant form of the check — one global recipient env var. Per-desk
-  // sender authorization arrives with the Channels surface (decisions.md D5), which is also
+  // sender authorization arrives with the Channels surface (per-desk delivery config, not built), which is also
   // where this global recipient env var goes away.
   const authorizedSender = process.env.NOTIFY_EMAIL_TO;
   if (!authorizedSender) {

@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   // lib/voice/extract-guide.ts path via attemptVoiceExtraction on a manual retry). The
   // per-minute cron dispatcher this list once traced (/api/cron/tick) was deleted with the
   // retired scan/draft pipeline (D15), and the /api/chat entry it once traced was deleted with
-  // the create-desk chat assistant (create-agent v2 continuation, decisions.md D10) — do not
+  // the create-desk chat assistant (create-agent v2 continuation, the deleted create-desk assistant) — do not
   // re-add either without a route to match. See .claude/rules/agent.md's "Bundling the prompts
   // for deploy".
   outputFileTracingIncludes: {

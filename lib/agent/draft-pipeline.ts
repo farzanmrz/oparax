@@ -6,10 +6,10 @@
 // Owns ALL persistence and metering for the drafting path. The council
 // (draft-council-run.ts) and the notify senders (lib/notify/*) are pure and deliberately
 // touch neither the DB nor the ledger — this module is where both cross-cutting invariants
-// are actually satisfied (decisions.md L7, L12):
-//   - L12: every element of a council's `calls` array becomes exactly one `model_calls` row,
+// are actually satisfied (AGENTS.md's metering + model-call rules):
+//   - every element of a council's `calls` array becomes exactly one `model_calls` row,
 //     carrying `output`, `reasoning`, and `usage` (including `reasoningWithheldByProvider`).
-//   - L7: every touch point stamps `usage_events` — the inbound delivery, each model call,
+//   - every touch point stamps `usage_events` — the inbound delivery, each model call,
 //     each Slack push, each email send, each verified inbound reply.
 // Ledger-first ordering throughout, copied from scripts/extract-voice-guide.ts: `model_calls`
 // rows are written BEFORE the artifact rows (`post_drafts`) that point at them, so a failed
@@ -264,7 +264,7 @@ async function draftForExperiment(
   brief: SourceBrief,
   deliverySource: IngestDelivery["source"],
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
-  // Extraction stays script-only this slice (decisions.md L11) — absent guide, skip. Checked
+  // Extraction stays script-only this slice (AGENTS.md's settled decisions + .claude/rules/supabase.md) — absent guide, skip. Checked
   // BEFORE the atomic claim below: a no-guide desk must not burn a draft_claims row it will
   // never use.
   const { data: guide, error: guideError } = await admin

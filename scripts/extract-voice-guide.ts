@@ -139,7 +139,7 @@ async function main() {
   console.log("----- END GUIDE (raw) -----");
 
   // The model-call ledger FIRST: one row per model call, carrying its output AND its
-  // reasoning trace, whatever the stage and however many models run (decisions.md L12).
+  // reasoning trace, whatever the stage and however many models run (AGENTS.md's model-call rule).
   // Written before the artifact so the record of the call survives an artifact-write failure.
   const { data: modelCall, error: modelCallError } = await admin
     .from("model_calls")

@@ -6,7 +6,7 @@
 // client component.
 //
 // Three endpoints, both/all live-verified against the real Bright Data account (G3,
-// docs/decisions.md L2):
+// docs/.claude/rules/voice.md's extraction recipe):
 //   - scrapeUrl     -> Web Unlocker, sync POST /request
 //   - pullXTimeline -> Web Scraper API, X/Twitter posts dataset, async trigger/poll/download
 //   - fetchXProfile -> Web Scraper API, X/Twitter PROFILE dataset (a distinct, smaller
@@ -77,7 +77,7 @@ export type ScrapeResult = { url: string; text: string };
 
 /** Block-page detection is STATUS-CODE based, not body-marker sniffing — Bright Data's
  *  Unlocker resolves CAPTCHAs/blocks server-side, so a genuine failure surfaces as an HTTP
- *  error code, never text in the body (G3 live finding, docs/decisions.md L2). Any non-200 is
+ *  error code, never text in the body (G3 live finding, docs/.claude/rules/voice.md's extraction recipe). Any non-200 is
  *  a failed scrape. */
 async function assertUnlockerOk(url: string, res: Response): Promise<void> {
   if (res.ok) return;

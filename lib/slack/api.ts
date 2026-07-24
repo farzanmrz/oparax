@@ -14,7 +14,7 @@ const SLACK_API = "https://slack.com/api";
 
 /** `chat:write` is confirmed sufficient for posting Block Kit messages with buttons —
  *  interactivity itself is an app-config Request-URL toggle, not a separate OAuth scope
- *  (G2, docs/decisions.md). `incoming-webhook` is requested too so the OAuth install grant
+ *  (live-verified against Slack's docs). `incoming-webhook` is requested too so the OAuth install grant
  *  itself resolves a target channel (`incoming_webhook.channel_id`/`channel`) — chosen over
  *  building a custom post-install channel picker, since `slack_accounts.channel_id`/
  *  `channel_name` are NOT NULL and this is the only response shape that fills them for free
@@ -169,7 +169,7 @@ export async function exchangeCodeForToken(params: { code: string; redirectUri: 
 }
 
 /** Verifies an inbound Slack request's `X-Slack-Signature` header against the raw request
- *  body. EXACT scheme (live-confirmed against Slack's docs, G2 docs/decisions.md): base
+ *  body. EXACT scheme (live-confirmed against Slack's own docs): base
  *  string `` `v0:${timestamp}:${rawBody}` ``, HMAC-SHA256 keyed by `SLACK_SIGNING_SECRET`,
  *  hex digest, compared as `` `v0=${digest}` `` via `crypto.timingSafeEqual` (length-checked
  *  first, same pattern as `app/api/ingest/route.ts`'s `isAuthorized`). Rejects a timestamp

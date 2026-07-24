@@ -1,6 +1,6 @@
 /** One-way Slack delivery via the platform-level incoming webhook (SLACK_WEBHOOK_URL).
  *  Push-only by design: incoming webhooks cannot carry actionable interactive components —
- *  buttons need a full Slack app + interactions endpoint (deferred; decisions.md D5). */
+ *  buttons need a full Slack app + interactions endpoint (deferred; per-desk delivery config, not built). */
 export async function sendSlackMessage(text: string): Promise<void> {
   const url = process.env.SLACK_WEBHOOK_URL;
   if (!url) throw new Error("SLACK_WEBHOOK_URL is not set");

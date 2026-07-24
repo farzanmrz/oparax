@@ -1,6 +1,6 @@
 -- ft/66: model_calls — the universal per-model-call ledger.
 --
--- The invariant this table exists to enforce (see decisions.md L12): EVERY model call,
+-- The invariant this table exists to enforce (see AGENTS.md's model-call rule): EVERY model call,
 -- at every stage, records its OUTPUT and its REASONING TRACE, whether one model runs or
 -- five. Recording a token count without the trace is not compliance — it proves that
 -- thinking happened, not what it concluded.

@@ -5,7 +5,7 @@
 // module owns its own story-table writes (creation + the atomic claim below), but the model
 // call's ledger row is NOT this module's job — the caller (a later task, wiring this into
 // draft-pipeline.ts's processDelivery) inserts `calls` into `model_calls` ledger-first, same as
-// every other CouncilCall producer in this repo (decisions.md L12).
+// every other CouncilCall producer in this repo (AGENTS.md's model-call rule).
 // SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
 // scope) — never importable from a client component.
 import { generateObject, NoObjectGeneratedError } from "ai";
@@ -284,7 +284,7 @@ export async function assignToStory(input: {
   } catch (err) {
     // Same discriminator as draft-council-run.ts's judge catch: NoObjectGeneratedError means the
     // call COMPLETED and billed but its output failed schema validation — that call still owes a
-    // ledger row (decisions.md L12), captured off the error (cost degrades to null, no
+    // ledger row (AGENTS.md's model-call rule), captured off the error (cost degrades to null, no
     // generationId — the error doesn't surface gateway metadata in resolveGatewayCost's shape).
     // Degrade deterministically to a new one-source story, matching the zero-candidate path.
     // Any OTHER error means the call did NOT complete or bill — propagate it, create no story,
