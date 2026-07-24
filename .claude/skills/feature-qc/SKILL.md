@@ -46,14 +46,21 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    to diversify), so one owner, not a second opinion.
 
    **Verify** is cross-family again — DIVERGENT for the same reason as find, and
-   the second place external usage earns its keep: every surviving finding is
-   checked by a family that did **not** raise it (an external lane's finding gets a
-   different-prior check; a Claude-floor finding gets an external check too, catching
-   Claude wrongly dismissing something real). High-severity or risk-path findings get
-   a 3-family panel (2-of-3 must confirm); everything else gets one cross-family
-   verifier. Claude-Opus is the fallback floor if a panel's CLIs all fail. This is
-   also why `qc-review` never returns an unverified external finding — an external
-   lane's recall is spent on FINDING, not on deciding what's true.
+   the second place external usage earns its keep — but **batched: one verifier per
+   model family, four agents total, regardless of how many findings survived dedup.**
+   Each family's single verifier is handed the ENTIRE deduped list (every finding
+   labelled with a stable id and with the families that raised it) and returns a
+   verdict per finding in one structured response. Cross-family is preserved *per
+   finding inside the batch*: a family's verdict on a finding it raised itself is
+   discounted, so every finding is still decided by families that did **not** raise
+   it, and a majority of those confirms it. A finding all four families raised keeps
+   the trusted shortcut and skips the batch. Claude is the infra-failure floor — if
+   every lane comes back empty it is retried alone, and a finding whose only surviving
+   verdict is self-raised is scored on that and flagged with a `note`. This is also
+   why `qc-review` never returns an unverified external finding — an external lane's
+   recall is spent on FINDING, not on deciding what's true. The earlier per-finding ×
+   per-family fan-out was deleted: on #69 it burned 30 agents to return 30 CONFIRMED
+   and 0 refuted.
 
    Measure the diff first (`git diff --shortstat <range>` — the range from step 0) and
    pass `args`: `{ range, generated: "<globs>", vetoes: "<plan-frozen decisions>",
@@ -63,10 +70,10 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    or >200 changed lines) to add the line-by-line bug angle AND the external lanes,
    and `effort: "high"` when the slice adds a table/migration, a new trust boundary
    (auth, server action, agent tool surface), or touches posting/money paths — this
-   also gates the external lanes on and widens verify to a 3-family panel. It
-   returns `findings`, each already tagged `raisedBy` (which families independently
-   found it) and `confirmed` (the verify quorum) — the workflow only reports, the
-   session still decides.
+   also gates the external FIND lanes on (verify's 4-family fan-out is flat and
+   ungated). It returns `findings`, each already tagged `raisedBy` (which families
+   independently found it) and `confirmed` (the verify quorum), plus `verifiersRun`
+   — the workflow only reports, the session still decides.
 2. **Adjudicate + apply (this session).** Plan-frozen decisions in the ft issue are
    vetoes, not findings; drop them even if `confirmed`. A finding that is real but
    not-this-slice (a bigger refactor, a scale concern that can't bite yet) → surface
@@ -145,10 +152,10 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    Single-source every fact (one home; cross-reference, never restate).
 
 Hard rules: the Claude find floor is one barrier of ≤6 finders (5 on a small diff, 6
-on a large one); the external lanes add ≤3 more, and verify's fan-out scales with the
-finding count (a family-per-finding, panel on high-severity/risk) rather than a fixed
-count — that is intentional coverage, not an oversight, and the workflow's own
-concurrency queue (cap 16 in flight) throttles it, not a hard per-run agent limit. The
+on a large one); the external lanes add ≤3 more, and verify is a FIXED 4 agents (one
+per model family, each ruling on the whole list) no matter how many findings survived
+dedup — never reintroduce a per-finding verify fan-out. The workflow's own concurrency
+queue (cap 16 in flight) throttles the find barrier, not a hard per-run agent limit. The
 `qc-review` workflow (invoked by `scriptPath`, see step 1) owns finder/verifier
 parallelism and every model pin — nothing here is prose-decided. Never fall back to
 `/code-review` for the fan-out — its per-candidate verify phase is unbounded and

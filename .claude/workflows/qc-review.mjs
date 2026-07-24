@@ -1,11 +1,11 @@
 export const meta = {
   name: 'qc-review',
-  description: 'QC over a frozen diff: a Claude finder floor (always on) plus three conditional cross-model FIND lanes with distinct charters, then a dedup pass and a cross-family VERIFY pass (every surviving finding checked by a family that did not raise it — a panel on high-severity/risk-path diffs). Returns verified findings for the session to adjudicate and apply.',
+  description: 'QC over a frozen diff: a Claude finder floor (always on) plus three conditional cross-model FIND lanes with distinct charters, then a dedup pass and a batched cross-family VERIFY pass (ONE verifier per model family, each ruling on the whole deduped list in a single response; a family\'s verdict on a finding it raised is discounted). Returns verified findings for the session to adjudicate and apply.',
   whenToUse: "feature-qc's review pass — one workflow call replaces the serial /simplify then /code-review passes, with cross-model diversity spent on the two DIVERGENT tasks (finding, verifying) and single ownership kept on the convergent ones (dedup, apply — the session does those).",
   phases: [
     { title: 'Find', detail: 'Claude floor (2 cleanup + conventions on sonnet, 2 bug angles on opus, +line-by-line on large diffs) + 3 external lanes (codex/grok/agy, conditional on large|risk) — all concurrent' },
     { title: 'Dedup', detail: 'merge near-duplicates across lanes, drop plan-vetoed (sonnet)' },
-    { title: 'Verify', detail: 'cross-family per finding — a family that did NOT raise it checks it; panel of 3 (2-of-3) on high-severity/risk, else 1 verifier; Claude-Opus is the fallback floor' },
+    { title: 'Verify', detail: '4 agents flat — one verifier per family (claude sonnet · codex medium · grok-4.5 medium · gemini-3.1-pro), each handed the ENTIRE deduped list and returning a verdict per finding; per finding the raising family\'s own verdict is discounted, majority of the remaining verdicts confirms; Claude is the infra-failure floor' },
   ],
 }
 
@@ -15,12 +15,13 @@ export const meta = {
 //     vetoes?: string,        // plan-frozen decisions that are vetoes, not findings
 //     criteria?: string,      // the plan's "Stack & design acceptance criteria" — conventions-finder verifies the diff against them
 //     large?: boolean,        // large-diff signal — the session measures the diff and sets this
-//     effort?: 'medium'|'high' } // bug-angle depth AND the risk-path signal for external lanes + verify panels; defaults to medium
+//     effort?: 'medium'|'high' } // bug-angle depth AND the risk-path signal for the external FIND lanes; defaults to medium
 //
-// Returns { findings: [...], findersRun, externalLanesRun }. Each finding carries file/line/severity/
-// summary/scenario, raisedBy (families that found it), confirmed (verify quorum), and votes (the
-// verify evidence). The session adjudicates (plan-frozen vetoes win, "real but not this slice" gets
-// surfaced and dropped), then applies — this workflow only reports.
+// Returns { findings: [...], findersRun, externalLanesRun, verifiersRun }. Each finding carries
+// file/line/severity/summary/scenario, raisedBy (families that found it), confirmed (verify quorum),
+// and votes (the verify evidence, each tagged selfRaised so a discounted vote stays visible). The
+// session adjudicates (plan-frozen vetoes win, "real but not this slice" gets surfaced and dropped),
+// then applies — this workflow only reports.
 
 const range = (args && args.range) || 'origin/dev...HEAD'
 const generated = (args && args.generated) || 'none named — use judgment on obviously generated/vendored files'
@@ -28,7 +29,7 @@ const vetoes = (args && args.vetoes) || 'none supplied'
 const criteria = (args && args.criteria) || 'none supplied — if the plan/issue has a "Stack & design acceptance criteria" section, treat its lines as the criteria'
 const effort = (args && args.effort) === 'high' ? 'high' : 'medium'
 const large = !!(args && args.large) // caller-supplied; gates the line-by-line bug angle AND (with effort==='high') the external lanes
-const RISK = large || effort === 'high' // shared gate: external FIND lanes on, and VERIFY panels (not single) on findings this touches
+const RISK = large || effort === 'high' // gate: turns the external FIND lanes on (verify is a flat 4-family fan-out, ungated)
 
 const REPO = '/Users/farzanm4/Desktop/drive/repos/oparax'
 const SCRIPT_DIR = `${REPO}/.claude/workflows/council`
@@ -36,9 +37,17 @@ const FINDINGS_SCHEMA_FILE = `${REPO}/.claude/workflows/qc-findings-schema.json`
 const VERDICT_SCHEMA_FILE = `${REPO}/.claude/workflows/verify-schema.json`
 const SCRATCH = `${REPO}/.feature/qc-council` // self-gitignoring — .feature/ is the flow's live scratch
 
+// FIND-lane tiers (recall is what's being bought there — leave them rich).
 const TIERS = { codex: 'medium', grok: 'medium', agy: 'gemini-3.1-pro-high' }
+// VERIFY tiers — deliberately lighter than FIND: verification is a bounded read-the-code check, not
+// a search. codex = the flagship (run.sh/plan-codex.sh pass no -m, so codex's own default model
+// gpt-5.6-sol is used) at MEDIUM reasoning effort; grok = grok-4.5 (hardcoded in plan-grok.sh) at
+// medium; agy = gemini-3.1-pro at its LOWEST rung — the agy CLI exposes only `-high` and `-low` for
+// 3.1 Pro (no `-medium`; `--model gemini-3.1-pro --effort medium` is rejected outright), so `-low` is
+// the nearest step down from the FIND lane's `-high`.
+const VERIFY_TIERS = { codex: 'medium', grok: 'medium', agy: 'gemini-3.1-pro-low' }
+const VERIFY_CLAUDE_MODEL = 'sonnet' // de-pinned from opus — batched verification is a reading task
 const ALL_FAMILIES = ['claude', 'codex', 'grok', 'agy']
-const slug = (s) => String(s).replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 40) || 'x'
 
 const FINDINGS_SCHEMA = {
   type: 'object',
@@ -64,14 +73,29 @@ const FINDINGS_SCHEMA = {
   required: ['findings'],
 }
 
+// One verifier per family rules on the WHOLE deduped list, so the response is a LIST of verdicts
+// keyed to the finding ids it was handed — not a single verdict. Keep this in lockstep with
+// verify-schema.json (the copy the external CLIs validate against).
 const VERDICT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    verdict: { type: 'string', enum: ['CONFIRMED', 'REFUTED'] },
-    reasoning: { type: 'string' },
+    verdicts: {
+      type: 'array',
+      description: 'exactly one entry per finding you were given — same ids, no omissions, no extras',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string', description: 'the finding id you were given (F1, F2, …) — copy it verbatim' },
+          verdict: { type: 'string', enum: ['CONFIRMED', 'REFUTED'] },
+          reasoning: { type: 'string', description: 'one or two sentences citing the actual code (file:line) that justify this verdict' },
+        },
+        required: ['id', 'verdict', 'reasoning'],
+      },
+    },
   },
-  required: ['verdict', 'reasoning'],
+  required: ['verdicts'],
 }
 
 function parseJson(raw) {
@@ -234,54 +258,120 @@ Raw findings (JSON, each tagged with its family): ${JSON.stringify(rawFindings)}
 }
 log(`dedup → ${dedupedFindings.length} findings after merge`)
 
-// ── Stage 3 · Verify — divergent, cross-family. A family that did NOT raise the finding checks it,
-// so this catches BOTH an external lane's false positive AND Claude wrongly dismissing a real one.
-// Panel (up to 3, 2-of-3 quorum) on high-severity or risk-path diffs; single verifier otherwise;
-// Claude-Opus is the guaranteed floor if the intended panel/verifier infra fails outright. ─────────
+// ── Stage 3 · Verify — divergent, cross-family, BATCHED. ONE verifier per model family, total: each
+// family's single agent is handed the ENTIRE deduped list and returns a verdict per finding in one
+// structured response. Four agents, not one per finding × family (that fan-out cost ~half the run's
+// budget on #69 and refuted nothing).
+//
+// The cross-family principle is preserved PER FINDING inside the batch: every verifier is told who
+// raised each finding, and in aggregation a family's verdict on a finding it raised itself is
+// discounted — so a finding is still judged by families that did not raise it. Claude is the
+// infra-failure floor: if every lane (its own included) comes back empty, it is retried alone so no
+// finding goes unverified. ────────────────────────────────────────────────────────────────────────
 phase('Verify')
 
-function verifyPrompt(finding) {
-  return `Cross-family verification pass. This finding was raised independently by [${(finding.raisedBy || []).join(', ') || 'unknown'}] — you were NOT one of them; give an independent read, don't rubber-stamp.
-Finding: ${finding.file}${finding.line ? `:${finding.line}` : ''} — ${finding.summary}
-Scenario: ${finding.scenario}
-Severity: ${finding.severity || 'unspecified'}
-Read the ACTUAL code yourself: run \`git diff ${range}\` and open the relevant file(s) at their current state on this branch. CONFIRM only if you can point to the exact code that makes the scenario real; REFUTE if the code already guards against it, the scenario is unreachable, or the finding is simply wrong.
-Plan-frozen decisions — REFUTE automatically if the finding is actually one of these: ${vetoes}`
-}
-
-async function castVote(family, finding, idx) {
-  if (family === 'claude') {
-    return agent(verifyPrompt(finding), { label: `verify:claude:${slug(finding.file)}-${idx}`, phase: 'Verify', model: 'opus', agentType: 'general-purpose', schema: VERDICT_SCHEMA })
-  }
-  return cliBridge(family, TIERS[family], verifyPrompt(finding), `verify:${family}:${slug(finding.file)}-${idx}`, `verify-${family}-${idx}`, 'Verify', VERDICT_SCHEMA_FILE, 'verdict')
-}
-
-async function verifyOne(finding, idx) {
+// A finding all four families already raised independently keeps the trusted shortcut — there is no
+// family left to give a non-self read, so verifying it is definitionally circular. It stays OUT of
+// the batch payload rather than being handed to verifiers that all raised it.
+const slots = dedupedFindings.map((finding, i) => {
   const raised = new Set(finding.raisedBy && finding.raisedBy.length ? finding.raisedBy : ['claude'])
-  const pool = ALL_FAMILIES.filter((f) => !raised.has(f))
-  if (!pool.length) return { ...finding, confirmed: true, votes: [], verifiedBy: [], note: 'all 4 families already independently agreed — trusted without further verify' }
-  const panelSize = (finding.severity === 'high' || RISK) ? 3 : 1
-  const panel = pool.slice(0, panelSize)
-  let votes = (await parallel(panel.map((fam) => () => castVote(fam, finding, idx).then((v) => (v ? { family: fam, ...v } : null))))).filter(Boolean)
-  if (!votes.length) {
-    // total verify-infra failure for this finding — fall back to the Claude-Opus floor, never leave a
-    // finding unverified.
-    const floor = await castVote('claude', finding, idx)
-    if (floor) votes = [{ family: 'claude', ...floor }]
-  }
-  const confirms = votes.filter((v) => v.verdict === 'CONFIRMED').length
-  const confirmed = votes.length ? confirms >= Math.ceil(votes.length / 2) : false
-  return { ...finding, confirmed, votes, verifiedBy: panel }
+  return { id: `F${i + 1}`, finding, raised, trusted: ALL_FAMILIES.every((fam) => raised.has(fam)) }
+})
+const verifyQueue = slots.filter((s) => !s.trusted)
+
+function batchVerifyPrompt(family) {
+  const items = verifyQueue
+    .map(({ id, finding, raised }) => {
+      const self = raised.has(family)
+      return `[${id}] ${finding.file}${finding.line ? `:${finding.line}` : ''} — severity: ${finding.severity || 'unspecified'}
+  raised by: ${[...raised].join(', ')}${self ? '  ← INCLUDING YOUR OWN FAMILY. Re-read it from scratch; your verdict on this one is discounted in the tally, so an honest REFUTE costs you nothing.' : '  ← NOT your family. Independent read — do not rubber-stamp, and do not refute merely because you would not have raised it.'}
+  summary: ${finding.summary}
+  scenario: ${finding.scenario}`
+    })
+    .join('\n\n')
+  return `Cross-family verification pass. You are the SINGLE ${family} verifier for this review and you rule on EVERY finding below in one response.
+
+Read the ACTUAL code yourself before ruling: run \`git diff ${range}\` and open the relevant file(s) at their current state on this branch. Per finding:
+- CONFIRMED — you can point at the exact code that makes the scenario real.
+- REFUTED — the code already guards against it, the scenario is unreachable, or the finding is simply wrong.
+Each finding names the families that raised it. Judge each one independently on the code; "another family raised it" is not evidence.
+Plan-frozen decisions — REFUTE automatically if a finding is actually one of these: ${vetoes}
+
+Return EXACTLY ${verifyQueue.length} verdict object(s) — one per finding, id copied verbatim, no omissions, no extras, no new findings. Never edit a file.
+
+FINDINGS (${verifyQueue.length}):
+${items}`
 }
 
-const verified = dedupedFindings.length
-  ? await parallel(dedupedFindings.map((f, i) => () => verifyOne(f, i)))
-  : []
+async function castBallot(family) {
+  if (family === 'claude') {
+    return agent(batchVerifyPrompt('claude'), { label: 'verify:claude', phase: 'Verify', model: VERIFY_CLAUDE_MODEL, agentType: 'general-purpose', schema: VERDICT_SCHEMA })
+  }
+  return cliBridge(family, VERIFY_TIERS[family], batchVerifyPrompt(family), `verify:${family}`, `verify-${family}`, 'Verify', VERDICT_SCHEMA_FILE, 'verdicts')
+}
+
+const readBallot = (out) => (out && Array.isArray(out.verdicts) ? out.verdicts : null)
+
+let ballots = []
+if (verifyQueue.length) {
+  ballots = (await parallel(
+    ALL_FAMILIES.map((fam) => () => castBallot(fam).then((out) => {
+      const verdicts = readBallot(out)
+      return verdicts ? { family: fam, verdicts } : null
+    })),
+  )).filter(Boolean)
+  if (!ballots.length) {
+    // Total verify-infra failure — every lane, Claude's included, came back empty. Retry the Claude
+    // floor alone so no finding is returned unverified.
+    const verdicts = readBallot(await castBallot('claude'))
+    if (verdicts) ballots = [{ family: 'claude', verdicts }]
+  }
+}
+
+// family → (finding id → verdict). Ids are normalized so a verifier echoing "f3" still lands.
+const ballotIndex = new Map(
+  ballots.map((b) => [
+    b.family,
+    new Map(b.verdicts.filter((v) => v && v.id).map((v) => [String(v.id).trim().toUpperCase(), v])),
+  ]),
+)
+
+const verified = slots.map(({ id, finding, raised, trusted }) => {
+  if (trusted) return { ...finding, confirmed: true, votes: [], verifiedBy: [], note: 'all 4 families already independently agreed — trusted without further verify' }
+  const votes = []
+  for (const [family, byId] of ballotIndex) {
+    const v = byId.get(id)
+    if (!v || (v.verdict !== 'CONFIRMED' && v.verdict !== 'REFUTED')) continue
+    votes.push({ family, verdict: v.verdict, reasoning: v.reasoning || '', selfRaised: raised.has(family) })
+  }
+  // Cross-family verdicts decide. A self-raised verdict is scored ONLY when no cross-family verdict
+  // survived (every non-raising lane failed or skipped this id) — the floor, so nothing comes back
+  // unverified just because a CLI died.
+  const cross = votes.filter((v) => !v.selfRaised)
+  const counted = cross.length ? cross : votes
+  const confirms = counted.filter((v) => v.verdict === 'CONFIRMED').length
+  const out = {
+    ...finding,
+    confirmed: counted.length ? confirms >= Math.ceil(counted.length / 2) : false,
+    votes,
+    verifiedBy: counted.map((v) => v.family),
+  }
+  if (!counted.length) out.note = 'no verifier returned a verdict for this finding — reported unconfirmed'
+  else if (!cross.length) out.note = 'no cross-family verdict survived — scored on the raising family\'s own re-read'
+  return out
+})
+
 const confirmedCount = verified.filter((f) => f && f.confirmed).length
-log(`verify → ${confirmedCount}/${verified.length} confirmed (panel on ${verified.filter((f) => f && f.verifiedBy && f.verifiedBy.length === 3).length} high-severity/risk findings)`)
+const trustedCount = slots.filter((s) => s.trusted).length
+log(
+  verifyQueue.length
+    ? `verify → ${confirmedCount}/${verified.length} confirmed · ${verifyQueue.length} findings batched to ${ballots.length}/${ALL_FAMILIES.length} family verifiers (one agent per family, whole list each)${trustedCount ? ` · ${trustedCount} trusted unverified (all 4 families raised them)` : ''}`
+    : `verify → skipped, nothing to verify${trustedCount ? ` (${trustedCount} trusted — all 4 families raised them)` : ''}`,
+)
 
 return {
   findings: verified,
   findersRun: FINDERS.length,
   externalLanesRun: EXTERNAL_LANES.length,
+  verifiersRun: verifyQueue.length ? ballots.length : 0,
 }
