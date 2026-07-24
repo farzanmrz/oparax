@@ -110,7 +110,12 @@ export function CreateDeskAssistant({
                 {message.parts.map((part, i) => {
                   if (part.type === "text") {
                     return (
-                      <MessageResponse key={`${message.id}-${i}`}>{part.text}</MessageResponse>
+                      <MessageResponse
+                        // biome-ignore lint/suspicious/noArrayIndexKey: parts stream in append-only order and never reorder once rendered
+                        key={`${message.id}-${i}`}
+                      >
+                        {part.text}
+                      </MessageResponse>
                     );
                   }
                   return null;
