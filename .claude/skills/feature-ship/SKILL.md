@@ -18,7 +18,8 @@ branch before the ship gate — no push-back, no deferral, no "not this slice," 
 no measuring it against the definition-of-done first. The ONLY way an item is
 deferred is the owner explicitly saying it can wait; a deferred item becomes a
 future slice the flow doesn't track. After each batch of fixes, re-run
-`feature-lint` + the boot smoke + feature-qc's browser-driven sweep over the flows
+`feature-lint` + the boot smoke + feature-qc's browser sweep (step 5 — parallel
+`browser-verifier` agents driving the `agent-browser` CLI headless) over the flows
 the fixes touched (ship-stage fixes are usually UI fixes — the browser is the only
 gate that proves them).
 

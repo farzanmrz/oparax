@@ -89,22 +89,41 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    text, not judgment — `haiku` (or no model at all, plain grep) reads the log; never
    spend a heavier model here. Collect WARNINGs for triage; kill the process. Startup
    output only.
-5. **Browser-driven verification** — every earlier pass is static (diff review, tsc,
-   lint, build, a boot smoke that only greps startup text); none of them ever renders
-   a page or clicks a control, so a nested-`<form>` hydration error, a click-path
-   ReferenceError, or a layout-convention violation sails straight through all of
-   them (all three happened on #69). Invoke the **`verify`** skill
-   (`.claude/skills/verify/SKILL.md`) — it owns the surfaces and commands; don't
-   restate them here — and drive the app's real surfaces in the in-app browser,
-   scoped to what the branch's diff touched: load every changed route, exercise each
-   new interactive control once, and sweep the browser console for hydration errors,
-   unhandled runtime errors, and failed network requests — expect zero. Keep it
-   proportionate: a smoke-level interactive sweep, one pass per touched flow, not a
-   full E2E suite. **Exclusion — never run flows that spend real money**: voice
-   extraction against a fresh handle and live posting to X stay owner-manual, always.
-   A hydration warning or runtime error found here is a QC finding like any other:
-   fix it (same convergent single-owner rule as step 2), then re-run this stage until
-   clean.
+5. **Browser sweep** — every earlier pass is static (diff review, tsc, lint, build, a
+   boot smoke that only greps startup text); none of them ever renders a page or clicks
+   a control. On #69 that gap let a nested-`<form>` hydration error, a click-path
+   ReferenceError, and layout-convention violations past 36 static agents, tsc, lint,
+   and a `✓ Ready` grep — this stage exists because nothing else in the battery renders.
+
+   **Tool: the `agent-browser` CLI, headless.** Three browser surfaces exist here;
+   the other two — Claude's in-app browser (`mcp__Claude_Browser__*`) and the Chrome
+   connector (`mcp__claude-in-chrome__*`) — are token-heavy MCP surfaces and are
+   REJECTED for this stage. Do not "upgrade" it to one of them. `agent-browser` wins on
+   three counts: it is plain Bash with compact text output (an accessibility-tree
+   snapshot is ~200-400 tokens, versus parsing raw HTML), it is headless by default
+   (`--headed` is opt-in), and `--session <name>` isolates parallel runs.
+
+   **How it runs.** Derive the changed routes/flows from the branch diff (the step-0
+   range), group them, and dispatch **`browser-verifier` agents in PARALLEL — one per
+   route-or-flow group, each given its own `--session` id** so the browsers don't
+   collide. The agent is pinned cheap (sonnet, `effort: low`) on purpose: this is
+   observation and transcription, not judgment. Reuse the dev server step 4 already
+   started — never boot a second one; pass its base URL in the dispatch.
+
+   Each agent: `agent-browser open <url>` → `snapshot -i` → exercise each new/changed
+   interactive control ONCE → collect **hydration errors, unhandled runtime errors,
+   React error overlays, failed network requests, and console errors** via
+   `agent-browser console` / `errors` / `network requests` / `vitals` (vitals reports
+   hydration). `agent-browser open --enable react-devtools <url>` unlocks `agent-browser
+   react tree` when a React-internals question comes up, and `agent-browser skills get
+   dogfood` loads a dedicated exploratory-QA skill if a flow needs deeper poking. The
+   agent body owns the command detail — don't restate it here.
+
+   Keep it proportionate: smoke-level, one pass per touched flow, not a full E2E suite.
+   **Exclusion — never drive flows that spend real money**: voice extraction against a
+   fresh handle and live posting to X stay owner-manual, always. Findings feed the same
+   single-owner fix loop as every other pass (step 2's convergent rule); re-run the
+   stage until clean.
 6. **Doc sync — subtractive first** (the revise-agents-md philosophy at slice scope;
    ships in the same diff). **Convergent, single owner — `sonnet-high`**: different
    model lanes must never make competing edits to the same instruction file, so this
