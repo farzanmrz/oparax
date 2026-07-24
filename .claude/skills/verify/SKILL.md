@@ -2,9 +2,9 @@
 name: verify
 description: >-
   Drive this repo's app end-to-end to verify a change at its real surfaces —
-  boot, the /api/chat agent route, the /api/ingest delivery interface, and the
-  browser UI. Use when a change needs runtime proof beyond `pnpm build`
-  (which compiles /api/chat and /api/ingest but never calls either).
+  boot, the /api/ingest delivery interface, and the browser UI. Use when a
+  change needs runtime proof beyond `pnpm build` (which compiles /api/ingest
+  and /api/email/inbound but never calls either).
 model: inherit
 ---
 
@@ -15,17 +15,7 @@ Surfaces and the commands that reach them (all verified working):
 1. **Boot**: `pnpm dev` (background, log to a file). Ready when the log has
    Next.js's `Ready in`. Failure signatures to sweep: `error|failed|unhandled`
    — expect zero on a clean boot.
-2. **Agent route, anonymous** (exercises the auth gate — the ONLY check
-   `pnpm build` can't see): `curl -i -X POST localhost:3000/api/chat -H
-   'content-type: application/json' -d '{"messages":[]}'` with no session
-   cookie → expect `401`. This is the fail-closed check; the authed happy
-   path (streaming, tool calls, reasoning) is exercised via the browser below
-   — curl can't easily carry a real Supabase session cookie. Note: nothing in
-   the current UI links to `/agents/new`'s chat any more (the create-desk
-   screen is a plain form — see Browser UI below); this route stays live and
-   worth smoking because `POST /api/chat` itself is unchanged and still
-   compiled into the build.
-3. **`/api/ingest` drive-through** (`app/api/ingest/route.ts` — the delivery
+2. **`/api/ingest` drive-through** (`app/api/ingest/route.ts` — the delivery
    interface every source post enters through, forwarder or hand-seeded demo
    alike; no browser needed):
    - `curl -i localhost:3000/api/ingest -X POST -H 'content-type:
@@ -56,7 +46,7 @@ Surfaces and the commands that reach them (all verified working):
      no new council run — confirm in the DB that exactly one set of
      `model_calls` rows (one council's worth) and one `post_drafts` winner
      exist for that `source_post_id`, not two.
-4. **Browser UI**: log in at `/login` with the AGENTS.md test account, then:
+3. **Browser UI**: log in at `/login` with the AGENTS.md test account, then:
    - **Feed-first landing**: visiting `/agents` redirects straight into a
      desk's Feed (`/agents/{id}`) — it never renders a listing for a reporter
      who already has a desk; only a zero-desk account sees the empty-state
@@ -70,10 +60,11 @@ Surfaces and the commands that reach them (all verified working):
      tab nav at `md:` width, collapsing to the mobile nav sheet below it —
      confirm both bars render and the tabs navigate to the right URL on at
      least one narrow- and one wide-viewport pass.
-   - `/agents/new` (the create-desk form — NOT a chat): fill Beat, add a
-     tracked X handle, fill your own X handle, submit; expect a redirect into
-     the new desk's Feed. No scan or model call runs from this screen; voice
-     extraction (if any) happens in the background after navigation.
+   - `/agents/new` (the create-agent form — NOT a chat, no typed handle
+     field): fill Beat, add a tracked X handle, Connect X (Create stays
+     disabled until it's linked); submit; expect a redirect into the new
+     agent with a live streaming extraction-progress view. Voice extraction
+     runs in the background and survives navigation/reload.
    - **Stateful council-expansion check**: on a desk Feed with at least one
      drafted story, click a draft card's "How this draft was made" (info)
      icon — confirm the URL gains `?why=<sourcePostId>` (deep-link/reload

@@ -453,6 +453,34 @@ suite** that D7/D8's model auditions run against. Live-data judging answers "who
 production"; the lab answers "did the new model regress against known ground truth" — both
 are needed and the lab costs $0 to keep.
 
+### L13. Voice-corpus source — Bright Data stays, even once X OAuth is linked
+
+Decided in the create-agent v2 continuation (post-QC remediation on #69), alongside L14.
+
+- Connect-X (OAuth) now proves reporter identity at agent creation, but the corpus fetch
+  still goes through Bright Data's `pullXTimeline`, not the reporter's own token. **A
+  user-context X read still bills the app's own X tier** — the same Free-tier volume
+  constraint R7 already measured (staleness aside, the read budget is roughly one
+  reporter's worth) — so linking an account doesn't unlock cheaper or fresher reads.
+- A synchronous `fetchXProfile` pre-flight (`lib/web/brightdata.ts`) now runs before any
+  `voice_extraction_claims` spend: resolves the handle and requires `postsCount > 0`, so a
+  dead, private, or empty handle costs nothing.
+- **Decision rule to revisit:** run `scripts/probe-x-timeline.ts` (reads the owner's own
+  linked-token timeline, not wired into any app path) — if it returns 100 posts with no
+  `429`/`403` AND the tier's monthly read budget would exceed 100 × expected reporters,
+  swap the corpus source to the X API.
+
+### L14. Extraction progress — polled, not Realtime-streamed
+
+- `voice_extraction_claims` stays deny-all RLS (zero policies); a browser client cannot
+  subscribe to it via Supabase Realtime without weakening that table or standing up a
+  second one. Instead, the existing claim row was extended (migration
+  `20260724164735_voice_extraction_claims_progress`) with stage/progress/reasoning
+  columns, read through an ownership-proving `getExtractionProgress` server action, and
+  polled roughly every 1.5–2s from both the create-agent page and the Voice tab.
+- **Upgrade trigger:** if extraction routinely runs past ~3 minutes, or needs multiple
+  clients kept in sync live, revisit with a properly-scoped job table instead of polling.
+
 ---
 
 ## DEFERRED — wanted, sequenced, each with its wake-up trigger
@@ -495,6 +523,26 @@ are needed and the lab costs $0 to keep.
 > note is updated alongside this (see its own annotation): worst case moves to ~$3.3/mo,
 > over the original $3 cap. D8's other half — the cheap-tier bake-off (`gpt-5-nano`/`glm` vs
 > `v4-flash`) — is untouched, still gated on ~$50/mo drafting spend.
+
+> **Superseded, 2026-07-24 — D10 closed, then reversed, by the create-agent v2 continuation.**
+> D10 shipped as planned mid-Slice-5 (the `/api/chat` chat agent re-linked into the create-desk
+> form as a beat-clarifying assistant), then was deleted outright in the continuation: the
+> assistant panel rendered ai-elements' `PromptInput` (itself a `<form>`) inside the create
+> form's own `<form>`, a nested-form hydration bug reproduced in a real browser. Deleted whole:
+> `app/api/chat/route.ts`, `lib/agent/agent.ts`, `lib/agent/tools.ts`'s `save_agent`,
+> `lib/sysprompts/desk-agent.md`, `create-desk-assistant.tsx`. The beat is a plain `Textarea`
+> now. `lib/agent/tools.ts` and `lib/agent/xai.ts` (the `oparax_x_search` executor D10's
+> assistant never actually wired) are dead code as of this reversal — nothing imports either.
+
+> **Superseded, 2026-07-24 — D14 closed by a different mechanism than planned.** D14 imagined a
+> post-creation verification step (linked X account or an approved list) gating an
+> already-created `experiments` row's guide access — and Slice 5 shipped exactly that
+> (`verify-gate.tsx`, `lib/verify/handle.ts`'s `verifyReporterHandle`/`attestReporterHandle`).
+> The create-agent v2 continuation closes D14 earlier instead: Connect-X (OAuth) is now
+> required *before* an agent can be created at all — `createDesk` derives `reporter_handle`
+> from the linked `x_accounts` row and stamps `reporter_verified_at` at insert, so every agent
+> is born verified. The interim verify-then-attest mechanism is deleted as redundant; the
+> `voice_guides` SELECT policy (`reporter_verified_at IS NOT NULL`) is unchanged.
 
 ---
 
