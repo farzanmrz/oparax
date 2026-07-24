@@ -1,27 +1,19 @@
 // app/agents/[id]/feed-item.tsx
 //
 // The Feed's story/draft card pair. Module-scope, plain Server Component (no "use client" —
-// every interactive piece it composes, `CouncilDialog`/`DraftHistoryDialog`/`PostToXControl`,
-// already owns its own client boundary; there is nothing left here that needs one). Renders
-// as a React fragment of TWO sibling grid children so the parent's `grid-cols-2` places the
-// news card and its draft card side by side without an extra wrapper div — see `page.tsx`.
-import { ExternalLinkIcon, PencilIcon } from "lucide-react";
-// twitter-text 3.x is CommonJS — its ESM interop exposes only a default export (the
-// twttr object), never a named `parseTweet`, so a named import typechecks but fails the
-// bundler at build time. Import the default and read parseTweet off it.
-import twitterText from "twitter-text";
+// every interactive piece it composes, `CouncilDialog`/`DraftHistoryDialog`/`PostToXControl`/
+// `DraftEditDialog`/`DraftPlatformSwitcher`, already owns its own client boundary; there is
+// nothing left here that needs one). Renders as a React fragment of TWO sibling grid children
+// so the parent's `grid-cols-2` places the news card and its draft card side by side without
+// an extra wrapper div — see `page.tsx`.
+import { ExternalLinkIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { FeedStory } from "@/lib/agent/feed-query";
-import { formatCost } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { CouncilDialog } from "./council-dialog";
-import { DraftHistoryDialog } from "./draft-history-dialog";
-import { PostToXControl } from "./post-to-x-control";
-
-const WEIGHTED_LIMIT = 280;
+import { DraftPlatformSwitcher } from "./draft-platform-switcher";
 
 /** Pinned to UTC so a server render never disagrees with itself — this is a plain Server
  *  Component, never re-hydrated client-side, but the same discipline the rest of the app's
@@ -59,20 +51,21 @@ function OriginBadge() {
   );
 }
 
-function CouncilChip({ council }: { council: FeedStory["council"] }) {
-  return (
-    <Badge className="font-mono" variant="secondary">
-      {council.memberCount} {council.memberCount === 1 ? "model" : "models"} ·{" "}
-      {formatCost(council.totalCostUsd)}
-    </Badge>
-  );
-}
-
+/**
+ * NewsCard renders `sourcePosts[0]` only (the post that started the story — clustering's
+ * assignment order guarantees this, see `feed-query.ts`'s `story_assignments` fetch). A
+ * clustered story with more than one source post gets a small "+N" badge/tooltip instead of
+ * a full multi-source layout: clustering is brand new (T2.4b) and typically still one post
+ * per story in practice, so building a real multi-card layout isn't earned yet — documented
+ * in task-25-report.md as the minimal choice the brief explicitly allows.
+ */
 function NewsCard({
   sourcePost,
+  extraSourceCount,
   opacityClass,
 }: {
   sourcePost: FeedStory["sourcePosts"][number];
+  extraSourceCount: number;
   opacityClass: string | undefined;
 }) {
   return (
@@ -80,8 +73,26 @@ function NewsCard({
       <CardHeader className="flex-row items-center gap-2">
         <OriginBadge />
         <span className="min-w-0 flex-1 truncate font-mono text-sm font-semibold">
-          @{sourcePost.authorHandle}
+          {/* author_handle is nullable as of this Wave's website-source support — a website
+              post carries no handle, so this falls back to a generic label rather than
+              rendering the literal "@null". */}
+          {sourcePost.authorHandle ? `@${sourcePost.authorHandle}` : "Source"}
         </span>
+        {extraSourceCount > 0 ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge className="shrink-0 font-mono" variant="secondary">
+                  +{extraSourceCount}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                {extraSourceCount} more source{extraSourceCount === 1 ? "" : "s"} clustered into
+                this story
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null}
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {formatBrokeAt(sourcePost.postedAt)}
         </span>
@@ -129,14 +140,16 @@ function DraftCard({
   opacityClass: string | undefined;
 }) {
   const sourcePost = story.sourcePosts[0];
-  const winner = story.winner;
+  const hasWinners = Object.keys(story.winners).length > 0;
 
-  if (!winner) {
+  if (!hasWinners) {
+    // Re-keyed off "no entries in winners yet" (any platform still drafting, or every
+    // platform failed) rather than the old single-`winner` null check — same placeholder UX.
     return (
       <Card className={cn(opacityClass)}>
         <CardHeader className="flex-row items-center gap-2">
           <OriginBadge />
-          <span className="text-sm font-semibold">X draft</span>
+          <span className="text-sm font-semibold">Draft</span>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">Drafting…</p>
@@ -145,79 +158,19 @@ function DraftCard({
     );
   }
 
-  const parsed = twitterText.parseTweet(winner.text);
-  const overLimit = parsed.weightedLength > WEIGHTED_LIMIT;
-  const nearLimit = !overLimit && parsed.weightedLength / WEIGHTED_LIMIT > 0.9;
-  const posted = winner.postedAt !== null;
-
   return (
     <Card className={cn(opacityClass)}>
       <CardHeader className="flex-row items-center gap-2">
         <OriginBadge />
         <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-          X draft <span className="font-mono text-xs text-muted-foreground">@{reporterHandle}</span>
+          Draft <span className="font-mono text-xs text-muted-foreground">@{reporterHandle}</span>
         </span>
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {formatBrokeAt(sourcePost?.postedAt ?? null)}
         </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <p className="text-sm whitespace-pre-wrap">{winner.text}</p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Button
-              aria-disabled="true"
-              aria-label="Edit — editing coming soon"
-              disabled
-              size="icon-sm"
-              title="Editing coming soon"
-              variant="ghost"
-            >
-              <PencilIcon aria-hidden="true" className="size-4" />
-            </Button>
-            <DraftHistoryDialog winningPostDraftId={winner.postDraftId} />
-            {sourcePost ? (
-              <CouncilDialog experimentId={experimentId} sourcePostId={sourcePost.id} />
-            ) : null}
-            <CouncilChip council={story.council} />
-          </div>
-          {posted ? (
-            <div className="flex items-center gap-2">
-              <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-success" />
-              <span className="text-sm text-muted-foreground">Posted to X</span>
-              {winner.postedUrl ? (
-                <a
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
-                  href={winner.postedUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  View post ↗
-                </a>
-              ) : null}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "font-mono text-xs tabular-nums",
-                  overLimit
-                    ? "text-destructive"
-                    : nearLimit
-                      ? "text-warning"
-                      : "text-muted-foreground",
-                )}
-              >
-                {parsed.weightedLength} / {WEIGHTED_LIMIT}
-              </span>
-              <PostToXControl
-                draftText={winner.text}
-                postDraftId={winner.postDraftId}
-                xLinked={xLinked}
-              />
-            </div>
-          )}
-        </div>
+        <DraftPlatformSwitcher experimentId={experimentId} story={story} xLinked={xLinked} />
       </CardContent>
     </Card>
   );
@@ -239,13 +192,20 @@ export function FeedItemCard({
   xLinked: boolean;
 }) {
   const sourcePost = story.sourcePosts[0];
-  const opacityClass = story.winner?.postedAt != null ? "opacity-[0.66]" : undefined;
+  // Only X ever carries a real posted_at (the only platform with a posting mechanism this
+  // slice) — a story counts as "posted" once its X winner has been posted, regardless of
+  // whether LinkedIn/Bluesky winners exist alongside it.
+  const opacityClass = story.winners.x?.postedAt != null ? "opacity-[0.66]" : undefined;
 
   if (!sourcePost) return null; // defensive: a winner whose source_posts row went missing
 
   return (
     <>
-      <NewsCard opacityClass={opacityClass} sourcePost={sourcePost} />
+      <NewsCard
+        extraSourceCount={story.sourcePosts.length - 1}
+        opacityClass={opacityClass}
+        sourcePost={sourcePost}
+      />
       <DraftCard
         experimentId={experimentId}
         opacityClass={opacityClass}

@@ -31,8 +31,12 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
   }
   const reporterHandle = experimentResult.data.reporter_handle;
 
+  // "Ready to review" = at least one platform has a winner, and that story hasn't been posted
+  // to X yet (only X's own winner ever carries a real posted_at — see feed-item.tsx). A story
+  // with no X winner at all (LinkedIn/Bluesky-only) still counts: nothing about it has been
+  // acted on yet either.
   const readyToReviewCount = stories.filter(
-    (story) => story.winner !== null && story.winner.postedAt === null,
+    (story) => Object.keys(story.winners).length > 0 && story.winners.x?.postedAt == null,
   ).length;
 
   return (
@@ -55,7 +59,7 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
             {stories.map((story) => (
               <FeedItemCard
                 experimentId={id}
-                key={story.winner?.postDraftId ?? story.sourcePosts[0]?.id}
+                key={story.storyId}
                 reporterHandle={reporterHandle}
                 story={story}
                 xLinked={xLink.linked}
