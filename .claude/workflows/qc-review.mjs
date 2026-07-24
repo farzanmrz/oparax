@@ -93,6 +93,11 @@ const FINDINGS_SCHEMA = {
           scenario: { type: 'string', description: 'concrete failing input/state → wrong outcome (bugs), or the concrete cleanup/rule breach' },
           verdict: { type: 'string', description: 'CONFIRMED | PLAUSIBLE for bug angles; empty for cleanup/conventions' },
         },
+        // Deliberately NOT identical to qc-findings-schema.json (the copy the external CLIs
+        // validate against). This one is consumed by the Agent tool, which permits a partial
+        // `required`; OpenAI's structured-output API does not, and rejected the shared file with
+        // HTTP 400 until every property was listed there. Do not "sync" the two by copying this
+        // list over — that reintroduces the 400 and silently kills every codex find lane.
         required: ['file', 'summary', 'scenario'],
       },
     },
@@ -154,7 +159,17 @@ Report findings only (file, line, severity, one-sentence summary, concrete scena
 // and QC verify verdicts without three copies of the per-family wrapper scripts.
 // `model` is codex-only (COUNCIL_MODEL → -m). agy encodes its model in `tier`; grok has one model.
 // Omitting it reproduces the pre-matrix behaviour: codex falls back to its config.toml default.
-async function cliBridge({ family, tier, model, prompt, label, stem, phase: ph, schemaFile, checkKey }) {
+//
+// `bridgeModel` is the CLAUDE agent acting as courier — it does no reviewing whatsoever (write a
+// file, run one command, return the bytes), so it has zero influence on review quality. Its only
+// failure mode is mechanical: the prompt is embedded in its instruction and must be reproduced
+// byte-exactly, so fidelity is a function of PROMPT SIZE, which is why the two stages differ:
+//   find   (~1.2KB prompts) → haiku. Measured byte-identical on adversarial content (backticks,
+//          `${...}`, nested JSON, unicode arrows) and end-to-end through run.sh.
+//   verify (~18KB prompts — the whole deduped findings list) → sonnet. Three real ft/69 bridges
+//          reproduced 18KB byte-exactly (sizes differed only by each family name's length).
+// If a find prompt ever grows toward verify's size, move it back to sonnet.
+async function cliBridge({ family, tier, model, prompt, label, stem, phase: ph, schemaFile, checkKey, bridgeModel = 'sonnet' }) {
   const modelEnv = model ? `COUNCIL_MODEL="${model}" ` : ''
   const raw = await agent(
     `You are a shell bridge to the ${family} CLI. Do EXACTLY these steps and nothing else — review nothing yourself:
@@ -166,7 +181,7 @@ PROMPT
    CLAUDE_PROJECT_DIR="${REPO}" COUNCIL_SCRATCH="${SCRATCH}" COUNCIL_TIER="${tier}" ${modelEnv}COUNCIL_SCHEMA="${schemaFile}" COUNCIL_CHECK_KEY="${checkKey}" bash "${SCRIPT_DIR}/run.sh" ${family} ${stem}
 3. If it exits non-zero, OR "${SCRATCH}/${stem}.out.json" is missing or empty, return exactly: FAILED
 4. Otherwise read "${SCRATCH}/${stem}.out.json" and return its RAW verbatim contents and nothing else — no fences, no commentary.`,
-    { label, phase: ph, model: 'sonnet', agentType: 'general-purpose' },
+    { label, phase: ph, model: bridgeModel, agentType: 'general-purpose' },
   )
   return parseJson(raw)
 }
@@ -251,7 +266,7 @@ const externalResults = (await parallel(EXTERNAL_LANES.map((lane, i) => () =>
   cliBridge({
     family: lane.family, tier: lane.tier, model: lane.model, prompt: `${lane.prompt}${commonTail}`,
     label: `${lane.family}:${lane.angle}`, stem: `find-${lane.family}-${i}`, phase: 'Find',
-    schemaFile: FINDINGS_SCHEMA_FILE, checkKey: 'findings',
+    schemaFile: FINDINGS_SCHEMA_FILE, checkKey: 'findings', bridgeModel: 'haiku',
   }).then((out) => ({ lane, out })),
 ))).filter(Boolean).filter((r) => r.out)
 

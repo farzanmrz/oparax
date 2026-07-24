@@ -9,12 +9,13 @@
         "additionalProperties": false,
         "properties": {
           "file": { "type": "string", "description": "repo-relative path" },
-          "line": { "type": "number", "description": "1-indexed anchor line" },
-          "severity": { "type": "string", "description": "high | medium | low" },
+          "line": { "type": ["number", "null"], "description": "1-indexed anchor line, or null if the finding has no single anchor" },
+          "severity": { "type": ["string", "null"], "description": "high | medium | low, or null" },
           "summary": { "type": "string", "description": "one-sentence statement of the finding" },
           "scenario": { "type": "string", "description": "concrete failing input/state → wrong outcome, or the concrete rule/scenario broken" }
         },
-        "required": ["file", "summary", "scenario"]
+        "// required-note": "OpenAI's structured-output API rejects any schema whose `required` omits a key present in `properties` — codex returned HTTP 400 invalid_json_schema ('Missing line') and EVERY codex find lane failed. Grok and agy both accept the looser form, so this only ever broke one family. Optionality is expressed with nullable types above instead of by omission from `required`. Keep this list exhaustive: adding a property without adding it here silently kills the codex lanes again.",
+        "required": ["file", "line", "severity", "summary", "scenario"]
       }
     }
   },
