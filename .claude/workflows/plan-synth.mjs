@@ -172,6 +172,8 @@ phase('Scope')
 const scope = await agent(
   `You are the scope+ground pass for ONE feature slice. There is NO diff yet — infer from the ask and the repo. Do all of this:
 
+0. THE ASK BELOW IS THE SLICE. It is the sole definition of what this slice is; nothing you observe in the repo can redefine it. The working tree may carry uncommitted edits, and the branch may already carry commits, from work that is NOT this slice — treat all of it as pre-existing context, never as the slice's subject. Do not run \`git diff\`/\`git status\` to discover what to plan. If what you find on disk seems to disagree with the ask, the ask wins and you say so in the digest.
+
 1. Run the live skill inventory:  bash ${SKILLS_SH}
    It prints one \`skill-id<TAB>description\` line per plan-relevant stack skill. These IDs are the ONLY valid values for \`skills\`.
 2. Predict the files/globs this slice will create or modify (grep/read the repo to ground the guess) → touchedPaths.

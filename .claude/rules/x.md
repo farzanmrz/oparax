@@ -30,7 +30,7 @@ a billing flip with **zero architecture change** (same endpoint, same code path)
   pair. The token exposed in chat was rotated 2026-07-21; the fresh value lives only in
   `.env.local` — never commit it.
 
-- `supabase:supabase` for the store/link-state Supabase work; `vercel:nextjs` for the OAuth route handlers + server actions.
+- `supabase` for the store/link-state Supabase work; `vercel:nextjs` for the OAuth route handlers + server actions.
 
 ## Tokens never leave `lib/x`
 
