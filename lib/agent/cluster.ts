@@ -103,10 +103,20 @@ function buildClusterPrompt(
   authorHandle: string,
   text: string,
 ): string {
+  // A tracked account's post text is untrusted and reaches this prompt verbatim — <post> tags
+  // (story-cluster.md instructs the model to treat their content as data, never instructions)
+  // stop a crafted post from steering match/storyIndex or injecting text into `summary`, which
+  // renders directly in the reporter's feed with no human review step before it does.
   const candidateList = candidates.map((c, i) => `Candidate ${i}: ${c.summary}`).join("\n");
-  return ["Candidate stories:", candidateList, "", `New post by @${authorHandle}:`, text].join(
-    "\n",
-  );
+  return [
+    "Candidate stories:",
+    candidateList,
+    "",
+    `New post by @${authorHandle}:`,
+    "<post>",
+    text,
+    "</post>",
+  ].join("\n");
 }
 
 async function createStory(

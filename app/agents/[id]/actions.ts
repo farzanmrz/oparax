@@ -157,10 +157,17 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
   // Step 1 — the ownership proof (see the function comment above).
   const { data: parentDraft, error: parentError } = await supabase
     .from("post_drafts")
-    .select("id, source_post_id, experiment_id, story_id, platform")
+    .select("id, source_post_id, experiment_id, story_id, platform, posted_at")
     .eq("id", parsedId.data)
     .maybeSingle();
   if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
+  // A posted draft's post_drafts row is the immutable record of what actually went out — Step 4
+  // below inserts a fresh row with posted_at/posted_tweet_id/posted_url all NULL, which would
+  // make the Feed treat the (already-live) story as unposted again and re-offer Post to X,
+  // publishing the edited text as a second, near-duplicate tweet on one more click.
+  if (parentDraft.posted_at) {
+    return { ok: false, error: "This draft was already posted to X and can't be edited." };
+  }
 
   const admin = createAdminClient();
 

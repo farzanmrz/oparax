@@ -28,9 +28,14 @@ import { editDraft } from "./actions";
 export function DraftEditDialog({
   postDraftId,
   currentText,
+  disabled,
 }: {
   postDraftId: string;
   currentText: string;
+  /** True once this draft has been posted to X — editDraft itself rejects this server-side
+   *  too (a fresh version would carry no posted_at, re-offering Post to X on the edited
+   *  text), this is just the earlier, clearer signal. */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(currentText);
@@ -66,17 +71,19 @@ export function DraftEditDialog({
   }
 
   return (
-    <Dialog onOpenChange={handleOpenChange} open={open}>
+    <Dialog onOpenChange={disabled ? undefined : handleOpenChange} open={open && !disabled}>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
-              <Button aria-label="Edit draft" size="icon-sm" variant="ghost">
+              <Button aria-label="Edit draft" disabled={disabled} size="icon-sm" variant="ghost">
                 <PencilIcon aria-hidden="true" className="size-4" />
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>Edit draft</TooltipContent>
+          <TooltipContent>
+            {disabled ? "Already posted to X — can't be edited" : "Edit draft"}
+          </TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <DialogContent className="sm:max-w-[540px]">

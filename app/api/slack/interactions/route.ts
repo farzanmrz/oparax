@@ -31,6 +31,8 @@ const blockActionsPayloadSchema = z.object({
   type: z.literal("block_actions"),
   trigger_id: z.string().min(1),
   actions: z.array(z.object({ action_id: z.string(), value: z.string() })).min(1),
+  team: z.object({ id: z.string().min(1) }),
+  channel: z.object({ id: z.string().min(1) }),
 });
 
 function parseInteractionPayload(
@@ -54,7 +56,12 @@ function parseInteractionPayload(
 /** The slow leg, run in `after()` once the 200 ack is already on the wire: atomic idempotency
  *  claim, act via the same session-independent core the Feed's own X-post action delegates
  *  to, then a plain-text follow-up message reporting the outcome back into the same channel. */
-async function handleInteraction(interactionId: string, postDraftId: string): Promise<void> {
+async function handleInteraction(
+  interactionId: string,
+  postDraftId: string,
+  teamId: string,
+  channelId: string,
+): Promise<void> {
   const admin = createAdminClient();
 
   const { data: draft, error } = await admin
@@ -74,13 +81,24 @@ async function handleInteraction(interactionId: string, postDraftId: string): Pr
     return;
   }
 
+  // The HMAC only proves this request came from Slack for SOME installation of this app —
+  // Slack's signing secret is shared app-wide, not per-workspace-install, so it doesn't prove
+  // the click came from the desk that actually owns this draft. Bind it here instead: the
+  // interaction's own team/channel must match the draft's desk's linked slack_accounts row.
+  const account = await getSlackAccount(experimentId);
+  if (!account) return; // Slack got disconnected between the click and now — nowhere to reply.
+  if (account.team_id !== teamId || account.channel_id !== channelId) {
+    console.error("api/slack/interactions: team/channel mismatch for draft", postDraftId, {
+      expected: { team: account.team_id, channel: account.channel_id },
+      got: { teamId, channelId },
+    });
+    return;
+  }
+
   const claimed = await claimDeliveryReceipt(interactionId, experimentId);
   if (!claimed) return; // Slack redelivered this exact click — idempotency, not an error.
 
   const result = await postDraftToXForOwner(postDraftId, ownerId);
-
-  const account = await getSlackAccount(experimentId);
-  if (!account) return; // Slack got disconnected between the click and now — nowhere to reply.
 
   const text = result.ok ? `Posted to X: ${result.url}` : `Couldn't post to X: ${result.error}`;
   try {
@@ -110,7 +128,9 @@ export async function POST(req: Request) {
   }
 
   // Ack within Slack's 3s deadline: respond now, do the claim + act + follow-up after.
-  after(() => handleInteraction(payload.trigger_id, action.value));
+  after(() =>
+    handleInteraction(payload.trigger_id, action.value, payload.team.id, payload.channel.id),
+  );
 
   return new Response(null, { status: 200 });
 }

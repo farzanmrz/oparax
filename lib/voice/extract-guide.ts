@@ -14,7 +14,17 @@ import { measuredFacts } from "./measured-facts";
 export const EXTRACTION_MODEL = "anthropic/claude-fable-5";
 
 const EXTRACT_MAX_OUTPUT_TOKENS = 32_000;
-const EXTRACT_TIMEOUT_MS = 1_800_000; // 30 min — a script, far beyond any Vercel function cap
+// Was 30 min ("far beyond any Vercel function cap") when this call was script-only
+// (scripts/extract-voice-guide.ts). The create-agent v2 continuation wired
+// extractVoiceGuideStreaming into real routes capped at maxDuration = 300 (create-desk's
+// after() call, capReprobe's manual retry) sharing that budget with the corpus-fetch poll
+// (lib/web/brightdata.ts's POLL_TIMEOUT_MS) and the DB writes around both — a 30-minute abort
+// here never fires before the platform kills the whole invocation with no cleanup. 150s is a
+// first-pass budget split, not measured against real generation latency yet — retune both once
+// real extraction runs show actual durations. A timeout here still throws out of
+// attemptVoiceExtraction's try/catch (releasing the claim for same-day retry via
+// releaseClaimOnCorpusFailure) instead of a silent platform kill.
+const EXTRACT_TIMEOUT_MS = 150_000;
 
 /** One corpus post, carrying the metadata the extraction prompt grades against. */
 export type CorpusPost = {

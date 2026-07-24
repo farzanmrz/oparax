@@ -146,7 +146,17 @@ const DATASETS_SNAPSHOT_URL = "https://api.brightdata.com/datasets/v3/snapshot";
 
 const MAX_POSTS = 100;
 const POLL_INTERVAL_MS = 5_000;
-const POLL_TIMEOUT_MS = 10 * 60 * 1000; // a ~100-post discovery pull can run several minutes
+// Every caller of pullXTimeline today runs inside a route with maxDuration = 300 (create-desk's
+// after() call, capReprobe's manual retry) sharing that budget with fetchXProfile's pre-flight,
+// extractVoiceGuideStreaming's own timeout, and the DB writes around both — this ceiling was
+// never revisited when extraction gained a live in-app calling path (it predates that; the old
+// 10-minute value was sized for scripts/extract-voice-guide.ts's script-only context, which has
+// no such cap). 100s is a first-pass budget split with extractVoiceGuideStreaming's own
+// EXTRACT_TIMEOUT_MS, not measured against real production latency yet — retune both once real
+// extraction runs show actual corpus-fetch vs. LLM-call durations. A poll that times out here
+// still throws (caught by attemptVoiceExtraction, which releases the claim for same-day retry)
+// instead of the function being killed mid-poll with no cleanup at all.
+const POLL_TIMEOUT_MS = 100_000;
 
 export type XTimelinePost = { xPostId: string; text: string; postedAt: string /* ISO */ };
 

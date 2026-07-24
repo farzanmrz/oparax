@@ -35,9 +35,16 @@ import type { ActionResult } from "../actions";
 function normalizeWebsiteUrl(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  const candidate = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
+  const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed);
+  const candidate = hasScheme ? trimmed : `https://${trimmed}`;
   try {
-    return new URL(candidate).toString();
+    const url = new URL(candidate);
+    // Reject any scheme but http(s) — a bare "example.com" gets https:// prepended above, but
+    // an explicit "javascript://…" / "file://…" / "ftp://…" entry matched the scheme regex
+    // above too and would otherwise pass through unrestricted into experiments.websites (and
+    // from there into the scraper/ingestion worker).
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
   } catch {
     return null;
   }
@@ -128,8 +135,11 @@ export async function testFetchWebsite(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Please sign in again." };
 
+  const normalized = normalizeWebsiteUrl(url);
+  if (!normalized) return { ok: false, error: "That doesn't look like a valid website." };
+
   try {
-    const { text } = await scrapeUrl(url, user.id);
+    const { text } = await scrapeUrl(normalized, user.id);
     const trimmed = text.trim();
     const preview = trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed;
     return { ok: true, preview: preview || "(empty page)" };

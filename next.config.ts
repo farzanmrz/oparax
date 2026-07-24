@@ -7,16 +7,17 @@ const nextConfig: NextConfig = {
   },
   // The sysprompt markdown is read via readFileSync(process.cwd()/lib/sysprompts/...) at
   // module load — trace it into every serverless function that transitively imports
-  // lib/sysprompts (the chat route; the delivery interface + the inbound-email webhook, both
-  // via draft-pipeline.ts -> draft-council-run.ts; the new-desk create action, whose after()
+  // lib/sysprompts (the delivery interface + the inbound-email webhook, both via
+  // draft-pipeline.ts -> draft-council-run.ts; the new-desk create action, whose after()
   // voice-extraction call reaches lib/sysprompts via lib/voice/extract-guide.ts; and, as of
   // Slice 5, /agents/[id]/voice's capReprobe action, which reaches the same
   // lib/voice/extract-guide.ts path via attemptVoiceExtraction on a manual retry). The
   // per-minute cron dispatcher this list once traced (/api/cron/tick) was deleted with the
-  // retired scan/draft pipeline (D15) — do not re-add it without a route to match. See
-  // .claude/rules/agent.md's "Bundling the prompts for deploy".
+  // retired scan/draft pipeline (D15), and the /api/chat entry it once traced was deleted with
+  // the create-desk chat assistant (create-agent v2 continuation, decisions.md D10) — do not
+  // re-add either without a route to match. See .claude/rules/agent.md's "Bundling the prompts
+  // for deploy".
   outputFileTracingIncludes: {
-    "/api/chat": ["./lib/sysprompts/*.md"],
     "/api/ingest": ["./lib/sysprompts/*.md"],
     "/api/email/inbound": ["./lib/sysprompts/*.md"],
     "/agents/new": ["./lib/sysprompts/*.md"],

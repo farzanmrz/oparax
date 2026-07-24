@@ -111,7 +111,11 @@ export function DraftPlatformSwitcher({
       <p className="text-sm whitespace-pre-wrap">{winner.text}</p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <DraftEditDialog currentText={winner.text} postDraftId={winner.postDraftId} />
+          <DraftEditDialog
+            currentText={winner.text}
+            disabled={posted}
+            postDraftId={winner.postDraftId}
+          />
           <DraftHistoryDialog winningPostDraftId={winner.postDraftId} />
           {sourcePost ? (
             <CouncilDialog experimentId={experimentId} sourcePostId={sourcePost.id} />
