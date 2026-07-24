@@ -23,3 +23,4 @@ export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
 export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
 export const DRAFT_JUDGE_PROMPT = load("draft-judge.md");
 export const DRAFT_REVISE_PROMPT = load("draft-revise.md");
+export const STORY_CLUSTER_PROMPT = load("story-cluster.md");
