@@ -87,9 +87,11 @@ path-rule auto-injection when a lens reads a matching file.
 The returned `plan` carries the standard sections the workflow enforces (so they are
 not re-specified here) — Definition of done, Approach, In scope / Deferred, Build steps
 (per-task file ownership + the skills each task invokes), and a **## Stack & design
-acceptance criteria** checklist. Two are load-bearing downstream: feature-ship's triage
-measures every "fix now" against the Definition of done, and feature-qc verifies the
-built diff against the acceptance-criteria checklist.
+acceptance criteria** checklist. Two are load-bearing downstream: the Definition of
+done is the ship gate's yardstick for what finished means (owner-reported
+manual-verification findings are implemented regardless of it — feature-ship's triage
+rule), and feature-qc verifies the built diff against the acceptance-criteria
+checklist.
 
 **Scope discipline is yours to enforce at the gate** — the workflow drafts, you decide:
 everything asked for together is one slice (a minimal UI tweak *and* a major schema
@@ -127,6 +129,15 @@ source of truth. Direct mode creates no issue or branch: it requires a clean loc
 boundary. Both modes initialize branch-scoped state with the retained terminal
 target. If tracked branch setup or state initialization fails after issue creation,
 the kickoff closes the new issue rather than leaving an orphan.
+
+**Approval is the trigger — no further prompting.** In tracked mode, the moment the
+kickoff succeeds (issue created carrying the approved plan, `ft/<issue#>` cut and
+checked out, branch-scoped state written), immediately invoke **`feature-handoff`**
+(capture) so a bounded `handoff.md` exists for the new branch. Then tell the user,
+in one line: the branch is cut and checkpointed — continue in this session, or open
+a fresh session and run `/feature-continue` to pick up with zero context needed.
+Direct-dev mode has no issue or branch, so this auto-checkpoint step does not apply
+there — the kickoff's state write is the whole record.
 
 Rules: scope freezes at this gate. Planning docs never enter the repo — the issue
 body is the tracked record; the direct-run copy is ignored runtime scratch.

@@ -3,7 +3,7 @@ name: feature-qc
 description: >-
   Phase 3 of the feature flow, standalone: the full QC battery over the current
   feature branch. Use when the user says /feature-qc, "run QC", "quality pass",
-  or wants the branch proven buildable+bootable mid-flight. For just one pass, use
+  or wants the branch proven buildable+bootable+browser-clean mid-flight. For just one pass, use
   /simplify, /code-review, or /feature-lint directly instead.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
@@ -75,8 +75,8 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    fix (auth, money, posting, schema/migration, new trust boundary) — never fan a fix
    out across families; three model families editing the same file concurrently
    produces conflicting diffs to reconcile, not more correctness. The applied fix
-   diff stays gated by the tsc + lint pass (step 3) and boot smoke (step 4) — no
-   separate delta-verify pass. Large/risky diff → offer the user `/code-review ultra`
+   diff stays gated by the tsc + lint pass (step 3), boot smoke (step 4), and the
+   browser sweep (step 5) — no separate delta-verify pass. Large/risky diff → offer the user `/code-review ultra`
    before proceeding.
 3. **`feature-lint`** (scoped to the feature's changed files — LAST because the review
    pass mutates code). Formatting is NOT part of this step: the `PostToolUse` hook
@@ -89,7 +89,23 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    text, not judgment — `haiku` (or no model at all, plain grep) reads the log; never
    spend a heavier model here. Collect WARNINGs for triage; kill the process. Startup
    output only.
-5. **Doc sync — subtractive first** (the revise-agents-md philosophy at slice scope;
+5. **Browser-driven verification** — every earlier pass is static (diff review, tsc,
+   lint, build, a boot smoke that only greps startup text); none of them ever renders
+   a page or clicks a control, so a nested-`<form>` hydration error, a click-path
+   ReferenceError, or a layout-convention violation sails straight through all of
+   them (all three happened on #69). Invoke the **`verify`** skill
+   (`.claude/skills/verify/SKILL.md`) — it owns the surfaces and commands; don't
+   restate them here — and drive the app's real surfaces in the in-app browser,
+   scoped to what the branch's diff touched: load every changed route, exercise each
+   new interactive control once, and sweep the browser console for hydration errors,
+   unhandled runtime errors, and failed network requests — expect zero. Keep it
+   proportionate: a smoke-level interactive sweep, one pass per touched flow, not a
+   full E2E suite. **Exclusion — never run flows that spend real money**: voice
+   extraction against a fresh handle and live posting to X stay owner-manual, always.
+   A hydration warning or runtime error found here is a QC finding like any other:
+   fix it (same convergent single-owner rule as step 2), then re-run this stage until
+   clean.
+6. **Doc sync — subtractive first** (the revise-agents-md philosophy at slice scope;
    ships in the same diff). **Convergent, single owner — `sonnet-high`**: different
    model lanes must never make competing edits to the same instruction file, so this
    is deliberately not cross-model. Fed by the `conventions-finder` lane's staleness
@@ -120,4 +136,4 @@ parallelism and every model pin — nothing here is prose-decided. Never fall ba
 defeats the structure this workflow exists to enforce. If any step reveals a
 dependency MAJOR upgrade, framework migration, or schema/data migration is required —
 STOP and present options; never fix those autonomously. End by stating: builds ✓
-boots ✓ findings fixed ✓ (or what remains).
+boots ✓ browser sweep clean ✓ findings fixed ✓ (or what remains).

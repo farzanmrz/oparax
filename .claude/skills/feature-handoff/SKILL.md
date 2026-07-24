@@ -2,14 +2,17 @@
 name: feature-handoff
 description: >-
   Capture or clear a bounded, branch-scoped checkpoint for continuing an active
-  feature in a fresh Claude Code session. Use only when the user explicitly invokes
-  /feature-handoff; this is a lean continuity snapshot, not a transcript export.
+  feature in a fresh Claude Code session. Use when the user explicitly invokes
+  /feature-handoff, or when the feature flow checkpoints automatically —
+  feature-plan invokes this right after plan approval cuts the branch. A lean
+  continuity snapshot, not a transcript export; /feature-continue is the resume
+  side.
 argument-hint: "[capture | clear]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Read Write
 model: sonnet
 effort: medium
 user-invocable: true
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 # Feature handoff — bounded session continuity

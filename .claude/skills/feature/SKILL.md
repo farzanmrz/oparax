@@ -5,7 +5,8 @@ description: >-
   sequence. Use when the user wants a full slice built from idea to shipped commit.
   For a single phase, use the granular skills directly: /feature-plan,
   /feature-build, /feature-qc, /feature-ship (or /simplify, /code-review,
-  /feature-lint for individual QC passes).
+  /feature-lint for individual QC passes). To resume a checkpointed flow in a
+  fresh session, use /feature-continue.
 argument-hint: "[feature description]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
@@ -23,10 +24,10 @@ no CI. Parallelism is a private implementation detail.
 **Track phases with TaskCreate** — one task each, ticked as each finishes; the flow
 is complete only when the last ticks:
 
-1. `Plan approved + tracked branch or direct-dev state started (✋ gate)` → invoke **`feature-plan`**
+1. `Plan approved (✋ gate) + branch cut, state written, handoff checkpointed (or direct-dev state started)` → invoke **`feature-plan`**
 2. `Built on ft/<issue#> or the explicit direct dev run` → invoke **`feature-build`**
-3. `QC: reviews · lint · build · boot smoke` → invoke **`feature-qc`**
-4. `Feedback triaged (✋) + shipped via ship.sh (✋)` → invoke **`feature-ship`**
+3. `QC: reviews · lint · build · boot smoke · browser sweep` → invoke **`feature-qc`**
+4. `Owner feedback implemented + shipped via ship.sh (✋)` → invoke **`feature-ship`**
 
 Stop at every ✋ gate and wait for the user's explicit words — grounding never skips
 gates. Between phases, report state in one line and continue unless the user
@@ -45,8 +46,12 @@ honest.
   feature state. One explicit final authorization names the entire consequence;
   successful target deployment checks do not create extra approval gates.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
-- Scope freezes at the plan gate; mid-build ideas are out of scope — drop them, never
-  onto this branch. If one matters, the user re-plans it as its own slice later.
+- Scope freezes at the plan gate **for agent-self-generated ideas only**: mid-build
+  work an agent notices on its own is out of scope — drop it, never onto this branch;
+  if it matters, the user re-plans it as its own slice later. Findings the owner
+  reports during manual verification are NEVER scope creep: implement every one on
+  the branch before the ship gate, deferring an item only when the owner explicitly
+  says it can wait.
 - Planning docs never enter the repo; the issue body + squashed commit message are
   the record; scratch lives in self-gitignored `.feature/` and dies at ship.
 - Skill grounding is binding everywhere: the plan (from plan-synth) grounds each task
@@ -58,6 +63,9 @@ honest.
   the chat scaffold wiring).
 
 Branch-scoped state and the bounded fresh-session summary live under ignored
-`.context/features/<exact branch>/`; `/feature-handoff` owns their content. Scripts
+`.context/features/<exact branch>/`; `/feature-handoff` owns their content (the plan
+gate captures the first checkpoint automatically the moment the branch is cut), and
+`/feature-continue` resumes from them in a fresh session with zero carried context.
+Scripts
 (`start.sh`, `ship.sh`, `promote.sh`) live in
 `.claude/skills/feature/scripts/` and are called by feature-plan and feature-ship.

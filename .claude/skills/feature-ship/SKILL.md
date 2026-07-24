@@ -11,16 +11,23 @@ model: inherit
 
 # Triage ✋ then ship ✋
 
-## Triage (the scope firewall)
+## Triage (owner feedback is binding)
 
-For each finding the user reports, exactly one verdict:
-- **fix now** — breaks the slice's written definition-of-done (the ≤2-sentence
-  statement in the issue). Build it, then re-run `feature-lint` + the boot smoke.
-  Not DoD-breaking → not fix-now, however tempting.
-- **drop** — real, but not this slice (its own future slice, or a someday item). The
-  flow doesn't track it; if it matters, the user re-plans it as its own slice later.
+Every finding the owner reports during manual verification is implemented on this
+branch before the ship gate — no push-back, no deferral, no "not this slice," and
+no measuring it against the definition-of-done first. The ONLY way an item is
+deferred is the owner explicitly saying it can wait; a deferred item becomes a
+future slice the flow doesn't track. After each batch of fixes, re-run
+`feature-lint` + the boot smoke + feature-qc's browser-driven sweep over the flows
+the fixes touched (ship-stage fixes are usually UI fixes — the browser is the only
+gate that proves them).
 
-Loop test → triage → fix-now until no fix-nows remain.
+The scope firewall survives only for agent-self-generated ideas: unrelated work an
+agent notices while fixing (a tempting refactor, a someday cleanup) stays off the
+branch — surface it, then drop it. It never applies to anything the owner reported.
+
+Loop test → implement → re-verify until the owner has nothing left to report (or
+has explicitly deferred what remains).
 
 Before the gate, read branch-scoped feature state and show the **complete** output
 of `git status --short --untracked-files=all`: every modification, deletion, and
