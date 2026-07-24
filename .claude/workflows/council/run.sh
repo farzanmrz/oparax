@@ -16,6 +16,13 @@
 #                (e.g. QC's verify stage points this at ../verify-schema.json)
 #   - scratch  : $COUNCIL_SCRATCH, else <repo>/.feature/council
 #   - tier     : the LOCKED production tier per family (override with COUNCIL_TIER)
+#
+# TIER IS FAMILY-SHAPED — it is NOT the same axis across families:
+#   agy   : tier IS the model slug; model+effort are FUSED by the CLI itself
+#           (`--model gemini-3.1-pro --effort medium` is rejected outright; the slug carries both).
+#   codex : tier is EFFORT only. Model rides the separate COUNCIL_MODEL env var, forwarded to -m.
+#           Leave COUNCIL_MODEL empty and codex uses ~/.codex/config.toml's `model` instead.
+#   grok  : tier is EFFORT only. Model is hardcoded grok-4.5 in plan-grok.sh (single-model family).
 set -uo pipefail
 FAM="${1:?family}"; LABEL="${2:?label}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

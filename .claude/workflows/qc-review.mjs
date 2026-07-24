@@ -28,8 +28,20 @@ const generated = (args && args.generated) || 'none named — use judgment on ob
 const vetoes = (args && args.vetoes) || 'none supplied'
 const criteria = (args && args.criteria) || 'none supplied — if the plan/issue has a "Stack & design acceptance criteria" section, treat its lines as the criteria'
 const effort = (args && args.effort) === 'high' ? 'high' : 'medium'
-const large = !!(args && args.large) // caller-supplied; gates the line-by-line bug angle AND (with effort==='high') the external lanes
-const RISK = large || effort === 'high' // gate: turns the external FIND lanes on (verify is a flat 4-family fan-out, ungated)
+const large = !!(args && args.large)
+// `large` now gates only the exhaustive line-by-line scans (Claude + codex + agy). The external
+// lanes themselves are unconditional — see the EXTERNAL_LANES comment for why width is free here.
+
+// ARGS ARRIVAL PROBE — print what actually landed, before anything reads it. Two runs on ft/69
+// passed {large:true, effort:'high'} and both still logged "external lanes 0/0 (skipped — small,
+// non-risk diff)", i.e. the flags did not arrive; `range` looked fine only because its default
+// coincided with the intended value. Since a stringified args object reaches the script as a STRING
+// (not an object), `args.large` would be undefined with no error — this line makes that visible
+// instead of silently degrading the review. Root cause lives in the caller's payload, not here.
+log(`args → type=${typeof args} keys=${args && typeof args === 'object' ? Object.keys(args).join(',') : 'NONE'} · resolved effort=${effort} large=${large} range=${range}`)
+if (args && typeof args !== 'object') {
+  log('⚠️  args arrived as a NON-OBJECT (likely JSON-encoded string) — every field fell back to its default. Pass args as a real JSON object.')
+}
 
 const REPO = '/Users/farzanm4/Desktop/drive/repos/oparax'
 const SCRIPT_DIR = `${REPO}/.claude/workflows/council`
@@ -37,16 +49,31 @@ const FINDINGS_SCHEMA_FILE = `${REPO}/.claude/workflows/qc-findings-schema.json`
 const VERDICT_SCHEMA_FILE = `${REPO}/.claude/workflows/verify-schema.json`
 const SCRATCH = `${REPO}/.feature/qc-council` // self-gitignoring — .feature/ is the flow's live scratch
 
-// FIND-lane tiers (recall is what's being bought there — leave them rich).
-const TIERS = { codex: 'medium', grok: 'medium', agy: 'gemini-3.1-pro-high' }
-// VERIFY tiers — deliberately lighter than FIND: verification is a bounded read-the-code check, not
-// a search. codex = the flagship (run.sh/plan-codex.sh pass no -m, so codex's own default model
-// gpt-5.6-sol is used) at MEDIUM reasoning effort; grok = grok-4.5 (hardcoded in plan-grok.sh) at
-// medium; agy = gemini-3.1-pro at its LOWEST rung — the agy CLI exposes only `-high` and `-low` for
-// 3.1 Pro (no `-medium`; `--model gemini-3.1-pro --effort medium` is rejected outright), so `-low` is
-// the nearest step down from the FIND lane's `-high`.
-const VERIFY_TIERS = { codex: 'medium', grok: 'medium', agy: 'gemini-3.1-pro-low' }
+// ── Model/effort pins ────────────────────────────────────────────────────────────────────────
+// The `effort` switch (medium | high, set by the caller from the slice's risk) now drives the
+// EXTERNAL lanes too, not just the Claude ones. Before this it was Claude-only: a risk-touching
+// diff made Claude reason harder while codex/grok/agy stayed on hardcoded constants.
+//
+// Per-family shape differs because the CLIs differ (see council/run.sh):
+//   codex — model and effort are SEPARATE flags. Model rides COUNCIL_MODEL (added for this matrix);
+//           without it codex silently used ~/.codex/config.toml's gpt-5.6-luna while every comment
+//           here claimed gpt-5.6-sol. Capability gradient: luna on cleanup (opinion work), terra on
+//           the bug angles (recall matters), sol reserved for the large-diff exhaustive scan.
+//   agy   — model and effort are FUSED into one slug; gemini-3.1-pro publishes only -high and -low
+//           (no -medium; `--model gemini-3.1-pro --effort medium` is rejected outright), so the pro
+//           lanes are high-always. Flash carries the cleanup lane and does follow the switch.
+//   grok  — single model (grok-4.5, hardcoded in plan-grok.sh), effort only. Ablation says
+//           low≈medium in wall time, so cleanup sits at low for free.
+const CODEX_MODELS = { cleanup: 'gpt-5.6-luna', bug: 'gpt-5.6-terra', scan: 'gpt-5.6-sol' }
+const AGY_FLASH = effort === 'high' ? 'gemini-3.6-flash-high' : 'gemini-3.6-flash-medium'
+const AGY_PRO = 'gemini-3.1-pro-high' // no -medium rung exists; high is the only sane bug tier
+
+// VERIFY tiers — verification is a bounded read-the-code check, not a search, so it stays lighter
+// than FIND everywhere except agy (raised from -low to -high: it is the only tier that reasons).
+const VERIFY_TIERS = { codex: 'medium', grok: 'medium', agy: 'gemini-3.1-pro-high' }
+const VERIFY_CODEX_MODEL = 'gpt-5.6-sol' // now explicit — was silently config-default luna
 const VERIFY_CLAUDE_MODEL = 'sonnet' // de-pinned from opus — batched verification is a reading task
+const VERIFY_CLAUDE_EFFORT = effort // was unpinned entirely, inheriting the session's ambient effort
 const ALL_FAMILIES = ['claude', 'codex', 'grok', 'agy']
 
 const FINDINGS_SCHEMA = {
@@ -125,18 +152,21 @@ Report findings only (file, line, severity, one-sentence summary, concrete scena
 // External-CLI shell bridge, parameterized by output schema + success key (COUNCIL_SCHEMA /
 // COUNCIL_CHECK_KEY — see council/run.sh) so the same dispatcher serves plan drafts, QC findings,
 // and QC verify verdicts without three copies of the per-family wrapper scripts.
-async function cliBridge(family, tier, promptText, displayLabel, fileStem, ph, schemaFile, checkKey) {
+// `model` is codex-only (COUNCIL_MODEL → -m). agy encodes its model in `tier`; grok has one model.
+// Omitting it reproduces the pre-matrix behaviour: codex falls back to its config.toml default.
+async function cliBridge({ family, tier, model, prompt, label, stem, phase: ph, schemaFile, checkKey }) {
+  const modelEnv = model ? `COUNCIL_MODEL="${model}" ` : ''
   const raw = await agent(
     `You are a shell bridge to the ${family} CLI. Do EXACTLY these steps and nothing else — review nothing yourself:
-1. Using the Write tool, create the file "${SCRATCH}/${fileStem}.in.txt" with EXACTLY this content:
+1. Using the Write tool, create the file "${SCRATCH}/${stem}.in.txt" with EXACTLY this content:
 <<<PROMPT
-${promptText}
+${prompt}
 PROMPT
 2. Run this ONE command verbatim:
-   CLAUDE_PROJECT_DIR="${REPO}" COUNCIL_SCRATCH="${SCRATCH}" COUNCIL_TIER="${tier}" COUNCIL_SCHEMA="${schemaFile}" COUNCIL_CHECK_KEY="${checkKey}" bash "${SCRIPT_DIR}/run.sh" ${family} ${fileStem}
-3. If it exits non-zero, OR "${SCRATCH}/${fileStem}.out.json" is missing or empty, return exactly: FAILED
-4. Otherwise read "${SCRATCH}/${fileStem}.out.json" and return its RAW verbatim contents and nothing else — no fences, no commentary.`,
-    { label: displayLabel, phase: ph, model: 'sonnet', agentType: 'general-purpose' },
+   CLAUDE_PROJECT_DIR="${REPO}" COUNCIL_SCRATCH="${SCRATCH}" COUNCIL_TIER="${tier}" ${modelEnv}COUNCIL_SCHEMA="${schemaFile}" COUNCIL_CHECK_KEY="${checkKey}" bash "${SCRIPT_DIR}/run.sh" ${family} ${stem}
+3. If it exits non-zero, OR "${SCRATCH}/${stem}.out.json" is missing or empty, return exactly: FAILED
+4. Otherwise read "${SCRATCH}/${stem}.out.json" and return its RAW verbatim contents and nothing else — no fences, no commentary.`,
+    { label, phase: ph, model: 'sonnet', agentType: 'general-purpose' },
   )
   return parseJson(raw)
 }
@@ -183,34 +213,57 @@ const claudeResults = await parallel(
   ),
 )
 
-// External lanes — distinct charters, never the generic "review this diff". Conditional: a large
-// diff or a risk-touching one (effort:'high', set by the caller for auth/money/schema/trust-boundary
-// slices) earns the extra cross-model recall; a small safe diff gets the Claude floor only.
-const EXTERNAL_LANES = RISK
-  ? [
-      {
-        family: 'codex', tier: TIERS.codex, class: 'bug', angle: 'correctness+contracts',
-        prompt: `You are the CORRECTNESS + CONTRACT + REMOVED-BEHAVIOR reviewer for this diff — an independent model family, not a rerun of another reviewer. Trace every contract the changed code participates in against the ACTUAL dependency sources (read node_modules, don't guess versions), find concrete correctness bugs, and flag any behavior the diff silently removed or narrowed. Effort: ${effort}.${commonTail}`,
-      },
-      {
-        family: 'grok', tier: TIERS.grok, class: 'bug', angle: 'adversarial-trust-boundary',
-        prompt: `You are the ADVERSARIAL / TRUST-BOUNDARY reviewer for this diff — bring your OWN threat model, don't reproduce another reviewer's. Attack every trust boundary, state machine, and parser the diff touches; think about the worst-case input, not the happy path. Effort: ${effort}.${commonTail}`,
-      },
-      {
-        family: 'agy', tier: TIERS.agy, class: 'cleanup', angle: 'over-engineering',
-        prompt: `You are the SIMPLIFICATION / OVER-ENGINEERING reviewer for this diff. Find code that is over-engineered, placed at the wrong layer, duplicates an existing primitive, or uses a complicated architecture when a simpler BEHAVIOR-PRESERVING one exists. This is a judgment call, not a style pass — only report a change you are confident is materially clearer and does not lose behavior.${commonTail}`,
-      },
-    ]
-  : []
+// External lanes — distinct charters, never the generic "review this diff". These are now
+// ALWAYS-ON: finding is a divergent task, and a barrier costs its slowest member rather than its
+// width, so extra families ride in the shadow of the opus bug-finders instead of adding wall time.
+// Only the exhaustive line-by-line scans stay conditional on a large diff, mirroring the Claude
+// floor's own structure. (Previously the whole external block was gated on RISK, which meant an
+// ordinary diff got Claude-only review — and a silently-dropped `large`/`effort` arg degraded a
+// risk-touching diff to the same thing without saying so. Hence the assertion below.)
+const CHARTER_CLEANUP = `You are the CLEANUP reviewer for this diff — an independent model family, not a rerun of another reviewer. Cover all of: REUSE (logic the repo or its dependencies already provide that the diff reimplements), SIMPLIFICATION (unnecessary abstraction/indirection, dead branches, redundant state, behavior-preserving shortening), ALTITUDE (logic sitting at the wrong layer, leaking a concern up or down; comment density/accuracy against surrounding idiom), OVER-ENGINEERING (a complicated architecture where a simpler behavior-preserving one exists), and EFFICIENCY (only obviously wasteful hot-path work). Judgment calls only — never stylistic preference, and every suggestion must preserve behavior exactly.`
+const CHARTER_CONTRACTS = `You are the CORRECTNESS + CONTRACT + REMOVED-BEHAVIOR reviewer for this diff — an independent model family, not a rerun of another reviewer. Trace every contract the changed code participates in against the ACTUAL dependency sources (read node_modules, don't guess versions), find concrete correctness bugs, and flag any behavior the diff silently removed or narrowed.`
+const CHARTER_ADVERSARIAL = `You are the ADVERSARIAL / TRUST-BOUNDARY reviewer for this diff — bring your OWN threat model, don't reproduce another reviewer's. Attack every trust boundary, state machine, and parser the diff touches; think about the worst-case input, not the happy path.`
+const CHARTER_COMBINED_BUG = `${CHARTER_CONTRACTS}\n\nAlso cover, in the same pass: ${CHARTER_ADVERSARIAL}`
+const CHARTER_SCAN = `You are the LINE-BY-LINE reviewer for this diff — an exhaustive scan, distinct from contract tracing and adversarial review. Scrutinize every changed line for defects (edge cases, off-by-one, null/undefined, type assumptions, encoding, ordering). Self-verify each candidate against the code before reporting; drop only what you can REFUTE.`
 
-const externalResults = EXTERNAL_LANES.length
-  ? (await parallel(EXTERNAL_LANES.map((lane) => () =>
-      cliBridge(lane.family, lane.tier, lane.prompt, `${lane.family}:${lane.angle}`, `find-${lane.family}`, 'Find', FINDINGS_SCHEMA_FILE, 'findings')
-        .then((out) => ({ lane, out })),
-    ))).filter(Boolean).filter((r) => r.out)
-  : []
+const EXTERNAL_LANES = [
+  // Codex — capability gradient across the three gpt-5.6 models.
+  { family: 'codex', model: CODEX_MODELS.cleanup, tier: effort, class: 'cleanup', angle: 'cleanup-combined', prompt: CHARTER_CLEANUP },
+  { family: 'codex', model: CODEX_MODELS.bug, tier: effort, class: 'bug', angle: 'cross-file-contracts', prompt: CHARTER_CONTRACTS },
+  { family: 'codex', model: CODEX_MODELS.bug, tier: effort, class: 'bug', angle: 'adversarial', prompt: CHARTER_ADVERSARIAL },
+  // Gemini — flash carries cleanup (opinion work); the bug angles need the reasoning tier.
+  { family: 'agy', tier: AGY_FLASH, class: 'cleanup', angle: 'cleanup-combined', prompt: CHARTER_CLEANUP },
+  { family: 'agy', tier: AGY_PRO, class: 'bug', angle: 'cross-file-contracts', prompt: CHARTER_CONTRACTS },
+  { family: 'agy', tier: AGY_PRO, class: 'bug', angle: 'adversarial', prompt: CHARTER_ADVERSARIAL },
+  // Grok — one model, so the angles collapse into two combined agents rather than four thin ones.
+  { family: 'grok', tier: 'low', class: 'cleanup', angle: 'cleanup-combined', prompt: CHARTER_CLEANUP },
+  { family: 'grok', tier: 'medium', class: 'bug', angle: 'contracts+adversarial', prompt: CHARTER_COMBINED_BUG },
+  // Exhaustive scans — large diffs only, one per external family that has a heavy tier to spend.
+  ...(large
+    ? [
+        { family: 'codex', model: CODEX_MODELS.scan, tier: 'medium', class: 'bug', angle: 'line-by-line', prompt: CHARTER_SCAN },
+        { family: 'agy', tier: AGY_PRO, class: 'bug', angle: 'line-by-line', prompt: CHARTER_SCAN },
+      ]
+    : []),
+]
 
-log(`find → claude floor ${claudeResults.filter((r) => r && r.out).length}/${FINDERS.length}, external lanes ${externalResults.length}/${EXTERNAL_LANES.length}${RISK ? '' : ' (skipped — small, non-risk diff)'}`)
+const externalResults = (await parallel(EXTERNAL_LANES.map((lane, i) => () =>
+  cliBridge({
+    family: lane.family, tier: lane.tier, model: lane.model, prompt: `${lane.prompt}${commonTail}`,
+    label: `${lane.family}:${lane.angle}`, stem: `find-${lane.family}-${i}`, phase: 'Find',
+    schemaFile: FINDINGS_SCHEMA_FILE, checkKey: 'findings',
+  }).then((out) => ({ lane, out })),
+))).filter(Boolean).filter((r) => r.out)
+
+const claudeOk = claudeResults.filter((r) => r && r.out).length
+log(`find → claude ${claudeOk}/${FINDERS.length}, external ${externalResults.length}/${EXTERNAL_LANES.length} · effort=${effort} large=${large}`)
+// Fail LOUD on a degraded review. A prior run silently reported "external lanes 0/0 (skipped)"
+// because an oversized args payload meant `large`/`effort` never arrived — an 89-file security diff
+// got the Claude floor only, and nothing said so. Lanes are always-on now, so zero surviving
+// external lanes means infrastructure failure, never a routing decision.
+if (externalResults.length === 0) {
+  log(`⚠️  ALL ${EXTERNAL_LANES.length} EXTERNAL LANES FAILED — this review is Claude-only and MUST NOT be reported as a full cross-model pass. Check .feature/qc-council/*.in.txt and re-run.`)
+}
 
 const rawFindings = []
 for (const r of claudeResults) {
@@ -219,12 +272,15 @@ for (const r of claudeResults) {
 }
 for (const r of externalResults) {
   if (!r || !r.out || !Array.isArray(r.out.findings)) continue
-  for (const finding of r.out.findings) rawFindings.push({ class: r.lane.class, angle: r.lane.angle, family: r.lane.family, model: r.lane.tier, ...finding })
+  // codex reports its real model; agy's tier IS the model slug; grok is single-model.
+  for (const finding of r.out.findings) rawFindings.push({ class: r.lane.class, angle: r.lane.angle, family: r.lane.family, model: r.lane.model || r.lane.tier, ...finding })
 }
 log(`find → ${rawFindings.length} raw findings before dedup`)
 
-// ── Stage 2 · Dedup — convergent, single owner (Sonnet). No diversity benefit: merging a list is
-// not a hypothesis to diversify, a second family just re-sorts the same set. ─────────────────────
+// ── Stage 2 · Dedup — convergent, single owner (Opus, high). No diversity benefit: merging a list
+// is not a hypothesis to diversify, a second family just re-sorts the same set. Raised from sonnet
+// when the lanes went always-on: input roughly tripled and now spans four families plus the browser
+// journeys, so consolidation is genuinely harder than it was against the Claude floor alone. ─────
 phase('Dedup')
 let dedupedFindings = []
 if (rawFindings.length) {
@@ -252,7 +308,7 @@ Merge near-duplicates: same file, overlapping/adjacent line, and semantically th
 Drop anything that is a plan-frozen decision, not a real finding: ${vetoes}
 Drop anything that is speculative or contradicted by another finding without any family independently confirming it.
 Raw findings (JSON, each tagged with its family): ${JSON.stringify(rawFindings)}`,
-    { label: 'dedup', phase: 'Dedup', model: 'sonnet', agentType: 'general-purpose', schema: DEDUP_SCHEMA },
+    { label: 'dedup', phase: 'Dedup', model: 'opus', effort: 'high', agentType: 'general-purpose', schema: DEDUP_SCHEMA },
   )
   dedupedFindings = (dedup && Array.isArray(dedup.findings)) ? dedup.findings : []
 }
@@ -305,9 +361,13 @@ ${items}`
 
 async function castBallot(family) {
   if (family === 'claude') {
-    return agent(batchVerifyPrompt('claude'), { label: 'verify:claude', phase: 'Verify', model: VERIFY_CLAUDE_MODEL, agentType: 'general-purpose', schema: VERDICT_SCHEMA })
+    return agent(batchVerifyPrompt('claude'), { label: 'verify:claude', phase: 'Verify', model: VERIFY_CLAUDE_MODEL, effort: VERIFY_CLAUDE_EFFORT, agentType: 'general-purpose', schema: VERDICT_SCHEMA })
   }
-  return cliBridge(family, VERIFY_TIERS[family], batchVerifyPrompt(family), `verify:${family}`, `verify-${family}`, 'Verify', VERDICT_SCHEMA_FILE, 'verdicts')
+  return cliBridge({
+    family, tier: VERIFY_TIERS[family], model: family === 'codex' ? VERIFY_CODEX_MODEL : undefined,
+    prompt: batchVerifyPrompt(family), label: `verify:${family}`, stem: `verify-${family}`,
+    phase: 'Verify', schemaFile: VERDICT_SCHEMA_FILE, checkKey: 'verdicts',
+  })
 }
 
 const readBallot = (out) => (out && Array.isArray(out.verdicts) ? out.verdicts : null)

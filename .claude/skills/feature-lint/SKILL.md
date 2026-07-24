@@ -7,7 +7,11 @@ description: >-
   formatting — the PostToolUse hook already does that on every write.
 argument-hint: "[base ref, default dev]"
 allowed-tools: Bash(git *) Bash(pnpm *)
-model: inherit
+# sonnet, not inherit: this skill's own work is mechanical (run lint, group the findings
+# by file, dispatch lint-fixer agents, re-run). Under `inherit` it ran that grouping pass
+# on whatever the calling session was set to — opus orchestrating a file-grouping loop.
+# The fixes themselves are already pinned in lint-fixer.
+model: sonnet
 ---
 
 # Lint resolve — clear the residual, safely

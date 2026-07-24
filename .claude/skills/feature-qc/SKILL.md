@@ -13,15 +13,35 @@ model: inherit
 
 Over the whole branch diff, in order (skip nothing silently — report each step):
 
-0. **Resolve the diff boundary.** Read branch state:
-   `node .claude/skills/feature-handoff/scripts/state.mjs show --branch "$(git branch
-   --show-current)"`. If `.mode === "current"`, the range is **`<state.baseSha>..HEAD`**
-   — never `origin/dev...HEAD` and never a later `dev` SHA; `baseSha` is written once at
-   `init` and is immutable afterward, so it is the correct, stable boundary for a
-   direct-dev run. If `.mode === "tracked"` (or no state exists — a standalone run),
-   the range stays `origin/dev...ft/<N>` as before. Convergence next: all commits on
-   the feature branch; no stray flow worktrees under `.claude/worktrees/`; no stray
-   branches.
+0. **Setup — delegate it, don't spend the session model on it.** Everything in this step
+   is mechanical (run a command, read the output, move on) — measured on a real run it
+   cost 7 main-session turns and produced no decision. Dispatch ONE `haiku` agent to
+   gather it all and return a compact block; the session only reads the result.
+
+   The agent gathers, in order:
+   - **Diff boundary.** `node .claude/skills/feature-handoff/scripts/state.mjs show
+     --branch "$(git branch --show-current)"`. If `.mode === "current"`, the range is
+     **`<state.baseSha>..HEAD`** — never `origin/dev...HEAD` and never a later `dev`
+     SHA; `baseSha` is written once at `init` and immutable after, so it is the correct
+     stable boundary for a direct-dev run. If `.mode === "tracked"` (or no state exists
+     — a standalone run), the range stays `origin/dev...ft/<N>`.
+   - **Convergence.** All commits on the feature branch; no stray flow worktrees under
+     `.claude/worktrees/`; no stray branches.
+   - **Diff size.** `git diff --shortstat <range>` and `git diff --stat` (to spot
+     generated files) — these set step 1's `large` flag.
+   - **Acceptance criteria.** The ft issue's "Stack & design acceptance criteria"
+     section via `gh issue view`, returned verbatim for step 1's `criteria` arg.
+   - **Dev server + boot smoke.** Start `pnpm dev` in the background ONCE, record the
+     REAL listening PID (`lsof -i :3000 -sTCP:LISTEN` — the shell wrapper's PID is not
+     the node process and killing it leaves the port bound), wait for readiness, and
+     grep startup output for `✓ Ready` plus failure signatures (ERROR, "failed", unmet
+     peer, unhandled rejection). This IS the boot smoke — it is pattern-matching over
+     startup text, not judgment, so it never deserves a model of its own. Collect
+     WARNINGs for triage. **Leave the server running** — step 1's browser journeys and
+     step 4's re-sweep both reuse it; it is killed once, in step 5.
+
+   If the boot smoke fails, STOP and report — there is no point reviewing a branch that
+   doesn't start.
 1. **Review fan-out** — one `Workflow({ scriptPath: ".claude/workflows/qc-review.mjs",
    args })` call runs the whole find→dedup→verify pipeline against the frozen diff.
    Address it by **`scriptPath`, never `name`** — `Workflow({ name })` resolves only
@@ -29,21 +49,29 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    `{ name: "qc-review" }` silently 404s and degrades to the unbounded `/code-review`
    path; the path form runs the repo workflow directly.
 
-   **Find** (models pinned in the workflow, not prose) — the Claude floor always runs:
-   two `cleanup-finder` angles (reuse+simplification, altitude+efficiency) +
-   `conventions-finder` on sonnet; `bug-finder` adversarial + cross-file angles on
-   opus; a line-by-line angle (sonnet) on large diffs only. Three **external lanes**
-   join when the diff is large or risk-touching, each a **distinct charter** (never
-   the generic "review this diff"): Codex/gpt-5.6-sol (medium) — correctness +
-   contract + removed-behavior; Grok-4.5 (medium) — adversarial / trust-boundary;
-   Gemini-3.1-pro via `agy` (high) — over-engineering / wrong-layer / duplication.
-   This is cross-model diversity spent where it pays: finding is a DIVERGENT task
-   (more independent eyes catch more), so every family runs concurrently, blind to
-   the others' output.
+   **Find** (models pinned in the workflow, not prose) — **all four families always
+   run**, each on a distinct charter, never the generic "review this diff". Finding is
+   a DIVERGENT task, and a barrier costs its slowest member rather than its width, so
+   extra families ride in the shadow of the opus bug-finders instead of adding wall
+   time. Claude: two `cleanup-finder` angles + `conventions-finder` (sonnet), two
+   `bug-finder` angles (opus). Codex: one combined cleanup (luna), two bug angles
+   (terra). Gemini via `agy`: one combined cleanup (3.6-flash), two bug angles
+   (3.1-pro-high — flash is too thin for recall work). Grok: two combined agents
+   (4.5), since it is a single-model family. Only the exhaustive **line-by-line**
+   scans are conditional on a large diff (Claude sonnet, codex sol, agy pro).
 
-   **Dedup** (sonnet, single pass) merges near-duplicates across lanes and drops
+   **Browser journeys run in this same barrier** — see step 1b. Their findings enter
+   the same dedup and get fixed in the same pass as the static ones.
+
+   The `effort` switch drives the external lanes too, not just Claude's. If the
+   workflow logs that all external lanes failed, the review is Claude-only and must
+   NOT be reported as a full cross-model pass — check `.feature/qc-council/*.in.txt`
+   and re-run.
+
+   **Dedup** (opus, high, single pass) merges near-duplicates across lanes and drops
    plan-frozen vetoes — a CONVERGENT task (consolidating a list is not a hypothesis
-   to diversify), so one owner, not a second opinion.
+   to diversify), so one owner, not a second opinion. On opus because its input spans
+   four families plus the browser journeys.
 
    **Verify** is cross-family again — DIVERGENT for the same reason as find, and
    the second place external usage earns its keep — but **batched: one verifier per
@@ -62,87 +90,114 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    per-family fan-out was deleted: on #69 it burned 30 agents to return 30 CONFIRMED
    and 0 refuted.
 
-   Measure the diff first (`git diff --shortstat <range>` — the range from step 0) and
-   pass `args`: `{ range, generated: "<globs>", vetoes: "<plan-frozen decisions>",
-   criteria: "<the ft issue's 'Stack & design acceptance criteria' section>",
-   large: <bool>, effort: "medium" }` — `criteria` is what `conventions-finder`
-   verifies the built diff against; set `large: true` on a big diff (roughly >8 files
-   or >200 changed lines) to add the line-by-line bug angle AND the external lanes,
+   Pass `args` (from step 0's gathered block): `{ range, generated: "<globs>",
+   vetoes: "<plan-frozen decisions>", criteria: "<the ft issue's 'Stack & design
+   acceptance criteria' section>", large: <bool>, effort: "medium" }` — `criteria` is
+   what `conventions-finder` verifies the built diff against; set `large: true` on a
+   big diff (roughly >8 files or >200 changed lines) to add the line-by-line scans,
    and `effort: "high"` when the slice adds a table/migration, a new trust boundary
-   (auth, server action, agent tool surface), or touches posting/money paths — this
-   also gates the external FIND lanes on (verify's 4-family fan-out is flat and
-   ungated). It returns `findings`, each already tagged `raisedBy` (which families
-   independently found it) and `confirmed` (the verify quorum), plus `verifiersRun`
-   — the workflow only reports, the session still decides.
-2. **Adjudicate + apply (this session).** Plan-frozen decisions in the ft issue are
-   vetoes, not findings; drop them even if `confirmed`. A finding that is real but
-   not-this-slice (a bigger refactor, a scale concern that can't bite yet) → surface
-   it to the user and drop it; the flow doesn't track deferrals. Apply the survivors —
-   **convergent, single owner**: `sonnet` for an ordinary fix, `opus` for a risk-path
-   fix (auth, money, posting, schema/migration, new trust boundary) — never fan a fix
-   out across families; three model families editing the same file concurrently
-   produces conflicting diffs to reconcile, not more correctness. The applied fix
-   diff stays gated by the tsc + lint pass (step 3), boot smoke (step 4), and the
-   browser sweep (step 5) — no separate delta-verify pass. Large/risky diff → offer the user `/code-review ultra`
-   before proceeding.
+   (auth, server action, agent tool surface), or touches posting/money paths. It
+   returns `findings`, each already tagged `raisedBy` (which families independently
+   found it) and `confirmed` (the verify quorum), plus `verifiersRun` — the workflow
+   only reports, the session still decides.
+
+   **`args` must be a real JSON object, never a JSON-encoded string** — a stringified
+   payload reaches the script as a string, so every field silently falls back to its
+   default with no error. This has bitten a real run twice: `large`/`effort` never
+   arrived and an 89-file security-touching diff got a small-diff review. The workflow
+   now prints an args-arrival probe as its first log line; read it and confirm the
+   resolved `effort`/`large` match what you passed before trusting the results.
+
+1b. **Browser journeys — dispatched in parallel WITH step 1's fan-out, not after it.**
+   Every other pass is static (diff review, tsc, lint, build, a boot smoke that only
+   greps startup text); none of them renders a page or clicks a control. On #69 that
+   gap let a nested-`<form>` hydration error, a click-path ReferenceError, and layout
+   violations past 36 static agents, tsc, lint, and a `✓ Ready` grep. Running these
+   concurrently with the static finders means browser findings land in the SAME dedup
+   and get fixed in the SAME pass — rather than surfacing after lint and forcing a
+   second trip through the fix loop.
+
+   **Tool: the `agent-browser` CLI, headless.** Three browser surfaces exist here; the
+   other two — Claude's in-app browser (`mcp__Claude_Browser__*`) and the Chrome
+   connector (`mcp__claude-in-chrome__*`) — are token-heavy MCP surfaces and are
+   REJECTED for this stage. Do not "upgrade" it to one of them. `agent-browser` wins on
+   three counts: plain Bash with compact text output (an accessibility-tree snapshot is
+   ~200-400 tokens versus parsing raw HTML), headless by default (`--headed` is opt-in),
+   and `--session <name>` isolates parallel runs.
+
+   **Auth is pre-solved — no login step, ever.** A `testuser@oparax.ai` session was
+   captured once via `agent-browser state save` to
+   `~/.agent-browser/oparax-qc-authenticated.json`; every dispatch passes `--state <that
+   path>` on its first command and lands pre-authenticated. If a route bounces to
+   `/login` despite it, the saved session expired — that comes back as a finding, not a
+   reason to prompt the owner for credentials. Refreshing it requires a human to log in
+   once in a headed window (owner-only, never this agent's job).
+
+   **Derive JOURNEYS from the diff, not routes.** Ask what a user can now *do* that they
+   couldn't before, or do differently, and write each as an ordered walk. A journey
+   usually spans several routes, and the handoffs between them are exactly where the
+   manual pass found bugs — per-route checking structurally cannot see them. Dispatch
+   one `browser-verifier` per journey, each with its own `--session` id, all in
+   parallel, reusing step 0's already-running server.
+
+   Three rules make that parallelism safe:
+   - **State each journey's preconditions.** A UI state that only exists with certain
+     data (a populated list vs an empty state, a completed vs in-flight job) is not
+     reachable just by loading its URL. Either the precondition already holds, or it can
+     be established cheaply and reversibly (seed a row directly — far cheaper than
+     driving the UI that creates it), or it cannot be established without a spending or
+     irreversible action, in which case it is reported unreachable and handed to the
+     owner's manual list. Never let the sweep silently skip a state.
+   - **Isolate at every layer the journeys share.** `--session` isolates the browser
+     only. Agents authenticating as the same user still contend on the same rows, so a
+     journey that WRITES needs its own record (seed one per mutating journey) or must
+     run serially. Read-only journeys parallelize freely.
+   - **Never drive flows that spend real money or are irreversible** — payments, live
+     posting, sends, destructive deletes. Walk up to that control, confirm the state
+     preceding it, and report the rest as unreached-by-design.
+
+   Keep it proportionate: smoke-level, one pass per journey, not a full E2E suite.
+2. **Adjudicate (this session) + apply (dispatched).** Adjudication is the one stage
+   that genuinely earns the session model, and measurement backs that: on a real run
+   it was 82% of main-session output tokens, and the turns were things a cheap model
+   would miss — catching that the workflow's own args hadn't arrived, reasoning that a
+   `"use server"` export is an independently-reachable HTTP endpoint regardless of who
+   imports it, and deciding to HOLD two findings rather than fix them concurrently with
+   a still-running review. Keep it here.
+
+   Plan-frozen decisions in the ft issue are vetoes, not findings; drop them even if
+   `confirmed`. A finding that is real but not-this-slice (a bigger refactor, a scale
+   concern that can't bite yet) → surface it to the user and drop it; the flow doesn't
+   track deferrals.
+
+   **Applying** a decided fix is not adjudication — **dispatch it**, don't spend the
+   session model writing the edit. One owner per fix: an `implementer`-style agent on
+   `sonnet` for an ordinary fix, `opus` for a risk-path fix (auth, money, posting,
+   schema/migration, new trust boundary). Never fan one fix across families — three
+   model families editing the same file concurrently produces conflicting diffs to
+   reconcile, not more correctness. Where several fixes touch disjoint files, dispatch
+   them in parallel; where they overlap, serialize. The applied fix diff stays gated by
+   the tsc + lint pass (step 3) and the re-sweep (step 4) — no separate delta-verify
+   pass. Large/risky diff → offer the user `/code-review ultra` before proceeding.
 3. **`feature-lint`** (scoped to the feature's changed files — LAST because the review
    pass mutates code). Formatting is NOT part of this step: the `PostToolUse` hook
    already formatted every write, including the fixes applied in step 2. What's left
    is the residual Biome won't auto-fix (no-fix + `--unsafe` rules) → risk-tiered
    fixer agents, gating on a clean `pnpm build` — the authority on compile correctness.
-4. **Boot smoke** — builds can't see boot failures: background `pnpm dev`, wait for
-   readiness, assert Next.js reports "Ready" and NO failure signatures (ERROR,
-   "failed", unmet peer, unhandled rejection). This is pattern-matching over startup
-   text, not judgment — `haiku` (or no model at all, plain grep) reads the log; never
-   spend a heavier model here. Collect WARNINGs for triage; kill the process. Startup
-   output only.
-5. **Browser sweep** — every earlier pass is static (diff review, tsc, lint, build, a
-   boot smoke that only greps startup text); none of them ever renders a page or clicks
-   a control. On #69 that gap let a nested-`<form>` hydration error, a click-path
-   ReferenceError, and layout-convention violations past 36 static agents, tsc, lint,
-   and a `✓ Ready` grep — this stage exists because nothing else in the battery renders.
-
-   **Tool: the `agent-browser` CLI, headless.** Three browser surfaces exist here;
-   the other two — Claude's in-app browser (`mcp__Claude_Browser__*`) and the Chrome
-   connector (`mcp__claude-in-chrome__*`) — are token-heavy MCP surfaces and are
-   REJECTED for this stage. Do not "upgrade" it to one of them. `agent-browser` wins on
-   three counts: it is plain Bash with compact text output (an accessibility-tree
-   snapshot is ~200-400 tokens, versus parsing raw HTML), it is headless by default
-   (`--headed` is opt-in), and `--session <name>` isolates parallel runs.
-
-   **Auth is pre-solved — no login step, ever, in this stage.** A `testuser@oparax.ai`
-   session was captured once via `agent-browser state save` to
-   `~/.agent-browser/oparax-qc-authenticated.json`; every `browser-verifier` dispatch passes
-   `--state <that path>` on its first command (see the agent's own body) and lands
-   pre-authenticated. If a route bounces to `/login` despite it, the saved session expired —
-   that comes back as a finding, not a reason to prompt the owner for credentials; refreshing
-   it requires a human to log in once in a headed window (owner-only, never this agent's job).
-
-   **How it runs.** Derive the changed routes/flows from the branch diff (the step-0
-   range), group them, and dispatch **`browser-verifier` agents in PARALLEL — one per
-   route-or-flow group, each given its own `--session` id** so the browsers don't
-   collide. The agent is pinned cheap (sonnet, `effort: low`) on purpose: this is
-   observation and transcription, not judgment. Reuse the dev server step 4 already
-   started — never boot a second one; pass its base URL in the dispatch.
-
-   Each agent: `agent-browser open <url>` → `snapshot -i` → exercise each new/changed
-   interactive control ONCE → collect **hydration errors, unhandled runtime errors,
-   React error overlays, failed network requests, and console errors** via
-   `agent-browser console` / `errors` / `network requests` / `vitals` (vitals reports
-   hydration). `agent-browser open --enable react-devtools <url>` unlocks `agent-browser
-   react tree` when a React-internals question comes up, and `agent-browser skills get
-   dogfood` loads a dedicated exploratory-QA skill if a flow needs deeper poking. The
-   agent body owns the command detail — don't restate it here.
-
-   Keep it proportionate: smoke-level, one pass per touched flow, not a full E2E suite.
-   **Exclusion — never drive flows that spend real money**: voice extraction against a
-   fresh handle and live posting to X stay owner-manual, always. Findings feed the same
-   single-owner fix loop as every other pass (step 2's convergent rule); re-run the
-   stage until clean.
-6. **Doc sync — subtractive first** (the revise-agents-md philosophy at slice scope;
-   ships in the same diff). **Convergent, single owner — `sonnet-high`**: different
-   model lanes must never make competing edits to the same instruction file, so this
-   is deliberately not cross-model. Fed by the `conventions-finder` lane's staleness
+   Its orchestration is mechanical (run lint, group files, dispatch, re-run) — pin it
+   to `sonnet`; the skill is `model: inherit`, so on an opus session it would otherwise
+   run the whole grouping pass on the expensive model for no gain.
+4. **Browser re-sweep — narrow.** Step 1b already swept every journey; this pass exists
+   only to catch regressions the step-2 fixes introduced, so scope it to the journeys
+   whose routes those fixes actually touched (that list is only knowable now, which is
+   why this can't be folded into step 1b). Same `browser-verifier` agents, same running
+   server, same `--state` auth. If step 2 changed nothing, skip it and say so.
+5. **Doc sync — subtractive first** (the revise-agents-md philosophy at slice scope;
+   ships in the same diff). **Convergent, single owner — dispatch ONE agent pinned to
+   `sonnet` at `effort: high`** (not prose that merely names a model — name the model
+   AND dispatch, or the session ends up doing it at whatever model it happens to be on).
+   Different model lanes must never make competing edits to the same instruction file,
+   so this is deliberately not cross-model. Fed by the `conventions-finder` lane's staleness
    findings from step 1 (it already reports "instruction-file lines the diff has made
    wrong or incomplete" as part of Find) — that is the evidence; this step is where it
    gets applied. Default outcome is **no change** — say so plainly rather than invent
@@ -159,10 +214,19 @@ Over the whole branch diff, in order (skip nothing silently — report each step
      `/meta-dev:improve-skill`, never inline-rewrite it here.
    Single-source every fact (one home; cross-reference, never restate).
 
+   **Then tear down.** Kill the dev server started in step 0 by its REAL listening PID
+   and confirm the port is free (`lsof -i :3000 -sTCP:LISTEN` returns nothing). Never
+   leave it running — and never trust the wrapper PID, which does not stop the listener.
+
 Hard rules: the Claude find floor is one barrier of ≤6 finders (5 on a small diff, 6
-on a large one); the external lanes add ≤3 more, and verify is a FIXED 4 agents (one
-per model family, each ruling on the whole list) no matter how many findings survived
-dedup — never reintroduce a per-finding verify fan-out. The workflow's own concurrency
+on a large one); the external lanes add 8 more (10 on a large diff), and verify is a
+FIXED 4 agents (one per model family, each ruling on the whole list) no matter how many
+findings survived dedup — never reintroduce a per-finding verify fan-out. Browser
+journeys are dispatched separately, one per journey, alongside the find barrier. The
+session model is spent on ADJUDICATION ONLY — setup, fixes, lint orchestration, doc
+sync, and every browser pass are dispatched to pinned agents; a step that names a model
+in prose without dispatching will silently run on whatever the session happens to be.
+The workflow's own concurrency
 queue (cap 16 in flight) throttles the find barrier, not a hard per-run agent limit. The
 `qc-review` workflow (invoked by `scriptPath`, see step 1) owns finder/verifier
 parallelism and every model pin — nothing here is prose-decided. Never fall back to
@@ -170,4 +234,5 @@ parallelism and every model pin — nothing here is prose-decided. Never fall ba
 defeats the structure this workflow exists to enforce. If any step reveals a
 dependency MAJOR upgrade, framework migration, or schema/data migration is required —
 STOP and present options; never fix those autonomously. End by stating: builds ✓
-boots ✓ browser sweep clean ✓ findings fixed ✓ (or what remains).
+boots ✓ journeys walked ✓ (+ anything reported NOT REACHED, verbatim — that list is the
+owner's manual-check set) findings fixed ✓ server killed ✓ (or what remains).
