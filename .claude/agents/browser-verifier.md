@@ -46,8 +46,19 @@ never try to obtain or guess any.
 
 ```bash
 agent-browser --session <name> open <base><route>
+agent-browser --session <name> wait --load networkidle
 agent-browser --session <name> snapshot -i          # interactive elements + @refs
 ```
+
+**Wait before you look — several routes here redirect** (`/agents` bounces through a
+feed-first redirect into a specific agent's page; auth guards redirect an unauthenticated
+hit elsewhere). Snapshotting immediately after `open` can catch the page mid-redirect and
+misreport what's actually there. `wait --load networkidle` handles this generically —
+prefer it over a fixed sleep. If a specific route needs more (a client-side transition
+`networkidle` doesn't cover), wait for the concrete signal instead: `wait --text "<expected
+heading>"` or `wait @<ref>` for an element you know should appear. Only fall back to a bare
+`wait 2000` as a last resort, per the `agent-browser` skill's own guidance — it's a blunt
+instrument that makes the sweep slower and still isn't a real completion signal.
 
 Then, for each control named in your dispatch: click/fill/select it ONCE via its `@ref`
 (`click @ref`, `fill @ref <text>`, `select @ref <val>`), re-`snapshot -i` to see what
