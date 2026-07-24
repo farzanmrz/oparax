@@ -5,9 +5,12 @@
 // The create-desk screen: a full-width form — Desk name + Beat across the top, then Sources and
 // Voice side by side — with a short "what happens next" panel below. Tracked accounts accept
 // comma/space/newline paste with or without a leading @, capped at MAX_TRACKED_HANDLES; the
-// server (createDesk) re-validates + re-caps. No model call runs from this screen.
+// server (createDesk) re-validates + re-caps. A collapsible assistant panel next to the Beat
+// field (create-desk-assistant.tsx) helps clarify a fuzzy or garbled beat via /api/chat and
+// hands its result back into this form's own field state — it never submits the form itself.
+// No model call runs unless the reporter opens that panel.
 
-import { InfoIcon, Loader2Icon, XIcon } from "lucide-react";
+import { InfoIcon, Loader2Icon, SparklesIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -25,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { createDesk } from "./actions";
+import { CreateDeskAssistant, type CreateDeskAssistantValues } from "./create-desk-assistant";
 
 /** Strip leading @(s) + whitespace. Case is preserved for display; the server lowercases and
  *  charset-validates on save (lib/x/handle.ts). */
@@ -110,8 +114,16 @@ export function CreateDeskForm() {
   const [handleDraft, setHandleDraft] = useState("");
   const [reporterHandle, setReporterHandle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   const atLimit = handles.length >= MAX_TRACKED;
+
+  function applyAssistantValues(values: CreateDeskAssistantValues) {
+    setName(values.name);
+    setBeat(values.beat);
+    setHandles(values.trackedHandles);
+    setReporterHandle(values.reporterHandle);
+  }
 
   function commitDraft() {
     const parts = splitHandles(handleDraft);
@@ -186,15 +198,27 @@ export function CreateDeskForm() {
             </div>
 
             <div className="flex flex-col gap-1.5 md:col-span-2">
-              <FieldLabel help="The topic this desk watches. Be specific — it steers what counts as a story worth drafting.">
-                Beat
-              </FieldLabel>
+              <div className="flex items-center justify-between gap-2">
+                <FieldLabel help="The topic this desk watches. Be specific — it steers what counts as a story worth drafting.">
+                  Beat
+                </FieldLabel>
+                <Button
+                  onClick={() => setAssistantOpen((open) => !open)}
+                  size="xs"
+                  type="button"
+                  variant={assistantOpen ? "secondary" : "ghost"}
+                >
+                  <SparklesIcon className="size-3" />
+                  {assistantOpen ? "Hide assistant" : "Need help wording this?"}
+                </Button>
+              </div>
               <Textarea
                 onChange={(e) => setBeat(e.target.value)}
                 placeholder="e.g. US AI regulation — agencies, hearings, enforcement. Skip product launches."
                 rows={3}
                 value={beat}
               />
+              {assistantOpen ? <CreateDeskAssistant onApply={applyAssistantValues} /> : null}
             </div>
 
             <div className="flex flex-col gap-4">
