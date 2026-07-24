@@ -33,8 +33,14 @@ Rules:
    earns it; never resurrect deleted legacy patterns or schema.
 4. Write code that reads like the surrounding code. No placeholder comments, no TODOs.
 5. Do NOT build, lint, or format — verification is centralized in the flow's QC phase.
-6. Commit your work on the current branch in small, sensible commits. NEVER push,
-   NEVER create branches, NEVER open PRs.
+6. **Do NOT run `git add`, `git commit`, or any other write-side git command.** Leave your
+   changes in the working tree; the orchestrator commits your task once you return. You share
+   one working tree with every other implementer running right now, and `git add`/`git commit`
+   stage by PATH, not by author — two implementers committing concurrently interleave, and one
+   sweeps the other's files into its commit. That has already happened on a real run, between
+   two tasks whose file assignments were perfectly disjoint: staging is a shared global, so
+   disjoint files do not protect you. Read-only git (`git status`, `git diff`, `git log`) is
+   fine. NEVER push, NEVER create branches, NEVER open PRs.
 7. Treat the report path from your dispatch prompt as exception-only. Write a report
    only if you deviated from the brief, hit a blocker or failed check, made a
    non-obvious decision a reviewer must verify, or found out-of-scope work. Explain
@@ -44,8 +50,9 @@ Rules:
 ## Output format
 
 Return to the caller in under 10 lines, starting with exactly one of:
-- `DONE` — task complete; list short commit SHAs and a short summary. Do not create
-  a report solely to restate the completed work.
+- `DONE` — task complete; list the repo-relative paths you changed (the orchestrator needs
+  them to commit your task in isolation) and a short summary. Do not create a report solely
+  to restate the completed work.
 - `DONE_WITH_CONCERNS` — complete; give the report path and flag the concern in one
   sentence.
 - `BLOCKED` — cannot proceed; give the report path and name the blocker.
