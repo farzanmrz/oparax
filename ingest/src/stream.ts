@@ -30,6 +30,7 @@ export function mapTweetToDelivery(payload: StreamPayload): IngestDeliveryBody |
   }
 
   return {
+    source: "x",
     x_post_id: tweet.id,
     author_handle: author.username,
     text: tweet.text,

@@ -1,24 +1,33 @@
 // OAuth callback — GET /auth/slack/callback. Decodes the `state` this app's own link route
-// put there (desk id + return path — see app/auth/slack/link/route.ts), re-verifies desk
-// ownership via the cookie (RLS) client exactly as the link route did, exchanges the code,
-// persists the link, and redirects back. Mirrors app/auth/x/callback/route.ts's shape;
-// Slack's link is desk-scoped rather than user-scoped, so there is no PKCE/CSRF cookie pair
-// to clear here — the desk-ownership re-check IS the security boundary: a forged or stale
-// `state` pointing at a desk the signed-in user doesn't own fails this read and Slack never
-// gets linked to it. Never puts token material or the auth code in a redirect URL.
+// put there (desk id + return path + CSRF nonce — see app/auth/slack/link/route.ts),
+// verifies the nonce against the httpOnly cookie the link route set, re-verifies desk
+// ownership via the cookie (RLS) client, exchanges the code, persists the link, and redirects
+// back. Mirrors app/auth/x/callback/route.ts's shape. Never puts token material or the auth
+// code in a redirect URL.
+//
+// QC fix: desk ownership alone is not a CSRF boundary (it proves the signed-in user owns the
+// desk `state` names, not that their browser started this flow) — an attacker completing
+// their own Slack grant could otherwise bind their workspace to a victim's desk by luring the
+// victim to this URL with the attacker's `code`. The nonce round-trip (state ↔ cookie, exactly
+// like app/auth/x/callback/route.ts's `x_oauth_state`) closes that: a forged `state` has no
+// matching cookie on the victim's browser and fails here before any exchange happens.
+import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { exchangeCodeForToken } from "@/lib/slack/api";
 import { upsertSlackAccount } from "@/lib/slack/store";
 import { createClient } from "@/lib/supabase/server";
 
-function decodeState(raw: string): { experimentId: string; returnTo: string | null } | null {
+function decodeState(
+  raw: string,
+): { experimentId: string; returnTo: string | null; nonce: string } | null {
   try {
     const parsed: unknown = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
     if (
       typeof parsed !== "object" ||
       parsed === null ||
-      typeof (parsed as { experimentId?: unknown }).experimentId !== "string"
+      typeof (parsed as { experimentId?: unknown }).experimentId !== "string" ||
+      typeof (parsed as { nonce?: unknown }).nonce !== "string"
     ) {
       return null;
     }
@@ -26,6 +35,7 @@ function decodeState(raw: string): { experimentId: string; returnTo: string | nu
     return {
       experimentId: (parsed as { experimentId: string }).experimentId,
       returnTo: typeof returnTo === "string" ? returnTo : null,
+      nonce: (parsed as { nonce: string }).nonce,
     };
   } catch {
     return null;
@@ -53,7 +63,9 @@ export async function GET(request: NextRequest) {
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
     }
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    res.cookies.set("slack_oauth_state", "", { maxAge: 0, path: "/" });
+    return res;
   };
 
   if (searchParams.get("error")) {
@@ -62,6 +74,14 @@ export async function GET(request: NextRequest) {
 
   const code = searchParams.get("code");
   if (!code) {
+    return redirectBack({ slack_error: "state" });
+  }
+
+  // CSRF nonce check — see the file header. A forged state (or a state replayed on a
+  // different browser than the one that started the flow) has no matching cookie here.
+  const cookieStore = await cookies();
+  const cookieNonce = cookieStore.get("slack_oauth_state")?.value;
+  if (!cookieNonce || cookieNonce !== decoded.nonce) {
     return redirectBack({ slack_error: "state" });
   }
 

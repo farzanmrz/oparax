@@ -123,21 +123,29 @@ async function createStory(
   return data.id;
 }
 
-/** The atomic claim (D16 rail) — story_assignments carries UNIQUE(source_post_id), so this
- *  insert IS the race guarantee, not the classification above. Mirrors draft-pipeline.ts's
- *  `draftForExperiment` insert-then-branch-on-23505 shape. On a 23505 unique-violation, another
- *  concurrent delivery of this exact sourcePostId already won the claim — read ITS story_id back
- *  rather than the one this call attempted (the race-loser path; whatever story this call may
- *  have just created above stays orphaned, unassigned, and is not cleaned up here — the plan
- *  text's contract is the claim, not the candidate it lost against). */
+/** The atomic claim (D16 rail) — story_assignments carries UNIQUE(source_post_id,
+ *  experiment_id), so this insert IS the race guarantee, not the classification above.
+ *  Scoped per desk, not just per post: `source_posts` dedupes GLOBALLY (L4 — shared stream
+ *  rules mean overlapping tracking across desks), so the same post reaches
+ *  `draftForExperiment` independently for every desk that tracks its author. Each desk clusters
+ *  it into its OWN stories; a global UNIQUE(source_post_id) would let desk B's claim collide
+ *  with desk A's on the shared post and silently inherit A's story_id (fixed post-QC — see
+ *  supabase/migrations/20260724010000_story_assignments_scope_per_desk.sql). Mirrors
+ *  draft-pipeline.ts's `draftForExperiment` insert-then-branch-on-23505 shape. On a 23505
+ *  unique-violation, another concurrent delivery of this exact (sourcePostId, experimentId)
+ *  pair already won the claim — read ITS story_id back rather than the one this call attempted
+ *  (the race-loser path; whatever story this call may have just created above stays orphaned,
+ *  unassigned, and is not cleaned up here — the plan text's contract is the claim, not the
+ *  candidate it lost against). */
 async function claimStoryAssignment(
   admin: AdminClient,
   sourcePostId: string,
+  experimentId: string,
   storyId: string,
 ): Promise<string> {
   const { error } = await admin
     .from("story_assignments")
-    .insert({ source_post_id: sourcePostId, story_id: storyId })
+    .insert({ source_post_id: sourcePostId, experiment_id: experimentId, story_id: storyId })
     .select("id");
   if (!error) return storyId;
   if (error.code !== "23505") throw error;
@@ -146,6 +154,7 @@ async function claimStoryAssignment(
     .from("story_assignments")
     .select("story_id")
     .eq("source_post_id", sourcePostId)
+    .eq("experiment_id", experimentId)
     .single();
   if (winnerError) throw winnerError;
   return winner.story_id;
@@ -158,7 +167,7 @@ async function createAndClaimNewStory(
   summary: string,
 ): Promise<string> {
   const storyId = await createStory(admin, experimentId, summary);
-  return claimStoryAssignment(admin, sourcePostId, storyId);
+  return claimStoryAssignment(admin, sourcePostId, experimentId, storyId);
 }
 
 /** Attach sourcePostId to an existing recent story, or create a new one, atomically.
@@ -224,7 +233,7 @@ export async function assignToStory(input: {
     let storyId: string;
     if (verdictResult.object.match === "existing") {
       const index = Math.min(Math.max(0, verdictResult.object.storyIndex), candidates.length - 1);
-      storyId = await claimStoryAssignment(admin, sourcePostId, candidates[index].id);
+      storyId = await claimStoryAssignment(admin, sourcePostId, experimentId, candidates[index].id);
     } else {
       const summary = verdictResult.object.summary.trim() || deterministicSummary(text);
       storyId = await createAndClaimNewStory(admin, experimentId, sourcePostId, summary);

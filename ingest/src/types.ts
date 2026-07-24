@@ -18,9 +18,12 @@ export interface StreamPayload {
   matching_rules?: Array<{ id: string; tag?: string }>;
 }
 
-/** Matches the app's /api/ingest zod schema exactly (app/api/ingest/route.ts) — do not add,
- *  drop, or rename a field without checking that route first. */
+/** Matches the app's /api/ingest zod schema's "x" branch exactly (app/api/ingest/route.ts) —
+ *  do not add, drop, or rename a field without checking that route first. `source: "x"` is
+ *  required as of the Slice 5 discriminated-union schema (QC fix — this worker only ever
+ *  sends X deliveries, so the literal is fixed here). */
 export interface IngestDeliveryBody {
+  source: "x";
   x_post_id: string;
   author_handle: string;
   text: string;

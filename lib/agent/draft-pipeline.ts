@@ -26,6 +26,8 @@ import {
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
+import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
+import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { postDraftToXForOwner } from "@/lib/x/actions";
@@ -147,10 +149,19 @@ async function stampUsageEvent(
 
 /** Slack push + (conditionally) email, each independently error-tolerant: a channel outage
  *  must never discard an already-paid council run's drafts. Only a channel that actually
- *  sent stamps its usage_events row. */
+ *  sent stamps its usage_events row.
+ *
+ *  QC fix: the per-desk Slack app (lib/slack/*, item 5) was built and linkable but this
+ *  function still only ever called the legacy workspace webhook (sendSlackMessage) — the
+ *  Block Kit "Post to X" button (buildDraftBlocks) and the whole interactions route were
+ *  unreachable in every real delivery. Fixed: a linked desk (slack_accounts row present) gets
+ *  the real per-desk push with the actionable button; SLACK_WEBHOOK_URL is now genuinely the
+ *  legacy fallback for a desk that hasn't linked Slack, matching AGENTS.md's documented
+ *  intent. */
 async function deliverDraft(
   admin: AdminClient,
   input: {
+    experimentId: string;
     ownerId: string;
     authorHandle: string;
     sourceText: string;
@@ -175,7 +186,20 @@ async function deliverDraft(
   const message = composeDraftMessage(composeInput);
 
   try {
-    await sendSlackMessage(message);
+    const slackAccount = await getSlackAccount(input.experimentId);
+    if (slackAccount) {
+      await postMessage({
+        channelId: slackAccount.channel_id,
+        accessToken: slackAccount.access_token,
+        text: message,
+        blocks: buildDraftBlocks({
+          text: input.winningText,
+          postDraftId: input.winningPostDraftId,
+        }),
+      });
+    } else {
+      await sendSlackMessage(message);
+    }
     await stampUsageEvent(admin, {
       owner_id: input.ownerId,
       kind: "slack_notification",
@@ -272,6 +296,18 @@ async function draftForExperiment(
       // Ledger-first, same ordering discipline as every other CouncilCall producer here —
       // this insert happens BEFORE the platform fan-out's own ledger-first inserts.
       await insertModelCalls(admin, experiment.owner_id, cluster.calls, sourcePostId);
+      // QC fix: every model_calls row also stamps usage_events (L7 house rule, "from birth") —
+      // the clustering call was inserted into model_calls but never metered here, undercounting
+      // per-owner LLM spend against any usage_events-based cap/alarm by one call per delivery.
+      for (const call of cluster.calls) {
+        await stampUsageEvent(admin, {
+          owner_id: experiment.owner_id,
+          kind: "clustering",
+          units: 1,
+          cost_usd: call.costUsd,
+          ref_id: sourcePostId,
+        });
+      }
     }
 
     // Part C: one self-contained unit per platform (council -> ledger-first insert ->
@@ -386,6 +422,7 @@ async function draftForExperiment(
     const allFulfilledCalls = fulfilled.flatMap((f) => f.result.calls);
 
     await deliverDraft(admin, {
+      experimentId: experiment.id,
       ownerId: experiment.owner_id,
       authorHandle: brief.authorHandle,
       sourceText: brief.text,
@@ -594,7 +631,7 @@ export async function applyCorrection(input: {
     .from("post_drafts")
     .select(
       `
-      id, source_post_id, experiment_id,
+      id, source_post_id, experiment_id, platform, story_id,
       source_posts ( id, x_post_id, author_handle, text ),
       experiments ( id, owner_id, reporter_handle ),
       model_calls ( output )
@@ -608,6 +645,12 @@ export async function applyCorrection(input: {
   const experiment = draftRow.experiments;
   const previousDraft = draftRow.model_calls.output;
   if (previousDraft == null) return null;
+  // QC fix: carried forward into the dethrone scope + the revision insert below — without
+  // these, a correction lost its story (feed-query only lists winners whose story_id belongs
+  // to the querying desk's stories, so a NULL story_id winner never renders) and dethroned
+  // every OTHER platform's winner for this story too (the old dethrone filtered only by
+  // source_post_id + experiment_id, not platform).
+  const { platform, story_id: storyId } = draftRow;
 
   // Idempotency CHECK stays first: a duplicate Svix delivery is a no-op. The WRITE of this
   // stamp is deliberately deferred past the paid revision call below (see the comment there) —
@@ -696,19 +739,23 @@ export async function applyCorrection(input: {
     });
   }
 
-  // Dethrone the story's CURRENT winner before crowning the revision — NOT just the replied-to
-  // draft. A reporter can reply to a superseded draft (an older email still in the thread);
-  // flipping only input.postDraftId would leave the actual current winner set AND crown the
-  // revision, so one story ends up with two is_winner=true rows, which feed-query renders as
-  // duplicate cards. Unsetting whichever row currently wins this (source_post, experiment) keeps
-  // the one-winner-per-story invariant regardless of which draft the reply targeted. This runs
-  // BEFORE the insert so the new winner below isn't itself caught by this update. Pointer flip
-  // only — a post_drafts row's content stays an immutable record of what a model produced.
+  // Dethrone the story's CURRENT winner FOR THIS PLATFORM before crowning the revision — NOT
+  // just the replied-to draft. A reporter can reply to a superseded draft (an older email still
+  // in the thread); flipping only input.postDraftId would leave the actual current winner set
+  // AND crown the revision, so one story ends up with two is_winner=true rows for this platform,
+  // which feed-query renders as duplicate cards. Unsetting whichever row currently wins this
+  // (source_post, experiment, platform) keeps the one-winner-per-platform-per-story invariant
+  // regardless of which draft the reply targeted. Scoped by `platform` (QC fix) — without it
+  // this dethroned every OTHER platform's winner too, since a story can carry one winner PER
+  // platform (X, LinkedIn, Bluesky) as of the multi-platform fan-out. This runs BEFORE the
+  // insert so the new winner below isn't itself caught by this update. Pointer flip only — a
+  // post_drafts row's content stays an immutable record of what a model produced.
   const { error: dethroneError } = await admin
     .from("post_drafts")
     .update({ is_winner: false })
     .eq("source_post_id", sourcePost.id)
     .eq("experiment_id", experiment.id)
+    .eq("platform", platform)
     .eq("is_winner", true);
   if (dethroneError) throw dethroneError;
 
@@ -722,12 +769,19 @@ export async function applyCorrection(input: {
       judge_verdict: null,
       parent_draft_id: input.postDraftId,
       feedback: input.feedback,
+      // QC fix: carry the original draft's platform + story_id forward — omitting these
+      // defaulted platform to "x" and story_id to NULL, and a NULL-story winner is invisible
+      // to fetchFeedPage (it only lists winners whose story_id is among the querying desk's
+      // own stories), so the correction silently vanished from the feed.
+      platform,
+      story_id: storyId,
     })
     .select("id")
     .single();
   if (newDraftError) throw newDraftError;
 
   await deliverDraft(admin, {
+    experimentId: experiment.id,
     ownerId: experiment.owner_id,
     authorHandle: sourcePost.author_handle ?? "",
     sourceText: sourcePost.text,

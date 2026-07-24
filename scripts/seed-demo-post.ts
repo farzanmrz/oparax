@@ -110,6 +110,7 @@ async function main() {
 
   const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
   const body = {
+    source: "x" as const,
     x_post_id: `demo-${Date.now()}`,
     author_handle: sourceAuthorHandle,
     text,

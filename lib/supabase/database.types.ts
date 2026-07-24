@@ -543,27 +543,37 @@ export type Database = {
       story_assignments: {
         Row: {
           created_at: string;
+          experiment_id: string;
           id: string;
           source_post_id: string;
           story_id: string;
         };
         Insert: {
           created_at?: string;
+          experiment_id: string;
           id?: string;
           source_post_id: string;
           story_id: string;
         };
         Update: {
           created_at?: string;
+          experiment_id?: string;
           id?: string;
           source_post_id?: string;
           story_id?: string;
         };
         Relationships: [
           {
+            foreignKeyName: "story_assignments_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "story_assignments_source_post_id_fkey";
             columns: ["source_post_id"];
-            isOneToOne: true;
+            isOneToOne: false;
             referencedRelation: "source_posts";
             referencedColumns: ["id"];
           },

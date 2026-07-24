@@ -2,16 +2,28 @@
 // desk — unlike X's per-user link, Slack's link is desk-scoped (per `experiment_id`), so this
 // requires a signed-in Oparax user who owns the desk named by the `experimentId` query param,
 // then redirects to Slack's authorize endpoint with `state` carrying `experimentId` (+
-// `returnTo`) for the callback to resume. Mirrors app/auth/x/route.ts's shape. No PKCE and no
-// signed/opaque state token here — Slack's own state round-trip plus this app's
-// desk-ownership re-check at the callback (see the callback route) is the actual security
-// boundary, same as X's existing pattern.
+// `returnTo` + a CSRF nonce) for the callback to resume. Mirrors app/auth/x/route.ts's shape.
+//
+// QC fix: the desk-ownership re-check alone is NOT a CSRF boundary — it proves the signed-in
+// user owns the target desk, not that their browser is the one that started this flow. Without
+// a nonce, an attacker completes their OWN Slack OAuth grant, then lures a signed-in victim (who
+// owns some desk) to GET /auth/slack/callback?code=<attacker_code>&state=<state naming the
+// victim's desk>; the victim passes the ownership check and the attacker's Slack workspace gets
+// bound to the victim's desk. Fixed the same way X's flow already does: a random nonce, stashed
+// in an httpOnly cookie here, must round-trip back inside `state` and match at the callback.
+import { randomBytes } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { SLACK_SCOPES } from "@/lib/slack/api";
 import { createClient } from "@/lib/supabase/server";
 
-function encodeState(input: { experimentId: string; returnTo: string | null }): string {
+const OAUTH_COOKIE_MAX_AGE_SEC = 600;
+
+function encodeState(input: {
+  experimentId: string;
+  returnTo: string | null;
+  nonce: string;
+}): string {
   return Buffer.from(JSON.stringify(input)).toString("base64url");
 }
 
@@ -57,7 +69,8 @@ export async function GET(request: NextRequest) {
   }
 
   const redirectUri = `${origin}/auth/slack/callback`;
-  const state = encodeState({ experimentId, returnTo });
+  const nonce = randomBytes(32).toString("base64url");
+  const state = encodeState({ experimentId, returnTo, nonce });
 
   const authorizeUrl = new URL("https://slack.com/oauth/v2/authorize");
   authorizeUrl.searchParams.set("client_id", clientId);
@@ -65,5 +78,13 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
   authorizeUrl.searchParams.set("state", state);
 
-  return NextResponse.redirect(authorizeUrl);
+  const res = NextResponse.redirect(authorizeUrl);
+  res.cookies.set("slack_oauth_state", nonce, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: OAUTH_COOKIE_MAX_AGE_SEC,
+  });
+  return res;
 }
