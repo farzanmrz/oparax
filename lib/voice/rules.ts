@@ -1,0 +1,184 @@
+// lib/voice/rules.ts
+//
+// voice_rules CRUD + the pure flattening function that replaces the raw guide's role in the
+// drafting system prompt (T2.6, .feature/task-16-brief.md). `voice_rules` carries EXISTS-join-
+// through-`experiments` RLS by `reporter_handle`, select-only — no owner_id column, same
+// reasoning as `voice_guides`: a rule is paid/edited once per reporter and shared across every
+// desk that reporter appears in. No insert/update/delete policy exists, so every write in this
+// module runs on the admin (service-role) client (mirrors create-desk-extraction.ts). Callers
+// (a Wave 3 server action) prove desk ownership via the RLS client before calling in — same
+// ownership-then-service-role-write pattern as lib/x/actions.ts's postDraftToX — this module
+// does no ownership check of its own.
+//
+// Server-only: admin client only, no "use client". Unlike attemptVoiceExtraction (intentionally
+// best-effort), CRUD failures here surface to their callers — throw on real DB errors.
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+type VoiceRuleRow = Database["public"]["Tables"]["voice_rules"]["Row"];
+
+export type VoiceRule = {
+  id: string;
+  reporterHandle: string;
+  rule: string;
+  sortOrder: number;
+  enabled: boolean;
+  provenanceModelCallId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function toVoiceRule(row: VoiceRuleRow): VoiceRule {
+  return {
+    id: row.id,
+    reporterHandle: row.reporter_handle,
+    rule: row.rule,
+    sortOrder: row.sort_order,
+    enabled: row.enabled,
+    provenanceModelCallId: row.provenance_model_call_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/** A reporter's rules, ordered by sortOrder asc then createdAt asc as a stable tiebreak for
+ *  rows sharing a sortOrder (e.g. a fresh materializeRulesFromGuide batch inserted at once). */
+export async function listVoiceRules(reporterHandle: string): Promise<VoiceRule[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("voice_rules")
+    .select("*")
+    .eq("reporter_handle", reporterHandle)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(toVoiceRule);
+}
+
+async function nextSortOrder(admin: AdminClient, reporterHandle: string): Promise<number> {
+  const { data, error } = await admin
+    .from("voice_rules")
+    .select("sort_order")
+    .eq("reporter_handle", reporterHandle)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? data.sort_order + 1 : 0;
+}
+
+export async function createVoiceRule(input: {
+  reporterHandle: string;
+  rule: string;
+  provenanceModelCallId?: string | null;
+}): Promise<VoiceRule> {
+  const admin = createAdminClient();
+  const sortOrder = await nextSortOrder(admin, input.reporterHandle);
+  const { data, error } = await admin
+    .from("voice_rules")
+    .insert({
+      reporter_handle: input.reporterHandle,
+      rule: input.rule,
+      sort_order: sortOrder,
+      provenance_model_call_id: input.provenanceModelCallId ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return toVoiceRule(data);
+}
+
+export async function updateVoiceRule(
+  id: string,
+  patch: Partial<{ rule: string; enabled: boolean; sortOrder: number }>,
+): Promise<void> {
+  const admin = createAdminClient();
+  const update: Database["public"]["Tables"]["voice_rules"]["Update"] = {};
+  if (patch.rule !== undefined) update.rule = patch.rule;
+  if (patch.enabled !== undefined) update.enabled = patch.enabled;
+  if (patch.sortOrder !== undefined) update.sort_order = patch.sortOrder;
+  const { error } = await admin.from("voice_rules").update(update).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteVoiceRule(id: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.from("voice_rules").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** THE drafting input of record (plan text, T2.6): replaces the raw guide's role in the system
+ *  prompt. Pure — no I/O. Filters to `enabled` rules and sorts by sortOrder itself (rather than
+ *  trusting the caller's array order), so the same input always flattens to the same prose
+ *  regardless of how it was fetched. Returns "" for an empty enabled set — callers decide what
+ *  that means for the prompt they compose. Does NOT read `measuredFacts` or call `deployGuide`
+ *  — composing `flattenRulesToPrompt(enabledRules) + measuredFacts` into the actual system
+ *  prompt is T2.3 / the drafting call sites' job. */
+export function flattenRulesToPrompt(rules: VoiceRule[]): string {
+  const ordered = rules
+    .filter((r) => r.enabled)
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  if (ordered.length === 0) return "";
+  const lines = ordered.map((r) => `- ${r.rule.trim()}`);
+  return [
+    "Voice rules — follow every rule below when drafting this reporter's post.",
+    ...lines,
+  ].join("\n");
+}
+
+/** Splits a deployed guide into its `## ` (level-2) sections, each kept whole (heading + body)
+ *  as one candidate rule. Drops the bare `# Voice Guide: @handle` title preamble that precedes
+ *  the first `## ` heading — it carries no instructional content of its own. Falls back to the
+ *  whole trimmed guide as a single section when no `## ` heading is found at all. See
+ *  materializeRulesFromGuide's docstring for why this split point was chosen. */
+function splitGuideIntoSections(guideDeploy: string): string[] {
+  const trimmed = guideDeploy.trim();
+  if (!trimmed) return [];
+  const parts = trimmed
+    .split(/\n(?=##\s)/g)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const sections = parts.filter((part) => part.startsWith("##"));
+  return sections.length > 0 ? sections : [trimmed];
+}
+
+/**
+ * Turns a freshly extracted, deployed voice guide into an initial set of `voice_rules` rows —
+ * a starting point the reporter edits down (or up) in the Voice UI, not a perfect extraction.
+ *
+ * Splitting heuristic: one rule per `## ` (level-2) section of the deployed guide (heading +
+ * its full body kept together), via `splitGuideIntoSections`. This survives every section shape
+ * seen across `.voice-lab/guides/*.md` (Identity & Register, Hard Rules — Always/Never,
+ * Formatting, Vocabulary & Phrasing, Situation Templates, Long-form Mode, Representative Posts)
+ * without hardcoding any of those section names — so it keeps working if the extraction
+ * prompt's section list ever changes — and it never fragments a section's bullets, nested
+ * example blockquotes, or sub-headings into separate rows, which a bullet-line split would.
+ * Falls back to a single rule wrapping the whole deployed guide when no `## ` heading is found.
+ *
+ * NOT called from this file — T2.3 (`lib/voice/create-desk-extraction.ts`) calls in once a
+ * fresh guide has been extracted and deployed.
+ */
+export async function materializeRulesFromGuide(
+  reporterHandle: string,
+  guideDeploy: string,
+  provenanceModelCallId: string,
+): Promise<VoiceRule[]> {
+  const sections = splitGuideIntoSections(guideDeploy);
+  if (sections.length === 0) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("voice_rules")
+    .insert(
+      sections.map((rule, index) => ({
+        reporter_handle: reporterHandle,
+        rule,
+        sort_order: index,
+        provenance_model_call_id: provenanceModelCallId,
+      })),
+    )
+    .select("*");
+  if (error) throw error;
+  return (data ?? []).map(toVoiceRule);
+}
