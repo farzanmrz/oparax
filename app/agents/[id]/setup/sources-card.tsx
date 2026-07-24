@@ -123,6 +123,12 @@ function ChipsField({
   );
 }
 
+/** Auto-post is BUILT and greyed, not removed. The shipped flow is review-then-post: the
+ *  reporter reads the draft in Slack (or the Feed) and clicks Post to X themselves. Flipping
+ *  this to `true` re-enables both switches — `toggleAutoPost`, the turn-on confirm gate, and
+ *  draft-pipeline.ts's auto-post branch are all still wired behind them. */
+const AUTO_POST_ENABLED = false;
+
 type AutoPostTarget = "master" | "x" | "website";
 
 const AUTO_POST_LABEL: Record<AutoPostTarget, string> = {
@@ -228,14 +234,17 @@ export function SourcesCard({
     });
   }
 
-  const autoPostDisabled = isAutoPostPending || confirmTarget !== null;
+  const autoPostDisabled = !AUTO_POST_ENABLED || isAutoPostPending || confirmTarget !== null;
 
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between gap-3">
         <CardTitle>Sources</CardTitle>
-        <div className="flex items-center gap-2">
+        {/* Greyed per AUTO_POST_ENABLED — same opacity + "Coming soon" treatment the websites
+            subsection below uses, not a special container (AGENTS.md's uniform-fields rule). */}
+        <div className="flex items-center gap-2 opacity-50">
           <span className="text-xs text-muted-foreground">Auto-post all</span>
+          <Badge variant="secondary">Coming soon</Badge>
           <Switch
             aria-label="Auto-post all sources"
             checked={autoPostMaster}
@@ -282,8 +291,9 @@ export function SourcesCard({
             <h3 className="text-xs font-semibold text-muted-foreground">
               𝕏 X accounts ({trackedHandles.length}/{MAX_TRACKED_HANDLES})
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 opacity-50">
               <span className="text-xs text-muted-foreground">Auto-post</span>
+              <Badge variant="secondary">Coming soon</Badge>
               <Switch
                 aria-label="Auto-post X-sourced drafts"
                 checked={autoPostSources.x}
@@ -491,7 +501,10 @@ export function ConnectionsCard({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-2">
+        {/* Email delivery is greyed: the shipped flow notifies on Slack only. The senders,
+            the reply-to encoding, and the inbound-reply webhook all stay wired behind
+            draft-pipeline.ts's EMAIL_DELIVERY_ENABLED — dormant, not deleted. */}
+        <div className="flex flex-col gap-2 opacity-50">
           <div className="flex items-center gap-3 rounded-lg px-1.5 py-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
               <MailIcon aria-hidden="true" className="size-4" />
@@ -502,12 +515,8 @@ export function ConnectionsCard({
                 {emailAddress ? "App-wide address" : "Not set"}
               </span>
             </div>
-            <Button
-              disabled={isEmailPending}
-              onClick={handleSendTestEmail}
-              size="sm"
-              variant="outline"
-            >
+            <Badge variant="secondary">Coming soon</Badge>
+            <Button disabled onClick={handleSendTestEmail} size="sm" variant="outline">
               {isEmailPending ? "Sending…" : "Send test"}
             </Button>
           </div>
@@ -581,10 +590,17 @@ export function NotificationsCard() {
   return (
     <Card>
       <CardHeader className="flex flex-col gap-1">
-        <CardTitle>Notifications</CardTitle>
-        <CardDescription>Slack &amp; email — not saved across sessions yet.</CardDescription>
+        <div className="flex items-center gap-2">
+          <CardTitle>Notifications</CardTitle>
+          <Badge variant="secondary">Coming soon</Badge>
+        </div>
+        <CardDescription>
+          Every new draft goes to Slack. Per-event routing and frequency aren't wired yet.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      {/* Greyed whole: these switches were always local state with no column behind them, so
+          they promised routing the app doesn't do. Slack-on-every-draft is the real behavior. */}
+      <CardContent className="flex flex-col gap-3 opacity-50">
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 gap-y-3 text-xs font-medium text-muted-foreground">
           <span>Notify me when…</span>
           <span className="text-center">Slack</span>
@@ -603,6 +619,7 @@ export function NotificationsCard() {
                   <span className="text-xs text-muted-foreground">Always immediate</span>
                 ) : (
                   <Select
+                    disabled
                     onValueChange={(value) => setPref(row.key, { frequency: value })}
                     value={pref.frequency}
                   >
@@ -620,12 +637,14 @@ export function NotificationsCard() {
                 aria-label={`Notify me in Slack when ${row.label.toLowerCase()}`}
                 checked={pref.slack}
                 className="justify-self-center"
+                disabled
                 onCheckedChange={(checked) => setPref(row.key, { slack: checked })}
               />
               <Switch
                 aria-label={`Notify me by email when ${row.label.toLowerCase()}`}
                 checked={pref.email}
                 className="justify-self-center"
+                disabled
                 onCheckedChange={(checked) => setPref(row.key, { email: checked })}
               />
             </div>

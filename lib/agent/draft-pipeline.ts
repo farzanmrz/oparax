@@ -36,6 +36,14 @@ import { sumCosts } from "./usage-cost";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+/** Email draft-delivery is DORMANT — the shipped flow notifies on Slack only. Until now this
+ *  path was inert only by accident (the `RESEND_*` keys were never provisioned), so provisioning
+ *  Resend for any other reason would have silently switched draft emails back on. This makes it
+ *  a decision. `lib/notify/email.ts`, the plus-addressed reply encoding, and the inbound-reply
+ *  webhook all stay wired behind it — flipping this to `true` (with the keys set) restores the
+ *  whole email leg, including reply-to-correct-a-draft. */
+const EMAIL_DELIVERY_ENABLED = false;
+
 // Part A (T2.4b): source_posts / IngestDelivery now carries a source discriminator —
 // app/api/ingest/route.ts's ingestBodySchema (already locked) validates this exact shape and
 // passes parsed.data straight through, so this type must match it field-for-field.
@@ -222,7 +230,13 @@ async function deliverDraft(
   }
 
   const { RESEND_API_KEY, RESEND_FROM, RESEND_REPLY_DOMAIN, NOTIFY_EMAIL_TO } = process.env;
-  if (RESEND_API_KEY && RESEND_FROM && RESEND_REPLY_DOMAIN && NOTIFY_EMAIL_TO) {
+  if (
+    EMAIL_DELIVERY_ENABLED &&
+    RESEND_API_KEY &&
+    RESEND_FROM &&
+    RESEND_REPLY_DOMAIN &&
+    NOTIFY_EMAIL_TO
+  ) {
     try {
       await sendDraftEmail({
         to: NOTIFY_EMAIL_TO,

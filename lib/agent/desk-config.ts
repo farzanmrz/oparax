@@ -13,10 +13,18 @@ import { scanFrequencySchema } from "./scan-frequency";
  *  .claude/rules/sysprompts.md). A ceiling, never a target. */
 export const X_CHAR_LIMITS = { standard: 280, premium: 25_000 } as const;
 
-/** The three platforms a story fans out to (T2.8). Order is the fan-out order, not a priority
- *  — every platform runs in parallel via `Promise.allSettled`. */
-export const PLATFORMS = ["x", "linkedin", "bluesky"] as const;
-export type Platform = (typeof PLATFORMS)[number];
+/** Every platform the drafting code knows how to draft for. The TYPE stays complete so the
+ *  LinkedIn/Bluesky paths (per-platform char ceilings, the feed's pill switcher, the council
+ *  fan-out) keep compiling — they are dormant, not deleted. */
+export const ALL_PLATFORMS = ["x", "linkedin", "bluesky"] as const;
+export type Platform = (typeof ALL_PLATFORMS)[number];
+
+/** The platforms drafting actually FANS OUT to today — X only, matching the shipped flow
+ *  (X sources → X draft → Slack → post to X). Adding a platform back to this array is the one
+ *  edit that reactivates it end to end: the council fan-out, the feed's platform pills, and
+ *  `isPlatform`'s filter all read from here. Order is fan-out order, not priority — every
+ *  platform runs in parallel via `Promise.allSettled`. */
+export const PLATFORMS = ["x"] as const satisfies readonly Platform[];
 
 /** Character ceilings for the non-X platforms. X's ceiling stays SOLELY in X_CHAR_LIMITS
  *  (account-tier-dependent) — these two are flat, no tier concept for either platform. */

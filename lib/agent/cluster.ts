@@ -186,6 +186,24 @@ async function createAndClaimNewStory(
  *  concern — this function does not know or need the experiment's owner_id) and is
  *  responsible for handling any error this function throws (a non-billing DB error propagates
  *  normally; do not swallow it here). */
+/**
+ * Clustering is DORMANT — one post becomes one story, and the classifier below never runs.
+ *
+ * The shipped flow is deliberately post-per-story: a tracked X post arrives, gets drafted, and
+ * is notified on its own. Folding several posts into one developing story is a real capability
+ * this module implements in full (and the schema, the story-keyed feed, and `story_assignments`
+ * all stay in place for it) — it is switched off, not removed, so reactivating it is this one
+ * flag rather than a rebuild.
+ *
+ * Flipping this back to `true` re-enables the classifier call. Read the two open questions it
+ * reintroduces before doing so: a story that holds several posts accumulates one `is_winner` row
+ * per (platform, source post) with nothing dethroning the previous one (`feed-query.ts` orders
+ * explicitly so the newest wins, but nothing decides whether a NEWER draft should supersede an
+ * already-POSTED one), and the classifier reads untrusted post text, which is why
+ * `buildClusterPrompt` delimits it and `story-cluster.md` carries a treat-as-data instruction.
+ */
+const CLUSTERING_ENABLED = false;
+
 export async function assignToStory(input: {
   experimentId: string;
   sourcePostId: string;
@@ -194,6 +212,19 @@ export async function assignToStory(input: {
 }): Promise<ClusterResult> {
   const { experimentId, sourcePostId, authorHandle, text } = input;
   const admin = createAdminClient();
+
+  // Dormant path (see CLUSTERING_ENABLED): identical to the zero-candidate branch below — a new
+  // story with the deterministic summary, no model call, no candidate query. The caller still
+  // gets a real storyId, so nothing downstream (post_drafts.story_id, the feed) changes shape.
+  if (!CLUSTERING_ENABLED) {
+    const storyId = await createAndClaimNewStory(
+      admin,
+      experimentId,
+      sourcePostId,
+      deterministicSummary(text),
+    );
+    return { storyId, calls: [] };
+  }
 
   // Bounded recent-story candidates: narrow columns, limited window (see the module-scope
   // constant's comment) — this runs server-side with no user session, so the admin client is
