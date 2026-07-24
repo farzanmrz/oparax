@@ -14,45 +14,26 @@
 // insert shape scripts/extract-voice-guide.ts already uses for the same stage (that script
 // remains the ledger writer for the manual/CLI path; the two never run for the same call).
 //
-// The no-spend-cap override (docs/decisions.md, owner waiver 2026-07-22) is safe THIS slice
-// for a checkable reason: loadCorpus only ever resolves a file under the gitignored
-// `.voice-lab/corpora/`, which does not exist in any deployed environment — so (b) below
-// always returns null there, and the paid call in (c) never runs from a self-serve create-desk
-// request in production today. Widening this lookup to a real corpus fetch (D1) is the first
-// commit where user-triggered extraction can actually spend, and that commit owes its own
-// guard or a fresh, explicit waiver.
-import { existsSync, readFileSync } from "node:fs";
+// D1: the corpus is now a real, billable Bright Data pull (lib/voice/corpus.ts's fetchCorpus),
+// gated by `claimExtractionBudget` (lib/voice/spend-gate.ts) — the ONE spend guard in front of
+// (c) below, per the plan's "two mechanisms" design (verification is a separate gate, T2.7,
+// irrelevant here). No claim is taken on the existing-guide no-op ((a) below) — avoid burning a
+// claim on a call that was never going to spend.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
+import { fetchCorpus } from "./corpus";
 import { deployGuide } from "./deploy-guide";
-import { type CorpusPost, EXTRACTION_MODEL, extractVoiceGuide } from "./extract-guide";
+import { EXTRACTION_MODEL, extractVoiceGuide } from "./extract-guide";
+import { materializeRulesFromGuide } from "./rules";
+import { claimExtractionBudget, finalizeExtractionBudget } from "./spend-gate";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 /** X handles are [A-Za-z0-9_], 1-15 chars — same rail as scripts/extract-voice-guide.ts,
- *  reapplied here (not just at the createDesk boundary) since this function builds a
- *  filesystem path straight out of `handle`; validating keeps a malformed handle out of
- *  that path rather than trusting every future caller to have already checked it. */
+ *  reapplied here (not just at the createDesk boundary) since a malformed handle now flows
+ *  straight into a billable Bright Data pull (fetchCorpus); validating keeps it out of that
+ *  call rather than trusting every future caller to have already checked it. */
 const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
-
-/**
- * Load a reporter's lab corpus, if one exists on disk. Returns `null` — never throws — when
- * the handle is malformed, the file is absent, or it doesn't parse to a non-empty array. This
- * is not an error path: in every deployed environment `.voice-lab/` is gitignored and never
- * present, so this always returns null there, and `attemptVoiceExtraction` returns with ZERO
- * rows written before any model call runs.
- */
-function loadCorpus(handle: string): CorpusPost[] | null {
-  if (!HANDLE_RE.test(handle)) return null;
-  const path = `.voice-lab/corpora/${handle}.json`;
-  if (!existsSync(path)) return null;
-  try {
-    const posts = JSON.parse(readFileSync(path, "utf8")) as unknown;
-    return Array.isArray(posts) && posts.length > 0 ? (posts as CorpusPost[]) : null;
-  } catch {
-    return null;
-  }
-}
 
 /** The ONE model_calls row for this stage, written ledger-first (before voice_guides) per
  *  L12 — same ordering and shape as scripts/extract-voice-guide.ts's insert for this exact
@@ -96,13 +77,20 @@ async function insertExtractionModelCall(
  *
  * Order:
  *   (a) a `voice_guides` row already exists for this handle → return (paid once per reporter,
- *       never re-extracted by a second desk on the same reporter).
- *   (b) `loadCorpus` returns null (no lab corpus on disk — the only path in any deployed
- *       environment) → return, zero rows written. `draftForExperiment` already returns
- *       `skipped: "no_guide"` for this desk, and Voice renders T7's empty state.
- *   (c) run the paid extraction call, then ledger-first: one `model_calls` row, then
- *       `voice_guides` with `provenance: { modelCallId }` (a pointer — the output/reasoning/
- *       usage/cost live exactly once, in model_calls).
+ *       never re-extracted by a second desk on the same reporter). A malformed handle also
+ *       returns here, before any claim is taken.
+ *   (b: claim) `claimExtractionBudget` reserves this reporter/UTC-day's worst-case spend. A
+ *       denied claim (today's claim for this reporter already exists) → return, zero rows
+ *       written, zero spend — same shape as the old "no corpus on disk" no-op, different
+ *       reason.
+ *   (c: fetch+extract+store+materialize) pull the reporter's real X timeline (`fetchCorpus`,
+ *       billable), run the paid extraction call, then ledger-first: one `model_calls` row,
+ *       then `voice_guides` with `provenance: { modelCallId }` (a pointer — the output/
+ *       reasoning/usage/cost live exactly once, in model_calls), then materialize the guide's
+ *       initial `voice_rules` split. Any failure in this stage finalizes the claim as "failed"
+ *       before re-throwing to the outer catch below.
+ *   (d: finalize) on the full happy path, finalize the claim as "completed" with the
+ *       extraction call's own resolved cost.
  *
  * `extractVoiceGuide` (plain `generateText`, no schema) either completes and returns, or
  * throws before any output exists to capture — unlike the drafting council's judge
@@ -125,26 +113,63 @@ export async function attemptVoiceExtraction(
       .maybeSingle();
     if (existingError) throw existingError;
     if (existing) return;
+    if (!HANDLE_RE.test(reporterHandle)) return; // malformed handle, no-op before any spend
 
-    const corpus = loadCorpus(reporterHandle);
-    if (!corpus) return; // no corpus on disk — the production no-op path, zero spend
+    const claim = await claimExtractionBudget(reporterHandle);
+    if (!claim.allowed) {
+      console.warn(
+        `attemptVoiceExtraction: budget claim denied for @${reporterHandle} (${claim.reason})`,
+      );
+      return;
+    }
 
-    const ext = await extractVoiceGuide(reporterHandle, corpus);
+    let ext: Awaited<ReturnType<typeof extractVoiceGuide>> | undefined;
+    try {
+      const corpus = await fetchCorpus(reporterHandle, ownerId);
+      ext = await extractVoiceGuide(reporterHandle, corpus);
 
-    const modelCallId = await insertExtractionModelCall(admin, ownerId, reporterHandle, ext);
+      const modelCallId = await insertExtractionModelCall(admin, ownerId, reporterHandle, ext);
 
-    const { error: voiceGuideError } = await admin.from("voice_guides").upsert(
-      {
-        reporter_handle: reporterHandle,
-        guide_raw: ext.guideRaw,
-        guide_deploy: deployGuide(ext.guideRaw),
-        measured_facts: ext.measuredFactsBlock,
-        cost_usd: ext.costUsd,
-        provenance: { modelCallId } as unknown as Json,
-      },
-      { onConflict: "reporter_handle" },
-    );
-    if (voiceGuideError) throw voiceGuideError;
+      const guideDeploy = deployGuide(ext.guideRaw);
+      const { error: voiceGuideError } = await admin.from("voice_guides").upsert(
+        {
+          reporter_handle: reporterHandle,
+          guide_raw: ext.guideRaw,
+          guide_deploy: guideDeploy,
+          measured_facts: ext.measuredFactsBlock,
+          cost_usd: ext.costUsd,
+          provenance: { modelCallId } as unknown as Json,
+        },
+        { onConflict: "reporter_handle" },
+      );
+      if (voiceGuideError) throw voiceGuideError;
+
+      try {
+        await materializeRulesFromGuide(reporterHandle, guideDeploy, modelCallId);
+      } catch (rulesError) {
+        // A degraded-but-recoverable state (guide saved, initial rules split missing) — never
+        // a reason to roll back a real extraction that already happened and was billed.
+        console.error(
+          `attemptVoiceExtraction: materializeRulesFromGuide failed for @${reporterHandle}`,
+          rulesError,
+        );
+      }
+
+      await finalizeExtractionBudget(reporterHandle, {
+        status: "completed",
+        actualUsd: ext.costUsd,
+      });
+    } catch (e) {
+      // ext is defined only once extractVoiceGuide itself has resolved and billed — carry its
+      // resolved cost into the claim even when a later step (the ledger insert, the
+      // voice_guides upsert) is what actually failed. If extraction never ran or never
+      // completed, nothing billed on this call and actualUsd stays null.
+      await finalizeExtractionBudget(reporterHandle, {
+        status: "failed",
+        actualUsd: ext?.costUsd ?? null,
+      });
+      throw e;
+    }
   } catch (e) {
     console.error(`attemptVoiceExtraction: failed for @${reporterHandle}`, e);
   }
