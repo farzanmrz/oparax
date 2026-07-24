@@ -1,10 +1,14 @@
-import { MicVocalIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import { MicVocalIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { listVoiceRules } from "@/lib/voice/rules";
+import { getXLinkState } from "@/lib/x/link-state";
 import type { AuditData } from "./audit-dialog";
+import { RetryExtractionButton } from "./retry-extraction-button";
+import { RulesEditor } from "./rules-editor";
+import { VerifyGate } from "./verify-gate";
 
 // The Reasoning block pulls in Streamdown (markdown rendering) — heavy, and only ever
 // needed once a reporter opens the audit dialog. `next/dynamic` keeps it out of this
@@ -172,59 +176,21 @@ function MeasuredFactsGrid({ facts }: { readonly facts: MeasuredFacts }) {
   );
 }
 
-/** A rule row this schema can't back yet (no rules table — the guide is one markdown
- *  document today) renders greyed instead of omitted: reserves the layout slot, tells the
- *  reporter why via `title`, and stays tab-reachable (no native `disabled`, so focus and
- *  the title tooltip both still work — a stock `Button` still gets its own
- *  `focus-visible` ring since that styling isn't gated on the `disabled` attribute). */
-function GreyedAffordance({
-  icon,
-  label,
-  reason,
+function EmptyState({
+  deskId,
+  reporterHandle,
 }: {
-  readonly icon: React.ReactNode;
-  readonly label: string;
-  readonly reason: string;
+  readonly deskId: string;
+  readonly reporterHandle: string;
 }) {
   return (
-    <Button
-      aria-disabled="true"
-      className="cursor-not-allowed opacity-60"
-      size="sm"
-      title={reason}
-      type="button"
-      variant="outline"
-    >
-      {icon}
-      {label}
-    </Button>
-  );
-}
-
-function SuggestedCard() {
-  return (
-    <div
-      aria-disabled="true"
-      className="flex flex-col gap-1 rounded-xl border border-dashed border-border p-4 opacity-60"
-      title="Suggested rules need a posting-history feed the desk doesn't ingest yet — coming soon"
-    >
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <SparklesIcon className="size-4" />
-        Suggested from your posts
-      </div>
-      <p className="text-sm text-muted-foreground">Coming soon.</p>
-    </div>
-  );
-}
-
-function EmptyState({ reporterHandle }: { readonly reporterHandle: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-16 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border px-4 py-16 text-center">
       <MicVocalIcon aria-hidden="true" className="size-6 text-muted-foreground" />
       <h3 className="text-sm font-semibold">No writing guide yet for @{reporterHandle}</h3>
       <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">
         Extraction runs once a corpus source is connected.
       </p>
+      <RetryExtractionButton deskId={deskId} reporterHandle={reporterHandle} />
     </div>
   );
 }
@@ -234,12 +200,14 @@ function EmptyState({ reporterHandle }: { readonly reporterHandle: string }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * The Voice tab — one card, the reporter's writing guide. `guide_deploy` renders as
- * read-only prose (per-rule Edit/Delete rows would imply a rules table this schema
- * doesn't have) alongside the real `measured_facts` stat tiles. The mock's editing
- * chrome that the data can't back yet (Add a rule, Suggested-from-your-posts) is
- * grey-scaffolded rather than omitted, reserving its layout slot. A guide miss renders a
- * designed empty state, distinct from route-level loading.
+ * The Voice tab. Three states, per `voice_guides_verified_gate`'s RLS policy (this Wave):
+ * an unverified desk's `voice_guides` SELECT is filtered out even when a guide row exists,
+ * indistinguishable from "no guide extracted yet" — so `reporter_verified_at` is checked
+ * BEFORE the guide read decides which empty state to show, not after.
+ *   1. unverified → `VerifyGate` replaces the guide area entirely.
+ *   2. verified, guide exists → the guide (`guide_deploy` as read-only audit prose) + the
+ *      real `measured_facts` stat tiles + `RulesEditor` (the drafting input of record).
+ *   3. verified, no guide yet → the empty state + a real retry action.
  */
 export default async function VoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -247,21 +215,35 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
 
   const supabase = await createClient();
 
-  const { data: desk, error: deskError } = await supabase
-    .from("experiments")
-    .select("reporter_handle")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data: desk, error: deskError }, xLinkState] = await Promise.all([
+    supabase
+      .from("experiments")
+      .select("reporter_handle, reporter_verified_at")
+      .eq("id", id)
+      .maybeSingle(),
+    getXLinkState(),
+  ]);
   if (deskError) throw new Error("Failed to load the desk. Please try again.");
   if (!desk) notFound(); // RLS makes an absent id and another user's id indistinguishable
 
-  const reporterHandle = desk.reporter_handle;
+  const { reporter_handle: reporterHandle, reporter_verified_at: verifiedAt } = desk;
 
-  const { data: guide, error: guideError } = await supabase
-    .from("voice_guides")
-    .select("guide_deploy, measured_facts, provenance")
-    .eq("reporter_handle", reporterHandle)
-    .maybeSingle();
+  if (!verifiedAt) {
+    return (
+      <div className="py-4">
+        <VerifyGate deskId={id} reporterHandle={reporterHandle} xLinked={xLinkState.linked} />
+      </div>
+    );
+  }
+
+  const [{ data: guide, error: guideError }, rules] = await Promise.all([
+    supabase
+      .from("voice_guides")
+      .select("guide_deploy, measured_facts, provenance")
+      .eq("reporter_handle", reporterHandle)
+      .maybeSingle(),
+    listVoiceRules(reporterHandle),
+  ]);
   if (guideError) throw new Error("Failed to load the writing guide. Please try again.");
 
   let audit: AuditData | null = null;
@@ -287,14 +269,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle>Writing guide</CardTitle>
-          <div className="flex items-center gap-2">
-            {guide ? <AuditDialog audit={audit} reporterHandle={reporterHandle} /> : null}
-            <GreyedAffordance
-              icon={<PlusIcon className="size-3.5" />}
-              label="Add a rule"
-              reason="Adding rules needs a rules table this schema doesn't have yet — coming soon"
-            />
-          </div>
+          {guide ? <AuditDialog audit={audit} reporterHandle={reporterHandle} /> : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {guide ? (
@@ -305,10 +280,10 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
               ) : (
                 <p className="text-sm text-muted-foreground">Style facts unavailable.</p>
               )}
-              <SuggestedCard />
+              <RulesEditor deskId={id} rules={rules} />
             </>
           ) : (
-            <EmptyState reporterHandle={reporterHandle} />
+            <EmptyState deskId={id} reporterHandle={reporterHandle} />
           )}
         </CardContent>
       </Card>
