@@ -1,10 +1,9 @@
 // lib/agent/tools.ts
 //
-// The two agent tools, AI SDK `tool()` defs. grok's scan system prompt comes from
-// lib/sysprompts. `oparaxXSearch` is currently unwired from the create-desk assistant's
-// tool set (agent.ts) — it stays defined here for a future scanning surface, see its own
-// comment. `saveAgent` needs no approval gate — it is a pure echo, see its own comment.
-// SERVER-ONLY (transitively reads fs via lib/sysprompts).
+// The oparaxXSearch agent tool, an AI SDK `tool()` def. grok's scan system prompt comes
+// from lib/sysprompts. It is currently unwired from any live tool set — it stays defined
+// here for a future scanning surface, see its own comment. SERVER-ONLY (transitively
+// reads fs via lib/sysprompts).
 //
 // There is no handle-verification tool: the reporter's handles are taken as given
 // and passed straight to the scan — a wrong handle simply returns nothing, no
@@ -13,33 +12,12 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { X_SEARCH_EXECUTOR_PROMPT } from "@/lib/sysprompts";
-import { X_HANDLE_RE } from "@/lib/x/handle";
 import { callResponses } from "./xai";
 
-/** The create-desk form's actual field shape (app/agents/new/create-desk-form.tsx +
- *  createDesk, app/agents/new/actions.ts) — NOT deskConfigSchema (lib/agent/desk-config.ts),
- *  which is the old, unrelated onboarding-chat shape (drafting instructions, account tier,
- *  scan frequency) that this form has no columns or fields for. Kept separate on purpose:
- *  deskConfigSchema still backs the live scan-frequency rate rail (lib/agent/scan-frequency.ts)
- *  and lib/agents.ts's display formatter, so it must not be repurposed or edited here. */
-const createDeskFormSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .describe("A short desk name — may be empty; the form falls back to a beat-derived label."),
-  beat: z.string().trim().min(1).describe("The clarified, specific beat description."),
-  trackedHandles: z
-    .array(z.string().regex(X_HANDLE_RE))
-    .max(20)
-    .describe("Bare X handles, no @, as confirmed with the reporter — never invented."),
-  reporterHandle: z.string().trim().min(1).describe("The reporter's own X handle, bare, no @."),
-});
-
-// grok is a DUMB EXECUTOR here. DeepSeek (the reasoner) drafts the exact x_search
-// subtool calls per its own strict guardrails (see lib/sysprompts/desk-agent.md);
-// this tool relays them and grok runs them VERBATIM. All enforcement is in the
-// prompts — DeepSeek's drafter guardrails + this executor prompt — never in tool
-// code.
+// grok is a DUMB EXECUTOR here. An orchestrator drafts the exact x_search
+// subtool calls per its own strict guardrails; this tool relays them and grok
+// runs them VERBATIM. All enforcement is in the prompts — the drafter's
+// guardrails + this executor prompt — never in tool code.
 
 /** One x_search subtool call DeepSeek drafted (e.g. x_keyword_search / x_semantic_search). */
 const SubtoolCall = z.object({
@@ -110,18 +88,4 @@ export const oparaxXSearch = tool({
   async execute({ calls, handles, fromDate, toDate }) {
     return executeSearchCalls(calls, handles, fromDate, toDate);
   },
-});
-
-// Pure echo — this tool must NEVER write to a database and needs no approval gate.
-// Persistence happens in the app, not in chat: the create-desk form (app/agents/new/
-// create-desk-form.tsx) reads this call's result off the tool part and pushes the
-// clarified values into its own field state, which the reporter reviews and submits
-// themselves via the existing "Create desk" button (createDesk, app/agents/new/
-// actions.ts). This call doubles as the model's signal that clarification is done —
-// there is no separate confirm/save step inside the chat anymore.
-export const saveAgent = tool({
-  description:
-    "Return the clarified desk fields once the beat reads clear and specific, and the reporter's name, tracked X accounts, and own X handle are either already filled in on the form or the reporter has said they'll fill them in directly. Pass the values exactly as confirmed — never invent a handle. This call never saves anything itself; the form is the reporter's only persist path.",
-  inputSchema: createDeskFormSchema,
-  execute: async (config) => ({ ok: true as const, config }),
 });

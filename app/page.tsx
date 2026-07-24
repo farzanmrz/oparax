@@ -36,10 +36,10 @@ export default async function RootPage() {
         <section className="mx-auto flex w-full max-w-[81rem] flex-1 flex-col justify-center px-6 py-20 md:py-28">
           <p className="mb-6 flex items-center gap-2 text-sm font-medium tracking-widest text-muted-foreground uppercase">
             <span aria-hidden="true" className="size-2 rounded-full bg-live" />
-            The AI news desk
+            The AI news agent
           </p>
           <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-tight tracking-tight md:text-6xl">
-            Your beat never sleeps. Now neither does your desk.
+            Your beat never sleeps. Now neither does your agent.
           </h1>
           <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
             Oparax watches the accounts and sources you can&apos;t keep up with, surfaces breaking

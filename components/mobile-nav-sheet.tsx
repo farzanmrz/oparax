@@ -32,7 +32,7 @@ export function MobileNavSheet({
   return (
     <Sheet onOpenChange={setOpen} open={open}>
       <SheetTrigger asChild>
-        <Button aria-label="Open desk navigation" size="icon-sm" variant="ghost">
+        <Button aria-label="Open agent navigation" size="icon-sm" variant="ghost">
           <MenuIcon />
         </Button>
       </SheetTrigger>
@@ -40,7 +40,7 @@ export function MobileNavSheet({
         <SheetHeader>
           <SheetTitle>{deskLabel}</SheetTitle>
         </SheetHeader>
-        <nav aria-label="Desk sections" className="flex flex-col gap-1 px-4 pb-4">
+        <nav aria-label="Agent sections" className="flex flex-col gap-1 px-4 pb-4">
           {DESK_TABS.map((tab) => {
             const href = tab.href(deskId);
             const active = tab.exact

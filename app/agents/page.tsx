@@ -36,7 +36,7 @@ export default async function AgentsListingPage() {
     .maybeSingle();
 
   if (error) {
-    return <AgentsList error="Something went wrong loading your desks." />;
+    return <AgentsList error="Something went wrong loading your agents." />;
   }
 
   if (data) redirect(`/agents/${data.id}`);

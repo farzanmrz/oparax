@@ -27,7 +27,7 @@ export default async function LoginPage({
   return (
     <AuthShell
       title="Log in"
-      subtitle="Back to the desk."
+      subtitle="Back to the agent."
       footer={
         <>
           <p>

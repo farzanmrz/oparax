@@ -52,7 +52,7 @@ export function DeskTabs({
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Desk sections" className="flex items-center gap-1">
+    <nav aria-label="Agent sections" className="flex items-center gap-1">
       {DESK_TABS.map((tab) => {
         const href = tab.href(deskId);
         const active = tab.exact
@@ -138,7 +138,7 @@ export function DeskControls({
       >
         <DialogTrigger asChild>
           <Button
-            aria-label={isLive ? "Pause this desk" : "Resume this desk"}
+            aria-label={isLive ? "Pause this agent" : "Resume this agent"}
             className={
               isLive ? "text-warning hover:text-warning" : "text-success hover:text-success"
             }
@@ -150,7 +150,7 @@ export function DeskControls({
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isLive ? "Pause this desk?" : "Resume this desk?"}</DialogTitle>
+            <DialogTitle>{isLive ? "Pause this agent?" : "Resume this agent?"}</DialogTitle>
             <DialogDescription>
               {isLive
                 ? "While paused, Oparax stops watching the beat — nothing is scanned and nothing is posted automatically."
@@ -164,7 +164,7 @@ export function DeskControls({
               onClick={handlePauseResume}
               variant={isLive ? "outline" : "default"}
             >
-              {isPending ? "Working…" : isLive ? "Pause desk" : "Resume desk"}
+              {isPending ? "Working…" : isLive ? "Pause agent" : "Resume agent"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -179,7 +179,7 @@ export function DeskControls({
       >
         <AlertDialogTrigger asChild>
           <Button
-            aria-label="Delete this desk"
+            aria-label="Delete this agent"
             className="text-destructive hover:text-destructive"
             size="icon-sm"
             variant="ghost"
@@ -189,16 +189,16 @@ export function DeskControls({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this desk?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this agent?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes the desk and every draft in it. This can't be undone.
+              This permanently deletes the agent and every draft in it. This can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             <Button disabled={isPending} onClick={handleDelete} variant="destructive">
-              {isPending ? "Deleting…" : "Delete desk"}
+              {isPending ? "Deleting…" : "Delete agent"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

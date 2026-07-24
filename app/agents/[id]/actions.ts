@@ -24,7 +24,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 export async function pauseDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("experiments").update({ status: "paused" }).eq("id", id);
-  if (error) return { ok: false, error: "Could not pause the desk. Please try again." };
+  if (error) return { ok: false, error: "Could not pause the agent. Please try again." };
   // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
   // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
   // otherwise show a stale name/dot after a create/pause/rename.
@@ -36,7 +36,7 @@ export async function pauseDesk(id: string): Promise<ActionResult> {
 export async function resumeDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("experiments").update({ status: "active" }).eq("id", id);
-  if (error) return { ok: false, error: "Could not resume the desk. Please try again." };
+  if (error) return { ok: false, error: "Could not resume the agent. Please try again." };
   // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
   // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
   // otherwise show a stale name/dot after a create/pause/rename.
@@ -55,7 +55,7 @@ export async function resumeDesk(id: string): Promise<ActionResult> {
 export async function deleteDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("experiments").delete().eq("id", id);
-  if (error) return { ok: false, error: "Could not delete the desk. Please try again." };
+  if (error) return { ok: false, error: "Could not delete the agent. Please try again." };
   redirect("/agents");
 }
 
@@ -89,7 +89,7 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
     .select("tracked_handles")
     .eq("id", id)
     .maybeSingle();
-  if (error || !data) return { ok: false, error: "Could not load the desk's tracked handles." };
+  if (error || !data) return { ok: false, error: "Could not load the agent's tracked handles." };
 
   const merged = [...data.tracked_handles];
   for (const handle of candidates) {
@@ -99,7 +99,7 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
   if (merged.length === data.tracked_handles.length) {
     // Nothing new landed — either all duplicates (a benign no-op) or the desk is already full.
     return data.tracked_handles.length >= MAX_TRACKED_HANDLES
-      ? { ok: false, error: `A desk can track up to ${MAX_TRACKED_HANDLES} accounts.` }
+      ? { ok: false, error: `An agent can track up to ${MAX_TRACKED_HANDLES} accounts.` }
       : { ok: true };
   }
 
@@ -224,7 +224,7 @@ export async function removeTrackedHandle(id: string, handle: string): Promise<A
     .select("tracked_handles")
     .eq("id", id)
     .maybeSingle();
-  if (error || !data) return { ok: false, error: "Could not load the desk's tracked handles." };
+  if (error || !data) return { ok: false, error: "Could not load the agent's tracked handles." };
 
   const nextHandles = data.tracked_handles.filter((tracked) => tracked !== normalized);
   const { error: updateError } = await supabase

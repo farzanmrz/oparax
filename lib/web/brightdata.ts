@@ -5,10 +5,14 @@
 // BRIGHTDATA_API_KEY and writes usage_events via the admin client. Never import this from a
 // client component.
 //
-// Two endpoints, both live-verified against the real Bright Data account (G3,
+// Three endpoints, both/all live-verified against the real Bright Data account (G3,
 // docs/decisions.md L2):
-//   - scrapeUrl    -> Web Unlocker, sync POST /request
+//   - scrapeUrl     -> Web Unlocker, sync POST /request
 //   - pullXTimeline -> Web Scraper API, X/Twitter posts dataset, async trigger/poll/download
+//   - fetchXProfile -> Web Scraper API, X/Twitter PROFILE dataset (a distinct, smaller
+//     dataset_id from pullXTimeline's posts one), sync POST /datasets/v3/scrape — a cheap
+//     pre-flight, not a data dependency, so unlike the two above it never throws on a failure
+//     to resolve; see its own comment below for why.
 //
 // Metering (L7 house rule, AGENTS.md): every call stamps exactly one usage_events row via the
 // service-role admin client (the table has no insert policy — service role is mandatory).
@@ -275,4 +279,78 @@ export async function pullXTimeline(handle: string, ownerId: string): Promise<XT
   });
 
   return posts;
+}
+
+// ---------------------------------------------------------------------------------------------
+// fetchXProfile — Web Scraper API, X/Twitter PROFILE dataset, sync (a pre-flight, not a data
+// dependency — see the return-contract note below)
+// ---------------------------------------------------------------------------------------------
+
+/** "Collect X (Twitter) profiles by URL" — a distinct, smaller dataset from X_POSTS_DATASET_ID
+ *  above (docs: api-reference/scrapers/social-media-apis/twitter-profiles-collect-by-url,
+ *  confirmed 2026-07-24). Resolves through the same `/datasets/v3/scrape` sync endpoint
+ *  pullXTimeline's trigger/progress/download cycle exists to avoid: up to 20 URLs, data back
+ *  inline within ~1 minute, no snapshot polling — the right shape for a single-handle
+ *  pre-flight ahead of any extraction spend claim. */
+const X_PROFILE_DATASET_ID = "gd_lwxmeb2u1cniijd7t4";
+const DATASETS_SCRAPE_URL = "https://api.brightdata.com/datasets/v3/scrape";
+
+/** Only `posts_count` is consumed — the live response carries far more (bio, followers,
+ *  is_verified, profile_image_link, recent posts, ...), all ignored here. */
+type BrightDataXProfile = { posts_count?: number };
+
+export type XProfileResult = { resolved: boolean; postsCount: number };
+
+/** Return contract is deliberately NOT "throws on failure" like scrapeUrl/pullXTimeline above —
+ *  this is a pre-flight probe a caller branches on, not a data dependency it needs to succeed.
+ *  Bright Data has no stable enum distinguishing a private/suspended/nonexistent/malformed
+ *  handle (docs researched, no `error_message` taxonomy to branch on), so every non-resolving
+ *  outcome — network/timeout error, non-2xx, a 202 (the sync endpoint's own async-fallback
+ *  signal, deliberately not chased into pullXTimeline's poll/download cycle for a single
+ *  handle), an empty/malformed body, a missing or non-numeric `posts_count` — collapses into
+ *  the same `{ resolved: false, postsCount: 0 }`. Only a config error (missing
+ *  BRIGHTDATA_API_KEY) still throws, same as every other function in this file. Meters
+ *  `usage_events` on every attempt, success or failure: Bright Data bills a failed-due-to-
+ *  invalid-input row the same as a successful one, so unlike scrapeUrl/pullXTimeline's
+ *  post-success-only stamp, this one meters unconditionally once a request was actually
+ *  attempted. */
+export async function fetchXProfile(handle: string, ownerId: string): Promise<XProfileResult> {
+  const apiKey = brightDataApiKey();
+  const url = new URL(DATASETS_SCRAPE_URL);
+  url.searchParams.set("dataset_id", X_PROFILE_DATASET_ID);
+  url.searchParams.set("format", "json");
+
+  let result: XProfileResult = { resolved: false, postsCount: 0 };
+  try {
+    const res = await bdFetch(
+      "fetchXProfile",
+      url.toString(),
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ input: [{ url: xProfileUrl(handle) }] }),
+      },
+      60_000,
+    );
+    if (res.status === 200) {
+      const rows = (await res.json()) as BrightDataXProfile[];
+      const postsCount = Array.isArray(rows) ? rows[0]?.posts_count : undefined;
+      if (typeof postsCount === "number" && Number.isFinite(postsCount)) {
+        result = { resolved: true, postsCount };
+      }
+    }
+  } catch {
+    // network error, timeout, or a malformed body — collapses into the unresolved result below
+  }
+
+  const admin = createAdminClient();
+  await stampUsageEvent(admin, {
+    owner_id: ownerId,
+    kind: "scrape_x_profile",
+    units: 1,
+    cost_usd: null,
+    ref_id: handle,
+  });
+
+  return result;
 }

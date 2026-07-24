@@ -110,6 +110,14 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    snapshot is ~200-400 tokens, versus parsing raw HTML), it is headless by default
    (`--headed` is opt-in), and `--session <name>` isolates parallel runs.
 
+   **Auth is pre-solved — no login step, ever, in this stage.** A `testuser@oparax.ai`
+   session was captured once via `agent-browser state save` to
+   `~/.agent-browser/oparax-qc-authenticated.json`; every `browser-verifier` dispatch passes
+   `--state <that path>` on its first command (see the agent's own body) and lands
+   pre-authenticated. If a route bounces to `/login` despite it, the saved session expired —
+   that comes back as a finding, not a reason to prompt the owner for credentials; refreshing
+   it requires a human to log in once in a headed window (owner-only, never this agent's job).
+
    **How it runs.** Derive the changed routes/flows from the branch diff (the step-0
    range), group them, and dispatch **`browser-verifier` agents in PARALLEL — one per
    route-or-flow group, each given its own `--session` id** so the browsers don't

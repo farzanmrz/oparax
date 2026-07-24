@@ -26,7 +26,7 @@ export default async function SignupPage({
   return (
     <AuthShell
       title="Sign up"
-      subtitle="Put an AI news desk on your beat."
+      subtitle="Put an AI news agent on your beat."
       footer={
         <p>
           Already have an account?{" "}

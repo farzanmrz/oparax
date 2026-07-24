@@ -28,11 +28,11 @@ function EmptyState() {
       </span>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight text-balance">
-          Start your first news desk
+          Start your first news agent
         </h2>
         <p className="mx-auto max-w-lg text-base leading-relaxed text-pretty text-muted-foreground">
-          A desk is an agent that watches a beat around the clock — aggregating atomic news items,
-          surfacing developing stories, and drafting posts in your voice.
+          An agent watches a beat around the clock — aggregating atomic news items, surfacing
+          developing stories, and drafting posts in your voice.
         </p>
       </div>
       <Button asChild className="h-12 px-6 text-base" size="lg">

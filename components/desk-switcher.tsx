@@ -37,13 +37,13 @@ export function DeskSwitcher({ desks }: { readonly desks: SwitcherDesk[] }) {
         >
           <StatusDot active={currentDesk?.status === "active"} />
           <span className="max-w-40 truncate font-medium">
-            {currentDesk ? deskDisplayName(currentDesk) : "Desks"}
+            {currentDesk ? deskDisplayName(currentDesk) : "Agents"}
           </span>
           <ChevronDownIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60">
-        <DropdownMenuLabel>Your desk agents</DropdownMenuLabel>
+        <DropdownMenuLabel>Your agents</DropdownMenuLabel>
         {desks.map((desk) => (
           <DropdownMenuItem asChild key={desk.id}>
             <Link href={`/agents/${desk.id}`}>
@@ -56,7 +56,7 @@ export function DeskSwitcher({ desks }: { readonly desks: SwitcherDesk[] }) {
         <DropdownMenuItem asChild>
           <Link href="/agents/new">
             <PlusIcon />
-            New desk
+            New agent
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

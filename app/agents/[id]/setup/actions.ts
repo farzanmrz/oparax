@@ -69,7 +69,7 @@ export async function saveWebsites(
     .select("websites")
     .eq("id", deskId)
     .maybeSingle();
-  if (error || !data) return { ok: false, error: "Could not load the desk's websites." };
+  if (error || !data) return { ok: false, error: "Could not load the agent's websites." };
 
   const existing = parseWebsites(data.websites);
   const merged = [...existing];
@@ -79,7 +79,7 @@ export async function saveWebsites(
   }
   if (merged.length === existing.length) {
     return existing.length >= MAX_WEBSITES
-      ? { ok: false, error: `A desk can track up to ${MAX_WEBSITES} websites.` }
+      ? { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` }
       : { ok: true };
   }
 
@@ -100,7 +100,7 @@ export async function removeWebsite(deskId: string, url: string): Promise<Action
     .select("websites")
     .eq("id", deskId)
     .maybeSingle();
-  if (error || !data) return { ok: false, error: "Could not load the desk's websites." };
+  if (error || !data) return { ok: false, error: "Could not load the agent's websites." };
 
   const next = parseWebsites(data.websites).filter((entry) => entry !== url);
   const { error: updateError } = await supabase
@@ -165,7 +165,7 @@ export async function toggleAutoPost(
       .eq("id", deskId)
       .maybeSingle();
     if (error || !data)
-      return { ok: false, error: "Could not load the desk's auto-post settings." };
+      return { ok: false, error: "Could not load the agent's auto-post settings." };
 
     const current =
       typeof data.auto_post_sources === "object" &&
@@ -223,7 +223,7 @@ export async function sendTestEmail(deskId: string): Promise<ActionResult> {
     await sendPlainTestEmail({
       to,
       subject: "Oparax test notification",
-      text: "Oparax is connected — draft alerts for this desk will land in your inbox.",
+      text: "Oparax is connected — draft alerts for this agent will land in your inbox.",
     });
   } catch {
     return { ok: false, error: "Could not send a test email. Please try again." };

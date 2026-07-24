@@ -4,11 +4,11 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { listVoiceRules } from "@/lib/voice/rules";
-import { getXLinkState } from "@/lib/x/link-state";
+import { getExtractionProgress } from "./actions";
 import type { AuditData } from "./audit-dialog";
+import { ExtractionProgress } from "./extraction-progress";
 import { RetryExtractionButton } from "./retry-extraction-button";
 import { RulesEditor } from "./rules-editor";
-import { VerifyGate } from "./verify-gate";
 
 // The Reasoning block pulls in Streamdown (markdown rendering) — heavy, and only ever
 // needed once a reporter opens the audit dialog. `next/dynamic` keeps it out of this
@@ -200,14 +200,19 @@ function EmptyState({
 /* ------------------------------------------------------------------ */
 
 /**
- * The Voice tab. Three states, per `voice_guides_verified_gate`'s RLS policy (this Wave):
- * an unverified desk's `voice_guides` SELECT is filtered out even when a guide row exists,
- * indistinguishable from "no guide extracted yet" — so `reporter_verified_at` is checked
- * BEFORE the guide read decides which empty state to show, not after.
- *   1. unverified → `VerifyGate` replaces the guide area entirely.
- *   2. verified, guide exists → the guide (`guide_deploy` as read-only audit prose) + the
- *      real `measured_facts` stat tiles + `RulesEditor` (the drafting input of record).
- *   3. verified, no guide yet → the empty state + a real retry action.
+ * The Voice tab. D14's verify gate is gone (T7) — T6 now stamps `reporter_verified_at` at
+ * desk creation via linked X OAuth, so identity is proven before a desk exists rather than
+ * gated afterward here. This migration wave does not backfill existing rows, so an old desk
+ * can still have `reporter_verified_at: null`; `voice_guides_verified_gate`'s RLS policy still
+ * filters that desk's `voice_guides` SELECT either way, so it naturally falls into the same
+ * "no guide" branch below rather than needing its own dead-end state.
+ *
+ * Two states now:
+ *   1. guide exists → the guide (`guide_deploy` as read-only audit prose) + the real
+ *      `measured_facts` stat tiles + `RulesEditor` (the drafting input of record).
+ *   2. no guide yet → if an extraction is actively in flight for this reporter right now (a
+ *      background job from create-desk that survives navigation, per T5), a live progress view
+ *      (`ExtractionProgress`); otherwise the static empty state + a real retry action.
  */
 export default async function VoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -215,26 +220,15 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
 
   const supabase = await createClient();
 
-  const [{ data: desk, error: deskError }, xLinkState] = await Promise.all([
-    supabase
-      .from("experiments")
-      .select("reporter_handle, reporter_verified_at")
-      .eq("id", id)
-      .maybeSingle(),
-    getXLinkState(),
-  ]);
-  if (deskError) throw new Error("Failed to load the desk. Please try again.");
+  const { data: desk, error: deskError } = await supabase
+    .from("experiments")
+    .select("reporter_handle")
+    .eq("id", id)
+    .maybeSingle();
+  if (deskError) throw new Error("Failed to load the agent. Please try again.");
   if (!desk) notFound(); // RLS makes an absent id and another user's id indistinguishable
 
-  const { reporter_handle: reporterHandle, reporter_verified_at: verifiedAt } = desk;
-
-  if (!verifiedAt) {
-    return (
-      <div className="py-4">
-        <VerifyGate deskId={id} reporterHandle={reporterHandle} xLinked={xLinkState.linked} />
-      </div>
-    );
-  }
+  const { reporter_handle: reporterHandle } = desk;
 
   const [{ data: guide, error: guideError }, rules] = await Promise.all([
     supabase
@@ -264,6 +258,11 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
 
   const facts = guide ? parseMeasuredFacts(guide.measured_facts) : null;
 
+  // Only checked when there's no guide yet — a guide already existing means extraction is
+  // done, so there's nothing in flight to poll for.
+  const progress = guide ? null : await getExtractionProgress(id);
+  const extractionInFlight = progress?.ok === true && progress.status === "reserved";
+
   return (
     <div className="py-4">
       <Card>
@@ -282,6 +281,14 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
               )}
               <RulesEditor deskId={id} rules={rules} />
             </>
+          ) : extractionInFlight && progress.ok ? (
+            <ExtractionProgress
+              deskId={id}
+              initialProgressNote={progress.progressNote}
+              initialReasoningPartial={progress.reasoningPartial}
+              initialStage={progress.stage}
+              reporterHandle={reporterHandle}
+            />
           ) : (
             <EmptyState deskId={id} reporterHandle={reporterHandle} />
           )}

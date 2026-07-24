@@ -5,14 +5,15 @@
 // The create-desk screen: a full-width form — Desk name + Beat across the top, then Sources and
 // Voice side by side — with a short "what happens next" panel below. Tracked accounts accept
 // comma/space/newline paste with or without a leading @, capped at MAX_TRACKED_HANDLES; the
-// server (createDesk) re-validates + re-caps. A collapsible assistant panel next to the Beat
-// field (create-desk-assistant.tsx) helps clarify a fuzzy or garbled beat via /api/chat and
-// hands its result back into this form's own field state — it never submits the form itself.
-// No model call runs unless the reporter opens that panel.
+// server (createDesk) re-validates + re-caps. Identity comes from a linked X account (Connect X)
+// rather than a typed handle — `xLinkState` is fetched server-side by page.tsx and handed down
+// as a prop, since a client component can't read the reporter's own OAuth link state without a
+// round trip. Once createDesk succeeds this same screen swaps to a live extraction view
+// (extraction-progress.tsx) instead of redirecting straight into the desk — the old
+// submit-and-redirect flow is gone.
 
-import { InfoIcon, Loader2Icon, SparklesIcon, XIcon } from "lucide-react";
+import { InfoIcon, Loader2Icon, XIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   type ClipboardEvent,
   type KeyboardEvent,
@@ -30,7 +31,7 @@ import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { saveWebsites } from "../[id]/setup/actions";
 import { createDesk } from "./actions";
-import { CreateDeskAssistant, type CreateDeskAssistantValues } from "./create-desk-assistant";
+import { ExtractionProgress } from "./extraction-progress";
 
 /** Split a typed/pasted blob into candidate website entries — comma / whitespace / newline
  *  separated. Light client-side shaping only; `saveWebsites` (server) does the real
@@ -117,8 +118,11 @@ function SectionHeader({ children }: { readonly children: ReactNode }) {
   );
 }
 
-export function CreateDeskForm() {
-  const router = useRouter();
+export function CreateDeskForm({
+  xLinkState,
+}: {
+  readonly xLinkState: { linked: boolean; handle: string | null };
+}) {
   const [isPending, startTransition] = useTransition();
 
   const [name, setName] = useState("");
@@ -127,18 +131,10 @@ export function CreateDeskForm() {
   const [handleDraft, setHandleDraft] = useState("");
   const [websites, setWebsites] = useState<string[]>([]);
   const [websiteDraft, setWebsiteDraft] = useState("");
-  const [reporterHandle, setReporterHandle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [createdDeskId, setCreatedDeskId] = useState<string | null>(null);
 
   const atLimit = handles.length >= MAX_TRACKED;
-
-  function applyAssistantValues(values: CreateDeskAssistantValues) {
-    setName(values.name);
-    setBeat(values.beat);
-    setHandles(values.trackedHandles);
-    setReporterHandle(values.reporterHandle);
-  }
 
   function commitDraft() {
     const parts = splitHandles(handleDraft);
@@ -186,12 +182,16 @@ export function CreateDeskForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
+    if (!xLinkState.linked) {
+      setFormError("Connect your X account before creating an agent.");
+      return;
+    }
     const finalHandles = mergeHandles(handles, splitHandles(handleDraft));
     const finalWebsites = mergeWebsites(websites, splitWebsites(websiteDraft));
     startTransition(async () => {
-      const result = await createDesk({ name, beat, trackedHandles: finalHandles, reporterHandle });
+      const result = await createDesk({ name, beat, trackedHandles: finalHandles });
       if (result.error || !result.id) {
-        setFormError(result.error ?? "Could not create your desk. Please try again.");
+        setFormError(result.error ?? "Could not create your agent. Please try again.");
         return;
       }
       const deskId = result.id;
@@ -202,11 +202,12 @@ export function CreateDeskForm() {
           console.error("createDesk: saveWebsites failed", err);
         });
       }
-      router.push(`/agents/${deskId}/voice`);
+      setCreatedDeskId(deskId);
     });
   }
 
-  const canSubmit = beat.trim().length > 0 && reporterHandle.trim().length > 0 && !isPending;
+  const canSubmit = beat.trim().length > 0 && xLinkState.linked && !isPending;
+  const reporterDisplay = xLinkState.linked && xLinkState.handle ? `@${xLinkState.handle}` : "your";
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -215,184 +216,179 @@ export function CreateDeskForm() {
           <OparaxMark className="size-5" />
         </span>
         <h1 className="min-w-0 flex-1 truncate font-semibold text-lg tracking-tight">
-          Create desk
+          {createdDeskId ? "Building your voice guide" : "Create agent"}
         </h1>
         <Button aria-label="Close" asChild size="icon-sm" variant="ghost">
-          <Link href="/agents">
+          <Link href={createdDeskId ? `/agents/${createdDeskId}` : "/agents"}>
             <XIcon />
           </Link>
         </Button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-6 pb-10">
-        <form className="flex w-full flex-col gap-8" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5 md:col-span-2">
-              <FieldLabel help="Shown in the desk switcher at the top. Optional — defaults to a label from your beat.">
-                Desk name
-              </FieldLabel>
-              <Input
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Barça watch"
-                value={name}
-              />
-            </div>
+        {createdDeskId ? (
+          <ExtractionProgress deskId={createdDeskId} />
+        ) : (
+          <form className="flex w-full flex-col gap-8" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <FieldLabel help="Shown in the agent switcher at the top. Optional — defaults to a label from your beat.">
+                  Agent name
+                </FieldLabel>
+                <Input
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Barça watch"
+                  value={name}
+                />
+              </div>
 
-            <div className="flex flex-col gap-1.5 md:col-span-2">
-              <div className="flex items-center justify-between gap-2">
-                <FieldLabel help="The topic this desk watches. Be specific — it steers what counts as a story worth drafting.">
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <FieldLabel help="The topic this agent watches. Be specific — it steers what counts as a story worth drafting.">
                   Beat
                 </FieldLabel>
-                <Button
-                  onClick={() => setAssistantOpen((open) => !open)}
-                  size="xs"
-                  type="button"
-                  variant={assistantOpen ? "secondary" : "ghost"}
-                >
-                  <SparklesIcon className="size-3" />
-                  {assistantOpen ? "Hide assistant" : "Need help wording this?"}
-                </Button>
+                <Textarea
+                  onChange={(e) => setBeat(e.target.value)}
+                  placeholder="e.g. US AI regulation — agencies, hearings, enforcement. Skip product launches."
+                  rows={3}
+                  value={beat}
+                />
               </div>
-              <Textarea
-                onChange={(e) => setBeat(e.target.value)}
-                placeholder="e.g. US AI regulation — agencies, hearings, enforcement. Skip product launches."
-                rows={3}
-                value={beat}
-              />
-              {assistantOpen ? <CreateDeskAssistant onApply={applyAssistantValues} /> : null}
+
+              <div className="flex flex-col gap-4">
+                <SectionHeader>Sources</SectionHeader>
+
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel help="The X accounts this agent watches for breaking stories. Paste several at once — comma- or space-separated, with or without the @.">
+                    Tracked X accounts ({handles.length}/{MAX_TRACKED})
+                  </FieldLabel>
+                  {handles.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {handles.map((handle) => (
+                        <Badge className="gap-1 pr-1" key={handle} variant="secondary">
+                          @{handle}
+                          <button
+                            aria-label={`Remove @${handle}`}
+                            className="rounded-full p-0.5 hover:bg-foreground/10"
+                            onClick={() => removeHandle(handle)}
+                            type="button"
+                          >
+                            <XIcon className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Input
+                    disabled={atLimit}
+                    onBlur={commitDraft}
+                    onChange={(e) => setHandleDraft(e.target.value)}
+                    onKeyDown={onTrackedKeyDown}
+                    onPaste={onTrackedPaste}
+                    placeholder={
+                      atLimit
+                        ? `Up to ${MAX_TRACKED} accounts`
+                        : "Paste handles — comma-separated, @ optional"
+                    }
+                    value={handleDraft}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel help="News sites this agent watches, alongside X accounts. Paste several at once — comma- or space-separated.">
+                    Websites ({websites.length}/{MAX_WEBSITES})
+                  </FieldLabel>
+                  {websites.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {websites.map((site) => (
+                        <Badge className="gap-1 pr-1" key={site} variant="secondary">
+                          {site}
+                          <button
+                            aria-label={`Remove ${site}`}
+                            className="rounded-full p-0.5 hover:bg-foreground/10"
+                            onClick={() => removeWebsite(site)}
+                            type="button"
+                          >
+                            <XIcon className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Input
+                    disabled={websites.length >= MAX_WEBSITES}
+                    onBlur={commitWebsiteDraft}
+                    onChange={(e) => setWebsiteDraft(e.target.value)}
+                    onKeyDown={onWebsiteKeyDown}
+                    placeholder={
+                      websites.length >= MAX_WEBSITES
+                        ? `Up to ${MAX_WEBSITES} sites`
+                        : "example.com — press Enter to add"
+                    }
+                    value={websiteDraft}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <SectionHeader>Voice</SectionHeader>
+
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel help="Connect your X account. Oparax reads your recent posts to learn how you write, so drafts land in your voice — not a generic tone.">
+                    Your X account
+                  </FieldLabel>
+                  {xLinkState.linked && xLinkState.handle ? (
+                    <Input disabled value={`@${xLinkState.handle}`} />
+                  ) : (
+                    <Button asChild className="w-fit" variant="outline">
+                      <a href={`/auth/x?returnTo=${encodeURIComponent("/agents/new")}`}>
+                        Connect X
+                      </a>
+                    </Button>
+                  )}
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Draft instructions aren&apos;t set here — once your agent is created, Oparax
+                  learns your voice from your posts, and you can add or edit specific rules anytime
+                  from the agent&apos;s Voice tab.
+                </p>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <SectionHeader>Sources</SectionHeader>
+            {formError ? <p className="text-destructive text-sm">{formError}</p> : null}
 
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel help="The X accounts this desk watches for breaking stories. Paste several at once — comma- or space-separated, with or without the @.">
-                  Tracked X accounts ({handles.length}/{MAX_TRACKED})
-                </FieldLabel>
-                {handles.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {handles.map((handle) => (
-                      <Badge className="gap-1 pr-1" key={handle} variant="secondary">
-                        @{handle}
-                        <button
-                          aria-label={`Remove @${handle}`}
-                          className="rounded-full p-0.5 hover:bg-foreground/10"
-                          onClick={() => removeHandle(handle)}
-                          type="button"
-                        >
-                          <XIcon className="size-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-                <Input
-                  disabled={atLimit}
-                  onBlur={commitDraft}
-                  onChange={(e) => setHandleDraft(e.target.value)}
-                  onKeyDown={onTrackedKeyDown}
-                  onPaste={onTrackedPaste}
-                  placeholder={
-                    atLimit
-                      ? `Up to ${MAX_TRACKED} accounts`
-                      : "Paste handles — comma-separated, @ optional"
-                  }
-                  value={handleDraft}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel help="News sites this desk watches, alongside X accounts. Paste several at once — comma- or space-separated.">
-                  Websites ({websites.length}/{MAX_WEBSITES})
-                </FieldLabel>
-                {websites.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {websites.map((site) => (
-                      <Badge className="gap-1 pr-1" key={site} variant="secondary">
-                        {site}
-                        <button
-                          aria-label={`Remove ${site}`}
-                          className="rounded-full p-0.5 hover:bg-foreground/10"
-                          onClick={() => removeWebsite(site)}
-                          type="button"
-                        >
-                          <XIcon className="size-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-                <Input
-                  disabled={websites.length >= MAX_WEBSITES}
-                  onBlur={commitWebsiteDraft}
-                  onChange={(e) => setWebsiteDraft(e.target.value)}
-                  onKeyDown={onWebsiteKeyDown}
-                  placeholder={
-                    websites.length >= MAX_WEBSITES
-                      ? `Up to ${MAX_WEBSITES} sites`
-                      : "example.com — press Enter to add"
-                  }
-                  value={websiteDraft}
-                />
-              </div>
+            <div>
+              <Button
+                className="w-full sm:w-auto sm:min-w-56"
+                disabled={!canSubmit}
+                size="lg"
+                type="submit"
+              >
+                {isPending ? <Loader2Icon className="animate-spin" /> : null}
+                Create agent
+              </Button>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <SectionHeader>Voice</SectionHeader>
-
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel help="Your own X handle. Oparax reads your recent posts to learn how you write, so drafts land in your voice — not a generic tone.">
-                  Your X handle
-                </FieldLabel>
-                <Input
-                  onChange={(e) => setReporterHandle(e.target.value)}
-                  placeholder="yourhandle (@ optional)"
-                  value={reporterHandle}
-                />
-              </div>
-
-              <p className="text-sm text-muted-foreground">
-                Draft instructions aren&apos;t set here — once your desk is created, Oparax learns
-                your voice from your posts, and you can add or edit specific rules anytime from the
-                desk&apos;s Voice tab.
+            <div className="rounded-xl border border-border bg-card/40 p-5">
+              <p className="font-semibold text-foreground text-sm">
+                What happens when you create this agent
               </p>
+              <ol className="mt-3 flex flex-col gap-2 text-muted-foreground text-sm">
+                <li>1. Oparax builds your writing voice from {reporterDisplay} recent posts.</li>
+                <li>
+                  2. It watches{" "}
+                  {handles.length > 0
+                    ? `${handles.length} tracked account${handles.length === 1 ? "" : "s"}`
+                    : "your tracked accounts"}{" "}
+                  for breaking stories on this beat.
+                </li>
+                <li>
+                  3. Each story gets a draft in your voice — you review and post from the Feed.
+                </li>
+              </ol>
             </div>
-          </div>
-
-          {formError ? <p className="text-destructive text-sm">{formError}</p> : null}
-
-          <div>
-            <Button
-              className="w-full sm:w-auto sm:min-w-56"
-              disabled={!canSubmit}
-              size="lg"
-              type="submit"
-            >
-              {isPending ? <Loader2Icon className="animate-spin" /> : null}
-              Create desk
-            </Button>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card/40 p-5">
-            <p className="font-semibold text-foreground text-sm">
-              What happens when you create this desk
-            </p>
-            <ol className="mt-3 flex flex-col gap-2 text-muted-foreground text-sm">
-              <li>
-                1. Oparax builds your writing voice from{" "}
-                {reporterHandle.trim() ? `@${cleanHandle(reporterHandle)}` : "your"} recent posts.
-              </li>
-              <li>
-                2. It watches{" "}
-                {handles.length > 0
-                  ? `${handles.length} tracked account${handles.length === 1 ? "" : "s"}`
-                  : "your tracked accounts"}{" "}
-                for breaking stories on this beat.
-              </li>
-              <li>3. Each story gets a draft in your voice — you review and post from the Feed.</li>
-            </ol>
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   );

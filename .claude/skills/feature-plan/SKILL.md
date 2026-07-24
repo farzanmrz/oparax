@@ -132,10 +132,17 @@ the kickoff closes the new issue rather than leaving an orphan.
 
 **Approval is the trigger — no further prompting.** In tracked mode, the moment the
 kickoff succeeds (issue created carrying the approved plan, `ft/<issue#>` cut and
-checked out, branch-scoped state written), immediately invoke **`feature-handoff`**
-(capture) so a bounded `handoff.md` exists for the new branch. Then tell the user,
-in one line: the branch is cut and checkpointed — continue in this session, or open
-a fresh session and run `/feature-continue` to pick up with zero context needed.
+checked out, branch-scoped state written), write the checkpoint immediately —
+`feature-handoff` and `feature-continue` are user-invoked only
+(`disable-model-invocation: true`), so do NOT invoke them via the Skill tool here.
+Instead follow `feature-handoff`'s own **Capture** steps directly: write
+`handoff.next.md` in the directory `state.mjs path` returns, using its required
+section structure, then run `state.mjs capture --branch "<branch>" --input
+"<path>/handoff.next.md"` yourself. Same bounded `handoff.md` either way — this
+just does it without crossing the "the model doesn't get to decide to run this
+packaged skill" boundary those two skills now enforce. Then tell the user, in one
+line: the branch is cut and checkpointed — continue in this session, or open a
+fresh session and run `/feature-continue` to pick up with zero context needed.
 Direct-dev mode has no issue or branch, so this auto-checkpoint step does not apply
 there — the kickoff's state write is the whole record.
 

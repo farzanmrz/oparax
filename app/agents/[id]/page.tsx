@@ -27,7 +27,7 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
   ]);
 
   if (experimentResult.error || !experimentResult.data) {
-    throw new Error("Failed to load the desk. Please try again.");
+    throw new Error("Failed to load the agent. Please try again.");
   }
   const reporterHandle = experimentResult.data.reporter_handle;
 
@@ -49,7 +49,7 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
         <>
           <div className="grid grid-cols-1 gap-x-7 gap-y-1 md:grid-cols-2">
             <h2 className="text-sm font-semibold text-foreground">
-              Stories — {stories.length} since the desk went live
+              Stories — {stories.length} since the agent went live
             </h2>
             <h2 className="text-sm font-semibold text-foreground">
               Drafts — {readyToReviewCount} ready to review

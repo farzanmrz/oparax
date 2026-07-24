@@ -12,7 +12,7 @@ allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Read Write
 model: sonnet
 effort: medium
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 
 # Feature handoff — bounded session continuity

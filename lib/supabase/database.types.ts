@@ -641,9 +641,15 @@ export type Database = {
         Row: {
           actual_usd: number | null;
           created_at: string;
+          error_code: string | null;
+          finished_at: string | null;
           id: string;
+          progress_note: string | null;
+          reasoning_partial: string | null;
           reporter_handle: string;
           reserved_usd: number;
+          stage: string | null;
+          started_at: string | null;
           status: string;
           updated_at: string;
           utc_day: string;
@@ -651,9 +657,15 @@ export type Database = {
         Insert: {
           actual_usd?: number | null;
           created_at?: string;
+          error_code?: string | null;
+          finished_at?: string | null;
           id?: string;
+          progress_note?: string | null;
+          reasoning_partial?: string | null;
           reporter_handle: string;
           reserved_usd: number;
+          stage?: string | null;
+          started_at?: string | null;
           status?: string;
           updated_at?: string;
           utc_day: string;
@@ -661,9 +673,15 @@ export type Database = {
         Update: {
           actual_usd?: number | null;
           created_at?: string;
+          error_code?: string | null;
+          finished_at?: string | null;
           id?: string;
+          progress_note?: string | null;
+          reasoning_partial?: string | null;
           reporter_handle?: string;
           reserved_usd?: number;
+          stage?: string | null;
+          started_at?: string | null;
           status?: string;
           updated_at?: string;
           utc_day?: string;

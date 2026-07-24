@@ -54,20 +54,108 @@ export async function claimExtractionBudget(
  * swallow (best-effort, matching attemptVoiceExtraction's own best-effort discipline in
  * create-desk-extraction.ts — a finalize failure must not crash an extraction that already
  * succeeded or already failed on its own terms).
+ *
+ * `finishedAt`/`errorCode` are optional (T1's lifecycle-timestamp columns) — a caller that
+ * doesn't pass them leaves those columns untouched, so this signature stays a strict superset
+ * of the pre-existing one and every existing call site keeps compiling unchanged.
  */
 export async function finalizeExtractionBudget(
   handle: string,
-  result: { status: "completed" | "failed"; actualUsd: number | null },
+  result: {
+    status: "completed" | "failed";
+    actualUsd: number | null;
+    finishedAt?: string;
+    errorCode?: string | null;
+  },
 ): Promise<void> {
   try {
     const admin = createAdminClient();
     const { error } = await admin
       .from("voice_extraction_claims")
-      .update({ status: result.status, actual_usd: result.actualUsd })
+      .update({
+        status: result.status,
+        actual_usd: result.actualUsd,
+        ...(result.finishedAt !== undefined ? { finished_at: result.finishedAt } : {}),
+        ...(result.errorCode !== undefined ? { error_code: result.errorCode } : {}),
+      })
       .eq("reporter_handle", handle)
       .eq("utc_day", utcDay());
     if (error) throw error;
   } catch (e) {
     console.error(`finalizeExtractionBudget: failed for @${handle}`, e);
+  }
+}
+
+/**
+ * Releases a still-`reserved` claim when the corpus fetch (the Bright Data timeline pull, the
+ * first billable step after the claim lands) fails BEFORE the LLM extraction call would ever
+ * have started. Fixes the lockout bug: without this, a same-day retry is impossible until the
+ * next UTC day even though zero LLM spend happened — only a few cents of scrape cost.
+ *
+ * Deletes the row for (reporter_handle, utc_day) ONLY if its status is still `"reserved"`. That
+ * guard is what makes this race-safe against `finalizeExtractionBudget`: if extraction actually
+ * proceeded and finalize already ran (moving status to "completed"/"failed") before this call's
+ * delete lands, the `.eq("status", "reserved")` predicate matches zero rows and this is a no-op
+ * — a row that has progressed past the corpus stage is never deleted out from under a real,
+ * already-terminal attempt.
+ */
+export async function releaseClaimOnCorpusFailure(handle: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("voice_extraction_claims")
+      .delete()
+      .eq("reporter_handle", handle)
+      .eq("utc_day", utcDay())
+      .eq("status", "reserved");
+    if (error) throw error;
+  } catch (e) {
+    console.error(`releaseClaimOnCorpusFailure: failed for @${handle}`, e);
+  }
+}
+
+/**
+ * Streaming-extraction progress writer (T1's `stage`/`progress_note`/`reasoning_partial`
+ * columns) — called repeatedly through a live extraction attempt to push status into today's
+ * claim row (matched by reporter_handle + utc_day). Stamps `updated_at` on every call, and
+ * stamps `started_at` on the first call only — read-then-conditional-update, mirroring this
+ * file's existing plain select/update query style rather than introducing a Postgres RPC this
+ * module has never needed before. Best-effort, same discipline as finalizeExtractionBudget:
+ * never throws out to the caller over a bookkeeping write — log and swallow.
+ */
+export async function recordProgress(
+  handle: string,
+  patch: { stage?: string; progressNote?: string; reasoningPartial?: string },
+): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const day = utcDay();
+
+    const { data: existing, error: selectError } = await admin
+      .from("voice_extraction_claims")
+      .select("started_at")
+      .eq("reporter_handle", handle)
+      .eq("utc_day", day)
+      .maybeSingle();
+    if (selectError) throw selectError;
+
+    const { error } = await admin
+      .from("voice_extraction_claims")
+      .update({
+        ...(patch.stage !== undefined ? { stage: patch.stage } : {}),
+        ...(patch.progressNote !== undefined ? { progress_note: patch.progressNote } : {}),
+        ...(patch.reasoningPartial !== undefined
+          ? { reasoning_partial: patch.reasoningPartial }
+          : {}),
+        ...(existing && existing.started_at == null
+          ? { started_at: new Date().toISOString() }
+          : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("reporter_handle", handle)
+      .eq("utc_day", day);
+    if (error) throw error;
+  } catch (e) {
+    console.error(`recordProgress: failed for @${handle}`, e);
   }
 }

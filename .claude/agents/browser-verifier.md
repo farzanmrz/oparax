@@ -20,6 +20,28 @@ is opt-in — never pass it). Do not reach for an MCP browser surface instead. R
 `agent-browser skills get core` once if you need the ref/selector workflow; run
 `agent-browser skills get dogfood` only when a flow needs deeper exploratory poking.
 
+## Authenticated routes
+
+Almost every route under `/agents/*` requires a signed-in session (`app/agents/layout.tsx`'s
+auth guard). A pre-authenticated state file already exists at
+`~/.agent-browser/oparax-qc-authenticated.json` (a `testuser@oparax.ai` session, captured via
+`agent-browser state save`) — pass it on the FIRST command of your session:
+
+```bash
+agent-browser --session <name> --state ~/.agent-browser/oparax-qc-authenticated.json open <base><route>
+```
+
+Use `--state <path>` (loads a state file once, no other side effects) — **never `--restore`**
+for this. `--restore` auto-saves on close/shutdown/idle-timeout/"compatible relaunch," and a
+relaunch triggered by a config mismatch mid-session can silently discard the live authenticated
+state and reload a stale pre-login snapshot instead — this happened once already. `--state` has
+no implicit save/relaunch behavior, so it's safe.
+
+If a route bounces to `/login` despite `--state` (the saved session expired or was invalidated),
+STOP and report it as a finding (`kind: auth` — "saved session no longer authenticates, needs a
+fresh `state save`") rather than attempting to log in yourself — you have no credentials and must
+never try to obtain or guess any.
+
 ## Per route
 
 ```bash

@@ -56,7 +56,7 @@ export function SpendCard({ windows }: { readonly windows: Record<SpendPeriod, S
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <p className="text-xs text-muted-foreground">Across all your desks.</p>
+        <p className="text-xs text-muted-foreground">Across all your agents.</p>
         <dl className="flex flex-col gap-1.5">
           {active.rollup.map((row) => (
             <div className="flex items-center justify-between text-sm" key={row.stage}>

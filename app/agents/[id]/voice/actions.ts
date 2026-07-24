@@ -1,11 +1,15 @@
 // app/agents/[id]/voice/actions.ts
 //
-// The Voice tab's server actions: verify/attest the reporter handle (Part B), voice-rule
-// CRUD (Part C), and the extraction retry (Part D). Mirrors ../actions.ts's style —
+// The Voice tab's server actions: voice-rule CRUD (Part C), the extraction retry (Part D),
+// and the T5 navigation-surviving progress poll. Mirrors ../actions.ts's style —
 // "use server", RLS/cookie client for ownership proof — but reaches for the admin client
-// wherever the underlying lib/voice/*/lib/verify/* module is service-role-only by design
-// (voice_rules and voice_extraction_claims both carry deny-all/select-only RLS with no
-// write policy of their own).
+// wherever the underlying lib/voice/* module is service-role-only by design (voice_rules and
+// voice_extraction_claims both carry deny-all/select-only RLS with no write policy of their
+// own).
+//
+// D14's verify/attest gate (lib/verify/handle.ts, verify-gate.tsx) is gone — T6 stamps
+// `reporter_verified_at` at desk creation via linked X OAuth, so identity is proven before a
+// desk exists rather than gated afterward here.
 //
 // lib/voice/rules.ts's CRUD functions do NO ownership check (per their own doc comment) —
 // every rule-mutating action below proves the caller owns the desk (and, for update/delete,
@@ -16,31 +20,11 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { VerifyResult } from "@/lib/verify/handle";
-import { attestReporterHandle, verifyReporterHandle } from "@/lib/verify/handle";
 import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
 import { createVoiceRule, deleteVoiceRule, updateVoiceRule } from "@/lib/voice/rules";
 import { utcDay } from "@/lib/voice/spend-gate";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
-export type { VerifyResult };
-
-/** Verify experimentId's reporter handle against the signed-in user's linked X account
- *  (verifyReporterHandle already does the RLS-scoped ownership read). Revalidates the
- *  desk's layout on success so Part A's server-fetched `reporter_verified_at` resolves
- *  fresh — the desk page then renders state 2 or 3 instead of the verify gate. */
-export async function verifyHandle(experimentId: string): Promise<VerifyResult> {
-  const result = await verifyReporterHandle(experimentId);
-  if (result.ok) revalidatePath(`/agents/${experimentId}`, "layout");
-  return result;
-}
-
-/** The owner-attest fallback — same revalidate shape as verifyHandle. */
-export async function attestHandle(experimentId: string): Promise<ActionResult> {
-  const result = await attestReporterHandle(experimentId);
-  if (result.ok) revalidatePath(`/agents/${experimentId}`, "layout");
-  return result;
-}
 
 /** Proves deskId ownership via the RLS client and returns the desk's OWN reporter_handle —
  *  the shared ownership-proof step every rule-mutating action below runs before delegating
@@ -62,7 +46,7 @@ export async function saveVoiceRule(deskId: string, rule: string): Promise<Actio
   if (!trimmed) return { ok: false, error: "Enter a rule before adding it." };
 
   const reporterHandle = await ownedReporterHandle(deskId);
-  if (!reporterHandle) return { ok: false, error: "Could not load this desk." };
+  if (!reporterHandle) return { ok: false, error: "Could not load this agent." };
 
   try {
     await createVoiceRule({ reporterHandle, rule: trimmed });
@@ -120,29 +104,61 @@ export async function deleteVoiceRuleAction(deskId: string, ruleId: string): Pro
   return { ok: true };
 }
 
-/** Today's UTC-day claim row for reporterHandle, or null if none exists yet — deny-all
- *  table, admin client only. */
-async function todaysClaim(reporterHandle: string): Promise<{ status: string } | null> {
+/**
+ * Polling read for T5's navigation-surviving extraction: proves deskId ownership via the
+ * RLS/cookie client (same `ownedReporterHandle` step every other action in this file runs),
+ * then reads today's `voice_extraction_claims` row for that desk's OWN reporter_handle
+ * through the admin client — same "deny-all table, admin client only" pattern every write
+ * action in this file already uses. Never trusts a client-supplied handle: the handle comes
+ * from the owner-scoped `experiments` read, not from the caller.
+ *
+ * Generic over any owned deskId — a client component on `/agents/[id]/voice` OR the
+ * create-desk form (polling the just-created desk before ever navigating to its Voice tab)
+ * can both call this same action; nothing about it is voice-page-specific.
+ *
+ * Pure read: no revalidate, no side effect — safe to call on a `setInterval` poll.
+ * `{ ok: true, stage: null, ... }` (with `status: "none"`) means no claim row exists for today
+ * — nothing in flight — distinguishable from a real in-progress/terminal claim's own `status`
+ * ("reserved" | "completed" | "failed").
+ */
+export async function getExtractionProgress(deskId: string): Promise<
+  | {
+      ok: true;
+      stage: string | null;
+      progressNote: string | null;
+      reasoningPartial: string | null;
+      status: string;
+    }
+  | { ok: false; error: string }
+> {
+  const reporterHandle = await ownedReporterHandle(deskId);
+  if (!reporterHandle) return { ok: false, error: "Could not load this agent." };
+
   const admin = createAdminClient();
   const { data } = await admin
     .from("voice_extraction_claims")
-    .select("status")
+    .select("stage, progress_note, reasoning_partial, status")
     .eq("reporter_handle", reporterHandle)
     .eq("utc_day", utcDay())
     .maybeSingle();
-  return data ?? null;
+
+  if (!data) {
+    return { ok: true, stage: null, progressNote: null, reasoningPartial: null, status: "none" };
+  }
+  return {
+    ok: true,
+    stage: data.stage,
+    progressNote: data.progress_note,
+    reasoningPartial: data.reasoning_partial,
+    status: data.status,
+  };
 }
 
 /**
- * Manual retry for a verified desk whose extraction hasn't produced a guide yet.
- * `attemptVoiceExtraction` is void-returning and never throws (best-effort by design) — this
- * action infers the outcome itself by re-checking state after calling in:
- *   1. a `voice_guides` row now exists → extraction worked, revalidate.
- *   2. still absent, but a `voice_extraction_claims` row exists for today (reserved by this
- *      very call if it ran the extraction attempt, or by an earlier attempt today if this
- *      call's own claim was denied) → today's budget slot for this reporter is spent either
- *      way, so a further retry today would fail identically. Reported as "capped".
- *   3. no claim row at all (e.g. a malformed handle no-op) → a generic failure.
+ * Manual retry for a desk whose extraction hasn't produced a guide yet. `attemptVoiceExtraction`
+ * now returns a real `ExtractionOutcome` (T4) instead of `void` — this action just translates
+ * that outcome into an `ActionResult`-shaped response for `RetryExtractionButton`, revalidating
+ * on any outcome that means a guide now exists.
  *
  * reporterHandle is accepted for the UI's convenience but never trusted on its own: the
  * action re-derives the desk's real reporter_handle from the RLS-scoped ownership read and
@@ -166,25 +182,25 @@ export async function capReprobe(
     .eq("id", deskId)
     .maybeSingle();
   if (!desk || desk.reporter_handle !== reporterHandle) {
-    return { ok: false, error: "Could not load this desk." };
+    return { ok: false, error: "Could not load this agent." };
   }
 
-  await attemptVoiceExtraction(desk.reporter_handle, user.id);
+  const outcome = await attemptVoiceExtraction(desk.reporter_handle, user.id);
 
-  const admin = createAdminClient();
-  const { data: guide } = await admin
-    .from("voice_guides")
-    .select("id")
-    .eq("reporter_handle", desk.reporter_handle)
-    .maybeSingle();
-  if (guide) {
-    revalidatePath(`/agents/${deskId}`, "layout");
-    return { ok: true };
+  switch (outcome.status) {
+    case "completed":
+    case "already_extracted":
+      revalidatePath(`/agents/${deskId}`, "layout");
+      return { ok: true };
+    case "capped":
+      return { ok: false, error: "Extraction is capped for today — try again tomorrow." };
+    case "malformed_handle":
+      return { ok: false, error: "That handle isn't valid for extraction." };
+    case "preflight_rejected":
+      return { ok: false, error: "Couldn't find an active X profile for that handle." };
+    case "corpus_failed":
+      return { ok: false, error: "Couldn't fetch posts for that handle. Please try again." };
+    default:
+      return { ok: false, error: "Extraction didn't produce a guide. Please try again later." };
   }
-
-  const claim = await todaysClaim(desk.reporter_handle);
-  if (claim) {
-    return { ok: false, error: "Extraction is capped for today — try again tomorrow." };
-  }
-  return { ok: false, error: "Extraction didn't produce a guide. Please try again later." };
 }

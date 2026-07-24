@@ -224,8 +224,8 @@ export function FeedEmptyState() {
     <div className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-14 text-center">
       <h3 className="text-sm font-semibold">Nothing on the wire yet</h3>
       <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">
-        As your desk drafts posts on this beat, they'll appear here — a source story and its winning
-        draft, side by side, newest first.
+        As your agent drafts posts on this beat, they'll appear here — a source story and its
+        winning draft, side by side, newest first.
       </p>
     </div>
   );

@@ -5,7 +5,7 @@
 // Lab-proven config (.voice-lab/sdk-lab/extract-fable80.mjs — measured $0.855/reporter, 10/10).
 // SERVER-ONLY: imports lib/sysprompts (readFileSync at module scope) — never import from a
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
 import { measuredFacts } from "./measured-facts";
@@ -52,18 +52,17 @@ export type VoiceExtraction = {
   generationId: string | null;
 };
 
-/**
- * Extract a raw voice guide for one reporter from their corpus.
+/** Shared by both call shapes below (plain and streaming) so the prompt they send the model can
+ *  never drift apart — extracted rather than duplicated inline a second time.
  *
  * The corpus line format is lab-identical and load-bearing, not cosmetic: the system prompt
  * grades `## RECENCY` off the dates, ranks mode performance off the engagement counts, and
  * describes each mode's "transformation" from the reacted-to post. Dropping any of them makes
- * those dimensions unanswerable and the guide measurably worse for the same spend.
- */
-export async function extractVoiceGuide(
+ * those dimensions unanswerable and the guide measurably worse for the same spend. */
+function buildExtractionPrompt(
   handle: string,
   posts: CorpusPost[],
-): Promise<VoiceExtraction> {
+): { facts: string; prompt: string } {
   // The measured-facts block is prepended and BINDING (the prompt's ## MEASURED FACTS section).
   const facts = measuredFacts(
     handle,
@@ -81,6 +80,20 @@ export async function extractVoiceGuide(
     }
   }
   const prompt = `REPORTER: @${handle}\n\n${facts}\n\nTHE CORPUS (most recent first):\n\n${lines.join("\n")}`;
+  return { facts, prompt };
+}
+
+/**
+ * Extract a raw voice guide for one reporter from their corpus. Plain `generateText` — used by
+ * scripts/extract-voice-guide.ts's CLI/manual path, which has no progress UI to feed. The live
+ * create-desk path uses `extractVoiceGuideStreaming` below instead; both share the exact same
+ * model/config, only how the result is consumed differs.
+ */
+export async function extractVoiceGuide(
+  handle: string,
+  posts: CorpusPost[],
+): Promise<VoiceExtraction> {
+  const { facts, prompt } = buildExtractionPrompt(handle, posts);
 
   const result = await generateText({
     model: EXTRACTION_MODEL,
@@ -115,6 +128,73 @@ export async function extractVoiceGuide(
     thinkingTokens,
     costUsd,
     usage: result.usage,
+    generationId,
+  };
+}
+
+/** One accumulated snapshot of the in-flight stream, handed to `onProgress` as text/reasoning
+ *  deltas arrive — the caller (create-desk-extraction.ts) throttles how often it actually
+ *  persists these, this function just reports every delta it sees. */
+export type ExtractionStreamSnapshot = { text: string; reasoning: string };
+
+/**
+ * Same extraction call as `extractVoiceGuide` above — byte-identical model/config — but as a
+ * `streamText` call instead of `generateText`, so the create-desk path can persist live
+ * progress while a single extraction call (adaptive/high thinking, 32k output ceiling) runs.
+ * `onProgress` fires on every text/reasoning delta with the accumulated-so-far snapshot;
+ * consuming the stream this way is also what resolves `result.text`/`result.usage`/etc. below,
+ * so no separate `consumeStream()` call is needed.
+ */
+export async function extractVoiceGuideStreaming(
+  handle: string,
+  posts: CorpusPost[],
+  onProgress?: (snapshot: ExtractionStreamSnapshot) => void | Promise<void>,
+): Promise<VoiceExtraction> {
+  const { facts, prompt } = buildExtractionPrompt(handle, posts);
+
+  const result = streamText({
+    model: EXTRACTION_MODEL,
+    system: VOICE_EXTRACT_PROMPT,
+    prompt,
+    maxOutputTokens: EXTRACT_MAX_OUTPUT_TOKENS,
+    // Same reasoning as extractVoiceGuide's call above — kept byte-identical on purpose.
+    providerOptions: {
+      anthropic: { thinking: { type: "adaptive", effort: "high", display: "summarized" } },
+    },
+    // NO `tools` key — enforced by review, invisible to the type system.
+    abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
+  });
+
+  let textSoFar = "";
+  let reasoningSoFar = "";
+  for await (const part of result.fullStream) {
+    if (part.type === "text-delta") textSoFar += part.text;
+    else if (part.type === "reasoning-delta") reasoningSoFar += part.text;
+    else continue;
+    if (onProgress) await onProgress({ text: textSoFar, reasoning: reasoningSoFar });
+  }
+
+  const [text, reasoningText, usage, providerMetadata] = await Promise.all([
+    result.text,
+    result.reasoningText,
+    result.usage,
+    result.providerMetadata,
+  ]);
+
+  const anthropic = providerMetadata?.anthropic as
+    | { usage?: { output_tokens_details?: { thinking_tokens?: unknown } } }
+    | undefined;
+  const thinkingTokens = toFiniteOrNull(anthropic?.usage?.output_tokens_details?.thinking_tokens);
+
+  const { costUsd, generationId } = await resolveGatewayCost({ providerMetadata });
+
+  return {
+    guideRaw: text,
+    measuredFactsBlock: facts,
+    reasoning: reasoningText ?? null,
+    thinkingTokens,
+    costUsd,
+    usage,
     generationId,
   };
 }

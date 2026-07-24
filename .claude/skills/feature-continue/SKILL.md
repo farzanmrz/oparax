@@ -10,6 +10,7 @@ description: >-
 argument-hint: "[optional: findings or extra steering for the recorded gate]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Read Skill
 model: inherit
+disable-model-invocation: true
 ---
 
 # Continue — resume the feature flow from its checkpoint
