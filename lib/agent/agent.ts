@@ -3,13 +3,8 @@
 // Gateway string; grok tools do their own raw-fetch scanning. SERVER-ONLY.
 import { type InferAgentUIMessage, stepCountIs, ToolLoopAgent } from "ai";
 import { DESK_AGENT_PROMPT } from "@/lib/sysprompts";
-import type { DeskConfig } from "./desk-config";
-import {
-  DEFAULT_ONBOARDING_INTERVAL_MINUTES,
-  sinceUnixFor,
-  validateScanFrequency,
-} from "./scan-frequency";
-import { oparaxXSearch, saveAgent } from "./tools";
+import { DEFAULT_ONBOARDING_INTERVAL_MINUTES, sinceUnixFor } from "./scan-frequency";
+import { saveAgent } from "./tools";
 
 // The LLM has no clock. Instead of a tool it must remember to call, every turn gets a
 // stamped # Clock block appended to the system prompt: nowUnix + the derived scan-window
@@ -41,25 +36,18 @@ export function createDeskAgent(now: Date = new Date()) {
     // (`medium` just maps to the default `high`) — don't re-add one.
     providerOptions: { gateway: { sort: "cost" } }, // cheapest provider, BYOK no surcharge
     instructions: `${DESK_AGENT_PROMPT}\n\n${clockBlock(now)}`,
+    // Just save_agent — this assistant only clarifies the create-desk form's beat and
+    // confirms its other fields; it no longer scans X for stories. oparax_x_search stays
+    // defined in tools.ts for a future scanning surface, just not wired into this tool
+    // set (keys keep the name the prompt commands by).
     tools: {
-      // keys keep the names the prompt commands by name
-      oparax_x_search: oparaxXSearch,
       save_agent: saveAgent,
     },
-    // The save gate: a scan frequency that slipped past the prompt's self-check is auto-denied
-    // with a reason the model self-corrects from; a valid config pauses for the reporter's
-    // click. This is the ONLY deterministic scan-frequency enforcement in the agent flow.
-    toolApproval: {
-      save_agent: (input: DeskConfig) => {
-        const verdict = validateScanFrequency(input.scanFrequency);
-        return verdict.ok
-          ? "user-approval"
-          : {
-              type: "denied" as const,
-              reason: `Scan frequency violates the rate rail (${verdict.violations.join(", ")}) — an inverted window, sub-hourly spacing, or more than 12 fires on one day. Correct the schedule, then offer to save again.`,
-            };
-      },
-    },
+    // No `toolApproval` entry: save_agent performs no write (a pure echo, see its own
+    // comment in tools.ts), so it needs no approval gate. An unlisted tool resolves to
+    // the AI SDK's `not-applicable` status and runs immediately, no pause — the old
+    // scan-frequency-based gate here is gone along with the scan-frequency field itself,
+    // which the create-desk form has no concept of.
     // The prompt chains scan+draft in one turn; give the loop headroom.
     stopWhen: stepCountIs(20),
   });
