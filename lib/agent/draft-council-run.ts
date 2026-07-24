@@ -18,7 +18,7 @@ import {
   DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
   stripMarkdown,
 } from "./deepseek-draft-config";
-import { X_CHAR_LIMITS } from "./desk-config";
+import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
 import { resolveGatewayCost } from "./gateway-cost";
 
 // Probe-verified (2026-07-22, this branch): a top-level `reasoning: "low"` on gpt-5-nano
@@ -47,7 +47,7 @@ export type SourceBrief = {
 
 export type CouncilCall = {
   kind: "draft" | "repair" | "judge" | "revision";
-  stage: "drafting" | "judge"; // model_calls.stage
+  stage: "drafting" | "judge" | "clustering"; // model_calls.stage
   role: "primary" | "revision" | "judge"; // model_calls.role
   model: string;
   output: string | null; // verbatim; for the judge, the serialized verdict
@@ -279,9 +279,11 @@ export async function runDraftCouncil(input: {
   guideDeploy: string;
   accountTier: "standard" | "premium";
   brief: SourceBrief;
+  platform: Platform;
 }): Promise<CouncilResult> {
-  const { guideDeploy, accountTier, brief } = input;
-  const ceiling = X_CHAR_LIMITS[accountTier];
+  const { guideDeploy, accountTier, brief, platform } = input;
+  const ceiling =
+    platform === "x" ? X_CHAR_LIMITS[accountTier] : NON_X_PLATFORM_CHAR_LIMITS[platform];
   const system = `${guideDeploy}\n\n${DRAFT_COUNCIL_CONTRACT}`;
   const draftPrompt = buildDraftPrompt(brief, ceiling);
 

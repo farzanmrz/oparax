@@ -13,6 +13,18 @@ import { scanFrequencySchema } from "./scan-frequency";
  *  .claude/rules/sysprompts.md). A ceiling, never a target. */
 export const X_CHAR_LIMITS = { standard: 280, premium: 25_000 } as const;
 
+/** The three platforms a story fans out to (T2.8). Order is the fan-out order, not a priority
+ *  — every platform runs in parallel via `Promise.allSettled`. */
+export const PLATFORMS = ["x", "linkedin", "bluesky"] as const;
+export type Platform = (typeof PLATFORMS)[number];
+
+/** Character ceilings for the non-X platforms. X's ceiling stays SOLELY in X_CHAR_LIMITS
+ *  (account-tier-dependent) — these two are flat, no tier concept for either platform. */
+export const NON_X_PLATFORM_CHAR_LIMITS: Record<Exclude<Platform, "x">, number> = {
+  linkedin: 3000, // LinkedIn's own post character cap
+  bluesky: 300, // Bluesky's own post character cap
+};
+
 export const deskConfigSchema = z.object({
   name: z.string().trim().min(1).max(120).describe("The desk name the reporter approved."),
   beat: z.string().trim().min(1).describe("What the desk tracks and what counts as a story."),

@@ -65,11 +65,9 @@ const clusterVerdictSchema = z.object({
 
 /** ONE helper that builds every clustering `CouncilCall` — mirrors draft-council-run.ts's own
  *  `toCouncilCall`, the only place `reasoningWithheldByProvider` gets stamped, so it can never
- *  be missed. `stage`/`role` on the shared `CouncilCall` type are a TS literal union currently
- *  scoped to draft-council-run.ts's own two stages ("drafting"/"judge"); `model_calls.stage` is
- *  untyped `string` at the DB level (database.types.ts), so "clustering" is a legitimate value
- *  the shared type simply hasn't been widened to include — widening it is draft-council-run.ts's
- *  call, out of scope for this task, hence the contained cast below. */
+ *  be missed. `stage` on the shared `CouncilCall` type includes "clustering" alongside
+ *  draft-council-run.ts's own "drafting"/"judge" stages, so this builds a directly-typed
+ *  object with no cast. */
 async function buildClusterCall(params: {
   output: string | null;
   reasoning: string | null;
@@ -90,7 +88,7 @@ async function buildClusterCall(params: {
     usage: params.usage,
     costUsd,
     generationId,
-  } as unknown as CouncilCall;
+  };
 }
 
 function deterministicSummary(text: string): string {
