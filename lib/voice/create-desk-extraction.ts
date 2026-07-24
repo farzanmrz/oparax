@@ -34,6 +34,7 @@ import {
 } from "./extract-guide";
 import { materializeRulesFromGuide } from "./rules";
 import {
+  checkPreflightCap,
   claimExtractionBudget,
   finalizeExtractionBudget,
   recordProgress,
@@ -58,6 +59,7 @@ const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 export type ExtractionOutcome =
   | { status: "already_extracted" }
   | { status: "malformed_handle" }
+  | { status: "preflight_capped" }
   | { status: "preflight_rejected" }
   | { status: "capped" }
   | { status: "corpus_failed" }
@@ -177,6 +179,12 @@ export async function attemptVoiceExtraction(
     if (existingError) throw existingError;
     if (existing) return { status: "already_extracted" };
     if (!HANDLE_RE.test(reporterHandle)) return { status: "malformed_handle" }; // no-op before any spend
+
+    const preflightCap = await checkPreflightCap(reporterHandle);
+    if (!preflightCap.allowed) {
+      console.warn(`attemptVoiceExtraction: preflight cap hit for @${reporterHandle}`);
+      return { status: "preflight_capped" };
+    }
 
     const profile = await fetchXProfile(reporterHandle, ownerId);
     if (!profile.resolved || profile.postsCount === 0) {

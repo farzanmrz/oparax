@@ -194,6 +194,8 @@ export async function capReprobe(
       return { ok: true };
     case "capped":
       return { ok: false, error: "Extraction is capped for today — try again tomorrow." };
+    case "preflight_capped":
+      return { ok: false, error: "Too many attempts for this handle today — try again tomorrow." };
     case "malformed_handle":
       return { ok: false, error: "That handle isn't valid for extraction." };
     case "preflight_rejected":

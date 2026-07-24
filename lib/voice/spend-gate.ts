@@ -99,6 +99,33 @@ export async function finalizeExtractionBudget(
  * — a row that has progressed past the corpus stage is never deleted out from under a real,
  * already-terminal attempt.
  */
+/** Best-effort cap on `fetchXProfile` attempts per reporter/UTC-day. `fetchXProfile` runs
+ *  BEFORE `claimExtractionBudget` on purpose (decisions.md L13 — a dead/private/empty handle
+ *  must not burn the day's extraction claim), which otherwise leaves it completely unbounded:
+ *  a signed-in user retrying the same handle (capReprobe, or repeated desk creation) could
+ *  trigger unlimited billable Bright Data calls with no gate at all. Counts today's
+ *  `scrape_x_profile` `usage_events` for this handle — `fetchXProfile` stamps one unconditionally,
+ *  win or lose — rather than a second atomic claims table: this doesn't need
+ *  `claimExtractionBudget`'s race-free guarantee (the worst case under a race is a couple of
+ *  extra ~cent-scale calls, not unbounded spend), so the existing metering ledger is enough. */
+const MAX_PREFLIGHT_ATTEMPTS_PER_DAY = 5;
+
+export async function checkPreflightCap(
+  handle: string,
+): Promise<{ allowed: true } | { allowed: false }> {
+  const admin = createAdminClient();
+  const { count, error } = await admin
+    .from("usage_events")
+    .select("id", { count: "exact", head: true })
+    .eq("kind", "scrape_x_profile")
+    .eq("ref_id", handle)
+    .gte("created_at", `${utcDay()}T00:00:00.000Z`);
+  if (error) throw error;
+  return (count ?? 0) >= MAX_PREFLIGHT_ATTEMPTS_PER_DAY
+    ? { allowed: false as const }
+    : { allowed: true as const };
+}
+
 export async function releaseClaimOnCorpusFailure(handle: string): Promise<void> {
   try {
     const admin = createAdminClient();
