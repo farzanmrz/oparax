@@ -178,7 +178,7 @@ Plan-frozen acceptance criteria to verify: ${criteria}${commonTail}`,
 
 const claudeResults = await parallel(
   FINDERS.map((f) => () =>
-    agent(f.prompt, { label: `${f.class}:${f.angle}`, phase: 'Find', agentType: f.agentType, model: f.model, schema: FINDINGS_SCHEMA })
+    agent(f.prompt, { label: `${f.class}:${f.angle}`, phase: 'Find', agentType: f.agentType, model: f.model, effort, schema: FINDINGS_SCHEMA })
       .then((out) => ({ finder: f, out })),
   ),
 )
