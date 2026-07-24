@@ -42,33 +42,31 @@ async function releaseClaim(
   }
 }
 
-export async function postDraftToX(
+/** The actual posting logic, independent of how the caller resolved ownerId. `postDraftToX`
+ *  (the "use server" browser action) resolves ownerId via the live session, does its own
+ *  RLS-scoped ownership proof, THEN calls this; `draft-pipeline.ts`'s auto-post path already
+ *  knows ownerId from the experiment row and calls this directly, with no session. Same
+ *  CAS-claim, token-refresh, createTweet, outcome-stamp behavior either way — only the
+ *  ownership-resolution step differs between the two callers, so this re-reads the draft via
+ *  the ADMIN client (not the RLS-scoped read `postDraftToX` already did — that read exists
+ *  purely to prove a browser caller may act on this draft, and its result isn't passed in
+ *  here) to get the text to post and the experiment_id for revalidation. */
+export async function postDraftToXForOwner(
   postDraftId: string,
+  ownerId: string,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  const parsedId = postDraftIdSchema.safeParse(postDraftId);
-  if (!parsedId.success) return { ok: false, error: "Select a draft to post." };
+  const admin = createAdminClient();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Please sign in again." };
-
-  // RLS-scoped read proves ownership via post_drafts' EXISTS-join-through-experiments SELECT
-  // policy. The draft text has no home on post_drafts itself — it's whatever the winning
-  // model call produced, so it's pulled through the model_calls FK in the same read.
-  const { data: draft, error: draftError } = await supabase
+  const { data: draft, error: draftError } = await admin
     .from("post_drafts")
     .select("id, experiment_id, posted_at, model_calls(output)")
-    .eq("id", parsedId.data)
+    .eq("id", postDraftId)
     .maybeSingle();
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
   if (draft.posted_at) return { ok: false, error: "This draft was already posted to X." };
 
   const text = draft.model_calls?.output;
   if (!text) return { ok: false, error: "This draft has no text to post." };
-
-  const admin = createAdminClient();
 
   // CAS-claim FIRST: only succeeds if posted_at is still null, so a concurrent double-click
   // loses here. Claiming before the token refresh also means only the winner ever refreshes
@@ -77,7 +75,7 @@ export async function postDraftToX(
   const { data: claimed, error: claimError } = await admin
     .from("post_drafts")
     .update({ posted_at: new Date().toISOString() })
-    .eq("id", parsedId.data)
+    .eq("id", postDraftId)
     .is("posted_at", null)
     .select("id");
   if (claimError || !claimed || claimed.length === 0) {
@@ -86,9 +84,9 @@ export async function postDraftToX(
 
   // Resolve a usable access token. A missing account or a failed refresh means nothing was
   // posted, so releasing the claim here is safe and lets the reporter retry after fixing it.
-  const account = await getXAccount(user.id);
+  const account = await getXAccount(ownerId);
   if (!account) {
-    await releaseClaim(admin, parsedId.data);
+    await releaseClaim(admin, postDraftId);
     return { ok: false, error: "Connect your X account first." };
   }
 
@@ -100,9 +98,9 @@ export async function postDraftToX(
       // rotation is undocumented — keep the prior refresh token when X omits a new one.
       const newRefresh = refreshed.refreshToken ?? account.refresh_token;
       const tokenExpiresAt = new Date(Date.now() + refreshed.expiresInSec * 1000).toISOString();
-      await updateXTokens(user.id, { accessToken, refreshToken: newRefresh, tokenExpiresAt });
+      await updateXTokens(ownerId, { accessToken, refreshToken: newRefresh, tokenExpiresAt });
     } catch {
-      await releaseClaim(admin, parsedId.data);
+      await releaseClaim(admin, postDraftId);
       return {
         ok: false,
         error: "Your X connection expired — reconnect your X account in settings.",
@@ -120,7 +118,7 @@ export async function postDraftToX(
     // double-post on retry.
     const status = httpStatusOf(error);
     if (status !== null && status >= 400 && status < 500) {
-      await releaseClaim(admin, parsedId.data);
+      await releaseClaim(admin, postDraftId);
       if (status === 401) {
         return {
           ok: false,
@@ -149,13 +147,44 @@ export async function postDraftToX(
     await admin
       .from("post_drafts")
       .update({ posted_tweet_id: tweet.id, posted_url: url })
-      .eq("id", parsedId.data);
+      .eq("id", postDraftId);
   } catch {
     // ignore — the post is live.
   }
 
   revalidatePath(`/agents/${draft.experiment_id}`);
   return { ok: true, url };
+}
+
+export async function postDraftToX(
+  postDraftId: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const parsedId = postDraftIdSchema.safeParse(postDraftId);
+  if (!parsedId.success) return { ok: false, error: "Select a draft to post." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Please sign in again." };
+
+  // RLS-scoped read proves ownership via post_drafts' EXISTS-join-through-experiments SELECT
+  // policy. The draft text has no home on post_drafts itself — it's whatever the winning
+  // model call produced, so it's pulled through the model_calls FK in the same read. Kept
+  // here, unchanged, as the proof a browser caller may act on this draft before delegating
+  // to the session-independent core.
+  const { data: draft, error: draftError } = await supabase
+    .from("post_drafts")
+    .select("id, experiment_id, posted_at, model_calls(output)")
+    .eq("id", parsedId.data)
+    .maybeSingle();
+  if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
+  if (draft.posted_at) return { ok: false, error: "This draft was already posted to X." };
+
+  const text = draft.model_calls?.output;
+  if (!text) return { ok: false, error: "This draft has no text to post." };
+
+  return postDraftToXForOwner(parsedId.data, user.id);
 }
 
 export async function unlinkXAccount(): Promise<{ ok: true } | { ok: false; error: string }> {
