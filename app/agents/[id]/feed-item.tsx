@@ -104,9 +104,9 @@ function NewsCard({
             <Tooltip>
               <TooltipTrigger asChild>
                 {/* No `x_post_id`/URL in the pinned FeedStory shape, so there is nowhere real
-                    for this to link to yet — a disabled scaffold (like the Edit pencil below)
-                    rather than a placeholder `href="#"`, which the design's own mock uses but
-                    which fails `useValidAnchor`. */}
+                    for this to link to yet — a disabled scaffold rather than a placeholder
+                    `href="#"`, which the design's own mock uses but which fails
+                    `useValidAnchor`. */}
                 <Button
                   aria-disabled="true"
                   aria-label="View source on X"

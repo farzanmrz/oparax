@@ -27,8 +27,30 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
+import { saveWebsites } from "../[id]/setup/actions";
 import { createDesk } from "./actions";
 import { CreateDeskAssistant, type CreateDeskAssistantValues } from "./create-desk-assistant";
+
+const MAX_WEBSITES = 20;
+
+/** Split a typed/pasted blob into candidate website entries — comma / whitespace / newline
+ *  separated. Light client-side shaping only; `saveWebsites` (server) does the real
+ *  URL validation, same division of labor as the X-handles field below. */
+function splitWebsites(raw: string): string[] {
+  return raw
+    .split(/[\s,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function mergeWebsites(existing: readonly string[], incoming: readonly string[]): string[] {
+  const next = [...existing];
+  for (const site of incoming) {
+    if (next.length >= MAX_WEBSITES) break;
+    if (!next.some((s) => s.toLowerCase() === site.toLowerCase())) next.push(site);
+  }
+  return next;
+}
 
 /** Strip leading @(s) + whitespace. Case is preserved for display; the server lowercases and
  *  charset-validates on save (lib/x/handle.ts). */
@@ -96,14 +118,6 @@ function SectionHeader({ children }: { readonly children: ReactNode }) {
   );
 }
 
-function SoonBadge() {
-  return (
-    <Badge className="h-4 px-1.5 text-[10px]" variant="outline">
-      Coming soon
-    </Badge>
-  );
-}
-
 export function CreateDeskForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -112,6 +126,8 @@ export function CreateDeskForm() {
   const [beat, setBeat] = useState("");
   const [handles, setHandles] = useState<string[]>([]);
   const [handleDraft, setHandleDraft] = useState("");
+  const [websites, setWebsites] = useState<string[]>([]);
+  const [websiteDraft, setWebsiteDraft] = useState("");
   const [reporterHandle, setReporterHandle] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -151,17 +167,43 @@ export function CreateDeskForm() {
     setHandles((prev) => prev.filter((h) => h !== handle));
   }
 
+  function commitWebsiteDraft() {
+    const parts = splitWebsites(websiteDraft);
+    if (parts.length > 0) setWebsites((prev) => mergeWebsites(prev, parts));
+    setWebsiteDraft("");
+  }
+
+  function onWebsiteKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commitWebsiteDraft();
+    }
+  }
+
+  function removeWebsite(site: string) {
+    setWebsites((prev) => prev.filter((s) => s !== site));
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
     const finalHandles = mergeHandles(handles, splitHandles(handleDraft));
+    const finalWebsites = mergeWebsites(websites, splitWebsites(websiteDraft));
     startTransition(async () => {
       const result = await createDesk({ name, beat, trackedHandles: finalHandles, reporterHandle });
-      if (result.error) {
-        setFormError(result.error);
+      if (result.error || !result.id) {
+        setFormError(result.error ?? "Could not create your desk. Please try again.");
         return;
       }
-      router.push(`/agents/${result.id}/voice`);
+      const deskId = result.id;
+      // Best-effort, same discipline as voice extraction's after() call: the desk already
+      // exists, so a websites-save failure must never block navigation or the desk's creation.
+      if (finalWebsites.length > 0) {
+        saveWebsites(deskId, finalWebsites).catch((err) => {
+          console.error("createDesk: saveWebsites failed", err);
+        });
+      }
+      router.push(`/agents/${deskId}/voice`);
     });
   }
 
@@ -260,9 +302,39 @@ export function CreateDeskForm() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5 opacity-55">
-                <FieldLabel badge={<SoonBadge />}>Websites</FieldLabel>
-                <Input disabled placeholder="https:// …" />
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel help="News sites this desk watches, alongside X accounts. Paste several at once — comma- or space-separated.">
+                  Websites ({websites.length}/{MAX_WEBSITES})
+                </FieldLabel>
+                {websites.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {websites.map((site) => (
+                      <Badge className="gap-1 pr-1" key={site} variant="secondary">
+                        {site}
+                        <button
+                          aria-label={`Remove ${site}`}
+                          className="rounded-full p-0.5 hover:bg-foreground/10"
+                          onClick={() => removeWebsite(site)}
+                          type="button"
+                        >
+                          <XIcon className="size-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+                <Input
+                  disabled={websites.length >= MAX_WEBSITES}
+                  onBlur={commitWebsiteDraft}
+                  onChange={(e) => setWebsiteDraft(e.target.value)}
+                  onKeyDown={onWebsiteKeyDown}
+                  placeholder={
+                    websites.length >= MAX_WEBSITES
+                      ? `Up to ${MAX_WEBSITES} sites`
+                      : "example.com — press Enter to add"
+                  }
+                  value={websiteDraft}
+                />
               </div>
             </div>
 
@@ -280,10 +352,11 @@ export function CreateDeskForm() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5 opacity-55">
-                <FieldLabel badge={<SoonBadge />}>Draft instructions</FieldLabel>
-                <Textarea disabled placeholder='e.g. "never speculate on outcomes"' rows={2} />
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Draft instructions aren&apos;t set here — once your desk is created, Oparax learns
+                your voice from your posts, and you can add or edit specific rules anytime from the
+                desk&apos;s Voice tab.
+              </p>
             </div>
           </div>
 
