@@ -88,6 +88,7 @@ type WinnerRow = {
   platform: string;
   posted_at: string | null;
   posted_url: string | null;
+  created_at: string;
   model_calls: WinnerModelCall;
 };
 
@@ -151,10 +152,18 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
       .order("created_at", { ascending: true }),
     supabase
       .from("post_drafts")
-      .select("id, story_id, platform, posted_at, posted_url, model_calls(model, output, cost_usd)")
+      // Oldest-first, for the same reason as the assignments query above: a story that clustered
+      // more than one source post carries one is_winner row per (platform, source post) — each
+      // delivery's council crowns its own winner and nothing dethrones the last one — so the
+      // winners loop below would otherwise keep whichever row PostgREST happened to return last.
+      // Ascending means the NEWEST winner is applied last and wins, deterministically.
+      .select(
+        "id, story_id, platform, posted_at, posted_url, created_at, model_calls(model, output, cost_usd)",
+      )
       .eq("experiment_id", experimentId)
       .in("story_id", storyIds)
-      .eq("is_winner", true),
+      .eq("is_winner", true)
+      .order("created_at", { ascending: true }),
     supabase
       .from("post_drafts")
       .select("story_id, parent_draft_id, judge_verdict, model_calls(cost_usd)")
