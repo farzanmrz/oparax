@@ -13,6 +13,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
 
@@ -110,6 +112,106 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
   // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
   // otherwise show a stale name/dot after a create/pause/rename.
   revalidatePath("/agents", "layout");
+  return { ok: true };
+}
+
+const editDraftPostDraftIdSchema = z.string().uuid();
+
+/**
+ * Draft edit-in-place (item 9, T3.6). A human edit has no model call behind it, but
+ * `post_drafts.model_call_id` is a real NOT-NULL FK to `model_calls` — and `model_calls`
+ * carries deny-all RLS (no insert policy at all, service-role only), so there is no way to
+ * satisfy that FK from the owner-scoped client alone. The resolved shape mirrors
+ * `draft-pipeline.ts`'s `applyCorrection` (dethrone-then-insert) as closely as the trust
+ * boundary allows:
+ *
+ *   1. RLS/cookie client: SELECT the parent draft through `post_drafts_select_via_experiment`
+ *      (the existing owner-scoped EXISTS-join policy). This IS the ownership proof for the
+ *      admin-client writes below — reaching this line already establishes the caller owns
+ *      the desk this draft belongs to.
+ *   2. Admin client: INSERT one `model_calls` row that exists PURELY to satisfy the FK — not
+ *      a real billed call. `model: "human-edit"` / `stage: "manual_edit"` / `cost_usd: 0` /
+ *      `reasoning: null` / `usage: null` mark it unmistakably as the deliberate, documented
+ *      exception to "every model_calls row is a real billed call" (AGENTS.md) that it is —
+ *      a future reader must not mistake this for an L12 violation.
+ *   3. Admin client: dethrone the current winner for this (source_post_id, experiment_id,
+ *      platform) — `post_drafts` carries no owner-scoped UPDATE policy at all, so this step
+ *      has no RLS-client alternative regardless of preference.
+ *   4. RLS/cookie client: INSERT the new `post_drafts` row. THIS is the step the plan text
+ *      calls out — "via the owner-scoped RLS client... never service-role for a browser
+ *      write" — the `post_drafts_insert_via_experiment` policy's `WITH CHECK` clause is what
+ *      actually proves the browser caller owns this desk for the write itself.
+ */
+export async function editDraft(postDraftId: string, newText: string): Promise<ActionResult> {
+  const parsedId = editDraftPostDraftIdSchema.safeParse(postDraftId);
+  if (!parsedId.success) return { ok: false, error: "Select a draft to edit." };
+  const trimmedText = newText.trim();
+  if (trimmedText.length === 0) return { ok: false, error: "Draft text can't be empty." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Please sign in again." };
+
+  // Step 1 — the ownership proof (see the function comment above).
+  const { data: parentDraft, error: parentError } = await supabase
+    .from("post_drafts")
+    .select("id, source_post_id, experiment_id, story_id, platform")
+    .eq("id", parsedId.data)
+    .maybeSingle();
+  if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
+
+  const admin = createAdminClient();
+
+  // Step 2 — the FK-satisfying model_calls row. Not a real model call: see the comment above.
+  const { data: modelCall, error: modelCallError } = await admin
+    .from("model_calls")
+    .insert({
+      owner_id: user.id,
+      stage: "manual_edit",
+      role: "primary",
+      model: "human-edit",
+      output: trimmedText,
+      reasoning: null,
+      usage: null,
+      cost_usd: 0,
+      generation_id: null,
+      ref_kind: "source_post",
+      ref_id: parentDraft.source_post_id,
+    })
+    .select("id")
+    .single();
+  if (modelCallError || !modelCall) {
+    return { ok: false, error: "Could not save your edit. Please try again." };
+  }
+
+  // Step 3 — dethrone the current winner for this (source_post, experiment, platform). A
+  // story can only have one winner per platform; no owner-scoped UPDATE policy exists here
+  // regardless, same reasoning as applyCorrection's own dethrone step.
+  const { error: dethroneError } = await admin
+    .from("post_drafts")
+    .update({ is_winner: false })
+    .eq("source_post_id", parentDraft.source_post_id)
+    .eq("experiment_id", parentDraft.experiment_id)
+    .eq("platform", parentDraft.platform)
+    .eq("is_winner", true);
+  if (dethroneError) return { ok: false, error: "Could not save your edit. Please try again." };
+
+  // Step 4 — the owner-scoped write the plan text specifically calls out.
+  const { error: insertError } = await supabase.from("post_drafts").insert({
+    source_post_id: parentDraft.source_post_id,
+    experiment_id: parentDraft.experiment_id,
+    story_id: parentDraft.story_id,
+    platform: parentDraft.platform,
+    model_call_id: modelCall.id,
+    is_winner: true,
+    judge_verdict: null,
+    parent_draft_id: parentDraft.id,
+  });
+  if (insertError) return { ok: false, error: "Could not save your edit. Please try again." };
+
+  revalidatePath(`/agents/${parentDraft.experiment_id}`, "layout");
   return { ok: true };
 }
 
