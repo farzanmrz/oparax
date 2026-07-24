@@ -10,19 +10,23 @@
 // Supabase directly) and can only render a Client Component for anything using hooks, so
 // this file is that boundary for the whole tab. See task-22-report.md.
 //
-// Sources card: tracked X handles, news websites, and the two source-type auto-post toggles
-// — all real, all wired to T3's actions (`../actions` for handles, `./actions` for
+// Sources card: tracked X handles, news websites, and the auto-post toggles — all real,
+// all wired to T3's actions (`../actions` for handles, `./actions` for
 // websites/auto-post/Slack/email). `useTransition` + inline `role="alert"` error + visible
 // pending state is the shared pattern every async control below follows, ported from the
-// handles add/remove wiring that was already real before this task.
+// handles add/remove wiring that was already real before this task. Layout per owner
+// rework: the master toggle lives on the card-header row, each source-type toggle lives
+// right-aligned on its own subsection-header row, and both add-entry areas are the
+// chips-in-field pattern (`ChipsField` below). The websites subsection is greyed (opacity
+// + "Coming soon" badge, everything disabled) until the Railway ingestion worker deploys
+// in Wave 4 — its server actions (`saveWebsites` etc.) stay intact for un-greying.
 
-import { CheckIcon, GlobeIcon, MailIcon, MessageSquareIcon, PlusIcon, XIcon } from "lucide-react";
+import { CheckIcon, MailIcon, MessageSquareIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -40,13 +44,83 @@ import {
   saveWebsites,
   sendTestEmail,
   sendTestSlack,
-  testFetchWebsite,
   toggleAutoPost,
   unlinkSlack,
 } from "./actions";
 
-function initialsFor(handle: string): string {
-  return handle.slice(0, 2).toUpperCase();
+/**
+ * The chips-in-field add-entry pattern (owner rule: uniform form fields). One container
+ * styled exactly like the stock shadcn `Input` — same border, radius, background, and a
+ * `focus-within` stand-in for its focus ring, since focus lives on the inner borderless
+ * input — holding the already-added entries as removable chips followed by an inline
+ * input that grows to fill the rest. Both subsections render this identically; the
+ * websites one just passes `disabled` until Wave 4 un-greys it.
+ */
+function ChipsField({
+  chipLabel,
+  chipClassName,
+  chips,
+  disabled = false,
+  inputDisabled,
+  onChange,
+  onRemove,
+  onSubmit,
+  placeholder,
+  removeDisabled,
+  removeLabel,
+  value,
+}: {
+  readonly chipLabel: (chip: string) => string;
+  readonly chipClassName?: string;
+  readonly chips: readonly string[];
+  /** Freezes the whole field — chips, removes, and input (the "Coming soon" state). */
+  readonly disabled?: boolean;
+  readonly inputDisabled: boolean;
+  readonly onChange: (value: string) => void;
+  readonly onRemove: (chip: string) => void;
+  readonly onSubmit: () => void;
+  readonly placeholder: string;
+  readonly removeDisabled: boolean;
+  readonly removeLabel: (chip: string) => string;
+  readonly value: string;
+}) {
+  return (
+    <div
+      className={cn(
+        // Mirrors components/ui/input.tsx's box treatment.
+        "flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+        disabled && "pointer-events-none cursor-not-allowed bg-input/50 dark:bg-input/80",
+      )}
+    >
+      {chips.map((chip) => (
+        <Badge className={chipClassName} key={chip} variant="secondary">
+          {chipLabel(chip)}
+          <button
+            aria-label={removeLabel(chip)}
+            className="text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none"
+            disabled={disabled || removeDisabled}
+            onClick={() => onRemove(chip)}
+            type="button"
+          >
+            <XIcon aria-hidden="true" className="size-3" />
+          </button>
+        </Badge>
+      ))}
+      <input
+        className="h-6 min-w-40 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm"
+        disabled={disabled || inputDisabled}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onSubmit();
+          }
+        }}
+        placeholder={placeholder}
+        value={value}
+      />
+    </div>
+  );
 }
 
 type AutoPostTarget = "master" | "x" | "website";
@@ -59,16 +133,12 @@ const AUTO_POST_LABEL: Record<AutoPostTarget, string> = {
 
 export function SourcesCard({
   deskId,
-  deskLive,
   trackedHandles,
   websites,
   autoPostMaster,
   autoPostSources,
 }: {
   readonly deskId: string;
-  /** Desk-level truth only — never fabricated per-handle connectivity. Real per-account
-   *  health arrives with the worker's telemetry, a later slice. */
-  readonly deskLive: boolean;
   readonly trackedHandles: readonly string[];
   readonly websites: readonly string[];
   readonly autoPostMaster: boolean;
@@ -81,11 +151,6 @@ export function SourcesCard({
   const [websiteInput, setWebsiteInput] = useState("");
   const [websiteError, setWebsiteError] = useState<string | null>(null);
   const [isWebsitePending, startWebsiteTransition] = useTransition();
-
-  const [testingUrl, setTestingUrl] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<
-    { url: string; ok: true; preview: string } | { url: string; ok: false; error: string } | null
-  >(null);
 
   const [confirmTarget, setConfirmTarget] = useState<AutoPostTarget | null>(null);
   const [autoPostError, setAutoPostError] = useState<string | null>(null);
@@ -141,20 +206,6 @@ export function SourcesCard({
     });
   }
 
-  function handleTestWebsite(url: string) {
-    setTestingUrl(url);
-    setTestResult(null);
-    startWebsiteTransition(async () => {
-      const result = await testFetchWebsite(url);
-      setTestingUrl(null);
-      setTestResult(
-        result.ok
-          ? { url, ok: true, preview: result.preview }
-          : { url, ok: false, error: result.error },
-      );
-    });
-  }
-
   function requestAutoPostChange(target: AutoPostTarget, nextChecked: boolean) {
     setAutoPostError(null);
     if (nextChecked) {
@@ -194,28 +245,6 @@ export function SourcesCard({
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">X posts</span>
-            <Switch
-              aria-label="Auto-post X-sourced drafts"
-              checked={autoPostSources.x}
-              disabled={autoPostDisabled}
-              onCheckedChange={(checked) => requestAutoPostChange("x", checked)}
-              size="sm"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Website posts</span>
-            <Switch
-              aria-label="Auto-post website-sourced drafts"
-              checked={autoPostSources.website}
-              disabled={autoPostDisabled}
-              onCheckedChange={(checked) => requestAutoPostChange("website", checked)}
-              size="sm"
-            />
-          </div>
-        </div>
         {confirmTarget ? (
           <div className="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5">
             <p className="text-sm text-foreground">
@@ -249,70 +278,38 @@ export function SourcesCard({
         ) : null}
 
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold text-muted-foreground">
-            𝕏 X accounts ({trackedHandles.length}/{MAX_TRACKED_HANDLES})
-          </h3>
-          {trackedHandles.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No accounts tracked yet.</p>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {trackedHandles.map((handle) => (
-                <div
-                  className="flex items-center gap-3 rounded-lg px-1.5 py-1.5 hover:bg-muted/50"
-                  key={handle}
-                >
-                  <Avatar size="sm">
-                    <AvatarFallback>{initialsFor(handle)}</AvatarFallback>
-                  </Avatar>
-                  <span className="flex-1 truncate font-mono text-sm">@{handle}</span>
-                  <span
-                    className={cn(
-                      "flex shrink-0 items-center gap-1.5 text-xs",
-                      deskLive ? "text-success" : "text-muted-foreground",
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "size-1.5 rounded-full",
-                        deskLive ? "bg-success" : "bg-muted-foreground/50",
-                      )}
-                    />
-                    {deskLive ? "Watching" : "Paused"}
-                  </span>
-                  <Button
-                    aria-label={`Stop tracking @${handle}`}
-                    disabled={isHandlePending}
-                    onClick={() => handleRemoveHandle(handle)}
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    <XIcon />
-                  </Button>
-                </div>
-              ))}
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              𝕏 X accounts ({trackedHandles.length}/{MAX_TRACKED_HANDLES})
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Auto-post</span>
+              <Switch
+                aria-label="Auto-post X-sourced drafts"
+                checked={autoPostSources.x}
+                disabled={autoPostDisabled}
+                onCheckedChange={(checked) => requestAutoPostChange("x", checked)}
+                size="sm"
+              />
             </div>
-          )}
-          <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-2.5 py-1.5">
-            <PlusIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <Input
-              className="h-7 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
-              disabled={isHandlePending || atHandleLimit}
-              onChange={(e) => setHandleInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddHandle();
-                }
-              }}
-              placeholder={
-                atHandleLimit
-                  ? `Up to ${MAX_TRACKED_HANDLES} accounts`
-                  : "Add X accounts — paste comma-separated, @ optional, press Enter"
-              }
-              value={handleInput}
-            />
           </div>
+          <ChipsField
+            chipClassName="font-mono"
+            chipLabel={(handle) => `@${handle}`}
+            chips={trackedHandles}
+            inputDisabled={isHandlePending || atHandleLimit}
+            onChange={setHandleInput}
+            onRemove={handleRemoveHandle}
+            onSubmit={handleAddHandle}
+            placeholder={
+              atHandleLimit
+                ? `Up to ${MAX_TRACKED_HANDLES} accounts`
+                : "Add X accounts — paste comma-separated, @ optional, press Enter"
+            }
+            removeDisabled={isHandlePending}
+            removeLabel={(handle) => `Stop tracking @${handle}`}
+            value={handleInput}
+          />
           {handleError ? (
             <p className="text-sm text-destructive" role="alert">
               {handleError}
@@ -320,74 +317,45 @@ export function SourcesCard({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold text-muted-foreground">
-            News websites ({websites.length}/{MAX_WEBSITES})
-          </h3>
-          {websites.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No websites tracked yet.</p>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {websites.map((url) => (
-                <div className="flex flex-col gap-1" key={url}>
-                  <div className="flex items-center gap-3 rounded-lg px-1.5 py-1.5 hover:bg-muted/50">
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <GlobeIcon aria-hidden="true" className="size-4" />
-                    </span>
-                    <span className="flex-1 truncate text-sm">{url}</span>
-                    <Button
-                      disabled={isWebsitePending}
-                      onClick={() => handleTestWebsite(url)}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      {testingUrl === url ? "Testing…" : "Test"}
-                    </Button>
-                    <Button
-                      aria-label={`Stop tracking ${url}`}
-                      disabled={isWebsitePending}
-                      onClick={() => handleRemoveWebsite(url)}
-                      size="icon-sm"
-                      variant="ghost"
-                    >
-                      <XIcon />
-                    </Button>
-                  </div>
-                  {testResult && testResult.url === url ? (
-                    <p
-                      className={cn(
-                        "px-1.5 text-xs",
-                        testResult.ok ? "text-muted-foreground" : "text-destructive",
-                      )}
-                      role={testResult.ok ? undefined : "alert"}
-                    >
-                      {testResult.ok ? testResult.preview : testResult.error}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
+        {/* Greyed until the Railway ingestion worker deploys (Wave 4): same markup as the
+            X-accounts subsection above, reduced opacity, every interaction disabled. The
+            server actions stay wired so un-greying is just dropping the disabled flags. */}
+        <div className="flex flex-col gap-2 opacity-50">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-muted-foreground">
+                News websites ({websites.length}/{MAX_WEBSITES})
+              </h3>
+              <Badge variant="secondary">Coming soon</Badge>
             </div>
-          )}
-          <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-2.5 py-1.5">
-            <PlusIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <Input
-              className="h-7 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
-              disabled={isWebsitePending || atWebsiteLimit}
-              onChange={(e) => setWebsiteInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddWebsite();
-                }
-              }}
-              placeholder={
-                atWebsiteLimit
-                  ? `Up to ${MAX_WEBSITES} websites`
-                  : "Track a news website — example.com, press Enter"
-              }
-              value={websiteInput}
-            />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Auto-post</span>
+              <Switch
+                aria-label="Auto-post website-sourced drafts"
+                checked={autoPostSources.website}
+                disabled
+                onCheckedChange={(checked) => requestAutoPostChange("website", checked)}
+                size="sm"
+              />
+            </div>
           </div>
+          <ChipsField
+            chipLabel={(url) => url}
+            chips={websites}
+            disabled
+            inputDisabled={isWebsitePending || atWebsiteLimit}
+            onChange={setWebsiteInput}
+            onRemove={handleRemoveWebsite}
+            onSubmit={handleAddWebsite}
+            placeholder={
+              atWebsiteLimit
+                ? `Up to ${MAX_WEBSITES} websites`
+                : "Track a news website — example.com, press Enter"
+            }
+            removeDisabled={isWebsitePending}
+            removeLabel={(url) => `Stop tracking ${url}`}
+            value={websiteInput}
+          />
           {websiteError ? (
             <p className="text-sm text-destructive" role="alert">
               {websiteError}

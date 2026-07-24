@@ -9,9 +9,10 @@ import { AgentsList } from "./agents-list";
  * validates it against the reporter's own `experiments` rows (RLS scopes the
  * select, so a stale or foreign id just misses), and redirects straight into
  * that desk. On a miss it falls back to the most recently created owned desk.
- * Only a reporter with zero desks ever sees `<AgentsList />` — the designed
- * empty state; everywhere else, the site header's desk switcher is the
- * listing.
+ * A reporter with zero desks is redirected straight to `/agents/new` — there
+ * is no empty listing state; everywhere else, the site header's desk switcher
+ * is the listing. `<AgentsList />` renders only when the desk lookup itself
+ * errors.
  */
 export default async function AgentsListingPage() {
   const supabase = await createClient();
@@ -40,5 +41,5 @@ export default async function AgentsListingPage() {
 
   if (data) redirect(`/agents/${data.id}`);
 
-  return <AgentsList />;
+  redirect("/agents/new");
 }

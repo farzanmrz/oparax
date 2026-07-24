@@ -23,7 +23,7 @@ export default async function SetupPage({ params }: { params: Promise<{ id: stri
   const [deskResult, spendWindows, slackLinkState] = await Promise.all([
     supabase
       .from("experiments")
-      .select("id, status, tracked_handles, websites, auto_post_master, auto_post_sources")
+      .select("id, tracked_handles, websites, auto_post_master, auto_post_sources")
       .eq("id", id)
       .maybeSingle(),
     loadSpendWindows(supabase),
@@ -43,7 +43,6 @@ export default async function SetupPage({ params }: { params: Promise<{ id: stri
         autoPostMaster={desk.auto_post_master}
         autoPostSources={parseAutoPostSources(desk.auto_post_sources)}
         deskId={desk.id}
-        deskLive={desk.status === "active"}
         trackedHandles={desk.tracked_handles}
         websites={parseWebsites(desk.websites)}
       />
