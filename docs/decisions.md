@@ -16,9 +16,11 @@ only with a named fact or an explicit owner override, recorded as such.
 
 The LOCKED sections below are the spec (the *how*); this is the sequence they ship in.
 
-**Slices 1–4 are BUILT** — schema + voice extraction (#66), drafting council + notification +
-metering (#67), the ingestion-worker code, and the full L8 UI surface (#68). What remains is
-**Slice 5 — the full-live product**, and the owner mandate (2026-07-22) is unambiguous:
+**Slices 1–5 are BUILT** — schema + voice extraction (#66), drafting council + notification +
+metering (#67), the ingestion-worker code, the full L8 UI surface (#68), and the full-live
+product (#69 — waves 1–3 + QC; Wave 4's external go-live, Slack app registration + Railway
+deploy, ships as this slice's own completion, after the owner's manual verification and
+ship). The owner mandate (2026-07-22) that drove Slice 5 is recorded below for context:
 
 > **Build EVERYTHING remaining, live, in one feature run. No slices held back, no gated features,
 > no grey-scaffolds, no "coming soon." Every control the UI currently greys out becomes real; every
@@ -33,7 +35,7 @@ metering (#67), the ingestion-worker code, and the full L8 UI surface (#68). Wha
 | 2 | Drafting council + notification + metering | **DONE** (#67) |
 | 3 | Ingestion worker (code) | **BUILT** (#68) — the Railway deploy is folded into Slice 5 |
 | 4 | Full L8 UI surface | **BUILT** (#68) |
-| 5 | **The full-live product — NEXT: plan and build ALL of it** | scope below |
+| 5 | The full-live product | **BUILT** (#69) — Wave 4 (Slack registration + Railway) pending owner |
 
 **Slice 5 scope — the next feature run plans and builds ALL of this (the LOCKED L-specs say *how*;
 the promoted D-items say *why*). Nothing here is optional or sequenced-away:**
