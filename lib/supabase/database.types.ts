@@ -153,37 +153,49 @@ export type Database = {
       };
       experiments: {
         Row: {
+          auto_post_master: boolean;
+          auto_post_sources: Json;
           beat: string;
           created_at: string;
           id: string;
           name: string | null;
           owner_id: string;
           reporter_handle: string;
+          reporter_verified_at: string | null;
           status: string;
           tracked_handles: string[];
           updated_at: string;
+          websites: Json;
         };
         Insert: {
+          auto_post_master?: boolean;
+          auto_post_sources?: Json;
           beat: string;
           created_at?: string;
           id?: string;
           name?: string | null;
           owner_id: string;
           reporter_handle: string;
+          reporter_verified_at?: string | null;
           status?: string;
           tracked_handles?: string[];
           updated_at?: string;
+          websites?: Json;
         };
         Update: {
+          auto_post_master?: boolean;
+          auto_post_sources?: Json;
           beat?: string;
           created_at?: string;
           id?: string;
           name?: string | null;
           owner_id?: string;
           reporter_handle?: string;
+          reporter_verified_at?: string | null;
           status?: string;
           tracked_handles?: string[];
           updated_at?: string;
+          websites?: Json;
         };
         Relationships: [];
       };
@@ -245,10 +257,12 @@ export type Database = {
           judge_verdict: Json | null;
           model_call_id: string;
           parent_draft_id: string | null;
+          platform: string;
           posted_at: string | null;
           posted_tweet_id: string | null;
           posted_url: string | null;
           source_post_id: string;
+          story_id: string | null;
         };
         Insert: {
           created_at?: string;
@@ -259,10 +273,12 @@ export type Database = {
           judge_verdict?: Json | null;
           model_call_id: string;
           parent_draft_id?: string | null;
+          platform?: string;
           posted_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
           source_post_id: string;
+          story_id?: string | null;
         };
         Update: {
           created_at?: string;
@@ -273,10 +289,12 @@ export type Database = {
           judge_verdict?: Json | null;
           model_call_id?: string;
           parent_draft_id?: string | null;
+          platform?: string;
           posted_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
           source_post_id?: string;
+          story_id?: string | null;
         };
         Relationships: [
           {
@@ -305,6 +323,13 @@ export type Database = {
             columns: ["source_post_id"];
             isOneToOne: false;
             referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_drafts_story_id_fkey";
+            columns: ["story_id"];
+            isOneToOne: false;
+            referencedRelation: "stories";
             referencedColumns: ["id"];
           },
         ];
@@ -362,35 +387,194 @@ export type Database = {
           },
         ];
       };
+      slack_accounts: {
+        Row: {
+          access_token: string;
+          bot_user_id: string;
+          channel_id: string;
+          channel_name: string;
+          created_at: string;
+          experiment_id: string;
+          id: string;
+          scopes: string;
+          team_id: string;
+          team_name: string;
+          updated_at: string;
+        };
+        Insert: {
+          access_token: string;
+          bot_user_id: string;
+          channel_id: string;
+          channel_name: string;
+          created_at?: string;
+          experiment_id: string;
+          id?: string;
+          scopes: string;
+          team_id: string;
+          team_name: string;
+          updated_at?: string;
+        };
+        Update: {
+          access_token?: string;
+          bot_user_id?: string;
+          channel_id?: string;
+          channel_name?: string;
+          created_at?: string;
+          experiment_id?: string;
+          id?: string;
+          scopes?: string;
+          team_id?: string;
+          team_name?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "slack_accounts_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: true;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      slack_delivery_receipts: {
+        Row: {
+          created_at: string;
+          experiment_id: string;
+          id: string;
+          interaction_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          experiment_id: string;
+          id?: string;
+          interaction_id: string;
+        };
+        Update: {
+          created_at?: string;
+          experiment_id?: string;
+          id?: string;
+          interaction_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "slack_delivery_receipts_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       source_posts: {
         Row: {
-          author_handle: string;
+          author_handle: string | null;
           created_at: string;
+          external_id: string | null;
           id: string;
           posted_at: string | null;
           raw: Json | null;
+          source: string;
           text: string;
-          x_post_id: string;
+          title: string | null;
+          url: string | null;
+          x_post_id: string | null;
         };
         Insert: {
-          author_handle: string;
+          author_handle?: string | null;
           created_at?: string;
+          external_id?: string | null;
           id?: string;
           posted_at?: string | null;
           raw?: Json | null;
+          source?: string;
           text: string;
-          x_post_id: string;
+          title?: string | null;
+          url?: string | null;
+          x_post_id?: string | null;
         };
         Update: {
-          author_handle?: string;
+          author_handle?: string | null;
           created_at?: string;
+          external_id?: string | null;
           id?: string;
           posted_at?: string | null;
           raw?: Json | null;
+          source?: string;
           text?: string;
-          x_post_id?: string;
+          title?: string | null;
+          url?: string | null;
+          x_post_id?: string | null;
         };
         Relationships: [];
+      };
+      stories: {
+        Row: {
+          created_at: string;
+          experiment_id: string;
+          id: string;
+          summary: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          experiment_id: string;
+          id?: string;
+          summary: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          experiment_id?: string;
+          id?: string;
+          summary?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "stories_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      story_assignments: {
+        Row: {
+          created_at: string;
+          id: string;
+          source_post_id: string;
+          story_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          source_post_id: string;
+          story_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          source_post_id?: string;
+          story_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "story_assignments_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: true;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "story_assignments_story_id_fkey";
+            columns: ["story_id"];
+            isOneToOne: false;
+            referencedRelation: "stories";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       unmatched_deliveries: {
         Row: {
@@ -443,6 +627,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      voice_extraction_claims: {
+        Row: {
+          actual_usd: number | null;
+          created_at: string;
+          id: string;
+          reporter_handle: string;
+          reserved_usd: number;
+          status: string;
+          updated_at: string;
+          utc_day: string;
+        };
+        Insert: {
+          actual_usd?: number | null;
+          created_at?: string;
+          id?: string;
+          reporter_handle: string;
+          reserved_usd: number;
+          status?: string;
+          updated_at?: string;
+          utc_day: string;
+        };
+        Update: {
+          actual_usd?: number | null;
+          created_at?: string;
+          id?: string;
+          reporter_handle?: string;
+          reserved_usd?: number;
+          status?: string;
+          updated_at?: string;
+          utc_day?: string;
+        };
+        Relationships: [];
+      };
       voice_guides: {
         Row: {
           cost_usd: number | null;
@@ -478,6 +695,47 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      voice_rules: {
+        Row: {
+          created_at: string;
+          enabled: boolean;
+          id: string;
+          provenance_model_call_id: string | null;
+          reporter_handle: string;
+          rule: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          enabled?: boolean;
+          id?: string;
+          provenance_model_call_id?: string | null;
+          reporter_handle: string;
+          rule: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          enabled?: boolean;
+          id?: string;
+          provenance_model_call_id?: string | null;
+          reporter_handle?: string;
+          rule?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "voice_rules_provenance_model_call_id_fkey";
+            columns: ["provenance_model_call_id"];
+            isOneToOne: false;
+            referencedRelation: "model_calls";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       x_accounts: {
         Row: {

@@ -23,15 +23,34 @@ function isAuthorized(header: string | null, secret: string): boolean {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-const ingestBodySchema = z.object({
-  x_post_id: z.string().min(1),
-  author_handle: z.string().min(1),
-  text: z.string().min(1),
-  posted_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
-    message: "posted_at must parse as a date",
+const ingestBodySchema = z.discriminatedUnion("source", [
+  z.object({
+    source: z.literal("x"),
+    x_post_id: z.string().min(1),
+    author_handle: z.string().min(1), // normalized via lib/x/handle.ts
+    text: z.string().min(1),
+    posted_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
+      message: "posted_at must parse as a date",
+    }),
+    raw: z.unknown().optional(),
   }),
-  raw: z.unknown().optional(),
-});
+  z.object({
+    source: z.literal("website"),
+    // deterministic external id — never a fabricated x_post_id
+    external_id: z.string().min(1), // sha256(canonicalUrl + "\n" + publishedAtIso)
+    url: z.string().url(),
+    title: z.string().min(1),
+    text: z.string().min(1),
+    author_handle: z.string().nullable(),
+    published_at: z
+      .string()
+      .nullable()
+      .refine((v) => v === null || !Number.isNaN(Date.parse(v)), {
+        message: "published_at must parse as a date",
+      }),
+    raw: z.unknown().optional(),
+  }),
+]);
 
 export async function POST(req: Request) {
   const secret = process.env.INGEST_SECRET;
