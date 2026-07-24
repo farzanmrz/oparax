@@ -19,7 +19,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
  *  introducing a second, competing estimate. */
 export const EXTRACTION_WORST_CASE_USD = 2.0;
 
-function utcDay(): string {
+/** Exported so every reader of voice_extraction_claims (this module's own insert/update, and
+ *  app/agents/[id]/voice/actions.ts's capReprobe cap-status check) shares one definition of
+ *  "today" for the utc_day key — a day-boundary change (e.g. reporter-local timezone) would
+ *  otherwise have to be made in two places that could silently drift apart. */
+export function utcDay(): string {
   return new Date().toISOString().slice(0, 10);
 }
 

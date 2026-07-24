@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import {
@@ -43,11 +44,6 @@ import {
   toggleAutoPost,
   unlinkSlack,
 } from "./actions";
-
-// Mirrors actions.ts's own local MAX_WEBSITES — see that file's comment for why the cap
-// can't live in one shared constant importable from both a client component and a "use
-// server" module.
-const MAX_WEBSITES = 20;
 
 function initialsFor(handle: string): string {
   return handle.slice(0, 2).toUpperCase();

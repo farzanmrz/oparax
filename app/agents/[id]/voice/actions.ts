@@ -20,6 +20,7 @@ import type { VerifyResult } from "@/lib/verify/handle";
 import { attestReporterHandle, verifyReporterHandle } from "@/lib/verify/handle";
 import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
 import { createVoiceRule, deleteVoiceRule, updateVoiceRule } from "@/lib/voice/rules";
+import { utcDay } from "@/lib/voice/spend-gate";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type { VerifyResult };
@@ -123,12 +124,11 @@ export async function deleteVoiceRuleAction(deskId: string, ruleId: string): Pro
  *  table, admin client only. */
 async function todaysClaim(reporterHandle: string): Promise<{ status: string } | null> {
   const admin = createAdminClient();
-  const utcDay = new Date().toISOString().slice(0, 10);
   const { data } = await admin
     .from("voice_extraction_claims")
     .select("status")
     .eq("reporter_handle", reporterHandle)
-    .eq("utc_day", utcDay)
+    .eq("utc_day", utcDay())
     .maybeSingle();
   return data ?? null;
 }

@@ -15,6 +15,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { exchangeCodeForToken } from "@/lib/slack/api";
+import { ownsDesk } from "@/lib/slack/link-state";
 import { upsertSlackAccount } from "@/lib/slack/store";
 import { createClient } from "@/lib/supabase/server";
 
@@ -93,15 +94,11 @@ export async function GET(request: NextRequest) {
     return redirectBack({ slack_error: "auth" });
   }
 
-  // Desk-ownership re-check — see the file header. `experiments` is owner-scoped, so no row
-  // back means the signed-in user doesn't own the desk `state` claims, and the link is
-  // refused rather than silently applied to the wrong desk.
-  const { data: experiment, error: experimentError } = await supabase
-    .from("experiments")
-    .select("id")
-    .eq("id", decoded.experimentId)
-    .maybeSingle();
-  if (experimentError || !experiment) {
+  // Desk-ownership re-check — see the file header. Shared with lib/slack/link-state.ts /
+  // lib/slack/actions.ts / the link route above: no row back means the signed-in user doesn't
+  // own the desk `state` claims, and the link is refused rather than silently applied to the
+  // wrong desk.
+  if (!(await ownsDesk(decoded.experimentId))) {
     return redirectBack({ slack_error: "ownership" });
   }
 

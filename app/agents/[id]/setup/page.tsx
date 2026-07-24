@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { loadSpendWindows } from "@/lib/agent/spend-query";
 import { getSlackLinkState } from "@/lib/slack/link-state";
 import { createClient } from "@/lib/supabase/server";
+import { parseWebsites } from "@/lib/websites";
 import { ConnectionsCard, NotificationsCard, SourcesCard } from "./sources-card";
 import { SpendCard } from "./spend-card";
 
@@ -53,12 +54,6 @@ export default async function SetupPage({ params }: { params: Promise<{ id: stri
       </div>
     </div>
   );
-}
-
-function parseWebsites(json: unknown): string[] {
-  return Array.isArray(json)
-    ? json.filter((entry): entry is string => typeof entry === "string")
-    : [];
 }
 
 function parseAutoPostSources(json: unknown): { x: boolean; website: boolean } {

@@ -12,16 +12,28 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSlackAccount } from "./store";
 
-export async function getSlackLinkState(
-  experimentId: string,
-): Promise<{ linked: boolean; teamName: string | null; channelName: string | null }> {
+/** The desk-ownership proof every Slack surface needs before touching that desk's
+ *  `slack_accounts` row — a cookie-client (RLS) SELECT against `experiments`, which is
+ *  owner-scoped, so no row back means either "not signed in" or "not this reporter's desk"
+ *  and both are treated identically. Shared by getSlackLinkState below, lib/slack/actions.ts's
+ *  unlinkSlack/sendTestSlack, and both app/auth/slack/* OAuth routes — previously
+ *  reimplemented at each of those four call sites. */
+export async function ownsDesk(experimentId: string): Promise<boolean> {
   const supabase = await createClient();
-  const { data: experiment, error } = await supabase
+  const { data, error } = await supabase
     .from("experiments")
     .select("id")
     .eq("id", experimentId)
     .maybeSingle();
-  if (error || !experiment) return { linked: false, teamName: null, channelName: null };
+  return !error && data !== null;
+}
+
+export async function getSlackLinkState(
+  experimentId: string,
+): Promise<{ linked: boolean; teamName: string | null; channelName: string | null }> {
+  if (!(await ownsDesk(experimentId))) {
+    return { linked: false, teamName: null, channelName: null };
+  }
 
   const account = await getSlackAccount(experimentId);
   return {

@@ -15,6 +15,7 @@ import { randomBytes } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { SLACK_SCOPES } from "@/lib/slack/api";
+import { ownsDesk } from "@/lib/slack/link-state";
 import { createClient } from "@/lib/supabase/server";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
@@ -49,15 +50,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", origin));
   }
 
-  // Desk-ownership proof — the same cookie-client (RLS) read `lib/slack/link-state.ts` and
-  // `lib/slack/actions.ts` use: `experiments` is owner-scoped, so no row back means either
-  // "not signed in" or "not this reporter's desk", and both are treated as "can't link".
-  const { data: experiment, error } = await supabase
-    .from("experiments")
-    .select("id")
-    .eq("id", experimentId)
-    .maybeSingle();
-  if (error || !experiment) {
+  // Desk-ownership proof — shared with lib/slack/link-state.ts / lib/slack/actions.ts / the
+  // callback route below (previously each reimplemented this same RLS read).
+  if (!(await ownsDesk(experimentId))) {
     return NextResponse.redirect(new URL("/agents", origin));
   }
 

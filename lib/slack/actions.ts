@@ -11,27 +11,17 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { postMessage } from "@/lib/slack/api";
+import { ownsDesk } from "@/lib/slack/link-state";
 import { deleteSlackAccount, getSlackAccount } from "@/lib/slack/store";
-import { createClient } from "@/lib/supabase/server";
 
 const experimentIdSchema = z.string().uuid();
-
-async function assertOwnsDesk(experimentId: string): Promise<boolean> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id")
-    .eq("id", experimentId)
-    .maybeSingle();
-  return !error && data !== null;
-}
 
 export async function unlinkSlack(
   experimentId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const parsedId = experimentIdSchema.safeParse(experimentId);
   if (!parsedId.success) return { ok: false, error: "Select a desk to unlink." };
-  if (!(await assertOwnsDesk(parsedId.data))) return { ok: false, error: "Please sign in again." };
+  if (!(await ownsDesk(parsedId.data))) return { ok: false, error: "Please sign in again." };
 
   try {
     await deleteSlackAccount(parsedId.data);
@@ -48,7 +38,7 @@ export async function sendTestSlack(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const parsedId = experimentIdSchema.safeParse(experimentId);
   if (!parsedId.success) return { ok: false, error: "Select a desk to test." };
-  if (!(await assertOwnsDesk(parsedId.data))) return { ok: false, error: "Please sign in again." };
+  if (!(await ownsDesk(parsedId.data))) return { ok: false, error: "Please sign in again." };
 
   const account = await getSlackAccount(parsedId.data);
   if (!account) return { ok: false, error: "Connect Slack first." };

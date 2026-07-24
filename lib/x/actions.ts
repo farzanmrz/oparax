@@ -169,20 +169,15 @@ export async function postDraftToX(
   if (!user) return { ok: false, error: "Please sign in again." };
 
   // RLS-scoped read proves ownership via post_drafts' EXISTS-join-through-experiments SELECT
-  // policy. The draft text has no home on post_drafts itself — it's whatever the winning
-  // model call produced, so it's pulled through the model_calls FK in the same read. Kept
-  // here, unchanged, as the proof a browser caller may act on this draft before delegating
-  // to the session-independent core.
+  // policy — `id` only: postDraftToXForOwner does the one real fetch (text, posted_at) via
+  // the admin client right after, so this doesn't re-select and re-validate the same row
+  // twice per browser click.
   const { data: draft, error: draftError } = await supabase
     .from("post_drafts")
-    .select("id, experiment_id, posted_at, model_calls(output)")
+    .select("id")
     .eq("id", parsedId.data)
     .maybeSingle();
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
-  if (draft.posted_at) return { ok: false, error: "This draft was already posted to X." };
-
-  const text = draft.model_calls?.output;
-  if (!text) return { ok: false, error: "This draft has no text to post." };
 
   return postDraftToXForOwner(parsedId.data, user.id);
 }

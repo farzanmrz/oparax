@@ -17,20 +17,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { sendTestEmail as sendPlainTestEmail } from "@/lib/notify/email";
 import {
   sendTestSlack as sendTestSlackAccount,
   unlinkSlack as unlinkSlackAccount,
 } from "@/lib/slack/actions";
 import { createClient } from "@/lib/supabase/server";
 import { scrapeUrl } from "@/lib/web/brightdata";
+import { MAX_WEBSITES, parseWebsites } from "@/lib/websites";
 import type { ActionResult } from "../actions";
-
-// Matches MAX_TRACKED_HANDLES's spirit (lib/x/handle.ts) — a reasonable cap, not a measured
-// limit. Can't live in a shared constants module and be imported here AND from a "use
-// server" export: a "use server" file may only export async functions (types are erased and
-// so exempt, which is why ActionResult above is fine), so this stays a local literal,
-// mirrored in sources-card.tsx's own MAX_WEBSITES for the client-side "at limit" copy.
-const MAX_WEBSITES = 20;
 
 /** Trim + prepend `https://` when the entry has no scheme, then verify with `new URL(...)`.
  *  `null` means "not a well-formed website" — the caller rejects the whole batch on the
@@ -76,9 +71,7 @@ export async function saveWebsites(
     .maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the desk's websites." };
 
-  const existing = Array.isArray(data.websites)
-    ? data.websites.filter((entry): entry is string => typeof entry === "string")
-    : [];
+  const existing = parseWebsites(data.websites);
   const merged = [...existing];
   for (const url of candidates) {
     if (merged.length >= MAX_WEBSITES) break; // cap (client enforces too)
@@ -109,9 +102,7 @@ export async function removeWebsite(deskId: string, url: string): Promise<Action
     .maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the desk's websites." };
 
-  const next = Array.isArray(data.websites)
-    ? data.websites.filter((entry): entry is string => typeof entry === "string" && entry !== url)
-    : [];
+  const next = parseWebsites(data.websites).filter((entry) => entry !== url);
   const { error: updateError } = await supabase
     .from("experiments")
     .update({ websites: next })
@@ -226,24 +217,14 @@ export async function sendTestEmail(deskId: string): Promise<ActionResult> {
   if (!process.env.RESEND_API_KEY) return { ok: false, error: "Email delivery isn't set up yet." };
   const to = process.env.NOTIFY_EMAIL_TO;
   if (!to) return { ok: false, error: "No notification email is configured." };
-  const from = process.env.RESEND_FROM;
-  if (!from) return { ok: false, error: "Email delivery isn't set up yet." };
+  if (!process.env.RESEND_FROM) return { ok: false, error: "Email delivery isn't set up yet." };
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: "Oparax test notification",
-        text: "Oparax is connected — draft alerts for this desk will land in your inbox.",
-      }),
+    await sendPlainTestEmail({
+      to,
+      subject: "Oparax test notification",
+      text: "Oparax is connected — draft alerts for this desk will land in your inbox.",
     });
-    if (!res.ok) throw new Error(`Resend send failed: ${res.status}`);
   } catch {
     return { ok: false, error: "Could not send a test email. Please try again." };
   }

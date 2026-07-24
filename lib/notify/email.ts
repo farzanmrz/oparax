@@ -25,12 +25,14 @@ export function extractPostDraftId(input: {
   return s ? s[1].toLowerCase() : null;
 }
 
-/** Sends the draft email. Appends the [draft:<id>] subject tag and sets the reply-to. */
-export async function sendDraftEmail(input: {
+/** The one Resend REST call — auth, transport, error handling. Shared by sendDraftEmail
+ *  (which adds the [draft:<id>] subject tag + reply-to) and sendTestEmail (a plain send with
+ *  neither), so a future change to Resend's endpoint/auth/error-body shape happens once. */
+async function sendEmail(input: {
   to: string;
   subject: string;
   text: string;
-  postDraftId: string;
+  replyTo?: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not set");
@@ -46,10 +48,31 @@ export async function sendDraftEmail(input: {
     body: JSON.stringify({
       from,
       to: input.to,
-      subject: `${input.subject} [draft:${input.postDraftId}]`,
+      subject: input.subject,
       text: input.text,
-      reply_to: draftReplyAddress(input.postDraftId),
+      ...(input.replyTo ? { reply_to: input.replyTo } : {}),
     }),
   });
   if (!res.ok) throw new Error(`Resend send failed: ${res.status} ${await res.text()}`);
+}
+
+/** Sends the draft email. Appends the [draft:<id>] subject tag and sets the reply-to. */
+export async function sendDraftEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  postDraftId: string;
+}): Promise<void> {
+  await sendEmail({
+    to: input.to,
+    subject: `${input.subject} [draft:${input.postDraftId}]`,
+    text: input.text,
+    replyTo: draftReplyAddress(input.postDraftId),
+  });
+}
+
+/** A plain send with no draft context — Setup's Send-test control (no reply-to, no subject
+ *  tag; there is no draft to route a reply back to). */
+export async function sendTestEmail(input: { to: string; subject: string; text: string }) {
+  await sendEmail(input);
 }

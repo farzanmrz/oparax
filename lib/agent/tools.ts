@@ -13,6 +13,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { X_SEARCH_EXECUTOR_PROMPT } from "@/lib/sysprompts";
+import { X_HANDLE_RE } from "@/lib/x/handle";
 import { callResponses } from "./xai";
 
 /** The create-desk form's actual field shape (app/agents/new/create-desk-form.tsx +
@@ -28,7 +29,7 @@ const createDeskFormSchema = z.object({
     .describe("A short desk name — may be empty; the form falls back to a beat-derived label."),
   beat: z.string().trim().min(1).describe("The clarified, specific beat description."),
   trackedHandles: z
-    .array(z.string().regex(/^[A-Za-z0-9_]{1,15}$/))
+    .array(z.string().regex(X_HANDLE_RE))
     .max(20)
     .describe("Bare X handles, no @, as confirmed with the reporter — never invented."),
   reporterHandle: z.string().trim().min(1).describe("The reporter's own X handle, bare, no @."),

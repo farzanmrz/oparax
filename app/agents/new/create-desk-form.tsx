@@ -26,12 +26,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { saveWebsites } from "../[id]/setup/actions";
 import { createDesk } from "./actions";
 import { CreateDeskAssistant, type CreateDeskAssistantValues } from "./create-desk-assistant";
-
-const MAX_WEBSITES = 20;
 
 /** Split a typed/pasted blob into candidate website entries — comma / whitespace / newline
  *  separated. Light client-side shaping only; `saveWebsites` (server) does the real
