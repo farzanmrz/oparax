@@ -26,11 +26,9 @@ import {
   type GateReport,
   type PreflightResult,
   runExtractionSpendPhase,
-  runProfilePreflightGate,
 } from "@/lib/voice/create-desk-extraction";
 import { startRun } from "@/lib/voice/extraction-run";
 import { createVoiceRule, deleteVoiceRule, updateVoiceRule } from "@/lib/voice/rules";
-import { X_PROFILE_FAILURE_COPY } from "@/lib/web/brightdata";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -182,44 +180,32 @@ function toStepResult(preflight: PreflightResult): PreflightStepResult {
     : { ok: false, gates: preflight.gates, message: preflight.message };
 }
 
-/**
- * STEP 1 — the free handle-shape gate. Returns in microseconds, so the create screen can settle
- * it on screen immediately rather than holding it behind the slow profile call. Spends nothing,
- * so it is safe to call on mount.
- */
-export async function checkExtractionReadiness(deskId: string): Promise<PreflightStepResult> {
-  const owned = await ownedDesk(deskId);
-  if ("error" in owned) return { ok: false, gates: [], message: owned.error };
-  return toStepResult(checkHandleShape(owned.handle));
-}
-
 /** Copy for a start/retry that lost the run claim — another extraction for this desk is already
  *  in flight, so a second paid run would bill the same intent twice. */
 const ALREADY_RUNNING = "An extraction is already running for this agent.";
 
 /**
- * STEP 2 — the billable profile lookup, then (on success) the extraction itself.
+ * Starts extraction for a desk the caller owns: gate, claim the run and start the billable phase.
  *
- * Unlike the `after()` fire-and-forget this replaces, the pre-flight result is RETURNED. The
- * gates run before a `voice_extraction_runs` row exists, so awaiting them here is the only way
- * their outcome can reach a screen; the old version discarded them entirely, which is why a real
- * rejection surfaced as a spinner that never resolved. The billable phase is then handed to
- * `after()`, preserving the survives-navigation property for the half where it matters — its
- * progress lands on the run row that `getExtractionProgress` polls.
+ * There is no profile pre-flight any more. It was deleted after a live probe showed it could
+ * never pass for a real account: Bright Data's X-profile dataset answers the sync
+ * `/datasets/v3/scrape` endpoint with `202 + snapshot_id` for a live profile (i.e. "queued, go
+ * poll"), which the gate classified as a rejection — @FabrizioRomano failed it exactly like a
+ * dead handle. It cost a cent per attempt to block every extraction in the product.
  *
- * The handle-shape gate runs here even though the create screen already called
+ * The corpus pull is the reality check instead, which is what it always was: a handle with no
+ * timeline fails there, with a real reason, and the create screen now shows that step in flight
+ * rather than a spinner. One less step, one less billable call, one less thing to be wrong.
+ *
+ * The handle-shape gate stays and runs here even though the create screen already called
  * `checkExtractionReadiness`: a server action is reachable by action id whatever component
  * imports it, and `experiments` has an owner-scoped INSERT policy with no value constraint, so a
- * desk can carry any `reporter_handle` its owner chose to write. Skipping the shape check would
- * send that raw string into the profile lookup and the corpus pull — it is an injection guard,
- * not a UX nicety.
+ * desk can carry any `reporter_handle` its owner chose to write. Skipping it would send that raw
+ * string into the corpus pull — an injection guard, not a UX nicety.
  *
- * `startRun` is then awaited SYNCHRONOUSLY, before scheduling: its boolean is the desk's
+ * `startRun` is awaited SYNCHRONOUSLY, before scheduling: its boolean is the desk's
  * one-run-at-a-time claim, and inside `after()` a rejection would arrive after the response has
  * already flushed, far too late to stop the spend.
- *
- * Exactly one profile lookup is spent per call: `runExtractionSpendPhase` does not re-run the
- * pre-flight, and this action does not re-run step 1's gate for the caller's benefit twice.
  */
 export async function startExtraction(deskId: string): Promise<PreflightStepResult> {
   const owned = await ownedDesk(deskId);
@@ -228,26 +214,20 @@ export async function startExtraction(deskId: string): Promise<PreflightStepResu
   const shape = checkHandleShape(owned.handle);
   if (!shape.proceed) return toStepResult(shape);
 
-  const preflight = await runProfilePreflightGate(owned.handle, owned.userId);
-  if (!preflight.proceed) return toStepResult(preflight);
-
   if (!(await startRun(deskId))) {
-    return { ok: false, gates: preflight.gates, message: ALREADY_RUNNING };
+    return { ok: false, gates: shape.gates, message: ALREADY_RUNNING };
   }
 
   after(() => runExtractionSpendPhase(deskId, owned.handle, owned.userId));
-  return { ok: true, gates: preflight.gates, proceed: true };
+  return { ok: true, gates: shape.gates, proceed: true };
 }
 
 /** Reporter-facing sentence for a terminal outcome. Shared by the retry button and anything else
- *  that needs to explain a stopped extraction; `preflight_rejected` resolves to the specific
- *  Bright Data failure rather than one catch-all sentence. */
+ *  that needs to explain a stopped extraction. */
 function outcomeMessage(outcome: ExtractionOutcome): string {
   switch (outcome.status) {
     case "malformed_handle":
       return "That handle isn't valid for extraction.";
-    case "preflight_rejected":
-      return X_PROFILE_FAILURE_COPY[outcome.failure];
     case "corpus_failed":
       return "Couldn't fetch posts for that handle. Please try again.";
     default:
@@ -256,8 +236,8 @@ function outcomeMessage(outcome: ExtractionOutcome): string {
 }
 
 /**
- * Manual retry from the Voice tab. Runs both gates inline (so a bad handle or a dead profile
- * comes back as a message immediately) and hands the billable phase to `after()`, exactly like
+ * Manual retry from the Voice tab. Runs the handle-shape gate inline (so a bad handle comes back
+ * as a message immediately) and hands the billable phase to `after()`, exactly like
  * `startExtraction` — the retry button then polls `getExtractionProgress` the same way the
  * create screen does, instead of blocking on a multi-minute request.
  *
@@ -274,9 +254,6 @@ export async function retryExtraction(deskId: string): Promise<ActionResult> {
 
   const shape = checkHandleShape(owned.handle);
   if (!shape.proceed) return { ok: false, error: outcomeMessage(shape.outcome) };
-
-  const profile = await runProfilePreflightGate(owned.handle, owned.userId);
-  if (!profile.proceed) return { ok: false, error: outcomeMessage(profile.outcome) };
 
   if (!(await startRun(deskId))) return { ok: false, error: ALREADY_RUNNING };
 

@@ -9,10 +9,15 @@
 // docs/.claude/rules/voice.md's extraction recipe):
 //   - scrapeUrl     -> Web Unlocker, sync POST /request
 //   - pullXTimeline -> Web Scraper API, X/Twitter posts dataset, async trigger/poll/download
-//   - fetchXProfile -> Web Scraper API, X/Twitter PROFILE dataset (a distinct, smaller
-//     dataset_id from pullXTimeline's posts one), sync POST /datasets/v3/scrape — a cheap
-//     pre-flight, not a data dependency, so unlike the two above it never throws on a failure
-//     to resolve; see its own comment below for why.
+//
+// `fetchXProfile` (X PROFILE dataset, sync POST /datasets/v3/scrape) was DELETED, along with the
+// extraction pre-flight gate it backed. Live probe, 2026-07-25: that endpoint answers a LIVE
+// profile with `202 + snapshot_id` — queued, go poll — not with inline data. The gate read 202 as
+// a rejection, so it failed @FabrizioRomano exactly as it failed a dead handle, blocking every
+// extraction in the product and charging ~1c per attempt to do it. Do not resurrect it against
+// the sync endpoint; if a profile pre-check is ever wanted again it has to run the same
+// trigger/poll/download cycle pullXTimeline does, and the corpus pull already answers the only
+// question it was asked ("does this handle have a timeline?") for free.
 //
 // Metering (L7 house rule, AGENTS.md): every call stamps exactly one usage_events row via the
 // service-role admin client (the table has no insert policy — service role is mandatory).
@@ -40,10 +45,10 @@ function brightDataApiKey(): string {
 }
 
 /** Thrown by `bdFetch` on wall-clock expiry. A distinct CLASS rather than a message-shaped
- *  `Error` so `fetchXProfile`'s failure taxonomy can tell "Bright Data never answered" from
- *  "the network refused us" without string-matching a message that any future edit could
- *  reword. The other two callers (scrapeUrl/pullXTimeline) rethrow it untouched — it is still
- *  an `Error` with the same message they always propagated. */
+ *  `Error` so a caller can tell "Bright Data never answered" from "the network refused us"
+ *  without string-matching a message that any future edit could reword. Both callers
+ *  (scrapeUrl/pullXTimeline) rethrow it untouched — it is still an `Error` carrying the same
+ *  message they always propagated. */
 export class BrightDataTimeoutError extends Error {
   constructor(label: string, timeoutMs: number) {
     super(`Bright Data ${label} timed out after ${timeoutMs / 1000}s`);
@@ -158,8 +163,8 @@ const DATASETS_SNAPSHOT_URL = "https://api.brightdata.com/datasets/v3/snapshot";
 const MAX_POSTS = 100;
 const POLL_INTERVAL_MS = 5_000;
 // Every caller of pullXTimeline today runs inside a route with maxDuration = 300 (create-desk's
-// after() call, the Voice tab's manual retry) sharing that budget with fetchXProfile's pre-flight,
-// extractVoiceGuideStreaming's own timeout, and the DB writes around both — this ceiling was
+// after() call, the Voice tab's manual retry) sharing that budget with
+// extractVoiceGuideStreaming's own timeout and the DB writes around both — this ceiling was
 // never revisited when extraction gained a live in-app calling path (it predates that; the old
 // 10-minute value was sized for scripts/extract-voice-guide.ts's script-only context, which has
 // no such cap). 100s is a first-pass budget split with extractVoiceGuideStreaming's own
@@ -306,205 +311,4 @@ export async function pullXTimeline(handle: string, ownerId: string): Promise<XT
   });
 
   return posts;
-}
-
-// ---------------------------------------------------------------------------------------------
-// fetchXProfile — Web Scraper API, X/Twitter PROFILE dataset, sync (a pre-flight, not a data
-// dependency — see the return-contract note below)
-// ---------------------------------------------------------------------------------------------
-
-/** "Collect X (Twitter) profiles by URL" — a distinct, smaller dataset from X_POSTS_DATASET_ID
- *  above (docs: api-reference/scrapers/social-media-apis/twitter-profiles-collect-by-url,
- *  confirmed 2026-07-24). Resolves through the same `/datasets/v3/scrape` sync endpoint
- *  pullXTimeline's trigger/progress/download cycle exists to avoid: up to 20 URLs, data back
- *  inline within ~1 minute, no snapshot polling — the right shape for a single-handle
- *  pre-flight ahead of any extraction spend claim. */
-const X_PROFILE_DATASET_ID = "gd_lwxmeb2u1cniijd7t4";
-const DATASETS_SCRAPE_URL = "https://api.brightdata.com/datasets/v3/scrape";
-
-/** Only `posts_count` is consumed — the live response carries far more (bio, followers,
- *  is_verified, profile_image_link, recent posts, ...), all ignored here. */
-type BrightDataXProfile = { posts_count?: number };
-
-/** Why a pre-flight didn't resolve. Every one of these used to collapse into a single
- *  `{ resolved: false }` with an empty `catch {}` — a bad API key, a timeout, a 404, a rate
- *  limit and a malformed body were indistinguishable even in the server logs, which is what
- *  made a failed extraction undiagnosable. Bright Data still has no `error_message` taxonomy of
- *  its own to branch on (docs researched), so these are derived from the transport: the HTTP
- *  status, the exception type, and the shape of the body. That is enough to tell an OUR-FAULT
- *  failure (auth/timeout/5xx — retry, alert us) from a THEIR-HANDLE failure (`not_found`,
- *  `no_posts`) the reporter can actually act on. */
-export type XProfileFailure =
-  | "timeout"
-  | "network"
-  | "auth"
-  | "rate_limited"
-  | "not_found"
-  | "async_fallback"
-  | "server_error"
-  | "bad_request"
-  | "malformed_body"
-  | "no_profile_returned"
-  | "no_posts";
-
-/** Reporter-facing sentence per failure. Lives here, beside the taxonomy it describes, so a new
- *  variant cannot be added without deciding what the reporter is told — the pairing that
- *  `Record<XProfileFailure, string>` makes a compile error rather than a silent gap. */
-export const X_PROFILE_FAILURE_COPY: Record<XProfileFailure, string> = {
-  timeout: "The profile lookup timed out before X answered.",
-  network: "Couldn't reach the profile lookup service.",
-  auth: "The profile lookup service rejected our credentials.",
-  rate_limited: "The profile lookup service is rate limiting us right now.",
-  not_found: "No X profile exists at that handle.",
-  async_fallback: "The profile lookup was queued instead of answered — try again.",
-  server_error: "The profile lookup service had an internal error.",
-  bad_request: "The profile lookup was rejected as malformed.",
-  malformed_body: "The profile lookup returned something we couldn't read.",
-  no_profile_returned: "The lookup succeeded but returned no profile for that handle.",
-  no_posts: "That profile exists but has no public posts to learn from.",
-};
-
-/** Discriminated so a caller cannot read `postsCount` off a failure and treat 0 as real data —
- *  the old `{ resolved: boolean; postsCount: number }` shape allowed exactly that. */
-export type XProfileResult =
-  | { resolved: true; postsCount: number }
-  | { resolved: false; postsCount: 0; failure: XProfileFailure; detail: string | null };
-
-/** Maps a non-2xx response to its failure variant. 202 is the sync endpoint's own
- *  async-fallback signal — deliberately NOT chased into pullXTimeline's poll/download cycle for
- *  a single handle, so it is reported as its own retryable outcome rather than an error. */
-function profileFailureForStatus(status: number): XProfileFailure {
-  if (status === 202) return "async_fallback";
-  if (status === 401 || status === 403) return "auth";
-  if (status === 404) return "not_found";
-  if (status === 429) return "rate_limited";
-  if (status >= 500) return "server_error";
-  return "bad_request";
-}
-
-/** Return contract is deliberately NOT "throws on failure" like scrapeUrl/pullXTimeline above —
- *  this is a pre-flight probe a caller branches on, not a data dependency it needs to succeed.
- *  Only a config error (missing BRIGHTDATA_API_KEY) still throws, same as every other function
- *  in this file.
- *
- *  Every non-resolving outcome now carries a `failure` discriminant and a `detail` string
- *  instead of collapsing into one anonymous `{ resolved: false }`. That collapse was a real
- *  defect, not a stylistic one: a live extraction failed at this exact call and the cause could
- *  not be recovered afterwards from the database OR the logs, because a bad API key, a timeout,
- *  a 404, a rate limit and a malformed body all produced byte-identical evidence. The taxonomy
- *  is derived from the transport (status / exception class / body shape) since Bright Data
- *  exposes no error enum of its own here.
- *
- *  `postsCount === 0` is folded in as the `no_posts` failure rather than left as a "resolved"
- *  result the caller has to re-test — every caller treated it as a rejection anyway, and as a
- *  failure variant it gets a reporter-facing sentence like the rest.
- *
- *  Meters `usage_events` on every attempt, success or failure: Bright Data bills a
- *  failed-due-to-invalid-input row the same as a successful one, so unlike scrapeUrl/
- *  pullXTimeline's post-success-only stamp, this one meters unconditionally once a request was
- *  actually attempted — that billing fact is the whole reason, independent of any spend cap. */
-export async function fetchXProfile(handle: string, ownerId: string): Promise<XProfileResult> {
-  const apiKey = brightDataApiKey();
-  const url = new URL(DATASETS_SCRAPE_URL);
-  url.searchParams.set("dataset_id", X_PROFILE_DATASET_ID);
-  url.searchParams.set("format", "json");
-
-  const profileUrl = xProfileUrl(handle);
-  let result: XProfileResult;
-
-  try {
-    const res = await bdFetch(
-      "fetchXProfile",
-      url.toString(),
-      {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ input: [{ url: profileUrl }] }),
-      },
-      60_000,
-    );
-
-    if (res.status !== 200) {
-      // The body is read for the log/detail only — Bright Data returns no machine-readable
-      // error code here, so the raw text is the single most useful diagnostic we can keep.
-      const text = await res.text().catch(() => "");
-      result = {
-        resolved: false,
-        postsCount: 0,
-        failure: profileFailureForStatus(res.status),
-        detail: `HTTP ${res.status}${text ? ` — ${text.slice(0, 200)}` : ""}`,
-      };
-    } else {
-      let rows: BrightDataXProfile[] | null = null;
-      try {
-        rows = (await res.json()) as BrightDataXProfile[];
-      } catch {
-        rows = null;
-      }
-
-      if (!Array.isArray(rows)) {
-        result = {
-          resolved: false,
-          postsCount: 0,
-          failure: "malformed_body",
-          detail: "200 response body was not a JSON array",
-        };
-      } else if (rows.length === 0) {
-        // A 200 with an empty array is Bright Data's shape for "that URL resolved to nothing" —
-        // the closest thing this endpoint has to a 404, and the likeliest signature of a handle
-        // that is deleted, suspended, or simply misspelled.
-        result = {
-          resolved: false,
-          postsCount: 0,
-          failure: "no_profile_returned",
-          detail: `no rows returned for ${profileUrl}`,
-        };
-      } else {
-        const postsCount = rows[0]?.posts_count;
-        if (typeof postsCount !== "number" || !Number.isFinite(postsCount)) {
-          result = {
-            resolved: false,
-            postsCount: 0,
-            failure: "malformed_body",
-            detail: `profile row carried no numeric posts_count (got ${typeof postsCount})`,
-          };
-        } else if (postsCount === 0) {
-          // Distinct from every failure above: the profile is REAL, it just has nothing to
-          // learn a voice from. The reporter can act on this; the others they cannot.
-          result = {
-            resolved: false,
-            postsCount: 0,
-            failure: "no_posts",
-            detail: `${profileUrl} resolved with posts_count = 0`,
-          };
-        } else {
-          result = { resolved: true, postsCount };
-        }
-      }
-    }
-  } catch (err) {
-    result = {
-      resolved: false,
-      postsCount: 0,
-      failure: err instanceof BrightDataTimeoutError ? "timeout" : "network",
-      detail: err instanceof Error ? err.message : String(err),
-    };
-  }
-
-  if (!result.resolved) {
-    console.warn(
-      `fetchXProfile(${handle}): ${result.failure} — ${result.detail ?? "no detail"} [${profileUrl}]`,
-    );
-  }
-
-  const admin = createAdminClient();
-  await stampUsageEvent(admin, {
-    owner_id: ownerId,
-    kind: "scrape_x_profile",
-    units: 1,
-    cost_usd: null,
-    ref_id: handle,
-  });
-
-  return result;
 }

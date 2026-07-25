@@ -301,9 +301,6 @@ export function CreateDeskForm({
   const canSubmit = beat.trim().length > 0 && xLinkState.linked && !isPending;
 
   return (
-    // Full-bleed by design: the three columns below need the width, and the page already sits
-    // inside the /agents layout's padding. No max-width cap — a narrower measure would push the
-    // columns back into a stack on exactly the screens that can afford three.
     <div className="flex h-full min-h-0 flex-col">
       {/* Three deliberate absences here, each of which was actively misleading:
           - No brand mark: the site header renders the Oparax logo 60px above this.
@@ -317,21 +314,32 @@ export function CreateDeskForm({
           under it rather than a line. */}
       <header className="shrink-0 pt-6 pb-8">
         <h1 className="truncate font-semibold text-2xl tracking-tight">
-          {createdDeskId ? "Building your voice guide" : "Create agent"}
+          {createdDeskId ? "Agent created" : "Create agent"}
         </h1>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-6 pb-10">
-        {createdDeskId ? (
-          <ExtractionProgress deskId={createdDeskId} />
-        ) : (
+        {/* Two panels, not two pages. Submitting used to REPLACE the form with the progress view,
+            which threw away the only record of what had just been asked for at the exact moment
+            the reporter most wanted to check it ("did I paste the right handles?") — and left the
+            step list alone on a 2000px-wide page, stranded against the left edge.
+
+            The form's column is a fixed measure in BOTH states, so it does not move when the
+            right panel appears; the panel simply arrives beside it. The right cell is empty
+            before submit rather than holding a greyed placeholder — an unspecified stage gets no
+            chrome (.claude/rules/components.md), and an empty grid cell draws nothing. */}
+        <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)]">
           <form className="flex w-full flex-col gap-8" onSubmit={handleSubmit}>
-            {/* Three peer columns — Basics / Sources / Voice — at lg and up, two at md, stacked
-                below. Nothing spans, which is the point: the previous layout ran name and beat
-                full-bleed across the top, so on a wide screen they stretched to the viewport
-                while the fields under them stayed narrow. Equal columns keep every field on one
-                measure. */}
-            <div className="grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
+            {/* Linear again — Basics, then Sources, then Voice, top to bottom. The three-column
+                layout existed to use a full-bleed page; now the page's other half streams the
+                extraction, so the form gets one honest measure and reads in the order you fill
+                it. `fieldset disabled` freezes it once the desk exists: past that point it is a
+                record of what was asked for, not something still editable, and every shadcn
+                control inside inherits the disabled state natively. */}
+            <fieldset
+              className="flex flex-col gap-8 disabled:opacity-70"
+              disabled={createdDeskId !== null}
+            >
               <div className="flex flex-col gap-4">
                 <SectionHeader note="what this agent covers">Basics</SectionHeader>
 
@@ -476,30 +484,38 @@ export function CreateDeskForm({
                   </div>
                 ) : null}
               </div>
-            </div>
+            </fieldset>
 
-            {/* The commit bar. Centred under all three columns rather than tucked at the bottom
-                of the leftmost one, where it read as an action belonging to Basics. The rule
-                above it closes the three-column block — the same hairline the columns open
-                with, used here to end them. */}
-            <div className="flex flex-col items-center gap-3 border-border border-t pt-8">
-              {formError ? (
-                <p className="text-destructive text-sm" role="alert">
-                  {formError}
-                </p>
-              ) : null}
-              <Button
-                className="w-full sm:w-auto sm:min-w-64"
-                disabled={!canSubmit}
-                size="lg"
-                type="submit"
-              >
-                {isPending ? <Loader2Icon className="animate-spin" /> : null}
-                Create agent
-              </Button>
-            </div>
+            {/* The commit bar disappears once the desk exists — the action is done, and the panel
+                beside it now carries the state. Left-aligned rather than centred: it sits under a
+                single column now, so centring would float it away from the fields it commits. */}
+            {createdDeskId ? null : (
+              <div className="flex flex-col items-start gap-3 border-border border-t pt-8">
+                {formError ? (
+                  <p className="text-destructive text-sm" role="alert">
+                    {formError}
+                  </p>
+                ) : null}
+                <Button
+                  className="w-full sm:w-auto sm:min-w-64"
+                  disabled={!canSubmit}
+                  size="lg"
+                  type="submit"
+                >
+                  {isPending ? <Loader2Icon className="animate-spin" /> : null}
+                  Create agent
+                </Button>
+              </div>
+            )}
           </form>
-        )}
+
+          {/* Sticky so the steps stay in view while a long form scrolls past them. */}
+          {createdDeskId ? (
+            <aside className="lg:sticky lg:top-6 lg:self-start">
+              <ExtractionProgress deskId={createdDeskId} />
+            </aside>
+          ) : null}
+        </div>
       </div>
     </div>
   );

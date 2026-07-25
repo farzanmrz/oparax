@@ -20,7 +20,6 @@
 // mode that could not be diagnosed after the fact.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import { fetchXProfile, X_PROFILE_FAILURE_COPY, type XProfileFailure } from "@/lib/web/brightdata";
 import { X_HANDLE_RE } from "@/lib/x/handle";
 import { fetchCorpus } from "./corpus";
 import { deployGuide } from "./deploy-guide";
@@ -38,16 +37,21 @@ type AdminClient = ReturnType<typeof createAdminClient>;
  *  never throw — every failure, including an internal one, comes back as a value. */
 export type ExtractionOutcome =
   | { status: "malformed_handle" }
-  | { status: "preflight_rejected"; failure: XProfileFailure }
   | { status: "corpus_failed" }
   | { status: "failed"; errorCode?: string }
   | { status: "completed" };
 
-/** The two pre-flight checks, in run order. Named and returned individually because the create
- *  screen renders them as discrete steps: a reporter whose extraction stops needs to see WHICH
- *  check stopped it, and a single spinner could not express that. `handle_shape` is free and
- *  instant; `profile_lookup` is the one billable pre-flight call (~1 cent). */
-export type GateId = "handle_shape" | "profile_lookup";
+/** The pre-flight checks, returned individually because the create screen renders them as
+ *  discrete steps: a reporter whose extraction stops needs to see WHICH check stopped it, and a
+ *  single spinner could not express that.
+ *
+ *  Only `handle_shape` remains. `profile_lookup` (a ~1c Bright Data call) was deleted after a
+ *  live probe proved it could never pass: that dataset answers the sync endpoint with
+ *  `202 + snapshot_id` for a LIVE profile, which the gate read as a rejection — so it failed
+ *  @FabrizioRomano exactly as it failed a dead handle, blocking every extraction in the product
+ *  and charging a cent to do it. The corpus pull is the reality check instead, which is what it
+ *  always was. The union stays a union so a future gate slots in without a shape change. */
+export type GateId = "handle_shape";
 
 export type GateReport = {
   gate: GateId;
@@ -153,55 +157,6 @@ export function checkHandleShape(reporterHandle: string): PreflightResult {
     gates: [{ gate: "handle_shape", status: "passed", detail: null }],
     postsCount: null,
   };
-}
-
-/**
- * GATE 2 — the one billable pre-flight call (~1 cent). Confirms the profile exists and has
- * posts before committing to the corpus pull (minutes, on the expensive dataset) and the
- * extraction call itself.
- *
- * Its failure carries a real, actionable reason (`XProfileFailure`) rather than the anonymous
- * `{ resolved: false }` that previously made a live extraction failure impossible to diagnose
- * from either the database or the logs.
- */
-export async function runProfilePreflightGate(
-  reporterHandle: string,
-  ownerId: string,
-): Promise<PreflightResult> {
-  try {
-    const profile = await fetchXProfile(reporterHandle, ownerId);
-    if (!profile.resolved) {
-      const message = X_PROFILE_FAILURE_COPY[profile.failure];
-      console.warn(
-        `runProfilePreflightGate: rejected @${reporterHandle} — ${profile.failure}: ${profile.detail ?? "no detail"}`,
-      );
-      return {
-        proceed: false,
-        gates: [{ gate: "profile_lookup", status: "failed", detail: message }],
-        outcome: { status: "preflight_rejected", failure: profile.failure },
-        message,
-      };
-    }
-    return {
-      proceed: true,
-      gates: [
-        {
-          gate: "profile_lookup",
-          status: "passed",
-          detail: `@${reporterHandle} — ${profile.postsCount.toLocaleString()} posts`,
-        },
-      ],
-      postsCount: profile.postsCount,
-    };
-  } catch (e) {
-    console.error(`runProfilePreflightGate: failed for @${reporterHandle}`, e);
-    return {
-      proceed: false,
-      gates: [{ gate: "profile_lookup", status: "failed", detail: null }],
-      outcome: { status: "failed" },
-      message: "Something went wrong checking that profile. Please try again.",
-    };
-  }
 }
 
 /**
