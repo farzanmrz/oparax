@@ -42,6 +42,10 @@ const SCRATCH = `${REPO}/.feature/plan-council` // self-gitignoring — .feature
 
 // external-family production tiers (locked with Farzan — not re-litigated per-run)
 const TIERS = { codex: 'medium', grok: 'medium', agy: 'gemini-3.1-pro-high' }
+// codex is the one family whose model is a separate flag from its effort, so it must be named.
+// Plan authoring is the highest-judgment external call in the flow — it gets the flagship, not
+// whatever ~/.codex/config.toml happens to default to.
+const CODEX_DRAFT_MODEL = 'gpt-5.6-sol'
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
 const SELECT_SCHEMA = {
@@ -151,7 +155,11 @@ function parsePlan(raw) {
 const GROUND_RULE = `\n\nHARD RULE: Do NOT read, open, list, or grep ANY repository files. The repo digest and constraint set above are all the ground truth you need. Produce the plan using ONLY the context given here.`
 
 // External-CLI draft worker: a sonnet shell-bridge routing through council/run.sh.
-async function cliWorker(family, tier, promptText, displayLabel, fileStem, ph) {
+// `model` is codex-only (COUNCIL_MODEL → -m). grok is single-model; agy encodes its model in
+// `tier`. Passing it explicitly matters here: without it codex silently used whatever
+// ~/.codex/config.toml happened to say, so the highest-judgment external call in the whole
+// flow — authoring a full implementation plan — ran on an unchosen default.
+async function cliWorker(family, tier, promptText, displayLabel, fileStem, ph, model) {
   const raw = await agent(
     `You are a shell bridge to the ${family} planning CLI. Do EXACTLY these steps and nothing else — plan nothing yourself:
 1. Using the Write tool, create the file "${SCRATCH}/${fileStem}.in.txt" with EXACTLY this content:
@@ -159,7 +167,7 @@ async function cliWorker(family, tier, promptText, displayLabel, fileStem, ph) {
 ${promptText}
 PROMPT
 2. Run this ONE command verbatim:
-   CLAUDE_PROJECT_DIR="${REPO}" COUNCIL_SCRATCH="${SCRATCH}" COUNCIL_TIER="${tier}" bash "${SCRIPT_DIR}/run.sh" ${family} ${fileStem}
+   CLAUDE_PROJECT_DIR="${REPO}" COUNCIL_SCRATCH="${SCRATCH}" COUNCIL_TIER="${tier}" ${model ? `COUNCIL_MODEL="${model}" ` : ''}bash "${SCRIPT_DIR}/run.sh" ${family} ${fileStem}
 3. If it exits non-zero, OR "${SCRATCH}/${fileStem}.out.json" is missing or empty, return exactly: FAILED
 4. Otherwise read "${SCRATCH}/${fileStem}.out.json" and return its RAW verbatim contents and nothing else — no fences, no commentary.`,
     { label: displayLabel, phase: ph, model: 'sonnet', agentType: 'general-purpose' },
@@ -245,7 +253,7 @@ Candidate menu (a STARTING FRAME, not a limit — pick one, blend them, or propo
 
 const draftJobs = [
   () => agent(draftPrompt, { label: 'claude:draft', phase: 'DraftCouncil', model: 'opus', agentType: 'general-purpose', schema: PLAN_SCHEMA }).then((o) => ({ fam: 'claude', out: o })),
-  () => cliWorker('codex', TIERS.codex, draftPrompt, 'codex:draft', 'draft-codex', 'DraftCouncil').then((o) => ({ fam: 'codex', out: o })),
+  () => cliWorker('codex', TIERS.codex, draftPrompt, 'codex:draft', 'draft-codex', 'DraftCouncil', CODEX_DRAFT_MODEL).then((o) => ({ fam: 'codex', out: o })),
   () => cliWorker('grok', TIERS.grok, draftPrompt, 'grok:draft', 'draft-grok', 'DraftCouncil').then((o) => ({ fam: 'grok', out: o })),
   () => cliWorker('agy', TIERS.agy, draftPrompt, 'agy:draft', 'draft-agy', 'DraftCouncil').then((o) => ({ fam: 'agy', out: o })),
 ]
