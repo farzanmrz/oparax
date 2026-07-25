@@ -10,29 +10,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { FeedStory } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
 import { DraftPlatformSwitcher } from "./draft-platform-switcher";
-import { ExtraSourcesBadge, ViewSourceButton } from "./feed-tooltips";
-
-/** Pinned to UTC so a server render never disagrees with itself — this is a plain Server
- *  Component, never re-hydrated client-side, but the same discipline the rest of the app's
- *  timestamp formatters use. `postedAt` is nullable (an ingested post with no captured
- *  publish time); the design's "Broke {ago} ago" fallback needs a relative reference point
- *  this pinned type doesn't carry, so the fallback is static rather than fabricated. */
-function formatBrokeAt(iso: string | null): string {
-  if (!iso) return "Broke recently";
-  const date = new Date(iso);
-  const datePart = date.toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-  });
-  const timePart = date.toLocaleTimeString("en-US", {
-    timeZone: "UTC",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-  return `${datePart}, ${timePart}`;
-}
+import { ExtraSourcesBadge } from "./feed-tooltips";
+import { SourceTweet } from "./source-tweet";
 
 /** The 𝕏 origin badge — lucide ships no brand glyphs, so this is the platform's own
  *  character in a small rounded square, exactly like the design's "𝕏 glyph in a 24px
@@ -66,30 +45,18 @@ function NewsCard({
   opacityClass: string | undefined;
 }) {
   return (
-    <Card className={cn(opacityClass)}>
-      <CardHeader className="flex-row items-center gap-2">
-        <OriginBadge />
-        <span className="min-w-0 flex-1 truncate font-mono text-sm font-semibold">
-          {/* author_handle is nullable as of this Wave's website-source support — a website
-              post carries no handle, so this falls back to a generic label rather than
-              rendering the literal "@null". */}
-          {sourcePost.authorHandle ? `@${sourcePost.authorHandle}` : "Source"}
-        </span>
-        {extraSourceCount > 0 ? <ExtraSourcesBadge count={extraSourceCount} /> : null}
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">
-          {formatBrokeAt(sourcePost.postedAt)}
-        </span>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <p className="text-sm whitespace-pre-wrap">{sourcePost.text}</p>
+    <div className={cn("flex flex-col gap-2", opacityClass)}>
+      {extraSourceCount > 0 ? (
         <div className="flex justify-end">
-          {/* The tooltip + disabled scaffold live in `feed-tooltips.tsx` (a client boundary) —
-              a Radix Tooltip composed from this Server Component hydration-errors on every
-              load; see that file's header comment. */}
-          <ViewSourceButton />
+          <ExtraSourcesBadge count={extraSourceCount} />
         </div>
-      </CardContent>
-    </Card>
+      ) : null}
+      {/* The card chrome (Card/CardHeader/handle/timestamp) is gone: react-tweet renders X's
+          own header, body and timestamp, so the old hand-built versions were duplicating it —
+          and the timestamp it renders is locale-correct and client-formatted, which is what
+          replaced this file's UTC-pinned `formatBrokeAt`. */}
+      <SourceTweet sourcePost={sourcePost} />
+    </div>
   );
 }
 
@@ -106,7 +73,6 @@ function DraftCard({
   xLinked: boolean;
   opacityClass: string | undefined;
 }) {
-  const sourcePost = story.sourcePosts[0];
   const hasWinners = Object.keys(story.winners).length > 0;
 
   if (!hasWinners) {
@@ -132,9 +98,9 @@ function DraftCard({
         <span className="min-w-0 flex-1 truncate text-sm font-semibold">
           Draft <span className="font-mono text-xs text-muted-foreground">@{reporterHandle}</span>
         </span>
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">
-          {formatBrokeAt(sourcePost?.postedAt ?? null)}
-        </span>
+        {/* No timestamp here on purpose. This card used to print the SOURCE post's time — the
+            same instant already shown on the card beside it, for a different event — which
+            read as "when was this drafted" and was not. */}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <DraftPlatformSwitcher experimentId={experimentId} story={story} xLinked={xLinked} />

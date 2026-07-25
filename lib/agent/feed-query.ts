@@ -42,14 +42,32 @@ type Client = SupabaseClient<Database>;
 
 const STORY_PAGE_LIMIT = 50;
 
+/** The poster's display name ("Fabrizio Romano"), dug out of the stored stream payload's
+ *  `includes.users[0].name`. The stream is asked for `expansions=author_id&user.fields=username`
+ *  (ingest/src/stream.ts), so the name rides along in every X delivery but has no column of its
+ *  own — this reads it back out rather than adding one for a purely presentational field. Returns
+ *  null for a website source, an older row stored before this shape, or any payload that doesn't
+ *  match; every caller must treat the name as optional. */
+function authorNameFromRaw(raw: unknown): string | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const includes = (raw as { includes?: unknown }).includes;
+  if (typeof includes !== "object" || includes === null) return null;
+  const users = (includes as { users?: unknown }).users;
+  if (!Array.isArray(users) || users.length === 0) return null;
+  const name = (users[0] as { name?: unknown }).name;
+  return typeof name === "string" && name.length > 0 ? name : null;
+}
+
 export type FeedStory = {
   storyId: string;
   summary: string; // stories.summary — a short label, useful as a fallback/secondary display
   sourcePosts: {
     id: string;
     authorHandle: string | null; // NOW NULLABLE — a website post may have none
+    authorName: string | null; // the poster's display name, off the stored stream payload
     text: string;
     postedAt: string | null;
+    xPostId: string | null; // NULL for a website source — the id the X embed is fetched by
   }[];
   winners: Partial<
     Record<
@@ -76,6 +94,8 @@ type SourcePostJoin = {
   author_handle: string | null;
   text: string;
   posted_at: string | null;
+  x_post_id: string | null;
+  raw: unknown;
 };
 
 type AssignmentRow = { story_id: string; source_posts: SourcePostJoin | null };
@@ -147,7 +167,7 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
       // Oldest-assigned-first within a story, so `sourcePosts[0]` (feed-item.tsx's rendered
       // "primary" source post — see its own comment) is the post that actually started the
       // story, not an arbitrary fetch order.
-      .select("story_id, source_posts(id, author_handle, text, posted_at)")
+      .select("story_id, source_posts(id, author_handle, text, posted_at, x_post_id, raw)")
       .in("story_id", storyIds)
       .order("created_at", { ascending: true }),
     supabase
@@ -181,8 +201,10 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
     list.push({
       id: row.source_posts.id,
       authorHandle: row.source_posts.author_handle,
+      authorName: authorNameFromRaw(row.source_posts.raw),
       text: row.source_posts.text,
       postedAt: row.source_posts.posted_at,
+      xPostId: row.source_posts.x_post_id,
     });
     sourcePostsByStoryId.set(row.story_id, list);
   }
