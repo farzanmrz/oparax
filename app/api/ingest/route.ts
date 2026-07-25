@@ -9,8 +9,11 @@
 // (lib/agent/draft-pipeline.ts); do not duplicate any of it here.
 
 import { timingSafeEqual } from "node:crypto";
+import { after } from "next/server";
 import { z } from "zod";
 import { processDelivery } from "@/lib/agent/draft-pipeline";
+import { reconcileMissingCosts } from "@/lib/agent/gateway-cost";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const maxDuration = 300;
 
@@ -72,6 +75,30 @@ export async function POST(req: Request) {
 
   try {
     const result = await processDelivery(parsed.data);
+
+    // Repair BYOK costs after the response. This is `reconcileMissingCosts`'s ONE production
+    // caller — it was implemented against the gateway's ~19s usage-event lag (live-probed: 404 at
+    // 0/1/4/9s, 200 at 19s) and then never wired anywhere, so every DeepSeek/DeepInfra council
+    // call sat at cost NULL forever; the first real end-to-end draft is what surfaced that. The
+    // 25s pause is the lag plus margin, and it runs in `after()` — post-response, so the
+    // forwarder's request is never held hostage to pricing, and inside this route's
+    // maxDuration = 300 budget. Deliveries are the only place drafting spend originates, so
+    // repairing here (each run also sweeps prior still-null rows, since the repair is idempotent
+    // over the newest 200) keeps the ledger converging without a cron.
+    after(async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 25_000));
+        const { repaired, totalUsd } = await reconcileMissingCosts(createAdminClient());
+        if (repaired > 0) {
+          console.log(`api/ingest: reconciled ${repaired} model_calls costs ($${totalUsd})`);
+        }
+      } catch (e) {
+        // Pricing repair must never look like a delivery failure — the rows keep their
+        // generation_id and the next delivery's sweep retries them.
+        console.error("api/ingest: reconcileMissingCosts failed", e);
+      }
+    });
+
     return Response.json(result);
   } catch (e) {
     console.error("api/ingest: processDelivery failed", e);
