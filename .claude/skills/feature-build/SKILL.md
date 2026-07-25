@@ -38,15 +38,14 @@ if it exists; otherwise the user's direct instruction is the plan (small-build m
   implementer task, assign every file it may create or update, and block all
   consumers on it. The SESSION never performs these setup writes itself.
 
-  **This rule has been broken in practice — twice, for two different reasons, so guard
-  both.** (1) A run wrote all eight migration SQL files plus regenerated types directly in
-  the session, with no task and no stated justification. (2) A foundational migration task
-  returned `BLOCKED` because the implementer had no Supabase MCP tool access, and the
-  session then applied the migration itself rather than re-dispatching. So: **before
-  dispatching, check whether a task needs a tool the `implementer` does not have** (its
-  `tools:` list is Read/Write/Edit/Glob/Grep/Bash/Skill — no MCP). If it does, dispatch an
-  agent that has that tool instead of assuming the implementer can cope. A `BLOCKED` return
-  is a re-dispatch signal, never a cue for the session to absorb the task.
+  **This rule has been broken in practice — twice, for two different reasons.** (1) A run
+  wrote all eight migration SQL files plus regenerated types directly in the session, with no
+  task and no stated justification. (2) A foundational migration task returned `BLOCKED`
+  because the implementer had no MCP access, and the session applied the migration itself
+  rather than re-dispatching. Cause (2) is fixed at the source: `implementer` no longer
+  carries a `tools:` allowlist, so **schema and deploy work — Supabase migrations, type
+  regeneration, Vercel env/config — is ordinary implementer work now.** Give it to a task.
+  A `BLOCKED` return is a re-dispatch signal, never a cue for the session to absorb the task.
 
 ## Execution — implementer by default
 
@@ -118,12 +117,21 @@ that the most downstream tasks build on. A subtle bug in a load-bearing interfac
 expensive to unwind after four tasks have built on it, so it earns a deep pre-dependency
 review; a leaf task does not.
 
-**This gate is not optional, and it has been silently skipped.** Two consecutive real runs
-dispatched zero `task-reviewer` agents. The run that did use it got its money's worth: the
-reviewer caught a missing `revalidatePath` scope in a foundational task that two dependent
-tasks had already imported verbatim, so the bug would have propagated into both. If the
-dependency graph has a root, it gets a reviewer — "the tasks looked fine" is not a reason
-to skip it, because the whole point is catching what looks fine. Every other task's deep correctness is caught by the **QC
+**What this buys that QC does not — it is TIMING, not detection.** QC's fan-out is far more
+thorough and will find a foundational bug regardless. But it runs after the whole branch is
+built, by which point N tasks have already been written against the broken interface, so one
+fix becomes N+1. The reviewer's only job is to catch that bug while the blast radius is still
+one task. On the run that used it, it caught a missing `revalidatePath` scope in a
+foundational task that two dependents had already imported verbatim.
+
+So the trigger is **propagation, not importance**: dispatch `task-reviewer` when a completed
+task has tasks still unbuilt that depend on it AND its interface is load-bearing for them.
+If the graph is flat — nothing downstream consumes this task — **skip it and let QC do the
+work**; a reviewer there is per-task review by another name, which this flow already measured
+and rejected (on #59 the QC fan-out caught 14 issues including a HIGH bug that every per-task
+review had passed, while sitting on the critical path). Two consecutive runs skipped the gate
+entirely; that is correct when nothing depends on the root and a real omission when something
+does. Every other task's deep correctness is caught by the **QC
 review fan-out** (`/feature-qc`), which sees the whole branch diff and is the effective
 net — per-task review of leaf tasks duplicates it more weakly while sitting on the
 critical path (measured on #59: the fan-out caught 14 issues, including a HIGH bug that
