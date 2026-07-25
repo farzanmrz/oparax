@@ -244,9 +244,47 @@ cleanup_old_feature_branches() {
       fi
     fi
     echo "ship: removed verified old recovery branch $candidate." >&2
+    # The branch is verifiably done and gone; its handoff state is now unreachable
+    # process residue (normally already cleared by its own finalize — this catches
+    # a finalize that died between closing the issue and clearing state).
+    node "$state_helper" clear --branch "$candidate" >&2
   done <<EOF
 $candidates
 EOF
+}
+
+# Feature state whose branch no longer exists anywhere can never be resumed and
+# never becomes a cleanup candidate above (candidates come from live refs), so it
+# would linger forever. Sweep it with the same conservatism: only exact ft/<number>
+# state, only when no local or remote ref remains, and only when the issue is closed.
+cleanup_orphaned_feature_state() {
+  active_branch="$1"
+  state_root="$repo_root/.context/features/ft"
+  [ -d "$state_root" ] || return 0
+  for state_dir in "$state_root"/*/; do
+    [ -d "$state_dir" ] || continue
+    number="$(basename "$state_dir")"
+    case "$number" in
+      '' | *[!0-9]*) continue ;;
+    esac
+    candidate="ft/$number"
+    [ "$candidate" = "$active_branch" ] && continue
+    if git rev-parse --verify --quiet "refs/heads/$candidate" >/dev/null; then
+      continue
+    fi
+    if remote_tip="$(remote_ref_sha origin "refs/heads/$candidate")" && [ -n "$remote_tip" ]; then
+      continue
+    fi
+    if ! issue_state="$(gh issue view "$number" --json state --jq .state 2>/dev/null)"; then
+      echo "ship: keep stray feature state for $candidate (could not verify its issue state)." >&2
+      continue
+    fi
+    if [ "$issue_state" != "CLOSED" ]; then
+      echo "ship: keep stray feature state for $candidate (issue #$number is not closed)." >&2
+      continue
+    fi
+    node "$state_helper" clear --branch "$candidate" >&2
+  done
 }
 
 if [ "$finalize" = "true" ]; then
@@ -283,6 +321,7 @@ if [ "$finalize" = "true" ]; then
   fi
 
   cleanup_old_feature_branches "$branch"
+  cleanup_orphaned_feature_state "$branch"
 
   node "$state_helper" clear --branch "$branch" >&2
   rm -rf .feature .superpowers

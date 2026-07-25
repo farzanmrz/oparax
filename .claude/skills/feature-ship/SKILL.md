@@ -113,7 +113,10 @@ the just-shipped branch. Cleanup considers only older exact `ft/<number>` branch
 and deletes one only when its issue is closed, `origin/dev` records the same source
 tip in ship trailers, its local/remote tips are unchanged, and no worktree uses it.
 Remote deletion uses an exact lease; every legacy, moved, open, unverifiable, or
-otherwise ambiguous branch is skipped and reported.
+otherwise ambiguous branch is skipped and reported. A deleted branch's handoff
+state goes with it, and stray `.context/features/ft/<number>` state whose branch is
+already gone everywhere is swept under the same closed-issue proof — anything
+unverifiable is kept and reported.
 
 Hard rules: never develop directly on `beta`/`main`; never skip `dev → beta → main`;
 never force-push protected branches; no PRs, no CI.

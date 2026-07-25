@@ -81,6 +81,13 @@ When `$ARGUMENTS` is `clear`:
 
    If a section feels long, check each sentence against those two lists rather than trimming
    to a target. Removing a real reason is a worse failure than a file that runs long.
+
+   **`#N` means a GitHub issue — never anything else.** Cross-reference this handoff's own
+   "Open issues" entries by a short name ("the empty-guide extraction run"), never as
+   "open issue #1": a fresh session and the owner both read `#1` as GitHub issue #1 — an
+   ancient closed slice on this repo — and a list ordinal goes stale the moment the list is
+   re-cut at the next capture anyway. Numbering the list itself is fine; referring to an
+   entry by its number is not.
 5. Run `capture --branch "<branch>" --input "<returned-path>/handoff.next.md"`,
    passing changed `--phase`, `--gate`, `--target`, or `--approved-plan` metadata when
    needed. Capture rejects unsafe shapes (missing headings, raw diffs, transcript markers,

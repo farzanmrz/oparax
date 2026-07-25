@@ -39,7 +39,12 @@ const SCHEMA_VERSION = 1;
 // The structural guards below are unchanged and still do the real safety work — required
 // headings, no NUL bytes, no raw diffs, no transcript markers, no reasoning-trace tags, no
 // secret-shaped strings, and a non-empty file.
-const MAX_HOOK_OUTPUT_BYTES = 9_000;
+//
+// The SessionStart hook ceiling below is NOT that cap reincarnated: a handoff that outgrows
+// it is still valid and still sealed — the hook just stops inlining it and points the session
+// at the file instead of failing. (The old 9,000-byte version hard-failed, which meant a
+// perfectly good checkpoint over ~8.8KB silently reached no session at all.)
+const MAX_HOOK_OUTPUT_BYTES = 32_000;
 const TARGETS = new Set(["dev", "beta", "main"]);
 const MODES = new Set(["tracked", "current"]);
 const REQUIRED_HEADINGS = [
@@ -502,7 +507,7 @@ function shortHookNotice(message) {
   return `Feature-flow handoff notice: ${message}`;
 }
 
-function emitHookContext(additionalContext) {
+function emitHookContext(additionalContext, oversizeFallback) {
   const output = {
     hookSpecificOutput: {
       hookEventName: "SessionStart",
@@ -511,6 +516,10 @@ function emitHookContext(additionalContext) {
   };
   const serialized = JSON.stringify(output);
   if (Buffer.byteLength(serialized) > MAX_HOOK_OUTPUT_BYTES) {
+    if (oversizeFallback) {
+      emitHookContext(oversizeFallback);
+      return;
+    }
     fail("SessionStart handoff output exceeded its safety limit");
   }
   process.stdout.write(`${serialized}\n`);
@@ -592,6 +601,9 @@ function commandHook(root) {
       "",
       handoff,
     ].join("\n"),
+    shortHookNotice(
+      `a sealed, current checkpoint for branch ${branch} (captured ${state.capturedAt}) is too large to inline; read it at ${checkpointPath} before acting.`,
+    ),
   );
 }
 

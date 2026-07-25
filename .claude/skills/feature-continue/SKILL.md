@@ -55,7 +55,11 @@ mode) → read that file. The handoff is orientation; the issue is the spec.
 
 Give the user one orientation line — recorded `phase`, next `gate`, terminal
 `releaseTarget`, and the handoff's "Next safe action" — then resume the flow at
-exactly that point by invoking the matching phase skill:
+exactly that point by invoking the matching phase skill. When quoting the
+handoff's "Open issues" or "Next safe action", refer to entries by name, never
+as `#N`: in this flow `#N` always means the GitHub issue (`state.issue`), and an
+older handoff that numbered its own list was not citing GitHub — translate the
+ordinal to the entry it names rather than repeating it:
 
 | Recorded gate | Invoke |
 | --- | --- |

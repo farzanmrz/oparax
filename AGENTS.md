@@ -73,7 +73,7 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 `.feature/` is the `/feature` flow's live scratch — never delete it by hand; `ship.sh` sweeps it when the slice ships.
 
-`.context/features/<branch>/` is ignored, branch-scoped continuity state for the feature flow. `state.json` carries the run contract and `handoff.md` is the bounded `/feature-handoff` checkpoint. Never load a different branch's snapshot or treat a stale HEAD/worktree fingerprint as current; shipping removes only the shipped branch's state.
+`.context/features/<branch>/` is ignored, branch-scoped continuity state for the feature flow. `state.json` carries the run contract and `handoff.md` is the bounded `/feature-handoff` checkpoint. Never load a different branch's snapshot or treat a stale HEAD/worktree fingerprint as current; shipping removes the shipped branch's state and conservatively sweeps state left behind by older branches proven done (issue closed, branch deleted or verifiably shipped).
 
 ## Conventions
 
