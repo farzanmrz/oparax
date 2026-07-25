@@ -24,6 +24,7 @@
 import { CheckIcon, MailIcon, MessageSquareIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
+import { ChipsField } from "@/components/chips-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
@@ -47,81 +47,6 @@ import {
   toggleAutoPost,
   unlinkSlack,
 } from "./actions";
-
-/**
- * The chips-in-field add-entry pattern (owner rule: uniform form fields). One container
- * styled exactly like the stock shadcn `Input` — same border, radius, background, and a
- * `focus-within` stand-in for its focus ring, since focus lives on the inner borderless
- * input — holding the already-added entries as removable chips followed by an inline
- * input that grows to fill the rest. Both subsections render this identically; the
- * websites one just passes `disabled` until Wave 4 un-greys it.
- */
-function ChipsField({
-  chipLabel,
-  chipClassName,
-  chips,
-  disabled = false,
-  inputDisabled,
-  onChange,
-  onRemove,
-  onSubmit,
-  placeholder,
-  removeDisabled,
-  removeLabel,
-  value,
-}: {
-  readonly chipLabel: (chip: string) => string;
-  readonly chipClassName?: string;
-  readonly chips: readonly string[];
-  /** Freezes the whole field — chips, removes, and input (the "Coming soon" state). */
-  readonly disabled?: boolean;
-  readonly inputDisabled: boolean;
-  readonly onChange: (value: string) => void;
-  readonly onRemove: (chip: string) => void;
-  readonly onSubmit: () => void;
-  readonly placeholder: string;
-  readonly removeDisabled: boolean;
-  readonly removeLabel: (chip: string) => string;
-  readonly value: string;
-}) {
-  return (
-    <div
-      className={cn(
-        // Mirrors components/ui/input.tsx's box treatment.
-        "flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
-        disabled && "pointer-events-none cursor-not-allowed bg-input/50 dark:bg-input/80",
-      )}
-    >
-      {chips.map((chip) => (
-        <Badge className={chipClassName} key={chip} variant="secondary">
-          {chipLabel(chip)}
-          <button
-            aria-label={removeLabel(chip)}
-            className="text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none"
-            disabled={disabled || removeDisabled}
-            onClick={() => onRemove(chip)}
-            type="button"
-          >
-            <XIcon aria-hidden="true" className="size-3" />
-          </button>
-        </Badge>
-      ))}
-      <input
-        className="h-6 min-w-40 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm"
-        disabled={disabled || inputDisabled}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onSubmit();
-          }
-        }}
-        placeholder={placeholder}
-        value={value}
-      />
-    </div>
-  );
-}
 
 /** Auto-post is BUILT and greyed, not removed. The shipped flow is review-then-post: the
  *  reporter reads the draft in Slack (or the Feed) and clicks Post to X themselves. Flipping

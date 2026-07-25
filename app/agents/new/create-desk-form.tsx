@@ -12,16 +12,17 @@
 // (extraction-progress.tsx) instead of redirecting straight into the desk — the old
 // submit-and-redirect flow is gone.
 
-import { InfoIcon, Loader2Icon, XIcon } from "lucide-react";
+import { CheckIcon, InfoIcon, Loader2Icon, XIcon } from "lucide-react";
 import Link from "next/link";
 import {
   type ClipboardEvent,
   type KeyboardEvent,
   type ReactNode,
+  useEffect,
   useState,
   useTransition,
 } from "react";
-import { OparaxMark } from "@/components/logo";
+import { ChipsField } from "@/components/chips-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,19 @@ import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { saveWebsites } from "../[id]/setup/actions";
 import { createDesk } from "./actions";
 import { ExtractionProgress } from "./extraction-progress";
+
+/** Where the in-progress form is parked across the Connect-X OAuth round trip. Session-scoped
+ *  and consumed on read — see the restoring effect in CreateDeskForm. */
+const DRAFT_KEY = "oparax:new-agent-draft";
+
+/** The fields worth surviving the round trip. Websites are excluded (greyed / dormant) and
+ *  `extractFrom` is excluded on purpose — it repopulates from the freshly connected handle. */
+type PersistedDraft = {
+  name: string;
+  beat: string;
+  handles: string[];
+  handleDraft: string;
+};
 
 /** Split a typed/pasted blob into candidate website entries — comma / whitespace / newline
  *  separated. Light client-side shaping only; `saveWebsites` (server) does the real
@@ -142,6 +156,50 @@ export function CreateDeskForm({
   // non-override path; only an allowlisted owner can edit it away from that default.
   const [extractFrom, setExtractFrom] = useState(xLinkState.handle ?? "");
 
+  // Connect X is a full-page OAuth round trip (this page -> x.com -> /auth/x/callback -> back
+  // here as a FRESH mount), so component state does not survive it. Without this, a reporter who
+  // fills the whole form and only then notices they must connect X loses every field they typed
+  // — the single worst moment to wipe someone's work, because they did nothing wrong.
+  //
+  // sessionStorage rather than a URL param (no length limit, nothing leaked into history or
+  // server logs) and rather than a server-side draft (no table for a value that lives ~15s).
+  // Read in an effect, never during render: touching sessionStorage while rendering would
+  // desync SSR and client HTML.
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    // One-shot handoff: consumed on read, so a later visit starts clean rather than resurrecting
+    // an abandoned draft the reporter has no memory of.
+    window.sessionStorage.removeItem(DRAFT_KEY);
+    try {
+      const draft: unknown = JSON.parse(raw);
+      if (!draft || typeof draft !== "object") return;
+      const d = draft as Partial<Record<keyof PersistedDraft, unknown>>;
+      if (typeof d.name === "string") setName(d.name);
+      if (typeof d.beat === "string") setBeat(d.beat);
+      if (typeof d.handleDraft === "string") setHandleDraft(d.handleDraft);
+      if (Array.isArray(d.handles)) {
+        setHandles(d.handles.filter((h): h is string => typeof h === "string"));
+      }
+      // `extractFrom` is deliberately NOT restored — it was empty before the round trip and is
+      // now correctly pre-filled from the handle the reporter just connected.
+    } catch {
+      // A malformed draft is not worth surfacing: the field it would have refilled is empty,
+      // which is exactly what the reporter sees anyway.
+    }
+  }, []);
+
+  /** Snapshot the form before handing the tab to X's OAuth screen. */
+  function persistDraft() {
+    const draft: PersistedDraft = { name, beat, handles, handleDraft };
+    try {
+      window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Private-mode / quota failure — the connect must still proceed. Losing the draft is bad;
+      // blocking the one action that unblocks the form is worse.
+    }
+  }
+
   const atLimit = handles.length >= MAX_TRACKED;
 
   function commitDraft() {
@@ -227,15 +285,13 @@ export function CreateDeskForm({
   const reporterDisplay = xLinkState.linked && xLinkState.handle ? `@${xLinkState.handle}` : "your";
 
   return (
-    // Capped + centred: without a max-width the form is full-bleed, so on a wide screen the
-    // name and beat fields stretch the entire viewport and read as broken rather than roomy.
-    // Applied to the OUTER wrapper so the header rule, the fields, and the submit button share
-    // one measure — capping only the form would leave the title floating left of its own fields.
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
+    // Full-bleed by design: the three columns below need the width, and the page already sits
+    // inside the /agents layout's padding. No max-width cap — a narrower measure would push the
+    // columns back into a stack on exactly the screens that can afford three.
+    <div className="flex h-full min-h-0 flex-col">
+      {/* No brand mark here — the site header already renders the Oparax logo directly above,
+          and a second one 60px below it reads as a duplicate rather than a section marker. */}
       <header className="flex shrink-0 items-center gap-3 border-border border-b py-5">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-          <OparaxMark className="size-5" />
-        </span>
         <h1 className="min-w-0 flex-1 truncate font-semibold text-lg tracking-tight">
           {createdDeskId ? "Building your voice guide" : "Create agent"}
         </h1>
@@ -251,28 +307,37 @@ export function CreateDeskForm({
           <ExtractionProgress deskId={createdDeskId} />
         ) : (
           <form className="flex w-full flex-col gap-8" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5 md:col-span-2">
-                <FieldLabel help="Shown in the agent switcher at the top. Optional — defaults to a label from your beat.">
-                  Agent name
-                </FieldLabel>
-                <Input
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Barça watch"
-                  value={name}
-                />
-              </div>
+            {/* Three peer columns — Basics / Sources / Voice — at lg and up, two at md, stacked
+                below. Nothing spans, which is the point: the previous layout ran name and beat
+                full-bleed across the top, so on a wide screen they stretched to the viewport
+                while the fields under them stayed narrow. Equal columns keep every field on one
+                measure. */}
+            <div className="grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
+              <div className="flex flex-col gap-4">
+                <SectionHeader>Basics</SectionHeader>
 
-              <div className="flex flex-col gap-1.5 md:col-span-2">
-                <FieldLabel help="The topic this agent watches. Be specific — it steers what counts as a story worth drafting.">
-                  Beat
-                </FieldLabel>
-                <Textarea
-                  onChange={(e) => setBeat(e.target.value)}
-                  placeholder="e.g. US AI regulation — agencies, hearings, enforcement. Skip product launches."
-                  rows={3}
-                  value={beat}
-                />
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel help="Shown in the agent switcher at the top. Optional — defaults to a label from your beat.">
+                    Agent name
+                  </FieldLabel>
+                  <Input
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Barça watch"
+                    value={name}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel help="The topic this agent watches. Be specific — it steers what counts as a story worth drafting.">
+                    Beat
+                  </FieldLabel>
+                  <Textarea
+                    onChange={(e) => setBeat(e.target.value)}
+                    placeholder="e.g. US AI regulation — agencies, hearings, enforcement. Skip product launches."
+                    rows={5}
+                    value={beat}
+                  />
+                </div>
               </div>
 
               <div className="flex flex-col gap-4">
@@ -282,34 +347,27 @@ export function CreateDeskForm({
                   <FieldLabel help="The X accounts this agent watches for breaking stories. Paste several at once — comma- or space-separated, with or without the @.">
                     Tracked X accounts ({handles.length}/{MAX_TRACKED})
                   </FieldLabel>
-                  {handles.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {handles.map((handle) => (
-                        <Badge className="gap-1 pr-1" key={handle} variant="secondary">
-                          @{handle}
-                          <button
-                            aria-label={`Remove @${handle}`}
-                            className="rounded-full p-0.5 hover:bg-foreground/10"
-                            onClick={() => removeHandle(handle)}
-                            type="button"
-                          >
-                            <XIcon className="size-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : null}
-                  <Input
-                    disabled={atLimit}
+                  {/* Chips live INSIDE the box with the input, not stacked above it — a chip is
+                      the field's current value, and rendering it outside read as unrelated
+                      content sitting between the label and its input. Same component the Setup
+                      card uses, so the two can't drift apart again. */}
+                  <ChipsField
+                    chipLabel={(handle) => `@${handle}`}
+                    chips={handles}
+                    inputDisabled={atLimit}
                     onBlur={commitDraft}
-                    onChange={(e) => setHandleDraft(e.target.value)}
+                    onChange={setHandleDraft}
                     onKeyDown={onTrackedKeyDown}
                     onPaste={onTrackedPaste}
+                    onRemove={removeHandle}
+                    onSubmit={commitDraft}
                     placeholder={
                       atLimit
                         ? `Up to ${MAX_TRACKED} accounts`
                         : "Paste handles — comma-separated, @ optional"
                     }
+                    removeDisabled={false}
+                    removeLabel={(handle) => `Remove @${handle}`}
                     value={handleDraft}
                   />
                 </div>
@@ -326,29 +384,19 @@ export function CreateDeskForm({
                   >
                     Websites ({websites.length}/{MAX_WEBSITES})
                   </FieldLabel>
-                  {websites.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {websites.map((site) => (
-                        <Badge className="gap-1 pr-1" key={site} variant="secondary">
-                          {site}
-                          <button
-                            aria-label={`Remove ${site}`}
-                            className="rounded-full p-0.5 hover:bg-foreground/10"
-                            onClick={() => removeWebsite(site)}
-                            type="button"
-                          >
-                            <XIcon className="size-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : null}
-                  <Input
+                  <ChipsField
+                    chipLabel={(site) => site}
+                    chips={websites}
                     disabled
+                    inputDisabled
                     onBlur={commitWebsiteDraft}
-                    onChange={(e) => setWebsiteDraft(e.target.value)}
+                    onChange={setWebsiteDraft}
                     onKeyDown={onWebsiteKeyDown}
+                    onRemove={removeWebsite}
+                    onSubmit={commitWebsiteDraft}
                     placeholder="example.com"
+                    removeDisabled
+                    removeLabel={(site) => `Remove ${site}`}
                     value={websiteDraft}
                   />
                 </div>
@@ -362,10 +410,22 @@ export function CreateDeskForm({
                     Your X account
                   </FieldLabel>
                   {xLinkState.linked && xLinkState.handle ? (
-                    <Input disabled value={`@${xLinkState.handle}`} />
+                    // A disabled Input read as a field the reporter had failed to fill. This is
+                    // a completed state, so it says so — same box treatment as its neighbours
+                    // (uniform-fields rule), but affirmative rather than inert.
+                    <div className="flex min-h-9 items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm dark:bg-input/30">
+                      <CheckIcon aria-hidden="true" className="size-4 shrink-0 text-primary" />
+                      <span className="truncate font-medium">@{xLinkState.handle}</span>
+                      <span className="text-muted-foreground">connected</span>
+                    </div>
                   ) : (
                     <Button asChild className="w-fit" variant="outline">
-                      <a href={`/auth/x?returnTo=${encodeURIComponent("/agents/new")}`}>
+                      {/* persistDraft parks the form in sessionStorage on the way out — this
+                          navigation leaves the app entirely and returns as a fresh mount. */}
+                      <a
+                        href={`/auth/x?returnTo=${encodeURIComponent("/agents/new")}`}
+                        onClick={persistDraft}
+                      >
                         Connect X
                       </a>
                     </Button>
