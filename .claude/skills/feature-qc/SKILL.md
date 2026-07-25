@@ -31,14 +31,23 @@ Over the whole branch diff, in order (skip nothing silently — report each step
      generated files) — these set step 1's `large` flag.
    - **Acceptance criteria.** The ft issue's "Stack & design acceptance criteria"
      section via `gh issue view`, returned verbatim for step 1's `criteria` arg.
-   - **Dev server + boot smoke.** Start `pnpm dev` in the background ONCE, record the
-     REAL listening PID (`lsof -i :3000 -sTCP:LISTEN` — the shell wrapper's PID is not
-     the node process and killing it leaves the port bound), wait for readiness, and
-     grep startup output for `✓ Ready` plus failure signatures (ERROR, "failed", unmet
-     peer, unhandled rejection). This IS the boot smoke — it is pattern-matching over
-     startup text, not judgment, so it never deserves a model of its own. Collect
-     WARNINGs for triage. **Leave the server running** — step 1's browser journeys and
-     step 4's re-sweep both reuse it; it is killed once, in step 5.
+   - **Dev server + boot smoke. Check for an existing server BEFORE starting one.**
+     `lsof -i :3000 -sTCP:LISTEN -t`. If something is already listening, **reuse it and
+     record that QC did not start it** — Next 16.2 refuses to start a second dev server
+     in the same directory (`⨯ Another next dev server is already running`), so trying
+     anyway just fails, and killing it at teardown would take down a server the owner
+     (or a parallel session) is using. Two Claude sessions on one repo is a normal
+     working mode; the flow must not assume it owns the port.
+
+     Only if the port is free: start `pnpm dev` in the background, record the REAL
+     listening PID (the shell wrapper's PID is not the node process, and killing it
+     leaves the port bound), wait for readiness, and grep startup output for `✓ Ready`
+     plus failure signatures (ERROR, "failed", unmet peer, unhandled rejection). That
+     grep IS the boot smoke — pattern-matching over startup text, not judgment, so it
+     never deserves a model of its own. Collect WARNINGs for triage.
+
+     Either way, **leave the server running** for step 1b's journeys and step 4's
+     re-sweep. Teardown in step 5 kills it **only if QC started it**.
 
    If the boot smoke fails, STOP and report — there is no point reviewing a branch that
    doesn't start.
@@ -157,6 +166,35 @@ Over the whole branch diff, in order (skip nothing silently — report each step
      preceding it, and report the rest as unreached-by-design.
 
    Keep it proportionate: smoke-level, one pass per journey, not a full E2E suite.
+
+   **Collect runtime errors from Next's own endpoint, not from the agents.** The dev
+   server exposes `/_next/mcp` (on by default in 16.2 — nothing to add to
+   `next.config.ts`), and a headless `agent-browser` session DOES register with it
+   (verified: `get_page_metadata` reports the session's url and segment tree). So after
+   the journeys return, make ONE call:
+
+   ```bash
+   curl -s -X POST http://localhost:3000/_next/mcp \
+     -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" \
+     -d '{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"get_errors","arguments":{}}}'
+   ```
+
+   It returns `configErrors` + `sessionErrors` with **source-mapped stack traces**,
+   aggregated across every live session — strictly better than an agent transcribing a
+   console, and one cheap call instead of N agent contexts. This is the source of record
+   for hydration errors, unhandled runtime errors, and React error overlays.
+
+   **It does NOT replace the agents' reporting.** Next only knows what Next sees: it has
+   no view of failed/non-2xx network requests, a route that 404s or renders blank, a
+   control that silently does nothing, or which journey steps were unreachable. Those
+   stay the agents' job — see the agent body's output contract.
+
+   **Ordering matters: call `get_errors` BEFORE any session closes.** Session cleanup is
+   lagged and its effect on retained errors is unproven, so the agents no longer close
+   their own sessions. The orchestrator calls `get_errors` once every journey has
+   returned, then closes each session (`agent-browser --session <name> close`). That is
+   also the answer to who cleans up after a parallel fan-out: the orchestrator, because
+   it is the only thing that knows when everyone has finished.
 2. **Adjudicate (this session) + apply (dispatched).** Adjudication is the one stage
    that genuinely earns the session model, and measurement backs that: on a real run
    it was 82% of main-session output tokens, and the turns were things a cheap model
@@ -214,9 +252,11 @@ Over the whole branch diff, in order (skip nothing silently — report each step
      `/meta-dev:improve-skill`, never inline-rewrite it here.
    Single-source every fact (one home; cross-reference, never restate).
 
-   **Then tear down.** Kill the dev server started in step 0 by its REAL listening PID
-   and confirm the port is free (`lsof -i :3000 -sTCP:LISTEN` returns nothing). Never
-   leave it running — and never trust the wrapper PID, which does not stop the listener.
+   **Then tear down — only what QC started.** If step 0 started the dev server, kill it
+   by its REAL listening PID and confirm the port is free (`lsof -i :3000 -sTCP:LISTEN`
+   returns nothing); never trust the wrapper PID, which does not stop the listener. If
+   step 0 *reused* a server someone else was running, leave it alone and say so. Browser
+   sessions were already closed by the orchestrator in step 1b.
 
 Hard rules: the Claude find floor is one barrier of ≤6 finders (5 on a small diff, 6
 on a large one); the external lanes add 8 more (10 on a large diff), and verify is a

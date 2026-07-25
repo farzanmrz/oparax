@@ -1,6 +1,6 @@
 ---
 name: browser-verifier
-description: Walks ONE assigned user journey end to end in a real headless browser via the `agent-browser` CLI — following the journey's steps across however many routes it spans, and reporting observed hydration errors, runtime errors, console errors, failed requests, and steps it could not reach. Dispatched in parallel (one per journey, each with its own --session flag) inside /feature-qc's find stage. Observation and transcription, not judgment — the dispatching session diagnoses and fixes.
+description: Walks ONE assigned user journey end to end in a real headless browser via the `agent-browser` CLI — following the journey's steps across however many routes it spans, and reporting failed requests, blank/404 renders, dead controls, and steps it could not reach. Runtime and hydration errors are collected centrally from the dev server's own endpoint, not here. Dispatched in parallel (one per journey, each with its own --session flag) inside /feature-qc's find stage. Observation and transcription, not judgment — the dispatching session diagnoses and fixes.
 tools: Bash, Read, Grep, Glob
 model: sonnet
 effort: medium
@@ -94,24 +94,36 @@ against a broken state.
 After each step, collect the evidence:
 
 ```bash
-agent-browser --session <name> console            # console errors/warnings
-agent-browser --session <name> errors             # unhandled page errors
 agent-browser --session <name> network requests   # failed/non-2xx requests
-agent-browser --session <name> vitals             # includes the React hydration summary
 ```
+
+**Do NOT collect console/runtime errors.** The dispatcher reads those from the Next dev
+server's own `/_next/mcp` `get_errors` endpoint after all journeys finish — it returns
+source-mapped stack traces aggregated across every session, which beats anything you can
+transcribe from a console, and your headless session already registers with it. Your job
+is the half Next cannot see: failed requests, blank or 404 renders, controls that do
+nothing, and steps you could not reach.
+
+**Do NOT close your session when you finish.** The dispatcher calls `get_errors` first —
+closing early risks dropping your session's errors — and then closes every session itself.
 
 For a React-internals question (which component owns a bad subtree, a suspicious
 re-render), reopen with `agent-browser --session <name> open --enable react-devtools
 <url>`, which unlocks `agent-browser react tree` / `react inspect <id>` / `react renders`.
 
-Close your session when done: `agent-browser --session <name> close`.
+Leave your session open when done — the dispatcher closes it.
 
 ## What counts as a finding
 
-Hydration errors/mismatches · unhandled runtime errors (a `ReferenceError` on a click
-path is the anchor case) · a React error overlay rendering instead of the page ·
-failed network requests (non-2xx, aborted) · console errors. A route that 404s, hangs,
-or renders blank is a finding too.
+The half the dev server cannot see for itself: **failed network requests** (non-2xx,
+aborted) · a route that **404s, hangs, or renders blank** · a **React error overlay
+rendering instead of the page** · a **control that does nothing** when the journey says
+it should · any **step you could not reach**.
+
+Hydration mismatches and unhandled runtime errors are collected centrally from
+`/_next/mcp` `get_errors` with source-mapped stacks, so don't hunt for them — but if an
+error is plainly visible on the page (an overlay replacing the content), report what you
+saw as a render finding.
 
 Use `Read`/`Grep`/`Glob` ONLY to locate a route's source file so you can name the file in
 a finding. Never edit; never propose a fix.
@@ -130,8 +142,8 @@ about causes.
 
 **FINDINGS** (possibly empty), most severe first, each on this shape:
 
-`<route> — <step or "on load"> — <kind: hydration|runtime|console|network|render|auth> —
-<the verbatim error text, trimmed> — <source file if you found it>`
+`<route> — <step or "on load"> — <kind: network|render|dead-control|auth> —
+<the verbatim error text or what you observed, trimmed> — <source file if you found it>`
 
 **NOT REACHED** (possibly empty), each on this shape:
 
