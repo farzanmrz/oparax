@@ -2,8 +2,10 @@
 
 // app/agents/new/create-desk-form.tsx
 //
-// The create-desk screen: a full-width form — Desk name + Beat across the top, then Sources and
-// Voice side by side — with a short "what happens next" panel below. Tracked accounts accept
+// The create-desk screen: a full-width form in three peer columns — Basics, Sources, Voice —
+// closed by a centred commit bar. No close button and no "what happens next" panel: with zero
+// agents `/agents` can only bounce back here, and the post-create story is told by the live
+// extraction view rather than predicted in advance. Tracked accounts accept
 // comma/space/newline paste with or without a leading @, capped at MAX_TRACKED_HANDLES; the
 // server (createDesk) re-validates + re-caps. Identity comes from a linked X account (Connect X)
 // rather than a typed handle — `xLinkState` is fetched server-side by page.tsx and handed down
@@ -12,8 +14,7 @@
 // (extraction-progress.tsx) instead of redirecting straight into the desk — the old
 // submit-and-redirect flow is gone.
 
-import { CheckIcon, InfoIcon, Loader2Icon, XIcon } from "lucide-react";
-import Link from "next/link";
+import { CheckIcon, InfoIcon, Loader2Icon } from "lucide-react";
 import {
   type ClipboardEvent,
   type KeyboardEvent,
@@ -124,10 +125,26 @@ function FieldLabel({
   );
 }
 
-function SectionHeader({ children }: { readonly children: ReactNode }) {
+/**
+ * A column header. The hairline rule beneath it is the form's one structural device and it
+ * encodes something true: these three sit at the same level, so three matching rules read as
+ * three peer columns. The page title deliberately has NO rule — it is not a peer of anything,
+ * and giving it the same treatment was what made the two levels indistinguishable.
+ *
+ * `note` is the plain-language answer to "what goes in this column", set inline and quiet so the
+ * header still reads as one line (no stacked kicker — see .claude/rules/components.md).
+ */
+function SectionHeader({
+  children,
+  note,
+}: {
+  readonly children: ReactNode;
+  readonly note: string;
+}) {
   return (
-    <h2 className="border-border border-b pb-2 font-semibold text-base text-foreground">
-      {children}
+    <h2 className="flex flex-wrap items-baseline gap-x-2 border-border border-b pb-2 text-sm">
+      <span className="font-medium text-foreground">{children}</span>
+      <span className="font-normal text-muted-foreground text-xs">{note}</span>
     </h2>
   );
 }
@@ -282,24 +299,26 @@ export function CreateDeskForm({
   }
 
   const canSubmit = beat.trim().length > 0 && xLinkState.linked && !isPending;
-  const reporterDisplay = xLinkState.linked && xLinkState.handle ? `@${xLinkState.handle}` : "your";
 
   return (
     // Full-bleed by design: the three columns below need the width, and the page already sits
     // inside the /agents layout's padding. No max-width cap — a narrower measure would push the
     // columns back into a stack on exactly the screens that can afford three.
     <div className="flex h-full min-h-0 flex-col">
-      {/* No brand mark here — the site header already renders the Oparax logo directly above,
-          and a second one 60px below it reads as a duplicate rather than a section marker. */}
-      <header className="flex shrink-0 items-center gap-3 border-border border-b py-5">
-        <h1 className="min-w-0 flex-1 truncate font-semibold text-lg tracking-tight">
+      {/* Three deliberate absences here, each of which was actively misleading:
+          - No brand mark: the site header renders the Oparax logo 60px above this.
+          - No rule beneath: the rule is the SECTION device (three peer columns). Repeating it
+            here flattened the page title into a fourth sibling of Basics/Sources/Voice.
+          - No close button: with zero agents `/agents` has nowhere to send you but back to
+            this page, so it looked like a broken reload. The site header's agent switcher is
+            already the way out (.claude/rules/app.md's way-back guarantee), so this was a
+            second, worse exit for the same job.
+          The title carries the level instead: two type steps above a section header, with air
+          under it rather than a line. */}
+      <header className="shrink-0 pt-6 pb-8">
+        <h1 className="truncate font-semibold text-2xl tracking-tight">
           {createdDeskId ? "Building your voice guide" : "Create agent"}
         </h1>
-        <Button aria-label="Close" asChild size="icon-sm" variant="ghost">
-          <Link href={createdDeskId ? `/agents/${createdDeskId}` : "/agents"}>
-            <XIcon />
-          </Link>
-        </Button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-6 pb-10">
@@ -314,7 +333,7 @@ export function CreateDeskForm({
                 measure. */}
             <div className="grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
               <div className="flex flex-col gap-4">
-                <SectionHeader>Basics</SectionHeader>
+                <SectionHeader note="what this agent covers">Basics</SectionHeader>
 
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel help="Shown in the agent switcher at the top. Optional — defaults to a label from your beat.">
@@ -341,7 +360,7 @@ export function CreateDeskForm({
               </div>
 
               <div className="flex flex-col gap-4">
-                <SectionHeader>Sources</SectionHeader>
+                <SectionHeader note="where the news comes from">Sources</SectionHeader>
 
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel help="The X accounts this agent watches for breaking stories. Paste several at once — comma- or space-separated, with or without the @.">
@@ -354,6 +373,9 @@ export function CreateDeskForm({
                   <ChipsField
                     chipLabel={(handle) => `@${handle}`}
                     chips={handles}
+                    // The primary input of the whole form — sized to hold a few rows of chips up
+                    // front so the box stops jumping taller with every handle added.
+                    className="min-h-28"
                     inputDisabled={atLimit}
                     onBlur={commitDraft}
                     onChange={setHandleDraft}
@@ -403,7 +425,7 @@ export function CreateDeskForm({
               </div>
 
               <div className="flex flex-col gap-4">
-                <SectionHeader>Voice</SectionHeader>
+                <SectionHeader note="how drafts get written">Voice</SectionHeader>
 
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel help="Connect your X account. Oparax reads your recent posts to learn how you write, so drafts land in your voice — not a generic tone.">
@@ -453,20 +475,21 @@ export function CreateDeskForm({
                     />
                   </div>
                 ) : null}
-
-                <p className="text-sm text-muted-foreground">
-                  Draft instructions aren&apos;t set here — once your agent is created, Oparax
-                  learns your voice from your posts, and you can add or edit specific rules anytime
-                  from the agent&apos;s Voice tab.
-                </p>
               </div>
             </div>
 
-            {formError ? <p className="text-destructive text-sm">{formError}</p> : null}
-
-            <div>
+            {/* The commit bar. Centred under all three columns rather than tucked at the bottom
+                of the leftmost one, where it read as an action belonging to Basics. The rule
+                above it closes the three-column block — the same hairline the columns open
+                with, used here to end them. */}
+            <div className="flex flex-col items-center gap-3 border-border border-t pt-8">
+              {formError ? (
+                <p className="text-destructive text-sm" role="alert">
+                  {formError}
+                </p>
+              ) : null}
               <Button
-                className="w-full sm:w-auto sm:min-w-56"
+                className="w-full sm:w-auto sm:min-w-64"
                 disabled={!canSubmit}
                 size="lg"
                 type="submit"
@@ -474,25 +497,6 @@ export function CreateDeskForm({
                 {isPending ? <Loader2Icon className="animate-spin" /> : null}
                 Create agent
               </Button>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card/40 p-5">
-              <p className="font-semibold text-foreground text-sm">
-                What happens when you create this agent
-              </p>
-              <ol className="mt-3 flex flex-col gap-2 text-muted-foreground text-sm">
-                <li>1. Oparax builds your writing voice from {reporterDisplay} recent posts.</li>
-                <li>
-                  2. It watches{" "}
-                  {handles.length > 0
-                    ? `${handles.length} tracked account${handles.length === 1 ? "" : "s"}`
-                    : "your tracked accounts"}{" "}
-                  for breaking stories on this beat.
-                </li>
-                <li>
-                  3. Each story gets a draft in your voice — you review and post from the Feed.
-                </li>
-              </ol>
             </div>
           </form>
         )}

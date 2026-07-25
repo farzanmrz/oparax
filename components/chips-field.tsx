@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export function ChipsField({
+  className,
   chipLabel,
   chipClassName,
   chips,
@@ -36,6 +37,9 @@ export function ChipsField({
   removeLabel,
   value,
 }: {
+  /** Container overrides — chiefly `min-h-*` where a field is a primary input and should hold
+   *  several rows of chips without the box growing and shrinking as they're added. */
+  readonly className?: string;
   readonly chipLabel: (chip: string) => string;
   readonly chipClassName?: string;
   readonly chips: readonly string[];
@@ -58,8 +62,9 @@ export function ChipsField({
     <div
       className={cn(
         // Mirrors components/ui/input.tsx's box treatment.
-        "flex min-h-9 w-full min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+        "flex min-h-9 w-full min-w-0 flex-wrap content-start items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
         disabled && "pointer-events-none cursor-not-allowed bg-input/50 dark:bg-input/80",
+        className,
       )}
     >
       {chips.map((chip) => (
