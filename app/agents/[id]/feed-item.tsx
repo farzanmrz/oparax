@@ -6,14 +6,11 @@
 // nothing left here that needs one). Renders as a React fragment of TWO sibling grid children
 // so the parent's `grid-cols-2` places the news card and its draft card side by side without
 // an extra wrapper div — see `page.tsx`.
-import { ExternalLinkIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { FeedStory } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
 import { DraftPlatformSwitcher } from "./draft-platform-switcher";
+import { ExtraSourcesBadge, ViewSourceButton } from "./feed-tooltips";
 
 /** Pinned to UTC so a server render never disagrees with itself — this is a plain Server
  *  Component, never re-hydrated client-side, but the same discipline the rest of the app's
@@ -78,21 +75,7 @@ function NewsCard({
               rendering the literal "@null". */}
           {sourcePost.authorHandle ? `@${sourcePost.authorHandle}` : "Source"}
         </span>
-        {extraSourceCount > 0 ? (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge className="shrink-0 font-mono" variant="secondary">
-                  +{extraSourceCount}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                {extraSourceCount} more source{extraSourceCount === 1 ? "" : "s"} clustered into
-                this story
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : null}
+        {extraSourceCount > 0 ? <ExtraSourcesBadge count={extraSourceCount} /> : null}
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {formatBrokeAt(sourcePost.postedAt)}
         </span>
@@ -100,26 +83,10 @@ function NewsCard({
       <CardContent className="flex flex-col gap-3">
         <p className="text-sm whitespace-pre-wrap">{sourcePost.text}</p>
         <div className="flex justify-end">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* No `x_post_id`/URL in the pinned FeedStory shape, so there is nowhere real
-                    for this to link to yet — a disabled scaffold rather than a placeholder
-                    `href="#"`, which the design's own mock uses but which fails
-                    `useValidAnchor`. */}
-                <Button
-                  aria-disabled="true"
-                  aria-label="View source on X"
-                  disabled
-                  size="icon-sm"
-                  variant="ghost"
-                >
-                  <ExternalLinkIcon aria-hidden="true" className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>View source on X</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {/* The tooltip + disabled scaffold live in `feed-tooltips.tsx` (a client boundary) —
+              a Radix Tooltip composed from this Server Component hydration-errors on every
+              load; see that file's header comment. */}
+          <ViewSourceButton />
         </div>
       </CardContent>
     </Card>
