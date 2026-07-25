@@ -1,18 +1,20 @@
 // app/agents/[id]/council-dialog.tsx
 //
 // Self-contained "Why this draft" overlay: `CouncilDialog` renders its own trigger
-// icon-button AND owns its open state (mirrored to `?why=<sourcePostId>`, deep-link/
-// reload-safe). The heavy body — the fetch + the per-model cards + Reasoning toggles — is
+// icon-button AND owns its open state — plain local `useState`, mirroring
+// `draft-edit-dialog.tsx`'s pattern. This dialog used to mirror its open state to
+// `?why=<sourcePostId>` for deep-linkability, but the page is fully dynamic, so every
+// open/close forced a full server round trip (re-running the feed query) before the dialog
+// visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an instant
+// open. The heavy body — the fetch + the per-model cards + Reasoning toggles — is
 // `next/dynamic({ ssr: false })`, so it never renders server-side and only mounts once the
 // dialog has actually been opened; the trigger button itself renders immediately. T4 drops
-// `<CouncilDialog sourcePostId=.. experimentId=.. />` straight into the draft-card action
-// row and manages no dialog state of its own.
+// `<CouncilDialog sourcePostId=.. experimentId=.. />` straight into the draft-card action row.
 "use client";
 
 import { BrainIcon, InfoIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -213,24 +215,15 @@ const CouncilOverlayBody = dynamic(() => Promise.resolve(CouncilOverlayBodyImpl)
   loading: () => <CouncilOverlaySkeleton />,
 });
 
-/** No Dialog/Tooltip context requirement — used both inside the wired-up trigger below AND
- *  as the Suspense fallback, where no `<Dialog>` ancestor exists yet to satisfy Radix's
- *  `DialogTrigger`. */
-function CouncilTriggerButton({ disabled }: { disabled?: boolean }) {
-  return (
-    <Button aria-label="How this draft was made" disabled={disabled} size="icon-sm" variant="ghost">
-      <InfoIcon />
-    </Button>
-  );
-}
-
 function CouncilTrigger() {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <DialogTrigger asChild>
-            <CouncilTriggerButton />
+            <Button aria-label="How this draft was made" size="icon-sm" variant="ghost">
+              <InfoIcon />
+            </Button>
           </DialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
@@ -241,28 +234,15 @@ function CouncilTrigger() {
   );
 }
 
-function CouncilDialogInner({
+export function CouncilDialog({
   sourcePostId,
   experimentId,
 }: {
   sourcePostId: string;
   experimentId: string;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const open = searchParams.get("why") === sourcePostId;
-
-  function setOpen(next: boolean) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (next) {
-      params.set("why", sourcePostId);
-    } else if (params.get("why") === sourcePostId) {
-      params.delete("why");
-    }
-    const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }
+  // Plain local state, not URL-synced — see the file header comment for why.
+  const [open, setOpen] = useState(false);
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
@@ -291,13 +271,5 @@ function CouncilDialogInner({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function CouncilDialog(props: { sourcePostId: string; experimentId: string }) {
-  return (
-    <Suspense fallback={<CouncilTriggerButton disabled />}>
-      <CouncilDialogInner {...props} />
-    </Suspense>
   );
 }

@@ -8,7 +8,6 @@ type ComposeDraftMessageInput = {
 };
 
 export function composeDraftMessage(input: ComposeDraftMessageInput): string {
-  const cost = input.totalCostUsd == null ? "—" : `$${input.totalCostUsd.toFixed(4)}`;
   return [
     `*${input.revised ? "Revised draft" : "New draft"}* — from a post by @${input.authorHandle}`,
     "",
@@ -16,14 +15,11 @@ export function composeDraftMessage(input: ComposeDraftMessageInput): string {
     "",
     "*Draft:*",
     input.winningText,
-    "",
-    `_${input.modelCount} model${input.modelCount === 1 ? "" : "s"} · ${cost}_`,
   ].join("\n");
 }
 
 /** Same content as composeDraftMessage, without Slack mrkdwn — for the plaintext email body. */
 export function composeDraftMessagePlainText(input: ComposeDraftMessageInput): string {
-  const cost = input.totalCostUsd == null ? "—" : `$${input.totalCostUsd.toFixed(4)}`;
   return [
     `${input.revised ? "Revised draft" : "New draft"} — from a post by @${input.authorHandle}`,
     "",
@@ -31,7 +27,5 @@ export function composeDraftMessagePlainText(input: ComposeDraftMessageInput): s
     "",
     "Draft:",
     input.winningText,
-    "",
-    `${input.modelCount} model${input.modelCount === 1 ? "" : "s"} · ${cost}`,
   ].join("\n");
 }

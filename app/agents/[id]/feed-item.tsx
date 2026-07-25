@@ -76,8 +76,15 @@ function DraftCard({
   const hasWinners = Object.keys(story.winners).length > 0;
 
   if (!hasWinners) {
-    // Re-keyed off "no entries in winners yet" (any platform still drafting, or every
-    // platform failed) rather than the old single-`winner` null check — same placeholder UX.
+    // A winner-less story is EITHER mid-council (normal for ~a minute after delivery) or
+    // permanently failed (the council errored, the claim was released, the worker's retries
+    // exhausted — live-observed on emoji-plus-link posts before the low-signal gate existed).
+    // The rows themselves are identical, so age is the only available discriminator: past ten
+    // minutes nothing is still legitimately drafting, and pretending otherwise ("Drafting…"
+    // forever) reads as a hang. The feed auto-refresh re-renders this server component every
+    // ~20s, so the copy flips over without a reload.
+    const startedAt = story.sourcePosts[0]?.postedAt;
+    const stale = startedAt ? Date.now() - new Date(startedAt).getTime() > 10 * 60 * 1000 : true;
     return (
       <Card className={cn(opacityClass)}>
         <CardHeader className="flex-row items-center gap-2">
@@ -85,7 +92,11 @@ function DraftCard({
           <span className="text-sm font-semibold">Draft</span>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Drafting…</p>
+          <p className="text-sm text-muted-foreground">
+            {stale
+              ? "Nothing drafted from this post — there wasn't enough to write from."
+              : "Drafting…"}
+          </p>
         </CardContent>
       </Card>
     );

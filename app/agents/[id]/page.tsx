@@ -2,6 +2,7 @@ import { fetchFeedPage } from "@/lib/agent/feed-query";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
+import { FeedAutoRefresh } from "./feed-auto-refresh";
 import { FeedEmptyState, FeedItemCard } from "./feed-item";
 
 /**
@@ -41,6 +42,7 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 py-4">
+      <FeedAutoRefresh />
       {stories.length === 0 ? (
         // Empty desk: just the empty state — the "Stories / Drafts" count headers only make
         // sense (and only align) once there are card pairs beneath them.

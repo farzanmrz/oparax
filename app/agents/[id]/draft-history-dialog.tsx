@@ -1,17 +1,20 @@
 // app/agents/[id]/draft-history-dialog.tsx
 //
 // Self-contained "Draft history" overlay: `DraftHistoryDialog` renders its own trigger
-// icon-button AND owns its open state (mirrored to `?history=<winningPostDraftId>`,
-// deep-link/reload-safe). The heavy body — the fetch + the version timeline + the
-// corrections thread — is `next/dynamic({ ssr: false })`, mounted only once the dialog is
-// actually opened; the trigger renders immediately. T4 drops
-// `<DraftHistoryDialog winningPostDraftId=.. />` straight into the draft-card action row.
+// icon-button AND owns its open state — plain local `useState`, mirroring
+// `draft-edit-dialog.tsx`'s pattern. This dialog used to mirror its open state to
+// `?history=<winningPostDraftId>` for deep-linkability, but the page is fully dynamic, so
+// every open/close forced a full server round trip (re-running the feed query) before the
+// dialog visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an
+// instant open. The heavy body — the fetch + the version timeline + the corrections thread —
+// is `next/dynamic({ ssr: false })`, mounted only once the dialog is actually opened; the
+// trigger renders immediately. T4 drops `<DraftHistoryDialog winningPostDraftId=.. />`
+// straight into the draft-card action row.
 "use client";
 
 import { HistoryIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -157,24 +160,15 @@ const DraftHistoryBody = dynamic(() => Promise.resolve(DraftHistoryBodyImpl), {
   loading: () => <DraftHistorySkeleton />,
 });
 
-/** No Dialog/Tooltip context requirement — used both inside the wired-up trigger below AND
- *  as the Suspense fallback, where no `<Dialog>` ancestor exists yet to satisfy Radix's
- *  `DialogTrigger`. */
-function HistoryTriggerButton({ disabled }: { disabled?: boolean }) {
-  return (
-    <Button aria-label="Draft history" disabled={disabled} size="icon-sm" variant="ghost">
-      <HistoryIcon />
-    </Button>
-  );
-}
-
 function HistoryTrigger() {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <DialogTrigger asChild>
-            <HistoryTriggerButton />
+            <Button aria-label="Draft history" size="icon-sm" variant="ghost">
+              <HistoryIcon />
+            </Button>
           </DialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
@@ -185,22 +179,9 @@ function HistoryTrigger() {
   );
 }
 
-function DraftHistoryDialogInner({ winningPostDraftId }: { winningPostDraftId: string }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const open = searchParams.get("history") === winningPostDraftId;
-
-  function setOpen(next: boolean) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (next) {
-      params.set("history", winningPostDraftId);
-    } else if (params.get("history") === winningPostDraftId) {
-      params.delete("history");
-    }
-    const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }
+export function DraftHistoryDialog({ winningPostDraftId }: { winningPostDraftId: string }) {
+  // Plain local state, not URL-synced — see the file header comment for why.
+  const [open, setOpen] = useState(false);
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
@@ -217,13 +198,5 @@ function DraftHistoryDialogInner({ winningPostDraftId }: { winningPostDraftId: s
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function DraftHistoryDialog(props: { winningPostDraftId: string }) {
-  return (
-    <Suspense fallback={<HistoryTriggerButton disabled />}>
-      <DraftHistoryDialogInner {...props} />
-    </Suspense>
   );
 }

@@ -16,18 +16,23 @@
 // pending state is the shared pattern every async control below follows, ported from the
 // handles add/remove wiring that was already real before this task. Layout per owner
 // rework: the master toggle lives on the card-header row, each source-type toggle lives
-// right-aligned on its own subsection-header row, and both add-entry areas are the
-// chips-in-field pattern (`ChipsField` below). The websites subsection is greyed (opacity
-// + "Coming soon" badge, everything disabled) until the Railway ingestion worker deploys
-// in Wave 4 — its server actions (`saveWebsites` etc.) stay intact for un-greying.
+// right-aligned on its own subsection-header row. Websites still use the chips-in-field
+// pattern (`ChipsField`); X accounts instead render each tracked handle as its OWN ROW below
+// a plain add-input — handle text, a remove button, and a per-handle "Auto-post" toggle
+// (greyed, "Coming soon" — no per-handle column exists yet). The add-input's Enter/comma/
+// blur/multi-paste commit logic mirrors create-desk-form.tsx's, sharing its split helper via
+// lib/x/handle-input.ts. The websites subsection is greyed (opacity + "Coming soon" badge,
+// everything disabled) until the Railway ingestion worker deploys in Wave 4 — its server
+// actions (`saveWebsites` etc.) stay intact for un-greying.
 
 import { CheckIcon, MailIcon, MessageSquareIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ClipboardEvent, type KeyboardEvent, useState, useTransition } from "react";
 import { ChipsField } from "@/components/chips-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -38,6 +43,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
+import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import {
   removeWebsite,
@@ -77,6 +83,7 @@ export function SourcesCard({
 }) {
   const [handleInput, setHandleInput] = useState("");
   const [handleError, setHandleError] = useState<string | null>(null);
+  const [handleNotice, setHandleNotice] = useState<string | null>(null);
   const [isHandlePending, startHandleTransition] = useTransition();
 
   const [websiteInput, setWebsiteInput] = useState("");
@@ -87,25 +94,56 @@ export function SourcesCard({
   const [autoPostError, setAutoPostError] = useState<string | null>(null);
   const [isAutoPostPending, startAutoPostTransition] = useTransition();
 
-  function handleAddHandle() {
-    const raw = handleInput.trim();
-    if (!raw) return;
+  // Commits a raw blob straight through `addTrackedHandles` — the action itself does the real
+  // split/normalize/dedupe/cap, so the client's only job is deciding WHEN to fire: on Enter, on
+  // a comma, on blur, and (below) on a multi-handle paste. `splitHandles` (shared with the
+  // create-desk form via lib/x/handle-input.ts) is used here only to tell "nothing worth
+  // sending" apart from a real batch — the empty-check a bare `.trim()` used to do.
+  function commitHandles(raw: string) {
+    if (splitHandles(raw).length === 0) return;
     setHandleError(null);
+    setHandleNotice(null);
     startHandleTransition(async () => {
-      // Pass the whole blob — the action splits comma/space-separated handles, strips @, and caps.
       const result = await addTrackedHandles(deskId, raw);
       if (!result.ok) {
         setHandleError(result.error);
         return;
       }
+      if (result.dropped > 0) {
+        const noun = result.dropped === 1 ? "handle" : "handles";
+        setHandleNotice(
+          `${result.dropped} ${noun} not added — this agent is at its ${MAX_TRACKED_HANDLES}-source limit.`,
+        );
+      }
       setHandleInput("");
     });
+  }
+
+  function onHandleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commitHandles(handleInput);
+    }
+  }
+
+  // A pasted blob carrying more than one handle (whitespace/comma-separated) commits
+  // immediately — mirrors create-desk-form.tsx's onTrackedPaste exactly, so a paste of a
+  // comma-separated list of handles behaves identically in both places. A single pasted token
+  // (no separator) falls through to the plain input paste instead, since the reporter may still
+  // be about to type more before pressing Enter.
+  function onHandlePaste(e: ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    if (/[\s,]/.test(text)) {
+      e.preventDefault();
+      commitHandles(`${handleInput} ${text}`);
+    }
   }
 
   const atHandleLimit = trackedHandles.length >= MAX_TRACKED_HANDLES;
 
   function handleRemoveHandle(handle: string) {
     setHandleError(null);
+    setHandleNotice(null);
     startHandleTransition(async () => {
       const result = await removeTrackedHandle(deskId, handle);
       if (!result.ok) setHandleError(result.error);
@@ -228,26 +266,63 @@ export function SourcesCard({
               />
             </div>
           </div>
-          <ChipsField
-            chipClassName="font-mono"
-            chipLabel={(handle) => `@${handle}`}
-            chips={trackedHandles}
-            inputDisabled={isHandlePending || atHandleLimit}
-            onChange={setHandleInput}
-            onRemove={handleRemoveHandle}
-            onSubmit={handleAddHandle}
+          <Input
+            disabled={isHandlePending || atHandleLimit}
+            onBlur={() => commitHandles(handleInput)}
+            onChange={(e) => setHandleInput(e.target.value)}
+            onKeyDown={onHandleKeyDown}
+            onPaste={onHandlePaste}
             placeholder={
               atHandleLimit
                 ? `Up to ${MAX_TRACKED_HANDLES} accounts`
                 : "Add X accounts — paste comma-separated, @ optional, press Enter"
             }
-            removeDisabled={isHandlePending}
-            removeLabel={(handle) => `Stop tracking @${handle}`}
             value={handleInput}
           />
+
+          {/* Each tracked handle is its own row — handle, remove, and a per-handle Auto-post
+              toggle — rather than a chip in the field above. The toggle is greyed + "Coming
+              soon" (same treatment as the group-level toggles on this card): there is no
+              per-handle auto-post column yet, only the desk-wide one above. */}
+          {trackedHandles.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              {trackedHandles.map((handle) => (
+                <div
+                  className="flex items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1.5 dark:bg-input/30"
+                  key={handle}
+                >
+                  <span className="min-w-0 flex-1 truncate font-mono text-sm">@{handle}</span>
+                  <div className="flex shrink-0 items-center gap-2 opacity-50">
+                    <span className="text-xs text-muted-foreground">Auto-post</span>
+                    <Badge variant="secondary">Coming soon</Badge>
+                    <Switch
+                      aria-label={`Auto-post drafts from @${handle}`}
+                      checked={false}
+                      disabled
+                      size="sm"
+                    />
+                  </div>
+                  <Button
+                    aria-label={`Stop tracking @${handle}`}
+                    disabled={isHandlePending}
+                    onClick={() => handleRemoveHandle(handle)}
+                    size="icon-sm"
+                    variant="ghost"
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {handleError ? (
             <p className="text-sm text-destructive" role="alert">
               {handleError}
+            </p>
+          ) : handleNotice ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              {handleNotice}
             </p>
           ) : null}
         </div>

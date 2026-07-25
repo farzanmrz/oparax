@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
+import { mergeHandles, splitHandles } from "@/lib/x/handle-input";
 import { saveWebsites } from "../[id]/setup/actions";
 import { createDesk } from "./actions";
 import { ExtractionProgress } from "./extraction-progress";
@@ -63,31 +64,6 @@ function mergeWebsites(existing: readonly string[], incoming: readonly string[])
   for (const site of incoming) {
     if (next.length >= MAX_WEBSITES) break;
     if (!next.some((s) => s.toLowerCase() === site.toLowerCase())) next.push(site);
-  }
-  return next;
-}
-
-/** Strip leading @(s) + whitespace. Case is preserved for display; the server lowercases and
- *  charset-validates on save (lib/x/handle.ts). */
-function cleanHandle(raw: string): string {
-  return raw.trim().replace(/^@+/, "");
-}
-
-/** Split a typed/pasted blob into candidate handles — comma / whitespace / newline separated,
- *  each with or without a leading @. */
-function splitHandles(raw: string): string[] {
-  return raw
-    .split(/[\s,]+/)
-    .map(cleanHandle)
-    .filter(Boolean);
-}
-
-/** Merge new handles into an existing list: case-insensitive dedupe, capped at MAX_TRACKED. */
-function mergeHandles(existing: readonly string[], incoming: readonly string[]): string[] {
-  const next = [...existing];
-  for (const handle of incoming) {
-    if (next.length >= MAX_TRACKED) break;
-    if (!next.some((h) => h.toLowerCase() === handle.toLowerCase())) next.push(handle);
   }
   return next;
 }

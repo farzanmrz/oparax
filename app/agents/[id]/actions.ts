@@ -20,6 +20,11 @@ import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/li
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+/** `addTrackedHandles`'s own result shape — it needs to report back how many candidates the
+ *  20-account cap dropped (see the function comment below), which the plain `ActionResult`'s
+ *  `{ ok: true }` has no room for. */
+export type AddHandlesResult = { ok: true; dropped: number } | { ok: false; error: string };
+
 /** Pause a desk: Oparax stops watching the beat and stops posting on its behalf. */
 export async function pauseDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
@@ -68,8 +73,14 @@ export async function deleteDesk(id: string): Promise<ActionResult> {
  * The handle is charset-validated (`normalizeValidHandle`) before it can be stored — a raw
  * handle would otherwise flow into the ingestion worker's globally-shared X stream rule and let
  * a single reporter inject stream operators across tenants (see lib/x/handle.ts).
+ *
+ * Returns `dropped`, the count of candidates that hit the `MAX_TRACKED_HANDLES` cap and were
+ * never added — pasting 20 handles onto a desk that already tracks 5 used to keep 15 and say
+ * nothing, silently discarding the rest. The caller surfaces `dropped` as an inline notice.
+ * Case-insensitive duplicates of an already-tracked handle are NOT counted here — deduping is
+ * the expected shape of a merge, not data loss worth calling out.
  */
-export async function addTrackedHandles(id: string, raw: string): Promise<ActionResult> {
+export async function addTrackedHandles(id: string, raw: string): Promise<AddHandlesResult> {
   // Split a raw blob (comma / whitespace / newline separated, @ optional) into candidate
   // handles; each is charset-validated via normalizeValidHandle (invalid tokens dropped).
   const candidates = raw
@@ -97,8 +108,12 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
   // "reuters" would both be stored as two chips for one account, burning a tracked-handle slot.
   // First-seen casing wins on a dedupe.
   const merged = [...data.tracked_handles];
+  let dropped = 0;
   for (const handle of candidates) {
-    if (merged.length >= MAX_TRACKED_HANDLES) break; // cap (client enforces too)
+    if (merged.length >= MAX_TRACKED_HANDLES) {
+      dropped++; // the cap (client enforces too, but a paste can still outrun it)
+      continue;
+    }
     if (!merged.some((existing) => existing.toLowerCase() === handle.toLowerCase())) {
       merged.push(handle);
     }
@@ -107,7 +122,7 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
     // Nothing new landed — either all duplicates (a benign no-op) or the desk is already full.
     return data.tracked_handles.length >= MAX_TRACKED_HANDLES
       ? { ok: false, error: `An agent can track up to ${MAX_TRACKED_HANDLES} accounts.` }
-      : { ok: true };
+      : { ok: true, dropped: 0 };
   }
 
   const { error: updateError } = await supabase
@@ -119,7 +134,7 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
   // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
   // otherwise show a stale name/dot after a create/pause/rename.
   revalidatePath("/agents", "layout");
-  return { ok: true };
+  return { ok: true, dropped };
 }
 
 const editDraftPostDraftIdSchema = z.string().uuid();

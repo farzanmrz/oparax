@@ -1,0 +1,202 @@
+/* The source card wears the site's skin over react-tweet's anatomy: every visual override
+   goes through react-tweet's own CSS variables where one exists, keeping the vendored
+   component untouched (the same wrap-don't-edit rule as components/ui). The variables are
+   set on `.react-tweet-theme` — the element theme.css itself targets — via a descendant
+   selector, exactly like the deleted compact-tweet.module.css did. */
+
+.wrapper :global(.react-tweet-theme) {
+  --tweet-container-margin: 0;
+  --tweet-bg-color: var(--card);
+  --tweet-bg-color-hover: var(--card);
+  --tweet-border: 1px solid var(--border);
+  --tweet-font-family: inherit;
+  --tweet-font-color: var(--card-foreground);
+  --tweet-font-color-secondary: var(--muted-foreground);
+  /* Entity links (hashtags, mentions, resolved t.co urls) pick up the site accent. */
+  --tweet-color-blue-secondary: var(--primary);
+  --tweet-color-blue-secondary-hover: var(--primary);
+  --tweet-body-font-size: 0.9375rem;
+  --tweet-body-line-height: 1.5;
+  --tweet-body-margin: 0;
+  /* react-tweet pins the embed at 550px (X's own embed width); the feed's grid column is
+     the authority on width here. */
+  max-width: none;
+  width: 100%;
+}
+
+/* ── Header: one line — avatar · name · badge · handle · time · X logo ─────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  margin-bottom: 0.625rem;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.identity:hover .handle {
+  text-decoration: underline;
+}
+
+/* The provenance mark — avatar-scale on purpose, so the two glyphs bracket the line as
+   equals: identity on the left, platform on the right. */
+.chip {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.375rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.avatar {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+/* The archive fallback has no stored avatar — a monogram keeps the slot honest instead of
+   faking a face we never captured. */
+.monogram {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* The handle is the identity — bold, foreground, sized to hold its own beside the avatar. */
+.handle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--card-foreground);
+  white-space: nowrap;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.time {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+a.time:hover {
+  text-decoration: underline;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* The X logo is the card's only outbound affordance — it IS "view source on X". */
+.xLink {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  transition: color 120ms ease;
+}
+
+.xLink:hover {
+  color: var(--card-foreground);
+}
+
+/* ── The archive state: the post is gone from X; our stored copy is the record ─────── */
+
+.archived {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+/* ── Body clamp: long premium posts must not wreck the row pairing with a ≤280 draft ── */
+
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.expandToggle {
+  align-self: flex-start;
+  margin-top: 0.375rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.expandToggle:hover {
+  text-decoration: underline;
+}
+
+/* ── Media strip: signposted at fixed height, never consumed inline ────────────────── */
+
+.mediaStrip {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+.thumb {
+  position: relative;
+  display: block;
+  height: 5rem;
+  max-width: 9rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.thumb img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.playGlyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: white;
+  background: rgb(0 0 0 / 35%);
+}

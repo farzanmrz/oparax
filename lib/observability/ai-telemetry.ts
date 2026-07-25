@@ -31,19 +31,22 @@ export type AiStage = "voice_extraction" | "story_cluster" | "draft_council" | "
  *   to make visible.
  * - `story_cluster` — ON. Input is public source posts and existing story headlines; the output is
  *   a classification verdict. Nothing here is the reporter's own writing.
- * - `draft_council` / `draft_judge` — OFF. The output is an UNPUBLISHED DRAFT in the reporter's
- *   voice: their unpublished journalism, the single most sensitive artifact the product handles,
- *   and the one thing that must not sit in a third-party store waiting to leak. Token counts,
- *   latency, model, cost and finish reason are still recorded — everything except the words.
- *
- * If drafting ever needs its content visible to debug something, do it by narrowing to a
- * non-production environment, not by flipping this to `true`.
+ * - `draft_council` / `draft_judge` — ON outside production, OFF in production. The output is
+ *   an UNPUBLISHED DRAFT in the reporter's voice: their unpublished journalism, the single most
+ *   sensitive artifact the product handles, and the one thing that must not sit in a third-party
+ *   store waiting to leak — so on oparax.ai only token counts, latency, model, cost and finish
+ *   reason are recorded. But an invisible drafting stage was undebuggable in practice (owner
+ *   request, 2026-07-25: council spans rendered with no input/output at all), and this file
+ *   always prescribed the fix: narrow by environment rather than flip the switch. `VERCEL_ENV`
+ *   is unset locally and "preview" on the dev/beta deployments, so every debugging surface
+ *   records full prompts and completions; only `production` stays words-free.
  */
+const DRAFT_CONTENT_ALLOWED = process.env.VERCEL_ENV !== "production";
 const RECORDS_CONTENT: Record<AiStage, boolean> = {
   voice_extraction: true,
   story_cluster: true,
-  draft_council: false,
-  draft_judge: false,
+  draft_council: DRAFT_CONTENT_ALLOWED,
+  draft_judge: DRAFT_CONTENT_ALLOWED,
 };
 
 /**

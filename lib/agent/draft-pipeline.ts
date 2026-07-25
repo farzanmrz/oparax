@@ -71,6 +71,8 @@ export type IngestDelivery =
 
 export type ProcessDeliveryResult = {
   sourcePostId: string;
+  /** True when the delivery was recorded but deliberately not drafted — see isLowSignal. */
+  lowSignal?: boolean;
   drafted: Array<{
     experimentId: string;
     winningModel: string;
@@ -78,6 +80,25 @@ export type ProcessDeliveryResult = {
     skipped?: "already_drafted" | "no_guide";
   }>;
 };
+
+/** A post whose text carries nothing to write FROM. The drafting models receive text only —
+ *  never media — so "🌟 https://t.co/…" hands them an emoji and an opaque link, and the
+ *  council either fails outright (a story stuck winner-less on the feed) or, worse, succeeds
+ *  and emits "JUST IN: https://t.co/…" junk; both happened live on 2026-07-25. Strip links,
+ *  @/# tags, emoji and whitespace — if what remains couldn't caption a photo, there is
+ *  nothing to draft, so the delivery is recorded (source_posts) but never claims, clusters,
+ *  or spends, and no story row means no feed card. Deterministic and free on purpose: this
+ *  is NOT beat relevance (that's clustering's future job) — it only rejects posts whose text
+ *  is structurally empty. */
+export function isLowSignal(text: string): boolean {
+  const stripped = text
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/[@#][\p{L}\p{N}_]+/gu, "")
+    .replace(/\p{Extended_Pictographic}|\u{FE0F}|\u{200D}|\u{20E3}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped.length < 12;
+}
 
 type MatchedExperiment = {
   id: string;
@@ -572,6 +593,13 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
       .single();
     if (existingError) throw existingError;
     sourcePostId = existing.id;
+  }
+
+  // The low-signal gate sits AFTER the source_posts upsert (the record is kept — the post
+  // really was delivered) and BEFORE matching/claiming/clustering (nothing downstream runs,
+  // nothing bills, no story row is created so the feed never shows it).
+  if (isLowSignal(delivery.text)) {
+    return { sourcePostId, lowSignal: true, drafted: [] };
   }
 
   // Route by source. An "x" delivery matches tracked_handles exactly as before (PostgREST's
