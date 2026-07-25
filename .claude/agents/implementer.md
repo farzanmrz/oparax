@@ -16,8 +16,12 @@ You implement exactly ONE task of an approved feature plan in this repo (oparax)
 
 ## When to invoke
 
-- **Parallel build wave.** The /feature orchestrator dispatches you alongside other
-  implementers, each owning a disjoint set of files, one per unblocked plan task.
+- **Parallel build batch.** The /feature orchestrator dispatches you alongside other
+  implementers, each owning a disjoint set of files, one per unblocked plan task. This
+  only happens when THREE OR MORE tasks are concurrently unblocked — below that the
+  orchestrator implements inline, because briefing costs more than doing. So if you are
+  running, you are one of several agents writing to one working tree right now; the
+  file-ownership and no-git rules below are what keep that safe.
 - **Fix re-dispatch.** A task-reviewer found problems; you are re-dispatched with the
   same brief plus the findings to resolve.
 
@@ -46,7 +50,7 @@ Rules:
    need. If a tool you genuinely require is unavailable, return `BLOCKED` naming it — the
    orchestrator re-dispatches to an agent that has it.
 6. **Do NOT run `git add`, `git commit`, or any other write-side git command.** Leave your
-   changes in the working tree; the orchestrator commits your task once you return. You share
+   changes in the working tree; the orchestrator commits at its own checkpoints. You share
    one working tree with every other implementer running right now, and `git add`/`git commit`
    stage by PATH, not by author — two implementers committing concurrently interleave, and one
    sweeps the other's files into its commit. That has already happened on a real run, between

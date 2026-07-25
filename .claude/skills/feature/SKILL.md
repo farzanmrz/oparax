@@ -26,7 +26,7 @@ is complete only when the last ticks:
 
 1. `Plan approved (✋ gate) + branch cut, state written, handoff checkpointed (or direct-dev state started)` → invoke **`feature-plan`**
 2. `Built on ft/<issue#> or the explicit direct dev run` → invoke **`feature-build`**
-3. `QC: reviews · lint · build · boot smoke · browser sweep` → invoke **`feature-qc`**
+3. `QC: cross-model reviews + browser journeys · lint · build · doc sync` → invoke **`feature-qc`**
 4. `Owner feedback implemented + shipped via ship.sh (✋)` → invoke **`feature-ship`**
 
 Stop at every ✋ gate and wait for the user's explicit words — grounding never skips
