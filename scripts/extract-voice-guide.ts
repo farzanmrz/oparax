@@ -14,9 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { deployGuide } from "@/lib/voice/deploy-guide";
 import { type CorpusPost, EXTRACTION_MODEL, extractVoiceGuide } from "@/lib/voice/extract-guide";
-
-/** X handles are [A-Za-z0-9_]; validating also keeps the CLI arg out of the file path. */
-const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
+import { X_HANDLE_RE } from "@/lib/x/handle";
 
 function loadCorpus(handle: string, suffix: "" | "-train"): CorpusPost[] {
   const path = `.voice-lab/corpora/${handle}${suffix}.json`;
@@ -72,7 +70,7 @@ async function main() {
       "Usage: pnpm dlx tsx --env-file=.env.local scripts/extract-voice-guide.ts <reporterHandle> <ownerEmail>",
     );
   }
-  if (!HANDLE_RE.test(reporterHandle)) {
+  if (!X_HANDLE_RE.test(reporterHandle)) {
     throw new Error(
       `Not a valid X handle: "${reporterHandle}" (expected [A-Za-z0-9_], 1-15 chars).`,
     );

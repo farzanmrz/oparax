@@ -16,8 +16,9 @@ import { measuredFacts } from "./measured-facts";
  *  Opus 5, not Fable 5, as of this change. Fable won the original 8-model on-task panel, but
  *  Opus 5 postdates that panel entirely — it wasn't a contestant, so this isn't re-auditioning a
  *  settled decision. It is HALF the price ($5/$25 per MTok vs Fable's $10/$50), which should put
- *  a reporter's extraction near ~$0.43 against Fable's measured $0.855, well under the $2
- *  worst-case the spend gate reserves. Same reasoning surface: adaptive thinking, and
+ *  a reporter's extraction near ~$0.43 against Fable's measured $0.855 — an expected figure, not
+ *  a reserved or enforced one: there is no spend gate or cap on extraction (owner decision; see
+ *  AGENTS.md's settled decisions). Same reasoning surface: adaptive thinking, and
  *  `display: "summarized"` still required because it also defaults to "omitted" here. */
 export const EXTRACTION_MODEL = "anthropic/claude-opus-5";
 
@@ -35,8 +36,8 @@ const EXTRACT_MAX_OUTPUT_TOKENS = 64_000;
 // here never fires before the platform kills the whole invocation with no cleanup. 150s is a
 // first-pass budget split, not measured against real generation latency yet — retune both once
 // real extraction runs show actual durations. A timeout here still throws out of
-// attemptVoiceExtraction's try/catch (releasing the claim for same-day retry via
-// releaseClaimOnCorpusFailure) instead of a silent platform kill.
+// runExtractionSpendPhase's try/catch, which catches it and stamps the run row failed via
+// finishRun — there is no claim to release, since extraction carries no spend reservation.
 const EXTRACT_TIMEOUT_MS = 150_000;
 
 /** One corpus post, carrying the metadata the extraction prompt grades against. */
@@ -163,7 +164,7 @@ export type ExtractionStreamSnapshot = { text: string; reasoning: string };
 /**
  * Same extraction call as `extractVoiceGuide` above — byte-identical model/config — but as a
  * `streamText` call instead of `generateText`, so the create-desk path can persist live
- * progress while a single extraction call (adaptive/high thinking, 32k output ceiling) runs.
+ * progress while a single extraction call (adaptive/high thinking, 64k output ceiling) runs.
  * `onProgress` fires on every text/reasoning delta with the accumulated-so-far snapshot;
  * consuming the stream this way is also what resolves `result.text`/`result.usage`/etc. below,
  * so no separate `consumeStream()` call is needed.

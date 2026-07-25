@@ -31,19 +31,37 @@ export const SENTRY_DSN =
 export const TRACES_SAMPLE_RATE = process.env.NODE_ENV === "production" ? 0.1 : 1;
 
 /**
- * HTTP request bodies are NOT sent to Sentry.
+ * Every category spelled out explicitly — none left to the SDK's defaults.
  *
- * A request body here routinely carries a reporter's unpublished draft, their beat, and the
- * source posts behind a story — their own unpublished journalism. That is the most sensitive
- * content the product handles and it has no place in a third-party error report; a stack trace
- * plus the user identity is enough to debug with. `userInfo` stays on: knowing WHICH reporter
- * hit an error is most of the diagnostic value, and it is their own account identity, not
- * their work.
+ * The trap: `resolveDataCollectionOptions` picks its base on ONE condition — whether
+ * `dataCollection` is non-null, not on which keys it names. Passing ANY object, even one with a
+ * single key set, selects the permissive `DEFAULTS` (userInfo, cookies, headers, bodies, query
+ * params, GraphQL, genAI, DB query data, and stack-frame locals all ON) as the base for every
+ * category this object does NOT mention. A partial object does not "narrow the defaults" — it
+ * opts into them for everything left unnamed. So this object must name every field, every time.
+ *
+ * A request body, a cookie, or a genAI input/output here routinely carries the Supabase session
+ * JWT (`cookies`/`httpHeaders`, since the JWT lives in the Cookie header), a reporter's
+ * unpublished draft, their beat, the source posts behind a story, or the extracted voice guide —
+ * their own unpublished journalism. That is the most sensitive content the product handles and
+ * it has no place in a third-party error report; a stack trace plus the user identity is enough
+ * to debug with. `userInfo` stays on: knowing WHICH reporter hit an error is most of the
+ * diagnostic value, and it is their own account identity, not their work. `frameContextLines`
+ * stays on too: source lines around a frame are code, not user data.
  */
 // Left un-annotated on purpose: `httpBodies` is typed `HttpBodyCollectionTarget[]` by the SDK, so
 // widening the empty array to `string[]` (or freezing the object with `as const`, which makes it
 // readonly) both fail to assign. Inferred `never[]` is assignable to whatever the SDK's element
 // type is now or becomes later.
 export const SENTRY_DATA_COLLECTION = {
+  userInfo: true,
+  cookies: false,
+  httpHeaders: { request: false, response: false },
   httpBodies: [],
+  urlQueryParams: false,
+  graphQL: { document: false, variables: false },
+  genAI: { inputs: false, outputs: false },
+  databaseQueryData: false,
+  stackFrameVariables: false,
+  frameContextLines: 5,
 };

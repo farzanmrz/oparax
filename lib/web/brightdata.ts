@@ -402,7 +402,7 @@ function profileFailureForStatus(status: number): XProfileFailure {
  *  Meters `usage_events` on every attempt, success or failure: Bright Data bills a
  *  failed-due-to-invalid-input row the same as a successful one, so unlike scrapeUrl/
  *  pullXTimeline's post-success-only stamp, this one meters unconditionally once a request was
- *  actually attempted. That unconditional stamp is also what `checkPreflightCap` counts. */
+ *  actually attempted — that billing fact is the whole reason, independent of any spend cap. */
 export async function fetchXProfile(handle: string, ownerId: string): Promise<XProfileResult> {
   const apiKey = brightDataApiKey();
   const url = new URL(DATASETS_SCRAPE_URL);

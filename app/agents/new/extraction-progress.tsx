@@ -87,15 +87,24 @@ export function ExtractionProgress({ deskId }: { readonly deskId: string }) {
 
     const started = await startExtraction(deskId);
     const profileGate = started.gates.find((g) => g.gate === "profile_lookup");
+
+    // Key the step off the GATE's own verdict, not off `started.ok`. They come apart in one real
+    // case: the profile lookup PASSED but this caller lost the run claim because an extraction
+    // was already in flight for the desk. `started.ok` is false there, yet nothing failed —
+    // reading it as the step's state would paint a passed check red and stop the poll while a
+    // paid extraction was genuinely running and about to produce a guide.
+    const profilePassed = profileGate?.status === "passed";
     setGates((prev) => ({
       ...prev,
       profile: {
         ...prev.profile,
         detail: profileGate?.detail ?? null,
-        state: started.ok ? "complete" : "failed",
+        state: profilePassed ? "complete" : "failed",
       },
-      error: started.ok ? null : started.message,
-      started: started.ok,
+      // Either we claimed the run or someone else already had it — both mean the pipeline is live
+      // and the run row is the thing to watch, so poll and show no error.
+      error: started.ok || profilePassed ? null : started.message,
+      started: started.ok || profilePassed,
     }));
   }, [deskId]);
 
@@ -150,13 +159,7 @@ export function ExtractionProgress({ deskId }: { readonly deskId: string }) {
     { key: "created", label: "Agent created", detail: null, state: "complete" },
     gates.handle,
     gates.profile,
-    ...(gates.started
-      ? pipelineSteps(run)
-      : ([
-          { key: "corpus", label: "Reading recent posts", detail: null, state: "pending" },
-          { key: "extract", label: "Learning how you write", detail: null, state: "pending" },
-          { key: "rules", label: "Saving your voice rules", detail: null, state: "pending" },
-        ] satisfies ExtractionStep[])),
+    ...pipelineSteps(run),
   ];
 
   const stopped = gates.error !== null || run.status === "failed";

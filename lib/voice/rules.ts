@@ -10,7 +10,7 @@
 // — the same ownership-then-service-role-write pattern as lib/x/actions.ts's postDraftToX —
 // this module does no ownership check of its own.
 //
-// Server-only: admin client only, no "use client". Unlike attemptVoiceExtraction (intentionally
+// Server-only: admin client only, no "use client". Unlike the extraction phase (intentionally
 // best-effort), CRUD failures here surface to their callers — throw on real DB errors.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
@@ -171,6 +171,13 @@ function splitGuideIntoSections(guideDeploy: string): string[] {
  * example blockquotes, or sub-headings into separate rows, which a bullet-line split would.
  * Falls back to a single rule wrapping the whole deployed guide when no `## ` heading is found.
  *
+ * REPLACES the previous machine-generated set rather than adding to it: a second extraction for
+ * the same desk used to leave both sets in place, so the drafting prompt carried the old and new
+ * instructions together at twice the token cost. The clear is scoped to rows carrying a
+ * `provenance_model_call_id` — those are the ones a model wrote, and a fresh guide supersedes
+ * them. Rules the REPORTER typed have a null `provenance_model_call_id` and MUST survive: a
+ * retry that destroyed a reporter's own edits would be far worse than the duplication it fixes.
+ *
  * NOT called from this file — T2.3 (`lib/voice/create-desk-extraction.ts`) calls in once a
  * fresh guide has been extracted and deployed.
  */
@@ -182,6 +189,14 @@ export async function materializeRulesFromGuide(
   const sections = splitGuideIntoSections(guideDeploy);
   if (sections.length === 0) return [];
   const admin = createAdminClient();
+
+  const { error: clearError } = await admin
+    .from("voice_rules")
+    .delete()
+    .eq("experiment_id", experimentId)
+    .not("provenance_model_call_id", "is", null);
+  if (clearError) throw clearError;
+
   const { data, error } = await admin
     .from("voice_rules")
     .insert(

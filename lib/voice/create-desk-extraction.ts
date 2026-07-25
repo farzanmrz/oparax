@@ -21,6 +21,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { fetchXProfile, X_PROFILE_FAILURE_COPY, type XProfileFailure } from "@/lib/web/brightdata";
+import { X_HANDLE_RE } from "@/lib/x/handle";
 import { fetchCorpus } from "./corpus";
 import { deployGuide } from "./deploy-guide";
 import {
@@ -28,21 +29,13 @@ import {
   extractVoiceGuideStreaming,
   type VoiceExtraction,
 } from "./extract-guide";
-import { finishRun, recordProgress, startRun } from "./extraction-run";
+import { finishRun, recordProgress } from "./extraction-run";
 import { materializeRulesFromGuide } from "./rules";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-/** X handles are [A-Za-z0-9_], 1-15 chars — the shared rail from lib/x/handle.ts, reapplied
- *  here (not just at the createDesk boundary) since a malformed handle now flows straight into
- *  a billable Bright Data pull; validating keeps it out of that call rather than trusting every
- *  future caller to have already checked it. This is an INJECTION guard, not a spelling check:
- *  a stored handle is string-interpolated into the ingestion worker's globally-shared X stream
- *  rule, so an unvalidated one could rewrite that rule for every tenant. */
-const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
-
-/** Every distinct terminal state a caller needs to branch on. `attemptVoiceExtraction` and both
- *  of its phases never throw — every failure, including an internal one, comes back as a value. */
+/** Every distinct terminal state a caller needs to branch on. The gates and the billable phase
+ *  never throw — every failure, including an internal one, comes back as a value. */
 export type ExtractionOutcome =
   | { status: "malformed_handle" }
   | { status: "preflight_rejected"; failure: XProfileFailure }
@@ -130,11 +123,18 @@ function throttledStreamProgress(
  * GATE 1 — the handle-shape check. Free and instant, so a caller can settle it on screen
  * immediately instead of holding it behind the slow profile call.
  *
+ * Runs `X_HANDLE_RE`, the shared rail from lib/x/handle.ts, here (not just at the createDesk
+ * boundary) since a malformed handle now flows straight into a billable Bright Data pull;
+ * validating keeps it out of that call rather than trusting every future caller to have already
+ * checked it. This is an INJECTION guard, not a spelling check: a stored handle is
+ * string-interpolated into the ingestion worker's globally-shared X stream rule, so an
+ * unvalidated one could rewrite that rule for every tenant.
+ *
  * Returned rather than logged because this runs before any run row exists, so a UI polling the
  * database cannot observe it. Awaiting the result is the only channel it has.
  */
 export function checkHandleShape(reporterHandle: string): PreflightResult {
-  if (!HANDLE_RE.test(reporterHandle)) {
+  if (!X_HANDLE_RE.test(reporterHandle)) {
     return {
       proceed: false,
       gates: [
@@ -209,8 +209,13 @@ export async function runProfilePreflightGate(
  * it deliberately does NOT re-run them, so a caller that awaited them pays for exactly one
  * profile lookup, not two.
  *
+ * Also assumes the caller ALREADY HOLDS this desk's run claim: `startRun` is the caller's job,
+ * awaited before it schedules this phase, because its boolean is what decides whether to spend
+ * at all — and this phase is typically handed to `after()`, which runs too late for a rejected
+ * claim to reach the response.
+ *
  * Order:
- *   (a) `startRun` opens this desk's progress row — the channel every poll reads from here on.
+ *   (a) the run row (opened by the caller's claim) is the channel every poll reads from here on.
  *   (b) `fetchCorpus` (billable) pulls the reporter's real X timeline.
  *   (c) the paid extraction call runs as a stream (`extractVoiceGuideStreaming`), throttled
  *       progress persisted roughly once/sec. Once the stream resolves, ledger-first: one
@@ -233,7 +238,6 @@ export async function runExtractionSpendPhase(
 ): Promise<ExtractionOutcome> {
   try {
     const admin = createAdminClient();
-    await startRun(experimentId);
 
     // Stamped BEFORE the pull, not after it. The Bright Data timeline pull is an async
     // trigger/poll/download cycle that can run for minutes; recording the stage only on
@@ -271,16 +275,18 @@ export async function runExtractionSpendPhase(
 
       // Meter the extraction call itself (AGENTS.md: every touch point stamps usage_events —
       // "every model call" included). Best-effort: the call is already paid and its model_calls
-      // row is durable, so a ledger-stamp failure must not fail the extraction.
-      try {
-        await admin.from("usage_events").insert({
-          owner_id: ownerId,
-          kind: "voice_extraction",
-          units: 1,
-          cost_usd: ext.costUsd,
-          ref_id: reporterHandle,
-        });
-      } catch (meterError) {
+      // row is durable, so a ledger-stamp failure must not fail the extraction. The failure is
+      // INSPECTED rather than caught — supabase-js's builder resolves with `{ data, error }` and
+      // only rejects under `.throwOnError()`, so a try/catch around it would never fire and
+      // unmetered spend would leave no trace at all.
+      const { error: meterError } = await admin.from("usage_events").insert({
+        owner_id: ownerId,
+        kind: "voice_extraction",
+        units: 1,
+        cost_usd: ext.costUsd,
+        ref_id: reporterHandle,
+      });
+      if (meterError) {
         console.error(
           `runExtractionSpendPhase: usage_events stamp failed for @${reporterHandle}`,
           meterError,
@@ -334,26 +340,4 @@ export async function runExtractionSpendPhase(
     await finishRun(experimentId, { status: "failed", errorCode: "internal_error" });
     return { status: "failed" };
   }
-}
-
-/**
- * Both gates and the billable phase, end to end, for callers that want a single terminal outcome
- * and are not rendering the gates — today that is the Voice tab's manual retry. The create screen
- * deliberately does NOT use this: it awaits the gates one at a time so it can render each, then
- * hands the billable phase to `after()` so the expensive half survives navigation.
- *
- * Never throws; every failure is a returned value.
- */
-export async function attemptVoiceExtraction(
-  experimentId: string,
-  reporterHandle: string,
-  ownerId: string,
-): Promise<ExtractionOutcome> {
-  const shape = checkHandleShape(reporterHandle);
-  if (!shape.proceed) return shape.outcome;
-
-  const profile = await runProfilePreflightGate(reporterHandle, ownerId);
-  if (!profile.proceed) return profile.outcome;
-
-  return runExtractionSpendPhase(experimentId, reporterHandle, ownerId);
 }

@@ -91,10 +91,17 @@ export async function addTrackedHandles(id: string, raw: string): Promise<Action
     .maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the agent's tracked handles." };
 
+  // Storage preserves casing as typed (normalizeHandle no longer lowercases — handles are
+  // stored exactly as typed), so matching is case-insensitive at compare time instead, same
+  // rule draft-pipeline.ts already follows for ingestion routing. Without this, "Reuters" and
+  // "reuters" would both be stored as two chips for one account, burning a tracked-handle slot.
+  // First-seen casing wins on a dedupe.
   const merged = [...data.tracked_handles];
   for (const handle of candidates) {
     if (merged.length >= MAX_TRACKED_HANDLES) break; // cap (client enforces too)
-    if (!merged.includes(handle)) merged.push(handle);
+    if (!merged.some((existing) => existing.toLowerCase() === handle.toLowerCase())) {
+      merged.push(handle);
+    }
   }
   if (merged.length === data.tracked_handles.length) {
     // Nothing new landed — either all duplicates (a benign no-op) or the desk is already full.
@@ -233,7 +240,11 @@ export async function removeTrackedHandle(id: string, handle: string): Promise<A
     .maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the agent's tracked handles." };
 
-  const nextHandles = data.tracked_handles.filter((tracked) => tracked !== normalized);
+  // Case-insensitive match, same rule as addTrackedHandles above — drop any stored handle
+  // whose lowercase form matches the target's, regardless of the casing it was stored under.
+  const nextHandles = data.tracked_handles.filter(
+    (tracked) => tracked.toLowerCase() !== normalized.toLowerCase(),
+  );
   const { error: updateError } = await supabase
     .from("experiments")
     .update({ tracked_handles: nextHandles })

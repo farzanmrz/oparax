@@ -12,7 +12,9 @@
 // per desk, and pays for itself each time.
 //
 // What survives is the only part that was ever user-visible: one row per desk recording where
-// extraction has got to. It is a progress log, not a gate — nothing here can refuse a caller.
+// extraction has got to. It carries no cap, no quota and no reservation — the one thing it can
+// refuse is a SECOND concurrent run for the SAME desk (see `startRun`), which bounds a
+// double-click to one paid extraction rather than rationing how often a reporter may extract.
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /** The stages a run passes through, in order. `RunStage` is exported because the create screen
@@ -28,35 +30,58 @@ export type RunStage =
   | "failed";
 
 /**
- * Opens (or reopens) this desk's run record and marks it running.
+ * Opens (or reopens) this desk's run record, marks it running, and reports whether THIS caller
+ * is the one that claimed it. `true` means claim held — go spend; `false` means a run is already
+ * in flight for this desk (or the claim could not be written), so the caller must not spend.
  *
- * Upsert on `experiment_id`, not insert: a retry overwrites the previous attempt rather than
- * colliding with it. That is the whole behavioural difference from the claim it replaces —
- * where the old unique key existed to REJECT a second attempt, this one exists only to keep
- * exactly one current record per desk. Every progress field from a prior run is cleared so a
- * stale reasoning trace or error code can never be read as belonging to this attempt.
+ * The database decides, not the process: a plain INSERT wins against `UNIQUE(experiment_id)`
+ * when no row exists, and a 23505 conflict falls through to an UPDATE guarded by
+ * `.neq("status", "running")`. Under READ COMMITTED the loser of two concurrent updates
+ * re-evaluates that guard after the winner commits, sees `running`, and matches zero rows — so
+ * a double-click bills once. This is NOT the rationing the owner deleted: nothing here is
+ * per-reporter, per-day, or a spend reservation. It bounds one desk to one concurrent run.
+ *
+ * Every progress field from a prior run is cleared on reopen so a stale reasoning trace or error
+ * code can never be read as belonging to this attempt.
+ *
+ * Logging stays best-effort, but the RETURN VALUE is load-bearing — a caller spends real money
+ * on it — so an unexpected write failure resolves to `false` (don't spend) rather than being
+ * swallowed into an optimistic `true`.
  */
-export async function startRun(experimentId: string): Promise<void> {
+export async function startRun(experimentId: string): Promise<boolean> {
+  const now = new Date().toISOString();
+  const fresh = {
+    status: "running",
+    stage: "starting",
+    progress_note: null,
+    reasoning_partial: null,
+    error_code: null,
+    cost_usd: null,
+    started_at: now,
+    finished_at: null,
+    updated_at: now,
+  };
+
   try {
     const admin = createAdminClient();
-    const { error } = await admin.from("voice_extraction_runs").upsert(
-      {
-        experiment_id: experimentId,
-        status: "running",
-        stage: "starting",
-        progress_note: null,
-        reasoning_partial: null,
-        error_code: null,
-        cost_usd: null,
-        started_at: new Date().toISOString(),
-        finished_at: null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "experiment_id" },
-    );
-    if (error) throw error;
+    const { error: insertError } = await admin
+      .from("voice_extraction_runs")
+      .insert({ experiment_id: experimentId, ...fresh });
+    if (!insertError) return true;
+    // 23505 = unique_violation: this desk has run before, so reopen its one row instead.
+    if (insertError.code !== "23505") throw insertError;
+
+    const { data, error: updateError } = await admin
+      .from("voice_extraction_runs")
+      .update(fresh)
+      .eq("experiment_id", experimentId)
+      .neq("status", "running")
+      .select("id");
+    if (updateError) throw updateError;
+    return (data ?? []).length > 0;
   } catch (e) {
     console.error(`startRun: failed for experiment ${experimentId}`, e);
+    return false;
   }
 }
 

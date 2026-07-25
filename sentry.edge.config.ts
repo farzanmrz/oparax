@@ -14,5 +14,9 @@ Sentry.init({
   dsn: SENTRY_DSN,
   tracesSampleRate: TRACES_SAMPLE_RATE,
   dataCollection: SENTRY_DATA_COLLECTION,
+  // `enableLogs: true` alone does not forward console output — the default `consoleIntegration`
+  // only attaches it as a breadcrumb on a future event, which a caught-and-swallowed failure
+  // never creates. `consoleLoggingIntegration` ships console output as a Sentry log directly.
   enableLogs: true,
+  integrations: [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })],
 });

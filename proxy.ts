@@ -40,7 +40,12 @@ export const config = {
      * would have been run through updateSession's Supabase auth refresh, which is both wrong
      * (a Sentry envelope is not a user navigation) and the documented way to lose exactly the
      * client errors this whole integration exists to catch.
+     *
+     * The exclusion below matches `monitoring` as an exact path segment (`monitoring` itself or
+     * `monitoring/...`), not a prefix — a bare `monitoring` literal would also skip a real page
+     * route like `/monitoring-anything`, silently exempting it from the auth-session refresh
+     * every other route gets.
      */
-    "/((?!_next/static|_next/image|favicon.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|monitoring(?:/|$)|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

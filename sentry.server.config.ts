@@ -20,5 +20,12 @@ Sentry.init({
   // so the console.error calls in lib/voice/* and lib/agent/* are currently the ONLY record that
   // anything went wrong, and on a deploy nobody is watching them. Forwarding logs is what turns
   // a silently-swallowed failure into something diagnosable after the fact.
+  //
+  // `enableLogs: true` alone is NOT sufficient: it turns on the logs product, but the default
+  // `consoleIntegration` only attaches console output as breadcrumbs on a FUTURE event. A path
+  // that catches everything and returns a value, like `runExtractionSpendPhase`, never creates
+  // that event, so the breadcrumb is never sent. `consoleLoggingIntegration` is what actually
+  // ships console output as a Sentry log in its own right, event or not.
   enableLogs: true,
+  integrations: [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })],
 });

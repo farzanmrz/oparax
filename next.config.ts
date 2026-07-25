@@ -10,9 +10,9 @@ const nextConfig: NextConfig = {
   // module load — trace it into every serverless function that transitively imports
   // lib/sysprompts (the delivery interface + the inbound-email webhook, both via
   // draft-pipeline.ts -> draft-council-run.ts; the new-desk create action, whose after()
-  // voice-extraction call reaches lib/sysprompts via lib/voice/extract-guide.ts; and, as of
-  // Slice 5, /agents/[id]/voice's capReprobe action, which reaches the same
-  // lib/voice/extract-guide.ts path via attemptVoiceExtraction on a manual retry). The
+  // voice-extraction call reaches lib/sysprompts via lib/voice/extract-guide.ts; and
+  // /agents/[id]/voice's retryExtraction action, which reaches the same
+  // lib/voice/extract-guide.ts path via runExtractionSpendPhase on a manual retry). The
   // per-minute cron dispatcher this list once traced (/api/cron/tick) was deleted with the
   // retired scan/draft pipeline (D15), and the /api/chat entry it once traced was deleted with
   // the create-desk chat assistant (create-agent v2 continuation, the deleted create-desk assistant) — do not

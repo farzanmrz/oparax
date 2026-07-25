@@ -28,6 +28,7 @@ import {
   runExtractionSpendPhase,
   runProfilePreflightGate,
 } from "@/lib/voice/create-desk-extraction";
+import { startRun } from "@/lib/voice/extraction-run";
 import { createVoiceRule, deleteVoiceRule, updateVoiceRule } from "@/lib/voice/rules";
 import { X_PROFILE_FAILURE_COPY } from "@/lib/web/brightdata";
 
@@ -192,6 +193,10 @@ export async function checkExtractionReadiness(deskId: string): Promise<Prefligh
   return toStepResult(checkHandleShape(owned.handle));
 }
 
+/** Copy for a start/retry that lost the run claim — another extraction for this desk is already
+ *  in flight, so a second paid run would bill the same intent twice. */
+const ALREADY_RUNNING = "An extraction is already running for this agent.";
+
 /**
  * STEP 2 — the billable profile lookup, then (on success) the extraction itself.
  *
@@ -202,15 +207,33 @@ export async function checkExtractionReadiness(deskId: string): Promise<Prefligh
  * `after()`, preserving the survives-navigation property for the half where it matters — its
  * progress lands on the run row that `getExtractionProgress` polls.
  *
+ * The handle-shape gate runs here even though the create screen already called
+ * `checkExtractionReadiness`: a server action is reachable by action id whatever component
+ * imports it, and `experiments` has an owner-scoped INSERT policy with no value constraint, so a
+ * desk can carry any `reporter_handle` its owner chose to write. Skipping the shape check would
+ * send that raw string into the profile lookup and the corpus pull — it is an injection guard,
+ * not a UX nicety.
+ *
+ * `startRun` is then awaited SYNCHRONOUSLY, before scheduling: its boolean is the desk's
+ * one-run-at-a-time claim, and inside `after()` a rejection would arrive after the response has
+ * already flushed, far too late to stop the spend.
+ *
  * Exactly one profile lookup is spent per call: `runExtractionSpendPhase` does not re-run the
- * pre-flight, and this action does not re-run step 1.
+ * pre-flight, and this action does not re-run step 1's gate for the caller's benefit twice.
  */
 export async function startExtraction(deskId: string): Promise<PreflightStepResult> {
   const owned = await ownedDesk(deskId);
   if ("error" in owned) return { ok: false, gates: [], message: owned.error };
 
+  const shape = checkHandleShape(owned.handle);
+  if (!shape.proceed) return toStepResult(shape);
+
   const preflight = await runProfilePreflightGate(owned.handle, owned.userId);
   if (!preflight.proceed) return toStepResult(preflight);
+
+  if (!(await startRun(deskId))) {
+    return { ok: false, gates: preflight.gates, message: ALREADY_RUNNING };
+  }
 
   after(() => runExtractionSpendPhase(deskId, owned.handle, owned.userId));
   return { ok: true, gates: preflight.gates, proceed: true };
@@ -237,6 +260,13 @@ function outcomeMessage(outcome: ExtractionOutcome): string {
  * comes back as a message immediately) and hands the billable phase to `after()`, exactly like
  * `startExtraction` — the retry button then polls `getExtractionProgress` the same way the
  * create screen does, instead of blocking on a multi-minute request.
+ *
+ * `startRun` is awaited BEFORE scheduling, for two reasons. It is the desk's one-run-at-a-time
+ * claim, so a double-click cannot buy two corpus pulls and two extraction calls for one intent.
+ * And it is what makes the revalidate below truthful: opened inside `after()`, the run row did
+ * not exist yet when the Voice tab re-rendered, so the tab read status "none", drew the empty
+ * state and this very button again — with no poller — and invited a second paid run. Claiming
+ * first means the re-render sees a "running" row and renders the live progress view instead.
  */
 export async function retryExtraction(deskId: string): Promise<ActionResult> {
   const owned = await ownedDesk(deskId);
@@ -247,6 +277,8 @@ export async function retryExtraction(deskId: string): Promise<ActionResult> {
 
   const profile = await runProfilePreflightGate(owned.handle, owned.userId);
   if (!profile.proceed) return { ok: false, error: outcomeMessage(profile.outcome) };
+
+  if (!(await startRun(deskId))) return { ok: false, error: ALREADY_RUNNING };
 
   after(() => runExtractionSpendPhase(deskId, owned.handle, owned.userId));
   revalidatePath(`/agents/${deskId}`, "layout");

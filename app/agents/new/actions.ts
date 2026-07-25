@@ -76,9 +76,10 @@ export async function createDesk(input: {
   // agent is created on their own handle, which is the behavior they'd get anyway.
   //
   // The override sets `reporter_handle` — it does NOT keep the agent on the owner's handle
-  // while pulling someone else's corpus. `voice_guides`/`voice_rules` are keyed by
-  // `reporter_handle`, so the other direction would file the guide under the wrong key,
-  // mislabeling it and colliding with the owner's real voice on a later extraction.
+  // while pulling someone else's corpus. `reporter_handle` is what the corpus is pulled for,
+  // and `voice_guides`/`voice_rules` are keyed by this desk's `experiment_id`, not by handle —
+  // so the other direction (extracting the owner's own voice while labeling the desk for
+  // someone else) would just mislabel whose voice the desk claims to be drafting in.
   let reporterHandle = connectedHandle;
   if (input.extractFromHandle?.trim() && isOverrideOwner(user.email)) {
     const override = normalizeValidHandle(input.extractFromHandle);
@@ -100,10 +101,10 @@ export async function createDesk(input: {
       tracked_handles: trackedHandles,
       // Identity is proven by the linked X account at this exact moment, not typed and
       // verified later — verification is immediate now, not a separate step. Stamped on the
-      // owner-override path too, and that is load-bearing rather than sloppy: `voice_guides`'
-      // SELECT policy joins through this row and requires a non-null value, so leaving it null
-      // would make the guide unreadable and render an empty Voice tab after a successful,
-      // already-paid-for extraction. On that path the allowlist is the verification.
+      // owner-override path too, even though `voice_guides`' SELECT policy no longer conditions
+      // on this column (it checks only `e.id = voice_guides.experiment_id and e.owner_id =
+      // auth.uid()`) — so this is a record of how identity was proven at creation, not an RLS
+      // gate. On the override path the allowlist is the verification.
       reporter_verified_at: new Date().toISOString(),
     })
     .select("id")

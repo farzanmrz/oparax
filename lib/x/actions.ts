@@ -173,16 +173,19 @@ export async function postDraftToXForOwner(
   // per-owner spend under-reported by exactly the posting cost. Stamped only after X
   // confirmed the post, matching every other metering call site in the repo. Best-effort:
   // the post is already live, so a ledger failure must never surface as a posting failure.
-  try {
-    await admin.from("usage_events").insert({
-      owner_id: ownerId,
-      kind: "x_post",
-      units: 1,
-      cost_usd: X_POST_COST_USD(text),
-      ref_id: postDraftId,
-    });
-  } catch (err) {
-    console.error("postDraftToXForOwner: usage_events stamp failed", err);
+  // supabase-js's PostgrestBuilder RESOLVES with `{ data, error }` rather than rejecting (no
+  // `.throwOnError()` is used here), so a try/catch around the insert can never fire — the
+  // error must be read off the returned object instead, or a failed stamp goes unnoticed and
+  // spend under-reports with zero trace.
+  const { error: meterError } = await admin.from("usage_events").insert({
+    owner_id: ownerId,
+    kind: "x_post",
+    units: 1,
+    cost_usd: X_POST_COST_USD(text),
+    ref_id: postDraftId,
+  });
+  if (meterError) {
+    console.error("postDraftToXForOwner: usage_events stamp failed", meterError);
   }
 
   revalidatePath(`/agents/${draft.experiment_id}`);

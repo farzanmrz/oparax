@@ -36,7 +36,9 @@ paths:
 
 This replaced a `reporter_handle`-keyed model where a guide was global and shared across every desk on that reporter. Under it, the read policy joined by handle, and any authenticated user could self-mint an `experiments` row with any `reporter_handle` — so every guide was readable by every signed-in user, found by exploit rather than by reading. That is gone: a join on the desk's own id cannot be satisfied by a row the reader doesn't own.
 
-**There is no extraction spend gate any more, deliberately.** The per-reporter/UTC-day atomic claim and the per-handle profile-lookup cap were both deleted (owner decision): extraction runs whenever a desk owner asks for it and pays each time. If that ever needs bounding again, bound it per owner — not per handle, which was never the unit anyone shared.
+**There is no extraction spend RATIONING any more, deliberately.** The per-reporter/UTC-day atomic claim and the per-handle profile-lookup cap were both deleted (owner decision): extraction runs whenever a desk owner asks for it and pays each time. If that ever needs bounding again, bound it per owner — not per handle, which was never the unit anyone shared.
+
+The one guard that remains is narrower and different in kind: `startRun` (`lib/voice/extraction-run.ts`) is an atomic claim on `voice_extraction_runs`, so ONE desk cannot have TWO extractions in flight at once. That stops a double-clicked Retry billing twice for a single user intent — it is not a quota, does not reset on a clock, and never refuses a caller whose desk is idle. Don't conflate the two when reading either file.
 
 ## Auth-flow contracts (preserve these)
 

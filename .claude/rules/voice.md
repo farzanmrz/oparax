@@ -98,8 +98,15 @@ the flagged expression, not above the enclosing declaration.)
 
 ## Model configs are decided; don't re-choose them mid-task
 
-Extraction and drafting model/reasoning picks are fixed with costs and hard ceilings ($2 one-time
-extraction, $3/mo drafting). Two live-probed facts that outrank any documentation you might read:
+Extraction and drafting model/reasoning picks are fixed, with EXPECTED costs (~$0.43/reporter
+one-time extraction on Opus 5, ~$3/mo drafting) — not enforced ceilings. Extraction in particular
+carries no spend cap or reservation: the previous once-per-reporter-per-UTC-day claim and the
+`$2` worst-case spend gate it reserved against (`lib/voice/spend-gate.ts`) were deleted outright
+as an owner decision when the shared-guide model was dropped (see AGENTS.md's settled decisions)
+— it optimized a case (two desks sharing one extraction) that no longer exists now that a guide
+belongs to one desk. Don't re-derive a cap or claim table here; if spend ever needs bounding
+again, it is bounded per OWNER, never per handle. Two live-probed facts that outrank any
+documentation you might read:
 
 - **`moonshotai/kimi-k3` cannot cap reasoning.** `effort: "none"` still emitted 119 reasoning
   tokens; every variant returned HTTP 200. The param is accepted and silently ignored. Bound

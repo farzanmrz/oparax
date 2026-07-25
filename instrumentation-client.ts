@@ -21,7 +21,13 @@ Sentry.init({
   // unpublished drafts as they typed them. Do not switch that masking off to "make replays more
   // useful"; the same reasoning that keeps httpBodies empty applies here and applies harder,
   // because a replay captures the draft mid-composition.
-  integrations: [Sentry.replayIntegration()],
+  // `enableLogs: true` alone does not forward console output — the default `consoleIntegration`
+  // only attaches it as a breadcrumb on a future event. `consoleLoggingIntegration` ships console
+  // output as a Sentry log directly, event or not.
+  integrations: [
+    Sentry.replayIntegration(),
+    Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] }),
+  ],
 
   // Errors get a replay every time; healthy sessions are sampled thinly. The 1.0-on-error rate
   // is the point of the feature — the whole reason to record is the session that broke.
