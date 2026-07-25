@@ -228,6 +228,27 @@ export async function attemptVoiceExtraction(
 
       const modelCallId = await insertExtractionModelCall(admin, ownerId, reporterHandle, ext);
 
+      // Meter the extraction call itself (AGENTS.md: every touch point stamps usage_events —
+      // "every model call" included). Drafting and clustering already stamp theirs; extraction
+      // recorded its spend ONLY in model_calls.cost_usd and the claim row's actual_usd, so a
+      // per-owner usage_events total silently omitted the single most expensive call the app
+      // makes. Best-effort: the call is already paid and its model_calls row is durable, so a
+      // ledger-stamp failure must not fail the extraction.
+      try {
+        await admin.from("usage_events").insert({
+          owner_id: ownerId,
+          kind: "voice_extraction",
+          units: 1,
+          cost_usd: ext.costUsd,
+          ref_id: reporterHandle,
+        });
+      } catch (meterError) {
+        console.error(
+          `attemptVoiceExtraction: usage_events stamp failed for @${reporterHandle}`,
+          meterError,
+        );
+      }
+
       await recordProgress(reporterHandle, { stage: "materializing_rules" });
 
       const guideDeploy = deployGuide(ext.guideRaw);

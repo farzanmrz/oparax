@@ -1,8 +1,9 @@
 // lib/voice/extract-guide.ts
 //
-// The L2 voice-extraction call: ONE anthropic/claude-fable-5 generateText over a reporter's
-// corpus, adaptive thinking @ high effort, NO tools, NO schema (the guide is markdown prose).
-// Lab-proven config (.voice-lab/sdk-lab/extract-fable80.mjs — measured $0.855/reporter, 10/10).
+// The L2 voice-extraction call: ONE anthropic/claude-opus-5 call over a reporter's corpus,
+// adaptive thinking @ high effort, NO tools, NO schema (the guide is markdown prose).
+// Config ported from the lab (.voice-lab/sdk-lab/extract-fable80.mjs, measured $0.855/reporter
+// on Fable 5); the model moved to Opus 5 at half the per-token price — see EXTRACTION_MODEL.
 // SERVER-ONLY: imports lib/sysprompts (readFileSync at module scope) — never import from a
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.
 import { generateText, streamText } from "ai";
@@ -10,10 +11,22 @@ import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
 import { measuredFacts } from "./measured-facts";
 
-/** The extraction model. Exported so `model_calls.model` records it without a second literal. */
-export const EXTRACTION_MODEL = "anthropic/claude-fable-5";
+/** The extraction model. Exported so `model_calls.model` records it without a second literal.
+ *
+ *  Opus 5, not Fable 5, as of this change. Fable won the original 8-model on-task panel, but
+ *  Opus 5 postdates that panel entirely — it wasn't a contestant, so this isn't re-auditioning a
+ *  settled decision. It is HALF the price ($5/$25 per MTok vs Fable's $10/$50), which should put
+ *  a reporter's extraction near ~$0.43 against Fable's measured $0.855, well under the $2
+ *  worst-case the spend gate reserves. Same reasoning surface: adaptive thinking, and
+ *  `display: "summarized"` still required because it also defaults to "omitted" here. */
+export const EXTRACTION_MODEL = "anthropic/claude-opus-5";
 
-const EXTRACT_MAX_OUTPUT_TOKENS = 32_000;
+/** A CEILING, not a reservation — raising it costs nothing unless the model actually generates
+ *  more. Raised 32k -> 64k with the Opus 5 switch because `maxOutputTokens` caps thinking AND
+ *  response text TOGETHER: at adaptive/high effort, thinking can consume most of a tight budget
+ *  and truncate the guide mid-section, which would look like a bad extraction rather than a
+ *  clipped one. A guide runs ~6k tokens, so 64k leaves the reasoning ample room. */
+const EXTRACT_MAX_OUTPUT_TOKENS = 64_000;
 // Was 30 min ("far beyond any Vercel function cap") when this call was script-only
 // (scripts/extract-voice-guide.ts). The create-agent v2 continuation wired
 // extractVoiceGuideStreaming into real routes capped at maxDuration = 300 (create-desk's

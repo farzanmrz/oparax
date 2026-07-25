@@ -20,6 +20,14 @@ import { deleteXAccount, getXAccount, updateXTokens } from "@/lib/x/store";
 
 const postDraftIdSchema = z.string().uuid();
 
+/** X posting is pay-per-use, and a post containing a URL costs materially more (see
+ *  `.claude/rules/x.md`). Priced here rather than left null so per-owner spend in
+ *  `usage_events` is real money, not a bare event count — that ledger is what a future
+ *  subscription tier would meter against. Update both numbers here if X changes its rates. */
+function X_POST_COST_USD(text: string): number {
+  return /https?:\/\//i.test(text) ? 0.2 : 0.015;
+}
+
 /** Pulls the HTTP status out of an api.ts error ("X <endpoint> <status>: <body>"),
  *  anchored at the start so a status-like number inside the response body can't spoof
  *  it. Returns null for a timeout/network error, which carries no status. */
@@ -158,6 +166,23 @@ export async function postDraftToXForOwner(
       .eq("id", postDraftId);
   } catch {
     // ignore — the post is live.
+  }
+
+  // Meter the post (AGENTS.md: every touch point stamps usage_events). X posting is
+  // pay-per-use and was the one real-money touch point writing no ledger row at all, so
+  // per-owner spend under-reported by exactly the posting cost. Stamped only after X
+  // confirmed the post, matching every other metering call site in the repo. Best-effort:
+  // the post is already live, so a ledger failure must never surface as a posting failure.
+  try {
+    await admin.from("usage_events").insert({
+      owner_id: ownerId,
+      kind: "x_post",
+      units: 1,
+      cost_usd: X_POST_COST_USD(text),
+      ref_id: postDraftId,
+    });
+  } catch (err) {
+    console.error("postDraftToXForOwner: usage_events stamp failed", err);
   }
 
   revalidatePath(`/agents/${draft.experiment_id}`);

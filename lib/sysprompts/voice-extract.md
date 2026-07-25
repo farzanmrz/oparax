@@ -69,7 +69,9 @@ Check each. Report only what the corpus actually shows. Not every dimension appl
 
 Follow this exactly. Deviations corrupt the guide.
 
-Every example is wrapped in its own XML-style tag. Real posts copied from the corpus use `<post>`. Fabricated posts the writer would never produce use `<never_write>` and appear only in the Anti-Examples section.
+Every example is wrapped in its own XML-style tag: `<post>`, containing a real post copied from the corpus.
+
+**Never fabricate a post.** Every example in this guide is text the writer actually published. Do not invent a post to illustrate a rule, do not write a "they would never write this" counter-example, and do not compose a paraphrase that reads like one of their posts. If a rule cannot be shown with real quoted evidence, state the rule without an example or declare the absence — an invented example is worse than no example.
 
 <post>
 ✅ 73' comes on
@@ -153,17 +155,6 @@ The drafting model's few-shot set. Choose for coverage of MODES in proportion to
 For short modes, give complete verbatim posts. For any mode whose typical post exceeds roughly 400 characters, give the block skeleton above plus TWO short exemplars instead of reproducing full posts — reproducing several long posts hands the drafting model dozens of already-used lines it will paraphrase, and consumes context that rules need.
 
 Aim for 8-12 examples total across all modes.
-
-## Anti-Examples
-Plausible-looking posts about this writer's beat that they would never write. Each must be a MINIMAL PAIR: take a real post, or something indistinguishable from one, and change EXACTLY ONE thing. The rest must stay perfectly on-voice, so the boundary is taught one rule at a time.
-
-A fabricated post that breaks three rules at once teaches nothing — the drafting model cannot tell which element was wrong. If your "violates" line names more than one rule, the example is not a minimal pair; rewrite it.
-
-<never_write>
-<the fabricated post — this is the only place invented text is allowed>
-</never_write>
-
-violates: <exactly one rule from above>
 
 ## Dimension Coverage
 A closing checklist. One line per dimension group from DIMENSIONS TO EXAMINE, each marked either with the section where it is covered, or "Not present in this corpus" with its one-line justification. This section exists so that coverage is mechanically verifiable — a dimension appearing in neither the guide nor this list counts as a miss.

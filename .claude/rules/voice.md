@@ -43,12 +43,23 @@ the flagged expression, not above the enclosing declaration.)
 
 ## The extraction recipe, and why each part is fixed
 
-- **Model: `anthropic/claude-fable-5`, adaptive thinking @ high effort, NO web search.** Won an
-  8-model on-task panel on verbatim-quote fidelity and unique catches; measured **$0.855/reporter**
-  (10/10). Search enabled made a rival model spiral to 19 searches / $2.24 for an *empty* guide —
-  the handle is supplied in-prompt instead. **Rejected as primaries:** opus-4.8, sonnet-5,
+- **Model: `anthropic/claude-opus-5`, adaptive thinking @ high effort, NO web search.** The
+  8-model on-task panel (verbatim-quote fidelity, unique catches) was won by `claude-fable-5` at a
+  measured **$0.855/reporter**; Opus 5 replaced it because it postdates that panel entirely and
+  costs **half** ($5/$25 per MTok vs $10/$50). **Rejected as primaries:** opus-4.8, sonnet-5,
   gpt-5.6-sol/terra, grok-4.5 — all tested, all lost to Fable, sol despite an 81.7 Longform Elo,
-  which is exactly why writing leaderboards don't override on-task results.
+  which is exactly why writing leaderboards don't override on-task results. A model that did not
+  exist at panel time is a new fact, not a re-audition — that is the bar for reopening this.
+- **`maxOutputTokens` caps thinking AND output together.** Raised to 64k on the Opus 5 switch: at
+  adaptive/high, thinking can eat a tight budget and truncate the guide mid-section, which reads
+  as a bad extraction rather than a clipped one. It is a ceiling, not a reservation — unused
+  headroom costs nothing.
+- **The extractor never fabricates a post.** Every example in a guide is text the reporter actually
+  published. The `## Anti-Examples` section (invented "they would never write this" posts) was
+  removed: it was the one place the prompt licensed invention, it shipped into every drafting
+  prompt as bloat, and corrective guidance is better sourced from real reporter feedback than from
+  model invention. `## Hard Rules — Never` stays — those are evidence-grounded observations of what
+  the writer demonstrably avoids, not inventions.
 - **Corpus: 100 posts, split 80 train / 20 held-out** (most recent). The holdout exists so drafting
   evaluation can never score against a post the extractor read — contamination control, not sample
   size.
