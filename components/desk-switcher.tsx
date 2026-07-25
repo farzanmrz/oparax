@@ -19,8 +19,8 @@ export type SwitcherDesk = { id: string; name: string | null; beat: string; stat
 /**
  * Site-header desk switcher: a live-status dot + the current desk's label
  * (or a generic label off a desk page), opening a dropdown that lists every
- * desk plus "+ New desk". Works with zero desks — the dropdown then shows
- * only the "+ New desk" row. Per-desk needs-review counts are intentionally
+ * desk plus "New agent". Works with zero desks — the dropdown then shows
+ * only the "New agent" row. Per-desk needs-review counts are intentionally
  * omitted here (the digest allows this rather than an N+1 query per desk;
  * the Feed tab badge in T3 is the authoritative count).
  */

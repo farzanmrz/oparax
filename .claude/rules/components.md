@@ -13,6 +13,8 @@ Applies to ALL user-facing UI here, overriding the imported design mock:
 2. **No eyebrow/kicker headers** — never a small muted category label stacked *above* a title (e.g. "New desk" over "Create desk"); a header is one line. A meaningful description *below* a title (a `DialogDescription`) is fine; a redundant category label above it is not.
 3. **Uniform form fields** — every field shares one treatment; a "coming soon" field is greyed (opacity) + a badge, never wrapped in a special bordered/dashed box that makes it structurally different from active fields.
 
+4. **"Agent" in user-facing copy, "desk" in code.** Every string a user reads says agent — "New agent", "Your agents", "Agent sections", "Put an AI news agent on your beat" — while identifiers, props, and file names stay `desk`/`Desk` (`DeskSwitcher`, `deskDisplayName`, `createDesk`, the `[id]` desk route's internals). The split is deliberate, not drift: renaming the internals would touch every module for no user-visible gain. **Never introduce "desk" into rendered copy** — and when a docstring describes rendered copy, quote what the button actually says (one in `desk-switcher.tsx` claimed `"+ New desk"` while the button read "New agent").
+
 - `vercel:shadcn` when composing or adding any shadcn primitive (`components/ui/**`, or any `.tsx` under `app/` that uses one).
 - `ai-elements` when touching the chat-surface kit itself (`components/ai-elements/**`) or its consuming surface, `app/agents/new/**`.
 
