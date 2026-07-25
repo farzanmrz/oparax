@@ -11,6 +11,7 @@
 // scope) — never importable from a client component.
 import { generateObject, generateText, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
+import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import type { Json } from "@/lib/supabase/database.types";
 import { DRAFT_COUNCIL_CONTRACT, DRAFT_JUDGE_PROMPT, DRAFT_REVISE_PROMPT } from "@/lib/sysprompts";
 import {
@@ -171,6 +172,7 @@ const FAMILIES: Family[] = [
         providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
         system,
         prompt,
+        experimental_telemetry: aiTelemetry("draft_council", "draft-council-deepseek"),
       }),
   },
   {
@@ -178,14 +180,26 @@ const FAMILIES: Family[] = [
     // Top-level `reasoning: "low"`, NO `providerOptions.openai` key — any reasoning key there
     // silently suppresses the top-level param in full (probe-verified, see header comment).
     generate: (system, prompt) =>
-      generateText({ model: GPT5_NANO_MODEL, reasoning: "low", system, prompt }),
+      generateText({
+        model: GPT5_NANO_MODEL,
+        reasoning: "low",
+        system,
+        prompt,
+        experimental_telemetry: aiTelemetry("draft_council", "draft-council-gpt5-nano"),
+      }),
   },
   {
     model: GLM_DRAFT_MODEL,
     // Top-level `reasoning: "low"` per .claude/rules/agent.md's locked council spec (probe-verified above:
     // GLM exposes reasoning by default regardless, but the param still measurably changes it).
     generate: (system, prompt) =>
-      generateText({ model: GLM_DRAFT_MODEL, reasoning: "low", system, prompt }),
+      generateText({
+        model: GLM_DRAFT_MODEL,
+        reasoning: "low",
+        system,
+        prompt,
+        experimental_telemetry: aiTelemetry("draft_council", "draft-council-glm"),
+      }),
   },
 ];
 
@@ -333,6 +347,7 @@ export async function runDraftCouncil(input: {
         schema: judgeVerdictSchema,
         system: DRAFT_JUDGE_PROMPT,
         prompt: buildJudgePrompt(voiceGuidance, brief, members),
+        experimental_telemetry: aiTelemetry("draft_judge", "draft-judge-deepseek"),
       });
 
       const verdict: Json = {
@@ -441,6 +456,7 @@ export async function reviseDraft(input: {
       providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
       system,
       prompt: p,
+      experimental_telemetry: aiTelemetry("draft_council", "draft-revision-deepseek"),
     });
 
   const calls: CouncilCall[] = [];

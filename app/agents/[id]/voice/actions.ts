@@ -16,8 +16,10 @@
 // the RLS client before ever calling into the service-role write.
 "use server";
 
+import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { PROGRESS_POLL_KIND, TRANSACTION_KIND_TAG } from "@/lib/observability/sentry-shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -138,6 +140,13 @@ export async function getExtractionProgress(deskId: string): Promise<
     }
   | { ok: false; error: string }
 > {
+  // Marks THIS transaction as the progress poll so `dropProgressPollTransactions` can discard it
+  // on the way out. It has to be a tag set from inside the request rather than a sampling rule:
+  // this action and the extraction it reports on are both server actions on the same routes, so
+  // no rate or transaction-name rule can keep one and drop the other. Tracing runs at 100%
+  // precisely so extractions are never sampled away; this is what keeps that affordable.
+  Sentry.setTag(TRANSACTION_KIND_TAG, PROGRESS_POLL_KIND);
+
   const owned = await ownedDesk(deskId);
   if ("error" in owned) return { ok: false, error: owned.error };
 

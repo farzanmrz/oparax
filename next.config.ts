@@ -61,9 +61,16 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-  org: "oparax-ai-inc",
+  // Both slugs were WRONG as the wizard left them ("oparax-ai-inc" / "javascript-nextjs"), and
+  // nothing failed loudly: source-map upload is best-effort, so every build was green while
+  // uploading to an org that does not resolve. Verified against the live account — the org slug
+  // is `oparax` (https://oparax.sentry.io) and the one project is `oparax`, which its issue
+  // short-IDs (OPARAX-1…) independently confirm, since Sentry derives that prefix from the
+  // project slug. A DSN does not encode either slug — it carries numeric ids — so a correct DSN
+  // next to a wrong org here looks completely healthy from the app's side.
+  org: "oparax",
 
-  project: "javascript-nextjs",
+  project: "oparax",
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,

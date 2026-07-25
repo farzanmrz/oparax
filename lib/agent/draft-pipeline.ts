@@ -14,6 +14,7 @@
 // Ledger-first ordering throughout, copied from scripts/extract-voice-guide.ts: `model_calls`
 // rows are written BEFORE the artifact rows (`post_drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
+import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
 import { PLATFORMS, type Platform } from "@/lib/agent/desk-config";
 import {
@@ -26,6 +27,7 @@ import {
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
+import { draftingConversationId } from "@/lib/observability/ai-conversation";
 import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -264,6 +266,11 @@ async function draftForExperiment(
   brief: SourceBrief,
   deliverySource: IngestDelivery["source"],
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
+  // WHICH reporter's desk was drafting is most of an error report's diagnostic value, and this
+  // path runs from /api/ingest's Bearer-authed delivery — no user session exists to attribute it
+  // automatically. The owner id only; the desk's content stays out of Sentry (ai-telemetry.ts
+  // keeps drafting content unrecorded).
+  Sentry.setUser({ id: experiment.owner_id });
   // A desk with no voice guide is a valid working state — its sources are tracked and
   // ingestion runs; only drafting waits. Checked
   // BEFORE the atomic claim below: a no-guide desk must not burn a draft_claims row it will
@@ -342,6 +349,12 @@ async function draftForExperiment(
         });
       }
     }
+
+    // One story's council + judge is THE genuinely multi-model conversation in this product —
+    // grouping by story id is what lets Explore > Conversations show five drafters and the judge's
+    // pick as a single readable thread. Set after clustering because the story id does not exist
+    // before it; every AI span below inherits it from the isolation scope.
+    Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
     // Part C: one self-contained unit per platform (council -> ledger-first insert ->
     // post_drafts insert), run in parallel — a DB failure persisting platform B's calls can

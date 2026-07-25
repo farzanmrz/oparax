@@ -18,6 +18,9 @@
 // spend claim, and a 5-lookups-per-handle-per-day pre-flight cap) was deleted outright: it
 // optimized a case that does not occur, and it cost four pipeline gates, a table, and a failure
 // mode that could not be diagnosed after the fact.
+import * as Sentry from "@sentry/nextjs";
+import { extractionConversationId } from "@/lib/observability/ai-conversation";
+import { withAiSpan } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { X_HANDLE_RE } from "@/lib/x/handle";
@@ -191,6 +194,33 @@ export async function runExtractionSpendPhase(
   reporterHandle: string,
   ownerId: string,
 ): Promise<ExtractionOutcome> {
+  // WHICH reporter hit a failure is most of the diagnostic value in an error report, and this
+  // path typically runs inside `after()` — detached from the request that authenticated it — so
+  // nothing else would attribute it. The owner id only; no email, no handle-as-identity.
+  Sentry.setUser({ id: ownerId });
+
+  return withAiSpan(
+    {
+      name: "invoke_agent voice-extraction",
+      conversationId: extractionConversationId(experimentId),
+      attributes: {
+        "gen_ai.agent.name": "voice-extraction",
+        "oparax.experiment_id": experimentId,
+        "oparax.handle": reporterHandle,
+      },
+    },
+    () => runExtractionSpendPhaseInner(experimentId, reporterHandle, ownerId),
+  );
+}
+
+/** The body of the phase above, split out only so the Sentry span can wrap it without indenting
+ *  every line of it. Never call this directly — the span carries the attributes and conversation
+ *  id that make an extraction findable after the fact. */
+async function runExtractionSpendPhaseInner(
+  experimentId: string,
+  reporterHandle: string,
+  ownerId: string,
+): Promise<ExtractionOutcome> {
   try {
     const admin = createAdminClient();
 
@@ -210,6 +240,10 @@ export async function runExtractionSpendPhase(
         `runExtractionSpendPhase: fetchCorpus failed for @${reporterHandle}`,
         corpusError,
       );
+      Sentry.captureException(corpusError, {
+        tags: { stage: "voice_extraction", error_code: "corpus_failed" },
+        contexts: { extraction: { experimentId, handle: reporterHandle } },
+      });
       await finishRun(experimentId, { status: "failed", errorCode: "corpus_failed" });
       return { status: "corpus_failed" };
     }
@@ -217,6 +251,10 @@ export async function runExtractionSpendPhase(
       stage: "corpus_ready",
       progressNote: `Read ${corpus.length} posts`,
     });
+    // Stamped onto the stage span now rather than passed in, because it isn't known until the pull
+    // returns. Corpus size is the leading suspect in the empty-guide failure, so being able to
+    // filter Sentry by it — rather than re-deriving it from a log line — is the point.
+    Sentry.getActiveSpan()?.setAttribute("oparax.corpus_posts", corpus.length);
 
     let ext: VoiceExtraction | undefined;
     try {
@@ -227,6 +265,34 @@ export async function runExtractionSpendPhase(
       );
 
       const modelCallId = await insertExtractionModelCall(admin, ownerId, experimentId, ext);
+
+      // An extraction can finish cleanly and produce NOTHING. Observed live once, 2026-07-25: a
+      // run returned `finishReason: "stop"`, 9,443 thinking tokens, 7,365 characters of reasoning,
+      // $0.31 billed — and an empty guide. Token arithmetic confirms the output really was all
+      // reasoning and zero text (9,443 × $25/MTok out + 15,387 × $5/MTok in ≈ the $0.31 billed).
+      // WHY the model stopped without answering is still unestablished — a fully instrumented
+      // rerun (scripts/diagnose-extraction.ts, which records every stream part verbatim) did NOT
+      // reproduce it: 200s, 293 text-deltas, a 23,261-char guide, $0.436. One clean run against
+      // one dirty run characterizes nothing; do not write "nondeterminism" or any other cause here
+      // until a failing run has been CAUGHT by that instrumentation. What is established: the
+      // failure exists, it bills real money, and Sentry now records every extraction's stream
+      // (gen_ai spans carry the output; the run's finishReason and token split land in the ledger
+      // row), so the next occurrence will be diagnosable instead of argued about.
+      //
+      // Without this check that empty string flowed straight into `deployGuide`, was upserted as
+      // a `voice_guides` row, and the run was stamped COMPLETED — leaving a desk that looks
+      // extracted, drafts from an empty voice guide, and offers no retry because a guide exists.
+      // A silent empty success is strictly worse than a loud failure.
+      //
+      // Placed AFTER the ledger insert on purpose: the call billed, so its `model_calls` row is
+      // owed regardless of whether the output was usable (AGENTS.md's model-call rule). Throwing
+      // here lands in the catch below, which stamps the run failed and carries `ext.costUsd`.
+      if (!ext.guideRaw.trim()) {
+        throw new Error(
+          `extraction produced an empty guide (finishReason ${ext.finishReason ?? "unknown"}, ` +
+            `${ext.thinkingTokens ?? 0} thinking tokens, model_call ${modelCallId})`,
+        );
+      }
 
       // Meter the extraction call itself (AGENTS.md: every touch point stamps usage_events —
       // "every model call" included). Best-effort: the call is already paid and its model_calls
@@ -276,6 +342,29 @@ export async function runExtractionSpendPhase(
       }
 
       await finishRun(experimentId, { status: "completed", costUsd: ext.costUsd });
+
+      // Metrics + a structured completion log. The metrics answer trend questions no single span
+      // can ("is extraction cost drifting up?", "are guides shrinking?") without scanning traces;
+      // the log line is the queryable per-run record (Explore > Logs, filterable by attribute)
+      // that survives even if span retention ages the trace out. Cost is the one figure Sentry
+      // cannot derive itself — gateway models aren't in its price table, so the dashboard's own
+      // cost column reads $0 for these calls and this metric is the real number.
+      Sentry.metrics.distribution("extraction.cost_usd", ext.costUsd ?? 0, {
+        unit: "none",
+        attributes: { handle: reporterHandle },
+      });
+      Sentry.metrics.distribution("extraction.guide_chars", ext.guideRaw.length, {
+        attributes: { handle: reporterHandle },
+      });
+      Sentry.logger.info("voice extraction completed", {
+        experimentId,
+        handle: reporterHandle,
+        guideChars: ext.guideRaw.length,
+        thinkingTokens: ext.thinkingTokens ?? 0,
+        finishReason: ext.finishReason ?? "unknown",
+        costUsd: ext.costUsd ?? 0,
+      });
+
       return { status: "completed" };
     } catch (e) {
       // ext is defined only once extractVoiceGuideStreaming itself has resolved and billed —
@@ -283,6 +372,25 @@ export async function runExtractionSpendPhase(
       // voice_guides upsert) is what actually failed. If the stream never completed, nothing
       // billed on this call and costUsd stays null.
       console.error(`runExtractionSpendPhase: extraction stage failed for @${reporterHandle}`, e);
+      // Raised as a real Sentry ISSUE, not left to the console-log forwarder. This phase never
+      // throws to its caller by design — it catches everything and returns a value — so without an
+      // explicit capture the single most expensive failure in the product (a billed extraction
+      // that produced nothing) would appear only as a log line with no stack trace and no grouping.
+      // `costUsd` rides along because "how much has this failure cost so far" is the first question
+      // it raises, and it is not answerable from the exception alone.
+      Sentry.captureException(e, {
+        tags: { stage: "voice_extraction", error_code: "extraction_failed" },
+        contexts: {
+          extraction: {
+            experimentId,
+            handle: reporterHandle,
+            costUsd: ext?.costUsd ?? null,
+            finishReason: ext?.finishReason ?? null,
+            guideChars: ext?.guideRaw.length ?? null,
+            thinkingTokens: ext?.thinkingTokens ?? null,
+          },
+        },
+      });
       await finishRun(experimentId, {
         status: "failed",
         costUsd: ext?.costUsd ?? null,
@@ -292,6 +400,10 @@ export async function runExtractionSpendPhase(
     }
   } catch (e) {
     console.error(`runExtractionSpendPhase: failed for @${reporterHandle}`, e);
+    Sentry.captureException(e, {
+      tags: { stage: "voice_extraction", error_code: "internal_error" },
+      contexts: { extraction: { experimentId, handle: reporterHandle } },
+    });
     await finishRun(experimentId, { status: "failed", errorCode: "internal_error" });
     return { status: "failed" };
   }

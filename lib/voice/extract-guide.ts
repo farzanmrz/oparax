@@ -8,6 +8,7 @@
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.
 import { generateText, streamText } from "ai";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
+import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
 import { measuredFacts } from "./measured-facts";
 
@@ -22,23 +23,43 @@ import { measuredFacts } from "./measured-facts";
  *  `display: "summarized"` still required because it also defaults to "omitted" here. */
 export const EXTRACTION_MODEL = "anthropic/claude-opus-5";
 
-/** A CEILING, not a reservation — raising it costs nothing unless the model actually generates
- *  more. Raised 32k -> 64k with the Opus 5 switch because `maxOutputTokens` caps thinking AND
- *  response text TOGETHER: at adaptive/high effort, thinking can consume most of a tight budget
- *  and truncate the guide mid-section, which would look like a bad extraction rather than a
- *  clipped one. A guide runs ~6k tokens, so 64k leaves the reasoning ample room. */
-const EXTRACT_MAX_OUTPUT_TOKENS = 64_000;
+/** UNDER INVESTIGATION — do not treat the current value as settled.
+ *
+ *  `maxOutputTokens` caps thinking AND response text TOGETHER, so this was carried at 32k, then
+ *  64k on the Opus 5 switch, on the theory that adaptive/high thinking could eat a tight budget
+ *  and truncate the guide. `undefined` sends no ceiling at all, which is the right default under
+ *  adaptive thinking: the model sizes its own budget, so a number here can only ever be too small,
+ *  never too generous. Whether omitting it makes the gateway substitute a provider default (the
+ *  Anthropic API requires `max_tokens`) is being measured, not assumed — see
+ *  `scripts/diagnose-extraction.ts`, which reads `finishReason` and `outputTokens` back rather
+ *  than trusting the request shape. */
+const EXTRACT_MAX_OUTPUT_TOKENS: number | undefined = undefined;
 // Was 30 min ("far beyond any Vercel function cap") when this call was script-only
 // (scripts/extract-voice-guide.ts). The create-agent v2 continuation wired
 // extractVoiceGuideStreaming into real routes capped at maxDuration = 300 (create-desk's
 // after() call, the Voice tab's manual retry) sharing that budget with the corpus-fetch poll
-// (lib/x/timeline.ts's request timeout) and the DB writes around both — a 30-minute abort
-// here never fires before the platform kills the whole invocation with no cleanup. 150s is a
-// first-pass budget split, not measured against real generation latency yet — retune both once
-// real extraction runs show actual durations. A timeout here still throws out of
-// runExtractionSpendPhase's try/catch, which catches it and stamps the run row failed via
-// finishRun — there is no claim to release, since extraction carries no spend reservation.
-const EXTRACT_TIMEOUT_MS = 150_000;
+// (lib/x/timeline.ts's request timeout, ~0.6s) and the DB writes around both — a 30-minute abort
+// here never fires before the platform kills the whole invocation with no cleanup.
+//
+// 280s is MEASURED, and the measurement moved twice — record the numbers, not a rule of thumb.
+// A fully instrumented run on a 100-post corpus (scripts/diagnose-extraction.ts, uncapped output)
+// took **200.4s wall-clock**: first REASONING delta at 5.8s, first TEXT delta at 60.5s, 4,016
+// thinking tokens, 14,372 output tokens, 23,261 characters of guide, $0.436. An earlier estimate
+// of 134s was wrong, and the 150s ceiling before that aborted a genuinely-still-streaming run at
+// 151s — which is a full 50s before this run had produced its first character of guide.
+//
+// So the headroom that mattered was never over the mean, it was over the point where text STARTS.
+// 240s would have been only 1.2x a real run, which is not headroom on a model whose latency varies
+// per corpus. 280s is 1.4x, and sits inside the route's maxDuration = 300 with 20s left for the
+// corpus read (~0.6s) and the ledger writes — deliberately tight against the platform ceiling,
+// because being killed by Vercel mid-invocation leaves no cleanup at all, whereas this abort is
+// caught. If a run ever needs longer than this, the fix is not a bigger number here: it is
+// splitting the work out of a request-scoped function.
+//
+// A timeout here still throws out of runExtractionSpendPhase's try/catch, which catches it and
+// stamps the run row failed via finishRun — there is no claim to release, since extraction
+// carries no spend reservation.
+const EXTRACT_TIMEOUT_MS = 280_000;
 
 /** One corpus post, carrying the metadata the extraction prompt grades against. */
 export type CorpusPost = {
@@ -74,6 +95,10 @@ export type VoiceExtraction = {
   costUsd: number | null;
   usage: unknown;
   generationId: string | null;
+  /** Why the model stopped. Carried because an EMPTY guide is meaningless without it: `"length"`
+   *  means a ceiling clipped the answer, `"stop"` means the model chose to end having written
+   *  nothing, and those two failures need opposite fixes. */
+  finishReason: string | null;
 };
 
 /** Shared by both call shapes below (plain and streaming) so the prompt they send the model can
@@ -136,6 +161,7 @@ export async function extractVoiceGuide(
     },
     // NO `tools` key — enforced by review, invisible to the type system.
     abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
+    experimental_telemetry: aiTelemetry("voice_extraction", "voice-extraction-oneshot"),
   });
 
   const anthropic = result.providerMetadata?.anthropic as
@@ -153,6 +179,7 @@ export async function extractVoiceGuide(
     costUsd,
     usage: result.usage,
     generationId,
+    finishReason: result.finishReason ?? null,
   };
 }
 
@@ -161,18 +188,40 @@ export async function extractVoiceGuide(
  *  persists these, this function just reports every delta it sees. */
 export type ExtractionStreamSnapshot = { text: string; reasoning: string };
 
+/** Every part `fullStream` yields, handed over untouched and unfiltered.
+ *
+ *  Separate from `onProgress` on purpose. `onProgress` fires only on text/reasoning deltas and
+ *  reports an ACCUMULATION, which is precisely why a live empty-guide run could not be explained:
+ *  a callback that fires on either kind of delta cannot answer "did any TEXT arrive at all?", and
+ *  an accumulator cannot answer "in what order, and what else came through?". This one is the
+ *  unabridged record — `start`, `start-step`, `reasoning-start`/`-delta`/`-end`,
+ *  `text-start`/`-delta`/`-end`, `finish-step`, `finish`, `error`, `abort`, anything the SDK adds
+ *  later — so the stream can be read back part by part instead of inferred from a total. */
+export type ExtractionRawPartObserver = (
+  part: Record<string, unknown> & { type: string },
+) => void | Promise<void>;
+
+export type ExtractionStreamOptions = {
+  onProgress?: (snapshot: ExtractionStreamSnapshot) => void | Promise<void>;
+  onRawPart?: ExtractionRawPartObserver;
+};
+
 /**
  * Same extraction call as `extractVoiceGuide` above — byte-identical model/config — but as a
  * `streamText` call instead of `generateText`, so the create-desk path can persist live
- * progress while a single extraction call (adaptive/high thinking, 64k output ceiling) runs.
+ * progress while a single extraction call (adaptive/high thinking, no output ceiling) runs.
  * `onProgress` fires on every text/reasoning delta with the accumulated-so-far snapshot;
  * consuming the stream this way is also what resolves `result.text`/`result.usage`/etc. below,
  * so no separate `consumeStream()` call is needed.
+ *
+ * `onRawPart` is the unfiltered witness — see `ExtractionRawPartObserver`. Production passes it
+ * nothing; `scripts/diagnose-extraction.ts` passes a recorder.
  */
 export async function extractVoiceGuideStreaming(
   handle: string,
   posts: CorpusPost[],
   onProgress?: (snapshot: ExtractionStreamSnapshot) => void | Promise<void>,
+  onRawPart?: ExtractionRawPartObserver,
 ): Promise<VoiceExtraction> {
   const { facts, prompt } = buildExtractionPrompt(handle, posts);
 
@@ -187,22 +236,29 @@ export async function extractVoiceGuideStreaming(
     },
     // NO `tools` key — enforced by review, invisible to the type system.
     abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
+    // Identifying attributes (handle, corpus size) ride on the WRAPPING span, not here — see
+    // aiTelemetry's note on v7 dropping telemetry metadata.
+    experimental_telemetry: aiTelemetry("voice_extraction", "voice-extraction-stream"),
   });
 
   let textSoFar = "";
   let reasoningSoFar = "";
   for await (const part of result.fullStream) {
+    // The raw observer sees EVERY part, before any filtering — it is the only witness to the
+    // parts the accumulation below discards, which is where an unexplained empty guide hides.
+    if (onRawPart) await onRawPart(part as unknown as Record<string, unknown> & { type: string });
     if (part.type === "text-delta") textSoFar += part.text;
     else if (part.type === "reasoning-delta") reasoningSoFar += part.text;
     else continue;
     if (onProgress) await onProgress({ text: textSoFar, reasoning: reasoningSoFar });
   }
 
-  const [text, reasoningText, usage, providerMetadata] = await Promise.all([
+  const [text, reasoningText, usage, providerMetadata, finishReason] = await Promise.all([
     result.text,
     result.reasoningText,
     result.usage,
     result.providerMetadata,
+    result.finishReason,
   ]);
 
   const anthropic = providerMetadata?.anthropic as
@@ -220,5 +276,6 @@ export async function extractVoiceGuideStreaming(
     costUsd,
     usage,
     generationId,
+    finishReason: finishReason ?? null,
   };
 }

@@ -17,6 +17,7 @@ import {
 // TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
+import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
 
@@ -262,6 +263,7 @@ export async function assignToStory(input: {
       schema: clusterVerdictSchema,
       system: STORY_CLUSTER_PROMPT,
       prompt: buildClusterPrompt(candidates, authorHandle, text),
+      experimental_telemetry: aiTelemetry("story_cluster", "story-cluster-deepseek"),
     });
 
     const call = await buildClusterCall({

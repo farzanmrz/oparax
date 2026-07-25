@@ -5,6 +5,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import {
+  dropProgressPollTransactions,
   SENTRY_DATA_COLLECTION,
   SENTRY_DSN,
   TRACES_SAMPLE_RATE,
@@ -19,4 +20,9 @@ Sentry.init({
   // never creates. `consoleLoggingIntegration` ships console output as a Sentry log directly.
   enableLogs: true,
   integrations: [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })],
+
+  // Same poll filter as the other two runtimes. No AI integration here on purpose: every AI call
+  // in this repo is server-only (lib/voice, lib/agent both read lib/sysprompts via readFileSync at
+  // module scope, which cannot run on edge), so registering it here would instrument nothing.
+  beforeSendTransaction: dropProgressPollTransactions,
 });
