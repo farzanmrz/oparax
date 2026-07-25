@@ -24,8 +24,8 @@ function loadCorpus(handle: string, suffix: "" | "-train"): CorpusPost[] {
   } catch {
     throw new Error(
       `Corpus file not found: ${path}. This script only supports reporters with a lab corpus ` +
-        `under .voice-lab/corpora/ — a future reporter without one is when the Bright Data ` +
-        `scrape path gets built.`,
+        `under .voice-lab/corpora/. The live app pulls its corpus from the X API instead ` +
+        `(lib/x/timeline.ts); this script is the manual/lab path only.`,
     );
   }
   const posts = JSON.parse(raw) as CorpusPost[];
@@ -36,7 +36,7 @@ function loadCorpus(handle: string, suffix: "" | "-train"): CorpusPost[] {
 }
 
 /**
- * Attach each post's reacted-to context from the Bright Data raw file, keyed by post id.
+ * Attach each post's reacted-to context from the lab raw file, keyed by post id.
  * The extraction prompt describes every mode's "transformation" from this; without it that
  * dimension is unanswerable. Absent raw file → posts simply carry no reactingTo.
  */

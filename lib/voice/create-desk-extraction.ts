@@ -45,7 +45,7 @@ export type ExtractionOutcome =
  *  discrete steps: a reporter whose extraction stops needs to see WHICH check stopped it, and a
  *  single spinner could not express that.
  *
- *  Only `handle_shape` remains. `profile_lookup` (a ~1c Bright Data call) was deleted after a
+ *  Only `handle_shape` remains. `profile_lookup` (a ~1c scraper call) was deleted after a
  *  live probe proved it could never pass: that dataset answers the sync endpoint with
  *  `202 + snapshot_id` for a LIVE profile, which the gate read as a rejection — so it failed
  *  @FabrizioRomano exactly as it failed a dead handle, blocking every extraction in the product
@@ -128,7 +128,7 @@ function throttledStreamProgress(
  * immediately instead of holding it behind the slow profile call.
  *
  * Runs `X_HANDLE_RE`, the shared rail from lib/x/handle.ts, here (not just at the createDesk
- * boundary) since a malformed handle now flows straight into a billable Bright Data pull;
+ * boundary) since a malformed handle now flows straight into a live X timeline read;
  * validating keeps it out of that call rather than trusting every future caller to have already
  * checked it. This is an INJECTION guard, not a spelling check: a stored handle is
  * string-interpolated into the ingestion worker's globally-shared X stream rule, so an
@@ -194,9 +194,9 @@ export async function runExtractionSpendPhase(
   try {
     const admin = createAdminClient();
 
-    // Stamped BEFORE the pull, not after it. The Bright Data timeline pull is an async
-    // trigger/poll/download cycle that can run for minutes; recording the stage only on
-    // completion left the polled row blank for the single longest step in the pipeline.
+    // Stamped BEFORE the pull, not after it. Recording the stage only on completion left the
+    // polled row blank for the whole of the read, which is the step a watching reporter is
+    // most likely to be staring at.
     await recordProgress(experimentId, {
       stage: "corpus_fetch",
       progressNote: "Pulling recent posts from X…",

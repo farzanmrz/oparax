@@ -32,7 +32,7 @@ const EXTRACT_MAX_OUTPUT_TOKENS = 64_000;
 // (scripts/extract-voice-guide.ts). The create-agent v2 continuation wired
 // extractVoiceGuideStreaming into real routes capped at maxDuration = 300 (create-desk's
 // after() call, the Voice tab's manual retry) sharing that budget with the corpus-fetch poll
-// (lib/web/brightdata.ts's POLL_TIMEOUT_MS) and the DB writes around both — a 30-minute abort
+// (lib/x/timeline.ts's request timeout) and the DB writes around both — a 30-minute abort
 // here never fires before the platform kills the whole invocation with no cleanup. 150s is a
 // first-pass budget split, not measured against real generation latency yet — retune both once
 // real extraction runs show actual durations. A timeout here still throws out of

@@ -4,10 +4,11 @@
 //
 // This exists because the QC battery could not catch a whole class of failure. `pnpm build`
 // compiles /api/ingest and never invokes it; tsc, Biome, a boot smoke and a browser sweep all
-// pass against an integration that is 100% broken at the network layer. That is not theoretical:
-// the extraction pre-flight shipped calling a Bright Data endpoint that answers a LIVE profile
-// with `202 + snapshot_id`, so it rejected every real account — compiling, linting, booting and
-// rendering perfectly the whole time. Nothing short of making the call finds that.
+// pass against an integration that is 100% dead at the network layer. Three real examples, all
+// found on the first run of this script and none catchable by any other gate: the voice corpus
+// source had been returning zero records for every X profile; the pre-flight gate it fed was
+// rejecting live accounts; and every BYOK model call was recording $0. All three compiled,
+// linted, booted and rendered perfectly. Nothing short of making the call finds them.
 //
 // It imports the REAL lib/* functions rather than re-implementing the requests. A probe that
 // rebuilds the fetch by hand proves the vendor is up; it does not prove OUR code reaches it, and
@@ -16,18 +17,19 @@
 // Usage:
 //   pnpm dlx tsx --env-file=.env.local scripts/verify-externals.ts [--paid] [--only=name,name]
 //
-// FREE checks run by default. `--paid` adds the ones that cost money (the Bright Data corpus
-// pull, the model calls) — they are the ones that matter most, so run them before any demo.
+// FREE checks run by default — including the corpus read, which is free within X's monthly post
+// cap and is the single most important thing here. `--paid` adds the model calls (cents).
 // NOTHING here posts to X, sends an email, or writes a draft. Read-only or self-addressed.
 
-import { gateway, generateText } from "ai";
+import { generateText } from "ai";
 import { DEEPSEEK_DRAFT_MODEL } from "@/lib/agent/deepseek-draft-config";
+import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { EXTRACTION_MODEL } from "@/lib/voice/extract-guide";
-import { pullXTimeline } from "@/lib/web/brightdata";
 import { fetchMe, refreshTokens } from "@/lib/x/api";
 import { getXAccount, updateXTokens } from "@/lib/x/store";
+import { fetchUserTimeline } from "@/lib/x/timeline";
 
 type Status = "PASS" | "FAIL" | "SKIP";
 type Check = { name: string; paid: boolean; run: () => Promise<string> };
@@ -88,20 +90,23 @@ function buildChecks(owner: { ownerId: string; handle: string | null }): Check[]
       name: "ai-gateway:auth+cost",
       paid: true,
       run: async () => {
-        // Cheapest real call on the drafting model, then the cost resolver that every
-        // model_calls row depends on. A gateway that authenticates but returns no cost breaks
-        // metering silently, so both halves are asserted.
+        // Cheapest real call on the drafting model, priced through the app's OWN resolver.
+        // maxOutputTokens is generous on purpose: v4-flash reasons natively, and a 16-token
+        // budget is consumed entirely by reasoning, returning empty text that reads as a
+        // failure when the model is fine.
         const r = await generateText({
           model: DEEPSEEK_DRAFT_MODEL,
           prompt: "Reply with the single word: ok",
-          maxOutputTokens: 16,
+          maxOutputTokens: 512,
         });
-        const genId = (r.providerMetadata?.gateway as { generationId?: string } | undefined)
-          ?.generationId;
-        if (!genId)
-          return `model replied (${r.text.trim().slice(0, 20)}) but gateway returned NO generationId — cost cannot be resolved`;
-        const info = await gateway.getGenerationInfo({ id: genId });
-        return `model replied, generationId=${genId.slice(0, 12)}…, totalCost=${info?.totalCost ?? "null"}`;
+        if (!r.text.trim()) throw new Error("model returned empty text");
+        const { costUsd, generationId } = await resolveGatewayCost(r);
+        if (!generationId)
+          throw new Error("gateway returned NO generationId — cost is unrecoverable");
+        // A null cost here is EXPECTED, not a failure: the usage event is not queryable for
+        // ~19s, so BYOK calls price later via reconcileMissingCosts(). What must hold is that a
+        // generationId came back, because that is the handle the repair pass needs.
+        return `replied "${r.text.trim().slice(0, 12)}", gen=${generationId.slice(0, 14)}, cost=${costUsd ?? "null (reconciles later — BYOK)"}`;
       },
     },
     {
@@ -119,16 +124,17 @@ function buildChecks(owner: { ownerId: string; handle: string | null }): Check[]
       },
     },
     {
-      name: "brightdata:pullXTimeline",
-      paid: true,
+      name: "x:corpus-read",
+      paid: false,
       run: async () => {
-        // THE demo blocker. This is the call extraction depends on, run through the app's own
-        // function including its trigger/poll/download cycle and its usage_events stamp.
+        // THE extraction dependency. Free within the project's monthly post cap, so it runs on
+        // every pass rather than hiding behind --paid: this is the exact call that silently
+        // returned nothing for months under the vendor it replaced.
         if (!owner.handle) throw new Error("no reporter_handle on the newest desk");
-        const posts = await pullXTimeline(owner.handle, owner.ownerId);
+        const posts = await fetchUserTimeline(owner.handle, owner.ownerId);
         if (posts.length === 0) throw new Error(`returned ZERO posts for @${owner.handle}`);
         const newest = posts.reduce((a, b) => (a.postedAt > b.postedAt ? a : b));
-        return `${posts.length} posts for @${owner.handle}; newest ${newest.postedAt}; sample "${newest.text.slice(0, 60).replace(/\s+/g, " ")}…"`;
+        return `${posts.length} posts for @${owner.handle}; newest ${newest.postedAt}; ${posts.filter((p) => p.likeCount > 0).length} with engagement`;
       },
     },
     {

@@ -23,7 +23,6 @@ import {
   unlinkSlack as unlinkSlackAccount,
 } from "@/lib/slack/actions";
 import { createClient } from "@/lib/supabase/server";
-import { scrapeUrl } from "@/lib/web/brightdata";
 import { MAX_WEBSITES, parseWebsites } from "@/lib/websites";
 import type { ActionResult } from "../actions";
 
@@ -117,35 +116,6 @@ export async function removeWebsite(deskId: string, url: string): Promise<Action
   if (updateError) return { ok: false, error: "Could not remove that website. Please try again." };
   revalidatePath("/agents", "layout");
   return { ok: true };
-}
-
-/**
- * Save-time sanity check, not a persisted artifact: wraps `scrapeUrl` (lib/web/brightdata.ts)
- * and returns a short preview or a clean error. The worker (Railway, Wave 4) is what actually
- * polls `experiments.websites` on an interval — this only proves one URL is scrapeable right
- * now. `ownerId` is resolved from the signed-in caller here, never trusted from the client,
- * matching every other action in this file.
- */
-export async function testFetchWebsite(
-  url: string,
-): Promise<{ ok: true; preview: string } | { ok: false; error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Please sign in again." };
-
-  const normalized = normalizeWebsiteUrl(url);
-  if (!normalized) return { ok: false, error: "That doesn't look like a valid website." };
-
-  try {
-    const { text } = await scrapeUrl(normalized, user.id);
-    const trimmed = text.trim();
-    const preview = trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed;
-    return { ok: true, preview: preview || "(empty page)" };
-  } catch {
-    return { ok: false, error: "Could not fetch that website. Check the URL and try again." };
-  }
 }
 
 /**
