@@ -227,7 +227,11 @@ export function CreateDeskForm({
   const reporterDisplay = xLinkState.linked && xLinkState.handle ? `@${xLinkState.handle}` : "your";
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    // Capped + centred: without a max-width the form is full-bleed, so on a wide screen the
+    // name and beat fields stretch the entire viewport and read as broken rather than roomy.
+    // Applied to the OUTER wrapper so the header rule, the fields, and the submit button share
+    // one measure — capping only the form would leave the title floating left of its own fields.
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
       <header className="flex shrink-0 items-center gap-3 border-border border-b py-5">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
           <OparaxMark className="size-5" />
@@ -310,8 +314,16 @@ export function CreateDeskForm({
                   />
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel help="News sites this agent watches, alongside X accounts. Paste several at once — comma- or space-separated.">
+                {/* Greyed to match the Setup card's Sources treatment (opacity + "Coming soon"
+                    + disabled). Website sources are dormant by design — nothing scrapes them —
+                    so an ACTIVE field here promised an ingestion path that does not exist:
+                    typed sites saved fine and were then silently never read. Un-grey this in
+                    the same commit that un-greys sources-card.tsx, never on its own. */}
+                <div className="flex flex-col gap-1.5 opacity-50">
+                  <FieldLabel
+                    badge={<Badge variant="secondary">Coming soon</Badge>}
+                    help="News sites this agent watches, alongside X accounts. Not yet available — X accounts are the live source today."
+                  >
                     Websites ({websites.length}/{MAX_WEBSITES})
                   </FieldLabel>
                   {websites.length > 0 ? (
@@ -332,15 +344,11 @@ export function CreateDeskForm({
                     </div>
                   ) : null}
                   <Input
-                    disabled={websites.length >= MAX_WEBSITES}
+                    disabled
                     onBlur={commitWebsiteDraft}
                     onChange={(e) => setWebsiteDraft(e.target.value)}
                     onKeyDown={onWebsiteKeyDown}
-                    placeholder={
-                      websites.length >= MAX_WEBSITES
-                        ? `Up to ${MAX_WEBSITES} sites`
-                        : "example.com — press Enter to add"
-                    }
+                    placeholder="example.com"
                     value={websiteDraft}
                   />
                 </div>
