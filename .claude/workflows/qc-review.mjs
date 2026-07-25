@@ -23,24 +23,61 @@ export const meta = {
 // session adjudicates (plan-frozen vetoes win, "real but not this slice" gets surfaced and dropped),
 // then applies — this workflow only reports.
 
-const range = (args && args.range) || 'origin/dev...HEAD'
-const generated = (args && args.generated) || 'none named — use judgment on obviously generated/vendored files'
-const vetoes = (args && args.vetoes) || 'none supplied'
-const criteria = (args && args.criteria) || 'none supplied — if the plan/issue has a "Stack & design acceptance criteria" section, treat its lines as the criteria'
-const effort = (args && args.effort) === 'high' ? 'high' : 'medium'
-const large = !!(args && args.large)
+// ARGS RECOVERY — a stringified args payload reaches the script as a STRING, not an object.
+// This has now happened on THREE ft/69 runs: each passed {large:true, effort:'high'} plus a
+// multi-KB vetoes/criteria block, and each silently ran at medium/small with NO vetoes, because
+// `args.large` on a string is `undefined` — which `!!` turns into a perfectly valid-looking
+// `false`. Nothing threw. The run reported success. Only a log line distinguished "a shallow
+// review was requested" from "the request was dropped".
+//
+// Earlier passes added the probe below and left it there, on the reasoning that the root cause
+// "lives in the caller's payload, not here". That is true and it is also why this recurred: the
+// caller is a model emitting a large nested object, which is exactly the payload shape that gets
+// stringified. Detecting a failure the script can trivially repair is not worth a wasted review,
+// so it is repaired here — and still reported, so the caller-side cause stays visible.
+//
+// Deliberately narrow: only a `string` is re-parsed, so a correctly-arriving object takes the
+// identical path it always did, and an unparseable string still degrades to defaults rather than
+// throwing mid-review.
+const rawArgsType = typeof args
+let resolvedArgs = args
+let argsRecovered = false
+if (rawArgsType === 'string') {
+  try {
+    const parsed = JSON.parse(args)
+    // `!Array.isArray` matters: an array passes `typeof === 'object'`, so a stringified array
+    // would otherwise be reported as RECOVERED while every field still fell back to its default
+    // — a log line claiming success over a silent degradation, which is the whole failure class
+    // this block exists to end.
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      resolvedArgs = parsed
+      argsRecovered = true
+    }
+  } catch {
+    resolvedArgs = null
+  }
+}
+const a = resolvedArgs && typeof resolvedArgs === 'object' ? resolvedArgs : null
+
+const range = (a && a.range) || 'origin/dev...HEAD'
+const generated = (a && a.generated) || 'none named — use judgment on obviously generated/vendored files'
+const vetoes = (a && a.vetoes) || 'none supplied'
+const criteria = (a && a.criteria) || 'none supplied — if the plan/issue has a "Stack & design acceptance criteria" section, treat its lines as the criteria'
+const effort = (a && a.effort) === 'high' ? 'high' : 'medium'
+const large = !!(a && a.large)
 // `large` now gates only the exhaustive line-by-line scans (Claude + codex + agy). The external
 // lanes themselves are unconditional — see the EXTERNAL_LANES comment for why width is free here.
 
-// ARGS ARRIVAL PROBE — print what actually landed, before anything reads it. Two runs on ft/69
-// passed {large:true, effort:'high'} and both still logged "external lanes 0/0 (skipped — small,
-// non-risk diff)", i.e. the flags did not arrive; `range` looked fine only because its default
-// coincided with the intended value. Since a stringified args object reaches the script as a STRING
-// (not an object), `args.large` would be undefined with no error — this line makes that visible
-// instead of silently degrading the review. Root cause lives in the caller's payload, not here.
-log(`args → type=${typeof args} keys=${args && typeof args === 'object' ? Object.keys(args).join(',') : 'NONE'} · resolved effort=${effort} large=${large} range=${range}`)
-if (args && typeof args !== 'object') {
-  log('⚠️  args arrived as a NON-OBJECT (likely JSON-encoded string) — every field fell back to its default. Pass args as a real JSON object.')
+// ARGS ARRIVAL PROBE — print what actually landed AND what was resolved from it, before anything
+// downstream reads either. A recovered run must stay distinguishable from a clean one: the fix
+// above makes the review correct, not the caller.
+log(`args → arrived=${rawArgsType}${argsRecovered ? ' (RECOVERED via JSON.parse)' : ''} keys=${a ? Object.keys(a).join(',') : 'NONE'} · resolved effort=${effort} large=${large} range=${range}`)
+if (argsRecovered) {
+  log('⚠️  args arrived JSON-ENCODED and were re-parsed — the review is running at full fidelity, but fix the caller: pass args as a real JSON object.')
+} else if (rawArgsType === 'string') {
+  log('⚠️  args arrived as an UNPARSEABLE string — every field fell back to its default. Pass args as a real JSON object.')
+} else if (args && rawArgsType !== 'object') {
+  log(`⚠️  args arrived as ${rawArgsType} — every field fell back to its default. Pass args as a real JSON object.`)
 }
 
 const REPO = '/Users/farzanm4/Desktop/drive/repos/oparax'
