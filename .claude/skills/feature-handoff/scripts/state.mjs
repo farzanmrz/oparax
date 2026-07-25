@@ -23,7 +23,22 @@ import { dirname, join, resolve, sep } from "node:path";
 import process from "node:process";
 
 const SCHEMA_VERSION = 1;
-const MAX_HANDOFF_BYTES = 7_000;
+// There is deliberately NO byte cap on the handoff.
+//
+// One existed (7,000, then briefly 12,000) and it was the wrong instrument. A numeric wall
+// cannot tell bloat from substance: faced with it, the writer sheds whichever sentences are
+// easiest to cut, which are the *explanatory* ones — the reasoning that makes a decision
+// re-derivable rather than merely stated. That is precisely the content the next session
+// cannot reconstruct on its own, so the cap was destroying the file's only real value while
+// leaving genuine padding untouched.
+//
+// Leanness is now enforced where it can actually be judged: SKILL.md tells the writer what
+// does and does not belong in a handoff (no transcripts, no diffs, no logs, no repeated
+// background). Content rules catch bloat; a byte count only catches length.
+//
+// The structural guards below are unchanged and still do the real safety work — required
+// headings, no NUL bytes, no raw diffs, no transcript markers, no reasoning-trace tags, no
+// secret-shaped strings, and a non-empty file.
 const MAX_HOOK_OUTPUT_BYTES = 9_000;
 const TARGETS = new Set(["dev", "beta", "main"]);
 const MODES = new Set(["tracked", "current"]);
@@ -384,7 +399,11 @@ function unsafeHandoffReason(contents) {
   if (/^\s*(?:Human|Assistant|User):\s/m.test(contents)) {
     return "contains raw transcript markers";
   }
-  if (/<\/?(?:thinking|reasoning)>/i.test(contents) || /chain[- ]of[- ]thought/i.test(contents)) {
+  // Tags only. A bare "chain of thought" alternation used to live here and was a false
+  // positive on its own repo: `components/ai-elements/chain-of-thought.tsx` is a real vendored
+  // component, so a handoff describing work on it was rejected as if it were a pasted trace.
+  // The tags are what actually mark a dumped trace; the phrase is ordinary technical English.
+  if (/<\/?(?:thinking|reasoning)>/i.test(contents)) {
     return "contains reasoning-trace markers";
   }
   if (
@@ -421,9 +440,6 @@ function commandCapture(root, options) {
 
   const bytes = readFileSync(input);
   if (bytes.length === 0) fail("Handoff draft is empty");
-  if (bytes.length > MAX_HANDOFF_BYTES) {
-    fail(`Handoff is ${bytes.length} bytes; maximum is ${MAX_HANDOFF_BYTES}`);
-  }
   const contents = bytes.toString("utf8");
   const unsafeReason = unsafeHandoffReason(contents);
   if (unsafeReason) fail(`Handoff ${unsafeReason}`);
@@ -553,11 +569,9 @@ function commandHook(root) {
   }
 
   const bytes = readFileSync(handoffPath(root, branch));
-  if (bytes.length === 0 || bytes.length > MAX_HANDOFF_BYTES) {
+  if (bytes.length === 0) {
     emitHookContext(
-      shortHookNotice(
-        `the checkpoint at ${checkpointPath} failed its size check; it was not loaded.`,
-      ),
+      shortHookNotice(`the checkpoint at ${checkpointPath} is empty; it was not loaded.`),
     );
     return;
   }

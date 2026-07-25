@@ -637,100 +637,110 @@ export type Database = {
         };
         Relationships: [];
       };
-      voice_extraction_claims: {
+      voice_extraction_runs: {
         Row: {
-          actual_usd: number | null;
+          cost_usd: number | null;
           created_at: string;
           error_code: string | null;
+          experiment_id: string;
           finished_at: string | null;
           id: string;
           progress_note: string | null;
           reasoning_partial: string | null;
-          reporter_handle: string;
-          reserved_usd: number;
           stage: string | null;
           started_at: string | null;
           status: string;
           updated_at: string;
-          utc_day: string;
         };
         Insert: {
-          actual_usd?: number | null;
+          cost_usd?: number | null;
           created_at?: string;
           error_code?: string | null;
+          experiment_id: string;
           finished_at?: string | null;
           id?: string;
           progress_note?: string | null;
           reasoning_partial?: string | null;
-          reporter_handle: string;
-          reserved_usd: number;
           stage?: string | null;
           started_at?: string | null;
           status?: string;
           updated_at?: string;
-          utc_day: string;
         };
         Update: {
-          actual_usd?: number | null;
+          cost_usd?: number | null;
           created_at?: string;
           error_code?: string | null;
+          experiment_id?: string;
           finished_at?: string | null;
           id?: string;
           progress_note?: string | null;
           reasoning_partial?: string | null;
-          reporter_handle?: string;
-          reserved_usd?: number;
           stage?: string | null;
           started_at?: string | null;
           status?: string;
           updated_at?: string;
-          utc_day?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "voice_extraction_runs_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: true;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       voice_guides: {
         Row: {
           cost_usd: number | null;
           created_at: string;
+          experiment_id: string;
           guide_deploy: string;
           guide_raw: string;
           id: string;
           measured_facts: string;
           provenance: Json | null;
-          reporter_handle: string;
           updated_at: string;
         };
         Insert: {
           cost_usd?: number | null;
           created_at?: string;
+          experiment_id: string;
           guide_deploy: string;
           guide_raw: string;
           id?: string;
           measured_facts: string;
           provenance?: Json | null;
-          reporter_handle: string;
           updated_at?: string;
         };
         Update: {
           cost_usd?: number | null;
           created_at?: string;
+          experiment_id?: string;
           guide_deploy?: string;
           guide_raw?: string;
           id?: string;
           measured_facts?: string;
           provenance?: Json | null;
-          reporter_handle?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "voice_guides_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       voice_rules: {
         Row: {
           created_at: string;
           enabled: boolean;
+          experiment_id: string;
           id: string;
           provenance_model_call_id: string | null;
-          reporter_handle: string;
           rule: string;
           sort_order: number;
           updated_at: string;
@@ -738,9 +748,9 @@ export type Database = {
         Insert: {
           created_at?: string;
           enabled?: boolean;
+          experiment_id: string;
           id?: string;
           provenance_model_call_id?: string | null;
-          reporter_handle: string;
           rule: string;
           sort_order?: number;
           updated_at?: string;
@@ -748,14 +758,21 @@ export type Database = {
         Update: {
           created_at?: string;
           enabled?: boolean;
+          experiment_id?: string;
           id?: string;
           provenance_model_call_id?: string | null;
-          reporter_handle?: string;
           rule?: string;
           sort_order?: number;
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "voice_rules_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "voice_rules_provenance_model_call_id_fkey";
             columns: ["provenance_model_call_id"];

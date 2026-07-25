@@ -264,13 +264,14 @@ async function draftForExperiment(
   brief: SourceBrief,
   deliverySource: IngestDelivery["source"],
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
-  // Extraction stays script-only this slice (AGENTS.md's settled decisions + .claude/rules/supabase.md) — absent guide, skip. Checked
+  // A desk with no voice guide is a valid working state — its sources are tracked and
+  // ingestion runs; only drafting waits. Checked
   // BEFORE the atomic claim below: a no-guide desk must not burn a draft_claims row it will
   // never use.
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
     .select("guide_deploy, measured_facts")
-    .eq("reporter_handle", experiment.reporter_handle)
+    .eq("experiment_id", experiment.id)
     .maybeSingle();
   if (guideError) throw guideError;
   if (!guide) {
@@ -280,7 +281,7 @@ async function draftForExperiment(
   // flattened enabled voice_rules + measured facts is the actual drafting input of record,
   // falling back to the raw deployed guide only when no rule is enabled yet.
   const voiceGuidance = resolveDraftingPrompt(
-    await listVoiceRules(experiment.reporter_handle),
+    await listVoiceRules(experiment.id),
     guide.measured_facts,
     guide.guide_deploy,
   );
@@ -704,14 +705,14 @@ export async function applyCorrection(input: {
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
     .select("guide_deploy, measured_facts")
-    .eq("reporter_handle", experiment.reporter_handle)
+    .eq("experiment_id", experiment.id)
     .maybeSingle();
   if (guideError) throw guideError;
   if (!guide) {
-    throw new Error(`draft-pipeline: no voice_guides row for @${experiment.reporter_handle}`);
+    throw new Error(`draft-pipeline: no voice_guides row for experiment ${experiment.id}`);
   }
   const voiceGuidance = resolveDraftingPrompt(
-    await listVoiceRules(experiment.reporter_handle),
+    await listVoiceRules(experiment.id),
     guide.measured_facts,
     guide.guide_deploy,
   );

@@ -1,30 +1,26 @@
 // lib/voice/create-desk-extraction.ts
 //
-// attemptVoiceExtraction — best-effort voice-guide extraction, triggered from createDesk's
-// `after()` callback (app/agents/new/actions.ts). SERVER-ONLY: transitively imports
-// lib/sysprompts via extract-guide.ts (readFileSync at module scope) — never importable from
-// a client component. /agents/new is already listed in next.config.ts's
-// outputFileTracingIncludes (it reaches lib/sysprompts through the old save action's
-// onboarding-result extraction), so no config change is needed here.
+// Voice-guide extraction for ONE desk. SERVER-ONLY: transitively imports lib/sysprompts via
+// extract-guide.ts (readFileSync at module scope) — never importable from a client component.
 //
 // REUSES slice-1's extractor's model/config (extractVoiceGuideStreaming, lib/voice/
 // extract-guide.ts) unchanged — this module does not reimplement the extraction call itself,
 // only consumes it as a stream instead of a one-shot. extractVoiceGuideStreaming does NOT write
 // a model_calls row (it only returns the extraction result once the stream finishes), so this
-// module is the ONE place that writes the "voice_extraction" ledger row reached via the
-// create-desk path — mirroring the ledger-first insert shape scripts/extract-voice-guide.ts
-// already uses for the same stage (that script remains the ledger writer for the manual/CLI
-// path, via the plain extractVoiceGuide, and the two never run for the same call).
+// module is the ONE place that writes the "voice_extraction" ledger row reached via the app
+// path (scripts/extract-voice-guide.ts remains the ledger writer for the manual/CLI path, via
+// the plain extractVoiceGuide, and the two never run for the same call).
 //
-// D1: the corpus is now a real, billable Bright Data pull (lib/voice/corpus.ts's fetchCorpus),
-// gated by `claimExtractionBudget` (lib/voice/spend-gate.ts) — the ONE spend guard in front of
-// the billed extraction call, per the plan's "two mechanisms" design (verification is a
-// separate gate, T2.7, irrelevant here). No claim is taken on the existing-guide no-op, the
-// malformed-handle no-op, or the profile pre-flight rejection below — avoid burning a claim on
-// a call that was never going to spend.
+// A guide belongs to the desk that paid for it. There is no sharing, no dedup, no per-day
+// claim and no per-handle lookup cap: extraction runs whenever it is asked to, and two desks on
+// the same reporter each get — and each pay for — their own guide. The previous model
+// (`voice_guides` keyed globally by reporter_handle, an atomic once-per-reporter-per-UTC-day
+// spend claim, and a 5-lookups-per-handle-per-day pre-flight cap) was deleted outright: it
+// optimized a case that does not occur, and it cost four pipeline gates, a table, and a failure
+// mode that could not be diagnosed after the fact.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import { fetchXProfile } from "@/lib/web/brightdata";
+import { fetchXProfile, X_PROFILE_FAILURE_COPY, type XProfileFailure } from "@/lib/web/brightdata";
 import { fetchCorpus } from "./corpus";
 import { deployGuide } from "./deploy-guide";
 import {
@@ -32,47 +28,53 @@ import {
   extractVoiceGuideStreaming,
   type VoiceExtraction,
 } from "./extract-guide";
+import { finishRun, recordProgress, startRun } from "./extraction-run";
 import { materializeRulesFromGuide } from "./rules";
-import {
-  checkPreflightCap,
-  claimExtractionBudget,
-  finalizeExtractionBudget,
-  recordProgress,
-  releaseClaimOnCorpusFailure,
-} from "./spend-gate";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-/** X handles are [A-Za-z0-9_], 1-15 chars — same rail as scripts/extract-voice-guide.ts,
- *  reapplied here (not just at the createDesk boundary) since a malformed handle now flows
- *  straight into a billable Bright Data pull (fetchCorpus); validating keeps it out of that
- *  call rather than trusting every future caller to have already checked it. */
+/** X handles are [A-Za-z0-9_], 1-15 chars — the shared rail from lib/x/handle.ts, reapplied
+ *  here (not just at the createDesk boundary) since a malformed handle now flows straight into
+ *  a billable Bright Data pull; validating keeps it out of that call rather than trusting every
+ *  future caller to have already checked it. This is an INJECTION guard, not a spelling check:
+ *  a stored handle is string-interpolated into the ingestion worker's globally-shared X stream
+ *  rule, so an unvalidated one could rewrite that rule for every tenant. */
 const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 
-/** Every distinct outcome a caller (T5/T6's server actions, T7's Voice tab) needs to branch on
- *  — replaces the old `void` return. `attemptVoiceExtraction` still never throws (best-effort
- *  by design, per its own doc comment below); every terminal state, success or failure, comes
- *  back as a value instead. `errorCode` on the `"failed"` variant mirrors whatever (if
- *  anything) was written to `voice_extraction_claims.error_code` for that attempt — it's absent
- *  on outcomes that never had a claim row to stamp (preflight/malformed/already-extracted) or
- *  that deleted their claim row outright (`corpus_failed`, via `releaseClaimOnCorpusFailure`). */
+/** Every distinct terminal state a caller needs to branch on. `attemptVoiceExtraction` and both
+ *  of its phases never throw — every failure, including an internal one, comes back as a value. */
 export type ExtractionOutcome =
-  | { status: "already_extracted" }
   | { status: "malformed_handle" }
-  | { status: "preflight_capped" }
-  | { status: "preflight_rejected" }
-  | { status: "capped" }
+  | { status: "preflight_rejected"; failure: XProfileFailure }
   | { status: "corpus_failed" }
   | { status: "failed"; errorCode?: string }
   | { status: "completed" };
 
+/** The two pre-flight checks, in run order. Named and returned individually because the create
+ *  screen renders them as discrete steps: a reporter whose extraction stops needs to see WHICH
+ *  check stopped it, and a single spinner could not express that. `handle_shape` is free and
+ *  instant; `profile_lookup` is the one billable pre-flight call (~1 cent). */
+export type GateId = "handle_shape" | "profile_lookup";
+
+export type GateReport = {
+  gate: GateId;
+  status: "passed" | "failed";
+  /** Reporter-facing one-liner. Null where the pass is self-explanatory and a sentence on screen
+   *  would just be noise. */
+  detail: string | null;
+};
+
+export type PreflightResult =
+  | { proceed: true; gates: GateReport[]; postsCount: number | null }
+  | { proceed: false; gates: GateReport[]; outcome: ExtractionOutcome; message: string };
+
 /** The ONE model_calls row for this stage, written ledger-first (before voice_guides) per
- *  L12 — same ordering and shape as scripts/extract-voice-guide.ts's insert for this exact
- *  stage. */
+ *  AGENTS.md's model-call rule — same ordering and shape as scripts/extract-voice-guide.ts's
+ *  insert for this exact stage. */
 async function insertExtractionModelCall(
   admin: AdminClient,
   ownerId: string,
-  reporterHandle: string,
+  experimentId: string,
   ext: VoiceExtraction,
 ): Promise<string> {
   const { data, error } = await admin
@@ -93,8 +95,8 @@ async function insertExtractionModelCall(
       } as unknown as Json,
       cost_usd: ext.costUsd,
       generation_id: ext.generationId,
-      ref_kind: "reporter_handle",
-      ref_id: reporterHandle,
+      ref_kind: "experiment_id",
+      ref_id: experimentId,
     })
     .select("id")
     .single();
@@ -106,17 +108,17 @@ async function insertExtractionModelCall(
  *  `onProgress` to roughly once per second — the stream can emit many deltas/sec and this is
  *  the ONE DB write in that loop, so hammering it on every delta would be a lot of update
  *  traffic against a single row for no user-visible benefit (a human can't perceive sub-second
- *  progress updates anyway). The first delta always flushes immediately so the claim row shows
+ *  progress updates anyway). The first delta always flushes immediately so the run row shows
  *  `"extracting"` as soon as anything has streamed, rather than waiting a full second. */
 function throttledStreamProgress(
-  reporterHandle: string,
+  experimentId: string,
 ): (snapshot: { text: string; reasoning: string }) => Promise<void> {
   let lastFlush = 0;
   return async ({ text, reasoning }) => {
     const now = Date.now();
     if (lastFlush !== 0 && now - lastFlush < 1000) return;
     lastFlush = now;
-    await recordProgress(reporterHandle, {
+    await recordProgress(experimentId, {
       stage: "extracting",
       progressNote: `${text.length} chars generated`,
       reasoningPartial: reasoning,
@@ -125,97 +127,136 @@ function throttledStreamProgress(
 }
 
 /**
- * Best-effort voice-guide extraction for one reporter, run from createDesk's `after()` so it
- * never blocks or can fail the desk save (and, per T5, from a background job that survives
- * navigation). Never throws — every failure is caught and returned as a value.
+ * GATE 1 — the handle-shape check. Free and instant, so a caller can settle it on screen
+ * immediately instead of holding it behind the slow profile call.
+ *
+ * Returned rather than logged because this runs before any run row exists, so a UI polling the
+ * database cannot observe it. Awaiting the result is the only channel it has.
+ */
+export function checkHandleShape(reporterHandle: string): PreflightResult {
+  if (!HANDLE_RE.test(reporterHandle)) {
+    return {
+      proceed: false,
+      gates: [
+        {
+          gate: "handle_shape",
+          status: "failed",
+          detail: `"${reporterHandle}" isn't a legal X handle.`,
+        },
+      ],
+      outcome: { status: "malformed_handle" },
+      message: "That isn't a valid X handle — letters, numbers and underscores, up to 15.",
+    };
+  }
+  return {
+    proceed: true,
+    gates: [{ gate: "handle_shape", status: "passed", detail: null }],
+    postsCount: null,
+  };
+}
+
+/**
+ * GATE 2 — the one billable pre-flight call (~1 cent). Confirms the profile exists and has
+ * posts before committing to the corpus pull (minutes, on the expensive dataset) and the
+ * extraction call itself.
+ *
+ * Its failure carries a real, actionable reason (`XProfileFailure`) rather than the anonymous
+ * `{ resolved: false }` that previously made a live extraction failure impossible to diagnose
+ * from either the database or the logs.
+ */
+export async function runProfilePreflightGate(
+  reporterHandle: string,
+  ownerId: string,
+): Promise<PreflightResult> {
+  try {
+    const profile = await fetchXProfile(reporterHandle, ownerId);
+    if (!profile.resolved) {
+      const message = X_PROFILE_FAILURE_COPY[profile.failure];
+      console.warn(
+        `runProfilePreflightGate: rejected @${reporterHandle} — ${profile.failure}: ${profile.detail ?? "no detail"}`,
+      );
+      return {
+        proceed: false,
+        gates: [{ gate: "profile_lookup", status: "failed", detail: message }],
+        outcome: { status: "preflight_rejected", failure: profile.failure },
+        message,
+      };
+    }
+    return {
+      proceed: true,
+      gates: [
+        {
+          gate: "profile_lookup",
+          status: "passed",
+          detail: `@${reporterHandle} — ${profile.postsCount.toLocaleString()} posts`,
+        },
+      ],
+      postsCount: profile.postsCount,
+    };
+  } catch (e) {
+    console.error(`runProfilePreflightGate: failed for @${reporterHandle}`, e);
+    return {
+      proceed: false,
+      gates: [{ gate: "profile_lookup", status: "failed", detail: null }],
+      outcome: { status: "failed" },
+      message: "Something went wrong checking that profile. Please try again.",
+    };
+  }
+}
+
+/**
+ * THE BILLABLE PHASE — corpus, extraction, store. Assumes the pre-flight gates already passed;
+ * it deliberately does NOT re-run them, so a caller that awaited them pays for exactly one
+ * profile lookup, not two.
  *
  * Order:
- *   (a) a `voice_guides` row already exists for this handle → `"already_extracted"` (paid once
- *       per reporter, never re-extracted by a second desk on the same reporter).
- *   (b) a malformed handle → `"malformed_handle"`, before any spend.
- *   (c: pre-flight) `fetchXProfile` (lib/web/brightdata.ts) resolves the handle against a real
- *       X profile BEFORE any claim is taken. `!resolved || postsCount === 0` →
- *       `"preflight_rejected"`, zero `voice_extraction_claims` rows written — a bad handle never
- *       burns a day's budget slot.
- *   (d: claim) `claimExtractionBudget` reserves this reporter/UTC-day's worst-case spend, now
- *       strictly after the pre-flight passes. A denied claim (today's claim for this reporter
- *       already exists) → `"capped"`, zero rows written, zero spend.
- *   (e: corpus) `fetchCorpus` (billable) pulls the reporter's real X timeline. A failure here
- *       happens BEFORE the LLM call would ever start, so the claim is still provisional —
- *       `releaseClaimOnCorpusFailure` deletes it (same-day retry becomes possible again) rather
- *       than `finalizeExtractionBudget`ing it as spent → `"corpus_failed"`.
- *   (f: extract+store+materialize) the paid extraction call now runs as a stream
- *       (`extractVoiceGuideStreaming`), throttled progress persisted via `recordProgress`
- *       roughly once/sec. Once the stream resolves, ledger-first: one `model_calls` row (this
- *       is the moment the claim stops being provisional — nothing after this point can un-spend
- *       it), then `voice_guides` with `provenance: { modelCallId }` (a pointer — the output/
- *       reasoning/usage/cost live exactly once, in model_calls), then materialize the guide's
- *       initial `voice_rules` split (best-effort, swallows its own errors). Any failure in this
- *       stage finalizes the claim as `"failed"` with `errorCode: "extraction_failed"` →
- *       `{ status: "failed", errorCode: "extraction_failed" }`.
- *   (g: finalize) on the full happy path, finalize the claim as `"completed"` with the
- *       extraction call's own resolved cost and `finishedAt` → `"completed"`.
+ *   (a) `startRun` opens this desk's progress row — the channel every poll reads from here on.
+ *   (b) `fetchCorpus` (billable) pulls the reporter's real X timeline.
+ *   (c) the paid extraction call runs as a stream (`extractVoiceGuideStreaming`), throttled
+ *       progress persisted roughly once/sec. Once the stream resolves, ledger-first: one
+ *       `model_calls` row, then `voice_guides` with `provenance: { modelCallId }` (a pointer —
+ *       the output/reasoning/usage/cost live exactly once, in model_calls), then materialize the
+ *       guide's initial `voice_rules` split (best-effort, swallows its own errors).
+ *   (d) `finishRun` stamps the terminal status either way.
  *
- * The "already-billed call must still get its ledger row" discipline (AGENTS.md's model-call rule
- * L12) carries over unchanged from the non-streaming version: `insertExtractionModelCall` runs
- * immediately once `extractVoiceGuideStreaming` resolves, BEFORE the `voice_guides` upsert or
- * `materializeRulesFromGuide` — so a throw from either of those later steps can never discard a
- * row that's already been written. `extractVoiceGuideStreaming` itself either completes (having
- * consumed the whole stream, so it billed) and returns, or throws before returning anything —
- * same discriminator as the old `generateText` call had: nothing completed, nothing to record.
+ * The "already-billed call must still get its ledger row" discipline (AGENTS.md's model-call
+ * rule) is why `insertExtractionModelCall` runs immediately once `extractVoiceGuideStreaming`
+ * resolves, BEFORE the `voice_guides` upsert or `materializeRulesFromGuide` — a throw from
+ * either later step can then never discard a row that has already been paid for.
+ * `extractVoiceGuideStreaming` itself either completes (having consumed the whole stream, so it
+ * billed) and returns, or throws before returning anything — nothing completed, nothing to record.
  */
-export async function attemptVoiceExtraction(
+export async function runExtractionSpendPhase(
+  experimentId: string,
   reporterHandle: string,
   ownerId: string,
 ): Promise<ExtractionOutcome> {
   try {
     const admin = createAdminClient();
+    await startRun(experimentId);
 
-    const { data: existing, error: existingError } = await admin
-      .from("voice_guides")
-      .select("id")
-      .eq("reporter_handle", reporterHandle)
-      .maybeSingle();
-    if (existingError) throw existingError;
-    if (existing) return { status: "already_extracted" };
-    if (!HANDLE_RE.test(reporterHandle)) return { status: "malformed_handle" }; // no-op before any spend
-
-    const preflightCap = await checkPreflightCap(reporterHandle);
-    if (!preflightCap.allowed) {
-      console.warn(`attemptVoiceExtraction: preflight cap hit for @${reporterHandle}`);
-      return { status: "preflight_capped" };
-    }
-
-    const profile = await fetchXProfile(reporterHandle, ownerId);
-    if (!profile.resolved || profile.postsCount === 0) {
-      console.warn(
-        `attemptVoiceExtraction: preflight rejected @${reporterHandle} (resolved=${profile.resolved}, postsCount=${profile.postsCount})`,
-      );
-      return { status: "preflight_rejected" };
-    }
-
-    const claim = await claimExtractionBudget(reporterHandle);
-    if (!claim.allowed) {
-      console.warn(
-        `attemptVoiceExtraction: budget claim denied for @${reporterHandle} (${claim.reason})`,
-      );
-      return { status: "capped" };
-    }
+    // Stamped BEFORE the pull, not after it. The Bright Data timeline pull is an async
+    // trigger/poll/download cycle that can run for minutes; recording the stage only on
+    // completion left the polled row blank for the single longest step in the pipeline.
+    await recordProgress(experimentId, {
+      stage: "corpus_fetch",
+      progressNote: "Pulling recent posts from X…",
+    });
 
     let corpus: Awaited<ReturnType<typeof fetchCorpus>>;
     try {
       corpus = await fetchCorpus(reporterHandle, ownerId);
     } catch (corpusError) {
       console.error(
-        `attemptVoiceExtraction: fetchCorpus failed for @${reporterHandle}`,
+        `runExtractionSpendPhase: fetchCorpus failed for @${reporterHandle}`,
         corpusError,
       );
-      await releaseClaimOnCorpusFailure(reporterHandle);
+      await finishRun(experimentId, { status: "failed", errorCode: "corpus_failed" });
       return { status: "corpus_failed" };
     }
-    await recordProgress(reporterHandle, {
-      stage: "corpus_fetch",
-      progressNote: `fetched ${corpus.length} posts`,
+    await recordProgress(experimentId, {
+      stage: "corpus_ready",
+      progressNote: `Read ${corpus.length} posts`,
     });
 
     let ext: VoiceExtraction | undefined;
@@ -223,17 +264,14 @@ export async function attemptVoiceExtraction(
       ext = await extractVoiceGuideStreaming(
         reporterHandle,
         corpus,
-        throttledStreamProgress(reporterHandle),
+        throttledStreamProgress(experimentId),
       );
 
-      const modelCallId = await insertExtractionModelCall(admin, ownerId, reporterHandle, ext);
+      const modelCallId = await insertExtractionModelCall(admin, ownerId, experimentId, ext);
 
       // Meter the extraction call itself (AGENTS.md: every touch point stamps usage_events —
-      // "every model call" included). Drafting and clustering already stamp theirs; extraction
-      // recorded its spend ONLY in model_calls.cost_usd and the claim row's actual_usd, so a
-      // per-owner usage_events total silently omitted the single most expensive call the app
-      // makes. Best-effort: the call is already paid and its model_calls row is durable, so a
-      // ledger-stamp failure must not fail the extraction.
+      // "every model call" included). Best-effort: the call is already paid and its model_calls
+      // row is durable, so a ledger-stamp failure must not fail the extraction.
       try {
         await admin.from("usage_events").insert({
           owner_id: ownerId,
@@ -244,62 +282,78 @@ export async function attemptVoiceExtraction(
         });
       } catch (meterError) {
         console.error(
-          `attemptVoiceExtraction: usage_events stamp failed for @${reporterHandle}`,
+          `runExtractionSpendPhase: usage_events stamp failed for @${reporterHandle}`,
           meterError,
         );
       }
 
-      await recordProgress(reporterHandle, { stage: "materializing_rules" });
+      await recordProgress(experimentId, { stage: "materializing_rules" });
 
       const guideDeploy = deployGuide(ext.guideRaw);
       const { error: voiceGuideError } = await admin.from("voice_guides").upsert(
         {
-          reporter_handle: reporterHandle,
+          experiment_id: experimentId,
           guide_raw: ext.guideRaw,
           guide_deploy: guideDeploy,
           measured_facts: ext.measuredFactsBlock,
           cost_usd: ext.costUsd,
           provenance: { modelCallId } as unknown as Json,
         },
-        { onConflict: "reporter_handle" },
+        { onConflict: "experiment_id" },
       );
       if (voiceGuideError) throw voiceGuideError;
 
       try {
-        await materializeRulesFromGuide(reporterHandle, guideDeploy, modelCallId);
+        await materializeRulesFromGuide(experimentId, guideDeploy, modelCallId);
       } catch (rulesError) {
         // A degraded-but-recoverable state (guide saved, initial rules split missing) — never
         // a reason to roll back a real extraction that already happened and was billed.
         console.error(
-          `attemptVoiceExtraction: materializeRulesFromGuide failed for @${reporterHandle}`,
+          `runExtractionSpendPhase: materializeRulesFromGuide failed for @${reporterHandle}`,
           rulesError,
         );
       }
 
-      await recordProgress(reporterHandle, { stage: "done" });
-      await finalizeExtractionBudget(reporterHandle, {
-        status: "completed",
-        actualUsd: ext.costUsd,
-        finishedAt: new Date().toISOString(),
-      });
+      await finishRun(experimentId, { status: "completed", costUsd: ext.costUsd });
       return { status: "completed" };
     } catch (e) {
       // ext is defined only once extractVoiceGuideStreaming itself has resolved and billed —
-      // carry its resolved cost into the claim even when a later step (the ledger insert, the
+      // carry its resolved cost into the run row even when a later step (the ledger insert, the
       // voice_guides upsert) is what actually failed. If the stream never completed, nothing
-      // billed on this call and actualUsd stays null.
-      console.error(`attemptVoiceExtraction: extraction stage failed for @${reporterHandle}`, e);
-      await recordProgress(reporterHandle, { stage: "failed" });
-      await finalizeExtractionBudget(reporterHandle, {
+      // billed on this call and costUsd stays null.
+      console.error(`runExtractionSpendPhase: extraction stage failed for @${reporterHandle}`, e);
+      await finishRun(experimentId, {
         status: "failed",
-        actualUsd: ext?.costUsd ?? null,
-        finishedAt: new Date().toISOString(),
+        costUsd: ext?.costUsd ?? null,
         errorCode: "extraction_failed",
       });
       return { status: "failed", errorCode: "extraction_failed" };
     }
   } catch (e) {
-    console.error(`attemptVoiceExtraction: failed for @${reporterHandle}`, e);
+    console.error(`runExtractionSpendPhase: failed for @${reporterHandle}`, e);
+    await finishRun(experimentId, { status: "failed", errorCode: "internal_error" });
     return { status: "failed" };
   }
+}
+
+/**
+ * Both gates and the billable phase, end to end, for callers that want a single terminal outcome
+ * and are not rendering the gates — today that is the Voice tab's manual retry. The create screen
+ * deliberately does NOT use this: it awaits the gates one at a time so it can render each, then
+ * hands the billable phase to `after()` so the expensive half survives navigation.
+ *
+ * Never throws; every failure is a returned value.
+ */
+export async function attemptVoiceExtraction(
+  experimentId: string,
+  reporterHandle: string,
+  ownerId: string,
+): Promise<ExtractionOutcome> {
+  const shape = checkHandleShape(reporterHandle);
+  if (!shape.proceed) return shape.outcome;
+
+  const profile = await runProfilePreflightGate(reporterHandle, ownerId);
+  if (!profile.proceed) return profile.outcome;
+
+  return runExtractionSpendPhase(experimentId, reporterHandle, ownerId);
 }

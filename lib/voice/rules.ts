@@ -1,14 +1,14 @@
 // lib/voice/rules.ts
 //
 // voice_rules CRUD + the pure flattening function that replaces the raw guide's role in the
-// drafting system prompt (T2.6, .feature/task-16-brief.md). `voice_rules` carries EXISTS-join-
-// through-`experiments` RLS by `reporter_handle`, select-only — no owner_id column, same
-// reasoning as `voice_guides`: a rule is paid/edited once per reporter and shared across every
-// desk that reporter appears in. No insert/update/delete policy exists, so every write in this
-// module runs on the admin (service-role) client (mirrors create-desk-extraction.ts). Callers
-// (a Wave 3 server action) prove desk ownership via the RLS client before calling in — same
-// ownership-then-service-role-write pattern as lib/x/actions.ts's postDraftToX — this module
-// does no ownership check of its own.
+// drafting system prompt. `voice_rules` is keyed by `experiment_id` — a rule belongs to ONE
+// desk, mirroring `voice_guides`. (It was previously keyed by `reporter_handle` and shared
+// across every desk on that reporter; that sharing model is deleted.) Its RLS is an
+// EXISTS-join through `experiments` on the desk's own id, select-only. No insert/update/delete
+// policy exists, so every write in this module runs on the admin (service-role) client (mirrors
+// create-desk-extraction.ts). Callers prove desk ownership via the RLS client before calling in
+// — the same ownership-then-service-role-write pattern as lib/x/actions.ts's postDraftToX —
+// this module does no ownership check of its own.
 //
 // Server-only: admin client only, no "use client". Unlike attemptVoiceExtraction (intentionally
 // best-effort), CRUD failures here surface to their callers — throw on real DB errors.
@@ -20,7 +20,7 @@ type VoiceRuleRow = Database["public"]["Tables"]["voice_rules"]["Row"];
 
 export type VoiceRule = {
   id: string;
-  reporterHandle: string;
+  experimentId: string;
   rule: string;
   sortOrder: number;
   enabled: boolean;
@@ -32,7 +32,7 @@ export type VoiceRule = {
 function toVoiceRule(row: VoiceRuleRow): VoiceRule {
   return {
     id: row.id,
-    reporterHandle: row.reporter_handle,
+    experimentId: row.experiment_id,
     rule: row.rule,
     sortOrder: row.sort_order,
     enabled: row.enabled,
@@ -42,25 +42,25 @@ function toVoiceRule(row: VoiceRuleRow): VoiceRule {
   };
 }
 
-/** A reporter's rules, ordered by sortOrder asc then createdAt asc as a stable tiebreak for
+/** One desk's rules, ordered by sortOrder asc then createdAt asc as a stable tiebreak for
  *  rows sharing a sortOrder (e.g. a fresh materializeRulesFromGuide batch inserted at once). */
-export async function listVoiceRules(reporterHandle: string): Promise<VoiceRule[]> {
+export async function listVoiceRules(experimentId: string): Promise<VoiceRule[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("voice_rules")
     .select("*")
-    .eq("reporter_handle", reporterHandle)
+    .eq("experiment_id", experimentId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []).map(toVoiceRule);
 }
 
-async function nextSortOrder(admin: AdminClient, reporterHandle: string): Promise<number> {
+async function nextSortOrder(admin: AdminClient, experimentId: string): Promise<number> {
   const { data, error } = await admin
     .from("voice_rules")
     .select("sort_order")
-    .eq("reporter_handle", reporterHandle)
+    .eq("experiment_id", experimentId)
     .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -69,16 +69,16 @@ async function nextSortOrder(admin: AdminClient, reporterHandle: string): Promis
 }
 
 export async function createVoiceRule(input: {
-  reporterHandle: string;
+  experimentId: string;
   rule: string;
   provenanceModelCallId?: string | null;
 }): Promise<VoiceRule> {
   const admin = createAdminClient();
-  const sortOrder = await nextSortOrder(admin, input.reporterHandle);
+  const sortOrder = await nextSortOrder(admin, input.experimentId);
   const { data, error } = await admin
     .from("voice_rules")
     .insert({
-      reporter_handle: input.reporterHandle,
+      experiment_id: input.experimentId,
       rule: input.rule,
       sort_order: sortOrder,
       provenance_model_call_id: input.provenanceModelCallId ?? null,
@@ -175,7 +175,7 @@ function splitGuideIntoSections(guideDeploy: string): string[] {
  * fresh guide has been extracted and deployed.
  */
 export async function materializeRulesFromGuide(
-  reporterHandle: string,
+  experimentId: string,
   guideDeploy: string,
   provenanceModelCallId: string,
 ): Promise<VoiceRule[]> {
@@ -186,7 +186,7 @@ export async function materializeRulesFromGuide(
     .from("voice_rules")
     .insert(
       sections.map((rule, index) => ({
-        reporter_handle: reporterHandle,
+        experiment_id: experimentId,
         rule,
         sort_order: index,
         provenance_model_call_id: provenanceModelCallId,

@@ -1,10 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { isOverrideOwner } from "@/lib/owner-allowlist";
 import { createClient } from "@/lib/supabase/server";
-import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
 import { getXLinkState } from "@/lib/x/link-state";
 
@@ -115,7 +113,18 @@ export async function createDesk(input: {
     return { error: "Could not create your agent. Please try again." };
   }
 
-  after(() => attemptVoiceExtraction(reporterHandle, user.id));
+  // Extraction is NOT fired here any more. It used to run as
+  // `after(() => attemptVoiceExtraction(...))`, whose return value nothing could read — so the
+  // four pre-flight gates ran invisibly and a rejection reached the reporter as a spinner that
+  // never resolved. The create screen now calls `startExtraction` (app/agents/[id]/voice/
+  // actions.ts) itself: it awaits the pre-flight so it can render each gate, then that action
+  // hands the billable phase to its own `after()`, which preserves the survives-navigation
+  // property for the half that actually costs money.
+  //
+  // The consequence is deliberate: a desk whose creator closes the tab before the pre-flight
+  // returns is created WITHOUT extraction having started. That is a valid, working agent — its
+  // sources are tracked and the worker picks them up; only drafting waits — and the Voice tab's
+  // retry is the recovery surface, same as for any other extraction failure.
 
   // Refresh the /agents layout so the site header's desk switcher includes this new desk
   // immediately — without this the switcher renders its stale list and falls back to "Desks".

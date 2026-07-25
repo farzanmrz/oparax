@@ -10,7 +10,7 @@ import { ExtractionProgress } from "./extraction-progress";
 import { RetryExtractionButton } from "./retry-extraction-button";
 import { RulesEditor } from "./rules-editor";
 
-// Mirrors app/agents/new/page.tsx's maxDuration: this page's capReprobe action awaits
+// Mirrors app/agents/new/page.tsx's maxDuration: this page's retryExtraction action awaits
 // attemptVoiceExtraction synchronously (a manual retry, unlike the create flow's after()
 // call), so the function needs the same ceiling to survive a full extraction.
 export const maxDuration = 300;
@@ -195,7 +195,7 @@ function EmptyState({
       <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">
         Extraction runs once a corpus source is connected.
       </p>
-      <RetryExtractionButton deskId={deskId} reporterHandle={reporterHandle} />
+      <RetryExtractionButton deskId={deskId} />
     </div>
   );
 }
@@ -205,19 +205,15 @@ function EmptyState({
 /* ------------------------------------------------------------------ */
 
 /**
- * The Voice tab. D14's verify gate is gone (T7) — T6 now stamps `reporter_verified_at` at
- * desk creation via linked X OAuth, so identity is proven before a desk exists rather than
- * gated afterward here. This migration wave does not backfill existing rows, so an old desk
- * can still have `reporter_verified_at: null`; `voice_guides_verified_gate`'s RLS policy still
- * filters that desk's `voice_guides` SELECT either way, so it naturally falls into the same
- * "no guide" branch below rather than needing its own dead-end state.
+ * The Voice tab. The guide, its rules, and its extraction run all belong to THIS desk
+ * (`experiment_id`), so every read here is scoped by the desk id already proven above.
  *
- * Two states now:
+ * Two states:
  *   1. guide exists → the guide (`guide_deploy` as read-only audit prose) + the real
  *      `measured_facts` stat tiles + `RulesEditor` (the drafting input of record).
- *   2. no guide yet → if an extraction is actively in flight for this reporter right now (a
- *      background job from create-desk that survives navigation, per T5), a live progress view
- *      (`ExtractionProgress`); otherwise the static empty state + a real retry action.
+ *   2. no guide yet → if an extraction is in flight for this desk right now (an `after()` job
+ *      that survives navigation), a live progress view (`ExtractionProgress`); otherwise the
+ *      static empty state + a real retry action.
  */
 export default async function VoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -239,9 +235,9 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
     supabase
       .from("voice_guides")
       .select("guide_deploy, measured_facts, provenance")
-      .eq("reporter_handle", reporterHandle)
+      .eq("experiment_id", id)
       .maybeSingle(),
-    listVoiceRules(reporterHandle),
+    listVoiceRules(id),
   ]);
   if (guideError) throw new Error("Failed to load the writing guide. Please try again.");
 
@@ -266,7 +262,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
   // Only checked when there's no guide yet — a guide already existing means extraction is
   // done, so there's nothing in flight to poll for.
   const progress = guide ? null : await getExtractionProgress(id);
-  const extractionInFlight = progress?.ok === true && progress.status === "reserved";
+  const extractionInFlight = progress?.ok === true && progress.status === "running";
 
   return (
     <div className="py-4">

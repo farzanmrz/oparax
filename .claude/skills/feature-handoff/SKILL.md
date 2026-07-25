@@ -19,7 +19,7 @@ disable-model-invocation: true
 
 Create one safe checkpoint for the exact current branch. The deterministic helper is
 `.claude/skills/feature-handoff/scripts/state.mjs`; it owns paths, validation,
-fingerprinting, size limits, atomic replacement, and cleanup.
+fingerprinting, shape validation, atomic replacement, and cleanup.
 
 ## Clear
 
@@ -66,11 +66,26 @@ When `$ARGUMENTS` is `clear`:
    - Do not include secrets or environment values, raw transcripts, raw diffs, hidden
      reasoning, large logs, `.feature/` contents, speculative conclusions, or repeated
      background. Never quote credentials even when redacted.
+
+   **There is no length limit — length is not the test. Inclusion is.** A handoff is as long
+   as the durable facts require and not one sentence longer. Apply that per sentence:
+
+   - **Keep** anything the next session cannot reconstruct from the repo — *why* a decision
+     went the way it did, what was explicitly ruled out and on what grounds, which
+     verification actually ran versus was assumed, what a human still has to decide. A
+     decision recorded without its reason gets silently relitigated; that reason is the single
+     most valuable thing in this file, so never cut it to save room.
+   - **Cut** anything the repo already answers: file contents, diffs, command output, commit
+     messages quoted back, restated background, narration of what was tried before it worked.
+     Cite the path or SHA instead and let the next session read it.
+
+   If a section feels long, check each sentence against those two lists rather than trimming
+   to a target. Removing a real reason is a worse failure than a file that runs long.
 5. Run `capture --branch "<branch>" --input "<returned-path>/handoff.next.md"`,
    passing changed `--phase`, `--gate`, `--target`, or `--approved-plan` metadata when
-   needed. Capture rejects unsafe shapes and anything over 7,000 bytes, atomically
-   replaces `handoff.md`, deletes the draft, and seals current HEAD plus worktree
-   fingerprint.
+   needed. Capture rejects unsafe shapes (missing headings, raw diffs, transcript markers,
+   reasoning-trace tags, secret-shaped strings, an empty file), atomically replaces
+   `handoff.md`, deletes the draft, and seals current HEAD plus worktree fingerprint.
 6. Report the checkpoint path, phase, next gate, and terminal target. Do not paste the
    whole handoff back into chat.
 

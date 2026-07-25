@@ -2,69 +2,127 @@
 
 // app/agents/new/extraction-progress.tsx
 //
-// The live extraction view create-desk-form.tsx swaps in once a desk exists (T6). Polls
-// getExtractionProgress(deskId) (app/agents/[id]/voice/actions.ts, T5) on an interval and
-// renders today's voice_extraction_claims row for that desk's reporter. attemptVoiceExtraction
-// runs fire-and-forget from createDesk's after() (../actions.ts) — nothing here started the
-// job, this view only observes it. That means a preflight rejection, a malformed handle, or an
-// "already extracted" no-op (create-desk-extraction.ts's other early-exit outcomes) never write
-// a claim row at all, so they're indistinguishable from "hasn't started yet" until the grace
-// period below expires — at which point this view stops guessing and just lets the reporter
-// continue into their desk, where the Voice tab (real-time on revisit, or its own retry) is the
-// full recovery surface either way.
+// The live view create-desk-form.tsx swaps in once a desk exists. It DRIVES the pre-flight gates
+// itself and then polls the run row — a two-channel design forced by where the record lives.
 //
-// A beforeunload listener warns while a claim looks in-flight; leaving never cancels the
-// work — extraction survives navigation by design (T5). Modern browsers show their own generic
-// "leave site?" copy for beforeunload and ignore any custom returnValue text; that's a browser
-// platform limitation, not a bug here.
+// The gates (handle shape, then the billable profile lookup) run before any
+// `voice_extraction_runs` row exists, so polling can never see them. This component awaits them
+// one at a time, which is also what lets the slow one show as in-flight on its own step rather
+// than the whole set appearing at once when the last returns. Once they pass, `startExtraction`
+// hands the billable phase to `after()` and the run row becomes the channel — so leaving this
+// page never cancels extraction, exactly as before.
+//
+// This replaces a bare spinner that could not distinguish "still working" from "stopped 40
+// seconds ago for a specific reason", and whose 20-second grace timer then reported the honest
+// but useless "We couldn't confirm your voice guide started building."
+//
+// A beforeunload listener warns while work looks in flight; leaving never cancels it. Modern
+// browsers show their own generic copy and ignore any custom returnValue text — a platform
+// limitation, not a bug here.
 
-import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ExtractionChain, type ExtractionStep } from "@/components/extraction-chain";
 import { Button } from "@/components/ui/button";
-import { getExtractionProgress } from "../[id]/voice/actions";
+import { pipelineSteps } from "@/lib/voice/extraction-steps";
+import {
+  checkExtractionReadiness,
+  getExtractionProgress,
+  startExtraction,
+} from "../[id]/voice/actions";
 
 const POLL_INTERVAL_MS = 1750;
 
-/** How long to wait for a claim row to appear at all before assuming this attempt never wrote
- *  one (see the header comment above) rather than that it's merely slow to start. */
-const NO_CLAIM_GRACE_MS = 20000;
+type GateState = {
+  handle: ExtractionStep;
+  profile: ExtractionStep;
+  /** The message shown beneath the chain when a gate stopped the run. Null while healthy. */
+  error: string | null;
+  /** True once both gates passed and the billable phase was handed to `after()`. */
+  started: boolean;
+};
 
-type Progress = Awaited<ReturnType<typeof getExtractionProgress>>;
-
-const STAGE_COPY: Record<string, string> = {
-  corpus_fetch: "Reading your recent posts…",
-  extracting: "Learning how you write…",
-  materializing_rules: "Saving your voice rules…",
-  done: "Done — taking you to your agent…",
+const INITIAL_GATES: GateState = {
+  handle: { key: "handle", label: "Checking the handle", detail: null, state: "active" },
+  profile: { key: "profile", label: "Finding the X profile", detail: null, state: "pending" },
+  error: null,
+  started: false,
 };
 
 export function ExtractionProgress({ deskId }: { readonly deskId: string }) {
   const router = useRouter();
-  const [progress, setProgress] = useState<Progress | null>(null);
-  const [timedOut, setTimedOut] = useState(false);
-  const startedAtRef = useRef(Date.now());
+  const [gates, setGates] = useState<GateState>(INITIAL_GATES);
+  const [run, setRun] = useState({
+    stage: null as string | null,
+    progressNote: null as string | null,
+    reasoningPartial: null as string | null,
+    status: "none",
+    errorCode: null as string | null,
+  });
+  // Guards React 18/19 StrictMode's double-invoked effects in dev: without it the gate sequence
+  // runs twice and the second pass spends a SECOND billable profile lookup.
+  const kickedOffRef = useRef(false);
+
+  const runGates = useCallback(async () => {
+    const readiness = await checkExtractionReadiness(deskId);
+    const handleGate = readiness.gates.find((g) => g.gate === "handle_shape");
+    if (!readiness.ok) {
+      setGates((prev) => ({
+        ...prev,
+        handle: {
+          ...prev.handle,
+          detail: handleGate?.detail ?? null,
+          state: handleGate?.status === "failed" ? "failed" : "complete",
+        },
+        profile: { ...prev.profile, state: "pending" },
+        error: readiness.message,
+      }));
+      return;
+    }
+    setGates((prev) => ({
+      ...prev,
+      handle: { ...prev.handle, detail: handleGate?.detail ?? null, state: "complete" },
+      profile: { ...prev.profile, state: "active" },
+    }));
+
+    const started = await startExtraction(deskId);
+    const profileGate = started.gates.find((g) => g.gate === "profile_lookup");
+    setGates((prev) => ({
+      ...prev,
+      profile: {
+        ...prev.profile,
+        detail: profileGate?.detail ?? null,
+        state: started.ok ? "complete" : "failed",
+      },
+      error: started.ok ? null : started.message,
+      started: started.ok,
+    }));
+  }, [deskId]);
 
   useEffect(() => {
+    if (kickedOffRef.current) return;
+    kickedOffRef.current = true;
+    runGates();
+  }, [runGates]);
+
+  // Polls only once the billable phase is actually running — before that there is no run row to
+  // read, and polling for one would be the same "waiting on a signal that cannot arrive" bug the
+  // gate steps above exist to fix.
+  useEffect(() => {
+    if (!gates.started) return;
     let cancelled = false;
 
     async function poll() {
       const result = await getExtractionProgress(deskId);
-      if (cancelled) return;
-
-      if (result.ok && (result.stage === "done" || result.status === "completed")) {
-        router.push(`/agents/${deskId}/voice`);
-        return;
-      }
-      setProgress(result);
-      if (
-        result.ok &&
-        result.status === "none" &&
-        Date.now() - startedAtRef.current > NO_CLAIM_GRACE_MS
-      ) {
-        setTimedOut(true);
-      }
+      if (cancelled || !result.ok) return;
+      setRun({
+        stage: result.stage,
+        progressNote: result.progressNote,
+        reasoningPartial: result.reasoningPartial,
+        status: result.status,
+        errorCode: result.errorCode,
+      });
+      if (result.status === "completed") router.push(`/agents/${deskId}/voice`);
     }
 
     poll();
@@ -73,13 +131,12 @@ export function ExtractionProgress({ deskId }: { readonly deskId: string }) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [deskId, router]);
+  }, [deskId, gates.started, router]);
 
-  const status = progress?.ok ? progress.status : null;
-  const inProgress = !(status === "failed" || timedOut || (progress && !progress.ok));
+  const inFlight = gates.error === null && run.status !== "failed" && run.status !== "completed";
 
   useEffect(() => {
-    if (!inProgress) return;
+    if (!inFlight) return;
     function onBeforeUnload(e: BeforeUnloadEvent) {
       e.preventDefault();
       e.returnValue =
@@ -87,74 +144,47 @@ export function ExtractionProgress({ deskId }: { readonly deskId: string }) {
     }
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [inProgress]);
+  }, [inFlight]);
 
-  function continueToDesk() {
-    router.push(`/agents/${deskId}/voice`);
-  }
+  const steps: ExtractionStep[] = [
+    { key: "created", label: "Agent created", detail: null, state: "complete" },
+    gates.handle,
+    gates.profile,
+    ...(gates.started
+      ? pipelineSteps(run)
+      : ([
+          { key: "corpus", label: "Reading recent posts", detail: null, state: "pending" },
+          { key: "extract", label: "Learning how you write", detail: null, state: "pending" },
+          { key: "rules", label: "Saving your voice rules", detail: null, state: "pending" },
+        ] satisfies ExtractionStep[])),
+  ];
 
-  if (progress && !progress.ok) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p className="text-destructive text-sm">{progress.error}</p>
-        <Button onClick={continueToDesk} variant="outline">
-          Continue to your agent
-        </Button>
-      </div>
-    );
-  }
-
-  if (status === "failed") {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p className="text-foreground text-sm">
-          Building your voice guide didn&apos;t finish this time.
-        </p>
-        <p className="text-muted-foreground text-sm">
-          Your agent is ready — you can retry from its Voice tab anytime.
-        </p>
-        <Button onClick={continueToDesk} variant="outline">
-          Continue to your agent
-        </Button>
-      </div>
-    );
-  }
-
-  if (timedOut) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p className="text-foreground text-sm">
-          We couldn&apos;t confirm your voice guide started building.
-        </p>
-        <p className="text-muted-foreground text-sm">
-          Your agent is ready — you can start extraction from its Voice tab anytime.
-        </p>
-        <Button onClick={continueToDesk} variant="outline">
-          Continue to your agent
-        </Button>
-      </div>
-    );
-  }
-
-  const stage = progress?.ok ? progress.stage : null;
-  const stageLabel = (stage ? STAGE_COPY[stage] : null) ?? "Preparing to build your voice guide…";
-  const reasoning = progress?.ok ? progress.reasoningPartial : null;
+  const stopped = gates.error !== null || run.status === "failed";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 text-foreground text-sm">
-        <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
-        {stageLabel}
-      </div>
-      {reasoning ? (
-        <Reasoning defaultOpen isStreaming>
-          <ReasoningTrigger />
-          <ReasoningContent>{reasoning}</ReasoningContent>
-        </Reasoning>
-      ) : null}
-      <p className="text-muted-foreground text-xs">
-        You can leave this page — building your voice guide keeps running in the background.
-      </p>
+    <div className="flex flex-col gap-5">
+      <ExtractionChain
+        isStreaming={run.stage === "extracting"}
+        reasoning={run.reasoningPartial}
+        steps={steps}
+        title="Building your voice guide"
+      />
+
+      {stopped ? (
+        <div className="flex flex-col items-start gap-2">
+          {gates.error ? <p className="text-foreground text-sm">{gates.error}</p> : null}
+          <p className="text-muted-foreground text-sm">
+            Your agent is ready either way — you can retry from its Voice tab anytime.
+          </p>
+          <Button onClick={() => router.push(`/agents/${deskId}/voice`)} variant="outline">
+            Continue to your agent
+          </Button>
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-xs">
+          You can leave this page — building your voice guide keeps running in the background.
+        </p>
+      )}
     </div>
   );
 }

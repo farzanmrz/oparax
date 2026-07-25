@@ -45,10 +45,10 @@ export async function resumeDesk(id: string): Promise<ActionResult> {
 }
 
 /**
- * Delete a desk. `post_drafts.experiment_id` carries `ON DELETE CASCADE`, so its drafts
- * are cleaned up by the database — never `source_posts` or `voice_guides`, which are
- * shared across desks (a guide is paid once per reporter; source posts are cross-desk),
- * not desk-owned, and this action never touches either table. On success it redirects
+ * Delete a desk. `post_drafts.experiment_id` carries `ON DELETE CASCADE`, and so now do
+ * `voice_guides`, `voice_rules`, and `voice_extraction_runs` — all four are desk-owned, so the
+ * database cleans them up. `source_posts` is deliberately untouched: it is genuinely cross-desk
+ * (one ingested post can feed several desks), so it is not this desk's to delete. On success it redirects
  * to `/agents` so the now-deleted desk's URL is never re-fetched; on failure it returns
  * the usual `ActionResult` so the caller can show an inline error instead.
  */

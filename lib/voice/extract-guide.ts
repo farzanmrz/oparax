@@ -30,7 +30,7 @@ const EXTRACT_MAX_OUTPUT_TOKENS = 64_000;
 // Was 30 min ("far beyond any Vercel function cap") when this call was script-only
 // (scripts/extract-voice-guide.ts). The create-agent v2 continuation wired
 // extractVoiceGuideStreaming into real routes capped at maxDuration = 300 (create-desk's
-// after() call, capReprobe's manual retry) sharing that budget with the corpus-fetch poll
+// after() call, the Voice tab's manual retry) sharing that budget with the corpus-fetch poll
 // (lib/web/brightdata.ts's POLL_TIMEOUT_MS) and the DB writes around both — a 30-minute abort
 // here never fires before the platform kills the whole invocation with no cleanup. 150s is a
 // first-pass budget split, not measured against real generation latency yet — retune both once

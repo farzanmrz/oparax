@@ -99,14 +99,24 @@ async function main() {
     .limit(1);
   if (existingExperimentError) throw existingExperimentError;
 
-  if (!existingExperiments?.length) {
-    const { error } = await admin.from("experiments").insert({
-      owner_id: ownerId,
-      beat: `@${reporterHandle}'s beat`,
-      reporter_handle: reporterHandle,
-      tracked_handles: [],
-    });
+  // The guide is keyed by experiment_id, so this id is now load-bearing rather than incidental
+  // — the insert has to hand it back rather than being fire-and-forget as it was when guides
+  // were keyed by reporter_handle.
+  let experimentId = existingExperiments?.[0]?.id;
+  if (!experimentId) {
+    const { data, error } = await admin
+      .from("experiments")
+      .insert({
+        owner_id: ownerId,
+        beat: `@${reporterHandle}'s beat`,
+        reporter_handle: reporterHandle,
+        tracked_handles: [],
+        reporter_verified_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
     if (error) throw error;
+    experimentId = data.id;
   }
 
   // Store the full corpus in source_posts (deny-all table, service-role write). Deduped by
@@ -160,8 +170,8 @@ async function main() {
       } as unknown as Json,
       cost_usd: ext.costUsd,
       generation_id: ext.generationId,
-      ref_kind: "reporter_handle",
-      ref_id: reporterHandle,
+      ref_kind: "experiment_id",
+      ref_id: experimentId,
     })
     .select("id")
     .single();
@@ -171,14 +181,14 @@ async function main() {
   // reasoning, usage and cost have exactly one home, in model_calls.
   const { error: voiceGuideError } = await admin.from("voice_guides").upsert(
     {
-      reporter_handle: reporterHandle,
+      experiment_id: experimentId,
       guide_raw: ext.guideRaw,
       guide_deploy: deployGuide(ext.guideRaw),
       measured_facts: ext.measuredFactsBlock,
       cost_usd: ext.costUsd,
       provenance: { modelCallId: modelCall.id } as unknown as Json,
     },
-    { onConflict: "reporter_handle" },
+    { onConflict: "experiment_id" },
   );
   if (voiceGuideError) throw voiceGuideError;
 

@@ -98,12 +98,12 @@ async function main() {
   const { data: voiceGuides, error: voiceGuideError } = await admin
     .from("voice_guides")
     .select("id")
-    .eq("reporter_handle", reporterHandle)
+    .eq("experiment_id", experiment.id)
     .limit(1);
   if (voiceGuideError) throw voiceGuideError;
   if (!voiceGuides?.length) {
     throw new Error(
-      `No voice_guides row for reporter "@${reporterHandle}". ` +
+      `No voice_guides row for experiment ${experiment.id}. ` +
         "Run scripts/extract-voice-guide.ts first to extract one.",
     );
   }

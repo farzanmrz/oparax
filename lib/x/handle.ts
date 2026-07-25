@@ -19,12 +19,19 @@ export const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 export const MAX_TRACKED_HANDLES = 20;
 
 /**
- * The one stored normal form: trim, strip a single leading `@`, lowercase. Matching in
- * `draft-pipeline.ts` is case-insensitive (it lowercases both the delivery author and each stored
- * handle at compare time), so lowercasing here is for storage/display consistency, not matching.
+ * The one stored normal form: trim and strip a single leading `@`. Casing is PRESERVED as the
+ * user typed it — `ReshadRahman` stays `ReshadRahman`.
+ *
+ * This used to lowercase as well. Nothing depended on it: matching in `draft-pipeline.ts` is
+ * case-insensitive (it lowercases both the delivery author and each stored handle at compare
+ * time), x.com resolves `/ReshadRahman` and `/reshadrahman` to the same profile, and the one
+ * genuine reason — `voice_guides` and the extraction claim table being globally unique on
+ * `reporter_handle`, so two casings of one reporter would have been billed as two reporters —
+ * disappeared when guides became per-desk. All that lowercasing did by the end was make stored
+ * and displayed handles disagree with what the reporter typed.
  */
 export function normalizeHandle(raw: string): string {
-  return raw.trim().replace(/^@/, "").toLowerCase();
+  return raw.trim().replace(/^@/, "");
 }
 
 /**

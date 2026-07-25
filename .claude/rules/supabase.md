@@ -30,13 +30,13 @@ paths:
 
 - `/auth/confirm` (`app/auth/confirm/route.ts`) is the hardcoded redirect target of the dashboard email templates above — moving or renaming it breaks the same way.
 
-## `voice_guides` is readable by any signed-in user — accepted, not a bug to fix
+## The voice tables are per-desk, and that closed the old cross-user read
 
-Found by exploit, not by reading: the read policy joins through `experiments`, and any authenticated user may insert an `experiments` row with any `reporter_handle` and `owner_id = self`. So the join row is self-minted, reachable via PostgREST with the public key, no UI needed.
+`voice_guides` and `voice_rules` are keyed by `experiment_id`, one row per desk, joined through the owner-scoped `experiments` row by **id**. `voice_extraction_runs` is the same shape (deny-all, read via an ownership-proving server action).
 
-**Do not "fix" this by making `voice_guides` deny-all plus an ownership check in app code** — that asks the same unsound question one layer up (ownership would still be established through the same self-minted row). It moves the hole while costing the "RLS is the gate" property. The reasoning for accepting it — guides are derived from public posts and are shared infrastructure by design — is in `AGENTS.md`'s settled decisions.
+This replaced a `reporter_handle`-keyed model where a guide was global and shared across every desk on that reporter. Under it, the read policy joined by handle, and any authenticated user could self-mint an `experiments` row with any `reporter_handle` — so every guide was readable by every signed-in user, found by exploit rather than by reading. That is gone: a join on the desk's own id cannot be satisfied by a row the reader doesn't own.
 
-**The spend bound is what matters, and it is enforced elsewhere:** minting rows creates rows and nothing else. `pg_net`/`pg_cron`/`http` are not installed, so the database has no outbound-call capability, and extraction spend is gated by `lib/voice/spend-gate.ts` (one claim per reporter per UTC day, plus a preflight attempt cap). Re-check that bound if extraction ever gains a new user-triggered entry point.
+**There is no extraction spend gate any more, deliberately.** The per-reporter/UTC-day atomic claim and the per-handle profile-lookup cap were both deleted (owner decision): extraction runs whenever a desk owner asks for it and pays each time. If that ever needs bounding again, bound it per owner — not per handle, which was never the unit anyone shared.
 
 ## Auth-flow contracts (preserve these)
 
