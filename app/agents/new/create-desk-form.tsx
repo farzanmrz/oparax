@@ -120,8 +120,13 @@ function SectionHeader({ children }: { readonly children: ReactNode }) {
 
 export function CreateDeskForm({
   xLinkState,
+  canOverrideHandle,
 }: {
   readonly xLinkState: { linked: boolean; handle: string | null };
+  /** Owner-only (`lib/owner-allowlist.ts`): render the extract-from handle as editable instead
+   *  of a disabled mirror of the connected account. Presentation only — `createDesk` re-checks
+   *  the allowlist server-side and ignores the value for anyone else. */
+  readonly canOverrideHandle: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -133,6 +138,9 @@ export function CreateDeskForm({
   const [websiteDraft, setWebsiteDraft] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [createdDeskId, setCreatedDeskId] = useState<string | null>(null);
+  // Pre-filled with the connected handle so the default submit is byte-identical to the
+  // non-override path; only an allowlisted owner can edit it away from that default.
+  const [extractFrom, setExtractFrom] = useState(xLinkState.handle ?? "");
 
   const atLimit = handles.length >= MAX_TRACKED;
 
@@ -189,7 +197,16 @@ export function CreateDeskForm({
     const finalHandles = mergeHandles(handles, splitHandles(handleDraft));
     const finalWebsites = mergeWebsites(websites, splitWebsites(websiteDraft));
     startTransition(async () => {
-      const result = await createDesk({ name, beat, trackedHandles: finalHandles });
+      const result = await createDesk({
+        name,
+        beat,
+        trackedHandles: finalHandles,
+        // Sent only when an allowlisted owner actually changed it — an unchanged value is the
+        // connected handle, which the server would resolve identically on its own.
+        ...(canOverrideHandle && extractFrom.trim() && extractFrom.trim() !== xLinkState.handle
+          ? { extractFromHandle: extractFrom }
+          : {}),
+      });
       if (result.error || !result.id) {
         setFormError(result.error ?? "Could not create your agent. Please try again.");
         return;
@@ -346,6 +363,28 @@ export function CreateDeskForm({
                     </Button>
                   )}
                 </div>
+
+                {/* Owner-only. Rendered as its OWN field rather than by making the one above
+                    editable, because they are two different facts: the account that publishes
+                    (owner-keyed, resolved by getXAccount at post time) and the voice drafts are
+                    written in (this agent's reporter_handle). The product keeps them fused for
+                    real users; separating them here is what makes testing another reporter
+                    possible without touching either mechanism. */}
+                {canOverrideHandle && xLinkState.linked ? (
+                  <div className="flex flex-col gap-1.5">
+                    <FieldLabel
+                      badge={<Badge variant="secondary">Owner only</Badge>}
+                      help="Whose voice this agent writes in. Defaults to your connected account. Posts still publish from your connected account either way."
+                    >
+                      Extract voice from
+                    </FieldLabel>
+                    <Input
+                      onChange={(e) => setExtractFrom(e.target.value)}
+                      placeholder="handle without the @"
+                      value={extractFrom}
+                    />
+                  </div>
+                ) : null}
 
                 <p className="text-sm text-muted-foreground">
                   Draft instructions aren&apos;t set here — once your agent is created, Oparax

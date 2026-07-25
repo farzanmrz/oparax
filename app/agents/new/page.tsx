@@ -1,3 +1,5 @@
+import { isOverrideOwner } from "@/lib/owner-allowlist";
+import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
 import { CreateDeskForm } from "./create-desk-form";
 
@@ -13,6 +15,15 @@ export const maxDuration = 300;
  * and hands it down as a prop rather than adding a second server action just to fetch it.
  */
 export default async function NewDeskPage() {
-  const xLinkState = await getXLinkState();
-  return <CreateDeskForm xLinkState={xLinkState} />;
+  const supabase = await createClient();
+  const [xLinkState, { data: auth }] = await Promise.all([
+    getXLinkState(),
+    supabase.auth.getUser(),
+  ]);
+  // Resolved here so the field's editability is decided once, server-side, on first paint —
+  // same reasoning as xLinkState above. `createDesk` re-checks the allowlist itself; this prop
+  // only decides what renders, never what is honored.
+  return (
+    <CreateDeskForm canOverrideHandle={isOverrideOwner(auth.user?.email)} xLinkState={xLinkState} />
+  );
 }

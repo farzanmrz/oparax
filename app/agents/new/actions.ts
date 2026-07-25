@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { isOverrideOwner } from "@/lib/owner-allowlist";
 import { createClient } from "@/lib/supabase/server";
 import { attemptVoiceExtraction } from "@/lib/voice/create-desk-extraction";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
@@ -24,6 +25,10 @@ export async function createDesk(input: {
   name: string;
   beat: string;
   trackedHandles: string[];
+  /** Owner-only override — the handle whose VOICE this agent drafts in, when it isn't the
+   *  creator's own. Ignored unless the signed-in email is in `lib/owner-allowlist.ts`; that
+   *  check is re-run below rather than trusted from whichever client set this. */
+  extractFromHandle?: string;
 }): Promise<CreateDeskResult> {
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this agent should watch." };
@@ -58,10 +63,33 @@ export async function createDesk(input: {
 
   // Re-verified here, server-side, on every create — never trusted from the client. A desk's
   // identity-critical field can't come from anything a browser caller could have forged.
+  // Connect X still gates creation for EVERY caller, override or not: the owner needs a linked
+  // account to post from regardless of whose voice the agent drafts in.
   const { linked, handle } = await getXLinkState();
-  const reporterHandle = linked && handle ? normalizeValidHandle(handle) : null;
-  if (!reporterHandle) {
+  const connectedHandle = linked && handle ? normalizeValidHandle(handle) : null;
+  if (!connectedHandle) {
     return { error: "Connect your X account before creating an agent." };
+  }
+
+  // Owner-only: extract from a handle the caller hasn't authenticated as. The allowlist is
+  // re-checked HERE rather than trusted from the client — a server action is a reachable
+  // endpoint by ID, so "the form didn't render the field" proves nothing about the caller.
+  // A non-allowlisted caller passing this field is silently ignored (not rejected): their
+  // agent is created on their own handle, which is the behavior they'd get anyway.
+  //
+  // The override sets `reporter_handle` — it does NOT keep the agent on the owner's handle
+  // while pulling someone else's corpus. `voice_guides`/`voice_rules` are keyed by
+  // `reporter_handle`, so the other direction would file the guide under the wrong key,
+  // mislabeling it and colliding with the owner's real voice on a later extraction.
+  let reporterHandle = connectedHandle;
+  if (input.extractFromHandle?.trim() && isOverrideOwner(user.email)) {
+    const override = normalizeValidHandle(input.extractFromHandle);
+    if (!override) {
+      return {
+        error: `"${input.extractFromHandle.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
+      };
+    }
+    reporterHandle = override;
   }
 
   const { data, error } = await supabase
@@ -73,7 +101,11 @@ export async function createDesk(input: {
       reporter_handle: reporterHandle,
       tracked_handles: trackedHandles,
       // Identity is proven by the linked X account at this exact moment, not typed and
-      // verified later — verification is immediate now, not a separate step.
+      // verified later — verification is immediate now, not a separate step. Stamped on the
+      // owner-override path too, and that is load-bearing rather than sloppy: `voice_guides`'
+      // SELECT policy joins through this row and requires a non-null value, so leaving it null
+      // would make the guide unreadable and render an empty Voice tab after a successful,
+      // already-paid-for extraction. On that path the allowlist is the verification.
       reporter_verified_at: new Date().toISOString(),
     })
     .select("id")
