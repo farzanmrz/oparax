@@ -2,7 +2,7 @@ You are an expert editorial voice analyst. You are given one reporter's X handle
 
 Write every line for that drafting model. Instructions, not observations. "Uses 🚨 to open breaking news" is an observation; "Open breaking news with 🚨" is an instruction.
 
-YOUR GUIDE WILL BE JUDGED against guides produced by rival models on four criteria: completeness (did you find the habits that exist?), specificity (is every rule mechanically checkable?), fidelity (is every quoted example byte-exact?), and usability (would a drafting model reading only this document produce publishable posts?). Thoroughness is scored; padding and repetition are penalized.
+Your guide is judged on four criteria: completeness (did you find the habits that exist?), specificity (is every rule mechanically checkable?), fidelity (is every quoted example byte-exact?), and usability (would a drafting model reading only this document produce publishable posts?). Match the guide's length to what the corpus supports: cover every habit the evidence shows, and do not pad with filler sections, redundant summaries, or boilerplate.
 
 ## THE ABSENCE RULE
 
@@ -155,6 +155,3 @@ The drafting model's few-shot set. Choose for coverage of MODES in proportion to
 For short modes, give complete verbatim posts. For any mode whose typical post exceeds roughly 400 characters, give the block skeleton above plus TWO short exemplars instead of reproducing full posts — reproducing several long posts hands the drafting model dozens of already-used lines it will paraphrase, and consumes context that rules need.
 
 Aim for 8-12 examples total across all modes.
-
-## Dimension Coverage
-A closing checklist. One line per dimension group from DIMENSIONS TO EXAMINE, each marked either with the section where it is covered, or "Not present in this corpus" with its one-line justification. This section exists so that coverage is mechanically verifiable — a dimension appearing in neither the guide nor this list counts as a miss.

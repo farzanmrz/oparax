@@ -12,10 +12,16 @@ verified against their originals at port time. Full rationale and measurements:
 
 ## `deployGuide()` — strip before a guide becomes a prompt
 
-A raw guide carries sections that exist to verify the EXTRACTOR (today `## Dimension
-Coverage`). The drafting model gains nothing and pays for them on every draft: **16.1% off
-every draft, forever, at zero risk** (measured, 10 guides). Verified **byte-identical to the
-Python original on all 10 lab guides**.
+A raw guide may carry sections that exist to verify the EXTRACTOR. The drafting model gains
+nothing and pays for them on every draft: **16.1% off every draft, forever, at zero risk**
+(measured, 10 guides, when `## Dimension Coverage` was still generated). Verified
+**byte-identical to the Python original on all 10 lab guides**.
+
+**`LAB_ONLY_SECTIONS` is empty today and that is correct** — its one entry, `## Dimension
+Coverage`, is no longer emitted at all (see the extraction recipe below). Not generating a
+section beats generating and stripping it: the same 16.1% is now saved at extraction time too.
+Do not "clean up" the empty array or inline the call — the raw/deployed split is what
+`voice_guides` provenance rests on, and the rule outlives its one instance.
 
 **Store the raw guide, draft from `deployGuide(raw)`.** Never the reverse — the raw guide is
 the audit trail for what the extractor claimed to examine. Adding a new lab-only section to
@@ -66,8 +72,29 @@ the flagged expression, not above the enclosing declaration.)
 - **Measured facts are computed, not read.** Reading under-counts sparse habits: the extractor
   called one reporter hashtag-free when the true count was 6/80. A count cannot miss that and
   costs $0.
+- **No self-verification section, and no competitive framing.** Both were removed against
+  Anthropic's official Opus 5 prompting guidance, not by read-through. (1) `## Dimension
+  Coverage` — the extractor's closing self-audit checklist — is gone: the guidance says explicit
+  verification instructions "cause over-verification on Claude Opus 5, and removing them reduces
+  wasted tokens with no loss in quality," and `deployGuide()` was already discarding it, so it
+  was pure waste. (2) `Thoroughness is scored; padding and repetition are penalized` became a
+  length-calibration line: the same guidance flags "be conservative"-shaped instructions as
+  literally followed on Opus 5, which suppresses real findings — the replacement targets padding
+  without chilling coverage, since Opus 5 also writes longer deliverables by default. (3) "judged
+  against guides produced by rival models" was dropped — it was a true statement during the
+  8-model ablation and is now a motivational fiction; competitive framing appears nowhere in
+  Anthropic's guidance. **The four criteria themselves stay** — they define what "good" means.
+- **The Absence Rule and all 33 dimensions stay — do not "simplify" them into a prohibition
+  list.** A blocklist ("do not invent hashtags", "do not invent slants") can never be finished:
+  it enumerates the three failures the ablation happened to catch and silently authorizes every
+  one it didn't. The Absence Rule is a general procedure instead — every dimension returns
+  evidence or the exact words "Not present in this corpus" — which covers unseen failure modes
+  and is phrased positively, matching the guidance's "positive examples beat instructions about
+  what not to do." The dimension list and the Absence Rule are a matched pair: 33 headings is a
+  hallucination surface, and the Absence Rule is what makes "nothing here" a legal answer.
+  Cutting either one makes the other actively harmful.
 - **Deploy strip:** store the raw guide (audit trail), draft from the stripped one — 16.1% off
-  every draft forever, at zero risk.
+  every draft forever, at zero risk. Now saved at extraction time instead (see above).
 
 ## Model configs are decided; don't re-choose them mid-task
 
