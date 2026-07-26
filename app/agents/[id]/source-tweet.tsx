@@ -139,7 +139,9 @@ export async function SourceTweet({
   const enriched = enrichTweet(tweet);
 
   const hasRealAvatar = !tweet.user.profile_image_url_https.startsWith("data:");
-  const timeLabel = sourcePost.postedAt ? <RelativeTime iso={tweet.created_at} /> : null;
+  const timeLabel = sourcePost.postedAt ? (
+    <RelativeTime iso={tweet.created_at} prefix="Posted" />
+  ) : null;
 
   return (
     <div className={styles.wrapper}>
@@ -178,11 +180,12 @@ export async function SourceTweet({
           )}
           <SourceChip kind={sourcePost.xPostId ? "x" : "website"} />
         </div>
-        <ExpandableBody
-          media={fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : undefined}
-        >
+        {/* Text and media share ONE height budget inside the clamp — see expandable-body.tsx. */}
+        <ExpandableBody>
           <TweetBody tweet={enriched} />
+          {fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : null}
         </ExpandableBody>
+        <div aria-hidden="true" className={styles.grow} />
         {missing ? null : (
           <div className={styles.footer}>
             <a

@@ -34,7 +34,10 @@ function relativeLabel(iso: string): { label: string; title: string } {
   return { label, title: date.toLocaleString() };
 }
 
-export function RelativeTime({ iso }: { iso: string }) {
+/** `prefix` names the ACTION the timestamp belongs to — "Posted" on a source card, "Drafted"
+ *  on a draft card. Two cards sit side by side showing different events, and a bare "5m ago"
+ *  on each made them look like the same one. */
+export function RelativeTime({ iso, prefix }: { iso: string; prefix?: string }) {
   const [mounted, setMounted] = useState<{ label: string; title: string } | null>(null);
 
   useEffect(() => {
@@ -51,9 +54,10 @@ export function RelativeTime({ iso }: { iso: string }) {
     day: "numeric",
   });
 
+  const label = mounted?.label ?? fallback;
   return (
     <time dateTime={iso} suppressHydrationWarning title={mounted?.title}>
-      {mounted?.label ?? fallback}
+      {prefix ? `${prefix} ${label}` : label}
     </time>
   );
 }

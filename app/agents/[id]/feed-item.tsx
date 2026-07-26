@@ -18,6 +18,7 @@ import type { FeedStory } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
 import { DraftPlatformSwitcher } from "./draft-platform-switcher";
 import { ExtraSourcesBadge } from "./feed-tooltips";
+import { RelativeTime } from "./relative-time";
 import { SourceChip, SourceTweet } from "./source-tweet";
 import styles from "./source-tweet.module.css";
 import { XAvatar } from "./x-avatar";
@@ -53,12 +54,17 @@ function NewsCard({
 /** The draft card's header — same template as the source card's (avatar · bold handle ·
  *  platform chip far right), so the two columns read as one system. The avatar resolves by
  *  handle (see x-avatar.tsx) because the linked account appears in no tweet payload. */
-function DraftHeader({ handle }: { handle: string }) {
+function DraftHeader({ handle, draftedAt }: { handle: string; draftedAt?: string }) {
   return (
     <div className={styles.header}>
       <XAvatar handle={handle} />
       <span className={styles.handle}>@{handle}</span>
       <span className={styles.spacer} />
+      {draftedAt ? (
+        <span className={styles.time}>
+          <RelativeTime iso={draftedAt} prefix="Drafted" />
+        </span>
+      ) : null}
       <SourceChip kind="x" />
     </div>
   );
@@ -80,6 +86,9 @@ function DraftCard({
   opacityClass: string | undefined;
 }) {
   const hasWinners = Object.keys(story.winners).length > 0;
+  // X's winner is the card's default view (see DraftPlatformSwitcher), so its creation time is
+  // the one the header dates; fall back to whichever platform produced a winner.
+  const draftedAt = (story.winners.x ?? Object.values(story.winners)[0])?.createdAt;
 
   if (!hasWinners) {
     // A winner-less story is EITHER mid-council (normal for ~a minute after delivery) or
@@ -123,7 +132,7 @@ function DraftCard({
     <div className={cn("flex h-full flex-col", opacityClass)}>
       <div className={styles.wrapper}>
         <TweetContainer>
-          <DraftHeader handle={publishHandle} />
+          <DraftHeader draftedAt={draftedAt} handle={publishHandle} />
           <DraftPlatformSwitcher
             charLimit={charLimit}
             experimentId={experimentId}

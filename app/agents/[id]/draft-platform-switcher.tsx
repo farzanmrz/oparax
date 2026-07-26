@@ -124,10 +124,13 @@ export function DraftPlatformSwitcher({
         </div>
       ) : null}
       <p className="text-sm whitespace-pre-wrap">{winner.text}</p>
-      {/* mt-auto pins the action row to the card's bottom edge — the card stretches to match
-          its taller row partner, and edit/history/info + counter/Post belong at a fixed
-          place, not floating wherever the text happens to end. */}
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+      {/* An explicit growing spacer, NOT `mt-auto` on the row below: auto margins did not
+          resolve inside react-tweet's article (measured — 92-112px of dead space stayed
+          BELOW the action row), and `flex-1` on a real element is deterministic. This is what
+          pins edit/history/info + counter/Post to the card's bottom edge while the card
+          stretches to match its taller row partner. */}
+      <div aria-hidden="true" className="flex-1" />
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <DraftEditDialog
             currentText={winner.text}

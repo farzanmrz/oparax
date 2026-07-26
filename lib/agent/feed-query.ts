@@ -76,6 +76,9 @@ export type FeedStory = {
         postDraftId: string;
         text: string;
         model: string;
+        /** When the council produced this draft — the draft card's own timestamp, distinct
+         *  from the source post's publish time shown on the card beside it. */
+        createdAt: string;
         postedAt: string | null;
         postedUrl: string | null;
       }
@@ -217,6 +220,7 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
       postDraftId: winner.id,
       text: winner.model_calls?.output ?? "",
       model: winner.model_calls?.model ?? "unknown",
+      createdAt: winner.created_at,
       postedAt: winner.posted_at,
       postedUrl: winner.posted_url,
     };
