@@ -123,10 +123,10 @@ export function PostToXControl({
   // than the `sm` chip it used to be — at that size, wedged against the card edge next to a
   // mono character counter, it read as another metadata pill instead of the one control the
   // reporter is here to press.
-  // Padding comes from the CSS module, NOT from a Tailwind class: this button renders inside
-  // react-tweet's TweetContainer, whose theme ships an unlayered `* { padding: 0 }` that beats
-  // Tailwind's utility layer outright. `px-5` measured 0px here, which is why the button kept
-  // rendering as clipped text. See the warning block in source-tweet.module.css.
+  // Sizing lives in the CSS module beside the action row it sits in, so the two stay in step.
+  // (It moved there when react-tweet's unlayered `* { padding: 0 }` was silently zeroing every
+  // Tailwind spacing utility in these cards — that library's CSS is gone now and utilities work
+  // here again, so this is a colocation choice rather than a workaround.)
   // Just "Post": the card header already carries the X chip and the handle, so naming the
   // platform again on the button is the third time the same word appears in one card. The
   // confirm step below still says "Post to X", where the destination is the thing being agreed to.

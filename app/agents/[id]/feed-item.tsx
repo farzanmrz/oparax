@@ -6,18 +6,18 @@
 // `grid-cols-2` places the news card and its draft card side by side without an extra wrapper
 // div — see `page.tsx`.
 //
-// BOTH columns wear the same card anatomy on purpose (react-tweet's `TweetContainer` + the
-// shared header template from source-tweet.module.css): the story card shows the SOURCE
+// BOTH columns wear the same card anatomy on purpose (`PostCard` + the shared header
+// template from source-tweet.module.css): the story card shows the SOURCE
 // account's identity, the draft card shows the identity of the X ACCOUNT THAT WOULD PUBLISH —
 // the linked OAuth account's handle, not the desk's `reporter_handle`. Those are the same
 // person for a normal reporter; for the owner-override case (admin extracts from a reporter
 // they can't authenticate as) they deliberately differ, and the card must show where the post
 // would actually land. Falls back to `reporter_handle` when no X account is linked yet.
-import { TweetContainer } from "react-tweet";
 import type { FeedStory } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
 import { DraftPlatformSwitcher } from "./draft-platform-switcher";
 import { ExtraSourcesBadge } from "./feed-tooltips";
+import { PostCard } from "./post-card";
 import { RelativeTime } from "./relative-time";
 import { SourceChip, SourceTweet } from "./source-tweet";
 import styles from "./source-tweet.module.css";
@@ -101,46 +101,42 @@ function DraftCard({
     const stale = startedAt ? Date.now() - new Date(startedAt).getTime() > 10 * 60 * 1000 : true;
     return (
       <div className={cn("flex h-full flex-col", opacityClass)}>
-        <div className={styles.wrapper}>
-          <TweetContainer>
-            <DraftHeader handle={publishHandle} />
-            {stale ? (
-              <p className="text-sm text-muted-foreground">
-                Nothing drafted from this post — there wasn't enough to write from.
-              </p>
-            ) : (
-              // A status line, not a skeleton: gray bars imply a layout waiting on data, and
-              // read as broken when they persist for the ~minute a council takes. This says
-              // what is actually happening; the feed auto-refresh swaps in the draft.
-              <div className="flex items-center gap-2" role="status">
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 shrink-0 animate-pulse rounded-full bg-primary"
-                />
-                <span className="text-sm text-muted-foreground">
-                  Drafting in your voice — a few models are writing…
-                </span>
-              </div>
-            )}
-          </TweetContainer>
-        </div>
+        <PostCard>
+          <DraftHeader handle={publishHandle} />
+          {stale ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing drafted from this post — there wasn't enough to write from.
+            </p>
+          ) : (
+            // A status line, not a skeleton: gray bars imply a layout waiting on data, and
+            // read as broken when they persist for the ~minute a council takes. This says
+            // what is actually happening; the feed auto-refresh swaps in the draft.
+            <div className="flex items-center gap-2" role="status">
+              <span
+                aria-hidden="true"
+                className="size-1.5 shrink-0 animate-pulse rounded-full bg-primary"
+              />
+              <span className="text-sm text-muted-foreground">
+                Drafting in your voice — a few models are writing…
+              </span>
+            </div>
+          )}
+        </PostCard>
       </div>
     );
   }
 
   return (
     <div className={cn("flex h-full flex-col", opacityClass)}>
-      <div className={styles.wrapper}>
-        <TweetContainer>
-          <DraftHeader draftedAt={draftedAt} handle={publishHandle} />
-          <DraftPlatformSwitcher
-            charLimit={charLimit}
-            experimentId={experimentId}
-            story={story}
-            xLinked={xLinked}
-          />
-        </TweetContainer>
-      </div>
+      <PostCard>
+        <DraftHeader draftedAt={draftedAt} handle={publishHandle} />
+        <DraftPlatformSwitcher
+          charLimit={charLimit}
+          experimentId={experimentId}
+          story={story}
+          xLinked={xLinked}
+        />
+      </PostCard>
     </div>
   );
 }

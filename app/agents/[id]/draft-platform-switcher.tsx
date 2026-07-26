@@ -125,14 +125,12 @@ export function DraftPlatformSwitcher({
         </div>
       ) : null}
       <p className="text-sm whitespace-pre-wrap">{winner.text}</p>
-      {/* An explicit growing spacer, NOT `mt-auto` on the row below: auto margins did not
-          resolve inside react-tweet's article (measured — 92-112px of dead space stayed
-          BELOW the action row), and `flex-1` on a real element is deterministic. This is what
-          pins edit/history/info + counter/Post to the card's bottom edge while the card
-          stretches to match its taller row partner. */}
+      {/* An explicit growing spacer rather than `mt-auto` on the row below — `flex-1` on a real
+          element is deterministic where an auto margin depends on the parent resolving a free
+          height. This is what pins edit/history/info + counter/Post to the card's bottom edge
+          while the card stretches to match its taller row partner. */}
       <div aria-hidden="true" className="flex-1" />
-      {/* Layout from the CSS module, not Tailwind: react-tweet's unlayered `* { padding: 0 }`
-          kills utility spacing inside these cards — see source-tweet.module.css. */}
+      {/* Layout in the CSS module, colocated with the button it sizes (post-to-x-control.tsx). */}
       <div className={styles.actionRow}>
         <div className="flex flex-wrap items-center gap-1.5">
           <DraftEditDialog

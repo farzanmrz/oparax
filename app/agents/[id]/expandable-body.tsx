@@ -12,11 +12,10 @@
 // re-measured when images finish loading — an <img> has zero height until then, so a
 // measurement taken at mount alone would miss every media post.
 //
-// One case the clamp CANNOT serve: a long ("note") post, whose body X already truncated before
-// it reached us (see source-tweet.tsx). There is no hidden remainder to reveal, so expanding in
-// place would show a body that stops mid-sentence while the control claimed everything was
-// shown. Those cards get `truncatedHref` and exactly one control — a link to the complete post
-// on X — in the toggle's slot.
+// Every card gets the same plain expander, with no special case: the body being clamped is our
+// own stored `source_posts.text`, which is complete for long ("note") posts too now that the
+// ingest worker requests the v2 stream's `note_tweet` field. So "Show more" always reveals text
+// we actually hold, and the label is honest on every card.
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./source-tweet.module.css";
 

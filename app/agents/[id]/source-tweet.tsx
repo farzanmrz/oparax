@@ -18,27 +18,29 @@
 // - The relative time (far right) IS the link to the original post — the X-native convention
 //   — which is why there is no separate "view source" control anywhere on the card.
 //
-// `TweetBody` stays react-tweet's (entity linkification — hashtags, mentions, resolved t.co
-// urls — is exactly the fiddly part worth taking from the library), clamped by
-// ExpandableBody so a long premium post can't wreck the row pairing against a ≤280-char
-// draft. Media renders as a fixed-height thumbnail strip, never full-size: the job is "know
-// media exists", consumption happens on X. Premium bold/italic formatting is NOT in the
-// syndication payload (nor the v2 API) — the text arrives complete but plain for every
-// embed on the internet, not just ours; the click-through shows the real thing. A long
-// ("note") post arrives TRUNCATED for the same reason — see the `truncated` comment below.
+// The body is rendered by our own `PostBody` (see post-card.tsx for why react-tweet's
+// presentation layer was dropped), clamped by ExpandableBody so a long premium post can't
+// wreck the row pairing against a ≤280-char draft. Media renders as a fixed-height thumbnail
+// strip, never full-size: the job is "know media exists", consumption happens on X. Premium
+// bold/italic formatting is NOT in the syndication payload (nor the v2 API) — the text
+// arrives plain for every embed on the internet, not just ours; the click-through shows the
+// real thing.
 //
-// TWO SOURCES, deliberately. The syndication API (free, unauthenticated, NOT our metered X
-// tier) serves the live post — avatar, media. Our own `source_posts` row is the fallback AND
-// the source of record: reporters delete and edit posts constantly, and a story we already
-// drafted must not hollow out into "Tweet not found". When the post is gone the card says so
-// — "No longer on X · archived" — because holding the record X no longer serves is part of
-// what the product is. Fetch failures are normal operation here, never an error.
-import { enrichTweet, TweetBody, TweetContainer } from "react-tweet";
+// TWO SOURCES, and WHICH ONE WINS MATTERS. The syndication API (free, unauthenticated, NOT
+// our metered X tier) supplies the avatar, the media and the URL entities. **The TEXT comes
+// from our own `source_posts` row, always** — syndication truncates a long ("note") post at
+// ~280 chars and carries the remainder nowhere, while our row holds the complete body from
+// the v2 stream's `note_tweet` field (ingest/src/stream.ts). Our row is also the fallback for
+// the whole card: reporters delete and edit posts constantly, and a story we already drafted
+// must not hollow out into "Tweet not found". When the post is gone the card says so — "No
+// longer on X · archived" — because holding the record X no longer serves is part of what the
+// product is. Fetch failures are normal operation here, never an error.
 import type { Tweet } from "react-tweet/api";
 import { getTweet } from "react-tweet/api";
 import type { FeedStory } from "@/lib/agent/feed-query";
 import { buildSyntheticTweet } from "@/lib/x/tweet-shape";
 import { ExpandableBody } from "./expandable-body";
+import { PostBody, PostCard } from "./post-card";
 import { RelativeTime } from "./relative-time";
 import styles from "./source-tweet.module.css";
 import { XAvatar } from "./x-avatar";
@@ -137,21 +139,18 @@ export async function SourceTweet({
       handle: sourcePost.authorHandle ?? "source",
       name: sourcePost.authorName,
     });
-  // `note_tweet` marks a long ("note") post whose body X TRUNCATES — and the marker is the ONLY
-  // thing it carries: measured live on @BarcaUniversal 2081154657573883993, the payload ends at
-  // 294 chars on a dangling "• " and `note_tweet` is `{ id }` with the missing text nowhere in
-  // the response. Our own stored copy is NOT fuller — `source_posts.text` for that post is the
-  // identical 294-char string (the filtered stream doesn't request the note-tweet field either),
-  // so rendering `sourcePost.text` instead would trade react-tweet's index-based entity
-  // linkification for exactly zero extra words. The full body exists only on X.
-  //
-  // So the marker is dropped before enriching — react-tweet's TweetBody would otherwise append
-  // its own "Show more" anchor beside our in-place expander's identical label. The card does NOT
-  // get a special control for this: the clamp is hiding real text we DO hold either way, so
-  // "Show more" is the honest label, and the source-link icon beside the handle is already the
-  // way to the complete post on X. A third affordance saying "Read full post on X" just
-  // duplicated that icon while removing the expander that reveals the lines we have.
-  const enriched = enrichTweet({ ...tweet, note_tweet: undefined });
+  // The BODY is our stored text, never `tweet.text`. For a long ("note") post the syndication
+  // payload stops at ~280 chars on a dangling token and sets `note_tweet: { id }` with the
+  // remainder nowhere — measured on @BarcaUniversal 2081154657573883993: 294 chars from
+  // syndication against 393 from the v2 stream's `note_tweet.text`, which is what the ingest
+  // worker now stores. Reading `tweet.text` here would silently re-truncate the post AFTER the
+  // pipeline went to the trouble of capturing it whole.
+  const body = sourcePost.text;
+  // Everything OTHER than the text still comes from syndication, keyed by string rather than by
+  // character offset: its entity indices address ITS text, which is a different string to ours.
+  const mediaUrls = (tweet.entities?.media ?? []).map((m) => m.url);
+  const urlEntities = tweet.entities?.urls ?? [];
+  const postUrl = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`;
 
   const hasRealAvatar = !tweet.user.profile_image_url_https.startsWith("data:");
   const timeLabel = sourcePost.postedAt ? (
@@ -159,75 +158,63 @@ export async function SourceTweet({
   ) : null;
 
   return (
-    <div className={styles.wrapper}>
-      <TweetContainer>
-        <div className={styles.header}>
-          <a
-            className={styles.identity}
-            href={enriched.user.url}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            {hasRealAvatar ? (
-              // biome-ignore lint/performance/noImgElement: X CDN avatar, already sized (_normal = 48px) — next/image would only proxy it
-              <img alt="" className={styles.avatar} src={tweet.user.profile_image_url_https} />
-            ) : (
-              // Archive fallback: the tweet payload (and its avatar) are gone, but the
-              // ACCOUNT usually still exists — resolve its picture by handle instead of
-              // showing a monogram for an author whose face the reporter knows.
-              <XAvatar handle={tweet.user.screen_name} />
-            )}
-            <span className={styles.handle}>@{tweet.user.screen_name}</span>
-          </a>
-          {/* The source link sits WITH the identity, not in a footer — a trailing footer row
-              made every card taller than its content for one icon, and the card should end
-              where Show more ends. */}
-          {missing ? null : (
-            <a
-              className={styles.sourceLink}
-              href={enriched.url}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <span className="sr-only">View this post on X</span>
-              <svg
-                aria-hidden="true"
-                fill="none"
-                height="14"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                width="14"
-              >
-                <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              </svg>
-            </a>
-          )}
-          <span className={styles.spacer} />
-          {missing ? <span className={styles.archived}>No longer on X · archived</span> : null}
-          {missing ? (
-            <span className={styles.time}>{timeLabel}</span>
+    <PostCard>
+      <div className={styles.header}>
+        <a
+          className={styles.identity}
+          href={`https://x.com/${tweet.user.screen_name}`}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {hasRealAvatar ? (
+            // biome-ignore lint/performance/noImgElement: X CDN avatar, already sized (_normal = 48px) — next/image would only proxy it
+            <img alt="" className={styles.avatar} src={tweet.user.profile_image_url_https} />
           ) : (
-            <a
-              className={styles.time}
-              href={enriched.url}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {timeLabel}
-            </a>
+            // Archive fallback: the tweet payload (and its avatar) are gone, but the
+            // ACCOUNT usually still exists — resolve its picture by handle instead of
+            // showing a monogram for an author whose face the reporter knows.
+            <XAvatar handle={tweet.user.screen_name} />
           )}
-          <SourceChip kind={sourcePost.xPostId ? "x" : "website"} />
-        </div>
-        {/* Text and media share ONE height budget inside the clamp — see expandable-body.tsx. */}
-        <ExpandableBody>
-          <TweetBody tweet={enriched} />
-          {fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : null}
-        </ExpandableBody>
-        <div aria-hidden="true" className={styles.grow} />
-      </TweetContainer>
-    </div>
+          <span className={styles.handle}>@{tweet.user.screen_name}</span>
+        </a>
+        {/* The source link sits WITH the identity, not in a footer — a trailing footer row
+            made every card taller than its content for one icon, and the card should end
+            where Show more ends. */}
+        {missing ? null : (
+          <a className={styles.sourceLink} href={postUrl} rel="noopener noreferrer" target="_blank">
+            <span className="sr-only">View this post on X</span>
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            </svg>
+          </a>
+        )}
+        <span className={styles.spacer} />
+        {missing ? <span className={styles.archived}>No longer on X · archived</span> : null}
+        {missing ? (
+          <span className={styles.time}>{timeLabel}</span>
+        ) : (
+          <a className={styles.time} href={postUrl} rel="noopener noreferrer" target="_blank">
+            {timeLabel}
+          </a>
+        )}
+        <SourceChip kind={sourcePost.xPostId ? "x" : "website"} />
+      </div>
+      {/* Text and media share ONE height budget inside the clamp — see expandable-body.tsx. */}
+      <ExpandableBody>
+        <PostBody mediaUrls={mediaUrls} text={body} urls={urlEntities} />
+        {fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : null}
+      </ExpandableBody>
+      <div aria-hidden="true" className={styles.grow} />
+    </PostCard>
   );
 }

@@ -1,8 +1,6 @@
-/* The source card wears the site's skin over react-tweet's anatomy: every visual override
-   goes through react-tweet's own CSS variables where one exists, keeping the vendored
-   component untouched (the same wrap-don't-edit rule as components/ui). The variables are
-   set on `.react-tweet-theme` — the element theme.css itself targets — via a descendant
-   selector, exactly like the deleted compact-tweet.module.css did. */
+/* The feed card, in the site's own skin. This used to theme react-tweet's `TweetContainer`
+   through its CSS variables; that layer is gone (see post-card.tsx for why), so these are
+   ordinary rules on our own elements and there is no vendored component to work around. */
 
 /* The wrapper stretches so a row's two cards (story left, draft right) always match height —
    they are siblings in the page's grid row, and the shorter card growing to the taller one is
@@ -12,39 +10,40 @@
   min-height: 0;
 }
 
-.wrapper :global(.react-tweet-theme) {
-  --tweet-container-margin: 0;
+/* Column layout so a card's last row can pin to the bottom edge via `.grow`. Padding is
+   tighter than X's own embed because the feed shows many cards rather than one showcase. */
+.card {
   height: 100%;
   display: flex;
   flex-direction: column;
-  --tweet-bg-color: var(--card);
-  --tweet-bg-color-hover: var(--card);
-  --tweet-border: 1px solid var(--border);
-  --tweet-font-family: inherit;
-  --tweet-font-color: var(--card-foreground);
-  --tweet-font-color-secondary: var(--muted-foreground);
-  /* Entity links (hashtags, mentions, resolved t.co urls) pick up the site accent. */
-  --tweet-color-blue-secondary: var(--primary);
-  --tweet-color-blue-secondary-hover: var(--primary);
-  --tweet-body-font-size: 0.9375rem;
-  --tweet-body-line-height: 1.5;
-  --tweet-body-margin: 0;
-  /* react-tweet pins the embed at 550px (X's own embed width); the feed's grid column is
-     the authority on width here. */
-  max-width: none;
+  padding: 0.75rem 0.875rem;
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
   width: 100%;
 }
 
-/* TweetContainer renders `.react-tweet-theme > article`, and the CHILDREN live in the article
-   — so the column layout that lets a card's last row pin to the bottom (`margin-top: auto` on
-   the source footer / the draft action row) has to be on the article, not the theme div. It
-   also owns the padding: tighter than X's own embed, because the feed shows many cards rather
-   than one showcase. */
-.wrapper :global(.react-tweet-theme) > article {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 0.75rem 0.875rem;
+/* ── Body: the stored post text, linkified by PostBody ─────────────────────────────── */
+
+/* `pre-wrap` is load-bearing, not cosmetic — a bulleted transfer-news post is the common
+   shape on this beat, and collapsing its newlines destroys the structure the reporter reads
+   for. `anywhere` keeps a long unbroken URL from widening the grid column. */
+.body {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.body a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.body a:hover {
+  text-decoration: underline;
 }
 
 /* ── Header: one line — avatar · handle · time · platform chip ─────────────────────── */
@@ -228,22 +227,16 @@ a.time:hover {
   background: rgb(0 0 0 / 35%);
 }
 
-/* ⚠️ react-tweet's theme.css ships an UNLAYERED reset:
-       :where(.react-tweet-theme) * { margin: 0; padding: 0; box-sizing: border-box }
-   Unlayered declarations beat Tailwind's `@layer utilities` REGARDLESS of specificity, so
-   inside these cards every Tailwind margin/padding utility is silently dead — `px-5` computed
-   to 0px and `mt-auto` never pinned anything (both measured live). Any spacing needed inside a
-   TweetContainer must therefore come from THIS module (unlayered, specificity 0,1,0 — it wins)
-   or from a property the reset doesn't touch (flex, gap). Do not "fix" a spacing bug in these
-   cards with a Tailwind class; it will look correct in the source and do nothing in the browser.
-
-   A real growing element rather than `margin-top: auto` for the same reason — it absorbs slack
-   so a short card still matches its row partner's height. */
+/* A real growing element rather than `margin-top: auto`: it absorbs the slack so a short card
+   still matches its row partner's height, which auto-margin alone would not do in a grid row.
+   (It was originally introduced to route around react-tweet's unlayered reset, which killed
+   `mt-auto` outright; that reset is gone with the library's CSS, but a growing spacer is still
+   the more direct expression of "push the last row down".) */
 .grow {
   flex: 1;
 }
 
-/* The draft card's action row and its primary button — spacing lives here, not in Tailwind. */
+/* The draft card's action row and its primary button. */
 .actionRow {
   display: flex;
   flex-wrap: wrap;
