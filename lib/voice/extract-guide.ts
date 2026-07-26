@@ -71,7 +71,17 @@ export type CorpusPost = {
   long: boolean;
   /** The post this one was replying to/quoting, when the raw corpus recorded one. */
   reactingTo?: { handle: string; text: string } | null;
+  /** Attached media as still images, passed to the model as real image parts (see
+   *  `buildExtractionContent`). Optional so a corpus source without media still typechecks. */
+  media?: { kind: "photo" | "video" | "animated_gif"; imageUrl: string }[];
 };
+
+/** Ceiling on how many images one extraction sends. A reporter posting four photos on every one
+ *  of 100 posts would otherwise ship 400 images into a single call — images are the expensive
+ *  part of a multimodal request, and extraction has no spend gate to catch it (owner decision,
+ *  AGENTS.md). At a typical ~50 this never binds; when it does, the prompt SAYS so rather than
+ *  letting the model infer that the unshown posts had no media. */
+const MAX_CORPUS_IMAGES = 60;
 
 export type VoiceExtraction = {
   guideRaw: string;
@@ -101,6 +111,26 @@ export type VoiceExtraction = {
   finishReason: string | null;
 };
 
+/** One part of the user message. The corpus is no longer a plain string: attached media rides
+ *  along as real image parts, so the call is multimodal.
+ *
+ *  A `file` part, NOT the older `image` part — the SDK deprecates `image` in favour of `file`
+ *  with an explicit `mediaType`, and warns on every use at runtime. X serves both photo urls and
+ *  video/GIF poster frames as JPEG. */
+type ExtractionContentPart =
+  | { type: "text"; text: string }
+  | { type: "file"; data: URL; mediaType: string };
+
+/** X's CDN serves `.jpg` for photos and for video/GIF poster frames, and `.png` for a minority of
+ *  uploads. Read it off the url rather than assuming, since an incorrect mediaType is rejected. */
+function imageMediaType(url: string): string {
+  const ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  return "image/jpeg";
+}
+
 /** Shared by both call shapes below (plain and streaming) so the prompt they send the model can
  *  never drift apart — extracted rather than duplicated inline a second time.
  *
@@ -108,10 +138,10 @@ export type VoiceExtraction = {
  * grades `## RECENCY` off the dates, ranks mode performance off the engagement counts, and
  * describes each mode's "transformation" from the reacted-to post. Dropping any of them makes
  * those dimensions unanswerable and the guide measurably worse for the same spend. */
-function buildExtractionPrompt(
+function buildExtractionContent(
   handle: string,
   posts: CorpusPost[],
-): { facts: string; prompt: string } {
+): { facts: string; content: ExtractionContentPart[] } {
   // The measured-facts block is prepended and BINDING (the prompt's ## MEASURED FACTS section).
   const facts = measuredFacts(
     handle,
@@ -119,8 +149,14 @@ function buildExtractionPrompt(
   );
   const lines: string[] = [];
   for (const p of posts) {
+    const media = p.media ?? [];
+    // The marker tells the model a post's link resolves to an attachment BEFORE it reaches the
+    // images, so a `🚨 https://t.co/…` line is never read as a bare link post.
+    const mediaMark = media.length
+      ? ` [MEDIA: ${media.map((m) => m.kind).join(", ")} — shown below]`
+      : "";
     lines.push(
-      `[${p.id}] ${p.date} ${p.long ? "LONG " : ""}(♥${p.likes} ↻${p.reposts}): ${p.text}`,
+      `[${p.id}] ${p.date} ${p.long ? "LONG " : ""}(♥${p.likes} ↻${p.reposts})${mediaMark}: ${p.text}`,
     );
     if (p.reactingTo?.text.trim()) {
       lines.push(
@@ -128,8 +164,47 @@ function buildExtractionPrompt(
       );
     }
   }
-  const prompt = `REPORTER: @${handle}\n\n${facts}\n\nTHE CORPUS (most recent first):\n\n${lines.join("\n")}`;
-  return { facts, prompt };
+
+  const content: ExtractionContentPart[] = [
+    {
+      type: "text",
+      text: `REPORTER: @${handle}\n\n${facts}\n\nTHE CORPUS (most recent first):\n\n${lines.join("\n")}`,
+    },
+  ];
+
+  // Attached media, as real images the model looks at. A post id labels each one so an image is
+  // unambiguously bound to its corpus line — the corpus block above is a single text part and
+  // could not carry that binding on its own.
+  const withMedia = posts.filter((p) => (p.media ?? []).length > 0);
+  if (withMedia.length > 0) {
+    const shown: { id: string; kind: string; imageUrl: string }[] = [];
+    let dropped = 0;
+    for (const p of withMedia) {
+      for (const m of p.media ?? []) {
+        if (shown.length < MAX_CORPUS_IMAGES) shown.push({ id: p.id, ...m });
+        else dropped++;
+      }
+    }
+    content.push({
+      type: "text",
+      text:
+        `\nATTACHED MEDIA — the images below are the attachments on the posts marked [MEDIA] above. ` +
+        `Each image is preceded by its post id. A video or GIF is represented by its poster frame.` +
+        (dropped > 0
+          ? `\n\nNOTE: ${dropped} further attachment(s) exist on these posts and are NOT shown here — treat their posts as having media you could not inspect, not as having none.`
+          : ""),
+    });
+    for (const s of shown) {
+      content.push({ type: "text", text: `[${s.id}] ${s.kind}:` });
+      content.push({
+        type: "file",
+        data: new URL(s.imageUrl),
+        mediaType: imageMediaType(s.imageUrl),
+      });
+    }
+  }
+
+  return { facts, content };
 }
 
 /**
@@ -142,12 +217,12 @@ export async function extractVoiceGuide(
   handle: string,
   posts: CorpusPost[],
 ): Promise<VoiceExtraction> {
-  const { facts, prompt } = buildExtractionPrompt(handle, posts);
+  const { facts, content } = buildExtractionContent(handle, posts);
 
   const result = await generateText({
     model: EXTRACTION_MODEL,
     system: VOICE_EXTRACT_PROMPT,
-    prompt,
+    messages: [{ role: "user", content }],
     maxOutputTokens: EXTRACT_MAX_OUTPUT_TOKENS,
     // `display: "summarized"` is what makes the reasoning readable. It defaults to "omitted"
     // on this model, and "omitted" still returns a thinking block — with `text: ""`, which
@@ -223,12 +298,12 @@ export async function extractVoiceGuideStreaming(
   onProgress?: (snapshot: ExtractionStreamSnapshot) => void | Promise<void>,
   onRawPart?: ExtractionRawPartObserver,
 ): Promise<VoiceExtraction> {
-  const { facts, prompt } = buildExtractionPrompt(handle, posts);
+  const { facts, content } = buildExtractionContent(handle, posts);
 
   const result = streamText({
     model: EXTRACTION_MODEL,
     system: VOICE_EXTRACT_PROMPT,
-    prompt,
+    messages: [{ role: "user", content }],
     maxOutputTokens: EXTRACT_MAX_OUTPUT_TOKENS,
     // Same reasoning as extractVoiceGuide's call above — kept byte-identical on purpose.
     providerOptions: {

@@ -24,14 +24,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const X_API = "https://api.x.com/2";
 
+/** One still image belonging to a corpus post. A photo carries `url` directly; a video or GIF
+ *  carries only `preview_image_url` (its poster frame), so both collapse to one viewable image
+ *  here and `kind` keeps the distinction the extractor needs to describe it correctly. */
+export type XTimelineMedia = {
+  kind: "photo" | "video" | "animated_gif";
+  imageUrl: string;
+};
+
 /** Same shape the extraction corpus adapter consumed before, so lib/voice/corpus.ts's mapping is
- *  unchanged apart from now having real engagement numbers to map. */
+ *  unchanged apart from now having real engagement numbers and attached media to map. */
 export type XTimelinePost = {
   xPostId: string;
   text: string;
   postedAt: string /* ISO */;
   likeCount: number;
   repostCount: number;
+  media: XTimelineMedia[];
 };
 
 /** 100 posts, 80 train / 20 held-out — the corpus size the extraction recipe is calibrated
@@ -101,7 +110,19 @@ export async function fetchUserTimeline(handle: string, ownerId: string): Promis
   while (posts.length < MAX_POSTS) {
     const params = new URLSearchParams({
       max_results: String(Math.min(PAGE_SIZE, MAX_POSTS - posts.length + 5)),
-      "tweet.fields": "created_at,public_metrics",
+      // `note_tweet` is REQUIRED, not enrichment. Without it X returns a long post's body cut at
+      // ~280 chars on a token boundary, and the extractor — which this prompt explicitly tells to
+      // "treat a truncated-looking ending as intentional formatting" — learns OUR truncation as
+      // the reporter's style. It did exactly that: @ReshadRahman's guide taught "never add '...'
+      // to a post the platform truncated. The long posts end mid-word with no marker", citing
+      // posts we ourselves had cut. Measured on that corpus: 3 of 98 posts truncated, one 298
+      // chars against a real 578. See ingest/src/stream.ts for the same fix on the delivery side.
+      "tweet.fields": "created_at,public_metrics,note_tweet",
+      // Attached media, as still images. 41 of those same 98 posts carry media, and a corpus line
+      // reading `🥺🥺🥺 https://t.co/…` teaches a drafting model nothing without it — the meaning
+      // lived entirely in a photo the extractor could not see.
+      expansions: "attachments.media_keys",
+      "media.fields": "type,url,preview_image_url",
       exclude: "retweets,replies",
     });
     if (paginationToken) params.set("pagination_token", paginationToken);
@@ -111,9 +132,14 @@ export async function fetchUserTimeline(handle: string, ownerId: string): Promis
       data?: {
         id: string;
         text: string;
+        note_tweet?: { text?: string };
         created_at?: string;
         public_metrics?: { like_count?: number; retweet_count?: number };
+        attachments?: { media_keys?: string[] };
       }[];
+      includes?: {
+        media?: { media_key?: string; type?: string; url?: string; preview_image_url?: string }[];
+      };
       meta?: { next_token?: string };
     };
     if (!res.ok) {
@@ -122,14 +148,30 @@ export async function fetchUserTimeline(handle: string, ownerId: string): Promis
       );
     }
 
+    // Media arrives once in `includes`, referenced by key from each post — index it per page.
+    const mediaByKey = new Map(
+      (body.includes?.media ?? [])
+        .filter((m) => m.media_key)
+        .map((m) => [m.media_key as string, m]),
+    );
+
     for (const t of body.data ?? []) {
       if (!t.created_at) continue; // no timestamp = unusable for a chronological corpus
       posts.push({
         xPostId: t.id,
-        text: t.text,
+        // The note body whenever X sends one; never let an empty note field blank a short post.
+        text: t.note_tweet?.text?.trim() ? t.note_tweet.text : t.text,
         postedAt: new Date(t.created_at).toISOString(),
         likeCount: t.public_metrics?.like_count ?? 0,
         repostCount: t.public_metrics?.retweet_count ?? 0,
+        media: (t.attachments?.media_keys ?? []).flatMap((key) => {
+          const m = mediaByKey.get(key);
+          // A photo carries `url`; video/GIF carry only a poster frame. Either way we want the
+          // one still the extractor can actually look at, so anything with neither is dropped.
+          const imageUrl = m?.url ?? m?.preview_image_url;
+          if (!m?.type || !imageUrl) return [];
+          return [{ kind: m.type as XTimelineMedia["kind"], imageUrl }];
+        }),
       });
     }
 

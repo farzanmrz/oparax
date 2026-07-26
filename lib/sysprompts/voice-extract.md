@@ -32,8 +32,8 @@ Check each. Report only what the corpus actually shows. Not every dimension appl
 - Block order in long posts: which blocks appear, in what order, which are optional, which repeat.
 - Length: report as a DISTRIBUTION, not a single range. If lengths cluster in separate groups, give each cluster with its trigger and approximate share, and name any length region the writer conspicuously avoids.
 - Line breaks and whitespace: single versus double breaks and between which blocks; spaces around handles; spacing before punctuation; anything mechanical and reproducible.
-- Link handoff: how a post ends when a link, card, or attachment follows — a complete sentence, a colon, a dangling hyphen, mid-phrase. Treat a truncated-looking ending as intentional formatting, not an error to repair.
-- Media dependency: which post shapes are grammatically incomplete without an attached image, video, or document, and the convention that signals the attachment.
+- Link handoff: how a post ends when a link, card, or attachment follows — a complete sentence, a colon, a dangling hyphen, mid-phrase. The corpus text you are given is COMPLETE, including long posts, so a genuine mid-word ending is a real stylistic choice; do not generalize one into a rule unless several posts show it.
+- Media dependency: which post shapes are grammatically incomplete without an attached image, video, or document, and the convention that signals the attachment. You can SEE the attachments — describe what kind of image carries each shape (a celebration photo, a graphic of statistics, a clip of a goal), because a rule that says only "post an emoji and a link" cannot be applied by a writer who has to decide WHEN that shape fires.
 
 **Typography and character-level habits**
 - Quotation marks, ellipsis style, dash forms (all variants that coexist), capitalization contexts, where terminal punctuation does and does not appear.
@@ -94,6 +94,20 @@ Rules for the content between the tags:
 - Never truncate an example. Do not append `...` or `[continues]`. If a post is too long to include, choose a shorter one.
 - Do NOT prefix lines with `>`. Do NOT wrap posts in blockquotes or code fences. Do NOT include post ids, numbers, or any bracketed reference — they are meaningless to the model reading this guide and waste its attention.
 - One post per tag pair. Never put two posts inside one tag. Separate consecutive tag blocks with a blank line.
+
+**When an example post carried an attachment, follow it with a `<media>` tag saying what the attachment was.** You are shown every attachment as an image; the guide's reader is not, and never will be. A `t.co` link in an example is an opaque string to them — so a post like `🥺🥺🥺 https://t.co/1lDTifLXNj` teaches nothing at all unless you say that the link opened on a photo of the player in tears after the final whistle. That is the difference between a rule the writer can apply and a shape they can only copy blindly.
+
+Describe the attachment in one line: what it depicts, and what makes it the kind of image that triggers this post shape. Describe only what you can see — never guess at a link you were not shown, and omit the tag entirely for a post that had no attachment.
+
+<post>
+🥺🥺🥺 https://t.co/1lDTifLXNj
+</post>
+<media>Photo — the player in tears on the pitch after the final whistle, teammates gathered around him. An unposed emotional moment, not an action shot.</media>
+
+<post>
+𝟑 𝐡𝐨𝐮𝐫𝐬. https://t.co/OAMnPqIhGq
+</post>
+<media>Graphic — a countdown card in club colours with the match kickoff time. Designed promotional art, not a photograph.</media>
 
 The same post may appear under several rules, and one rule may show several posts — choose whatever teaches each rule best.
 

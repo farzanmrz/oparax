@@ -32,6 +32,10 @@ function toCorpusPost(post: XTimelinePost): CorpusPost {
     likes: post.likeCount,
     reposts: post.repostCount,
     long: post.text.length > 280,
+    // Carried through so the extractor can SEE what a post's link actually resolved to. Without
+    // it, `🥺🥺🥺 https://t.co/…` reaches the model as three emoji and an opaque string, and any
+    // rule it writes about that post shape is unlearnable by the drafting model downstream.
+    media: post.media,
   };
 }
 
