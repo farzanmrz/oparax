@@ -51,26 +51,19 @@ const CRITERIA = [
   },
 ] as const;
 
-// Why a call carries no reasoning trace, in the reporter's words. The three causes are NOT the
-// same claim and the dialog used to make the harshest one for all of them: the judge runs at
-// `reasoning: "none"` (leg 1 of .claude/rules/agent.md's generateObject recipe) and has no trace
-// BY DESIGN, so calling it a model that can't expose reasoning was simply wrong. The state is
-// classified in `lib/agent/reasoning-trace.ts` off the reasoning-token count.
-const NO_TRACE_COPY = {
-  withheld: "Reasoning not exposed by this model.",
-  none: {
-    member: "Ran without reasoning.",
-    judge: "Ran without reasoning (structured verdict).",
-  },
-  unknown: "No reasoning trace recorded for this call.",
-} as const;
-
+// A Reasoning expander renders ONLY when a readable trace exists. Absence is deliberately
+// silent: a drafter that skipped deliberation (DeepSeek's adaptive thinking on a short brief),
+// a provider that keeps its chain-of-thought private (OpenAI policy), and the judge's
+// intentional reasoning-off config are all normal operation — and a label narrating any of
+// them reads as a malfunction to a reporter ("Ran without reasoning" was the owner's literal
+// "what the fuck is this"). The forensic distinction (present/withheld/none/unknown) still
+// lives in `lib/agent/reasoning-trace.ts` and the `model_calls` ledger, where debugging
+// actually happens; the reporter-facing promise is the drafts and the judge's rationale,
+// which always render.
 function ReasoningNote({
   call,
-  slot = "member",
 }: {
   call: { reasoning: string | null; reasoningState: ReasoningTraceState };
-  slot?: "member" | "judge";
 }) {
   if (call.reasoningState === "present" && call.reasoning) {
     return (
@@ -80,13 +73,7 @@ function ReasoningNote({
       </Reasoning>
     );
   }
-  const note =
-    call.reasoningState === "withheld"
-      ? NO_TRACE_COPY.withheld
-      : call.reasoningState === "none"
-        ? NO_TRACE_COPY.none[slot]
-        : NO_TRACE_COPY.unknown;
-  return <p className="text-xs text-muted-foreground">{note}</p>;
+  return null;
 }
 
 function MemberCard({ member }: { member: CouncilMember }) {
@@ -140,7 +127,7 @@ function GroupView({ group }: { group: CouncilGroup }) {
               (group.judge.rationale ?? "No verdict recorded for this call.")
             )}
           </p>
-          <ReasoningNote call={group.judge} slot="judge" />
+          <ReasoningNote call={group.judge} />
         </div>
       ) : null}
       <div className="flex items-center justify-between border-t pt-3 text-sm">
@@ -277,8 +264,8 @@ export function CouncilDialog({
           <DialogTitle>Why this draft</DialogTitle>
           <DialogDescription>
             Multiple models draft this post from the same source, each in your voice. A judge scores
-            every attempt against three tests and picks the strongest — you see all of them, what
-            each cost, and the reasoning, so you can trust the pick or take it back.
+            every attempt against three tests and picks the strongest — you see every candidate,
+            what each cost, and why the winner won, so you can trust the pick or take it back.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 sm:grid-cols-3">

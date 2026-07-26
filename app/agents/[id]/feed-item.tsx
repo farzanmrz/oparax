@@ -14,7 +14,6 @@
 // they can't authenticate as) they deliberately differ, and the card must show where the post
 // would actually land. Falls back to `reporter_handle` when no X account is linked yet.
 import { TweetContainer } from "react-tweet";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { FeedStory } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
 import { DraftPlatformSwitcher } from "./draft-platform-switcher";
@@ -101,10 +100,17 @@ function DraftCard({
                 Nothing drafted from this post — there wasn't enough to write from.
               </p>
             ) : (
-              <div aria-label="Drafting" className="flex flex-col gap-2" role="status">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-11/12" />
-                <Skeleton className="h-4 w-3/5" />
+              // A status line, not a skeleton: gray bars imply a layout waiting on data, and
+              // read as broken when they persist for the ~minute a council takes. This says
+              // what is actually happening; the feed auto-refresh swaps in the draft.
+              <div className="flex items-center gap-2" role="status">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 shrink-0 animate-pulse rounded-full bg-primary"
+                />
+                <span className="text-sm text-muted-foreground">
+                  Drafting in your voice — a few models are writing…
+                </span>
               </div>
             )}
           </TweetContainer>
