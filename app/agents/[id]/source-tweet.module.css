@@ -73,8 +73,8 @@
 /* The provenance mark — avatar-scale on purpose, so the two glyphs bracket the line as
    equals: identity on the left, platform on the right. */
 .chip {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 0.5rem;
   flex-shrink: 0;
   display: flex;
@@ -85,8 +85,8 @@
 }
 
 .avatar {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 9999px;
   flex-shrink: 0;
   object-fit: cover;
@@ -95,8 +95,8 @@
 /* The archive fallback has no stored avatar — a monogram keeps the slot honest instead of
    faking a face we never captured. */
 .monogram {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 9999px;
   flex-shrink: 0;
   display: flex;
@@ -111,8 +111,8 @@
 
 /* The handle is the identity — bold, foreground, sized to hold its own beside the avatar. */
 .handle {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.0625rem;
+  font-weight: 700;
   color: var(--card-foreground);
   white-space: nowrap;
   flex-shrink: 1;
@@ -228,29 +228,52 @@ a.time:hover {
   background: rgb(0 0 0 / 35%);
 }
 
-/* ── Footer: the card's ONE outbound affordance ────────────────────────────────────── */
+/* ⚠️ react-tweet's theme.css ships an UNLAYERED reset:
+       :where(.react-tweet-theme) * { margin: 0; padding: 0; box-sizing: border-box }
+   Unlayered declarations beat Tailwind's `@layer utilities` REGARDLESS of specificity, so
+   inside these cards every Tailwind margin/padding utility is silently dead — `px-5` computed
+   to 0px and `mt-auto` never pinned anything (both measured live). Any spacing needed inside a
+   TweetContainer must therefore come from THIS module (unlayered, specificity 0,1,0 — it wins)
+   or from a property the reset doesn't touch (flex, gap). Do not "fix" a spacing bug in these
+   cards with a Tailwind class; it will look correct in the source and do nothing in the browser.
 
-/* A real growing element rather than `margin-top: auto` on the footer — auto margins did not
-   resolve inside react-tweet's article (measured), leaving the row floating mid-card. */
+   A real growing element rather than `margin-top: auto` for the same reason — it absorbs slack
+   so a short card still matches its row partner's height. */
 .grow {
   flex: 1;
 }
 
-.footer {
+/* The draft card's action row and its primary button — spacing lives here, not in Tailwind. */
+.actionRow {
   display: flex;
-  justify-content: flex-end;
-  padding-top: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
 }
 
-.footerLink {
+.postButton {
+  padding-left: 1.125rem;
+  padding-right: 1.125rem;
+  height: 2.125rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* The source link, inline with the identity — no footer row. A trailing row made every card
+   taller than its content for the sake of one icon, and the card should end where its content
+   (or its Show more) ends. */
+.sourceLink {
   display: flex;
+  flex-shrink: 0;
   padding: 0.25rem;
   border-radius: 0.375rem;
   color: var(--muted-foreground);
   transition: color 120ms ease;
 }
 
-.footerLink:hover {
+.sourceLink:hover {
   color: var(--card-foreground);
   background: var(--muted);
 }

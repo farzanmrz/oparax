@@ -21,6 +21,7 @@ import { CouncilDialog } from "./council-dialog";
 import { DraftEditDialog } from "./draft-edit-dialog";
 import { DraftHistoryDialog } from "./draft-history-dialog";
 import { PostToXControl } from "./post-to-x-control";
+import styles from "./source-tweet.module.css";
 
 const PLATFORM_LABELS: Record<Platform, string> = {
   x: "X",
@@ -130,7 +131,9 @@ export function DraftPlatformSwitcher({
           pins edit/history/info + counter/Post to the card's bottom edge while the card
           stretches to match its taller row partner. */}
       <div aria-hidden="true" className="flex-1" />
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
+      {/* Layout from the CSS module, not Tailwind: react-tweet's unlayered `* { padding: 0 }`
+          kills utility spacing inside these cards — see source-tweet.module.css. */}
+      <div className={styles.actionRow}>
         <div className="flex flex-wrap items-center gap-1.5">
           <DraftEditDialog
             currentText={winner.text}
@@ -166,7 +169,7 @@ export function DraftPlatformSwitcher({
             ) : null}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3">
             <CharCounter platform="x" text={winner.text} xLimit={charLimit} />
             <PostToXControl
               charLimit={charLimit}

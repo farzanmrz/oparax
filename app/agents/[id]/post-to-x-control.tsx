@@ -25,6 +25,7 @@ import twitterText from "twitter-text";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { postDraftToX } from "@/lib/x/actions";
+import styles from "./source-tweet.module.css";
 
 export function PostToXControl({
   postDraftId,
@@ -118,9 +119,17 @@ export function PostToXControl({
     );
   }
 
+  // Publishing is the card's whole point, so the button is sized like a primary action rather
+  // than the `sm` chip it used to be — at that size, wedged against the card edge next to a
+  // mono character counter, it read as another metadata pill instead of the one control the
+  // reporter is here to press.
+  // Padding comes from the CSS module, NOT from a Tailwind class: this button renders inside
+  // react-tweet's TweetContainer, whose theme ships an unlayered `* { padding: 0 }` that beats
+  // Tailwind's utility layer outright. `px-5` measured 0px here, which is why the button kept
+  // rendering as clipped text. See the warning block in source-tweet.module.css.
   return (
-    <Button onClick={() => setConfirming(true)} size="sm">
-      Post
+    <Button className={styles.postButton} onClick={() => setConfirming(true)}>
+      Post to X
     </Button>
   );
 }

@@ -136,7 +136,12 @@ export async function SourceTweet({
       handle: sourcePost.authorHandle ?? "source",
       name: sourcePost.authorName,
     });
-  const enriched = enrichTweet(tweet);
+  // react-tweet's own TweetBody appends a second "Show more" — an anchor straight to X —
+  // whenever `note_tweet` is set (a long/premium post). Two controls with the same label, one
+  // expanding in place and one navigating away, is the bug the owner hit. Ours is the one that
+  // belongs on a feed card, so the marker is dropped before enriching; the header's source
+  // link still reaches the original.
+  const enriched = enrichTweet({ ...tweet, note_tweet: undefined });
 
   const hasRealAvatar = !tweet.user.profile_image_url_https.startsWith("data:");
   const timeLabel = sourcePost.postedAt ? (
@@ -164,6 +169,32 @@ export async function SourceTweet({
             )}
             <span className={styles.handle}>@{tweet.user.screen_name}</span>
           </a>
+          {/* The source link sits WITH the identity, not in a footer — a trailing footer row
+              made every card taller than its content for one icon, and the card should end
+              where Show more ends. */}
+          {missing ? null : (
+            <a
+              className={styles.sourceLink}
+              href={enriched.url}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <span className="sr-only">View this post on X</span>
+              <svg
+                aria-hidden="true"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                width="14"
+              >
+                <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              </svg>
+            </a>
+          )}
           <span className={styles.spacer} />
           {missing ? <span className={styles.archived}>No longer on X · archived</span> : null}
           {missing ? (
@@ -186,31 +217,6 @@ export async function SourceTweet({
           {fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : null}
         </ExpandableBody>
         <div aria-hidden="true" className={styles.grow} />
-        {missing ? null : (
-          <div className={styles.footer}>
-            <a
-              className={styles.footerLink}
-              href={enriched.url}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <span className="sr-only">View this post on X</span>
-              <svg
-                aria-hidden="true"
-                fill="none"
-                height="14"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                width="14"
-              >
-                <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              </svg>
-            </a>
-          </div>
-        )}
       </TweetContainer>
     </div>
   );
