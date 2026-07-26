@@ -124,7 +124,10 @@ export function DraftPlatformSwitcher({
         </div>
       ) : null}
       <p className="text-sm whitespace-pre-wrap">{winner.text}</p>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* mt-auto pins the action row to the card's bottom edge — the card stretches to match
+          its taller row partner, and edit/history/info + counter/Post belong at a fixed
+          place, not floating wherever the text happens to end. */}
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <DraftEditDialog
             currentText={winner.text}

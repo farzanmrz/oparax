@@ -40,6 +40,7 @@ import { buildSyntheticTweet } from "@/lib/x/tweet-shape";
 import { ExpandableBody } from "./expandable-body";
 import { RelativeTime } from "./relative-time";
 import styles from "./source-tweet.module.css";
+import { XAvatar } from "./x-avatar";
 
 /** Tweet data is public and identical for every viewer, so it caches at the FETCH layer —
  *  `getTweet` forwards its second argument straight to `fetch`, and Next's `next.revalidate`
@@ -138,7 +139,6 @@ export async function SourceTweet({
   const enriched = enrichTweet(tweet);
 
   const hasRealAvatar = !tweet.user.profile_image_url_https.startsWith("data:");
-  const monogram = (tweet.user.name || tweet.user.screen_name).slice(0, 1).toUpperCase();
   const timeLabel = sourcePost.postedAt ? <RelativeTime iso={tweet.created_at} /> : null;
 
   return (
@@ -155,9 +155,10 @@ export async function SourceTweet({
               // biome-ignore lint/performance/noImgElement: X CDN avatar, already sized (_normal = 48px) — next/image would only proxy it
               <img alt="" className={styles.avatar} src={tweet.user.profile_image_url_https} />
             ) : (
-              <span aria-hidden="true" className={styles.monogram}>
-                {monogram}
-              </span>
+              // Archive fallback: the tweet payload (and its avatar) are gone, but the
+              // ACCOUNT usually still exists — resolve its picture by handle instead of
+              // showing a monogram for an author whose face the reporter knows.
+              <XAvatar handle={tweet.user.screen_name} />
             )}
             <span className={styles.handle}>@{tweet.user.screen_name}</span>
           </a>

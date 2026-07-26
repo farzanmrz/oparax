@@ -21,6 +21,7 @@ import { DraftPlatformSwitcher } from "./draft-platform-switcher";
 import { ExtraSourcesBadge } from "./feed-tooltips";
 import { SourceChip, SourceTweet } from "./source-tweet";
 import styles from "./source-tweet.module.css";
+import { XAvatar } from "./x-avatar";
 
 /**
  * NewsCard renders `sourcePosts[0]` only (the post that started the story — clustering's
@@ -50,14 +51,13 @@ function NewsCard({
   );
 }
 
-/** The draft card's header — same template as the source card's (monogram · bold handle ·
- *  platform chip far right), so the two columns read as one system. */
+/** The draft card's header — same template as the source card's (avatar · bold handle ·
+ *  platform chip far right), so the two columns read as one system. The avatar resolves by
+ *  handle (see x-avatar.tsx) because the linked account appears in no tweet payload. */
 function DraftHeader({ handle }: { handle: string }) {
   return (
     <div className={styles.header}>
-      <span aria-hidden="true" className={styles.monogram}>
-        {handle.slice(0, 1).toUpperCase()}
-      </span>
+      <XAvatar handle={handle} />
       <span className={styles.handle}>@{handle}</span>
       <span className={styles.spacer} />
       <SourceChip kind="x" />

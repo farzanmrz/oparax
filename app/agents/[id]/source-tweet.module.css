@@ -15,6 +15,11 @@
 .wrapper :global(.react-tweet-theme) {
   --tweet-container-margin: 0;
   height: 100%;
+  /* Column layout so a card's LAST row (the source card's view-on-X footer, the draft card's
+     action row) can pin to the bottom with margin-top:auto while the cards stretch to match
+     their row partner's height. */
+  display: flex;
+  flex-direction: column;
   /* Tighter than X's own embed padding — the feed shows many cards, not one showcase. */
   padding: 0.75rem 0.875rem;
   --tweet-bg-color: var(--card);
@@ -154,7 +159,7 @@ a.time:hover {
 
 .clamp {
   display: -webkit-box;
-  -webkit-line-clamp: 6;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -217,7 +222,10 @@ a.time:hover {
 .footer {
   display: flex;
   justify-content: flex-end;
-  margin-top: 0.5rem;
+  /* Pinned to the card's bottom edge — the card stretches to its row partner's height, and
+     the outbound affordance belongs at the same place on every card regardless. */
+  margin-top: auto;
+  padding-top: 0.5rem;
 }
 
 .footerLink {
