@@ -20,15 +20,7 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./source-tweet.module.css";
 
-export function ExpandableBody({
-  children,
-  truncatedHref,
-}: {
-  children: ReactNode;
-  /** The post's X permalink, set ONLY when X served a truncated body. Its presence replaces the
-   *  in-place expander outright — never both, and never two controls sharing a label. */
-  truncatedHref?: string;
-}) {
+export function ExpandableBody({ children }: { children: ReactNode }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
@@ -51,22 +43,6 @@ export function ExpandableBody({
     }
     return () => observer.disconnect();
   }, [measure]);
-
-  if (truncatedHref) {
-    return (
-      <>
-        <div className={styles.clamp}>{children}</div>
-        <a
-          className={styles.readFull}
-          href={truncatedHref}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          Read full post on X
-        </a>
-      </>
-    );
-  }
 
   return (
     <>

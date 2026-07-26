@@ -146,10 +146,11 @@ export async function SourceTweet({
   // linkification for exactly zero extra words. The full body exists only on X.
   //
   // So the marker is dropped before enriching — react-tweet's TweetBody would otherwise append
-  // its own "Show more" anchor beside our in-place expander's identical label — and the
-  // truncation is re-surfaced honestly instead: a truncated card gets ONE control, a link to the
-  // complete post, rather than an expander that would claim to reveal everything.
-  const truncated = Boolean(fetched?.note_tweet);
+  // its own "Show more" anchor beside our in-place expander's identical label. The card does NOT
+  // get a special control for this: the clamp is hiding real text we DO hold either way, so
+  // "Show more" is the honest label, and the source-link icon beside the handle is already the
+  // way to the complete post on X. A third affordance saying "Read full post on X" just
+  // duplicated that icon while removing the expander that reveals the lines we have.
   const enriched = enrichTweet({ ...tweet, note_tweet: undefined });
 
   const hasRealAvatar = !tweet.user.profile_image_url_https.startsWith("data:");
@@ -221,7 +222,7 @@ export async function SourceTweet({
           <SourceChip kind={sourcePost.xPostId ? "x" : "website"} />
         </div>
         {/* Text and media share ONE height budget inside the clamp — see expandable-body.tsx. */}
-        <ExpandableBody truncatedHref={truncated ? enriched.url : undefined}>
+        <ExpandableBody>
           <TweetBody tweet={enriched} />
           {fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : null}
         </ExpandableBody>
