@@ -48,6 +48,7 @@ emit() { # emit <skills-dir> <id-prefix>
 emit "$(newest "$CACHE/vercel/vercel-plugin")skills"          "vercel:"
 emit "$(newest "$CACHE/claude-plugins-official/supabase")skills" "supabase:"
 emit "$(newest "$CACHE/claude-plugins-official/railway")skills"  "railway:"
+emit "$(newest "$CACHE/claude-plugins-official/sentry")skills"   "sentry:"
 
 # --- repo build skills (bare ids), excluding the feature-* process skills ---
 for d in "$REPO"/.claude/skills/*/; do

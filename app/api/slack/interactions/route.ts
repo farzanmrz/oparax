@@ -19,7 +19,7 @@ import { z } from "zod";
 import { postMessage, SLACK_POST_TO_X_ACTION_ID, verifySlackSignature } from "@/lib/slack/api";
 import { claimDeliveryReceipt, getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { postDraftToXForOwner } from "@/lib/x/actions";
+import { postDraftToXForOwner } from "@/lib/x/post-core";
 
 export const maxDuration = 300;
 
@@ -27,13 +27,22 @@ export const maxDuration = 300;
 // buildDraftBlocks() in lib/slack/api.ts). `trigger_id` is Slack's own per-interaction
 // identifier — freshly issued on every actual button click, not on a message render — so it
 // doubles as the idempotency key a redelivery of the SAME click would repeat unchanged.
+// `user.id` is the Slack member who actually clicked — Slack sends it on every block_actions
+// payload; see the authorization note in handleInteraction() for what it is and isn't used for.
 const blockActionsPayloadSchema = z.object({
   type: z.literal("block_actions"),
   trigger_id: z.string().min(1),
   actions: z.array(z.object({ action_id: z.string(), value: z.string() })).min(1),
   team: z.object({ id: z.string().min(1) }),
   channel: z.object({ id: z.string().min(1) }),
+  user: z.object({ id: z.string().min(1) }),
 });
+
+// The button's `value` is the `post_drafts.id` buildDraftBlocks() stamped into it. Validated
+// as a UUID before it reaches the admin-scoped lookup below, mirroring what
+// lib/x/actions.ts's `postDraftToX` does with the browser-supplied id: a malformed value is
+// rejected at the edge rather than handed to the DB as garbage input.
+const postDraftIdSchema = z.string().uuid();
 
 function parseInteractionPayload(
   rawBody: string,
@@ -56,12 +65,14 @@ function parseInteractionPayload(
 /** The slow leg, run in `after()` once the 200 ack is already on the wire: atomic idempotency
  *  claim, act via the same session-independent core the Feed's own X-post action delegates
  *  to, then a plain-text follow-up message reporting the outcome back into the same channel. */
-async function handleInteraction(
-  interactionId: string,
-  postDraftId: string,
-  teamId: string,
-  channelId: string,
-): Promise<void> {
+async function handleInteraction(input: {
+  interactionId: string;
+  postDraftId: string;
+  teamId: string;
+  channelId: string;
+  slackUserId: string;
+}): Promise<void> {
+  const { interactionId, postDraftId, teamId, channelId, slackUserId } = input;
   const admin = createAdminClient();
 
   const { data: draft, error } = await admin
@@ -95,10 +106,31 @@ async function handleInteraction(
     return;
   }
 
+  // WHO may click, deliberately: any member of the linked channel, not a single Slack person.
+  // `slack_accounts` records the INSTALL (team/channel/bot/token) and no human identity at all —
+  // there is no `authed_user_id` column, and `bot_user_id` is this app's bot, not the installer —
+  // so there is nothing stored to compare `slackUserId` against. The channel IS the boundary the
+  // desk owner chose: they installed this app to it and control who is in it. `slackUserId` is
+  // therefore recorded, not enforced — every publish leaves an audit trail of who clicked, which
+  // is what makes a later per-user policy (a stored installer id, or an allowlist) a real change
+  // rather than a guess. Do NOT treat this line as authorization; the team/channel bind above is.
+  console.log("api/slack/interactions: post_to_x clicked", {
+    postDraftId,
+    experimentId,
+    slackUserId,
+    teamId,
+    channelId,
+  });
+
   const claimed = await claimDeliveryReceipt(interactionId, experimentId);
   if (!claimed) return; // Slack redelivered this exact click — idempotency, not an error.
 
   const result = await postDraftToXForOwner(postDraftId, ownerId);
+  console.log("api/slack/interactions: post_to_x outcome", {
+    postDraftId,
+    slackUserId,
+    ok: result.ok,
+  });
 
   const text = result.ok ? `Posted to X: ${result.url}` : `Couldn't post to X: ${result.error}`;
   try {
@@ -127,9 +159,29 @@ export async function POST(req: Request) {
     return new Response(null, { status: 200 });
   }
 
+  // A `value` that isn't a draft id can only come from a forged or corrupted payload — it is
+  // never something a retry fixes, so it acks 200 (a non-200 only buys Slack's retry storm)
+  // and stops here rather than reaching the admin-scoped post_drafts lookup.
+  const parsedDraftId = postDraftIdSchema.safeParse(action.value);
+  if (!parsedDraftId.success) {
+    console.error("api/slack/interactions: action value is not a draft id", {
+      value: action.value.slice(0, 100),
+      teamId: payload.team.id,
+      channelId: payload.channel.id,
+      slackUserId: payload.user.id,
+    });
+    return new Response(null, { status: 200 });
+  }
+
   // Ack within Slack's 3s deadline: respond now, do the claim + act + follow-up after.
   after(() =>
-    handleInteraction(payload.trigger_id, action.value, payload.team.id, payload.channel.id),
+    handleInteraction({
+      interactionId: payload.trigger_id,
+      postDraftId: parsedDraftId.data,
+      teamId: payload.team.id,
+      channelId: payload.channel.id,
+      slackUserId: payload.user.id,
+    }),
   );
 
   return new Response(null, { status: 200 });

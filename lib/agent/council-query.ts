@@ -99,10 +99,15 @@ function toMember(row: DraftRow): CouncilMember | null {
  *  is read off each row's own `is_winner` flag — never off `judge_verdict.winner`'s array
  *  index, which is only meaningful at write time and would silently mis-point if a family
  *  failed and the surviving-candidate ordering ever shifted. */
-function buildGroup(candidateRows: DraftRow[], judgeRow: DraftRow | undefined): CouncilGroup {
+function buildGroup(candidateRows: DraftRow[], judgeRows: DraftRow[]): CouncilGroup {
   const members = candidateRows.map(toMember).filter((m): m is CouncilMember => m !== null);
   const winnerModel = members.find((m) => m.isWinner)?.model ?? null;
 
+  // The dialog displays ONE judge card (a single platform's judge, today the only case that
+  // occurs), but the cost total below still sums EVERY judge row — not just the displayed one
+  // — so it doesn't silently undercount the moment a story carries more than one platform's
+  // judge (`PLATFORMS` growing past X).
+  const judgeRow = judgeRows.find((r) => r.model_calls);
   let judge: CouncilJudge = null;
   if (judgeRow?.model_calls) {
     const parsed = judgeVerdictShape.safeParse(judgeRow.judge_verdict);
@@ -116,7 +121,10 @@ function buildGroup(candidateRows: DraftRow[], judgeRow: DraftRow | undefined): 
     };
   }
 
-  const totalCostUsd = sumCosts([...members.map((m) => m.costUsd), judge?.costUsd ?? null]);
+  const totalCostUsd = sumCosts([
+    ...members.map((m) => m.costUsd),
+    ...judgeRows.map((r) => r.model_calls?.cost_usd ?? null),
+  ]);
   return { members, judge, totalCostUsd };
 }
 
@@ -149,15 +157,15 @@ export async function queryCouncilDetail(
 
   const originals = rows.filter((r) => r.parent_draft_id === null);
   const candidateRows = originals.filter((r) => r.judge_verdict === null);
-  const judgeRow = originals.find((r) => r.judge_verdict !== null);
+  const judgeRows = originals.filter((r) => r.judge_verdict !== null);
 
   if (winnerRow.parent_draft_id === null) {
-    return { kind: "original", council: buildGroup(candidateRows, judgeRow) };
+    return { kind: "original", council: buildGroup(candidateRows, judgeRows) };
   }
 
   const revision = toMember(winnerRow);
   if (!revision) return { kind: "not_found" };
-  const originalCouncil = candidateRows.length > 0 ? buildGroup(candidateRows, judgeRow) : null;
+  const originalCouncil = candidateRows.length > 0 ? buildGroup(candidateRows, judgeRows) : null;
   return { kind: "revision", revision, originalCouncil };
 }
 

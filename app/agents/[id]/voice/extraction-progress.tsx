@@ -16,10 +16,9 @@
 // on a failure — picks up the finished result on the next render.
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 import { ExtractionChain } from "@/components/extraction-chain";
-import { pipelineSteps, type RunSnapshot } from "@/lib/voice/extraction-steps";
-import { getExtractionProgress } from "./actions";
+import { pipelineSteps } from "@/lib/voice/extraction-steps";
+import { useExtractionProgress } from "@/lib/voice/use-extraction-progress";
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -37,35 +36,24 @@ export function ExtractionProgress({
   readonly initialReasoningPartial: string | null;
 }) {
   const router = useRouter();
-  const [run, setRun] = useState<RunSnapshot & { reasoningPartial: string | null }>({
-    stage: initialStage,
-    progressNote: initialProgressNote,
-    reasoningPartial: initialReasoningPartial,
-    status: "running",
-    errorCode: null,
-  });
-  const settledRef = useRef(false);
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (settledRef.current) return;
-      const result = await getExtractionProgress(deskId);
-      if (!result.ok) return;
-      setRun({
-        stage: result.stage,
-        progressNote: result.progressNote,
-        reasoningPartial: result.reasoningPartial,
-        status: result.status,
-        errorCode: result.errorCode,
-      });
+  const run = useExtractionProgress(deskId, {
+    enabled: true,
+    intervalMs: POLL_INTERVAL_MS,
+    immediate: false,
+    initial: {
+      stage: initialStage,
+      progressNote: initialProgressNote,
+      reasoningPartial: initialReasoningPartial,
+      status: "running",
+      errorCode: null,
+    },
+    onResult: (result, stop) => {
       if (result.status !== "running") {
-        settledRef.current = true;
-        clearInterval(interval);
+        stop();
         router.refresh();
       }
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [deskId, router]);
+    },
+  });
 
   return (
     <div className="rounded-xl border border-border px-4 py-6">

@@ -3,21 +3,21 @@
 // Story clustering — attaches a delivered source post to an existing recent story or creates a
 // new one, atomically. PURE-ish orchestration in the same shape as draft-council-run.ts: this
 // module owns its own story-table writes (creation + the atomic claim below), but the model
-// call's ledger row is NOT this module's job — the caller (a later task, wiring this into
-// draft-pipeline.ts's processDelivery) inserts `calls` into `model_calls` ledger-first, same as
-// every other CouncilCall producer in this repo (AGENTS.md's model-call rule).
+// call's ledger row is NOT this module's job — the caller (draft-pipeline.ts's
+// draftForExperiment, which calls assignToStory and inserts `calls` into `model_calls`
+// ledger-first) is already wired, same as every other CouncilCall producer in this repo
+// (AGENTS.md's model-call rule).
 // SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
 // scope) — never importable from a client component.
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
+import { resolveCallMeta } from "@/lib/agent/call-meta";
 import {
   DEEPSEEK_DRAFT_MODEL,
   DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
 } from "@/lib/agent/deepseek-draft-config";
 // TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
-import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
-import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
@@ -65,35 +65,30 @@ const clusterVerdictSchema = z.object({
     ),
 });
 
-/** ONE helper that builds every clustering `CouncilCall` — mirrors draft-council-run.ts's own
- *  `toCouncilCall`, including its derived `reasoningWithheldByProvider` (a null trace is only the
- *  provider withholding one when the call actually spent reasoning tokens; this classifier runs
- *  at `reasoning: "none"`, so it has no trace by design — `reasoning-trace.ts`), so the field
- *  carries one meaning across both stages. `stage` on the shared `CouncilCall` type
- *  includes "clustering" alongside
- *  draft-council-run.ts's own "drafting"/"judge" stages, so this builds a directly-typed
- *  object with no cast. */
-async function buildClusterCall(params: {
+/** ONE helper that builds every clustering `CouncilCall` — thin wrapper around
+ *  `call-meta.ts`'s shared `resolveCallMeta`, which derives `costUsd`/`generationId`/
+ *  `reasoningWithheldByProvider` the same way draft-council-run.ts's own `toCouncilCall` does
+ *  (a null trace is only the provider withholding one when the call actually spent reasoning
+ *  tokens; this classifier runs at `reasoning: "none"`, so it has no trace by design —
+ *  `reasoning-trace.ts`), so the field carries one meaning across both stages. `stage` on the
+ *  shared `CouncilCall` type includes "clustering" alongside draft-council-run.ts's own
+ *  "drafting"/"judge" stages, so this builds a directly-typed object with no cast. */
+function buildClusterCall(params: {
   output: string | null;
   reasoning: string | null;
   usage: unknown;
   providerMetadata?: Record<string, unknown>;
 }): Promise<CouncilCall> {
-  const { costUsd, generationId } = await resolveGatewayCost({
-    providerMetadata: params.providerMetadata,
-  });
-  return {
+  return resolveCallMeta({
     kind: "draft",
     stage: "clustering",
     role: "primary",
     model: DEEPSEEK_DRAFT_MODEL,
     output: params.output,
     reasoning: params.reasoning,
-    reasoningWithheldByProvider: reasoningTraceState(params.reasoning, params.usage) === "withheld",
     usage: params.usage,
-    costUsd,
-    generationId,
-  };
+    providerMetadata: params.providerMetadata,
+  });
 }
 
 function deterministicSummary(text: string): string {
@@ -149,9 +144,10 @@ async function createStory(
  *  draft-pipeline.ts's `draftForExperiment` insert-then-branch-on-23505 shape. On a 23505
  *  unique-violation, another concurrent delivery of this exact (sourcePostId, experimentId)
  *  pair already won the claim — read ITS story_id back rather than the one this call attempted
- *  (the race-loser path; whatever story this call may have just created above stays orphaned,
- *  unassigned, and is not cleaned up here — the plan text's contract is the claim, not the
- *  candidate it lost against). */
+ *  (the race-loser path). This function alone never knows whether the `storyId` it was handed
+ *  was just freshly created or an existing candidate from the "existing"-match branch, so it
+ *  does not attempt cleanup itself — `createAndClaimNewStory` below, the only caller that ever
+ *  creates a fresh story, deletes its own orphan when it loses here. */
 async function claimStoryAssignment(
   admin: AdminClient,
   sourcePostId: string,
@@ -182,15 +178,33 @@ async function createAndClaimNewStory(
   summary: string,
 ): Promise<string> {
   const storyId = await createStory(admin, experimentId, summary);
-  return claimStoryAssignment(admin, sourcePostId, experimentId, storyId);
+  const winnerId = await claimStoryAssignment(admin, sourcePostId, experimentId, storyId);
+  if (winnerId !== storyId) {
+    // Lost the race: another concurrent delivery of this exact (sourcePostId, experimentId)
+    // pair already claimed a story before our insert landed (the retry-after-later-failure case
+    // this comment documents — the SAME sourcePostId reaching draftForExperiment a second time
+    // after a downstream failure released draft_claims). The story row created just above is now
+    // orphaned — no story_assignments row will ever point at it, since the claim went to the
+    // race winner's story instead — so delete it here rather than leaving dead weight that
+    // fetchFeedPage would still surface as a card with nothing to show. Best-effort: a failed
+    // delete is non-fatal (the winner's story_id below is still correct to return), just logged
+    // so an undeleted orphan stays visible rather than silently swallowed.
+    const { error: cleanupError } = await admin.from("stories").delete().eq("id", storyId);
+    if (cleanupError) {
+      console.error("cluster: failed to delete orphaned story after losing the claim race", {
+        storyId,
+        error: cleanupError,
+      });
+    }
+  }
+  return winnerId;
 }
 
 /** Attach sourcePostId to an existing recent story, or create a new one, atomically.
- *  The caller (a later task, wiring this into draft-pipeline.ts's processDelivery) is
- *  responsible for inserting `calls` into model_calls (ledger-first, ownerId is the caller's
- *  concern — this function does not know or need the experiment's owner_id) and is
- *  responsible for handling any error this function throws (a non-billing DB error propagates
- *  normally; do not swallow it here). */
+ *  The caller (draft-pipeline.ts's draftForExperiment) is responsible for inserting `calls`
+ *  into model_calls (ledger-first, ownerId is the caller's concern — this function does not
+ *  know or need the experiment's owner_id) and is responsible for handling any error this
+ *  function throws (a non-billing DB error propagates normally; do not swallow it here). */
 /**
  * Clustering is DORMANT — one post becomes one story, and the classifier below never runs.
  *

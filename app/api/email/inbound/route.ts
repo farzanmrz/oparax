@@ -115,8 +115,17 @@ type InboundPayload = {
 
 // Pulls a bare address out of a possible `"Display Name" <addr@host>` form, or returns the
 // input unchanged (lowercased) when it's already a bare address.
+//
+// Anchored to the END of the header (`\s*$`), not the first `<...>` found: a real `From` header
+// is `display-name <addr>` or a bare `addr`, and the real address always immediately precedes the
+// end of the string. Matching the FIRST bracketed group instead is exploitable — RFC 5322
+// technically disallows unescaped `<>` in a display name, but mail clients are lenient about
+// sending it anyway, so a header like `"<victim@oparax.ai>" <attacker@evil.com>` would let the
+// first, attacker-authored bracket win and impersonate the authorized sender. Anchoring to the
+// last bracketed group (the one right before the end of the header) picks the real angle-addr
+// instead.
 function extractBareAddress(raw: string): string {
-  const angleMatch = /<([^>]+)>/.exec(raw);
+  const angleMatch = /<([^>]+)>\s*$/.exec(raw);
   return (angleMatch ? angleMatch[1] : raw).trim().toLowerCase();
 }
 

@@ -27,7 +27,7 @@ const X_API = "https://api.x.com/2";
 /** One still image belonging to a corpus post. A photo carries `url` directly; a video or GIF
  *  carries only `preview_image_url` (its poster frame), so both collapse to one viewable image
  *  here and `kind` keeps the distinction the extractor needs to describe it correctly. */
-export type XTimelineMedia = {
+type XTimelineMedia = {
   kind: "photo" | "video" | "animated_gif";
   imageUrl: string;
 };
@@ -68,7 +68,7 @@ async function xGet(path: string): Promise<Response> {
 /** Resolves a handle to its numeric id, which every timeline read is keyed by. Throws with the
  *  distinction the caller needs: a handle that does not exist is the reporter's problem, a 429 or
  *  5xx is ours. */
-export async function resolveUserId(handle: string): Promise<{ id: string; postCount: number }> {
+async function resolveUserId(handle: string): Promise<{ id: string; postCount: number }> {
   const clean = handle.trim().replace(/^@/, "");
   const res = await xGet(
     `/users/by/username/${encodeURIComponent(clean)}?user.fields=public_metrics`,

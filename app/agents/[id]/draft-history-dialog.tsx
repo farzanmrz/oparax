@@ -7,13 +7,12 @@
 // every open/close forced a full server round trip (re-running the feed query) before the
 // dialog visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an
 // instant open. The heavy body — the fetch + the version timeline + the corrections thread —
-// is `next/dynamic({ ssr: false })`, mounted only once the dialog is actually opened; the
-// trigger renders immediately. T4 drops `<DraftHistoryDialog winningPostDraftId=.. />`
+// is mounted only once the dialog is actually opened (the `{open ? ... : null}` guard below);
+// the trigger renders immediately. T4 drops `<DraftHistoryDialog winningPostDraftId=.. />`
 // straight into the draft-card action row.
 "use client";
 
 import { HistoryIcon } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Badge } from "@/components/ui/badge";
@@ -30,18 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Correction, DraftHistoryDetail, HistoryVersion } from "@/lib/agent/council-query";
 import { fetchDraftHistory } from "./council-actions";
-
-/** Client-render-only, so it never diverges from the reader's own clock — this dialog
- *  fetches on open, not on the initial server render, so there's no hydration mismatch to
- *  guard against either way. */
-function formatRelativeTime(iso: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
+import { relativeLabel } from "./relative-time";
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
@@ -55,7 +43,7 @@ function VersionRow({ version }: { version: HistoryVersion }) {
           v{version.depth} ·{" "}
           {version.depth === 0
             ? "first draft"
-            : `generated ${formatRelativeTime(version.createdAt)}`}
+            : `generated ${relativeLabel(version.createdAt).label}`}
         </span>
         {version.isCurrent ? <Badge variant="secondary">Current</Badge> : null}
       </div>
@@ -155,11 +143,6 @@ function DraftHistoryBodyImpl({ winningPostDraftId }: { winningPostDraftId: stri
   );
 }
 
-const DraftHistoryBody = dynamic(() => Promise.resolve(DraftHistoryBodyImpl), {
-  ssr: false,
-  loading: () => <DraftHistorySkeleton />,
-});
-
 function HistoryTrigger() {
   return (
     <TooltipProvider>
@@ -194,7 +177,7 @@ export function DraftHistoryDialog({ winningPostDraftId }: { winningPostDraftId:
           </DialogDescription>
         </DialogHeader>
         <div aria-live="polite">
-          {open ? <DraftHistoryBody winningPostDraftId={winningPostDraftId} /> : null}
+          {open ? <DraftHistoryBodyImpl winningPostDraftId={winningPostDraftId} /> : null}
         </div>
       </DialogContent>
     </Dialog>

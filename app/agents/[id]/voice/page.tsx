@@ -11,12 +11,12 @@ import { ExtractionProgress } from "./extraction-progress";
 import { RetryExtractionButton } from "./retry-extraction-button";
 import { RulesEditor } from "./rules-editor";
 
-// Mirrors app/agents/new/page.tsx's maxDuration: this page's retryExtraction action awaits
-// only the pre-flight gates (checkHandleShape, then runProfilePreflightGate) synchronously,
-// then hands the billable phase to `after()`, same as the create flow — but that after() call
-// still runs under this route's lifetime, so the function needs the same ceiling to survive a
-// full extraction.
-export const maxDuration = 300;
+// Mirrors app/agents/new/page.tsx's maxDuration (see its comment for the 800 rationale):
+// this page's retryExtraction action awaits only the pre-flight gates (checkHandleShape,
+// then runProfilePreflightGate) synchronously, then hands the billable phase to `after()`,
+// same as the create flow — but that after() call still runs under this route's lifetime, so
+// the function needs the same ceiling to survive a full extraction.
+export const maxDuration = 800;
 
 // The Reasoning block pulls in Streamdown (markdown rendering) — heavy, and only ever
 // needed once a reporter opens the audit dialog. `next/dynamic` keeps it out of this

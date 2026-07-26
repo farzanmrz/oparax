@@ -21,7 +21,12 @@ function shortDate(date: Date, now: Date): string {
   });
 }
 
-function relativeLabel(iso: string): { label: string; title: string } {
+/** The pure label/title computation — exported so other surfaces needing the same
+ *  Xm/Xh/Xd-ago bucket logic (e.g. `draft-history-dialog.tsx`) can call it directly instead
+ *  of reimplementing it. `RelativeTime` below is the hydration-safe client component that
+ *  wraps this with the mount/interval dance; this function itself has no client-only
+ *  concerns beyond reading `Date.now()`. */
+export function relativeLabel(iso: string): { label: string; title: string } {
   const date = new Date(iso);
   const now = new Date();
   const seconds = Math.max(0, (now.getTime() - date.getTime()) / 1000);

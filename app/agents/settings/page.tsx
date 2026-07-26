@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getUsername } from "@/lib/user";
-import { DeleteAccountButton, UsernameForm } from "./settings-forms";
+import { getXLinkState } from "@/lib/x/link-state";
+import { DeleteAccountButton, DisconnectXButton, UsernameForm } from "./settings-forms";
 
 /**
  * Settings: profile (username), security (password placeholder — no real flow
@@ -18,6 +19,7 @@ export default async function SettingsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const xLink = await getXLinkState();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -34,6 +36,28 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <UsernameForm initialUsername={getUsername(user)} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>X account</CardTitle>
+            <CardDescription>Where your agents post from.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {xLink.linked && xLink.handle ? (
+              <DisconnectXButton handle={xLink.handle} />
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">X account</p>
+                  <p className="text-sm text-muted-foreground">Not connected.</p>
+                </div>
+                <Button asChild variant="outline">
+                  <a href="/auth/x?returnTo=/agents/settings">Connect X</a>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

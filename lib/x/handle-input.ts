@@ -7,21 +7,19 @@
 // split/paste handling at all). Light shaping only — the server (createDesk / addTrackedHandles)
 // does the real charset validation, dedupe, and cap regardless of what a client sends.
 
+import { splitList } from "@/lib/split-list";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
 
-/** Strip leading @(s) + whitespace. Case is preserved for display; the server normalizes +
+/** Strip leading @(s). Case is preserved for display; the server normalizes +
  *  charset-validates on save (lib/x/handle.ts). */
 function cleanHandle(raw: string): string {
-  return raw.trim().replace(/^@+/, "");
+  return raw.replace(/^@+/, "");
 }
 
 /** Split a typed/pasted blob into candidate handles — comma / whitespace / newline separated,
  *  each with or without a leading @. */
 export function splitHandles(raw: string): string[] {
-  return raw
-    .split(/[\s,]+/)
-    .map(cleanHandle)
-    .filter(Boolean);
+  return splitList(raw).map(cleanHandle).filter(Boolean);
 }
 
 /** Merge new handles into an existing client-held list: case-insensitive dedupe, capped at

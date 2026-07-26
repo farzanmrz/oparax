@@ -16,7 +16,12 @@ import type { TelemetryOptions } from "ai";
 
 /** Every AI stage in the product. Deliberately mirrors `model_calls.stage`, so a span in Sentry
  *  and its ledger row in Postgres name the same thing and can be joined by eye. */
-export type AiStage = "voice_extraction" | "story_cluster" | "draft_council" | "draft_judge";
+export type AiStage =
+  | "voice_extraction"
+  | "story_cluster"
+  | "draft_ground"
+  | "draft_council"
+  | "draft_judge";
 
 /**
  * Whether a stage's prompt and completion text are recorded, per stage — NOT a global switch.
@@ -31,7 +36,10 @@ export type AiStage = "voice_extraction" | "story_cluster" | "draft_council" | "
  *   to make visible.
  * - `story_cluster` — ON. Input is public source posts and existing story headlines; the output is
  *   a classification verdict. Nothing here is the reporter's own writing.
- * - `draft_council` / `draft_judge` — ON outside production, OFF in production. The output is
+ * - `draft_ground` / `draft_council` / `draft_judge` — ON outside production, OFF in production.
+ *   `draft_ground` sits with the drafting stages rather than the classification ones because,
+ *   unlike `story_cluster`'s bare verdict, its output carries a `firstDraft` — the reporter's
+ *   unpublished journalism, the same artifact the council's output is. The output is
  *   an UNPUBLISHED DRAFT in the reporter's voice: their unpublished journalism, the single most
  *   sensitive artifact the product handles, and the one thing that must not sit in a third-party
  *   store waiting to leak — so on oparax.ai only token counts, latency, model, cost and finish
@@ -45,6 +53,7 @@ const DRAFT_CONTENT_ALLOWED = process.env.VERCEL_ENV !== "production";
 const RECORDS_CONTENT: Record<AiStage, boolean> = {
   voice_extraction: true,
   story_cluster: true,
+  draft_ground: DRAFT_CONTENT_ALLOWED,
   draft_council: DRAFT_CONTENT_ALLOWED,
   draft_judge: DRAFT_CONTENT_ALLOWED,
 };

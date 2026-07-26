@@ -97,8 +97,11 @@ function DraftCard({
     // ten minutes nothing is still legitimately drafting. Fresh gets a skeleton (the draft
     // is genuinely being written right now); stale gets the honest no-draft copy. The feed
     // auto-refresh re-renders this every ~20s, so both states resolve without a reload.
-    const startedAt = story.sourcePosts[0]?.postedAt;
-    const stale = startedAt ? Date.now() - new Date(startedAt).getTime() > 10 * 60 * 1000 : true;
+    // Clocked off the STORY's own council start (`stories.created_at`), never off a source
+    // post's `postedAt` — a backfilled/seeded/redelivered post can carry a `posted_at` hours
+    // or days old, which would fire `stale` immediately even while the council is actively
+    // running and being paid for.
+    const stale = Date.now() - new Date(story.createdAt).getTime() > 10 * 60 * 1000;
     return (
       <div className={cn("flex h-full flex-col", opacityClass)}>
         <PostCard>

@@ -3,9 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
 import { CreateDeskForm } from "./create-desk-form";
 
-// Mirrors app/api/ingest/route.ts's maxDuration: the `after()` voice-extraction call this
-// page's create action kicks off needs the function alive long enough to run.
-export const maxDuration = 300;
+// The `after()` voice-extraction call this page's create action kicks off needs the function
+// alive long enough to run — and extraction wall-clock varies per corpus (a real run aborted
+// at 280s while Opus was still mid-reasoning). 800 is Vercel Pro's Fluid Compute ceiling; the
+// extraction call's own AbortSignal (lib/voice/extract-guide.ts's EXTRACT_TIMEOUT_MS) sits
+// just under it so a stuck run is aborted CAUGHT — stamping the run row failed — rather than
+// the platform killing the invocation with no cleanup. Keep app/agents/[id]/voice/page.tsx's
+// maxDuration in lockstep: the manual retry runs this same call.
+export const maxDuration = 800;
 
 /**
  * New-desk page — the create-desk form + live extraction view (create-desk-form.tsx). Fetches

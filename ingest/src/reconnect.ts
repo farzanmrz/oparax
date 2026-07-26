@@ -1,3 +1,4 @@
+import { backoffDelay, sleep } from "./backoff";
 import { FatalIngestError, postDelivery } from "./deliver";
 import { describeError } from "./errors";
 import { logger } from "./logger";
@@ -10,15 +11,6 @@ const MAX_DELAY_MS = 60_000;
  *  RUN of consecutive 401s means the bearer token itself is bad. Below this the loop keeps
  *  backing off and retrying like any other transient error. */
 const PERSISTENT_401_THRESHOLD = 3;
-
-function backoffDelay(attempt: number): number {
-  const exp = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** attempt);
-  return exp / 2 + Math.random() * (exp / 2);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export interface ReconnectDeps {
   bearerToken: string;
@@ -89,7 +81,7 @@ export async function runIngestionLoop(deps: ReconnectDeps): Promise<void> {
       }
     }
 
-    const delay = backoffDelay(attempt);
+    const delay = backoffDelay(attempt, { base: BASE_DELAY_MS, max: MAX_DELAY_MS });
     attempt += 1;
     logger.info("stream: backing off before reconnect", { delayMs: Math.round(delay) });
     await sleep(delay);

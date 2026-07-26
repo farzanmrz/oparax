@@ -41,6 +41,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { AUTO_POST_ENABLED } from "@/lib/agent/desk-config";
+import { splitList } from "@/lib/split-list";
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
 import { splitHandles } from "@/lib/x/handle-input";
@@ -54,11 +56,9 @@ import {
   unlinkSlack,
 } from "./actions";
 
-/** Auto-post is BUILT and greyed, not removed. The shipped flow is review-then-post: the
- *  reporter reads the draft in Slack (or the Feed) and clicks Post to X themselves. Flipping
- *  this to `true` re-enables both switches — `toggleAutoPost`, the turn-on confirm gate, and
- *  draft-pipeline.ts's auto-post branch are all still wired behind them. */
-const AUTO_POST_ENABLED = false;
+// AUTO_POST_ENABLED now lives in lib/agent/desk-config.ts — the SAME constant
+// draft-pipeline.ts's server-side auto-post branch reads, so this switch being greyed isn't
+// the only thing standing between a delivery and an unreviewed post.
 
 type AutoPostTarget = "master" | "x" | "website";
 
@@ -156,7 +156,7 @@ export function SourcesCard({
     const raw = websiteInput.trim();
     if (!raw) return;
     setWebsiteError(null);
-    const candidates = raw.split(/[\s,]+/).filter(Boolean);
+    const candidates = splitList(raw);
     startWebsiteTransition(async () => {
       const result = await saveWebsites(deskId, candidates);
       if (!result.ok) {

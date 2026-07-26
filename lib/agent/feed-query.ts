@@ -61,6 +61,12 @@ function authorNameFromRaw(raw: unknown): string | null {
 export type FeedStory = {
   storyId: string;
   summary: string; // stories.summary — a short label, useful as a fallback/secondary display
+  /** `stories.created_at` — when the council for this story actually started, as opposed to
+   *  a source post's own `postedAt` (when the tracked account originally posted, which can be
+   *  hours or days old for a backfilled/seeded/redelivered post). The mid-council-vs-
+   *  permanently-failed staleness check in feed-item.tsx must clock off THIS, never off a
+   *  source post's timestamp. */
+  createdAt: string;
   sourcePosts: {
     id: string;
     authorHandle: string | null; // NOW NULLABLE — a website post may have none
@@ -140,12 +146,15 @@ function summarizeCouncil(rows: CouncilRow[]): {
 } {
   const originals = rows.filter((r) => r.parent_draft_id === null);
   const candidates = originals.filter((r) => r.judge_verdict === null);
-  const judge = originals.find((r) => r.judge_verdict !== null);
+  // ALL judge rows, not just the first — one per platform once `PLATFORMS` grows past X,
+  // so summing (not `.find`-ing) the first match is what keeps this total from silently
+  // undercounting the moment a story carries more than one platform's judge.
+  const judges = originals.filter((r) => r.judge_verdict !== null);
   return {
     memberCount: candidates.length,
     totalCostUsd: sumCosts([
       ...candidates.map((r) => r.model_calls?.cost_usd ?? null),
-      judge?.model_calls?.cost_usd ?? null,
+      ...judges.map((r) => r.model_calls?.cost_usd ?? null),
     ]),
   };
 }
@@ -238,6 +247,7 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
   const result = stories.map((story) => ({
     storyId: story.id,
     summary: story.summary,
+    createdAt: story.created_at,
     sourcePosts: sourcePostsByStoryId.get(story.id) ?? [],
     winners: winnersByStoryId.get(story.id) ?? {},
     council: summarizeCouncil(councilRowsByStoryId.get(story.id) ?? []),

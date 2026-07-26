@@ -38,32 +38,28 @@ export const EXTRACTION_MODEL = "anthropic/claude-opus-5";
  *  `scripts/diagnose-extraction.ts`, which reads `finishReason` and `outputTokens` back rather
  *  than trusting the request shape. */
 const EXTRACT_MAX_OUTPUT_TOKENS: number | undefined = undefined;
-// Was 30 min ("far beyond any Vercel function cap") when this call was script-only
-// (scripts/extract-voice-guide.ts). The create-agent v2 continuation wired
-// extractVoiceGuideStreaming into real routes capped at maxDuration = 300 (create-desk's
-// after() call, the Voice tab's manual retry) sharing that budget with the corpus-fetch poll
-// (lib/x/timeline.ts's request timeout, ~0.6s) and the DB writes around both — a 30-minute abort
-// here never fires before the platform kills the whole invocation with no cleanup.
+// The measured baseline: a fully instrumented run on a 100-post corpus
+// (scripts/diagnose-extraction.ts, uncapped output) took **200.4s wall-clock** — first
+// REASONING delta at 5.8s, first TEXT delta at 60.5s, 4,016 thinking tokens, 14,372 output
+// tokens, $0.436. But per-corpus variance is real and the tail is long: a live run
+// (2026-07-26, @ReshadRahman's corpus, QC's create-agent journey) was STILL mid-reasoning at
+// the previous 280s ceiling and aborted with an empty guide — a billed call, no guide, and a
+// retry that would rerun the same corpus against the same too-small ceiling.
 //
-// 280s is MEASURED, and the measurement moved twice — record the numbers, not a rule of thumb.
-// A fully instrumented run on a 100-post corpus (scripts/diagnose-extraction.ts, uncapped output)
-// took **200.4s wall-clock**: first REASONING delta at 5.8s, first TEXT delta at 60.5s, 4,016
-// thinking tokens, 14,372 output tokens, 23,261 characters of guide, $0.436. An earlier estimate
-// of 134s was wrong, and the 150s ceiling before that aborted a genuinely-still-streaming run at
-// 151s — which is a full 50s before this run had produced its first character of guide.
+// So the ceiling moved to Vercel Pro's Fluid Compute maximum: the extraction routes
+// (app/agents/new/page.tsx, app/agents/[id]/voice/page.tsx) now export maxDuration = 800, and
+// this abort sits at 770s — ~30s reserved for the corpus fetch (~0.6s) and the ledger/run-row
+// writes on either side of the call. That is ~3.8x the measured run, which is headroom over the
+// TAIL rather than the mean. The abort must stay strictly inside maxDuration: an abort that
+// fires is CAUGHT (runExtractionSpendPhase's try/catch stamps the run row failed via
+// finishRun, so the UI shows a real failure + retry), whereas the platform killing the
+// invocation at 800s leaves a run row stuck "running" and no cleanup at all.
 //
-// So the headroom that mattered was never over the mean, it was over the point where text STARTS.
-// 240s would have been only 1.2x a real run, which is not headroom on a model whose latency varies
-// per corpus. 280s is 1.4x, and sits inside the route's maxDuration = 300 with 20s left for the
-// corpus read (~0.6s) and the ledger writes — deliberately tight against the platform ceiling,
-// because being killed by Vercel mid-invocation leaves no cleanup at all, whereas this abort is
-// caught. If a run ever needs longer than this, the fix is not a bigger number here: it is
-// splitting the work out of a request-scoped function.
-//
-// A timeout here still throws out of runExtractionSpendPhase's try/catch, which catches it and
-// stamps the run row failed via finishRun — there is no claim to release, since extraction
-// carries no spend reservation.
-const EXTRACT_TIMEOUT_MS = 280_000;
+// This is a stuck-run guard now, not a latency budget — `stopWhen: stepCountIs(3)` already
+// bounds the tool loop, and this bounds a hung stream. If a real corpus ever needs longer than
+// this, the fix is not a bigger number: it is splitting extraction out of a request-scoped
+// function entirely (a queue/background job), which also survives redeploys.
+const EXTRACT_TIMEOUT_MS = 770_000;
 
 /** One corpus post, carrying the metadata the extraction prompt grades against. */
 export type CorpusPost = {
@@ -243,9 +239,20 @@ function buildScopeTool(
 }
 
 /** X's CDN serves `.jpg` for photos and for video/GIF poster frames, and `.png` for a minority of
- *  uploads. Read it off the url rather than assuming, since an incorrect mediaType is rejected. */
-function imageMediaType(url: string): string {
-  const ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
+ *  uploads. Read it off the url rather than assuming, since an incorrect mediaType is rejected.
+ *
+ *  Returns `null` on an unparsable url instead of throwing — a single malformed media url from a
+ *  live X timeline response must not abort the whole extraction (which, at the point media is
+ *  attached, has already billed for the corpus read). The caller drops that one image and keeps
+ *  going rather than crashing the run. */
+function imageMediaType(url: string): string | null {
+  let ext: string | undefined;
+  try {
+    ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
+  } catch (e) {
+    console.error(`extract-guide: skipping media with unparsable url: ${url}`, e);
+    return null;
+  }
   if (ext === "png") return "image/png";
   if (ext === "webp") return "image/webp";
   if (ext === "gif") return "image/gif";
@@ -307,6 +314,13 @@ function buildExtractionContent(
     let dropped = 0;
     for (const p of withMedia) {
       for (const m of p.media ?? []) {
+        // A malformed url can't be shown either way — count it against the same "dropped" note
+        // rather than silently vanishing, so the model still knows this post carried media it
+        // couldn't inspect instead of reading as having none.
+        if (imageMediaType(m.imageUrl) === null) {
+          dropped++;
+          continue;
+        }
         if (shown.length < MAX_CORPUS_IMAGES) shown.push({ id: p.id, ...m });
         else dropped++;
       }
@@ -321,16 +335,118 @@ function buildExtractionContent(
           : ""),
     });
     for (const s of shown) {
+      // Already validated when `shown` was built, but re-checked here defensively rather than
+      // trusting that invariant across the two loops — a skip here is still a skip, not a crash.
+      const mediaType = imageMediaType(s.imageUrl);
+      let fileUrl: URL;
+      try {
+        fileUrl = new URL(s.imageUrl);
+      } catch (e) {
+        console.error(
+          `extract-guide: skipping media with unparsable url (post ${s.id}): ${s.imageUrl}`,
+          e,
+        );
+        continue;
+      }
+      if (mediaType === null) continue;
       content.push({ type: "text", text: `[${s.id}] ${s.kind}:` });
-      content.push({
-        type: "file",
-        data: new URL(s.imageUrl),
-        mediaType: imageMediaType(s.imageUrl),
-      });
+      content.push({ type: "file", data: fileUrl, mediaType });
     }
   }
 
   return { facts, content };
+}
+
+/** One step of this call's multi-step run, narrowed to only what `reconstructFromSteps` needs —
+ *  matches both `generateText`'s and `streamText`'s step shape (`DefaultStepResult` in the
+ *  installed `ai@7.0.14`) without importing an SDK-internal type. */
+type ExtractionStep = {
+  text: string;
+  reasoningText: string | undefined;
+  providerMetadata?: Record<string, unknown>;
+};
+
+/**
+ * ai@7's multi-step `generateText`/`streamText` results expose `.text`, `.reasoningText`, and
+ * `.providerMetadata` as LAST-STEP-ONLY getters — confirmed by reading the installed
+ * `node_modules/ai/dist/index.js` rather than assumed: `DefaultGenerateTextResult.text` returns
+ * `this.finalStep.text` where `finalStep` is `this.steps.at(-1)`, `DefaultStreamTextResult.text`
+ * resolves `this.finalStep.then(step => step.text)` the same way, and both classes' `.usage`
+ * getter is the one exception — it returns `this.totalUsage`, which the SDK genuinely aggregates
+ * across every step as the stream/steps resolve. For this call — `stopWhen: stepCountIs(3)`,
+ * one tool (`exclude_off_beat_posts`) the model may call BEFORE writing the guide — that
+ * mismatch is two real bugs, not one:
+ *
+ *   1. A step that calls the tool has NO text content (`step.text` filters its `content` array
+ *      for `type: "text"` parts), so if the model's LAST step is itself a tool call — it hits
+ *      the step cap mid-loop, or calls the tool a second time for no reason — `finalStep.text`
+ *      is `""`. The run then throws "extraction produced an empty guide"
+ *      (`create-desk-extraction.ts`) AFTER the whole run already billed. This walks the step
+ *      list backward for the last one that actually produced text, instead of assuming it's the
+ *      last step.
+ *   2. `finalStep.reasoningText` silently drops every earlier step's reasoning — here, that is
+ *      the reasoning that decided the beat/exclusions in step 1, breaching AGENTS.md's "every
+ *      model call records its reasoning" rule on the single most expensive call in the product.
+ *      This concatenates every step's reasoning instead of reading only the last.
+ *
+ * Cost and thinking-token count are summed per step rather than read off one — each step is its
+ * own real request to the model, so each carries its own gateway `providerMetadata` (cost,
+ * generation id) and its own Anthropic-specific thinking-token count. This is a genuine
+ * improvement over the old behavior (which silently dropped every non-final step's cost and
+ * thinking-token count entirely), but stops short of being fully exact for cost specifically —
+ * see the comment on `generationId` below for what's still approximated and why.
+ */
+async function reconstructFromSteps(steps: ExtractionStep[]): Promise<{
+  text: string;
+  reasoning: string | null;
+  thinkingTokens: number | null;
+  costUsd: number | null;
+  generationId: string | null;
+}> {
+  let text = "";
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i].text.trim()) {
+      text = steps[i].text;
+      break;
+    }
+  }
+
+  const reasoning = steps
+    .map((s) => s.reasoningText?.trim())
+    .filter((r): r is string => !!r)
+    .join("\n\n");
+
+  let costUsd: number | null = null;
+  let costResolved = false;
+  // `model_calls.generation_id` is a single column, so only ONE step's id can be persisted —
+  // the last step's, matching the pre-fix behavior for whichever id gets stored. If an EARLIER
+  // step's cost misses its synchronous gateway lookup (the gateway's own usage event is
+  // unqueryable for ~19s after a call returns — see `resolveGatewayCost`'s comment) and never
+  // resolves, `reconcileMissingCosts` (lib/agent/gateway-cost.ts) can only repair the cost
+  // attached to the id it has, which is the LAST step's — so a summed total that included an
+  // unrepaired earlier-step miss can under-count forever. That is a real gap in the
+  // reconciliation path (it would need a schema change — multiple generation ids per
+  // `model_calls` row — to close), not something this function can fix; recorded here so it
+  // isn't silently forgotten.
+  let generationId: string | null = null;
+  let thinkingTokens: number | null = null;
+  for (const step of steps) {
+    const resolved = await resolveGatewayCost(step);
+    if (resolved.generationId) generationId = resolved.generationId;
+    if (resolved.costUsd != null) {
+      costUsd = (costUsd ?? 0) + resolved.costUsd;
+      costResolved = true;
+    }
+
+    const anthropic = step.providerMetadata?.anthropic as
+      | { usage?: { output_tokens_details?: { thinking_tokens?: unknown } } }
+      | undefined;
+    const stepThinking = toFiniteOrNull(anthropic?.usage?.output_tokens_details?.thinking_tokens);
+    if (stepThinking != null) thinkingTokens = (thinkingTokens ?? 0) + stepThinking;
+  }
+  if (!costResolved) costUsd = null;
+
+  return { text, reasoning: reasoning || null, thinkingTokens, costUsd, generationId };
 }
 
 /**
@@ -371,16 +487,20 @@ export async function extractVoiceGuide(
     experimental_telemetry: aiTelemetry("voice_extraction", "voice-extraction-oneshot"),
   });
 
-  const anthropic = result.providerMetadata?.anthropic as
-    | { usage?: { output_tokens_details?: { thinking_tokens?: unknown } } }
-    | undefined;
-  const thinkingTokens = toFiniteOrNull(anthropic?.usage?.output_tokens_details?.thinking_tokens);
-
-  const { costUsd, generationId } = await resolveGatewayCost(result);
+  // `result.steps` is a plain array on `generateText`'s result (already resolved, unlike
+  // `streamText`'s lazy/promise-backed `steps` below) — see `reconstructFromSteps` for why
+  // reading it beats `result.text`/`.reasoningText`/`.providerMetadata` directly.
+  const {
+    text: guideRaw,
+    reasoning,
+    thinkingTokens,
+    costUsd,
+    generationId,
+  } = await reconstructFromSteps(result.steps);
 
   const scopeExclusion = scope.read();
   return {
-    guideRaw: result.text,
+    guideRaw,
     // The block the guide was actually written against — the recomputed one when the tool
     // applied, so provenance matches the numbers the model was bound by.
     measuredFactsBlock: scopeExclusion?.applied
@@ -393,7 +513,7 @@ export async function extractVoiceGuide(
         )
       : facts,
     scopeExclusion,
-    reasoning: result.reasoningText ?? null,
+    reasoning,
     thinkingTokens,
     costUsd,
     usage: result.usage,
@@ -479,20 +599,18 @@ export async function extractVoiceGuideStreaming(
     if (onProgress) await onProgress({ text: textSoFar, reasoning: reasoningSoFar });
   }
 
-  const [text, reasoningText, usage, providerMetadata, finishReason] = await Promise.all([
-    result.text,
-    result.reasoningText,
+  // `result.steps` resolves the same underlying per-step array `generateText`'s does (it's a
+  // promise here only because streamText's result is lazy) — by this point the loop above has
+  // already fully drained `fullStream`, so it resolves immediately. See `reconstructFromSteps`
+  // for why this replaces the old `result.text`/`.reasoningText`/`.providerMetadata` reads, which
+  // are last-step-only getters on this SDK version.
+  const [steps, usage, finishReason] = await Promise.all([
+    result.steps,
     result.usage,
-    result.providerMetadata,
     result.finishReason,
   ]);
-
-  const anthropic = providerMetadata?.anthropic as
-    | { usage?: { output_tokens_details?: { thinking_tokens?: unknown } } }
-    | undefined;
-  const thinkingTokens = toFiniteOrNull(anthropic?.usage?.output_tokens_details?.thinking_tokens);
-
-  const { costUsd, generationId } = await resolveGatewayCost({ providerMetadata });
+  const { text, reasoning, thinkingTokens, costUsd, generationId } =
+    await reconstructFromSteps(steps);
 
   const scopeExclusion = scope.read();
   return {
@@ -507,7 +625,7 @@ export async function extractVoiceGuideStreaming(
         )
       : facts,
     scopeExclusion,
-    reasoning: reasoningText ?? null,
+    reasoning,
     thinkingTokens,
     costUsd,
     usage,

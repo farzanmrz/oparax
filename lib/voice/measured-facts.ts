@@ -31,10 +31,25 @@ function inventory(texts: string[], re: RegExp): string {
   return shown + (top.length > 15 ? ` (+${top.length - 15} rarer)` : "");
 }
 
-/** Render the MEASURED STYLE FACTS block for one reporter's corpus of post texts. */
+/** Render the MEASURED STYLE FACTS block for one reporter's corpus of post texts.
+ *
+ *  A zero-post corpus is a real possibility here even when the live extraction path pre-flights
+ *  against it (`runExtractionSpendPhase` refuses to bill when `fetchCorpus` returns no usable
+ *  text) — this function is also called AFTER the `exclude_off_beat_posts` tool runs, and a
+ *  corpus that excludes every post as off-beat reaches here with `n === 0` too. Embedding literal
+ *  `undefined`s into a paid model prompt (the old behavior: `lens[-1]` is `undefined` in JS) is
+ *  never acceptable, so this returns an explicit, honest sentinel instead of computing anything. */
 export function measuredFacts(handle: string, postTexts: string[]): string {
   const texts = postTexts.filter((t) => t.trim());
   const n = texts.length;
+  if (n === 0) {
+    return (
+      `MEASURED STYLE FACTS for @${handle} — frequencies computed by code over all 0 corpus posts.\n` +
+      `- no representative post text was available to measure. Every frequency below is UNKNOWN, ` +
+      `not zero — do not report a count, rate, or "never does X" claim for anything this block ` +
+      `would normally cover; say the corpus was empty instead.`
+    );
+  }
   const lens = texts.map((t) => t.length).sort((a, b) => a - b);
   const pct = (p: number) => lens[Math.min(n - 1, Math.floor(p * n))];
   const breaks = [0, 0, 0];

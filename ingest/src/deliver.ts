@@ -1,3 +1,4 @@
+import { backoffDelay, sleep } from "./backoff";
 import { describeError } from "./errors";
 import { logger } from "./logger";
 import type { IngestDeliveryBody } from "./types";
@@ -11,15 +12,6 @@ export class FatalIngestError extends Error {}
 const MAX_ATTEMPTS = 6;
 const BASE_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
-
-function backoffDelay(attempt: number): number {
-  const exp = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** attempt);
-  return exp / 2 + Math.random() * (exp / 2);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /** POSTs one delivery to /api/ingest, matching the exact contract verified in the app:
  *  - 200: accepted — log the processDelivery result and return.
@@ -50,7 +42,7 @@ export async function postDelivery(
         attempt,
         error: describeError(e),
       });
-      await sleep(backoffDelay(attempt));
+      await sleep(backoffDelay(attempt, { base: BASE_DELAY_MS, max: MAX_DELAY_MS }));
       continue;
     }
 
@@ -78,7 +70,7 @@ export async function postDelivery(
       status: res.status,
       attempt,
     });
-    await sleep(backoffDelay(attempt));
+    await sleep(backoffDelay(attempt, { base: BASE_DELAY_MS, max: MAX_DELAY_MS }));
   }
 
   logger.error("delivery: exhausted retries — dropping", {

@@ -17,13 +17,19 @@ export class StreamTransientError extends Error {}
 // detect the loss. Measured across the first 147 ingested posts: 5 were truncated this way,
 // losing 12-126 characters each, including whole facts the drafts were then written without.
 // The syndication API cannot rescue this either — it returns `note_tweet: { id }` and no text.
+//
+// `attachments.media_keys`/`media.fields` mirror lib/x/timeline.ts's extraction-side read
+// exactly — a post whose meaning lives entirely in a photo (or is off-beat/on-beat only once
+// you can see the picture) must reach the grounding stage able to look at it, not just at an
+// opaque t.co link.
 const STREAM_URL =
-  "https://api.x.com/2/tweets/search/stream?expansions=author_id&user.fields=username&tweet.fields=created_at,note_tweet";
+  "https://api.x.com/2/tweets/search/stream?expansions=author_id,attachments.media_keys&user.fields=username&tweet.fields=created_at,note_tweet&media.fields=type,url,preview_image_url";
 
 /** x_post_id = the tweet id; author_handle = the author's username (resolved via
  *  expansions=author_id/includes.users, requested above); text = the COMPLETE tweet body —
  *  `note_tweet.text` for a long post, `text` otherwise (see STREAM_URL above); posted_at =
- *  the tweet's created_at; raw = the full stream payload for audit. Matches the contract in
+ *  the tweet's created_at; media = attached photos in full / video-GIF poster frames (see
+ *  IngestDeliveryMedia); raw = the full stream payload for audit. Matches the contract in
  *  the brief and app/api/ingest/route.ts exactly. */
 export function mapTweetToDelivery(payload: StreamPayload): IngestDeliveryBody | null {
   const tweet = payload.data;
@@ -41,12 +47,27 @@ export function mapTweetToDelivery(payload: StreamPayload): IngestDeliveryBody |
     return null;
   }
 
+  // Media arrives once in `includes`, referenced by key from the tweet — same shape and same
+  // "photo carries `url`, video/GIF carry only a poster frame" rule as lib/x/timeline.ts.
+  const mediaByKey = new Map(
+    (payload.includes?.media ?? [])
+      .filter((m) => m.media_key)
+      .map((m) => [m.media_key as string, m]),
+  );
+  const media = (tweet.attachments?.media_keys ?? []).flatMap((key) => {
+    const m = mediaByKey.get(key);
+    const imageUrl = m?.url ?? m?.preview_image_url;
+    if (!m?.type || !imageUrl) return [];
+    return [{ kind: m.type, imageUrl }];
+  });
+
   return {
     source: "x",
     x_post_id: tweet.id,
     author_handle: author.username,
     text: fullText,
     posted_at: tweet.created_at ?? new Date().toISOString(),
+    ...(media.length > 0 ? { media } : {}),
     raw: payload,
   };
 }

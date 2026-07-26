@@ -16,7 +16,7 @@ raw="$(mktemp)"
 #       blocks writes/network). SIMPLE: the old no-survey invocation (prompt forbids reads).
 if [ "$DEPTH" = "deep" ]; then
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
-       --always-approve --effort "$EFF" -m grok-4.5 --max-turns 60 \
+       --always-approve --effort "$EFF" -m grok-4.5 --max-turns 150 \
        --output-format json > "$raw" 2>&1
 else
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \

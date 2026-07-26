@@ -6,13 +6,18 @@
 // `deliverDraft`/`draftForExperiment` `stampUsageEvent` calls); a kind-based split can't
 // tell drafting from judging apart and would silently render $0.00 for Judging.
 // `model_calls.stage` is where they're actually distinct — verified against the real
-// writers: `draft-council-run.ts`'s `CouncilCall.stage` is typed `"drafting" | "judge"`
-// (drafts, repairs, and revisions all stamp `"drafting"`; only the judge call stamps
-// `"judge"`), and `scripts/extract-voice-guide.ts` stamps `"voice_extraction"`. Those three
-// literal strings are the entire live write surface today — no remapping needed, just an
-// explicit `stage IN (...)` filter so a future stage (e.g. a `"scan"` stage, mentioned as a
-// placeholder in the `model_calls` migration's column comment but never written) can't leak
-// into this rollup unbucketed.
+// writers: `draft-ground.ts`'s ONE drafting call stamps `"grounding"` (a real per-delivery
+// cost, not folded into "drafting", since it runs even on off-beat posts and is the only call
+// today — the owner collapsed the ground→revise×2→synthesize pipeline down to this single
+// gpt-5-nano pass, so `"drafting"` now has no live writer except `draft-council-run.ts`'s
+// dormant `reviseDraft` (the emailed-correction path) and its repair leg, and
+// `scripts/extract-voice-guide.ts` stamps `"voice_extraction"`. The `"judge"` stage has no live
+// writer at all since the old parallel council + judge architecture was replaced — kept in the
+// type/filter for historical rows, not because anything writes it today.
+// These are the entire live write surface — no remapping needed, just an explicit
+// `stage IN (...)` filter so a future stage (e.g. a `"scan"` stage, mentioned as a placeholder
+// in the `model_calls` migration's column comment but never written) can't leak into this
+// rollup unbucketed.
 //
 // Delivery counts (Slack/email) DO come from `usage_events` — `"slack_notification"` /
 // `"email_notification"` rows are stamped there with `cost_usd: null` (Slack/email sends
@@ -29,11 +34,11 @@ import type { createClient } from "@/lib/supabase/server";
 
 type RlsClient = Awaited<ReturnType<typeof createClient>>;
 
-export type SpendStage = "drafting" | "judge" | "voice_extraction";
+export type SpendStage = "drafting" | "judge" | "grounding" | "voice_extraction";
 export type SpendRollup = { stage: SpendStage; costUsd: number }[];
 
 export type SpendPeriod = "weekly" | "monthly" | "yearly";
-export const SPEND_PERIODS: readonly SpendPeriod[] = ["weekly", "monthly", "yearly"];
+const SPEND_PERIODS: readonly SpendPeriod[] = ["weekly", "monthly", "yearly"];
 export const SPEND_PERIOD_LABELS: Record<SpendPeriod, string> = {
   weekly: "Weekly",
   monthly: "Monthly",
@@ -47,7 +52,7 @@ export type SpendWindow = {
 };
 
 const PERIOD_DAYS: Record<SpendPeriod, number> = { weekly: 7, monthly: 30, yearly: 365 };
-const STAGES: readonly SpendStage[] = ["drafting", "judge", "voice_extraction"];
+const STAGES: readonly SpendStage[] = ["drafting", "judge", "grounding", "voice_extraction"];
 
 function sinceIso(period: SpendPeriod, now: Date): string {
   return new Date(now.getTime() - PERIOD_DAYS[period] * 24 * 60 * 60 * 1000).toISOString();

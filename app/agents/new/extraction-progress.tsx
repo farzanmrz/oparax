@@ -24,7 +24,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ExtractionChain, type ExtractionStep } from "@/components/extraction-chain";
 import { Button } from "@/components/ui/button";
 import { pipelineSteps } from "@/lib/voice/extraction-steps";
-import { getExtractionProgress, startExtraction } from "../[id]/voice/actions";
+import { useExtractionProgress } from "@/lib/voice/use-extraction-progress";
+import { startExtraction } from "../[id]/voice/actions";
 
 const POLL_INTERVAL_MS = 1750;
 
@@ -45,13 +46,6 @@ const INITIAL_GATES: GateState = {
 export function ExtractionProgress({ deskId }: { readonly deskId: string }) {
   const router = useRouter();
   const [gates, setGates] = useState<GateState>(INITIAL_GATES);
-  const [run, setRun] = useState({
-    stage: null as string | null,
-    progressNote: null as string | null,
-    reasoningPartial: null as string | null,
-    status: "none",
-    errorCode: null as string | null,
-  });
   // Guards React StrictMode's double-invoked effects in dev: without it the start sequence runs
   // twice. The server-side run claim would reject the second one anyway, but the second call
   // would still surface as a spurious "already running" message on a screen that just started.
@@ -88,30 +82,21 @@ export function ExtractionProgress({ deskId }: { readonly deskId: string }) {
   // Polls only once the billable phase is actually running — before that there is no run row to
   // read, and polling for one would be the same "waiting on a signal that cannot arrive" bug the
   // gate step above exists to fix.
-  useEffect(() => {
-    if (!gates.started) return;
-    let cancelled = false;
-
-    async function poll() {
-      const result = await getExtractionProgress(deskId);
-      if (cancelled || !result.ok) return;
-      setRun({
-        stage: result.stage,
-        progressNote: result.progressNote,
-        reasoningPartial: result.reasoningPartial,
-        status: result.status,
-        errorCode: result.errorCode,
-      });
+  const run = useExtractionProgress(deskId, {
+    enabled: gates.started,
+    intervalMs: POLL_INTERVAL_MS,
+    immediate: true,
+    initial: {
+      stage: null,
+      progressNote: null,
+      reasoningPartial: null,
+      status: "none",
+      errorCode: null,
+    },
+    onResult: (result) => {
       if (result.status === "completed") router.push(`/agents/${deskId}/voice`);
-    }
-
-    poll();
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [deskId, gates.started, router]);
+    },
+  });
 
   const stopped = gates.error !== null || run.status === "failed";
 

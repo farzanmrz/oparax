@@ -72,11 +72,15 @@ export async function fetchTrackedHandles(client: RulesClient): Promise<string[]
 
 /** Groups handles into at most 5 rules of at most 40 handles each. Anything past that cap
  *  is DROPPED, never silently truncated into the last group — the caller must log
- *  `dropped`. */
+ *  `dropped`. Which handles survive the cap is decided by a stable, case-insensitive
+ *  alphabetical sort — never "however the DB happened to return rows" (fetchTrackedHandles's
+ *  `experiments` select carries no ORDER BY), so the same overflow handles drop on every
+ *  sync instead of shuffling around unpredictably as row order happens to vary. */
 export function buildRuleGroups(handles: string[]): { groups: RuleGroup[]; dropped: string[] } {
   const capacity = MAX_RULES * MAX_HANDLES_PER_RULE;
-  const kept = handles.slice(0, capacity);
-  const dropped = handles.slice(capacity);
+  const sorted = [...handles].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+  const kept = sorted.slice(0, capacity);
+  const dropped = sorted.slice(capacity);
 
   const groups: RuleGroup[] = [];
   for (let i = 0; i < kept.length; i += MAX_HANDLES_PER_RULE) {
@@ -119,36 +123,60 @@ async function xRulesFetch(bearerToken: string, init?: RequestInit): Promise<Res
 }
 
 /** Rebuilds the stream rules from scratch every call (the plan text says "rebuilt", not
- *  "diffed") — delete every rule this worker owns (tagged `oparax-group-*`), then add the
- *  freshly built groups. Simple and idempotent; a 5-minute interval means a brief rule gap
- *  during the swap costs at most a few seconds of missed matches, not correctness. Rules not
- *  owned by this worker (no tag, or a different prefix) are left untouched. */
+ *  "diffed") — but ADD-then-DELETE, never the reverse: deleting this worker's rules before
+ *  the replacement set is confirmed added would leave the stream with zero rules until the
+ *  next successful sync if the add 429s/5xxs. Naively adding every freshly built group before
+ *  deleting would itself 4xx on X's duplicate-value check whenever a group is byte-identical
+ *  to one already active (the common case — most 5-minute ticks see no handle churn), so the
+ *  add is diffed against what's already live: only groups whose `value` isn't already an
+ *  active own-rule get added, and only own rules whose `value` is no longer wanted get
+ *  deleted, and that delete only runs after the add above has succeeded. Rules not owned by
+ *  this worker (no tag, or a different prefix) are left untouched throughout. */
 export async function syncRules(bearerToken: string, groups: RuleGroup[]): Promise<void> {
   const currentRes = await xRulesFetch(bearerToken);
   if (!currentRes.ok) {
     throw new Error(`rule fetch failed: ${currentRes.status} ${await currentRes.text()}`);
   }
   const current = ((await currentRes.json()) as XRulesResponse).data ?? [];
-  const ownIds = current.filter((r) => r.tag?.startsWith(RULE_TAG_PREFIX)).map((r) => r.id);
-
-  if (ownIds.length > 0) {
-    const res = await xRulesFetch(bearerToken, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ delete: { ids: ownIds } }),
-    });
-    if (!res.ok) throw new Error(`rule delete failed: ${res.status} ${await res.text()}`);
-  }
+  const own = current.filter((r) => r.tag?.startsWith(RULE_TAG_PREFIX));
 
   if (groups.length === 0) {
+    // Nothing to add — this is the one case with no add-first option, so it falls back to a
+    // straight delete of whatever this worker still owns.
+    if (own.length > 0) {
+      const res = await xRulesFetch(bearerToken, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ delete: { ids: own.map((r) => r.id) } }),
+      });
+      if (!res.ok) throw new Error(`rule delete failed: ${res.status} ${await res.text()}`);
+    }
     logger.warn("no tracked_handles found — stream rules cleared, nothing will match");
     return;
   }
 
-  const addRes = await xRulesFetch(bearerToken, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ add: groups.map(({ tag, value }) => ({ value, tag })) }),
-  });
-  if (!addRes.ok) throw new Error(`rule add failed: ${addRes.status} ${await addRes.text()}`);
+  const ownValues = new Set(own.map((r) => r.value));
+  const toAdd = groups.filter((g) => !ownValues.has(g.value));
+
+  if (toAdd.length > 0) {
+    const addRes = await xRulesFetch(bearerToken, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ add: toAdd.map(({ tag, value }) => ({ value, tag })) }),
+    });
+    if (!addRes.ok) throw new Error(`rule add failed: ${addRes.status} ${await addRes.text()}`);
+  }
+
+  // Only now — after the replacement rules are confirmed live — remove the own rules that
+  // are superseded (their value is no longer among the freshly built groups).
+  const newValues = new Set(groups.map((g) => g.value));
+  const toDeleteIds = own.filter((r) => !newValues.has(r.value)).map((r) => r.id);
+  if (toDeleteIds.length > 0) {
+    const delRes = await xRulesFetch(bearerToken, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ delete: { ids: toDeleteIds } }),
+    });
+    if (!delRes.ok) throw new Error(`rule delete failed: ${delRes.status} ${await delRes.text()}`);
+  }
 }

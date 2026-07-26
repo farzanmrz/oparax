@@ -32,6 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { formatBadgeCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { deleteDesk, pauseDesk, resumeDesk } from "./actions";
 
@@ -75,7 +76,7 @@ export function DeskTabs({
                 className="h-4 min-w-4 justify-center px-1 font-mono text-[10px] tabular-nums"
                 variant="secondary"
               >
-                {needsReviewCount}
+                {formatBadgeCount(needsReviewCount)}
               </Badge>
             ) : null}
           </Link>

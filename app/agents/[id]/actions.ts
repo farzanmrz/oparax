@@ -28,8 +28,19 @@ export type AddHandlesResult = { ok: true; dropped: number } | { ok: false; erro
 /** Pause a desk: Oparax stops watching the beat and stops posting on its behalf. */
 export async function pauseDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("experiments").update({ status: "paused" }).eq("id", id);
+  // `.select()` on the update so a zero-row match (wrong id, or an RLS-filtered desk that
+  // isn't the caller's own) is visible: an update with no error and no matched row is not a
+  // success — without this check the caller was told `{ ok: true }` while nothing changed,
+  // same honest-outcome convention as postDraftToXForOwner's CAS-claim (`claimed.length === 0`).
+  const { data, error } = await supabase
+    .from("experiments")
+    .update({ status: "paused" })
+    .eq("id", id)
+    .select("id");
   if (error) return { ok: false, error: "Could not pause the agent. Please try again." };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "Could not pause the agent. Please try again." };
+  }
   // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
   // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
   // otherwise show a stale name/dot after a create/pause/rename.
@@ -40,8 +51,16 @@ export async function pauseDesk(id: string): Promise<ActionResult> {
 /** Resume a paused desk: Oparax starts watching the beat and drafting again. */
 export async function resumeDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("experiments").update({ status: "active" }).eq("id", id);
+  // See pauseDesk's comment — same zero-row-match check.
+  const { data, error } = await supabase
+    .from("experiments")
+    .update({ status: "active" })
+    .eq("id", id)
+    .select("id");
   if (error) return { ok: false, error: "Could not resume the agent. Please try again." };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "Could not resume the agent. Please try again." };
+  }
   // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
   // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
   // otherwise show a stale name/dot after a create/pause/rename.
@@ -179,15 +198,33 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
   // Step 1 — the ownership proof (see the function comment above).
   const { data: parentDraft, error: parentError } = await supabase
     .from("post_drafts")
-    .select("id, source_post_id, experiment_id, story_id, platform, posted_at")
+    .select("id, source_post_id, experiment_id, story_id, platform")
     .eq("id", parsedId.data)
     .maybeSingle();
   if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
-  // A posted draft's post_drafts row is the immutable record of what actually went out — Step 4
-  // below inserts a fresh row with posted_at/posted_tweet_id/posted_url all NULL, which would
-  // make the Feed treat the (already-live) story as unposted again and re-offer Post to X,
-  // publishing the edited text as a second, near-duplicate tweet on one more click.
-  if (parentDraft.posted_at) {
+
+  // The already-posted guard checks the STORY's current winner for this platform, not
+  // `parentDraft`'s own `posted_at` — `parentDraft` is whatever draft id the browser passed in,
+  // and council-query.ts exposes every council member's postDraftId to the browser, including
+  // losing candidates. A losing candidate's own row always carries `posted_at: null`, even
+  // after the actual winner has posted — so checking the passed-in row directly let a stale
+  // losing-candidate id sail past this guard, dethrone the ACTUAL posted winner below, and
+  // insert a fresh `is_winner: true` row with `posted_at: null`, making the feed render the
+  // (already-live) story as unposted with an enabled Post button — one click from a
+  // near-duplicate tweet. Scoped by source_post_id + experiment_id + platform, the same triple
+  // applyCorrection's dethrone step in draft-pipeline.ts uses.
+  const { data: currentWinner, error: currentWinnerError } = await supabase
+    .from("post_drafts")
+    .select("id, posted_at")
+    .eq("source_post_id", parentDraft.source_post_id)
+    .eq("experiment_id", parentDraft.experiment_id)
+    .eq("platform", parentDraft.platform)
+    .eq("is_winner", true)
+    .maybeSingle();
+  if (currentWinnerError) {
+    return { ok: false, error: "Could not verify this draft's status. Please try again." };
+  }
+  if (currentWinner?.posted_at) {
     return { ok: false, error: "This draft was already posted to X and can't be edited." };
   }
 
@@ -238,7 +275,31 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
     judge_verdict: null,
     parent_draft_id: parentDraft.id,
   });
-  if (insertError) return { ok: false, error: "Could not save your edit. Please try again." };
+  if (insertError) {
+    // KNOWN SCHEMA GAP (flagged, not fixed here — see the codebase agent's report): post_drafts
+    // carries no partial unique index enforcing one is_winner=true row per (source_post_id,
+    // experiment_id, platform), so steps 3-4 are two non-transactional calls with no
+    // serialization. Without that constraint an insert failure here would otherwise leave the
+    // story with ZERO winners for this platform (dethroned in step 3, nothing crowned) —
+    // compensate by restoring the dethroned winner rather than silently leaving that broken
+    // state. This does NOT cover two concurrent editDraft calls both passing the guard above
+    // and both inserting a winner (TWO winners) — that race needs the missing unique index (or
+    // a stored procedure) to close; this compensation only bounds the single-call failure path.
+    if (currentWinner) {
+      const { error: restoreError } = await admin
+        .from("post_drafts")
+        .update({ is_winner: true })
+        .eq("id", currentWinner.id);
+      if (restoreError) {
+        return {
+          ok: false,
+          error:
+            "Could not save your edit, and the previous draft's status could not be restored. Please refresh and check the feed before retrying.",
+        };
+      }
+    }
+    return { ok: false, error: "Could not save your edit. Please try again." };
+  }
 
   revalidatePath(`/agents/${parentDraft.experiment_id}`, "layout");
   return { ok: true };

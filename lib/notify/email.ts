@@ -5,7 +5,7 @@ const DRAFT_ADDR_RE = /draft\+([0-9a-f-]{36})@/i;
 const SUBJECT_TAG_RE = /\[draft:([0-9a-f-]{36})\]/i;
 
 /** Reply-to address that routes an email reply back to its post_drafts row. */
-export function draftReplyAddress(postDraftId: string): string {
+function draftReplyAddress(postDraftId: string): string {
   const domain = process.env.RESEND_REPLY_DOMAIN;
   if (!domain) throw new Error("RESEND_REPLY_DOMAIN is not set");
   return `draft+${postDraftId}@${domain}`;

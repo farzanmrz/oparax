@@ -53,6 +53,30 @@ export async function checkDeliveryCap(
   }
 }
 
+/** buildRuleGroups (rules.ts) already logs the dropped handles to the worker's own log, but
+ *  that's invisible to anyone not tailing Railway — the app and its owner have no other
+ *  visibility into tracked-handle coverage silently shrinking. Alarms Slack, naming exactly
+ *  which handles were dropped, debounced by the same cooldown as the other alarms so a
+ *  sustained overflow (the cap doesn't clear itself) pages once, not every rule-sync tick. */
+export async function alarmDroppedHandles(
+  slackWebhookUrl: string,
+  alarmCooldownMs: number,
+  state: AlarmState,
+  dropped: string[],
+): Promise<void> {
+  if (dropped.length === 0 || !cooledDown(state, alarmCooldownMs)) return;
+
+  state.lastAlarmAt = Date.now();
+  const message =
+    `:rotating_light: oparax-ingest: tracked-handle cap exceeded — dropping ${dropped.length} ` +
+    `handle(s) from the X stream: ${dropped.join(", ")}`;
+  try {
+    await sendSlackAlarm(slackWebhookUrl, message);
+  } catch (e) {
+    logger.error("rule-sync: dropped-handles alarm failed", { error: describeError(e) });
+  }
+}
+
 /** No stream event AND no keepalive for livenessTimeoutMs means the connection is almost
  *  certainly dead without X telling us so (a keepalive normally arrives every ~20s) —
  *  reconnect.ts forces a reconnect on this signal; this function only owns the Slack side. */

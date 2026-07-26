@@ -35,6 +35,10 @@ const ingestBodySchema = z.discriminatedUnion("source", [
     posted_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
       message: "posted_at must parse as a date",
     }),
+    // Attached photos (full image) or video/GIF poster frames — descriptors only, matching
+    // the settled media-handling decision (no playable-variant retention). Optional: most
+    // posts carry no media.
+    media: z.array(z.object({ kind: z.string().min(1), imageUrl: z.string().url() })).optional(),
     raw: z.unknown().optional(),
   }),
   z.object({
@@ -56,6 +60,7 @@ const ingestBodySchema = z.discriminatedUnion("source", [
 ]);
 
 export async function POST(req: Request) {
+  const requestStartedAt = Date.now();
   const secret = process.env.INGEST_SECRET;
   if (!secret || !isAuthorized(req.headers.get("authorization"), secret)) {
     return new Response("Unauthorized", { status: 401 });
@@ -85,9 +90,35 @@ export async function POST(req: Request) {
     // maxDuration = 300 budget. Deliveries are the only place drafting spend originates, so
     // repairing here (each run also sweeps prior still-null rows, since the repair is idempotent
     // over the newest 200) keeps the ledger converging without a cron.
+    //
+    // The 25s sleep shares this SAME maxDuration budget as the already-awaited processDelivery
+    // call above — a slow delivery (e.g. two full council runs) can return with very little of
+    // the 300s left, and a blind 25s sleep would then get killed mid-reconcile with no log of the
+    // skip. So the sleep is adaptive: it shrinks to whatever's left after reserving a safety
+    // margin for reconcileMissingCosts itself to run, and skips straight to reconciling (or skips
+    // reconciling entirely, loudly) once the budget can't cover even that margin.
     after(async () => {
+      const RECONCILE_LAG_MS = 25_000;
+      const RECONCILE_SAFETY_MARGIN_MS = 5_000;
+      const elapsedMs = Date.now() - requestStartedAt;
+      const remainingMs = maxDuration * 1000 - elapsedMs;
+
+      if (remainingMs <= RECONCILE_SAFETY_MARGIN_MS) {
+        console.log(
+          `api/ingest: skipping cost reconciliation — only ${remainingMs}ms left of the ${maxDuration}s budget after processDelivery (${elapsedMs}ms elapsed)`,
+        );
+        return;
+      }
+
+      const sleepMs = Math.min(RECONCILE_LAG_MS, remainingMs - RECONCILE_SAFETY_MARGIN_MS);
+      if (sleepMs < RECONCILE_LAG_MS) {
+        console.log(
+          `api/ingest: reconciling costs after a reduced ${sleepMs}ms margin (wanted ${RECONCILE_LAG_MS}ms) — only ${remainingMs}ms left of the ${maxDuration}s budget after processDelivery (${elapsedMs}ms elapsed)`,
+        );
+      }
+
       try {
-        await new Promise((resolve) => setTimeout(resolve, 25_000));
+        await new Promise((resolve) => setTimeout(resolve, sleepMs));
         const { repaired, totalUsd } = await reconcileMissingCosts(createAdminClient());
         if (repaired > 0) {
           console.log(`api/ingest: reconciled ${repaired} model_calls costs ($${totalUsd})`);

@@ -13,6 +13,7 @@ export interface StreamTweetData {
   note_tweet?: { text?: string };
   author_id?: string;
   created_at?: string;
+  attachments?: { media_keys?: string[] };
 }
 
 export interface StreamIncludesUser {
@@ -20,10 +21,27 @@ export interface StreamIncludesUser {
   username: string;
 }
 
+export interface StreamIncludesMedia {
+  media_key?: string;
+  type?: string;
+  url?: string;
+  preview_image_url?: string;
+}
+
 export interface StreamPayload {
   data: StreamTweetData;
-  includes?: { users?: StreamIncludesUser[] };
+  includes?: { users?: StreamIncludesUser[]; media?: StreamIncludesMedia[] };
   matching_rules?: Array<{ id: string; tag?: string }>;
+}
+
+/** One attached image the drafting/grounding stage can actually look at — a photo's own url,
+ *  or a video/GIF's poster frame (the one still frame available; the settled decision is
+ *  descriptors only, never a playable variant). Mirrors `XTimelineMedia` in lib/x/timeline.ts
+ *  exactly, so both acquisition paths (live stream, voice-extraction timeline read) hand the
+ *  app the same shape. */
+export interface IngestDeliveryMedia {
+  kind: string;
+  imageUrl: string;
 }
 
 /** Matches the app's /api/ingest zod schema's "x" branch exactly (app/api/ingest/route.ts) —
@@ -36,6 +54,7 @@ export interface IngestDeliveryBody {
   author_handle: string;
   text: string;
   posted_at: string;
+  media?: IngestDeliveryMedia[];
   raw?: unknown;
 }
 

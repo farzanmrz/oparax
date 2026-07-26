@@ -10,6 +10,8 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { assertFetchOk, fetchWithTimeout } from "@/lib/http-fetch";
+
 const SLACK_API = "https://slack.com/api";
 
 /** `chat:write` is confirmed sufficient for posting Block Kit messages with buttons —
@@ -51,23 +53,14 @@ type SlackOAuthResponse =
  *  TimeoutError/AbortError (xai.ts / lib/x/api.ts pattern) so a stalled Slack call fails fast
  *  instead of hanging indefinitely. */
 async function slackFetch(endpoint: string, url: string, init: RequestInit): Promise<Response> {
-  try {
-    return await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
-  } catch (err) {
-    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-      throw new Error(`Slack ${endpoint} timed out after 15s`);
-    }
-    throw err;
-  }
+  return fetchWithTimeout("Slack", endpoint, url, init);
 }
 
 /** Transport-level check only — a non-2xx here means Slack itself failed to respond, NOT
  *  that the call failed logically. Every caller must additionally check the parsed body's
  *  `ok` field, which is how Slack actually signals a failed call. */
 async function assertOk(endpoint: string, res: Response): Promise<void> {
-  if (res.ok) return;
-  const text = await res.text();
-  throw new Error(`Slack ${endpoint} ${res.status}: ${text.slice(0, 500)}`);
+  return assertFetchOk("Slack", endpoint, res);
 }
 
 /** Builds a draft-delivery message's Block Kit blocks: the draft text plus a single

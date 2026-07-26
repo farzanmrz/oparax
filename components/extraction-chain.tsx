@@ -26,7 +26,7 @@ import {
 } from "@/components/ai-elements/chain-of-thought";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 
-export type StepState = "pending" | "active" | "complete" | "failed";
+type StepState = "pending" | "active" | "complete" | "failed";
 
 export type ExtractionStep = {
   /** Stable identity for React's key — never the label, which changes as a step progresses. */

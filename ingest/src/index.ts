@@ -1,5 +1,5 @@
 import type { AlarmState } from "./alarm";
-import { alarmLiveness, checkDeliveryCap } from "./alarm";
+import { alarmDroppedHandles, alarmLiveness, checkDeliveryCap } from "./alarm";
 import { loadEnv } from "./env";
 import { describeError } from "./errors";
 import { logger } from "./logger";
@@ -15,6 +15,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const dropAlarmState: AlarmState = { lastAlarmAt: null };
+
   async function syncRulesOnce(): Promise<void> {
     try {
       const handles = await fetchTrackedHandles(supabase);
@@ -25,6 +27,9 @@ async function main(): Promise<void> {
         ruleCount: groups.length,
         droppedCount: dropped.length,
       });
+      alarmDroppedHandles(env.slackWebhookUrl, env.alarmCooldownMs, dropAlarmState, dropped).catch(
+        (e) => logger.error("rule-sync: dropped-handles alarm failed", { error: describeError(e) }),
+      );
     } catch (e) {
       // A failed sync keeps whatever rules X already has — never let a sync hiccup tear
       // down the previous, still-good rule set.

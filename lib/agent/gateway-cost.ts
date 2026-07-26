@@ -3,6 +3,7 @@
 // THE ONE cost path. Was inline in lib/voice/extract-guide.ts; extracted here so a third copy
 // never gets written alongside it and lib/agent/usage-cost.ts's retired path.
 // See AGENTS.md's metering + model-call rules (inferenceCost is a STRING — Number() it).
+import { getVercelOidcToken } from "@vercel/oidc";
 import type { createAdminClient } from "@/lib/supabase/admin";
 
 /** Finite number or null ("unknown") — never NaN, so a junk cost string doesn't suppress the
@@ -13,6 +14,55 @@ export const toFiniteOrNull = (v: unknown): number | null => {
 };
 
 const GENERATION_URL = "https://ai-gateway.vercel.sh/v1/generation";
+
+// Mirrors `GATEWAY_AUTH_METHOD_HEADER` from `@ai-sdk/gateway`'s internal `gateway-headers.ts`
+// (not part of that package's public export surface, so the literal is copied here rather than
+// imported) — the gateway's own provider sends this alongside the bearer token on every request,
+// api-key or OIDC alike, so this raw fetch matches that contract rather than inventing its own.
+const GATEWAY_AUTH_METHOD_HEADER = "ai-gateway-auth-method";
+
+// Sentry captures errors on its own; this is a one-time, cheap signal for the specific "we can
+// never resolve a BYOK cost" gap below, logged at most once per server lifetime so a busy
+// reconciliation loop doesn't spam stdout on every miss.
+let warnedNoAuth = false;
+
+/**
+ * Resolves the bearer token this raw fetch authenticates with, api-key first (local dev),
+ * Vercel OIDC second (every deployed environment per AGENTS.md — Vercel OIDC, no
+ * `AI_GATEWAY_API_KEY` present there). Mirrors `getGatewayAuthToken` inside
+ * `@ai-sdk/gateway`'s `gateway-provider.ts` (that function itself is internal, not exported —
+ * this reimplements its two-branch shape against the public `@vercel/oidc` package, which IS
+ * exported and is what `@ai-sdk/gateway` itself depends on for the OIDC branch): `getVercelOidcToken()`
+ * reads the `x-vercel-oidc-token` request-context header or the `VERCEL_OIDC_TOKEN` env var
+ * Vercel injects into every deployed function when the project has OIDC enabled, and refreshes it
+ * if expired. It throws when neither is present (plain local dev, OIDC not enabled) — caught here
+ * and surfaced as a loud one-time warning rather than a silent, unlogged null, since a
+ * production deploy hitting this branch and still getting nothing back means OIDC is not actually
+ * enabled for the project and BYOK cost reporting is dark until that's fixed.
+ */
+async function resolveGatewayAuth(): Promise<{
+  token: string;
+  authMethod: "api-key" | "oidc";
+} | null> {
+  const apiKey = process.env.AI_GATEWAY_API_KEY;
+  if (apiKey) return { token: apiKey, authMethod: "api-key" };
+  try {
+    const token = await getVercelOidcToken();
+    return { token, authMethod: "oidc" };
+  } catch (err) {
+    if (!warnedNoAuth) {
+      warnedNoAuth = true;
+      console.warn(
+        "gateway-cost: no AI_GATEWAY_API_KEY and no usable Vercel OIDC token — BYOK generation " +
+          "cost lookups (fetchGenerationCost/reconcileMissingCosts) will return null for the " +
+          "rest of this process's lifetime. In production this means OIDC is not actually " +
+          "enabled for the project; local dev without either is expected and harmless.",
+        err,
+      );
+    }
+    return null;
+  }
+}
 
 /**
  * The gateway's own record of one generation, fetched by id.
@@ -33,11 +83,14 @@ const GENERATION_URL = "https://ai-gateway.vercel.sh/v1/generation";
  * (the non-BYOK path, where it is authoritative) and fall back to upstream.
  */
 export async function fetchGenerationCost(generationId: string): Promise<number | null> {
-  const apiKey = process.env.AI_GATEWAY_API_KEY;
-  if (!apiKey) return null; // deployed runs authenticate via Vercel OIDC — nothing to do here
+  const auth = await resolveGatewayAuth();
+  if (!auth) return null;
   try {
     const res = await fetch(`${GENERATION_URL}?id=${encodeURIComponent(generationId)}`, {
-      headers: { authorization: `Bearer ${apiKey}` },
+      headers: {
+        authorization: `Bearer ${auth.token}`,
+        [GATEWAY_AUTH_METHOD_HEADER]: auth.authMethod,
+      },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return null;
@@ -92,6 +145,23 @@ export async function resolveGatewayCost(result: {
  * Idempotent and safe to run repeatedly: it only touches rows that still have no usable cost and
  * do have a generation id, and it leaves a row alone when the lookup still comes back empty
  * (a genuinely-free call, or one whose usage event has aged out).
+ *
+ * KNOWN GAP, investigated and deliberately NOT fixed here: this repairs `model_calls.cost_usd`
+ * only. The matching `usage_events` row (the "kind": "clustering" | "drafting" row
+ * `draft-pipeline.ts`'s `stampUsageEvent` writes alongside each `model_calls` insert) is stamped
+ * with whatever `cost_usd` the call resolved to AT WRITE TIME and is never revisited — so a
+ * repaired BYOK call's `model_calls.cost_usd` and its `usage_events.cost_usd` permanently
+ * disagree once this function runs. This is not a same-pass fix: `usage_events` carries no
+ * column that identifies which specific `model_calls` row a given event came from. Its only
+ * candidate correlation key is (`ref_id`, `kind`) — `ref_id` is `sourcePostId`, not a
+ * `model_calls.id` — and `draft-pipeline.ts` inserts MULTIPLE `model_calls` rows sharing the
+ * same `(ref_id, kind)` pair per delivery (e.g. every drafting-council member across every
+ * platform for one source post all stamp `kind: "drafting"` against the same `ref_id`), so
+ * `(ref_id, kind)` cannot distinguish one `model_calls` row from its siblings — there is no
+ * reliable 1:1 join. Fixing this for real needs a schema addition (a `model_call_id` FK on
+ * `usage_events`, or stamping `usage_events` from `insertModelCalls` per-row instead of
+ * per-call-in-a-loop-after-the-fact) — a deliberate decision and its own migration, not something
+ * to bolt on here with a guessed join.
  *
  * Returns what it changed so a caller can report it rather than guess.
  */

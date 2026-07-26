@@ -2,8 +2,6 @@ type ComposeDraftMessageInput = {
   authorHandle: string;
   sourceText: string;
   winningText: string;
-  modelCount: number;
-  totalCostUsd: number | null;
   revised?: boolean; // true on the re-delivery after an email-reply correction
 };
 

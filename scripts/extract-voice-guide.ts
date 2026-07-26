@@ -1,15 +1,16 @@
 // scripts/extract-voice-guide.ts
 //
 // One-off runner for the L2 voice-extraction slice. Seeds an `experiments` row, stores a
-// reporter's lab corpus in `source_posts`, runs the ~$0.86 extraction call, and writes the
-// resulting guide to `voice_guides` + a `usage_events` stamp — all through the service-role
-// admin client (every write target here is service-role-write only, by design).
+// reporter's lab corpus in `source_posts`, runs the ~$0.43 extraction call (Opus 5), and
+// writes the resulting guide to `voice_guides` + a `usage_events` stamp — all through the
+// service-role admin client (every write target here is service-role-write only, by design).
 //
 // Usage:
 //   pnpm dlx tsx --env-file=.env.local scripts/extract-voice-guide.ts <reporterHandle> <ownerEmail>
 //
-// DO NOT run this from an agent session — it makes a real ~$0.86 model call. A human runs it.
+// DO NOT run this from an agent session — it makes a real ~$0.43 model call. A human runs it.
 import { existsSync, readFileSync } from "node:fs";
+import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { deployGuide } from "@/lib/voice/deploy-guide";
@@ -77,7 +78,7 @@ async function main() {
   }
 
   // Load and validate the lab corpus BEFORE anything else — a bad path must fail in
-  // milliseconds rather than after the ~$0.86 model call.
+  // milliseconds rather than after the ~$0.43 model call.
   const fullCorpus = loadCorpus(reporterHandle, "");
   const trainCorpus = withReactionContext(reporterHandle, loadCorpus(reporterHandle, "-train"));
 
@@ -164,7 +165,7 @@ async function main() {
       usage: {
         ...(ext.usage as object),
         thinkingTokens: ext.thinkingTokens,
-        reasoningWithheldByProvider: ext.reasoning == null,
+        reasoningWithheldByProvider: reasoningTraceState(ext.reasoning, ext.usage) === "withheld",
       } as unknown as Json,
       cost_usd: ext.costUsd,
       generation_id: ext.generationId,

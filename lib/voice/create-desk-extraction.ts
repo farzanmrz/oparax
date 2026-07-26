@@ -54,7 +54,7 @@ export type ExtractionOutcome =
  *  @FabrizioRomano exactly as it failed a dead handle, blocking every extraction in the product
  *  and charging a cent to do it. The corpus pull is the reality check instead, which is what it
  *  always was. The union stays a union so a future gate slots in without a shape change. */
-export type GateId = "handle_shape";
+type GateId = "handle_shape";
 
 export type GateReport = {
   gate: GateId;
@@ -169,7 +169,8 @@ export function checkHandleShape(reporterHandle: string): PreflightResult {
 /**
  * THE BILLABLE PHASE — corpus, extraction, store. Assumes the pre-flight gates already passed;
  * it deliberately does NOT re-run them, so a caller that awaited them pays for exactly one
- * profile lookup, not two.
+ * timeline read (`fetchCorpus`), not two. (There is no profile-lookup gate any more — that was
+ * part of the deleted per-handle spend-gate model; the only pre-flight left is `checkHandleShape`.)
  *
  * Also assumes the caller ALREADY HOLDS this desk's run claim: `startRun` is the caller's job,
  * awaited before it schedules this phase, because its boolean is what decides whether to spend
@@ -271,6 +272,28 @@ async function runExtractionSpendPhaseInner(
     // returns. Corpus size is the leading suspect in the empty-guide failure, so being able to
     // filter Sentry by it — rather than re-deriving it from a log line — is the point.
     Sentry.getActiveSpan()?.setAttribute("oparax.corpus_posts", corpus.length);
+
+    // A corpus with zero posts carrying real text (a brand-new or inactive reporter, or every
+    // post being media-only) has nothing for the extractor to measure or quote from. Refuse to
+    // bill the ~$0.43-0.86 Opus 5 call on a prompt that would embed literal "undefined"s into
+    // its MEASURED FACTS block (see measured-facts.ts) — fail here, honestly and for free,
+    // rather than after the extraction already ran.
+    const representativePosts = corpus.filter((p) => (p.text ?? "").trim()).length;
+    if (representativePosts === 0) {
+      console.error(
+        `runExtractionSpendPhase: @${reporterHandle}'s corpus has ${corpus.length} raw posts ` +
+          `but zero with usable text — refusing to bill a malformed extraction`,
+      );
+      Sentry.captureMessage("voice extraction: empty representative corpus", {
+        level: "warning",
+        tags: { stage: "voice_extraction", error_code: "empty_corpus" },
+        contexts: {
+          extraction: { experimentId, handle: reporterHandle, rawPosts: corpus.length },
+        },
+      });
+      await finishRun(experimentId, { status: "failed", errorCode: "empty_corpus" });
+      return { status: "corpus_failed" };
+    }
 
     // The model reads the corpus and decides scope BEFORE it writes anything, so the run row
     // says so — otherwise the first ~60s of a run (measured: first text delta at 60.5s) shows a

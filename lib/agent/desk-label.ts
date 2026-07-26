@@ -7,7 +7,7 @@
  * @returns a short label: everything before the first em-dash or period, else the
  *   first 40 characters with an ellipsis
  */
-export function deriveDeskLabel(beat: string): string {
+function deriveDeskLabel(beat: string): string {
   const trimmed = beat.trim();
   const cutIndex = [trimmed.indexOf("—"), trimmed.indexOf(".")]
     .filter((index) => index !== -1)

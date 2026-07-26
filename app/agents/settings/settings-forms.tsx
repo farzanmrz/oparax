@@ -4,6 +4,7 @@ import { CheckIcon } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { unlinkXAccount } from "@/lib/x/actions";
 import { deleteAccount, type UpdateUsernameState, updateUsername } from "./actions";
 
 // Username update — drives the existing updateUsername action; `username` is
@@ -46,6 +47,41 @@ export function UsernameForm({ initialUsername }: { initialUsername: string }) {
         </p>
       ) : null}
     </form>
+  );
+}
+
+// Disconnect X — mirrors ConnectionsCard's Slack-disconnect control exactly (a plain icon
+// button, no confirm dialog — reconnecting later is a one-click OAuth flow either way, so
+// this isn't gated like the irreversible account-delete action below it).
+export function DisconnectXButton({ handle }: { handle: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleDisconnect() {
+    setError(null);
+    startTransition(async () => {
+      const result = await unlinkXAccount();
+      if (!result.ok) setError(result.error);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">X account</p>
+          <p className="text-sm text-muted-foreground">Connected as @{handle}</p>
+        </div>
+        <Button disabled={isPending} onClick={handleDisconnect} type="button" variant="outline">
+          {isPending ? "Disconnecting…" : "Disconnect"}
+        </Button>
+      </div>
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

@@ -4,7 +4,7 @@ export const meta = {
   whenToUse: "feature-qc's review pass — one workflow call replaces the serial /simplify then /code-review passes, with cross-model diversity spent on the two DIVERGENT tasks (finding, verifying) and single ownership kept on the convergent ones (dedup, apply — the session does those).",
   phases: [
     { title: 'Find', detail: 'Claude floor (2 cleanup + conventions on sonnet, 2 bug angles on opus, +line-by-line on large diffs) + 3 external lanes (codex/grok/agy, conditional on large|risk) — all concurrent' },
-    { title: 'Dedup', detail: 'merge near-duplicates across lanes, drop plan-vetoed (sonnet)' },
+    { title: 'Dedup', detail: 'merge near-duplicates across lanes, drop plan-vetoed (inherit — the single-call judgment stage)' },
     { title: 'Verify', detail: '4 agents flat — one verifier per family (claude sonnet · codex medium · grok-4.5 medium · gemini-3.1-pro), each handed the ENTIRE deduped list and returning a verdict per finding; per finding the raising family\'s own verdict is discounted, majority of the remaining verdicts confirms; Claude is the infra-failure floor' },
   ],
 }
@@ -15,7 +15,10 @@ export const meta = {
 //     vetoes?: string,        // plan-frozen decisions that are vetoes, not findings
 //     criteria?: string,      // the plan's "Stack & design acceptance criteria" — conventions-finder verifies the diff against them
 //     large?: boolean,        // large-diff signal — the session measures the diff and sets this
-//     effort?: 'medium'|'high' } // bug-angle depth AND the risk-path signal for the external FIND lanes; defaults to medium
+//     effort?: 'medium'|'high', // bug-angle depth AND the risk-path signal for the external FIND lanes; defaults to medium
+//     repo?: string }         // absolute repo checkout path — this workflow script has no process.cwd()/git-root
+//                             // access of its own, so a caller on a different checkout must pass this; falls back
+//                             // to the one operator path below so existing callers keep working unchanged
 //
 // Returns { findings: [...], findersRun, externalLanesRun, verifiersRun }. Each finding carries
 // file/line/severity/summary/scenario, raisedBy (families that found it), confirmed (verify quorum),
@@ -80,7 +83,7 @@ if (argsRecovered) {
   log(`⚠️  args arrived as ${rawArgsType} — every field fell back to its default. Pass args as a real JSON object.`)
 }
 
-const REPO = '/Users/farzanm4/Desktop/drive/repos/oparax'
+const REPO = (a && a.repo) || '/Users/farzanm4/Desktop/drive/repos/oparax'
 const SCRIPT_DIR = `${REPO}/.claude/workflows/council`
 const FINDINGS_SCHEMA_FILE = `${REPO}/.claude/workflows/qc-findings-schema.json`
 const VERDICT_SCHEMA_FILE = `${REPO}/.claude/workflows/verify-schema.json`
@@ -189,7 +192,8 @@ const commonTail = `
 Diff scope: run \`git diff ${range}\` yourself and review ONLY that diff; read the full enclosing function of any touched line, and the actual shipped sources in node_modules for any cross-boundary contract (version-pinned behavior beats memory).
 Skip generated/vendored files: ${generated}.
 Plan-frozen decisions — these are VETOES, do NOT report them as findings: ${vetoes}.
-Report findings only (file, line, severity, one-sentence summary, concrete scenario). An empty list is a valid, expected result. Never edit a file.`
+Report EVERY issue you find, including ones you are uncertain about or consider low-severity — do not filter for importance or confidence at this stage; a separate cross-family verification pass does that. Your goal here is coverage: surfacing a finding that later gets refuted is cheap, silently dropping a real one is not. Give each finding your severity estimate so the downstream pass can rank it.
+Report findings only (file, line, severity, one-sentence summary, concrete scenario). An empty list is still a valid result when the diff is genuinely clean. Never edit a file.`
 
 // External-CLI shell bridge, parameterized by output schema + success key (COUNCIL_SCHEMA /
 // COUNCIL_CHECK_KEY — see council/run.sh) so the same dispatcher serves plan drafts, QC findings,
@@ -239,6 +243,15 @@ const FINDERS = [
     class: 'conventions', angle: 'conventions+docs+criteria', family: 'claude', agentType: 'conventions-finder', model: 'sonnet',
     prompt: `Check the diff against the governing instruction files (AGENTS.md, .claude/rules/*) AND the plan's frozen acceptance criteria. Three directions: (1) rule violations — quote the exact rule line and the exact diff line that breaks it; (2) staleness the diff introduces — instruction-file lines the diff has made wrong or incomplete (this is also the input to the doc-sync stage that runs after QC — be specific about which line is stale and why); (3) unmet acceptance criteria — for each of the plan's stack & design criteria below, report any the built diff fails to satisfy (name the criterion + the file/line that misses it).
 Plan-frozen acceptance criteria to verify: ${criteria}${commonTail}`,
+  },
+  {
+    // Deliberately REPO-WIDE, not diff-scoped (hence no commonTail): dead code stacks up across
+    // slices precisely because diff-scoped review can never see code that a LATER slice orphaned.
+    // Deterministic-tool-first: knip does the detection for zero model tokens; the agent verifies
+    // and transcribes, and the existing cross-family Verify pass kills any false positive.
+    class: 'cleanup', angle: 'dead-code', family: 'claude', agentType: 'cleanup-finder', model: 'sonnet',
+    prompt: `Your ONE angle: DEAD CODE, repo-wide. Run \`pnpm deadcode\` (knip; knip.json already excludes the vendored components/ai-elements + components/ui kits, the isolated ingest/ package, and tooling dirs — do not re-litigate those exclusions). For each unused file, unused dependency, and unused export it reports: quickly verify it is genuinely unreferenced (grep for dynamic/string-keyed references knip can miss), then report it as a finding. Two cautions: (1) a capability AGENTS.md lists under "Dormant by design" is switched OFF, not dead — its code stays referenced through its lever and normally won't appear in knip output; if a hit does seem to belong to one, report it but say so. (2) An export referenced only by another unused file is still dead — report the chain as ONE finding at its root. Severity: unused files and dependencies over unused exports.
+Report EVERY hit including uncertain ones — do not filter for importance or confidence; the cross-family verification pass decides truth. Report findings only (file, line, severity, one-sentence summary, concrete evidence it is unreferenced). An empty list is a valid result. Never edit a file.`,
   },
   // Bug angles: adversarial + cross-file always on opus; line-by-line only on large
   // diffs (zero yield on small ones) and de-pinned to sonnet.
@@ -329,10 +342,12 @@ for (const r of externalResults) {
 }
 log(`find → ${rawFindings.length} raw findings before dedup`)
 
-// ── Stage 2 · Dedup — convergent, single owner (Opus, high). No diversity benefit: merging a list
-// is not a hypothesis to diversify, a second family just re-sorts the same set. Raised from sonnet
-// when the lanes went always-on: input roughly tripled and now spans four families plus the browser
-// journeys, so consolidation is genuinely harder than it was against the Claude floor alone. ─────
+// ── Stage 2 · Dedup — convergent, single owner, INHERITS the session model (effort high). No
+// diversity benefit: merging a list is not a hypothesis to diversify, a second family just re-sorts
+// the same set. History: raised from sonnet to opus when the lanes went always-on (input tripled),
+// then un-pinned entirely 2026-07-25 with Farzan — it is this workflow's single-call judgment
+// stage (what survives to verification is decided here), and a judgment stage pinned a tier below
+// the session model was the same logical flaw as plan-synth's opus-pinned draft lane. ───────────
 phase('Dedup')
 let dedupedFindings = []
 if (rawFindings.length) {
@@ -360,7 +375,7 @@ Merge near-duplicates: same file, overlapping/adjacent line, and semantically th
 Drop anything that is a plan-frozen decision, not a real finding: ${vetoes}
 Drop anything that is speculative or contradicted by another finding without any family independently confirming it.
 Raw findings (JSON, each tagged with its family): ${JSON.stringify(rawFindings)}`,
-    { label: 'dedup', phase: 'Dedup', model: 'opus', effort: 'high', agentType: 'general-purpose', schema: DEDUP_SCHEMA },
+    { label: 'dedup', phase: 'Dedup', effort: 'high', agentType: 'general-purpose', schema: DEDUP_SCHEMA },
   )
   dedupedFindings = (dedup && Array.isArray(dedup.findings)) ? dedup.findings : []
 }

@@ -33,7 +33,7 @@ export type ReasoningTraceState =
  *  `model_calls.usage` JSON it was persisted into. Null when the count is absent — an absent
  *  count is not a zero count, and collapsing the two is exactly what makes a missing trace
  *  undiagnosable after the fact. */
-export function reasoningTokensOf(usage: unknown): number | null {
+function reasoningTokensOf(usage: unknown): number | null {
   const tokens = (usage as { outputTokenDetails?: { reasoningTokens?: unknown } } | null)
     ?.outputTokenDetails?.reasoningTokens;
   return typeof tokens === "number" ? tokens : null;

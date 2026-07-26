@@ -25,6 +25,7 @@ import { formatCost } from "@/lib/format";
 const STAGE_LABEL: Record<SpendStage, string> = {
   drafting: "Drafting",
   judge: "Judging",
+  grounding: "Grounding",
   voice_extraction: "Voice extraction",
 };
 

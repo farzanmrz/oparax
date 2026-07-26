@@ -58,8 +58,12 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    run**, each on a distinct charter, never the generic "review this diff". Finding is
    a DIVERGENT task, and a barrier costs its slowest member rather than its width, so
    extra families ride in the shadow of the opus bug-finders instead of adding wall
-   time. Claude: two `cleanup-finder` angles + `conventions-finder` (sonnet), two
-   `bug-finder` angles (opus). Codex: one combined cleanup (luna), two bug angles
+   time. Claude: two `cleanup-finder` angles + `conventions-finder` (sonnet), a
+   repo-wide `dead-code` angle (sonnet `cleanup-finder` running `pnpm deadcode`/knip
+   — the one deliberately NOT diff-scoped charter, because code orphaned by a LATER
+   slice is invisible to diff review; `knip.json` encodes the vendored-kit and
+   ingest exclusions), two `bug-finder` angles (opus). Codex: one combined cleanup
+   (luna), two bug angles
    (terra). Gemini via `agy`: one combined cleanup (3.6-flash), two bug angles
    (3.1-pro-high — flash is too thin for recall work). Grok: two combined agents
    (4.5), since it is a single-model family. Only the exhaustive **line-by-line**
@@ -73,10 +77,13 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    NOT be reported as a full cross-model pass — check `.feature/qc-council/*.in.txt`
    and re-run.
 
-   **Dedup** (opus, high, single pass) merges near-duplicates across lanes and drops
-   plan-frozen vetoes — a CONVERGENT task (consolidating a list is not a hypothesis
-   to diversify), so one owner, not a second opinion. On opus because its input spans
-   four families plus the browser journeys.
+   **Dedup** (inherits the session model, effort high, single pass) merges
+   near-duplicates across lanes and drops plan-frozen vetoes — a CONVERGENT task
+   (consolidating a list is not a hypothesis to diversify), so one owner, not a
+   second opinion. It inherits because it is the workflow's single-call judgment
+   stage — what survives to verification is decided here, and a judgment stage
+   pinned below the session model was the same flaw as plan-synth's once-pinned
+   draft lane.
 
    **Verify** is cross-family again — DIVERGENT for the same reason as find, and
    the second place external usage earns its keep — but **batched: one verifier per

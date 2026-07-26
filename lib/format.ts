@@ -14,3 +14,12 @@ export function formatCost(usd: number | null | undefined): string {
   if (usd > 0 && usd < 1) return `$${usd.toFixed(3)}`;
   return `$${usd.toFixed(2)}`;
 }
+
+/**
+ * Format a badge count for display. The Feed tab's needs-review badge has no cap on the
+ * underlying count (every unposted winner draft across every desk, forever), so an idle desk
+ * would otherwise render an arbitrarily large number. Caps the display, not the count.
+ */
+export function formatBadgeCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}

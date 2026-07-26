@@ -6,14 +6,13 @@
 // `?why=<sourcePostId>` for deep-linkability, but the page is fully dynamic, so every
 // open/close forced a full server round trip (re-running the feed query) before the dialog
 // visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an instant
-// open. The heavy body — the fetch + the per-model cards + Reasoning toggles — is
-// `next/dynamic({ ssr: false })`, so it never renders server-side and only mounts once the
-// dialog has actually been opened; the trigger button itself renders immediately. T4 drops
+// open. The heavy body — the fetch + the per-model cards + Reasoning toggles — is mounted
+// only once the dialog has actually been opened (the `{open ? ... : null}` guard below); the
+// trigger button itself renders immediately. T4 drops
 // `<CouncilDialog sourcePostId=.. experimentId=.. />` straight into the draft-card action row.
 "use client";
 
 import { BrainIcon, InfoIcon } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Button } from "@/components/ui/button";
@@ -219,11 +218,6 @@ function CouncilOverlayBodyImpl({
   );
 }
 
-const CouncilOverlayBody = dynamic(() => Promise.resolve(CouncilOverlayBodyImpl), {
-  ssr: false,
-  loading: () => <CouncilOverlaySkeleton />,
-});
-
 function CouncilTrigger() {
   return (
     <TooltipProvider>
@@ -263,9 +257,9 @@ export function CouncilDialog({
         <DialogHeader>
           <DialogTitle>Why this draft</DialogTitle>
           <DialogDescription>
-            Multiple models draft this post from the same source, each in your voice. A judge scores
-            every attempt against three tests and picks the strongest — you see every candidate,
-            what each cost, and why the winner won, so you can trust the pick or take it back.
+            One model reads the source — including any photo — checks it against your beat,
+            translates it when needed, and drafts the post you see in your voice. You can see what
+            the call cost and the reasoning behind how the draft reads.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -278,7 +272,7 @@ export function CouncilDialog({
         </div>
         <div aria-live="polite">
           {open ? (
-            <CouncilOverlayBody experimentId={experimentId} sourcePostId={sourcePostId} />
+            <CouncilOverlayBodyImpl experimentId={experimentId} sourcePostId={sourcePostId} />
           ) : null}
         </div>
       </DialogContent>

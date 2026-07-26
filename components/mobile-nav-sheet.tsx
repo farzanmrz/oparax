@@ -15,6 +15,7 @@ import { DESK_TABS } from "@/app/agents/[id]/desk-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { formatBadgeCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function MobileNavSheet({
@@ -64,7 +65,7 @@ export function MobileNavSheet({
                     className="h-4 min-w-4 justify-center px-1 font-mono text-[10px] tabular-nums"
                     variant="secondary"
                   >
-                    {needsReviewCount}
+                    {formatBadgeCount(needsReviewCount)}
                   </Badge>
                 ) : null}
               </Link>

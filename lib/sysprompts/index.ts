@@ -23,9 +23,8 @@ export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
 export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
 export const DRAFT_JUDGE_PROMPT = load("draft-judge.md");
 export const DRAFT_REVISE_PROMPT = load("draft-revise.md");
-// The sequential council's three stages: ground (see the images, translate, judge relevance,
-// draft once) -> revise x2 (each stating what it changed and why) -> synthesize.
+// THE drafting call's prompt: one gpt-5-nano pass that sees the images, translates, judges
+// beat relevance, and writes the post the reporter sees (the revise/synthesize stages that
+// once followed it were deleted — see draft-ground.ts's header).
 export const DRAFT_GROUND_PROMPT = load("draft-ground.md");
-export const DRAFT_REVISE_COUNCIL_PROMPT = load("draft-revise-council.md");
-export const DRAFT_SYNTHESIZE_PROMPT = load("draft-synthesize.md");
 export const STORY_CLUSTER_PROMPT = load("story-cluster.md");

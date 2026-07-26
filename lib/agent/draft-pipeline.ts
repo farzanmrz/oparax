@@ -16,14 +16,9 @@
 // artifact write never loses the record of a call already paid for.
 import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
-import { PLATFORMS, type Platform } from "@/lib/agent/desk-config";
-import {
-  type CouncilCall,
-  type CouncilResult,
-  reviseDraft,
-  runDraftCouncil,
-  type SourceBrief,
-} from "@/lib/agent/draft-council-run";
+import { AUTO_POST_ENABLED, PLATFORMS, type Platform } from "@/lib/agent/desk-config";
+import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
+import { groundSourcePost } from "@/lib/agent/draft-ground";
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
@@ -33,8 +28,7 @@ import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
-import { postDraftToXForOwner } from "@/lib/x/actions";
-import { sumCosts } from "./usage-cost";
+import { postDraftToXForOwner } from "@/lib/x/post-core";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -56,6 +50,9 @@ export type IngestDelivery =
       author_handle: string;
       text: string;
       posted_at: string; // ISO
+      /** Attached photos (full image) or video/GIF poster frames — descriptors only, feeding
+       *  the grounding stage's multimodal input (draft-ground.ts). Absent on most posts. */
+      media?: { kind: string; imageUrl: string }[];
       raw?: unknown;
     }
   | {
@@ -77,7 +74,7 @@ export type ProcessDeliveryResult = {
     experimentId: string;
     winningModel: string;
     degraded: boolean;
-    skipped?: "already_drafted" | "no_guide";
+    skipped?: "already_drafted" | "no_guide" | "off_beat";
   }>;
 };
 
@@ -104,6 +101,7 @@ type MatchedExperiment = {
   id: string;
   owner_id: string;
   reporter_handle: string;
+  beat: string;
   status: string;
   auto_post_master: boolean;
   auto_post_sources: Json;
@@ -198,8 +196,6 @@ async function deliverDraft(
     authorHandle: string;
     sourceText: string;
     winningText: string;
-    modelCount: number;
-    totalCostUsd: number | null;
     winningPostDraftId: string;
     winningPlatform: Platform;
     sourcePostId: string;
@@ -207,13 +203,12 @@ async function deliverDraft(
   },
 ): Promise<void> {
   // Slack mrkdwn and plain text are NOT interchangeable: the same string in an email body
-  // renders its `*bold*` and `>` markers literally. One input, two renderings.
+  // renders its `*bold*` and `>` markers literally. One input, two renderings. Cost/model-count
+  // display lives in the council provenance dialog now (reads model_calls directly), not here.
   const composeInput = {
     authorHandle: input.authorHandle,
     sourceText: input.sourceText,
     winningText: input.winningText,
-    modelCount: input.modelCount,
-    totalCostUsd: input.totalCostUsd,
     revised: input.revised,
   };
   const message = composeDraftMessage(composeInput);
@@ -341,12 +336,55 @@ async function draftForExperiment(
   // RELEASED — otherwise the worker's retry hits the 23505 above, returns already_drafted, and
   // permanently drops a draft that the retry would have produced. Release-on-failure reopens the
   // (source_post, experiment) pair for the retry; the re-run re-bills, which is the right trade
-  // against a silently lost draft. The happy path leaves the claim in place (dedup intact).
+  // against a silently lost draft. The on-beat happy path AND the off-beat outcome both leave the
+  // claim in place (dedup intact) — an off-beat verdict must not be re-billed on redelivery.
   try {
-    // Part B: clustering happens per matched ACTIVE experiment (a `stories` row is
-    // experiment_id-scoped — one story belongs to one desk), BEFORE the platform fan-out
-    // below, inside this same try block so a cluster.ts throw hits the release-on-failure
-    // catch below exactly like any other paid step here — no special-cased handling needed.
+    // THE drafting call (I2/I3: ledgered like every other call). One gpt-5-nano pass per
+    // delivery answers "is this on-beat, what's in the picture, what's the translation, what's
+    // the draft" — its firstDraft is the post the reporter sees (the owner collapsed the
+    // ground→revise→synthesize pipeline to this single call; see draft-ground.ts's header).
+    const ground = await groundSourcePost({
+      brief,
+      beat: experiment.beat,
+      voiceGuidance,
+      platform: "x",
+      accountTier: "standard",
+    });
+    const [groundCallId] = await insertModelCalls(
+      admin,
+      experiment.owner_id,
+      [ground.call],
+      sourcePostId,
+    );
+    await stampUsageEvent(admin, {
+      owner_id: experiment.owner_id,
+      kind: "grounding",
+      units: 1,
+      cost_usd: ground.call.costUsd,
+      ref_id: sourcePostId,
+    });
+
+    if (!ground.verdict) {
+      // The grounding call billed but its output was unusable — an error path (see
+      // draft-ground.ts), NOT an off-beat verdict. Throw so the outer catch releases the claim
+      // and the worker's retry gets a fresh grounding attempt rather than silently dropping the
+      // post because a classifier stuttered once.
+      throw new Error(`draft-pipeline: grounding verdict unusable for source post ${sourcePostId}`);
+    }
+    const verdict = ground.verdict;
+
+    if (!verdict.onBeat) {
+      // Off-beat: no story row, no council, no post_drafts row — reported, not drafted-and-hidden.
+      return {
+        experimentId: experiment.id,
+        winningModel: "",
+        degraded: false,
+        skipped: "off_beat",
+      };
+    }
+
+    // Part B: on-beat — one story per source post, directly (CLUSTERING_ENABLED stays off; the
+    // clustering path is not newly built into this flow).
     const cluster = await assignToStory({
       experimentId: experiment.id,
       sourcePostId,
@@ -357,9 +395,6 @@ async function draftForExperiment(
       // Ledger-first, same ordering discipline as every other CouncilCall producer here —
       // this insert happens BEFORE the platform fan-out's own ledger-first inserts.
       await insertModelCalls(admin, experiment.owner_id, cluster.calls, sourcePostId);
-      // QC fix: every model_calls row also stamps usage_events (L7 house rule, "from birth") —
-      // the clustering call was inserted into model_calls but never metered here, undercounting
-      // per-owner LLM spend against any usage_events-based cap/alarm by one call per delivery.
       for (const call of cluster.calls) {
         await stampUsageEvent(admin, {
           owner_id: experiment.owner_id,
@@ -371,81 +406,44 @@ async function draftForExperiment(
       }
     }
 
-    // One story's council + judge is THE genuinely multi-model conversation in this product —
-    // grouping by story id is what lets Explore > Conversations show five drafters and the judge's
-    // pick as a single readable thread. Set after clustering because the story id does not exist
-    // before it; every AI span below inherits it from the isolation scope.
+    // Grouping by story id is what lets Explore > Conversations show one story's grounding
+    // call as a single readable thread. Set after clustering because the story id does not
+    // exist before it; every AI span below inherits it from the isolation scope.
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
-    // Part C: one self-contained unit per platform (council -> ledger-first insert ->
-    // post_drafts insert), run in parallel — a DB failure persisting platform B's calls can
-    // never affect platform A's already-committed work because each platform's persistence
-    // lives inside its own thunk, not batched together at the end.
+    // Part C: one post_drafts winner row per platform, all pointing at the SAME grounding call —
+    // there is no per-platform model call anymore. The row is the reporter-facing draft record;
+    // judge_verdict stays null (nothing judges, nothing merges).
     const runPlatformDraft = async (
       platform: Platform,
-    ): Promise<{ platform: Platform; result: CouncilResult; winningPostDraftId: string }> => {
-      const result = await runDraftCouncil({
-        voiceGuidance,
-        accountTier: "standard",
-        brief,
-        platform,
-      });
-
-      // Ledger-first: model_calls rows before the post_drafts rows that point at them.
-      const callIds = await insertModelCalls(
-        admin,
-        experiment.owner_id,
-        result.calls,
-        sourcePostId,
-      );
-
-      let winningPostDraftId: string | null = null;
-      for (const member of result.members) {
-        const { data, error } = await admin
-          .from("post_drafts")
-          .insert({
-            source_post_id: sourcePostId,
-            experiment_id: experiment.id,
-            story_id: cluster.storyId,
-            platform,
-            model_call_id: callIds[member.finalCallIndex],
-            is_winner: member.isWinner,
-            judge_verdict: null,
-          })
-          .select("id")
-          .single();
-        if (error) throw error;
-        if (member.isWinner) winningPostDraftId = data.id;
-      }
-      if (result.judge) {
-        const { error } = await admin.from("post_drafts").insert({
+    ): Promise<{
+      platform: Platform;
+      winningText: string;
+      winningModel: string;
+      degraded: boolean;
+      winningPostDraftId: string;
+    }> => {
+      const { data, error } = await admin
+        .from("post_drafts")
+        .insert({
           source_post_id: sourcePostId,
           experiment_id: experiment.id,
           story_id: cluster.storyId,
           platform,
-          model_call_id: callIds[result.judge.callIndex],
-          is_winner: false,
-          judge_verdict: result.judge.verdict,
-        });
-        if (error) throw error;
-      }
-      if (!winningPostDraftId) {
-        throw new Error(
-          `draft-pipeline: no winning member produced a post_drafts row for platform ${platform}`,
-        );
-      }
-
-      for (const call of result.calls) {
-        await stampUsageEvent(admin, {
-          owner_id: experiment.owner_id,
-          kind: "drafting",
-          units: 1,
-          cost_usd: call.costUsd,
-          ref_id: sourcePostId,
-        });
-      }
-
-      return { platform, result, winningPostDraftId };
+          model_call_id: groundCallId,
+          is_winner: true,
+          judge_verdict: null,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return {
+        platform,
+        winningText: verdict.firstDraft,
+        winningModel: ground.call.model,
+        degraded: false,
+        winningPostDraftId: data.id,
+      };
     };
 
     const platformResults = await Promise.allSettled(PLATFORMS.map(runPlatformDraft));
@@ -468,10 +466,9 @@ async function draftForExperiment(
       )
       .map((outcome) => outcome.value);
 
-    // Zero fulfilled platforms is equivalent to today's total-failure case: propagate so the
-    // outer catch releases draft_claims and allows a retry. runDraftCouncil's members===0 throw
-    // still fires before any CouncilCall is billed (a rejected family means its initial
-    // generate() call itself never completed), so this path never discards a paid call.
+    // Zero fulfilled platforms means no post_drafts row exists: propagate so the outer catch
+    // releases draft_claims and allows a retry. The grounding call's ledger row is already
+    // committed above, so no paid call is discarded by this throw.
     if (fulfilled.length === 0) {
       throw new Error(`draft-pipeline: all platforms failed for experiment ${experiment.id}`);
     }
@@ -482,35 +479,34 @@ async function draftForExperiment(
     const xResult = fulfilled.find((f) => f.platform === "x");
     // deliverDraft fires ONCE per delivery per experiment (not once per platform) — using the
     // X platform's winning text when X succeeded, else the first-succeeded platform's winning
-    // text as a reasonable fallback (documented in task-20-report.md). modelCount/totalCostUsd
-    // are summed across every fulfilled platform's calls so the notification reflects the
-    // delivery's actual total spend, not just the chosen platform's.
+    // text as a reasonable fallback.
     const primary = xResult ?? fulfilled[0];
-    const allFulfilledCalls = fulfilled.flatMap((f) => f.result.calls);
 
     await deliverDraft(admin, {
       experimentId: experiment.id,
       ownerId: experiment.owner_id,
       authorHandle: brief.authorHandle,
       sourceText: brief.text,
-      winningText: primary.result.winningText,
-      modelCount: fulfilled.reduce((sum, f) => sum + f.result.members.length, 0),
-      totalCostUsd: sumCosts(allFulfilledCalls.map((c) => c.costUsd)),
+      winningText: primary.winningText,
       winningPostDraftId: primary.winningPostDraftId,
       winningPlatform: primary.platform,
       sourcePostId,
       revised: false,
     });
 
-    // Part D: auto-post, after the X platform's post_drafts row exists. auto_post_sources is
+    // Part D: auto-post, after the X platform's post_drafts row exists. Gated on the SAME
+    // AUTO_POST_ENABLED constant the Setup UI's switch reads (lib/agent/desk-config.ts) —
+    // dormancy must not rest solely on a disabled client-side control. auto_post_sources is
     // keyed by delivery source TYPE ({ x?: boolean; website?: boolean }) — a per-source-type
     // toggle, the natural reading of "master + per-source toggles" given the only two source
-    // types this slice has (documented in task-20-report.md). No model_calls row for the post
-    // itself — posting isn't a model call. A posting failure is logged and left as a
-    // recoverable draft state: never a rollback of drafts or ledgers, never a claim release.
+    // types this slice has. No model_calls row for the post itself — posting isn't a model
+    // call. A posting failure is logged and left as a recoverable draft state: never a
+    // rollback of drafts or ledgers, never a claim release.
     const sourcesConfig = (experiment.auto_post_sources ?? {}) as Record<string, boolean>;
     const autoPostEligible =
-      experiment.auto_post_master === true && sourcesConfig[deliverySource] === true;
+      AUTO_POST_ENABLED &&
+      experiment.auto_post_master === true &&
+      sourcesConfig[deliverySource] === true;
     if (autoPostEligible && xResult) {
       const postResult = await postDraftToXForOwner(
         xResult.winningPostDraftId,
@@ -526,8 +522,8 @@ async function draftForExperiment(
 
     return {
       experimentId: experiment.id,
-      winningModel: primary.result.winningModel,
-      degraded: fulfilled.some((f) => f.result.degraded) || fulfilled.length < PLATFORMS.length,
+      winningModel: primary.winningModel,
+      degraded: fulfilled.some((f) => f.degraded) || fulfilled.length < PLATFORMS.length,
     };
   } catch (err) {
     // Release the claim so a retry of this delivery can re-attempt (see the comment above).
@@ -613,7 +609,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   const { data: allExperiments, error: experimentsError } = await admin
     .from("experiments")
     .select(
-      "id, owner_id, reporter_handle, tracked_handles, websites, status, auto_post_master, auto_post_sources",
+      "id, owner_id, reporter_handle, beat, tracked_handles, websites, status, auto_post_master, auto_post_sources",
     );
   if (experimentsError) throw experimentsError;
   const matched: MatchedExperiment[] =
@@ -667,6 +663,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: delivery.x_post_id,
           authorHandle: delivery.author_handle,
           text: delivery.text,
+          media: delivery.media ?? [],
         }
       : {
           sourcePostId,
@@ -676,6 +673,8 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: "",
           authorHandle: delivery.author_handle ?? hostnameOf(delivery.url),
           text: delivery.text,
+          // Website sources carry no structured media descriptors this slice.
+          media: [],
         };
 
   const drafted: ProcessDeliveryResult["drafted"] = [];
@@ -769,6 +768,9 @@ export async function applyCorrection(input: {
     xPostId: sourcePost.x_post_id ?? "",
     authorHandle: sourcePost.author_handle ?? "",
     text: sourcePost.text,
+    // reviseDraft (this function's only caller) never looks at media — the emailed-correction
+    // path revises existing text, it doesn't re-ground.
+    media: [],
   };
 
   const revision = await reviseDraft({
@@ -866,8 +868,6 @@ export async function applyCorrection(input: {
     authorHandle: sourcePost.author_handle ?? "",
     sourceText: sourcePost.text,
     winningText: revision.text,
-    modelCount: 1,
-    totalCostUsd: sumCosts(revision.calls.map((c) => c.costUsd)),
     winningPostDraftId: newDraft.id,
     winningPlatform: platform as Platform,
     sourcePostId: sourcePost.id,

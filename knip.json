@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["scripts/*.ts"],
+  "project": ["**/*.{ts,tsx,mjs}"],
+  "ignore": [
+    "components/ai-elements/**",
+    "components/ui/**",
+    "components/hooks/**",
+    "ingest/**",
+    ".claude/**",
+    ".agents/**",
+    ".grok/**",
+    ".codex/**",
+    ".voice-lab/**",
+    ".githooks/**",
+    ".diag/**",
+    ".feature/**",
+    "docs/**",
+    "supabase/**"
+  ],
+  "ignoreDependencies": [
+    "@rive-app/react-webgl2",
+    "@xyflow/react",
+    "ansi-to-react",
+    "cmdk",
+    "embla-carousel-react",
+    "media-chrome",
+    "nanoid",
+    "react-jsx-parser",
+    "shiki",
+    "tokenlens",
+    "use-stick-to-bottom",
+    "tailwindcss",
+    "tw-animate-css",
+    "shadcn"
+  ]
+}

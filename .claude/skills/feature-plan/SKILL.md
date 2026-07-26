@@ -42,8 +42,12 @@ whole pass — address it by **`scriptPath`, never `name`** (same reason as the 
 workflow: `{ name }` doesn't scan the repo's `.claude/workflows/`). Pass `args`:
 `{ ask: "<the confirmed ask from step 2>", context: "<any seed worth carrying>" }`.
 
-It runs five stages, grounded **once** (Scope + Lenses), then synthesized across
-**four independent model families** (Draft council), not one model reasoning alone.
+It runs six stages, grounded **once** (Scope + Lenses), drafted by **the session
+model alone**, then hardened by an external adversarial critique round. (The
+four-family draft council this replaces was measured on the slice-69 run: all four
+families independently chose the same spine, and the cross-draft merge introduced
+contradictions the critique stage then had to catch — cross-model spend belongs on
+attack, not on drafting the same plan four times.)
 
 **Scope** selects the lenses from the **live skill inventory** (`list-plan-skills.sh`
 — the stack plugins + repo build skills, self-updating; not a fixed menu) rather than
@@ -51,37 +55,55 @@ a hardcoded set, so a slice needing `vercel:marketplace` / `vercel-connect` /
 `chat-sdk` / `workflow` actually reaches them; the same pass reads AGENTS.md and
 glob-matches the slice's predicted paths against the `.claude/rules/` `paths:`
 frontmatter to gather the applicable guards into a digest (there is no diff at plan
-time to auto-inject them). This digest is also the **only** ground truth the three
-external families get in Draft council — they do not explore the filesystem — so its
-thoroughness is load-bearing.
+time to auto-inject them). The digest seeds every downstream stage; the external
+critics additionally explore the repository themselves (deep, read-only), so it is
+their starting map rather than their only ground truth.
 
 **Lenses** fan out **one repo-grounded agent per selected skill, named after the
 skill** (no bundling, no cap below the inventory); each invokes its skill and returns
 hard constraints + acceptance criteria + conflicts to watch.
 
 **Consolidate** merges every lens's constraints into one deduped constraint set and
-names a **2–3 candidate menu** — a seed for Draft council, not a ceiling; a family is
-free to deviate from it if it sees a stronger spine.
+names a **2–3 candidate menu** — a seed for the Draft stage, not a ceiling; the
+drafter is free to deviate from it if it sees a stronger spine.
 
-**Draft council** fans out **one fleshed plan per family, concurrent, no per-candidate
-multiplication**: Claude (pinned opus) + Codex/gpt-5.6-sol (pinned medium) +
-Grok-4.5 (pinned medium) + Gemini-3.1-pro via `agy` (pinned high). Best-effort per
-family — a CLI that errors, times out, or returns malformed JSON is dropped; the
-Claude draft is the guaranteed floor.
+**Draft** is ONE plan, written by the session model: pick a spine from the menu (or
+a stronger one), commit to it, and emit the full build-ready plan directly in its
+final sections — no council, no synthesis-across-drafts.
 
-**Synthesize** folds the surviving drafts into ONE final plan: best-reasoned spine,
-graft only compatible wins, record load-bearing disagreements under "Conflicts
-resolved" rather than averaging them away.
+**Critique** sends the plan to three external families, each **deep** (repo-resident,
+read-only, verifying the plan's claims against the actual code) at its **tier
+ceiling** — critique is each family's only seat and the terminal gate before the
+human one. Charters are distinct: Codex/gpt-5.6-sol (high) digs deepest on
+infrastructure durability + internal consistency; Grok-4.5 (high) on requirement
+traceability + unjustified complexity; Gemini-3.1-pro (high) via `agy` on repo-guard
+compliance + concrete risk. Each must work through the plan requirement by
+requirement before an empty list counts as a valid verdict; the charter forbids
+performative criticism. No Claude critic — the session model wrote the plan, so
+that would be self-review. (Known risk, accepted 2026-07-26: the agy lane returned
+5/5 empty critiques in the old shallow text-only mode; deep mode is the bet that
+bounded evidence-checking — the shape of its productive QC Verify seat — engages
+it. Repeated deep empties are the new fact that reopens the seat.)
+
+**Refine** adjudicates each critique on its merits (fix the real ones, reject taste
+and scope inflation) and emits the final hardened plan, with a "Critique
+adjudication" section recording every accept/reject call. Zero surviving critiques
+skips Refine and ships the Draft output unchanged.
+
+Every design stage carries a calibrated simplicity pressure: the simplest
+architecture that satisfies every requirement wins, complexity must pay rent — but
+simplicity is a tiebreaker among correct designs, never a license to drop a
+requirement or weaken a guard.
 
 **Model policy (the Fable discipline — locked with Farzan):** Scope and Lenses are
 extraction/comprehension, not generation — **pinned sonnet, effort medium** (depth is
 bought with effort, not tier; Lenses is also the highest-fan-out stage in this
 workflow, so it must never inherit — that would multiply spend N skills wide). The
-external draft tiers are fixed production values, never re-litigated per run. Exactly
-**two** stages inherit your session model + tier and may spend Fable: **Consolidate**
-(candidate-menu generation) and **Synthesize** (the final judge) — both generative,
-single-call, ceiling-setting acts. Nothing else in this workflow can spend Fable, by
-design. There is no `repo-fit` lens — the guards ride in via the Scope digest and via
+external critique tiers are fixed production values, never re-litigated per run. Exactly
+**three** stages inherit your session model + tier and may spend Fable: **Consolidate**
+(candidate-menu generation), **Draft** (the plan itself), and **Refine** (critique
+adjudication) — all generative, single-call, ceiling-setting acts.
+Nothing else in this workflow can spend Fable, by design. There is no `repo-fit` lens — the guards ride in via the Scope digest and via
 path-rule auto-injection when a lens reads a matching file.
 
 The returned `plan` carries the standard sections the workflow enforces (so they are
