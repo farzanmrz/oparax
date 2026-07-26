@@ -135,7 +135,7 @@ async function runOnce(
           "oparax.diagnostic": true,
         },
       },
-      () => extractVoiceGuideStreaming(handle, corpus, undefined, record),
+      () => extractVoiceGuideStreaming(handle, corpus, "", undefined, record),
     );
   } catch (e) {
     failure = e;

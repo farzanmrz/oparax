@@ -1,12 +1,16 @@
 // lib/voice/extract-guide.ts
 //
 // The L2 voice-extraction call: ONE anthropic/claude-opus-5 call over a reporter's corpus,
-// adaptive thinking @ high effort, NO tools, NO schema (the guide is markdown prose).
+// adaptive thinking @ high effort, NO schema (the guide is markdown prose), and exactly ONE
+// tool — `exclude_off_beat_posts`, a pure local recompute of the measured-facts block over the
+// on-beat subset (see buildScopeTool for why it is not the web search `.claude/rules/voice.md`
+// rules out, and for the three guardrails that bound it).
 // Config ported from the lab (.voice-lab/sdk-lab/extract-fable80.mjs, measured $0.855/reporter
 // on Fable 5); the model moved to Opus 5 at half the per-token price — see EXTRACTION_MODEL.
 // SERVER-ONLY: imports lib/sysprompts (readFileSync at module scope) — never import from a
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.
-import { generateText, streamText } from "ai";
+import { generateText, stepCountIs, streamText, tool } from "ai";
+import { z } from "zod";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
@@ -83,6 +87,32 @@ export type CorpusPost = {
  *  letting the model infer that the unshown posts had no media. */
 const MAX_CORPUS_IMAGES = 60;
 
+/** The most of a corpus the model may exclude as off-beat before the tool refuses outright.
+ *
+ *  This is the guardrail on the one real hazard of letting the model choose the subset its own
+ *  binding numbers are computed over: a model that excludes most of a timeline can manufacture
+ *  whatever style profile it likes, and `measuredFacts` — which exists precisely BECAUSE reading
+ *  under-counts sparse habits — would then be counting a set the reading already biased. Half is
+ *  deliberately generous (a genuinely mixed timeline can be a third off-beat) while still making
+ *  "exclude nearly everything" impossible. On refusal the tool returns the FULL-corpus block and
+ *  says why, so the run continues honestly rather than failing. */
+const MAX_OFF_BEAT_SHARE = 0.5;
+
+/** How many round trips the extraction call may take. One tool call plus the guide is two steps;
+ *  three leaves room for a single retry after a refusal and makes an unbounded tool loop
+ *  impossible on a call that has no spend gate above it. */
+const MAX_EXTRACTION_STEPS = 3;
+
+/** What the scope tool did, carried out of the call so it can be persisted, shown, and audited.
+ *  `applied: false` with a populated `postIds` is the refusal case — the model asked, the
+ *  guardrail said no, and the guide was written against the full corpus after all. */
+export type ScopeExclusion = {
+  postIds: string[];
+  reason: string;
+  applied: boolean;
+  note: string;
+};
+
 export type VoiceExtraction = {
   guideRaw: string;
   /** The MEASURED STYLE FACTS block exactly as the model saw it — store this, don't recompute. */
@@ -109,6 +139,9 @@ export type VoiceExtraction = {
    *  means a ceiling clipped the answer, `"stop"` means the model chose to end having written
    *  nothing, and those two failures need opposite fixes. */
   finishReason: string | null;
+  /** What the off-beat scope tool did, or `null` when the model never called it (in which case
+   *  the guide was written against the full corpus — the pre-tool behaviour, and a valid run). */
+  scopeExclusion: ScopeExclusion | null;
 };
 
 /** One part of the user message. The corpus is no longer a plain string: attached media rides
@@ -120,6 +153,94 @@ export type VoiceExtraction = {
 type ExtractionContentPart =
   | { type: "text"; text: string }
   | { type: "file"; data: URL; mediaType: string };
+
+/**
+ * The one tool the extraction call gets, plus the mutable slot its result is captured into.
+ *
+ * WHY A TOOL AT ALL, on a call whose config is otherwise measured-not-authored. A corpus is a
+ * whole timeline, so it carries posts outside the reporter's beat — gaming clips and personal
+ * asides sit beside transfer news. `measuredFacts` is computed in CODE over every post and the
+ * prompt makes its numbers binding, so without this the model is handed an emoji inventory and a
+ * length distribution describing a mix of beat writing and off-beat noise, and told it may not
+ * contradict them. The guide then teaches that mixture as the reporter's news voice. Letting the
+ * model name the off-beat posts and recompute the block over what remains is what makes the
+ * binding numbers describe the thing the guide is actually about.
+ *
+ * This is deliberately NOT the web-search tool `.claude/rules/voice.md` rules out: it adds no
+ * external fact and reaches no network. It is the same pure function already used to build the
+ * prompt, re-run over a subset.
+ *
+ * Three guardrails live HERE rather than in the prompt, because a prompt can be ignored and an
+ * `execute` cannot:
+ *   1. Unknown ids are reported back, never silently dropped — a model excluding ids that do not
+ *      exist is a model that has lost track of the corpus, and it should be told so.
+ *   2. Excluding more than `MAX_OFF_BEAT_SHARE` is REFUSED outright (see that constant).
+ *   3. Refusal returns the full-corpus block and an explanation instead of throwing, so a bad
+ *      tool call costs a round trip rather than the whole extraction.
+ */
+function buildScopeTool(
+  handle: string,
+  posts: CorpusPost[],
+  onEvent?: (e: ScopeExclusion) => void | Promise<void>,
+) {
+  const byId = new Map(posts.map((p) => [p.id, p]));
+  let captured: ScopeExclusion | null = null;
+
+  const factsFor = (subset: CorpusPost[]) =>
+    measuredFacts(
+      handle,
+      subset.map((p) => p.text ?? "").filter((t) => t.trim()),
+    );
+
+  const scopeTool = tool({
+    description:
+      "Exclude posts that fall outside the reporter's stated beat, then recompute the MEASURED " +
+      "FACTS block over only the posts that remain. Call this ONCE, after you have read the " +
+      "whole corpus and before you write the guide. The block this returns REPLACES the one in " +
+      "your input and is the binding one. If every post is on beat, do not call this at all.",
+    inputSchema: z.object({
+      offBeatPostIds: z
+        .array(z.string())
+        .describe("The post ids ([id] in the corpus listing) that fall outside the stated beat."),
+      reason: z
+        .string()
+        .describe(
+          "One sentence naming the categories being excluded, e.g. 'gaming clips and personal " +
+            "posts, neither of which is Barcelona football news'.",
+        ),
+    }),
+    execute: async ({ offBeatPostIds, reason }) => {
+      const unknown = offBeatPostIds.filter((id) => !byId.has(id));
+      const known = [...new Set(offBeatPostIds.filter((id) => byId.has(id)))];
+      const share = posts.length > 0 ? known.length / posts.length : 0;
+
+      if (share > MAX_OFF_BEAT_SHARE) {
+        const note =
+          `REFUSED: ${known.length} of ${posts.length} posts (${Math.round(share * 100)}%) is over ` +
+          `the ${Math.round(MAX_OFF_BEAT_SHARE * 100)}% ceiling on how much of a corpus may be ` +
+          `excluded. The MEASURED FACTS block below is unchanged and still covers every post. ` +
+          `Write the guide against it, and record the off-beat categories under Beat & Scope's ` +
+          `Excludes instead.`;
+        captured = { postIds: known, reason, applied: false, note };
+        await onEvent?.(captured);
+        return { applied: false, note, measuredFacts: factsFor(posts) };
+      }
+
+      const kept = posts.filter((p) => !known.includes(p.id));
+      const note =
+        `Excluded ${known.length} of ${posts.length} posts. The MEASURED FACTS block below is ` +
+        `recomputed over the remaining ${kept.length} and REPLACES the one in your input.` +
+        (unknown.length > 0
+          ? ` NOTE: ${unknown.length} id(s) you listed are not in this corpus and were ignored: ${unknown.join(", ")}.`
+          : "");
+      captured = { postIds: known, reason, applied: true, note };
+      await onEvent?.(captured);
+      return { applied: true, note, measuredFacts: factsFor(kept) };
+    },
+  });
+
+  return { tools: { exclude_off_beat_posts: scopeTool }, read: () => captured };
+}
 
 /** X's CDN serves `.jpg` for photos and for video/GIF poster frames, and `.png` for a minority of
  *  uploads. Read it off the url rather than assuming, since an incorrect mediaType is rejected. */
@@ -141,6 +262,7 @@ function imageMediaType(url: string): string {
 function buildExtractionContent(
   handle: string,
   posts: CorpusPost[],
+  beat: string,
 ): { facts: string; content: ExtractionContentPart[] } {
   // The measured-facts block is prepended and BINDING (the prompt's ## MEASURED FACTS section).
   const facts = measuredFacts(
@@ -168,7 +290,11 @@ function buildExtractionContent(
   const content: ExtractionContentPart[] = [
     {
       type: "text",
-      text: `REPORTER: @${handle}\n\n${facts}\n\nTHE CORPUS (most recent first):\n\n${lines.join("\n")}`,
+      // The reporter's OWN words for what they want monitored. It governs `## Beat & Scope`'s
+      // boundary; the corpus below only adds precision inside it (see voice-extract.md). Passing
+      // the corpus without it would leave the extractor inferring scope from activity alone,
+      // which widens the beat to whatever the reporter happens to post about.
+      text: `REPORTER: @${handle}\n\nTHE BEAT, IN THE REPORTER'S OWN WORDS:\n${beat.trim() || "(not stated)"}\n\n${facts}\n\nTHE CORPUS (most recent first):\n\n${lines.join("\n")}`,
     },
   ];
 
@@ -216,14 +342,20 @@ function buildExtractionContent(
 export async function extractVoiceGuide(
   handle: string,
   posts: CorpusPost[],
+  beat: string,
 ): Promise<VoiceExtraction> {
-  const { facts, content } = buildExtractionContent(handle, posts);
+  const { facts, content } = buildExtractionContent(handle, posts, beat);
+  const scope = buildScopeTool(handle, posts);
 
   const result = await generateText({
     model: EXTRACTION_MODEL,
     system: VOICE_EXTRACT_PROMPT,
     messages: [{ role: "user", content }],
     maxOutputTokens: EXTRACT_MAX_OUTPUT_TOKENS,
+    // The ONE tool this call gets — a pure local recompute, not a network reach. See
+    // buildScopeTool for why it exists and what it refuses.
+    tools: scope.tools,
+    stopWhen: stepCountIs(MAX_EXTRACTION_STEPS),
     // `display: "summarized"` is what makes the reasoning readable. It defaults to "omitted"
     // on this model, and "omitted" still returns a thinking block — with `text: ""`, which
     // reads exactly like a model that cannot expose its reasoning. Probed: summarized yields
@@ -246,9 +378,21 @@ export async function extractVoiceGuide(
 
   const { costUsd, generationId } = await resolveGatewayCost(result);
 
+  const scopeExclusion = scope.read();
   return {
     guideRaw: result.text,
-    measuredFactsBlock: facts,
+    // The block the guide was actually written against — the recomputed one when the tool
+    // applied, so provenance matches the numbers the model was bound by.
+    measuredFactsBlock: scopeExclusion?.applied
+      ? measuredFacts(
+          handle,
+          posts
+            .filter((p) => !scopeExclusion.postIds.includes(p.id))
+            .map((p) => p.text ?? "")
+            .filter((t) => t.trim()),
+        )
+      : facts,
+    scopeExclusion,
     reasoning: result.reasoningText ?? null,
     thinkingTokens,
     costUsd,
@@ -295,16 +439,23 @@ export type ExtractionStreamOptions = {
 export async function extractVoiceGuideStreaming(
   handle: string,
   posts: CorpusPost[],
+  beat: string,
   onProgress?: (snapshot: ExtractionStreamSnapshot) => void | Promise<void>,
   onRawPart?: ExtractionRawPartObserver,
+  onScope?: (e: ScopeExclusion) => void | Promise<void>,
 ): Promise<VoiceExtraction> {
-  const { facts, content } = buildExtractionContent(handle, posts);
+  const { facts, content } = buildExtractionContent(handle, posts, beat);
+  const scope = buildScopeTool(handle, posts, onScope);
 
   const result = streamText({
     model: EXTRACTION_MODEL,
     system: VOICE_EXTRACT_PROMPT,
     messages: [{ role: "user", content }],
     maxOutputTokens: EXTRACT_MAX_OUTPUT_TOKENS,
+    // Same tool and same ceiling as the one-shot above — the two call shapes must never differ
+    // in what the model can do, only in how the result is consumed.
+    tools: scope.tools,
+    stopWhen: stepCountIs(MAX_EXTRACTION_STEPS),
     // Same reasoning as extractVoiceGuide's call above — kept byte-identical on purpose.
     providerOptions: {
       anthropic: { thinking: { type: "adaptive", effort: "high", display: "summarized" } },
@@ -343,9 +494,19 @@ export async function extractVoiceGuideStreaming(
 
   const { costUsd, generationId } = await resolveGatewayCost({ providerMetadata });
 
+  const scopeExclusion = scope.read();
   return {
     guideRaw: text,
-    measuredFactsBlock: facts,
+    measuredFactsBlock: scopeExclusion?.applied
+      ? measuredFacts(
+          handle,
+          posts
+            .filter((p) => !scopeExclusion.postIds.includes(p.id))
+            .map((p) => p.text ?? "")
+            .filter((t) => t.trim()),
+        )
+      : facts,
+    scopeExclusion,
     reasoning: reasoningText ?? null,
     thinkingTokens,
     costUsd,

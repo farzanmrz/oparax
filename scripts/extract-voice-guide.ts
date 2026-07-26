@@ -134,7 +134,7 @@ async function main() {
   if (sourcePostsError) throw sourcePostsError;
 
   // The paid call.
-  const ext = await extractVoiceGuide(reporterHandle, trainCorpus);
+  const ext = await extractVoiceGuide(reporterHandle, trainCorpus, process.argv[4] ?? "");
 
   // Print BEFORE any DB write. Everything below can fail on a transient error, and a lost
   // write must never mean a lost ~$0.67 extraction — stdout is the recovery copy. The trace

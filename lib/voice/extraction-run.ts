@@ -24,6 +24,7 @@ export type RunStage =
   | "starting"
   | "corpus_fetch"
   | "corpus_ready"
+  | "scoping"
   | "extracting"
   | "materializing_rules"
   | "done"

@@ -17,17 +17,22 @@ const STAGE_RANK: Record<string, number> = {
   starting: 0,
   corpus_fetch: 1,
   corpus_ready: 2,
-  extracting: 3,
-  materializing_rules: 4,
-  done: 5,
+  scoping: 3,
+  extracting: 4,
+  materializing_rules: 5,
+  done: 6,
   failed: -1,
 };
 
 /** Which step owns which stages. Index into this array IS the step's position in the chain. */
 const STEPS = [
   { key: "corpus", label: "Reading recent posts", stages: [1, 2] },
-  { key: "extract", label: "Learning how you write", stages: [3] },
-  { key: "rules", label: "Saving your voice rules", stages: [4] },
+  // The model's own off-beat pass (exclude_off_beat_posts) — a real, observable step, not a
+  // sub-phase of extraction: it is where the binding measured facts get recomputed, and a
+  // reporter watching deserves to see that their gaming posts were set aside deliberately.
+  { key: "scope", label: "Working out your beat", stages: [3] },
+  { key: "extract", label: "Learning how you write", stages: [4] },
+  { key: "rules", label: "Saving your voice rules", stages: [5] },
 ] as const;
 
 /** Reporter-facing sentence per terminal error code written by the spend phase. Anything

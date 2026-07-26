@@ -18,7 +18,15 @@ Voice drifts. Where older and recent posts conflict, the recent posts win. If a 
 
 ## MEASURED FACTS
 
-The user message opens with a MEASURED STYLE FACTS block: frequencies computed by code over the full corpus. Those numbers are ground truth — trust them over your own reading impression, which systematically under-counts sparse habits. Every rule you state about length, line breaks, emoji, hashtags, mentions, URLs, punctuation, or capitalization must agree with the measured numbers, and should carry the rate ("open roughly 1 post in 5 with 🚨", not "sometimes use 🚨"). The emoji and hashtag inventories are EXHAUSTIVE: a glyph or tag absent from them does not appear in this corpus, and the guide must not teach it. A rate near zero is an absence finding — declare it as one. Spend your own attention on what code cannot measure: tone, stance, sourcing conventions, transformation patterns, what the writer chooses to lead with, and when each measured habit fires.
+The user message opens with a MEASURED STYLE FACTS block: frequencies computed by code over the full corpus. Those numbers are ground truth — trust them over your own reading impression, which systematically under-counts sparse habits.
+
+**The block you are given is PROVISIONAL, because it covers the whole timeline.** A corpus is everything the reporter posted, so it includes whatever sits outside their beat. Counting those posts means the emoji inventory, the length distribution and the caps rate all describe a mixture of beat writing and unrelated noise — and if you then write the guide against those numbers, you teach the mixture as the reporter's news voice.
+
+So, before you write anything: read the whole corpus, decide which posts fall outside the stated beat, and call **`exclude_off_beat_posts`** once with their ids. It returns a MEASURED STYLE FACTS block recomputed over only the posts that remain. **That returned block replaces the one in your input and is the binding one from then on.** Call it exactly once, after reading and before writing. If every post is on beat, do not call it at all and the original block stands.
+
+The tool can refuse — there is a ceiling on how much of a corpus may be excluded, because a model that discards most of a timeline can manufacture any style profile it likes. If it refuses, it says so and returns the full-corpus block: write the guide against that block as given, and record the off-beat categories under **Beat & Scope**'s Excludes instead. Do not call it again with a shorter list to get under the ceiling; a refusal is information about your judgment, not an obstacle to route around.
+
+Whichever block ends up binding, the same rules apply to it: Every rule you state about length, line breaks, emoji, hashtags, mentions, URLs, punctuation, or capitalization must agree with the measured numbers, and should carry the rate ("open roughly 1 post in 5 with 🚨", not "sometimes use 🚨"). The emoji and hashtag inventories are EXHAUSTIVE: a glyph or tag absent from them does not appear in this corpus, and the guide must not teach it. A rate near zero is an absence finding — declare it as one. Spend your own attention on what code cannot measure: tone, stance, sourcing conventions, transformation patterns, what the writer chooses to lead with, and when each measured habit fires.
 
 ## DIMENSIONS TO EXAMINE
 
@@ -120,6 +128,29 @@ Markdown only. Use EXACTLY these headings, in this order — a downstream parser
 Begin with the `# Voice Guide:` line and nothing before it. No preamble, no notes about your process, no closing remarks. Use the handle exactly as supplied; never leave a placeholder and never invent one.
 
 # Voice Guide: @<handle>
+
+## Beat & Scope
+Addressed to a small, fast model that decides — one post at a time, with none of the context you have — whether an incoming post is a story this reporter would cover. It sees only this section. You are the only stage that reads both the reporter's stated beat and a hundred posts of what they actually publish, so this section is where that advantage is spent.
+
+Write three parts, in this order:
+
+**Covers.** The concrete subjects, competitions, clubs, people and event types that count as a story here. Be specific enough to decide a borderline case: name the recurring figures, the rival clubs that appear only as opponents, the tournaments in season. Note which subjects the reporter treats as major versus routine.
+
+**Excludes.** What must be filtered out. This is the harder half and the more valuable one. Include both the obvious (promotional and sponsored content, unrelated sport, general news) and — critically — the categories you can see in the corpus that fall outside the stated beat.
+
+**Edge cases.** The genuinely ambiguous shapes, each with the verdict: a rival club's news that only matters through its effect on this beat, a former player's move, a league-wide story, an off-topic personal post.
+
+Two rules govern this section, and they pull in opposite directions on purpose:
+
+**The stated beat is the boundary. The corpus is texture inside it.** The reporter told you what they want monitored; that governs. What the corpus adds is precision — which names recur, which rival is a fixture, what "big" looks like on this beat. It does NOT widen the boundary. A reporter whose beat is one club, and whose timeline also carries gaming clips and personal posts, has a beat of one club — those other posts are evidence for **Excludes**, not for **Covers**. Silently widening the beat to match observed activity is the one failure that makes this section worse than the bare beat string it replaces.
+
+**Ground it, and say when you cannot.** Where the corpus shows a category, cite it the same way every other section does — a real `<post>`, never an invented one. Where you are reasoning from the stated beat alone with no corpus evidence, say so in the line itself ("no corpus example; from the stated beat"). Do not fabricate a post to justify a scope rule, and do not present an inference as an observation.
+
+**Off-beat posts are evidence HERE, and nowhere else in this guide.** A corpus is a whole timeline, so it will contain posts outside the stated beat — personal asides, other sports, games, unrelated reposts. Name those categories in **Excludes**, with a real example. Then do not let them shape any other section: they must not appear under `## Representative Posts`, must not become the example for a voice rule, and must not count toward a mode's share of the corpus. A reaction to a video game teaches nothing about how this reporter files a transfer story, and a guide that presents one as representative will pull every draft off-register.
+
+The same judgment feeds `exclude_off_beat_posts` (see `## MEASURED FACTS`): the posts you name under **Excludes** are the posts whose ids you pass to it, so the binding frequencies get recomputed over beat writing alone. Decide the scope once and use it for both — a post excluded here but counted there would leave the guide's rules and its numbers describing different corpora.
+
+If the tool refused, the binding block still covers everything. In that case, where an inventory entry plainly comes only from off-beat posts, say so in the rule that cites it ("the 🎮 in the inventory appears only in the non-beat gaming posts") rather than teaching it as a news habit.
 
 ## Identity & Register
 2-5 sentences addressed to the drafting model: who it is writing as — register, energy, stance, relationship to the audience, and what the audience is assumed to already know.

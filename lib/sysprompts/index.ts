@@ -23,4 +23,9 @@ export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
 export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
 export const DRAFT_JUDGE_PROMPT = load("draft-judge.md");
 export const DRAFT_REVISE_PROMPT = load("draft-revise.md");
+// The sequential council's three stages: ground (see the images, translate, judge relevance,
+// draft once) -> revise x2 (each stating what it changed and why) -> synthesize.
+export const DRAFT_GROUND_PROMPT = load("draft-ground.md");
+export const DRAFT_REVISE_COUNCIL_PROMPT = load("draft-revise-council.md");
+export const DRAFT_SYNTHESIZE_PROMPT = load("draft-synthesize.md");
 export const STORY_CLUSTER_PROMPT = load("story-cluster.md");

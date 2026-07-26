@@ -236,6 +236,18 @@ async function runExtractionSpendPhaseInner(
       progressNote: "Pulling recent posts from X…",
     });
 
+    // The reporter's own statement of what they want monitored. It anchors the guide's
+    // `## Beat & Scope` section, whose consumer is the drafting pipeline's filter stage — without
+    // it the extractor would infer scope from timeline activity alone, which widens a one-club
+    // beat to include whatever else the reporter happens to post about (voice-extract.md).
+    // Read here rather than threaded through every caller: this function already has the desk id.
+    const { data: deskRow } = await admin
+      .from("experiments")
+      .select("beat")
+      .eq("id", experimentId)
+      .maybeSingle();
+    const beat = deskRow?.beat ?? "";
+
     let corpus: Awaited<ReturnType<typeof fetchCorpus>>;
     try {
       corpus = await fetchCorpus(reporterHandle, ownerId);
@@ -260,12 +272,38 @@ async function runExtractionSpendPhaseInner(
     // filter Sentry by it — rather than re-deriving it from a log line — is the point.
     Sentry.getActiveSpan()?.setAttribute("oparax.corpus_posts", corpus.length);
 
+    // The model reads the corpus and decides scope BEFORE it writes anything, so the run row
+    // says so — otherwise the first ~60s of a run (measured: first text delta at 60.5s) shows a
+    // reporter nothing but "extracting" while the model is actually still working out their beat.
+    await recordProgress(experimentId, {
+      stage: "scoping",
+      progressNote: "Working out what's on your beat…",
+    });
+
     let ext: VoiceExtraction | undefined;
     try {
       ext = await extractVoiceGuideStreaming(
         reporterHandle,
         corpus,
+        beat,
         throttledStreamProgress(experimentId),
+        undefined,
+        async (scope) => {
+          // Both the reporter and Sentry learn what the model set aside and whether the guardrail
+          // let it. An exclusion the guardrail REFUSED is the interesting case after the fact, so
+          // it lands as a span attribute rather than only a progress note that scrolls away.
+          Sentry.getActiveSpan()?.setAttributes({
+            "oparax.scope_excluded": scope.postIds.length,
+            "oparax.scope_applied": scope.applied,
+            "oparax.scope_reason": scope.reason,
+          });
+          await recordProgress(experimentId, {
+            stage: "scoping",
+            progressNote: scope.applied
+              ? `Set aside ${scope.postIds.length} off-beat posts — ${scope.reason}`
+              : `Kept all posts — ${scope.note.slice(0, 120)}`,
+          });
+        },
       );
 
       const modelCallId = await insertExtractionModelCall(admin, ownerId, experimentId, ext);
