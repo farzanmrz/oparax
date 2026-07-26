@@ -4,8 +4,19 @@
    set on `.react-tweet-theme` — the element theme.css itself targets — via a descendant
    selector, exactly like the deleted compact-tweet.module.css did. */
 
+/* The wrapper stretches so a row's two cards (story left, draft right) always match height —
+   they are siblings in the page's grid row, and the shorter card growing to the taller one is
+   what makes the pairing read as a pair. */
+.wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
 .wrapper :global(.react-tweet-theme) {
   --tweet-container-margin: 0;
+  height: 100%;
+  /* Tighter than X's own embed padding — the feed shows many cards, not one showcase. */
+  padding: 0.75rem 0.875rem;
   --tweet-bg-color: var(--card);
   --tweet-bg-color-hover: var(--card);
   --tweet-border: 1px solid var(--border);
@@ -143,7 +154,7 @@ a.time:hover {
 
 .clamp {
   display: -webkit-box;
-  -webkit-line-clamp: 8;
+  -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -199,4 +210,25 @@ a.time:hover {
   font-size: 1rem;
   color: white;
   background: rgb(0 0 0 / 35%);
+}
+
+/* ── Footer: the card's ONE outbound affordance ────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.footerLink {
+  display: flex;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  color: var(--muted-foreground);
+  transition: color 120ms ease;
+}
+
+.footerLink:hover {
+  color: var(--card-foreground);
+  background: var(--muted);
 }

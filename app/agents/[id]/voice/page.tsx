@@ -1,7 +1,8 @@
 import { MicVocalIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeading } from "@/components/page-heading";
+import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { listVoiceRules } from "@/lib/voice/rules";
 import { getExtractionProgress } from "./actions";
@@ -267,12 +268,13 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
   const extractionInFlight = progress?.ok === true && progress.status === "running";
 
   return (
-    <div className="py-4">
+    <div className="flex flex-col gap-4 py-4">
+      <PageHeading
+        actions={guide ? <AuditDialog audit={audit} reporterHandle={reporterHandle} /> : null}
+      >
+        Writing guide
+      </PageHeading>
       <Card>
-        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
-          <CardTitle>Writing guide</CardTitle>
-          {guide ? <AuditDialog audit={audit} reporterHandle={reporterHandle} /> : null}
-        </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {guide ? (
             <>

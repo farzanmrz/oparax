@@ -17,6 +17,7 @@ import {
 // TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
+import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
@@ -65,8 +66,11 @@ const clusterVerdictSchema = z.object({
 });
 
 /** ONE helper that builds every clustering `CouncilCall` — mirrors draft-council-run.ts's own
- *  `toCouncilCall`, the only place `reasoningWithheldByProvider` gets stamped, so it can never
- *  be missed. `stage` on the shared `CouncilCall` type includes "clustering" alongside
+ *  `toCouncilCall`, including its derived `reasoningWithheldByProvider` (a null trace is only the
+ *  provider withholding one when the call actually spent reasoning tokens; this classifier runs
+ *  at `reasoning: "none"`, so it has no trace by design — `reasoning-trace.ts`), so the field
+ *  carries one meaning across both stages. `stage` on the shared `CouncilCall` type
+ *  includes "clustering" alongside
  *  draft-council-run.ts's own "drafting"/"judge" stages, so this builds a directly-typed
  *  object with no cast. */
 async function buildClusterCall(params: {
@@ -85,7 +89,7 @@ async function buildClusterCall(params: {
     model: DEEPSEEK_DRAFT_MODEL,
     output: params.output,
     reasoning: params.reasoning,
-    reasoningWithheldByProvider: params.reasoning == null,
+    reasoningWithheldByProvider: reasoningTraceState(params.reasoning, params.usage) === "withheld",
     usage: params.usage,
     costUsd,
     generationId,

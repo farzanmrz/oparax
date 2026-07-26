@@ -91,7 +91,11 @@ async function insertExtractionModelCall(
       usage: {
         ...(ext.usage as object),
         thinkingTokens: ext.thinkingTokens,
-        reasoningWithheldByProvider: ext.reasoning == null,
+        // Same semantic as lib/agent/reasoning-trace.ts (which classifies the drafting
+        // stages): "withheld" means tokens were SPENT thinking and no trace came back —
+        // not merely "the trace is null", which is also true of a call that never
+        // reasoned and was this line's original tautology.
+        reasoningWithheldByProvider: ext.reasoning == null && (ext.thinkingTokens ?? 0) > 0,
       } as unknown as Json,
       cost_usd: ext.costUsd,
       generation_id: ext.generationId,

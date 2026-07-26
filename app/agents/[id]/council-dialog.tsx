@@ -29,6 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CouncilDetail, CouncilGroup, CouncilMember } from "@/lib/agent/council-query";
+import type { ReasoningTraceState } from "@/lib/agent/reasoning-trace";
 import { formatCost } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { fetchCouncilDetail } from "./council-actions";
@@ -50,21 +51,42 @@ const CRITERIA = [
   },
 ] as const;
 
+// Why a call carries no reasoning trace, in the reporter's words. The three causes are NOT the
+// same claim and the dialog used to make the harshest one for all of them: the judge runs at
+// `reasoning: "none"` (leg 1 of .claude/rules/agent.md's generateObject recipe) and has no trace
+// BY DESIGN, so calling it a model that can't expose reasoning was simply wrong. The state is
+// classified in `lib/agent/reasoning-trace.ts` off the reasoning-token count.
+const NO_TRACE_COPY = {
+  withheld: "Reasoning not exposed by this model.",
+  none: {
+    member: "Ran without reasoning.",
+    judge: "Ran without reasoning (structured verdict).",
+  },
+  unknown: "No reasoning trace recorded for this call.",
+} as const;
+
 function ReasoningNote({
-  member,
+  call,
+  slot = "member",
 }: {
-  member: { reasoning: string | null; reasoningWithheldByProvider: boolean };
+  call: { reasoning: string | null; reasoningState: ReasoningTraceState };
+  slot?: "member" | "judge";
 }) {
-  if (member.reasoningWithheldByProvider) {
-    return <p className="text-xs text-muted-foreground">Reasoning not exposed by this model.</p>;
+  if (call.reasoningState === "present" && call.reasoning) {
+    return (
+      <Reasoning defaultOpen={false}>
+        <ReasoningTrigger getThinkingMessage={() => <p>Reasoning</p>} />
+        <ReasoningContent>{call.reasoning}</ReasoningContent>
+      </Reasoning>
+    );
   }
-  if (!member.reasoning) return null;
-  return (
-    <Reasoning defaultOpen={false}>
-      <ReasoningTrigger getThinkingMessage={() => <p>Reasoning</p>} />
-      <ReasoningContent>{member.reasoning}</ReasoningContent>
-    </Reasoning>
-  );
+  const note =
+    call.reasoningState === "withheld"
+      ? NO_TRACE_COPY.withheld
+      : call.reasoningState === "none"
+        ? NO_TRACE_COPY.none[slot]
+        : NO_TRACE_COPY.unknown;
+  return <p className="text-xs text-muted-foreground">{note}</p>;
 }
 
 function MemberCard({ member }: { member: CouncilMember }) {
@@ -84,7 +106,7 @@ function MemberCard({ member }: { member: CouncilMember }) {
         </span>
       </div>
       <div className="whitespace-pre-wrap rounded-md bg-muted/60 p-2 text-sm">{member.output}</div>
-      <ReasoningNote member={member} />
+      <ReasoningNote call={member} />
     </div>
   );
 }
@@ -118,7 +140,7 @@ function GroupView({ group }: { group: CouncilGroup }) {
               (group.judge.rationale ?? "No verdict recorded for this call.")
             )}
           </p>
-          <ReasoningNote member={group.judge} />
+          <ReasoningNote call={group.judge} slot="judge" />
         </div>
       ) : null}
       <div className="flex items-center justify-between border-t pt-3 text-sm">
@@ -247,7 +269,10 @@ export function CouncilDialog({
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <CouncilTrigger />
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[860px]">
+      {/* Width is set here, never in the vendored primitive (which ships `sm:max-w-sm`): three
+          model columns each need room for an EXPANDED reasoning trace, and at the old 860px a
+          column was a strip too thin to read a trace in. */}
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Why this draft</DialogTitle>
           <DialogDescription>

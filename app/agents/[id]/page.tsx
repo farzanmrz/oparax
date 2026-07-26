@@ -1,9 +1,23 @@
+import { PageHeading } from "@/components/page-heading";
+import { X_CHAR_LIMITS } from "@/lib/agent/desk-config";
 import { fetchFeedPage } from "@/lib/agent/feed-query";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
 import { FeedAutoRefresh } from "./feed-auto-refresh";
 import { FeedEmptyState, FeedItemCard } from "./feed-item";
+
+/** The reporter's X character ceiling, inferred from their own corpus rather than asked for.
+ *  `measured_facts` (our own generated prose, lib/voice/measured-facts.ts) always carries
+ *  "N/M posts over 280" — a reporter with even one over-280 post on their timeline provably
+ *  has a premium account, because X would have rejected the post otherwise. No guide yet, or
+ *  zero over-280 posts, means the standard ceiling. Regex-coupled to our own format on
+ *  purpose; if measured-facts.ts ever changes that line, this match returns null and the
+ *  limit safely falls back to standard. */
+function charLimitFromFacts(facts: string | null | undefined): number {
+  const match = facts?.match(/(\d+)\/\d+ posts over 280/);
+  return match && Number(match[1]) > 0 ? X_CHAR_LIMITS.premium : X_CHAR_LIMITS.standard;
+}
 
 /**
  * The Feed — this desk's story/draft card pairs, reverse chronological (unposted stories
@@ -21,16 +35,20 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  const [experimentResult, stories, xLink] = await Promise.all([
+  const [experimentResult, stories, xLink, guideResult] = await Promise.all([
     supabase.from("experiments").select("reporter_handle").eq("id", id).maybeSingle(),
     fetchFeedPage(admin, id),
     getXLinkState(),
+    // Owner-scoped client: voice_guides carries an EXISTS-join SELECT policy, so the desk's
+    // owner can read their own guide's measured facts (the premium-ceiling signal) directly.
+    supabase.from("voice_guides").select("measured_facts").eq("experiment_id", id).maybeSingle(),
   ]);
 
   if (experimentResult.error || !experimentResult.data) {
     throw new Error("Failed to load the agent. Please try again.");
   }
   const reporterHandle = experimentResult.data.reporter_handle;
+  const charLimit = charLimitFromFacts(guideResult.data?.measured_facts);
 
   // "Ready to review" = at least one platform has a winner, and that story hasn't been posted
   // to X yet (only X's own winner ever carries a real posted_at — see feed-item.tsx). A story
@@ -50,20 +68,18 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
       ) : (
         <>
           <div className="grid grid-cols-1 gap-x-7 gap-y-1 md:grid-cols-2">
-            <h2 className="text-sm font-semibold text-foreground">
-              Stories — {stories.length} since the agent went live
-            </h2>
-            <h2 className="text-sm font-semibold text-foreground">
-              Drafts — {readyToReviewCount} ready to review
-            </h2>
+            <PageHeading>Stories — {stories.length} since the agent went live</PageHeading>
+            <PageHeading>Drafts — {readyToReviewCount} ready to review</PageHeading>
           </div>
           <div className="grid grid-cols-1 gap-x-7 gap-y-4 md:grid-cols-2">
             {stories.map((story) => (
               <FeedItemCard
+                charLimit={charLimit}
                 experimentId={id}
                 key={story.storyId}
                 reporterHandle={reporterHandle}
                 story={story}
+                xHandle={xLink.handle}
                 xLinked={xLink.linked}
               />
             ))}

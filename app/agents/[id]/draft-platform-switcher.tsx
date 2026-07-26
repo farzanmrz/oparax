@@ -16,14 +16,11 @@ import twitterText from "twitter-text";
 import { Badge } from "@/components/ui/badge";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform } from "@/lib/agent/desk-config";
 import type { FeedStory } from "@/lib/agent/feed-query";
-import { formatCost } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CouncilDialog } from "./council-dialog";
 import { DraftEditDialog } from "./draft-edit-dialog";
 import { DraftHistoryDialog } from "./draft-history-dialog";
 import { PostToXControl } from "./post-to-x-control";
-
-const WEIGHTED_LIMIT = 280;
 
 const PLATFORM_LABELS: Record<Platform, string> = {
   x: "X",
@@ -47,9 +44,17 @@ function defaultPlatform(winners: FeedStory["winners"]): Platform {
  *  (`NON_X_PLATFORM_CHAR_LIMITS`) is the reasonable substitute (documented in
  *  task-25-report.md; the brief explicitly allows this or omitting the counter for non-X
  *  platforms — kept, since a counter is more useful than none). */
-function CharCounter({ platform, text }: { platform: Platform; text: string }) {
+function CharCounter({
+  platform,
+  text,
+  xLimit,
+}: {
+  platform: Platform;
+  text: string;
+  xLimit: number;
+}) {
   const length = platform === "x" ? twitterText.parseTweet(text).weightedLength : [...text].length;
-  const limit = platform === "x" ? WEIGHTED_LIMIT : NON_X_PLATFORM_CHAR_LIMITS[platform];
+  const limit = platform === "x" ? xLimit : NON_X_PLATFORM_CHAR_LIMITS[platform];
   const overLimit = length > limit;
   const nearLimit = !overLimit && length / limit > 0.9;
   return (
@@ -67,10 +72,14 @@ function CharCounter({ platform, text }: { platform: Platform; text: string }) {
 export function DraftPlatformSwitcher({
   story,
   experimentId,
+  charLimit,
   xLinked,
 }: {
   story: FeedStory;
   experimentId: string;
+  /** The desk's X character ceiling — 280, or 25,000 when the reporter's own corpus proves a
+   *  premium account (an over-280 post exists). Inferred in page.tsx, never asked for. */
+  charLimit: number;
   xLinked: boolean;
 }) {
   const platforms = Object.keys(story.winners) as Platform[];
@@ -87,27 +96,33 @@ export function DraftPlatformSwitcher({
 
   return (
     <>
-      {/* A toggle group, not tabs — aria-pressed (not role="tab"/"tablist") since there's no
-          arrow-key roving-focus behavior implemented; role="tab" without it would promise
-          keyboard behavior this doesn't have. */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {platforms.map((platform) => (
-          <Badge
-            asChild
-            className={cn("font-mono", platform !== activePlatform && "cursor-pointer opacity-60")}
-            key={platform}
-            variant="secondary"
-          >
-            <button
-              aria-pressed={platform === activePlatform}
-              onClick={() => setSelected(platform)}
-              type="button"
+      {/* The pill row only earns its pixels when there is genuinely a choice — with one
+          platform live (X, today) a single lonely pill read as a stray duplicate of the
+          header's platform chip. A toggle group, not tabs — aria-pressed (not role="tab")
+          since there's no arrow-key roving-focus behavior implemented. */}
+      {platforms.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {platforms.map((platform) => (
+            <Badge
+              asChild
+              className={cn(
+                "font-mono",
+                platform !== activePlatform && "cursor-pointer opacity-60",
+              )}
+              key={platform}
+              variant="secondary"
             >
-              {PLATFORM_LABELS[platform]}
-            </button>
-          </Badge>
-        ))}
-      </div>
+              <button
+                aria-pressed={platform === activePlatform}
+                onClick={() => setSelected(platform)}
+                type="button"
+              >
+                {PLATFORM_LABELS[platform]}
+              </button>
+            </Badge>
+          ))}
+        </div>
+      ) : null}
       <p className="text-sm whitespace-pre-wrap">{winner.text}</p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -117,17 +132,16 @@ export function DraftPlatformSwitcher({
             postDraftId={winner.postDraftId}
           />
           <DraftHistoryDialog winningPostDraftId={winner.postDraftId} />
+          {/* The model-count/cost badge is gone from the card — that breakdown lives in the
+              council dialog behind the info button, where someone actually asking for it
+              looks. */}
           {sourcePost ? (
             <CouncilDialog experimentId={experimentId} sourcePostId={sourcePost.id} />
           ) : null}
-          <Badge className="font-mono" variant="secondary">
-            {story.council.memberCount} {story.council.memberCount === 1 ? "model" : "models"} ·{" "}
-            {formatCost(story.council.totalCostUsd)}
-          </Badge>
         </div>
         {activePlatform !== "x" ? (
           <div className="flex items-center gap-2">
-            <CharCounter platform={activePlatform} text={winner.text} />
+            <CharCounter platform={activePlatform} text={winner.text} xLimit={charLimit} />
             <span className="text-sm text-muted-foreground">Drafted — not published</span>
           </div>
         ) : posted ? (
@@ -147,8 +161,9 @@ export function DraftPlatformSwitcher({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <CharCounter platform="x" text={winner.text} />
+            <CharCounter platform="x" text={winner.text} xLimit={charLimit} />
             <PostToXControl
+              charLimit={charLimit}
               draftText={winner.text}
               postDraftId={winner.postDraftId}
               xLinked={xLinked}

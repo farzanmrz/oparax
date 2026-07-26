@@ -59,9 +59,10 @@ async function getCachedTweet(id: string): Promise<Tweet | undefined> {
   }
 }
 
-/** The provenance mark, far-left in every source header. One glyph per platform the product
- *  can ingest from — X today; a website glyph joins when website sources leave dormancy. */
-function SourceChip({ kind }: { kind: "x" | "website" }) {
+/** The provenance mark on every card header's far right — one glyph per platform the product
+ *  can ingest from (X today; a website glyph joins when website sources leave dormancy).
+ *  Exported: the draft card mirrors the same header template (see feed-item.tsx). */
+export function SourceChip({ kind }: { kind: "x" | "website" }) {
   return (
     <span
       aria-label={kind === "x" ? "Source: X" : "Source: website"}
@@ -90,31 +91,26 @@ function SourceChip({ kind }: { kind: "x" | "website" }) {
   );
 }
 
-/** Fixed-height thumbnail strip — media is signposted, not consumed here. Each thumbnail
- *  clicks through to the post on X. Videos get a play glyph over their poster frame. */
-function MediaStrip({ tweet, href }: { tweet: Tweet; href: string }) {
+/** Fixed-height thumbnail strip — media is signposted, not consumed here. Deliberately NOT a
+ *  link: the card's one outbound affordance is the explicit "View on X" footer button, so an
+ *  image click can't silently teleport the reporter off the feed. Videos get a play glyph
+ *  over their poster frame. */
+function MediaStrip({ tweet }: { tweet: Tweet }) {
   const media = tweet.mediaDetails ?? [];
   if (media.length === 0) return null;
   const shown = media.slice(0, 4);
   return (
     <div className={styles.mediaStrip}>
       {shown.map((m) => (
-        <a
-          className={styles.thumb}
-          href={href}
-          key={m.media_url_https}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          {/* biome-ignore lint/performance/noImgElement: X CDN thumbnails at fixed strip
-              height — next/image's optimizer would only proxy them. */}
+        <span className={styles.thumb} key={m.media_url_https}>
+          {/* biome-ignore lint/performance/noImgElement: X CDN thumbnails at fixed strip height — next/image would only proxy them */}
           <img alt="" src={`${m.media_url_https}?name=small`} />
           {m.type !== "photo" ? (
             <span aria-hidden="true" className={styles.playGlyph}>
               ▶
             </span>
           ) : null}
-        </a>
+        </span>
       ))}
     </div>
   );
@@ -181,10 +177,36 @@ export async function SourceTweet({
           )}
           <SourceChip kind={sourcePost.xPostId ? "x" : "website"} />
         </div>
-        <ExpandableBody>
+        <ExpandableBody
+          media={fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : undefined}
+        >
           <TweetBody tweet={enriched} />
         </ExpandableBody>
-        {fetched ? <MediaStrip href={enriched.url} tweet={fetched} /> : null}
+        {missing ? null : (
+          <div className={styles.footer}>
+            <a
+              className={styles.footerLink}
+              href={enriched.url}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <span className="sr-only">View this post on X</span>
+              <svg
+                aria-hidden="true"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                width="14"
+              >
+                <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              </svg>
+            </a>
+          </div>
+        )}
       </TweetContainer>
     </div>
   );

@@ -72,13 +72,15 @@ export function SourcesCard({
   deskId,
   trackedHandles,
   websites,
-  autoPostMaster,
   autoPostSources,
 }: {
   readonly deskId: string;
   readonly trackedHandles: readonly string[];
   readonly websites: readonly string[];
-  readonly autoPostMaster: boolean;
+  /** Retained only so `page.tsx` (owned by another task) keeps typechecking against
+   *  `desk.auto_post_master` — the group-level "Auto-post all" control this fed was removed
+   *  per owner direction as a duplicate of the per-group toggle below. */
+  readonly autoPostMaster?: boolean;
   readonly autoPostSources: { readonly x: boolean; readonly website: boolean };
 }) {
   const [handleInput, setHandleInput] = useState("");
@@ -201,20 +203,8 @@ export function SourcesCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-3">
+      <CardHeader>
         <CardTitle>Sources</CardTitle>
-        {/* Greyed per AUTO_POST_ENABLED — same opacity + "Coming soon" treatment the websites
-            subsection below uses, not a special container (AGENTS.md's uniform-fields rule). */}
-        <div className="flex items-center gap-2 opacity-50">
-          <span className="text-xs text-muted-foreground">Auto-post all</span>
-          <Badge variant="secondary">Coming soon</Badge>
-          <Switch
-            aria-label="Auto-post all sources"
-            checked={autoPostMaster}
-            disabled={autoPostDisabled}
-            onCheckedChange={(checked) => requestAutoPostChange("master", checked)}
-          />
-        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {confirmTarget ? (
@@ -251,9 +241,18 @@ export function SourcesCard({
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-xs font-semibold text-muted-foreground">
-              𝕏 X accounts ({trackedHandles.length}/{MAX_TRACKED_HANDLES})
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold text-muted-foreground">
+                X accounts (
+                <span className={atHandleLimit ? "text-destructive" : undefined}>
+                  {trackedHandles.length}/{MAX_TRACKED_HANDLES}
+                </span>
+                )
+              </h3>
+              {atHandleLimit ? (
+                <span className="text-xs text-destructive">Source limit reached</span>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2 opacity-50">
               <span className="text-xs text-muted-foreground">Auto-post</span>
               <Badge variant="secondary">Coming soon</Badge>

@@ -21,6 +21,7 @@ import {
 } from "./deepseek-draft-config";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
 import { resolveGatewayCost } from "./gateway-cost";
+import { reasoningTraceState } from "./reasoning-trace";
 
 // Probe-verified (2026-07-22, this branch): a top-level `reasoning: "low"` on gpt-5-nano
 // returns 641 chars of readable trace. Do NOT add `providerOptions.openai.reasoningSummary` —
@@ -76,8 +77,13 @@ export type CouncilResult = {
   degraded: boolean; // true when a family failed and was dropped
 };
 
-/** ONE helper that builds every `CouncilCall` — the only place `reasoningWithheldByProvider`
- *  gets stamped, so it can never be missed on an element built by hand elsewhere. */
+/** ONE helper that builds every `CouncilCall` — the only place in THIS file
+ *  `reasoningWithheldByProvider` gets stamped, so it can never be missed on an element built by
+ *  hand elsewhere (`cluster.ts`'s `buildClusterCall` mirrors it for the clustering stage).
+ *  "Withheld" is derived, not assumed: a null trace only means the PROVIDER held it back when the
+ *  call actually spent reasoning tokens — the judge below runs at `reasoning: "none"` and has no
+ *  trace by design, which is a different fact and must not be stamped as a provider failing to
+ *  expose one (`reasoning-trace.ts`). */
 async function toCouncilCall(params: {
   kind: CouncilCall["kind"];
   stage: CouncilCall["stage"];
@@ -98,7 +104,7 @@ async function toCouncilCall(params: {
     model: params.model,
     output: params.output,
     reasoning: params.reasoning,
-    reasoningWithheldByProvider: params.reasoning == null,
+    reasoningWithheldByProvider: reasoningTraceState(params.reasoning, params.usage) === "withheld",
     usage: params.usage,
     costUsd,
     generationId,

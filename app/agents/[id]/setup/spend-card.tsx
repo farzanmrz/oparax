@@ -36,8 +36,8 @@ export function SpendCard({ windows }: { readonly windows: Record<SpendPeriod, S
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between gap-3">
-        <CardTitle>Spend</CardTitle>
         <div className="flex items-center gap-3">
+          <CardTitle>Spend</CardTitle>
           <Select onValueChange={(value) => setPeriod(value as SpendPeriod)} value={period}>
             <SelectTrigger className="text-xs" size="sm">
               <SelectValue />
@@ -50,10 +50,10 @@ export function SpendCard({ windows }: { readonly windows: Record<SpendPeriod, S
               ))}
             </SelectContent>
           </Select>
-          <span className="font-mono text-sm font-semibold tabular-nums">
-            {formatCost(active.totalUsd)}
-          </span>
         </div>
+        <span className="font-mono text-sm font-semibold tabular-nums">
+          {formatCost(active.totalUsd)}
+        </span>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-xs text-muted-foreground">Across all your agents.</p>

@@ -9,7 +9,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import styles from "./source-tweet.module.css";
 
-export function ExpandableBody({ children }: { children: ReactNode }) {
+export function ExpandableBody({ children, media }: { children: ReactNode; media?: ReactNode }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
@@ -19,11 +19,17 @@ export function ExpandableBody({ children }: { children: ReactNode }) {
     if (el) setOverflowing(el.scrollHeight > el.clientHeight + 1);
   }, []);
 
+  // Media rides the SAME reveal as the clamped text: while "Show more" is showing, the
+  // thumbnails are part of what's folded away — a clamped card showing its images anyway
+  // defeats the height cap the clamp exists for.
+  const showMedia = media != null && (expanded || !overflowing);
+
   return (
     <>
       <div className={expanded ? undefined : styles.clamp} ref={bodyRef}>
         {children}
       </div>
+      {showMedia ? media : null}
       {overflowing ? (
         <button
           className={styles.expandToggle}

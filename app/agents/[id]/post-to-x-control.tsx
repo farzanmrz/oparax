@@ -26,15 +26,19 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { postDraftToX } from "@/lib/x/actions";
 
-const WEIGHTED_LIMIT = 280;
-
 export function PostToXControl({
   postDraftId,
   draftText,
+  charLimit,
   xLinked,
 }: {
   postDraftId: string;
   draftText: string;
+  /** The desk's X ceiling — 280, or 25,000 when the reporter's corpus proves premium
+   *  (inferred in page.tsx). Also why the disable check below uses this rather than
+   *  twitter-text's `parsed.valid`, which is hardwired to 280 and would wrongly block a
+   *  premium-length draft. */
+  charLimit: number;
   xLinked: boolean;
 }): JSX.Element {
   const pathname = usePathname();
@@ -53,8 +57,8 @@ export function PostToXControl({
   }
 
   const parsed = twitterText.parseTweet(draftText);
-  const overLimit = parsed.weightedLength > WEIGHTED_LIMIT;
-  const nearLimit = !overLimit && parsed.weightedLength / WEIGHTED_LIMIT > 0.9;
+  const overLimit = parsed.weightedLength > charLimit;
+  const nearLimit = !overLimit && parsed.weightedLength / charLimit > 0.9;
 
   function handleConfirm() {
     setError(null);
@@ -88,9 +92,9 @@ export function PostToXControl({
               overLimit ? "text-destructive" : nearLimit ? "text-warning" : "text-muted-foreground",
             )}
           >
-            {parsed.weightedLength} / {WEIGHTED_LIMIT}
+            {parsed.weightedLength} / {charLimit}
           </span>
-          <Button disabled={isPending || !parsed.valid} onClick={handleConfirm} size="sm">
+          <Button disabled={isPending || overLimit} onClick={handleConfirm} size="sm">
             {isPending ? "Posting…" : "Post to X"}
           </Button>
           <Button

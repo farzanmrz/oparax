@@ -14,6 +14,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/lib/supabase/database.types";
+import { type ReasoningTraceState, reasoningTraceState } from "./reasoning-trace";
 import { sumCosts } from "./usage-cost";
 
 type Client = SupabaseClient<Database>;
@@ -23,11 +24,14 @@ const judgeVerdictShape = z.object({
   rationale: z.string(),
 });
 
-function reasoningWithheld(usage: unknown): boolean {
-  return (
-    (usage as { reasoningWithheldByProvider?: unknown } | null)?.reasoningWithheldByProvider ===
-    true
-  );
+// Deliberately NOT read off the stored `usage.reasoningWithheldByProvider` flag. Until this
+// slice that flag was written as a restatement of `reasoning == null`, so every traceless call
+// carried it — including the judge, which runs at `reasoning: "none"` and has no trace by
+// design. Classifying off the reasoning-token count instead (`reasoning-trace.ts`) reads the
+// same distinction out of rows already written, so history stops being described wrongly rather
+// than only new rows getting it right.
+function traceStateOf(call: NonNullable<ModelCallEmbed>): ReasoningTraceState {
+  return reasoningTraceState(call.reasoning, call.usage);
 }
 
 export type CouncilMember = {
@@ -35,7 +39,7 @@ export type CouncilMember = {
   model: string;
   output: string;
   reasoning: string | null;
-  reasoningWithheldByProvider: boolean;
+  reasoningState: ReasoningTraceState;
   costUsd: number | null;
   isWinner: boolean;
 };
@@ -43,7 +47,7 @@ export type CouncilMember = {
 export type CouncilJudge = {
   model: string;
   reasoning: string | null;
-  reasoningWithheldByProvider: boolean;
+  reasoningState: ReasoningTraceState;
   costUsd: number | null;
   winnerModel: string | null;
   rationale: string | null;
@@ -84,7 +88,7 @@ function toMember(row: DraftRow): CouncilMember | null {
     model: row.model_calls.model,
     output: row.model_calls.output ?? "",
     reasoning: row.model_calls.reasoning,
-    reasoningWithheldByProvider: reasoningWithheld(row.model_calls.usage),
+    reasoningState: traceStateOf(row.model_calls),
     costUsd: row.model_calls.cost_usd,
     isWinner: row.is_winner,
   };
@@ -105,7 +109,7 @@ function buildGroup(candidateRows: DraftRow[], judgeRow: DraftRow | undefined): 
     judge = {
       model: judgeRow.model_calls.model,
       reasoning: judgeRow.model_calls.reasoning,
-      reasoningWithheldByProvider: reasoningWithheld(judgeRow.model_calls.usage),
+      reasoningState: traceStateOf(judgeRow.model_calls),
       costUsd: judgeRow.model_calls.cost_usd,
       winnerModel,
       rationale: parsed.success ? parsed.data.rationale : null,
