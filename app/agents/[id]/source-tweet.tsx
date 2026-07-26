@@ -24,7 +24,8 @@
 // draft. Media renders as a fixed-height thumbnail strip, never full-size: the job is "know
 // media exists", consumption happens on X. Premium bold/italic formatting is NOT in the
 // syndication payload (nor the v2 API) — the text arrives complete but plain for every
-// embed on the internet, not just ours; the click-through shows the real thing.
+// embed on the internet, not just ours; the click-through shows the real thing. A long
+// ("note") post arrives TRUNCATED for the same reason — see the `truncated` comment below.
 //
 // TWO SOURCES, deliberately. The syndication API (free, unauthenticated, NOT our metered X
 // tier) serves the live post — avatar, media. Our own `source_posts` row is the fallback AND
@@ -136,11 +137,19 @@ export async function SourceTweet({
       handle: sourcePost.authorHandle ?? "source",
       name: sourcePost.authorName,
     });
-  // react-tweet's own TweetBody appends a second "Show more" — an anchor straight to X —
-  // whenever `note_tweet` is set (a long/premium post). Two controls with the same label, one
-  // expanding in place and one navigating away, is the bug the owner hit. Ours is the one that
-  // belongs on a feed card, so the marker is dropped before enriching; the header's source
-  // link still reaches the original.
+  // `note_tweet` marks a long ("note") post whose body X TRUNCATES — and the marker is the ONLY
+  // thing it carries: measured live on @BarcaUniversal 2081154657573883993, the payload ends at
+  // 294 chars on a dangling "• " and `note_tweet` is `{ id }` with the missing text nowhere in
+  // the response. Our own stored copy is NOT fuller — `source_posts.text` for that post is the
+  // identical 294-char string (the filtered stream doesn't request the note-tweet field either),
+  // so rendering `sourcePost.text` instead would trade react-tweet's index-based entity
+  // linkification for exactly zero extra words. The full body exists only on X.
+  //
+  // So the marker is dropped before enriching — react-tweet's TweetBody would otherwise append
+  // its own "Show more" anchor beside our in-place expander's identical label — and the
+  // truncation is re-surfaced honestly instead: a truncated card gets ONE control, a link to the
+  // complete post, rather than an expander that would claim to reveal everything.
+  const truncated = Boolean(fetched?.note_tweet);
   const enriched = enrichTweet({ ...tweet, note_tweet: undefined });
 
   const hasRealAvatar = !tweet.user.profile_image_url_https.startsWith("data:");
@@ -212,7 +221,7 @@ export async function SourceTweet({
           <SourceChip kind={sourcePost.xPostId ? "x" : "website"} />
         </div>
         {/* Text and media share ONE height budget inside the clamp — see expandable-body.tsx. */}
-        <ExpandableBody>
+        <ExpandableBody truncatedHref={truncated ? enriched.url : undefined}>
           <TweetBody tweet={enriched} />
           {fetched?.mediaDetails?.length ? <MediaStrip tweet={fetched} /> : null}
         </ExpandableBody>

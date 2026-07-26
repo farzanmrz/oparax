@@ -11,10 +11,24 @@
 // card twice as tall anyway. Overflow is measured after mount (scrollHeight vs clientHeight),
 // re-measured when images finish loading — an <img> has zero height until then, so a
 // measurement taken at mount alone would miss every media post.
+//
+// One case the clamp CANNOT serve: a long ("note") post, whose body X already truncated before
+// it reached us (see source-tweet.tsx). There is no hidden remainder to reveal, so expanding in
+// place would show a body that stops mid-sentence while the control claimed everything was
+// shown. Those cards get `truncatedHref` and exactly one control — a link to the complete post
+// on X — in the toggle's slot.
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./source-tweet.module.css";
 
-export function ExpandableBody({ children }: { children: ReactNode }) {
+export function ExpandableBody({
+  children,
+  truncatedHref,
+}: {
+  children: ReactNode;
+  /** The post's X permalink, set ONLY when X served a truncated body. Its presence replaces the
+   *  in-place expander outright — never both, and never two controls sharing a label. */
+  truncatedHref?: string;
+}) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
@@ -37,6 +51,22 @@ export function ExpandableBody({ children }: { children: ReactNode }) {
     }
     return () => observer.disconnect();
   }, [measure]);
+
+  if (truncatedHref) {
+    return (
+      <>
+        <div className={styles.clamp}>{children}</div>
+        <a
+          className={styles.readFull}
+          href={truncatedHref}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          Read full post on X
+        </a>
+      </>
+    );
+  }
 
   return (
     <>
