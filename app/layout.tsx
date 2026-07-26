@@ -3,16 +3,24 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Source_Sans_3 } from "next/font/google";
+import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-// Source Sans 3 is the design system's only font family (--font-sans).
-const sourceSans = Source_Sans_3({
-  variable: "--font-source-sans",
+// Hanken Grotesk is the design system's UI font family (--font-sans).
+const hankenGrotesk = Hanken_Grotesk({
+  variable: "--font-hanken-grotesk",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
+});
+
+// JetBrains Mono backs --font-mono: handles, counts, timestamps, money.
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -32,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark bg-background">
-      <body className={`${sourceSans.variable} antialiased`}>
+      <body className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
         <SpeedInsights />

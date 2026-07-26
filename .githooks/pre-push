@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -u
+
+remote_name="${1:-remote}"
+
+is_protected_ref() {
+  case "$1" in
+    refs/heads/main | refs/heads/dev | refs/heads/beta) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_zero_oid() {
+  local oid="$1"
+
+  case "$oid" in
+    "" | *[!0]*) return 1 ;;
+  esac
+
+  [[ ${#oid} -eq 40 || ${#oid} -eq 64 ]]
+}
+
+blocked=0
+
+# pre-push input: <local-ref> <local-oid> <remote-ref> <remote-oid>
+while read -r local_ref local_oid remote_ref remote_oid; do
+  is_protected_ref "$remote_ref" || continue
+
+  if is_zero_oid "$local_oid"; then
+    printf 'Protected branch push blocked: deleting %s on %s is not allowed.\n' "$remote_ref" "$remote_name" >&2
+    blocked=1
+    continue
+  fi
+
+  # Creating a missing protected branch is allowed. Subsequent updates must be
+  # demonstrably fast-forward.
+  is_zero_oid "$remote_oid" && continue
+
+  if ! git cat-file -e "${remote_oid}^{commit}" 2>/dev/null ||
+    ! git cat-file -e "${local_oid}^{commit}" 2>/dev/null; then
+    printf 'Protected branch push blocked: cannot prove that %s on %s is a fast-forward. Fetch the remote branch and retry.\n' "$remote_ref" "$remote_name" >&2
+    blocked=1
+    continue
+  fi
+
+  if ! git merge-base --is-ancestor "$remote_oid" "$local_oid"; then
+    printf 'Protected branch push blocked: %s on %s only accepts fast-forward updates.\n' "$remote_ref" "$remote_name" >&2
+    blocked=1
+  fi
+done
+
+exit "$blocked"

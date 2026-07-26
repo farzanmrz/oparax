@@ -1,80 +1,144 @@
 # Oparax
 
-AI news desk for reporters: monitors their beat across X and social platforms, catches stories as they break, drafts a post per platform in the reporter's voice, and — once trusted — posts autonomously. Today: password-only Supabase auth → an agent listing, a create-agent chat (an AI SDK agent behind `/api/chat`, Supabase-authed, streaming), and settings.
+AI news desk for reporters: monitors their beat across X, catches stories as they break, drafts a post in the reporter's voice, and — once trusted — posts autonomously.
+
+**The shipped flow:** connect X → tracked sources scanned → drafted in the reporter's voice → Slack notification → the reporter clicks Post to X. Around it: password-only Supabase auth, a feed-first agent workspace (site header + agent switcher + account menu), each agent's Feed / Voice / Setup sections, feed cards with in-place draft editing and one-click council provenance, live voice extraction + an editable per-rule voice guide, per-desk Slack delivery with a legacy-webhook fallback, a create-agent form gated on Connect X, and settings.
+
+Capabilities built but deliberately switched off — multi-platform drafting, clustering, email delivery, auto-post, website sources — are listed under "Dormant by design" below. **Treat them as decisions, not gaps.**
 
 ## Stack
 
-| Layer | Tech | Version |
-| --- | --- | --- |
-| Framework | Next.js (App Router) | 16.2 |
-| UI | React | 19.2 |
-| Language | TypeScript strict (`@/*` → repo root) | 6 |
-| Agent | AI SDK `ToolLoopAgent` (DeepSeek via AI Gateway) behind `POST /api/chat` | — |
-| AI SDK | `ai` + `@ai-sdk/react` | 7 / 4 |
-| Styling | Tailwind + stock shadcn + vendored ai-elements | 4 |
-| Auth + DB | Supabase (auth + owner-scoped app tables — `agents`, `runs`, `drafts`, `x_accounts`) | — |
-| Tooling | pnpm (a preinstall guard blocks npm/yarn) + Biome | — |
-| Host | Vercel — oparax.ai, `dev` → `main` promote | — |
+Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, session replay) · pnpm (a preinstall guard hard-fails npm/yarn) + Biome. Versions live in `package.json` — read it rather than trusting a number here.
+
+**Host:** Vercel Git integration — `dev` preview; `beta` → beta.oparax.ai; `main` → oparax.ai; promote strictly `dev` → `beta` → `main`.
 
 ### Commands
 
-```bash
-pnpm dev        # Next.js (localhost:3000)
-pnpm build      # automated gate — compiles /api/chat but never calls it, so a broken agent still builds green
-pnpm lint       # Biome check
-pnpm lint:fix   # Biome check --write
-pnpm format     # Biome format --write
-```
+Ordinary `package.json` scripts (`pnpm dev` serves :3000). Never run `pnpm format` / `pnpm lint:fix` by hand — see Formatting under Conventions. The one non-obvious gate: **`pnpm build` compiles `/api/ingest` + `/api/email/inbound` but never calls them, so a broken pipeline still builds green.**
 
 ### Environment
 
-`.env.local`, eight keys (table below); Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
+`.env.local`, eighteen keys (table below), plus `SENTRY_AUTH_TOKEN` in its own gitignored `.env.sentry-build-plugin`; Supabase dashboard-side config (unrelated to the other two keys): `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the `lib/supabase/` clients |
-| `XAI_API_KEY` | `lib/agent/xai.ts` — the Grok scan (chat onboarding + the headless scan runner) |
+| `XAI_API_KEY` | `lib/agent/xai.ts` — Grok client for the `oparax_x_search` tool executor; **fully dead code** — its only caller, the `/api/chat` create-desk assistant, was deleted in the create-agent v2 continuation, so nothing in the app reaches this path today |
 | `AI_GATEWAY_API_KEY` | AI Gateway for the DeepSeek chat model (local dev; deployed = Vercel OIDC) |
-| `CRON_SECRET` | `app/api/cron/tick/route.ts` — fail-closed `Bearer` auth for the per-minute dispatcher |
-| `SUPABASE_SECRET_KEY` | `lib/supabase/admin.ts` — the service-role dispatcher client |
+| `CRON_SECRET` | **retired** — the per-minute cron dispatcher (`app/api/cron/tick`) was deleted with the retired scan/draft pipeline; the ingestion worker replaced polling, so no code consumes this key now |
+| `SUPABASE_SECRET_KEY` | `lib/supabase/admin.ts` — the service-role client (the draft pipeline, the `[id]` desk post-outcome stamps, `lib/x/`'s token store, and the voice-extraction ledger) |
 | `X_CLIENT_ID` + `X_CLIENT_SECRET` | `lib/x/api.ts` — X OAuth2 confidential-client credentials (link flow + posting) |
+| `INGEST_SECRET` | `app/api/ingest/route.ts` — fail-closed `Bearer` auth on the delivery interface (the ingestion forwarder's entry point); Railway-side parity is a Wave 4 deploy requirement (T4.3), not yet proven live |
+| `SLACK_CLIENT_ID` + `SLACK_CLIENT_SECRET` + `SLACK_SIGNING_SECRET` | `lib/slack/*` + `app/auth/slack/*` — per-desk Slack OAuth (owner-provisioned, workspace `oparax`) and the interactions route's raw-body HMAC (live-verified against Slack's docs: `v0:{ts}:{rawBody}`, SHA-256, 5-minute replay window) |
+| `SLACK_WEBHOOK_URL` | `lib/notify/slack.ts` — **legacy ops fallback only** as of Slice 5: the hand-rolled Slack app (`SLACK_CLIENT_*` above) is now the primary per-desk delivery path; this workspace-wide incoming webhook (verified working, slices 67/68) stays as a non-per-desk backstop |
+| `RESEND_API_KEY` + `RESEND_FROM` + `RESEND_REPLY_DOMAIN` | `lib/notify/email.ts` — Resend REST auth, sender identity, and the plus-addressed reply domain that routes a reply back to its draft. **Documented, not yet provisioned** — absent from `.env.local` and Vercel as of Slice 5; the email leg is also switched off behind `EMAIL_DELIVERY_ENABLED` and greyed in Setup, so provisioning Resend alone will not turn draft emails back on |
+| `RESEND_WEBHOOK_SECRET` | `app/api/email/inbound/route.ts` — Svix signature verification (raw body, fail-closed) on inbound replies. Same not-yet-provisioned status as the `RESEND_*` row above |
+| `NOTIFY_EMAIL_TO` | `lib/agent/draft-pipeline.ts` — the reporter's address the draft email goes to (per-desk delivery config is not built) |
+| `SENTRY_AUTH_TOKEN` | **not in `.env.local`** — lives in the gitignored `.env.sentry-build-plugin` (the Sentry wizard's own convention). Build-time only: `withSentryConfig` uses it to upload source maps, so without it a deployed stack trace is minified but nothing breaks. Needs adding to Vercel for production source maps. The **DSN is deliberately NOT an env var** — it is public by design (Sentry ships it to every browser), so it is inlined in `lib/observability/sentry-shared.ts` rather than becoming a key that fails a build when absent |
 
 ## Code map
 
-- `app/` — routes: landing, auth pages, `/auth/*` callbacks (including `app/auth/x/*`, the X OAuth link + callback), `api/chat` (the agent endpoint), `api/cron/` (the per-minute scan dispatcher), `agents/` shell (listing · `new/` chat · `[id]` desk dashboard, incl. the Drafts tab's Connect-X + post-to-X controls · `settings/`).
-- `components/`
-    - `components/ui/` — stock shadcn kit (+ `components/hooks/`, its vendored hooks).
-    - `components/ai-elements/` — chat-surface kit.
-    - `components/app-sidebar.tsx`, `components/sidebar-peek.tsx`, `components/auth-shell.tsx`, `components/logo.tsx` — the bespoke shared components (app-shell chrome: sidebar + hover-peek; auth shell; brand mark).
-- `lib/agent/` — the desk agent: model + tools + the save-approval gate; the headless scan runner + draft runner behind the cron dispatcher; `next-run.ts`'s timezone fire math; plus its other pure modules.
-- `lib/x/` — the X integration — `api.ts` (raw-fetch OAuth2 + post client), `store.ts` (service-role token store for `x_accounts`; tokens never leave this dir), `link-state.ts` (`getXLinkState()`), `actions.ts` (`postDraftToX`/`unlinkXAccount`).
-- `lib/sysprompts/` — the agent's system prompts, as markdown.
-- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the cron dispatcher, the `[id]` desk actions, and `lib/x/`'s token store + post/unlink actions) + auth server actions + desk render helpers (`lib/agents.ts`).
-- `supabase/migrations/` — the SQL record of every applied migration (applied via the Supabase MCP, mirrored here); today's app schema is `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-select; `runs` is write-only by the service-role dispatcher, `drafts` also owner-insertable and now carries post-outcome columns — `posted_at`, `posted_tweet_id`, `posted_url` — stamped by the service-role client after an RLS ownership check; `x_accounts` has RLS enabled with zero policies, deny-all — read/written only by the service-role client).
-- `docs/` — `pricing-cogs.md` is Farzan's own parked notes, not project instruction (ignore unless he points you at it); `test-handles.md` is a paste-ready handle set for manually testing the chat.
-- `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/`.
-- `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands. Native `x-check`, `x-recheck`, `x-dm`, `x-stat`, and `lean-log` directories are separate Codex workflow skills, outside Claude Code's orchestration and push scope; Claude Code must ignore them and must not mirror or include them when pushing its own work. These five skills always execute inline in the current Codex task and must never delegate to a custom agent; select the desired model in the task before invoking them.
+- `app/` — routes: landing, auth pages, `/auth/*` callbacks (`app/auth/x/*` the X OAuth link + callback; `app/auth/slack/link` + `app/auth/slack/callback` the per-desk Slack OAuth install, both CSRF-nonce-cookie-protected like X's), `api/ingest` (**the delivery interface** — the Bearer-authed entry point a source post enters through, `x`/`website`-discriminated; the ingestion worker POSTs here), `api/email/inbound` (the Svix-verified Resend webhook turning an emailed reply into a draft correction), `api/slack/interactions` (the Slack interactive-button webhook — raw-body HMAC, fail-closed, `after()`-deferred so the 3s ack deadline is met before the slow X-post work runs), `agents/` shell (feed-first `/agents` redirect · `new/` create-agent form gated on Connect X — no typed handle field, `createDesk` derives `reporter_handle` from the linked `x_accounts` row and stamps `reporter_verified_at` at insert — with a live streaming extraction-progress view once created · `[id]` desk with its Feed / Voice / Setup sections — the Feed's story cards carry Connect-X + post-to-X + edit-in-place + one-click council expansion (the platform pill switcher renders whatever `PLATFORMS` lists — X only today); Voice carries a real per-rule editor, a live extraction-progress view when a run is mid-flight, and a retry; Setup carries live tracked X handles + real per-desk Slack Connections, with websites, auto-post, email, and the Notifications matrix greyed (see Dormant by design) · `settings/`). The per-minute `api/cron/` scan dispatcher was deleted with the retired scan/draft pipeline; `api/chat` (the create-desk assistant's endpoint) was deleted in the create-agent v2 continuation.
+- `components/` — `ui/` is the stock shadcn kit (+ `hooks/`, its vendored hooks) and `ai-elements/` the chat-surface kit; everything at the top level is bespoke app-shell chrome. Both kits are vendored — **wrap or extend, never hand-edit in place**: a re-add from the registry silently overwrites it (`.claude/rules/components.md`).
+- `lib/agent/` — `cluster.ts` (story clustering — attach-or-create against a desk's own recent stories, the 4-leg `generateObject` recipe, atomic per-desk claim on `story_assignments`); the multi-platform drafting council + judge and the delivery pipeline behind `/api/ingest` + `/api/email/inbound` (`draft-council-run.ts`, `draft-pipeline.ts` — clustering → per-platform `Promise.allSettled` fan-out → auto-post); `desk-config.ts` (`PLATFORMS`, `X_CHAR_LIMITS`, `NON_X_PLATFORM_CHAR_LIMITS`); plus its other pure modules. `tools.ts` (`save_agent`) and `xai.ts` (the `oparax_x_search` Grok executor) are dead code — their only caller, the `/api/chat` create-desk assistant, was deleted in the create-agent v2 continuation. (The old headless scan runner, draft runner, cron dispatcher, and `next-run.ts` fire math were all deleted — all deleted with the retired scan/draft pipeline.)
+- `lib/x/` — the X integration — `api.ts` (raw-fetch OAuth2 + post client), `store.ts` (service-role token store for `x_accounts`; tokens never leave this dir), `link-state.ts` (`getXLinkState()`), `actions.ts` (`postDraftToX` for a browser caller + `postDraftToXForOwner`, the session-independent core both `postDraftToX` and the auto-post path call, + `unlinkXAccount`).
+- `lib/slack/` — the hand-rolled per-desk Slack integration (mirrors `lib/x/`'s shape; Vercel Connect was evaluated and rejected — it could not carry the per-desk token model this needs): `api.ts` (raw-fetch Web API + OAuth2 + `verifySlackSignature`, the raw-body HMAC scheme), `store.ts` (service-role token store for `slack_accounts`/`slack_delivery_receipts`; tokens never leave this dir), `link-state.ts` (`getSlackLinkState()` + the shared `ownsDesk()` ownership proof), `actions.ts` (`unlinkSlack`/`sendTestSlack`).
+- `lib/x/timeline.ts` — **the ONE designated extraction X-read**: `fetchUserTimeline` (X API v2, APP-ONLY bearer, 100 most recent ORIGINAL posts — `exclude=retweets,replies`, because a reply-heavy corpus teaches `measuredFacts` a mention rate that would open every generated draft with an @handle). Meters `usage_events` (`x_timeline_read`). Returns real `public_metrics`, so `CorpusPost.likes/reposts` carry actual engagement instead of the zeroes the previous source forced.
+- `lib/observability/sentry-shared.ts` + the four root-level Sentry files (`instrumentation.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) + `app/global-error.tsx` — error and performance monitoring. The four root files must keep those exact names and locations (Sentry's build plugin finds them by name); everything the three runtimes must agree on lives in `sentry-shared.ts` so it cannot drift three ways. Three decisions there are load-bearing and were changed from the wizard's defaults: **`tunnelRoute: "/monitoring"` is excluded from `proxy.ts`'s matcher** (the wizard's matcher caught it, which is the documented way to lose every client-side error report); **`httpBodies: []`** — a request body here routinely carries a reporter's unpublished draft, which has no place in a third-party error report; and **`tracesSampleRate` is 0.1 in production**, because the create screen polls every 1.75s for the length of an extraction and would otherwise dominate transaction volume. Error capture is unsampled regardless.
+- `lib/notify/` — draft delivery, raw `fetch` only (no vendor SDKs): `compose.ts` (the message body), `slack.ts` (`sendSlackMessage` — the workspace-wide incoming webhook, now the **legacy fallback** for a desk that hasn't linked `lib/slack/`'s per-desk app), `email.ts` (Resend send + the plus-addressed reply encoding **and its decoder** — the pair lives in one file so they cannot drift; a shared `sendEmail` transport helper backs both `sendDraftEmail` and `sendTestEmail`). Thin senders: they neither persist nor meter — `lib/agent/draft-pipeline.ts` does both.
+- `lib/voice/` — the voice pipeline: `deploy-guide.ts` (strips extractor-verification sections before a guide becomes a drafting prompt — 16.1% off every draft) and `measured-facts.ts` (computes the guide's measurable half — length/emoji/hashtag/punctuation frequencies), both ported from the gitignored `.voice-lab/`; `corpus.ts` (wraps `pullXTimeline`, adapts to `extractVoiceGuide`'s frozen `CorpusPost` input); `extraction-run.ts` (`startRun`/`recordProgress`/`finishRun` on `voice_extraction_runs`, one row per desk. `startRun` is an **atomic claim returning a boolean** — insert, and on a `23505` conflict update guarded by `.neq("status","running")` — and its callers must not spend when it returns false. That bounds one desk to ONE concurrent run, so a double-clicked Retry bills once; it is emphatically **not** the per-reporter/per-day rationing the owner deleted, and must never grow into it. `recordProgress`/`finishRun` are pure bookkeeping and refuse nobody. Progress reaches the browser by POLLING an ownership-proving server action, never Supabase Realtime — the table is deny-all RLS and a browser cannot subscribe to it); `extraction-steps.ts` (the pure stage→step mapping both watching surfaces share, so the pipeline is never described two ways); `rules.ts` (`voice_rules` CRUD + `flattenRulesToPrompt`, **the drafting input of record** — `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide's role in the system prompt; the guide blob survives as immutable audit provenance); `create-desk-extraction.ts` (`checkHandleShape` — free, an injection guard, RETURNED rather than logged because it runs before a run row exists so polling can never observe it — then `runExtractionSpendPhase`: `fetchCorpus` → streaming extraction → `voice_guides` → materialize `voice_rules`).
+- `lib/sysprompts/` — `story-cluster.md` is the clustering classifier's prompt (`generateObject` system for `lib/agent/cluster.ts`). `desk-agent.md` (the create-desk assistant's system prompt) was deleted alongside `/api/chat` in the create-agent v2 continuation.
+- `lib/` (root) — Supabase clients (typed by the generated `lib/supabase/database.types.ts`, including the service-role `lib/supabase/admin.ts`, used by every path that must write rows no user session can — the draft pipeline, the `[id]` desk post-outcome stamps, the voice-extraction ledger, and `lib/x/`'s/`lib/slack/`'s token stores + post/unlink actions) + auth server actions + desk render helpers (`lib/agents.ts`) + `lib/x/handle.ts` (the shared X-handle normalize+validate rail — every write path that persists a handle uses it) + `lib/websites.ts` (the shared website-tracking cap + jsonb-narrowing helper, mirroring `lib/x/handle.ts`'s role) + `lib/format.ts` (shared `formatCost`).
+- `supabase/migrations/` — the SQL record of every applied migration (applied via the claude.ai Supabase connector — project `oparax-chirp` / `pcgvpypzfwuchyfwdlwe`; see `.claude/rules/supabase.md`; mirrored here). **Columns and types: read `lib/supabase/database.types.ts`** — it is generated from the live database, so it is always current and the migrations never need reading for shape. What generated types can't carry is RLS, which is why the inventory below exists.
+
+| Table | What it holds | RLS shape |
+| --- | --- | --- |
+| `experiments` | a desk (the unit a reporter owns) | owner-scoped |
+| `agents`, `runs`, `drafts` | **legacy, dormant — no live reader**, left from the retired scan/draft pipeline | owner-scoped / EXISTS-join |
+| `voice_guides`, `voice_rules` | the extracted voice, keyed by `experiment_id` (one desk owns it) | EXISTS-join, select-only, no `owner_id` |
+| `stories`, `story_assignments` | clustered stories and their per-desk claim | EXISTS-join, select-only |
+| `post_drafts` | a drafted post + its post-outcome stamps | EXISTS-join (**insert policy too** — see below) |
+| `usage_events` | metering for every billable touch point | owner-scoped, select-only |
+| `source_posts`, `model_calls` | ingested posts; one row per model call | deny-all |
+| `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | OAuth tokens and delivery receipts | deny-all |
+| `draft_claims`, `unmatched_deliveries` | atomic claim counters | deny-all |
+| `voice_extraction_runs` | one extraction run per desk — progress only, no cap, no reservation | deny-all |
+
+  Every table has RLS enabled, in one of three shapes; a new table picks one of these rather than inventing a fourth. **Owner-scoped** — full 4-policy on `owner_id` (`agents`, `experiments`), some select-only (`usage_events`). **EXISTS-join through an owner-scoped parent** — children joining `experiments`/`agents` by `experiment_id`, including `voice_guides`/`voice_rules`, which carry no `owner_id` of their own. (Those two joined by `reporter_handle` until the shared-guide model was deleted; the id join is what closed the cross-user read it allowed.) **Deny-all — RLS on, zero policies** — token stores, ledgers, the atomic claim counters, and `voice_extraction_runs`. Writes: the pipeline tables have **no insert/update/delete policies at all**, service-role only, so a browser cannot forge a guide, a rule, a story, a ledger row, a Slack token, or zero its own spend. `post_drafts` is the one exception, carrying **both** an owner-scoped INSERT policy (`post_drafts_insert_via_experiment` — the edit-in-place path, proving a browser caller owns the desk) **and** service-role writes, with the post-outcome columns stamped service-role after an RLS ownership check.
+- `docs/` — Farzan's own notes, **not project instruction** — ignore unless he points you at one: `pricing-cogs.md` (parked COGS working) and `test-handles.md` (a paste-ready handle set for manually testing an agent). Settled architecture and model decisions live in this file's "Settled decisions" section and the path-scoped rules, not here.
+- `.claude/` — `rules/` (path-scoped guidance) · `skills/` · `agents/` · `workflows/` · `hooks/` (see Formatting below).
+- `.agents/skills/` — the cross-agent skills mirror (the open agent-skills ecosystem's directory; non-Claude agents read the body and ignore the Claude-only `model:` frontmatter as inert text). Symlinks **every** `.claude/skills/` entry — add a symlink when a new skill lands — plus the ten `sentry:*` plugin skills (absolute symlinks into `~/.claude/plugins/cache/claude-plugins-official/sentry/<version>/skills/`; **version-pinned, so re-link after a sentry plugin update**). Native `x-check`, `x-recheck`, `x-dm`, `x-stat`, and `lean-log` directories are separate Codex workflow skills, outside Claude Code's orchestration and push scope; Claude Code must ignore them and must not mirror or include them when pushing its own work. These five skills always execute inline in the current Codex task and must never delegate to a custom agent; select the desired model in the task before invoking them.
+- Cross-CLI discovery bridges (doc-verified 2026-07-25): `.agents/rules → .claude/rules` (Antigravity/agy reads `.agents/rules/` natively) and `.grok/skills → .agents/skills` (Grok CLI walks `./.grok/skills/`, not project `.agents/skills/`). Grok reads `.claude/rules/` and `AGENTS.md`/`CLAUDE.md` natively — no rules bridge needed. Codex reads project `.agents/skills/` natively (symlinks documented as supported) and has **no rules-file concept** — path-scoped rules reach it only via this file's pointer to `.claude/rules/`.
 
 Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.vercel/`.
 
 `.feature/` is the `/feature` flow's live scratch — never delete it by hand; `ship.sh` sweeps it when the slice ships.
 
+Session continuity is **global and branch-agnostic**: `/handoff` writes one checkpoint per Claude Code session to `~/.claude/handoffs/<session-id>.md`, and `/continue <session-id>` resumes it from any session, in this project or another. The feature flow persists nothing of its own — the branch identifies the slice, the issue is its spec, and QC's diff boundary is plain `origin/dev...ft/<N>`. There is no direct-dev mode and no `.context/` state.
+
 ## Conventions
 
-- **No persistence until a data shape earns it.** App-owned schema is minimal — today `agents`, `runs`, `drafts`, `x_accounts` (RLS owner-scoped, except `x_accounts` which is deny-all — service-role-only credential storage; SQL in `supabase/migrations/`). Every new table is a real feature slice (plan it), not a quick add mid-task.
+- **Formatting is automatic — never run it by hand.** A `PostToolUse(Edit|Write)` hook
+  (`.claude/hooks/biome-write.sh`, wired in `.claude/settings.json`) runs `biome check
+  --write` on every file as it's written, in this session and in every sub-agent. Don't
+  run `pnpm format` / `pnpm lint:fix` in bulk to "clean up" — it's already done, and a
+  bulk pass only adds churn to the diff. `pnpm lint` stays useful as a read-only check.
+  Only the residual Biome won't auto-fix (no-fix or `--unsafe` rules) needs a human or an
+  agent: that's `feature-lint`'s job.
+- **Every model call records its output AND its reasoning trace.** One `model_calls` row per
+  call — any stage (extraction, drafting, judge, scan), whether one model runs or five —
+  carrying `output`, `reasoning`, `usage`, `cost_usd`, `generation_id`. Storing a token count
+  without the trace is not compliance. The row is owed by **any call that completed and billed —
+  including on an error path**: if a later step (a repair, a schema-parse, the judge) throws,
+  capture the finished call's `output`/`usage` off the error and record it anyway. A downstream
+  throw must never discard an already-paid call's row — the slice-1 miss was the happy path; the
+  same invariant fails on error paths. **On Claude models the trace is a summary gated on
+  `thinking.display`, which defaults to `"omitted"` — and "omitted" still returns a thinking
+  block with an empty `text`, so a default call looks exactly like a model that cannot expose
+  reasoning.** Pass `thinking: { type, effort, display: "summarized" }` (effort belongs inside
+  that object; a top-level `reasoning` param would be silently ignored whenever
+  `providerOptions` carries any reasoning key). Every call also stamps
+  `usage.reasoningWithheldByProvider` to keep "withheld" distinguishable from "not captured".
+  Write via the service-role client (the table has no insert policy) and never duplicate the
+  output elsewhere: `voice_guides.provenance` is a `{ modelCallId }` pointer and `post_drafts`
+  joins through `model_call_id`. Rationale, per-model status, and the false-impossibility
+  **Two epistemic rules this cost real money to learn:** a parameter accepted with HTTP 200 is not a
+  parameter honored — read the effect back, never trust the status; and an absent value under
+  DEFAULT configuration is not proof that no configuration produces it — find the parameter that
+  governs the field and test *that* before recording an impossibility.
+- **No persistence until a data shape earns it.** Every new table is a real feature slice (plan it), not a quick add mid-task; a new table also picks one of the three established RLS shapes rather than inventing a fourth. The current tables and their shapes are listed once, in the Code map's `supabase/migrations/` entry above — don't restate them here.
+- **UI copy & form conventions (owner rule — enforce every time, no exceptions).** These are hard rules for ALL user-facing UI, overriding anything the imported design mock did:
+    1. **Sentence case only — never ALL-CAPS.** No `uppercase` Tailwind utility, no `text-transform: uppercase`, no ALL-CAPS literal strings, anywhere — labels, section headers, badges, eyebrows, buttons, table headers. Capitalize the first word only; keep proper nouns/acronyms as written (`X`, `AI`, `Slack`). The mock's "uppercase-by-content" micro-labels are explicitly rejected.
+    2. **No eyebrow/kicker headers.** Never stack a small muted category label *above* a title (e.g. "New desk" over "Create desk"). A header is one line. A title may carry a *meaningful* description **below** it (e.g. a `DialogDescription`'s helper text) — that is fine — but never a redundant category label above it, and never split one heading across a bold line + a gray subline.
+    3. **Uniform form fields.** Every field in a form shares one visual treatment. A disabled / "coming soon" field is greyed (opacity) + a "Coming soon" badge — it does NOT get a special bordered/dashed container that makes it structurally different from the active fields. Grey it; don't box it.
 
-### Issue labels
+## Settled decisions — don't re-litigate without a NEW fact
 
-GitHub labels carry issue type and state — never a title prefix (no `triage:` etc.). Every `gh issue create` sets a label; every agent applies them the same way.
+Each carries the fact that settled it. These bind **planning**, so they live here rather than in a path-scoped rule. Area-specific rejects live in that area's rule (`.claude/rules/x.md`, `voice.md`, `agent.md`, `components.md`, `supabase.md`).
 
-| Label | Meaning | Applied |
+- **Ingestion is a persistent stream + ONE forwarder, on Railway.** Webhook *delivery* is Enterprise-only — and registering a webhook is ungated, so the naive probe returns a false-positive success. X allows 1 concurrent stream connection per account, so per-user or per-desk forwarders are structurally pointless; routing lives in Supabase instead. Railway verified ~$5/mo flat, scaling with resources and never per user. **Rejected:** Vercel-native always-on (maxDuration ceilings; cron is documented best-effort with no retries; a suspended workflow holds no socket; Sandbox ≈$31/mo, single-region), and Fly.io (superseded by Railway at equal-or-better cost with tooling already authenticated).
+- **Model picks are settled and measured — do not re-audition.** Extraction is `anthropic/claude-opus-5` — the 8-model on-task panel was won by `claude-fable-5` (verbatim-quote fidelity; measured **$0.855/reporter** across 10/10), and Opus 5 replaced it for costing half at a model that postdates the panel entirely. A model that did not exist when the panel ran is a NEW fact, which is the bar this rule sets for reopening. Drafting deliberately uses cheap models: it is **~95% input tokens**, and a 1,000-draft run showed five models spanning $1.23–$23/1k landing within 0.33–0.37 style distance while reporter-to-reporter spread was 0.22–0.64 — **the reporter matters ~8× more than the model; the guide does the work.** Pro-tier models pay where judgment lives (extraction), not where instructions are followed (drafting). **Rejected:** OpenRouter (auto-router picks one model on 7-day crowd spend; Fusion is 4–5× cost and 2–3× latency; free models train on inputs; ~5.5% credit fee).
+- **The voice corpus comes from X's own API, not a scraper — Bright Data is deleted entirely.** Live-probed 2026-07-25: Bright Data's X posts dataset returns ZERO records for every profile (`@ReshadRahman`, 242k followers, and `@FabrizioRomano` alike; both discovery and direct-URL mode; `error_codes: {"dead_page": 1}`). Their Web Unlocker fetches the same profile fine and shows why — X serves logged-out clients a "Sign up now to get your own personalized timeline!" wall, so the scraper sees a bio and no posts. The X API returns 100 posts for the same handle, minutes old rather than the 7d12h staleness once measured for Bright Data, within a project cap of **2,000,000 posts/month** (157 used at cutover). The old objection — "a user-context read still bills the app's own X tier" — was about USER-context reads; this uses the APP-ONLY bearer, which also lets the owner-handle override read any public timeline without impersonating anyone. **Bright Data's key, module, skills and docs agent are all removed** — its only remaining working surface (Web Unlocker, via a website-source test-fetch with no UI caller) served a dormant feature, and a search-capable model through the gateway covers that if websites ever ship.
+- **A voice guide belongs to ONE desk, and extraction is never deduped, shared, or rationed.** `voice_guides`/`voice_rules` are keyed by `experiment_id`; two desks on the same reporter each extract and each pay. The previous model — paid once per `reporter_handle`, shared globally, protected by an atomic once-per-reporter-per-UTC-day spend claim and a per-handle daily profile-lookup cap — was **deleted outright**, not reduced. It optimized a case that does not occur (two users extracting the same reporter), and in exchange it cost four pipeline gates, a table, a cross-user read hole, and a failure mode that could not be diagnosed after the fact. Extraction is a few dollars; the complexity was not worth it. **Do not reintroduce sharing, per-day claims, or lookup caps.** If spend ever needs bounding, bound it per OWNER — never per handle, which was never the unit anyone shared.
+- **Connect X is a UI gate, not a security boundary — and the two are deliberately separable.** `createDesk` derives `reporter_handle` from the linked `x_accounts` row, so through the form a user can only extract their own voice. That is a *product* rule about what users should do, not an RLS one: `experiments` has an owner-scoped INSERT policy with no value constraint, so any signed-in user can mint a row with any `reporter_handle` and any `reporter_verified_at`. **Never argue that relaxing the form gate widens a security boundary; there is no boundary there to widen.** Two independent facts make this safe and make the owner override below a form change rather than an architectural one: extraction reads the corpus through Bright Data and never uses the X OAuth token, and posting resolves the account via `getXAccount(ownerId)` — owner-keyed, never by the desk's `reporter_handle`. So "whose voice we draft in" and "whose account publishes" were never coupled in code, only in the form.
+- **Owner-only handle override, for testing a reporter the owner cannot authenticate as.** Connect X still gates desk creation (the owner needs it to post regardless); for an allowlisted owner email the extract-from field pre-fills with the connected handle and becomes editable. **The field sets the desk's `reporter_handle`**, which is what the corpus is pulled for.
+- **Handle casing is stored exactly as typed.** `normalizeHandle` trims and strips a leading `@` and nothing else. Lowercasing was removed once nothing depended on it: matching is case-insensitive at compare time, x.com resolves either casing to the same profile, and the one real reason — global unique keys on `reporter_handle` billing two casings as two reporters — died with the shared-guide model above.
+- **UI: feed-first, no global sidebar.** The old sidebar served exactly one nav destination (measured, not felt), and the reporter arrives from a notification — a listing is a detour on every visit. **The container holds the future, not reserved blank chrome:** no greyed placeholder for an *unspecified* stage. Greying a *specified but not-yet-backed* control is fine and is what the dormant surfaces below use.
+- **Metering from the first commit.** Every touch point stamps `usage_events` — stream deliveries, scrapes, every model call, every notification. Per-request model cost resolves via `getGenerationInfo()` on the gateway generation id, which works for every provider (the fix for DeepSeek/GLM's missing `inferenceCost`).
+
+### Dormant by design — switched off, not missing
+
+Built, working, and deliberately off so the shipped flow stays small. Each is ONE named constant; flipping it back is the whole reactivation. Don't "fix" these as gaps, and don't rebuild them.
+
+| Capability | Lever | Where |
 | --- | --- | --- |
-| `feature` | A decided, plannable slice. | `start.sh` at the plan gate (auto). |
-| `bug` | Something broken. | Whoever files it. |
-| `backlog` | Marks THE single living backlog issue — the one place every deferred/"someday" item is parked. Not applied to per-item issues (there are none). | Once, on the backlog index issue. |
-| `agent` | The item came from an AI agent's own analysis (a review finding, an observed defect), not a human decision. Provenance only — pairs with `bug` (agent-surfaced bugs are still their own issue), never alone. Tool-neutral (not "claude"): `gh` issues are always authored by the repo owner's token, so this label is the only machine-vs-human signal. Backlog-item provenance is instead noted inline in the backlog list (`· agent`), since backlog items are lines, not issues. | Alongside `bug` when the agent surfaced it. |
+| LinkedIn / Bluesky drafting | `PLATFORMS` (the `Platform` type stays complete) | `lib/agent/desk-config.ts` |
+| Story clustering (many posts → one story) | `CLUSTERING_ENABLED` | `lib/agent/cluster.ts` |
+| Email draft delivery + reply-to-correct | `EMAIL_DELIVERY_ENABLED` | `lib/agent/draft-pipeline.ts` |
+| Auto-post (post without review) | `AUTO_POST_ENABLED` | `app/agents/[id]/setup/sources-card.tsx` |
+| Website sources | greyed in the Sources card | `app/agents/[id]/setup/sources-card.tsx` |
 
-**The single living backlog (no per-item issues).** Every deferred item across all feature flows — plan Deferred (migrated at ship), mid-build out-of-scope, QC-surfaced cleanups, ship-triage backlog — is a checklist line in ONE living issue (labeled `backlog`), never its own issue. Append with `.claude/skills/feature/scripts/backlog-add.sh "<item — context; origin #<issue>; · agent if agent-surfaced>"` (it finds the issue, appends a task-list line, prints its number). When later work resolves or obsoletes an item, edit its line out of that issue's body — no opening/closing per-item issues. Farzan picks from the list; a picked item graduates into its own `/feature-plan`.
+The shipped flow is: connect X → tracked sources scanned → drafted in the reporter's voice → Slack notification → reporter clicks Post to X.
 
 ### Cross-cutting skills
 
@@ -88,4 +152,4 @@ GitHub labels carry issue type and state — never a title prefix (no `triage:` 
 ## Cross-tool
 
 - `AGENTS.md` is the canonical instruction file — non-Claude agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance lives in `.claude/rules/`.
-- Proactively invoke any installed skill relevant to the current task without waiting for me to name it.
+- `.githooks/` is the versioned local Git guardrail (`core.hooksPath=.githooks`). `main`, `dev`, and `beta` are permanent refs: never delete or force-update them. GitHub's active ruleset is the canonical protection; ordinary fast-forward release pushes remain allowed.

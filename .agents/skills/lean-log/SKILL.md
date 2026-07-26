@@ -23,4 +23,6 @@ Never touch Mark replied, Mark booked, interview, or any other experiment contro
 
 If the URL, authentication, controls, labels, layout, or success behavior does not match these instructions, stop immediately. Do not guess or click an alternative. Leave the record `x_done`, capture a screenshot, and tell Farzan the handle, what was expected, and what changed.
 
-Return logged handles, the stopping reason, and the remaining `x_done` count.
+Before reporting any normal completion, stop, or tool/browser failure, run `rtk .codex/outreach/sync-records.sh` after the last possible `resolve`. The helper commits only `.codex/outreach/records.json` with its fixed message and pushes the current branch; never stage, commit, or push any other path. If it fails, report whether the commit was created and the push failed; do not claim the record update is remote.
+
+Return logged handles, the stopping reason, the remaining `x_done` count, and the record-sync result.

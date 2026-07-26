@@ -1,55 +1,112 @@
 ---
 name: feature-ship
 description: >-
-  Phases 4–5 of the feature flow, standalone: the triage + ship gates. Use when
+  Phase 4 of the feature flow, standalone: the triage + ship gates. Use when
   the user says /feature-ship, "ship it", "close the slice", or brings
   manual-test findings on a finished branch.
 argument-hint: "[issue#]"
-allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
+allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *) Skill
 model: inherit
 ---
 
 # Triage ✋ then ship ✋
 
-## Triage (the scope firewall)
+## Triage (owner feedback is binding)
 
-For each finding the user reports, exactly one label:
-- **fix now** — breaks the slice's written definition-of-done (the ≤2-sentence
-  statement in the issue). Build it, then re-run `feature-lint` + the boot smoke.
-  Not DoD-breaking → not fix-now, however tempting.
-- **backlog** — real, but not this slice (its own future slice, or a someday item)
-  → append ONE line to the single living backlog issue (never a new per-item issue):
-  `.claude/skills/feature/scripts/backlog-add.sh "<item> — <context>; origin
-  #<issue#>; <next slice | someday>[; · agent]"`. Lead the line's context with
-  whether it's a likely next slice or someday, and add `· agent` when the agent's
-  own analysis surfaced it (plain when scribing the USER's own deferral).
+Every finding the owner reports during manual verification is implemented on this
+branch before the ship gate — no push-back, no deferral, no "not this slice," and
+no measuring it against the definition-of-done first. The ONLY way an item is
+deferred is the owner explicitly saying it can wait; a deferred item becomes a
+future slice the flow doesn't track. After each batch of fixes, re-run
+`feature-lint` + the boot smoke + feature-qc's browser sweep (step 5 — parallel
+`browser-verifier` agents driving the `agent-browser` CLI headless) over the flows
+the fixes touched (ship-stage fixes are usually UI fixes — the browser is the only
+gate that proves them).
 
-Loop test → triage → fix-now until no fix-nows remain. See AGENTS.md → "Issue
-labels" for the full taxonomy and the single-living-backlog rule.
+The scope firewall survives only for agent-self-generated ideas: unrelated work an
+agent notices while fixing (a tempting refactor, a someday cleanup) stays off the
+branch — surface it, then drop it. It never applies to anything the owner reported.
 
-GATE ✋: ask in plain words — **"Ready to ship, or more to fix first?"** A green
-build is never permission. Only their explicit "ship it" advances.
+Loop test → implement → re-verify until the owner has nothing left to report (or
+has explicitly deferred what remains).
+
+Before the gate, show the **complete** output of `git status --short
+--untracked-files=all`: every modification, deletion, and untracked file will be
+staged. State the terminal target — carried in this conversation or in the handoff
+this session resumed from — in plain words.
+
+GATE ✋: use the one question matching that target:
+
+- `dev`: **"Ready to ship every listed change to dev, or more to fix first?"**
+- `beta`: **"Ready to ship every listed change to dev and then promote it through beta at beta.oparax.ai, or more to fix first?"**
+- `main`: **"Ready to ship every listed change to dev, then through beta, and then to production at oparax.ai, or more to fix first?"**
+
+A green build is never permission. Only the user's explicit approval of that named
+consequence advances. This is one authorization for the full saved release path;
+deployment verification between hops is a safety check, not another approval gate.
 
 ## Ship
 
-**First, preserve the plan's Deferred.** `ship.sh` closes the feature issue, so its
-`## Deferred` section dies with it — migrate those items into the single living backlog
-first. For each still-relevant Deferred item (skip any this slice ended up addressing),
-append one line: `.claude/skills/feature/scripts/backlog-add.sh "<item> — <why deferred>;
-origin #<issue#>"`. This is the one point where plan-Deferred graduates from the closing
-feature issue into the durable backlog.
-
-From the repo root, on `ft/<issue#>`:
+From the repo root, run the command matching the saved mode. Pass the saved target
+explicitly rather than inferring it again:
 
 ```bash
-.claude/skills/feature/scripts/ship.sh <issue#> "<feature summary>"
+.claude/skills/feature/scripts/ship.sh --target <dev|beta|main> <issue#> "<feature summary>"
 ```
 
-It refuses on wrong branch / stray flow worktree; folds any uncommitted tree
-changes on the branch into the squash (your approved manual edits — deletions,
-tweaks — belong to this same-branch slice); squash-merges to dev as ONE commit;
-pushes; deletes the branch; closes the issue (the permanent record); sweeps scratch
-(`.feature/`, legacy `.superpowers/`) and the empty worktree mount; leaves the repo
-on `dev`.
+The command reprints the authorized inventory, stages all of it, commits a
+recovery snapshot when needed, and pushes the exact feature tip without force. It
+then previews the merge without mutating refs and creates the one squash commit on
+`dev` in a temporary detached worktree. That commit carries parseable
+`Feature-Issue`, `Feature-Branch`, and `Feature-Source-Tip` trailers. A normal push
+updates `dev`; the current checkout stays on `ft/<issue#>`, and that feature branch
+is retained locally and remotely as the newest recovery generation. Direct mode
+commits and normally pushes the already-current `dev` instead.
 
-Hard rules: never push to main/beta; ship target is dev only; no PRs, no CI.
+On a conflict, STOP. The script leaves refs intact and reports destination-only
+commits, feature-only commits, and conflicting paths. Inspect the affected behavior
+and explain in plain language whether the intentions can coexist; then ask the user
+to choose one of exactly three resolutions: preserve compatible parts from both,
+prefer `dev`, or prefer the feature. Never tell them merely to "rebase," and never
+use a destructive reset as recovery.
+
+## Ordered promotion and deployment checks
+
+`ship.sh` stops after a verified `dev` ref update. Continue only as far as the saved
+target, one Git hop at a time:
+
+1. For target `beta` or `main`, run
+   `.claude/skills/feature/scripts/promote.sh dev beta` and capture its sole stdout
+   line (the new `beta` commit SHA). Invoke `vercel:deployments-cicd` to wait for and
+   verify that **exact SHA** is READY at `https://beta.oparax.ai`. If either Git or
+   deployment verification fails, STOP before `main`; retain state for a resume.
+   After success, update the feature state to phase `promoted-beta` and gate
+   `finalize` (target beta) or `promote-main` (target main).
+2. For target `main`, only after beta passes, run
+   `.claude/skills/feature/scripts/promote.sh beta main`, capture the new `main` SHA,
+   and use `vercel:deployments-cicd` to verify that exact SHA is READY at
+   `https://oparax.ai`. STOP on failure. After success, update state to phase
+   `promoted-main`, gate `finalize`.
+
+Promotion uses a clean detached worktree, a normal `--no-ff` merge that preserves
+destination-only history, and a normal fast-forward ref update. It never skips the
+ladder and never force-pushes. Treat its conflict report the same way as the dev
+integration report.
+
+After the saved target and its deployment check have succeeded, finalize:
+
+```bash
+.claude/skills/feature/scripts/ship.sh --finalize <issue#>
+```
+
+Finalization first proves that the current and live recovery tips still equal the
+tip recorded on `origin/dev`; only then does it close the tracked issue and sweep
+`.feature/` plus legacy `.superpowers/`. It retains the just-shipped branch. Cleanup
+considers only older exact `ft/<number>` branches and deletes one only when its issue
+is closed, `origin/dev` records the same source tip in ship trailers, its local/remote
+tips are unchanged, and no worktree uses it. Remote deletion uses an exact lease;
+every legacy, moved, open, unverifiable, or otherwise ambiguous branch is skipped and
+reported.
+
+Hard rules: never develop directly on `beta`/`main`; never skip `dev → beta → main`;
+never force-push protected branches; no PRs, no CI.

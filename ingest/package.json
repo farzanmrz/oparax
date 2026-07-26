@@ -1,0 +1,28 @@
+{
+  "name": "oparax-ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Always-on Railway forwarder holding the X filtered stream and POSTing deliveries into the app's /api/ingest. Isolated package — zero imports from the app's lib/.",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
+    "@types/node": "^24.12.4",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.28.2"
+}

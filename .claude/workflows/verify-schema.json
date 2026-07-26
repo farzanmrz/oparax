@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "verdicts": {
+      "type": "array",
+      "description": "Exactly one entry per finding you were given — same ids, no omissions, no extras, no new findings.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The finding id you were given (F1, F2, …) — copy it verbatim."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["CONFIRMED", "REFUTED"],
+            "description": "CONFIRMED: read the actual code and the finding holds. REFUTED: read the actual code and the finding does not hold (wrong, already guarded, or not reachable)."
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "One or two sentences citing the actual code (file/line) that justify the verdict."
+          }
+        },
+        "required": ["id", "verdict", "reasoning"]
+      }
+    }
+  },
+  "required": ["verdicts"]
+}

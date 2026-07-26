@@ -16,6 +16,11 @@ paths:
 - `vercel:routing-middleware` when changing `proxy.ts` or its matcher (it delegates to `lib/supabase/middleware.ts`'s `updateSession`).
 - Any new table/migration is a real feature slice — check the "no persistence" guard in `AGENTS.md` first.
 
+## Database-ops tooling
+
+- **Migrations, SQL, advisors, type-gen** (anything that touches the actual project) go through the **claude.ai Supabase connector** — project `oparax-chirp`, project ref `pcgvpypzfwuchyfwdlwe`. This is the durable path; every DB-touching migration since 2026-07-22 records "Applied via the claude.ai Supabase connector" in its own header comment (e.g. `supabase/migrations/20260722234500_d16_dedup_and_post_outcome.sql`).
+- **Never the Supabase plugin's MCP server** for DB-touching work — it is interactive-auth only and 401s headless, so it cannot apply a migration or run SQL non-interactively. Its **skills** (`supabase`, `supabase-postgres-best-practices`) stay in use for guidance — best-practice checks, schema/RLS review, client-library patterns. The split is about the *tool that executes* DB operations, not the skills that inform them.
+
 ## Dashboard-side configuration (not in this repo at all)
 
 - Auth → Email Templates: *Confirm signup* / *Reset password* links must route to `/auth/confirm` with `token_hash` + `type` (`signup`/`recovery`) params — a misconfigured template silently breaks signup/reset with correct app code.
@@ -24,6 +29,16 @@ paths:
 ## Frozen route
 
 - `/auth/confirm` (`app/auth/confirm/route.ts`) is the hardcoded redirect target of the dashboard email templates above — moving or renaming it breaks the same way.
+
+## The voice tables are per-desk, and that closed the old cross-user read
+
+`voice_guides` and `voice_rules` are keyed by `experiment_id`, one row per desk, joined through the owner-scoped `experiments` row by **id**. `voice_extraction_runs` is the same shape (deny-all, read via an ownership-proving server action).
+
+This replaced a `reporter_handle`-keyed model where a guide was global and shared across every desk on that reporter. Under it, the read policy joined by handle, and any authenticated user could self-mint an `experiments` row with any `reporter_handle` — so every guide was readable by every signed-in user, found by exploit rather than by reading. That is gone: a join on the desk's own id cannot be satisfied by a row the reader doesn't own.
+
+**There is no extraction spend RATIONING any more, deliberately.** The per-reporter/UTC-day atomic claim and the per-handle profile-lookup cap were both deleted (owner decision): extraction runs whenever a desk owner asks for it and pays each time. If that ever needs bounding again, bound it per owner — not per handle, which was never the unit anyone shared.
+
+The one guard that remains is narrower and different in kind: `startRun` (`lib/voice/extraction-run.ts`) is an atomic claim on `voice_extraction_runs`, so ONE desk cannot have TWO extractions in flight at once. That stops a double-clicked Retry billing twice for a single user intent — it is not a quota, does not reset on a clock, and never refuses a caller whose desk is idle. Don't conflate the two when reading either file.
 
 ## Auth-flow contracts (preserve these)
 

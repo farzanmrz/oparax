@@ -1,178 +1,334 @@
 // app/agents/[id]/actions.ts
 //
-// The desk dashboard's server actions — pause/resume/scan-now (schedule control) and
-// draftSelected (the Scans-tab "Draft selected" button). Owner-scoped writes run as the
-// signed-in reporter via the RLS client (@/lib/supabase/server). scanNow additionally runs
-// a real scan and writes a `runs` row: `runs` is service-role-write-only (RLS), so it verifies
-// ownership with the RLS client FIRST, then writes the run with the admin client — same trust
-// path as the dispatcher. Every mutation revalidates the desk's own path so the dashboard's
-// server-rendered runs/drafts/usage refresh in place.
+// The desk layout's server actions — pause/resume/delete a desk, plus add/remove a
+// tracked X handle. All writes run as the signed-in reporter via the RLS client
+// (@/lib/supabase/server) against `experiments`, which carries full 4-policy owner RLS —
+// there is no service-role client here, unlike the old agents/[id] actions this file
+// replaces. Every mutation revalidates the desk's own path on success so the layout and
+// its children re-render with the fresh row. The revalidate is `"layout"`-scoped, not the
+// default `"page"`: DeskControls lives in the shared desk layout (rendered on Feed, Voice,
+// and Setup alike), so a page-scoped revalidate would leave the status pill stale when the
+// user pauses/resumes from a tab other than Feed — matches settings/actions.ts's precedent.
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
+import { redirect } from "next/navigation";
 import { z } from "zod";
-import { draftItems } from "@/lib/agent/draft-run";
-import { nextFire } from "@/lib/agent/next-run";
-import { persistScanRun, persistScanRunError } from "@/lib/agent/persist-run";
-import { scanFrequencySchema } from "@/lib/agent/scan-frequency";
-import { type NewsItem, newsItemSchema } from "@/lib/agent/scan-result";
-import { runScan } from "@/lib/agent/scan-run";
-import { searchTemplateSchema } from "@/lib/agent/search-template";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-/** Pause a desk: stop it firing and clear the scheduled next run. */
-export async function pauseAgent(agentId: string): Promise<ActionResult> {
+/** `addTrackedHandles`'s own result shape — it needs to report back how many candidates the
+ *  20-account cap dropped (see the function comment below), which the plain `ActionResult`'s
+ *  `{ ok: true }` has no room for. */
+export type AddHandlesResult = { ok: true; dropped: number } | { ok: false; error: string };
+
+/** Pause a desk: Oparax stops watching the beat and stops posting on its behalf. */
+export async function pauseDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("agents")
-    .update({ status: "paused", next_run_at: null })
-    .eq("id", agentId);
-  if (error) return { ok: false, error: "Could not pause the desk. Please try again." };
-  revalidatePath(`/agents/${agentId}`);
+  // `.select()` on the update so a zero-row match (wrong id, or an RLS-filtered desk that
+  // isn't the caller's own) is visible: an update with no error and no matched row is not a
+  // success — without this check the caller was told `{ ok: true }` while nothing changed,
+  // same honest-outcome convention as postDraftToXForOwner's CAS-claim (`claimed.length === 0`).
+  const { data, error } = await supabase
+    .from("experiments")
+    .update({ status: "paused" })
+    .eq("id", id)
+    .select("id");
+  if (error) return { ok: false, error: "Could not pause the agent. Please try again." };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "Could not pause the agent. Please try again." };
+  }
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
+  return { ok: true };
+}
+
+/** Resume a paused desk: Oparax starts watching the beat and drafting again. */
+export async function resumeDesk(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  // See pauseDesk's comment — same zero-row-match check.
+  const { data, error } = await supabase
+    .from("experiments")
+    .update({ status: "active" })
+    .eq("id", id)
+    .select("id");
+  if (error) return { ok: false, error: "Could not resume the agent. Please try again." };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "Could not resume the agent. Please try again." };
+  }
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
   return { ok: true };
 }
 
 /**
- * Resume a paused desk — re-derives the next fire from the desk's own saved scan
- * frequency. A malformed persisted schedule can't be resumed as-is (there is no valid
- * next fire to compute), so this returns an error rather than guessing one.
+ * Delete a desk. `post_drafts.experiment_id` carries `ON DELETE CASCADE`, and so now do
+ * `voice_guides`, `voice_rules`, and `voice_extraction_runs` — all four are desk-owned, so the
+ * database cleans them up. `source_posts` is deliberately untouched: it is genuinely cross-desk
+ * (one ingested post can feed several desks), so it is not this desk's to delete. On success it redirects
+ * to `/agents` so the now-deleted desk's URL is never re-fetched; on failure it returns
+ * the usual `ActionResult` so the caller can show an inline error instead.
  */
-export async function resumeAgent(agentId: string): Promise<ActionResult> {
+export async function deleteDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agents")
-    .select("scan_frequency")
-    .eq("id", agentId)
-    .maybeSingle();
-  if (error || !data) return { ok: false, error: "Could not load the desk's schedule." };
+  const { error } = await supabase.from("experiments").delete().eq("id", id);
+  if (error) return { ok: false, error: "Could not delete the agent. Please try again." };
+  redirect("/agents");
+}
 
-  const scanFrequency = scanFrequencySchema.safeParse(data.scan_frequency);
-  if (!scanFrequency.success) {
+/**
+ * Add a tracked X handle. Read-modify-write under RLS (no atomic array-append in
+ * PostgREST): fetch the desk's current `tracked_handles`, add the normalized handle if
+ * it isn't already tracked, then update. Setup (T8) is this action's first consumer;
+ * it's wired here now so that task only needs to build the UI.
+ *
+ * The handle is charset-validated (`normalizeValidHandle`) before it can be stored — a raw
+ * handle would otherwise flow into the ingestion worker's globally-shared X stream rule and let
+ * a single reporter inject stream operators across tenants (see lib/x/handle.ts).
+ *
+ * Returns `dropped`, the count of candidates that hit the `MAX_TRACKED_HANDLES` cap and were
+ * never added — pasting 20 handles onto a desk that already tracks 5 used to keep 15 and say
+ * nothing, silently discarding the rest. The caller surfaces `dropped` as an inline notice.
+ * Case-insensitive duplicates of an already-tracked handle are NOT counted here — deduping is
+ * the expected shape of a merge, not data loss worth calling out.
+ */
+export async function addTrackedHandles(id: string, raw: string): Promise<AddHandlesResult> {
+  // Split a raw blob (comma / whitespace / newline separated, @ optional) into candidate
+  // handles; each is charset-validated via normalizeValidHandle (invalid tokens dropped).
+  const candidates = raw
+    .split(/[\s,]+/)
+    .map(normalizeValidHandle)
+    .filter((h): h is string => h !== null);
+  if (candidates.length === 0) {
     return {
       ok: false,
-      error: "This desk's saved schedule is malformed and can't be resumed as-is.",
+      error: "Enter a valid X handle — letters, numbers, and underscores, up to 15.",
     };
   }
 
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("experiments")
+    .select("tracked_handles")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: "Could not load the agent's tracked handles." };
+
+  // Storage preserves casing as typed (normalizeHandle no longer lowercases — handles are
+  // stored exactly as typed), so matching is case-insensitive at compare time instead, same
+  // rule draft-pipeline.ts already follows for ingestion routing. Without this, "Reuters" and
+  // "reuters" would both be stored as two chips for one account, burning a tracked-handle slot.
+  // First-seen casing wins on a dedupe.
+  const merged = [...data.tracked_handles];
+  let dropped = 0;
+  for (const handle of candidates) {
+    if (merged.length >= MAX_TRACKED_HANDLES) {
+      dropped++; // the cap (client enforces too, but a paste can still outrun it)
+      continue;
+    }
+    if (!merged.some((existing) => existing.toLowerCase() === handle.toLowerCase())) {
+      merged.push(handle);
+    }
+  }
+  if (merged.length === data.tracked_handles.length) {
+    // Nothing new landed — either all duplicates (a benign no-op) or the desk is already full.
+    return data.tracked_handles.length >= MAX_TRACKED_HANDLES
+      ? { ok: false, error: `An agent can track up to ${MAX_TRACKED_HANDLES} accounts.` }
+      : { ok: true, dropped: 0 };
+  }
+
   const { error: updateError } = await supabase
-    .from("agents")
-    .update({
-      status: "active",
-      next_run_at: nextFire(scanFrequency.data, new Date()).toISOString(),
-    })
-    .eq("id", agentId);
-  if (updateError) return { ok: false, error: "Could not resume the desk. Please try again." };
-  revalidatePath(`/agents/${agentId}`);
-  return { ok: true };
+    .from("experiments")
+    .update({ tracked_handles: merged })
+    .eq("id", id);
+  if (updateError) return { ok: false, error: "Could not add those handles. Please try again." };
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
+  return { ok: true, dropped };
 }
 
+const editDraftPostDraftIdSchema = z.string().uuid();
+
 /**
- * Run a scan immediately (works local and deployed — no cron needed for a manual scan). Verifies
- * ownership + reads the desk with the RLS client, inserts a `running` run via the admin client
- * (runs are service-role-write-only), revalidates so the dashboard shows the running run, then
- * completes the scan in `after()` so the button returns fast; the dashboard's bounded refresh
- * flips the row to done/failed when it lands. The schedule ledger (`next_run_at`) is left
- * untouched — a manual scan is a one-off, not a scheduled fire.
+ * Draft edit-in-place (item 9, T3.6). A human edit has no model call behind it, but
+ * `post_drafts.model_call_id` is a real NOT-NULL FK to `model_calls` — and `model_calls`
+ * carries deny-all RLS (no insert policy at all, service-role only), so there is no way to
+ * satisfy that FK from the owner-scoped client alone. The resolved shape mirrors
+ * `draft-pipeline.ts`'s `applyCorrection` (dethrone-then-insert) as closely as the trust
+ * boundary allows:
+ *
+ *   1. RLS/cookie client: SELECT the parent draft through `post_drafts_select_via_experiment`
+ *      (the existing owner-scoped EXISTS-join policy). This IS the ownership proof for the
+ *      admin-client writes below — reaching this line already establishes the caller owns
+ *      the desk this draft belongs to.
+ *   2. Admin client: INSERT one `model_calls` row that exists PURELY to satisfy the FK — not
+ *      a real billed call. `model: "human-edit"` / `stage: "manual_edit"` / `cost_usd: 0` /
+ *      `reasoning: null` / `usage: null` mark it unmistakably as the deliberate, documented
+ *      exception to "every model_calls row is a real billed call" (AGENTS.md) that it is —
+ *      a future reader must not mistake this for an L12 violation.
+ *   3. Admin client: dethrone the current winner for this (source_post_id, experiment_id,
+ *      platform) — `post_drafts` carries no owner-scoped UPDATE policy at all, so this step
+ *      has no RLS-client alternative regardless of preference.
+ *   4. RLS/cookie client: INSERT the new `post_drafts` row. THIS is the step the plan text
+ *      calls out — "via the owner-scoped RLS client... never service-role for a browser
+ *      write" — the `post_drafts_insert_via_experiment` policy's `WITH CHECK` clause is what
+ *      actually proves the browser caller owns this desk for the write itself.
  */
-export async function scanNow(agentId: string): Promise<ActionResult> {
+export async function editDraft(postDraftId: string, newText: string): Promise<ActionResult> {
+  const parsedId = editDraftPostDraftIdSchema.safeParse(postDraftId);
+  if (!parsedId.success) return { ok: false, error: "Select a draft to edit." };
+  const trimmedText = newText.trim();
+  if (trimmedText.length === 0) return { ok: false, error: "Draft text can't be empty." };
+
   const supabase = await createClient();
-  const { data: agent, error } = await supabase
-    .from("agents")
-    .select("beat, handles, scan_frequency, status, search_template")
-    .eq("id", agentId)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Please sign in again." };
+
+  // Step 1 — the ownership proof (see the function comment above).
+  const { data: parentDraft, error: parentError } = await supabase
+    .from("post_drafts")
+    .select("id, source_post_id, experiment_id, story_id, platform")
+    .eq("id", parsedId.data)
     .maybeSingle();
-  if (error || !agent) return { ok: false, error: "Could not load the desk." };
-  if (agent.status !== "active") return { ok: false, error: "Resume the desk before scanning." };
+  if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
 
-  const freq = scanFrequencySchema.safeParse(agent.scan_frequency);
-  if (!freq.success) return { ok: false, error: "This desk's saved schedule is malformed." };
+  // The already-posted guard checks the STORY's current winner for this platform, not
+  // `parentDraft`'s own `posted_at` — `parentDraft` is whatever draft id the browser passed in,
+  // and council-query.ts exposes every council member's postDraftId to the browser, including
+  // losing candidates. A losing candidate's own row always carries `posted_at: null`, even
+  // after the actual winner has posted — so checking the passed-in row directly let a stale
+  // losing-candidate id sail past this guard, dethrone the ACTUAL posted winner below, and
+  // insert a fresh `is_winner: true` row with `posted_at: null`, making the feed render the
+  // (already-live) story as unposted with an enabled Post button — one click from a
+  // near-duplicate tweet. Scoped by source_post_id + experiment_id + platform, the same triple
+  // applyCorrection's dethrone step in draft-pipeline.ts uses.
+  const { data: currentWinner, error: currentWinnerError } = await supabase
+    .from("post_drafts")
+    .select("id, posted_at")
+    .eq("source_post_id", parentDraft.source_post_id)
+    .eq("experiment_id", parentDraft.experiment_id)
+    .eq("platform", parentDraft.platform)
+    .eq("is_winner", true)
+    .maybeSingle();
+  if (currentWinnerError) {
+    return { ok: false, error: "Could not verify this draft's status. Please try again." };
+  }
+  if (currentWinner?.posted_at) {
+    return { ok: false, error: "This draft was already posted to X and can't be edited." };
+  }
 
-  // A malformed template is not a scan-blocker — fall back to drafting the calls fresh.
-  const template = searchTemplateSchema.safeParse(agent.search_template);
-  const searchTemplate = template.success ? template.data : null;
-
-  // Ownership is proven (the RLS select above returned the row); write the run with the admin
-  // client since `runs` has no authenticated insert policy — same path the dispatcher uses.
   const admin = createAdminClient();
-  const { data: run, error: insertError } = await admin
-    .from("runs")
-    .insert({ agent_id: agentId, source: "manual" })
+
+  // Step 2 — the FK-satisfying model_calls row. Not a real model call: see the comment above.
+  const { data: modelCall, error: modelCallError } = await admin
+    .from("model_calls")
+    .insert({
+      owner_id: user.id,
+      stage: "manual_edit",
+      role: "primary",
+      model: "human-edit",
+      output: trimmedText,
+      reasoning: null,
+      usage: null,
+      cost_usd: 0,
+      generation_id: null,
+      ref_kind: "source_post",
+      ref_id: parentDraft.source_post_id,
+    })
     .select("id")
     .single();
-  if (insertError || !run) return { ok: false, error: "Could not start a scan. Please try again." };
+  if (modelCallError || !modelCall) {
+    return { ok: false, error: "Could not save your edit. Please try again." };
+  }
 
-  const { beat, handles } = agent;
-  const scanFrequency = freq.data;
-  after(async () => {
-    try {
-      const result = await runScan({ beat, handles, scanFrequency, searchTemplate });
-      await persistScanRun(admin, run.id, result);
-    } catch (e) {
-      // Unexpected throw (Pass 1 / gateway) — nothing partial to preserve.
-      await persistScanRunError(admin, run.id, e);
-    }
+  // Step 3 — dethrone the current winner for this (source_post, experiment, platform). A
+  // story can only have one winner per platform; no owner-scoped UPDATE policy exists here
+  // regardless, same reasoning as applyCorrection's own dethrone step.
+  const { error: dethroneError } = await admin
+    .from("post_drafts")
+    .update({ is_winner: false })
+    .eq("source_post_id", parentDraft.source_post_id)
+    .eq("experiment_id", parentDraft.experiment_id)
+    .eq("platform", parentDraft.platform)
+    .eq("is_winner", true);
+  if (dethroneError) return { ok: false, error: "Could not save your edit. Please try again." };
+
+  // Step 4 — the owner-scoped write the plan text specifically calls out.
+  const { error: insertError } = await supabase.from("post_drafts").insert({
+    source_post_id: parentDraft.source_post_id,
+    experiment_id: parentDraft.experiment_id,
+    story_id: parentDraft.story_id,
+    platform: parentDraft.platform,
+    model_call_id: modelCall.id,
+    is_winner: true,
+    judge_verdict: null,
+    parent_draft_id: parentDraft.id,
   });
+  if (insertError) {
+    // KNOWN SCHEMA GAP (flagged, not fixed here — see the codebase agent's report): post_drafts
+    // carries no partial unique index enforcing one is_winner=true row per (source_post_id,
+    // experiment_id, platform), so steps 3-4 are two non-transactional calls with no
+    // serialization. Without that constraint an insert failure here would otherwise leave the
+    // story with ZERO winners for this platform (dethroned in step 3, nothing crowned) —
+    // compensate by restoring the dethroned winner rather than silently leaving that broken
+    // state. This does NOT cover two concurrent editDraft calls both passing the guard above
+    // and both inserting a winner (TWO winners) — that race needs the missing unique index (or
+    // a stored procedure) to close; this compensation only bounds the single-call failure path.
+    if (currentWinner) {
+      const { error: restoreError } = await admin
+        .from("post_drafts")
+        .update({ is_winner: true })
+        .eq("id", currentWinner.id);
+      if (restoreError) {
+        return {
+          ok: false,
+          error:
+            "Could not save your edit, and the previous draft's status could not be restored. Please refresh and check the feed before retrying.",
+        };
+      }
+    }
+    return { ok: false, error: "Could not save your edit. Please try again." };
+  }
 
-  revalidatePath(`/agents/${agentId}`);
+  revalidatePath(`/agents/${parentDraft.experiment_id}`, "layout");
   return { ok: true };
 }
 
-const draftSelectedItemsSchema = z.array(newsItemSchema).min(1).max(10);
-
-/**
- * Draft up to 10 selected Scans-tab items in the desk's saved voice: one DeepSeek call
- * drafts all of them (`draftItems`), then one `drafts` row is inserted per item, each
- * carrying the batch's `usage` (informational per-row — there is no rollup over drafts).
- */
-export async function draftSelected(agentId: string, items: NewsItem[]): Promise<ActionResult> {
-  const parsed = draftSelectedItemsSchema.safeParse(items);
-  if (!parsed.success) return { ok: false, error: "Select 1–10 items to draft." };
-
+/** Remove a tracked X handle — same read-modify-write shape as `addTrackedHandle`. */
+export async function removeTrackedHandle(id: string, handle: string): Promise<ActionResult> {
+  const normalized = normalizeHandle(handle);
   const supabase = await createClient();
-  const { data: agent, error: agentError } = await supabase
-    .from("agents")
-    .select("drafting_instructions, account_tier")
-    .eq("id", agentId)
+  const { data, error } = await supabase
+    .from("experiments")
+    .select("tracked_handles")
+    .eq("id", id)
     .maybeSingle();
-  if (agentError || !agent) {
-    return { ok: false, error: "Could not load the desk's drafting settings." };
-  }
+  if (error || !data) return { ok: false, error: "Could not load the agent's tracked handles." };
 
-  const accountTier = agent.account_tier === "premium" ? "premium" : "standard";
-  // draftItems calls the model and throws on a gateway error or a draft/item count mismatch —
-  // catch it so the action honors the ActionResult contract instead of surfacing an unhandled
-  // rejection to the client's startTransition (the other actions all return {ok:false} on failure).
-  let drafts: string[];
-  let usage: unknown;
-  let costUsd: number | null;
-  try {
-    ({ drafts, usage, costUsd } = await draftItems({
-      draftingInstructions: agent.drafting_instructions,
-      accountTier,
-      items: parsed.data,
-    }));
-  } catch {
-    return { ok: false, error: "Could not draft those items. Please try again." };
-  }
-
-  const rows = parsed.data.map((item, i) => ({
-    agent_id: agentId,
-    item: item as Json,
-    text: drafts[i],
-    usage: usage as Json,
-    source: "manual",
-    cost_deepseek: costUsd != null ? costUsd / parsed.data.length : null,
-  }));
-
-  const { error: insertError } = await supabase.from("drafts").insert(rows);
-  if (insertError) {
-    return { ok: false, error: "Drafted the items but could not save them. Please try again." };
-  }
-  revalidatePath(`/agents/${agentId}`);
+  // Case-insensitive match, same rule as addTrackedHandles above — drop any stored handle
+  // whose lowercase form matches the target's, regardless of the casing it was stored under.
+  const nextHandles = data.tracked_handles.filter(
+    (tracked) => tracked.toLowerCase() !== normalized.toLowerCase(),
+  );
+  const { error: updateError } = await supabase
+    .from("experiments")
+    .update({ tracked_handles: nextHandles })
+    .eq("id", id);
+  if (updateError) return { ok: false, error: "Could not remove that handle. Please try again." };
+  // Revalidate the whole /agents subtree (layout scope) — this covers the desk page's status
+  // pill AND the site header's desk switcher, which lives in the parent /agents layout and would
+  // otherwise show a stale name/dot after a create/pause/rename.
+  revalidatePath("/agents", "layout");
   return { ok: true };
 }

@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -u
+
+is_protected_ref() {
+  case "$1" in
+    refs/heads/main | refs/heads/dev | refs/heads/beta) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_zero_oid() {
+  local oid="$1"
+
+  case "$oid" in
+    "" | *[!0]*) return 1 ;;
+  esac
+
+  [[ ${#oid} -eq 40 || ${#oid} -eq 64 ]]
+}
+
+# Only the prepared phase can abort a reference transaction. Git may invoke the
+# hook again after the transaction commits or aborts; those notifications are
+# intentionally observational.
+[[ "${1:-}" == "prepared" ]] || exit 0
+
+blocked=0
+
+while read -r old_oid new_oid ref_name; do
+  is_protected_ref "$ref_name" || continue
+
+  if is_zero_oid "$new_oid"; then
+    printf 'Protected branch update blocked: deleting %s is not allowed.\n' "$ref_name" >&2
+    blocked=1
+    continue
+  fi
+
+  # Creating a missing protected branch is neither a deletion nor a rewrite.
+  is_zero_oid "$old_oid" && continue
+
+  if ! git cat-file -e "${old_oid}^{commit}" 2>/dev/null ||
+    ! git cat-file -e "${new_oid}^{commit}" 2>/dev/null; then
+    printf 'Protected branch update blocked: cannot prove that %s is a fast-forward.\n' "$ref_name" >&2
+    blocked=1
+    continue
+  fi
+
+  if ! git merge-base --is-ancestor "$old_oid" "$new_oid"; then
+    printf 'Protected branch update blocked: %s only accepts fast-forward updates.\n' "$ref_name" >&2
+    blocked=1
+  fi
+done
+
+exit "$blocked"
