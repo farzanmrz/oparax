@@ -2,7 +2,15 @@
 
 export interface StreamTweetData {
   id: string;
+  /** TRUNCATED at ~280 chars for a long ("note") post — X cuts at a token boundary and appends
+   *  a t.co link to the full post, so the result reads as complete prose and nothing
+   *  downstream can tell it apart from a short post. Never forward this field directly; use
+   *  `note_tweet.text` when present (see mapTweetToDelivery). */
   text: string;
+  /** The COMPLETE body of a long post — present only when `note_tweet` is in `tweet.fields`
+   *  on the stream URL. Measured 2026-07-26: post 2081154657573883993 arrives as 293 chars in
+   *  `text` and 393 in `note_tweet.text`. */
+  note_tweet?: { text?: string };
   author_id?: string;
   created_at?: string;
 }

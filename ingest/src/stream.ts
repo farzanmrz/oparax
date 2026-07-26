@@ -10,16 +10,28 @@ export class StreamAuthError extends Error {}
  *  aborted read. reconnect.ts treats this as transient and retries with backoff. */
 export class StreamTransientError extends Error {}
 
+// `note_tweet` is REQUIRED here, not optional enrichment: without it X sends a long post's
+// body truncated to ~280 chars in `data.text` — cut at a token boundary with a t.co link to the
+// original appended — and every consumer downstream (source_posts.text, the drafting council,
+// the feed card) treats that as the complete post. It reads as ordinary prose, so nothing can
+// detect the loss. Measured across the first 147 ingested posts: 5 were truncated this way,
+// losing 12-126 characters each, including whole facts the drafts were then written without.
+// The syndication API cannot rescue this either — it returns `note_tweet: { id }` and no text.
 const STREAM_URL =
-  "https://api.x.com/2/tweets/search/stream?expansions=author_id&user.fields=username&tweet.fields=created_at";
+  "https://api.x.com/2/tweets/search/stream?expansions=author_id&user.fields=username&tweet.fields=created_at,note_tweet";
 
 /** x_post_id = the tweet id; author_handle = the author's username (resolved via
- *  expansions=author_id/includes.users, requested above); text = tweet text; posted_at =
+ *  expansions=author_id/includes.users, requested above); text = the COMPLETE tweet body —
+ *  `note_tweet.text` for a long post, `text` otherwise (see STREAM_URL above); posted_at =
  *  the tweet's created_at; raw = the full stream payload for audit. Matches the contract in
  *  the brief and app/api/ingest/route.ts exactly. */
 export function mapTweetToDelivery(payload: StreamPayload): IngestDeliveryBody | null {
   const tweet = payload.data;
   if (!tweet?.id || !tweet.text) return null;
+
+  // Prefer the note body whenever X sends one, but never let an empty/absent note field
+  // blank out a post that has perfectly good short text.
+  const fullText = tweet.note_tweet?.text?.trim() ? tweet.note_tweet.text : tweet.text;
 
   const author = payload.includes?.users?.find((u) => u.id === tweet.author_id);
   if (!author?.username) {
@@ -33,7 +45,7 @@ export function mapTweetToDelivery(payload: StreamPayload): IngestDeliveryBody |
     source: "x",
     x_post_id: tweet.id,
     author_handle: author.username,
-    text: tweet.text,
+    text: fullText,
     posted_at: tweet.created_at ?? new Date().toISOString(),
     raw: payload,
   };
