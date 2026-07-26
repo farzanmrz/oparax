@@ -1,49 +1,54 @@
 "use server";
 
-import { after } from "next/server";
-import { z } from "zod";
-import { deskConfigSchema } from "@/lib/agent/desk-config";
-import { nextFire } from "@/lib/agent/next-run";
-import { extractOnboardingResults } from "@/lib/agent/onboarding-extract";
-import { validateScanFrequency } from "@/lib/agent/scan-frequency";
-import {
-  collectAssistantText,
-  executedSearchParts,
-  extractSearchTemplate,
-} from "@/lib/agent/search-template";
-import { sumCosts } from "@/lib/agent/usage-cost";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
+import { revalidatePath } from "next/cache";
+import { isOverrideOwner } from "@/lib/owner-allowlist";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
+import { getXLinkState } from "@/lib/x/link-state";
 
-const transcriptSchema = z.array(z.unknown()).min(1);
-
-export type SaveAgentResult = { id: string; error?: never } | { id?: never; error: string };
+export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
 /**
- * Insert the completed desk as the signed-in reporter. The transcript is the client's full message
- * array, stored verbatim on the desk and also mined here for its frozen search template and, on a
- * successful insert, the chat's own preview scan + drafts (persisted best-effort below so they don't
- * remain ephemeral). Returns the new row id for navigation.
+ * Create a desk (an `experiments` row) as the signed-in reporter, then kick off best-effort
+ * voice extraction for their handle in `after()` — the request finishes and the client
+ * navigates before extraction resolves; a failure there never rolls back the desk (see
+ * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
+ *
+ * Identity now comes from the linked X account, never from client-supplied form state — the
+ * old typed-handle field is gone (D14's post-create verify gate is superseded: OAuth already
+ * proves the handle at creation time, so `reporter_verified_at` is stamped here, immediately,
+ * instead of a later separate verify step).
  */
-export async function saveAgent(input: {
-  config: unknown;
-  sessionId: string | null;
-  transcript: unknown;
-}): Promise<SaveAgentResult> {
-  const config = deskConfigSchema.safeParse(input.config);
-  const transcript = transcriptSchema.safeParse(input.transcript);
-  if (!config.success || !transcript.success) {
-    return { error: "The desk configuration is incomplete — ask the agent to re-check it." };
-  }
+export async function createDesk(input: {
+  name: string;
+  beat: string;
+  trackedHandles: string[];
+  /** Owner-only override — the handle whose VOICE this agent drafts in, when it isn't the
+   *  creator's own. Ignored unless the signed-in email is in `lib/owner-allowlist.ts`; that
+   *  check is re-run below rather than trusted from whichever client set this. */
+  extractFromHandle?: string;
+}): Promise<CreateDeskResult> {
+  const beat = input.beat.trim();
+  if (!beat) return { error: "Describe the beat this agent should watch." };
 
-  // The chat's save-approval gate already rejects an out-of-rail scan frequency, but this
-  // action is the actual writer and a directly-callable server action — re-check here so a
-  // request that never passed through the gate can't persist a schedule that breaks the rail.
-  if (!validateScanFrequency(config.data.scanFrequency).ok) {
-    return {
-      error: "That scan frequency is outside the allowed limits — ask the agent to adjust it.",
-    };
+  // Optional — the switcher falls back to a beat-derived label when it's blank.
+  const name = input.name.trim() || null;
+
+  // Every tracked handle is charset-validated too — not just normalized. An unvalidated handle
+  // flows into the ingestion worker's globally-shared X stream rule where it could inject stream
+  // operators across tenants (see lib/x/handle.ts). One bad handle rejects the whole submit
+  // rather than being silently dropped or stored.
+  const trackedHandles: string[] = [];
+  for (const raw of input.trackedHandles) {
+    if (!raw.trim()) continue; // drop empty chips from the form
+    if (trackedHandles.length >= MAX_TRACKED_HANDLES) break; // cap (client enforces too)
+    const handle = normalizeValidHandle(raw);
+    if (!handle) {
+      return {
+        error: `"${raw.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
+      };
+    }
+    if (!trackedHandles.includes(handle)) trackedHandles.push(handle);
   }
 
   const supabase = await createClient();
@@ -51,108 +56,80 @@ export async function saveAgent(input: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "Your session expired — sign in again to save this desk." };
+    return { error: "Your session expired — sign in again to create this agent." };
   }
 
-  // The frozen search template: the drafted x_search calls the chat's scan actually executed,
-  // captured once here so scheduled/manual runs replay them instead of re-drafting a query.
-  const searchTemplate = extractSearchTemplate(transcript.data);
+  // Re-verified here, server-side, on every create — never trusted from the client. A desk's
+  // identity-critical field can't come from anything a browser caller could have forged.
+  // Connect X still gates creation for EVERY caller, override or not: the owner needs a linked
+  // account to post from regardless of whose voice the agent drafts in.
+  const { linked, handle } = await getXLinkState();
+  const connectedHandle = linked && handle ? normalizeValidHandle(handle) : null;
+  if (!connectedHandle) {
+    return { error: "Connect your X account before creating an agent." };
+  }
+
+  // Owner-only: extract from a handle the caller hasn't authenticated as. The allowlist is
+  // re-checked HERE rather than trusted from the client — a server action is a reachable
+  // endpoint by ID, so "the form didn't render the field" proves nothing about the caller.
+  // A non-allowlisted caller passing this field is silently ignored (not rejected): their
+  // agent is created on their own handle, which is the behavior they'd get anyway.
+  //
+  // The override sets `reporter_handle` — it does NOT keep the agent on the owner's handle
+  // while pulling someone else's corpus. `reporter_handle` is what the corpus is pulled for,
+  // and `voice_guides`/`voice_rules` are keyed by this desk's `experiment_id`, not by handle —
+  // so the other direction (extracting the owner's own voice while labeling the desk for
+  // someone else) would just mislabel whose voice the desk claims to be drafting in.
+  let reporterHandle = connectedHandle;
+  if (input.extractFromHandle?.trim() && isOverrideOwner(user.email)) {
+    const override = normalizeValidHandle(input.extractFromHandle);
+    if (!override) {
+      return {
+        error: `"${input.extractFromHandle.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
+      };
+    }
+    reporterHandle = override;
+  }
 
   const { data, error } = await supabase
-    .from("agents")
+    .from("experiments")
     .insert({
-      user_id: user.id,
-      name: config.data.name,
-      beat: config.data.beat,
-      handles: config.data.handles,
-      drafting_instructions: config.data.draftingInstructions,
-      account_tier: config.data.accountTier,
-      scan_frequency: config.data.scanFrequency,
-      status: "active",
-      next_run_at: nextFire(config.data.scanFrequency, new Date()).toISOString(),
-      setup_session_id: input.sessionId,
-      // The transcript is validated only as a non-empty array; its opaque
-      // message shape lands in a Json column, so cast (never `any`).
-      setup_transcript: transcript.data as Json,
-      search_template: searchTemplate as Json,
+      owner_id: user.id,
+      name,
+      beat,
+      reporter_handle: reporterHandle,
+      tracked_handles: trackedHandles,
+      // Identity is proven by the linked X account at this exact moment, not typed and
+      // verified later — verification is immediate now, not a separate step. Stamped on the
+      // owner-override path too, even though `voice_guides`' SELECT policy no longer conditions
+      // on this column (it checks only `e.id = voice_guides.experiment_id and e.owner_id =
+      // auth.uid()`) — so this is a record of how identity was proven at creation, not an RLS
+      // gate. On the override path the allowlist is the verification.
+      reporter_verified_at: new Date().toISOString(),
     })
     .select("id")
     .single();
 
   if (error || !data) {
-    return { error: "Could not save your desk. Please try again." };
+    return { error: "Could not create your agent. Please try again." };
   }
 
-  // Persist the onboarding chat's preview scan + drafts to the new desk so its detail page shows them
-  // immediately (they were ephemeral before ft/63). Best-effort: any failure here must NOT fail the
-  // save — the desk already exists. Runs/drafts are written with the admin client (runs is
-  // service-role-write-only; ownership is already proven by the desk insert above as this user) — the
-  // same trust path scanNow uses.
-  const executedScans = executedSearchParts(transcript.data);
-  if (executedScans.length > 0) {
-    try {
-      const admin = createAdminClient();
-      const { data: run } = await admin
-        .from("runs")
-        .insert({ agent_id: data.id, source: "onboarding" })
-        .select("id")
-        .single();
-      if (run) {
-        after(async () => {
-          // The desk's real onboarding grok spend — summed from the executed searches' own costUsd.
-          const grokCost = sumCosts(executedScans.map((p) => p.costUsd));
-          try {
-            const extracted = await extractOnboardingResults({
-              assistantText: collectAssistantText(transcript.data),
-            });
-            await admin
-              .from("runs")
-              .update({
-                status: "done",
-                result: { items: extracted.items } as Json,
-                cost_grok: grokCost,
-                cost_deepseek: extracted.costUsd,
-                usage: { extract: extracted.usage } as Json,
-                finished_at: new Date().toISOString(),
-              })
-              .eq("id", run.id)
-              .eq("status", "running");
+  // Extraction is NOT fired here any more. It used to run as
+  // `after(() => attemptVoiceExtraction(...))`, whose return value nothing could read — so the
+  // four pre-flight gates ran invisibly and a rejection reached the reporter as a spinner that
+  // never resolved. The create screen now calls `startExtraction` (app/agents/[id]/voice/
+  // actions.ts) itself: it awaits the pre-flight so it can render each gate, then that action
+  // hands the billable phase to its own `after()`, which preserves the survives-navigation
+  // property for the half that actually costs money.
+  //
+  // The consequence is deliberate: a desk whose creator closes the tab before the pre-flight
+  // returns is created WITHOUT extraction having started. That is a valid, working agent — its
+  // sources are tracked and the worker picks them up; only drafting waits — and the Voice tab's
+  // retry is the recovery surface, same as for any other extraction failure.
 
-            // One drafts row per draft that resolves to a presented item; unmatched drafts are dropped
-            // (there is nowhere to attach a draft with no item snapshot).
-            const draftRows = extracted.drafts
-              .filter(
-                (d): d is { itemIndex: number; text: string } =>
-                  d.itemIndex != null && d.itemIndex >= 0 && d.itemIndex < extracted.items.length,
-              )
-              .map((d) => ({
-                agent_id: data.id,
-                item: extracted.items[d.itemIndex] as Json,
-                text: d.text,
-                source: "onboarding" as const,
-                cost_deepseek: null,
-              }));
-            if (draftRows.length > 0) await admin.from("drafts").insert(draftRows);
-          } catch (e) {
-            // Extraction/gateway failed — preserve the real onboarding grok spend on a failed run
-            // rather than dropping to a blank one (mirrors scan-run's soft-fail intent).
-            await admin
-              .from("runs")
-              .update({
-                status: "failed",
-                error: e instanceof Error ? e.message : String(e),
-                cost_grok: grokCost,
-                finished_at: new Date().toISOString(),
-              })
-              .eq("id", run.id)
-              .eq("status", "running");
-          }
-        });
-      }
-    } catch {
-      // Could not even start the onboarding run — the desk is saved; nothing else to do.
-    }
-  }
+  // Refresh the /agents layout so the site header's desk switcher includes this new desk
+  // immediately — without this the switcher renders its stale list and falls back to "Desks".
+  revalidatePath("/agents", "layout");
 
   return { id: data.id };
 }

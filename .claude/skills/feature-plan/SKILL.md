@@ -16,9 +16,7 @@ One document, **the plan**: it is the spec and the plan at once. Seed from
 `$ARGUMENTS` or the conversation, then work the steps in order.
 
 ## 1. Preflight
-- Read AGENTS.md + the `.claude/rules/` files for the areas the ask touches.
-- The slice comes from the user's ask — never self-served from the `backlog`
-  issue list.
+- The slice comes from the user's ask — never self-served.
 - Scratch lives in `.feature/` (self-gitignoring: `mkdir -p .feature && printf
   '*\n' > .feature/.gitignore`).
 
@@ -44,40 +42,114 @@ whole pass — address it by **`scriptPath`, never `name`** (same reason as the 
 workflow: `{ name }` doesn't scan the repo's `.claude/workflows/`). Pass `args`:
 `{ ask: "<the confirmed ask from step 2>", context: "<any seed worth carrying>" }`.
 
-It runs three stages: a **scope pre-pass** predicts which stack areas the slice
-touches (there is no diff yet — it infers from the ask + a repo grep) and fires only
-those lenses; a parallel **brief** per fired lens, each invoking its own skill
-(`vercel:nextjs` · `vercel:react-best-practices` · `web-design-guidelines` ·
-`frontend-design` on new surfaces · `vercel:ai-sdk`+`vercel:ai-gateway` ·
-`supabase:supabase`+postgres · always `repo-fit`, which reads AGENTS.md + the
-`.claude/rules/` guards); then a **synthesis** step (opus) that assembles 2–3
-candidate approaches, picks one via the four lenses (**risk-first**,
-**YAGNI-minimal**, **vertical-slice**, **verification-first**), reconciles the briefs
-(additive → merge; conflicting → decide + log why), and returns ONE plan.
+It runs six stages, grounded **once** (Scope + Lenses), drafted by **the session
+model alone**, then hardened by an external adversarial critique round. (The
+four-family draft council this replaces was measured on the slice-69 run: all four
+families independently chose the same spine, and the cross-draft merge introduced
+contradictions the critique stage then had to catch — cross-model spend belongs on
+attack, not on drafting the same plan four times.)
 
-The returned `plan` markdown carries: **Definition of done** (the slice contract;
-feature-ship's triage measures every "fix now" against it), the **decided approach
-only**, an **In scope / Deferred** split (everything asked for together is in scope —
-a minimal UI tweak *and* a major schema change are one slice; Deferred is only a
-substantial related slice better built after this lands; incidental "while we're
-here" ideas → drop or backlog, never inflate), **Build steps** for a zero-context
-engineer (file map first; bite-sized tasks with exact file ownership + interfaces +
-per-task the skills to invoke and the `.claude/rules/` area-guards to read;
-feature-build copies these into briefs; full code in non-obvious steps; no
-placeholders), and a **## Stack & design acceptance criteria** checklist that
-feature-qc verifies the built diff against.
+**Scope** selects the lenses from the **live skill inventory** (`list-plan-skills.sh`
+— the stack plugins + repo build skills, self-updating; not a fixed menu) rather than
+a hardcoded set, so a slice needing `vercel:marketplace` / `vercel-connect` /
+`chat-sdk` / `workflow` actually reaches them; the same pass reads AGENTS.md and
+glob-matches the slice's predicted paths against the `.claude/rules/` `paths:`
+frontmatter to gather the applicable guards into a digest (there is no diff at plan
+time to auto-inject them). The digest seeds every downstream stage; the external
+critics additionally explore the repository themselves (deep, read-only), so it is
+their starting map rather than their only ground truth.
 
-Read the returned plan critically before the gate — you are the decider; the workflow
-grounds and drafts, you own the final call. Fix anything it got wrong, then present
-it. Never propose anything a hard guard forbids.
+**Lenses** fan out **one repo-grounded agent per selected skill, named after the
+skill** (no bundling, no cap below the inventory); each invokes its skill and returns
+hard constraints + acceptance criteria + conflicts to watch.
+
+**Consolidate** merges every lens's constraints into one deduped constraint set and
+names a **2–3 candidate menu** — a seed for the Draft stage, not a ceiling; the
+drafter is free to deviate from it if it sees a stronger spine.
+
+**Draft** is ONE plan, written by the session model: pick a spine from the menu (or
+a stronger one), commit to it, and emit the full build-ready plan directly in its
+final sections — no council, no synthesis-across-drafts.
+
+**Critique** sends the plan to three external families, each **deep** (repo-resident,
+read-only, verifying the plan's claims against the actual code) at its **tier
+ceiling** — critique is each family's only seat and the terminal gate before the
+human one. Charters are distinct: Codex/gpt-5.6-sol (high) digs deepest on
+infrastructure durability + internal consistency; Grok-4.5 (high) on requirement
+traceability + unjustified complexity; Gemini-3.1-pro (high) via `agy` on repo-guard
+compliance + concrete risk. Each must work through the plan requirement by
+requirement before an empty list counts as a valid verdict; the charter forbids
+performative criticism. No Claude critic — the session model wrote the plan, so
+that would be self-review. (Known risk, accepted 2026-07-26: the agy lane returned
+5/5 empty critiques in the old shallow text-only mode; deep mode is the bet that
+bounded evidence-checking — the shape of its productive QC Verify seat — engages
+it. Repeated deep empties are the new fact that reopens the seat.)
+
+**Refine** adjudicates each critique on its merits (fix the real ones, reject taste
+and scope inflation) and emits the final hardened plan, with a "Critique
+adjudication" section recording every accept/reject call. Zero surviving critiques
+skips Refine and ships the Draft output unchanged.
+
+Every design stage carries a calibrated simplicity pressure: the simplest
+architecture that satisfies every requirement wins, complexity must pay rent — but
+simplicity is a tiebreaker among correct designs, never a license to drop a
+requirement or weaken a guard.
+
+**Model policy (the Fable discipline — locked with Farzan):** Scope and Lenses are
+extraction/comprehension, not generation — **pinned sonnet, effort medium** (depth is
+bought with effort, not tier; Lenses is also the highest-fan-out stage in this
+workflow, so it must never inherit — that would multiply spend N skills wide). The
+external critique tiers are fixed production values, never re-litigated per run. Exactly
+**three** stages inherit your session model + tier and may spend Fable: **Consolidate**
+(candidate-menu generation), **Draft** (the plan itself), and **Refine** (critique
+adjudication) — all generative, single-call, ceiling-setting acts.
+Nothing else in this workflow can spend Fable, by design. There is no `repo-fit` lens — the guards ride in via the Scope digest and via
+path-rule auto-injection when a lens reads a matching file.
+
+The returned `plan` carries the standard sections the workflow enforces (so they are
+not re-specified here) — Definition of done, Approach, In scope / Deferred, Build steps
+(per-task file ownership + the skills each task invokes), and a **## Stack & design
+acceptance criteria** checklist. Two are load-bearing downstream: the Definition of
+done is the ship gate's yardstick for what finished means (owner-reported
+manual-verification findings are implemented regardless of it — feature-ship's triage
+rule), and feature-qc verifies the built diff against the acceptance-criteria
+checklist.
+
+**Scope discipline is yours to enforce at the gate** — the workflow drafts, you decide:
+everything asked for together is one slice (a minimal UI tweak *and* a major schema
+change ship together); Deferred is only a substantial related slice better built after
+this lands; incidental "while we're here" ideas → drop, never inflate. Read the plan
+critically, fix anything it got wrong, and never let it propose what a hard guard
+forbids.
 
 ## 4. GATE ✋
 **Paste the full plan into chat** (never a file pointer). Revise until
-the user's explicit go. On approval, pipe the approved plan — exactly as pasted —
-into `.claude/skills/feature/scripts/start.sh "<feature name>"` on stdin (heredoc; no
-file argument): cuts `ft/<issue#>` from clean dev, opens the issue with the plan as
-body (capture the issue number — its only stdout line). The issue is now the single
-source of truth.
+the user's explicit go. Before acting on that approval, resolve one value from the
+conversation without re-asking if it was already stated:
+
+- **terminal target** — `dev` by default, or the explicitly requested `beta` / `main`.
+  Nothing persists it, so carry it in the conversation and pass it to `ship.sh`.
+
+On approval, pipe the approved plan — exactly as pasted — into one kickoff command
+on stdin (heredoc; no file argument):
+
+```bash
+# stdout is the new issue number.
+.claude/skills/feature/scripts/start.sh "<feature name>"
+```
+
+The kickoff opens the issue with the plan as its body and cuts `ft/<issue#>` from the
+fetched `origin/dev` without checking out local `dev`; the issue is the single source
+of truth. Nothing is persisted about the run — the branch identifies the slice, and
+the release target is passed to `ship.sh` at ship time. If branch setup fails after
+issue creation, the kickoff closes the new issue rather than leaving an orphan.
+
+**Approval is the trigger — no further prompting.** The moment the kickoff succeeds
+(issue created carrying the approved plan, `ft/<issue#>` cut and checked out), tell
+the user in one line that the branch is cut, naming the retained terminal target so it
+is not lost. Continuity across sessions is the global `/handoff` skill's job: when the
+user wants to stop, they run `/handoff` and resume in a fresh session with
+`/continue <session-id>`.
 
 Rules: scope freezes at this gate. Planning docs never enter the repo — the issue
-body is the record.
+body is the tracked record.

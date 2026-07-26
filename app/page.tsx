@@ -34,12 +34,12 @@ export default async function RootPage() {
 
       <main className="flex flex-1 flex-col">
         <section className="mx-auto flex w-full max-w-[81rem] flex-1 flex-col justify-center px-6 py-20 md:py-28">
-          <p className="mb-6 flex items-center gap-2 text-sm font-medium tracking-widest text-muted-foreground uppercase">
+          <p className="mb-6 flex items-center gap-2 text-sm font-medium tracking-widest text-muted-foreground">
             <span aria-hidden="true" className="size-2 rounded-full bg-live" />
-            The AI news desk
+            The AI news agent
           </p>
           <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-tight tracking-tight md:text-6xl">
-            Your beat never sleeps. Now neither does your desk.
+            Your beat never sleeps. Now neither does your agent.
           </h1>
           <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
             Oparax watches the accounts and sources you can&apos;t keep up with, surfaces breaking
@@ -58,7 +58,7 @@ export default async function RootPage() {
         <section className="border-t border-border">
           <div className="mx-auto grid w-full max-w-[81rem] gap-px bg-border px-0 md:grid-cols-3">
             <article className="bg-background p-6 md:p-8">
-              <p className="text-sm font-medium tracking-widest text-muted-foreground uppercase">
+              <p className="text-sm font-medium tracking-widest text-muted-foreground">
                 01 — Watch
               </p>
               <h2 className="mt-3 text-lg font-semibold tracking-tight">Your beat, on the wire</h2>
@@ -68,7 +68,7 @@ export default async function RootPage() {
               </p>
             </article>
             <article className="bg-background p-6 md:p-8">
-              <p className="text-sm font-medium tracking-widest text-muted-foreground uppercase">
+              <p className="text-sm font-medium tracking-widest text-muted-foreground">
                 02 — Catch
               </p>
               <h2 className="mt-3 text-lg font-semibold tracking-tight">
@@ -80,7 +80,7 @@ export default async function RootPage() {
               </p>
             </article>
             <article className="bg-background p-6 md:p-8">
-              <p className="text-sm font-medium tracking-widest text-muted-foreground uppercase">
+              <p className="text-sm font-medium tracking-widest text-muted-foreground">
                 03 — Draft
               </p>
               <h2 className="mt-3 text-lg font-semibold tracking-tight">Posts in your voice</h2>

@@ -1,18 +1,17 @@
-import { AppSidebarBackRow } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { getUsername } from "@/lib/user";
-import { DeleteAccountButton, UsernameForm } from "./settings-forms";
+import { getXLinkState } from "@/lib/x/link-state";
+import { DeleteAccountButton, DisconnectXButton, UsernameForm } from "./settings-forms";
 
 /**
  * Settings: profile (username), security (password placeholder — no real flow
  * exists yet), and a danger zone (account deletion). Same server actions and
  * form wiring as before; only the presentation changed. Reads only the
  * signed-in user. The header spans the full layout column and stays pinned
- * (matching the other /agents pages, so the sidebar trigger never scrolls
- * away or jumps position between pages); only the cards scroll, centered in
+ * (matching the other /agents pages); only the cards scroll, centered in
  * their narrower column.
  */
 export default async function SettingsPage() {
@@ -20,11 +19,11 @@ export default async function SettingsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const xLink = await getXLinkState();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 border-b border-border py-5">
-        <AppSidebarBackRow />
         <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage your profile and account.</p>
       </header>
@@ -37,6 +36,28 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <UsernameForm initialUsername={getUsername(user)} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>X account</CardTitle>
+            <CardDescription>Where your agents post from.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {xLink.linked && xLink.handle ? (
+              <DisconnectXButton handle={xLink.handle} />
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">X account</p>
+                  <p className="text-sm text-muted-foreground">Not connected.</p>
+                </div>
+                <Button asChild variant="outline">
+                  <a href="/auth/x?returnTo=/agents/settings">Connect X</a>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

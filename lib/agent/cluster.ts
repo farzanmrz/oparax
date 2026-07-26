@@ -1,0 +1,332 @@
+// lib/agent/cluster.ts
+//
+// Story clustering — attaches a delivered source post to an existing recent story or creates a
+// new one, atomically. PURE-ish orchestration in the same shape as draft-council-run.ts: this
+// module owns its own story-table writes (creation + the atomic claim below), but the model
+// call's ledger row is NOT this module's job — the caller (draft-pipeline.ts's
+// draftForExperiment, which calls assignToStory and inserts `calls` into `model_calls`
+// ledger-first) is already wired, same as every other CouncilCall producer in this repo
+// (AGENTS.md's model-call rule).
+// SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
+// scope) — never importable from a client component.
+import { generateObject, NoObjectGeneratedError } from "ai";
+import { z } from "zod";
+import { resolveCallMeta } from "@/lib/agent/call-meta";
+import {
+  DEEPSEEK_DRAFT_MODEL,
+  DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
+} from "@/lib/agent/deepseek-draft-config";
+// TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
+import type { CouncilCall } from "@/lib/agent/draft-council-run";
+import { aiTelemetry } from "@/lib/observability/ai-telemetry";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+// Bounded candidate window: keeps the classifier prompt small and stops a desk's story history
+// from growing the prompt unboundedly over its lifetime. 20 is a reasonable recency window for a
+// reporter's beat (a desk producing more than ~20 live concurrent story threads is not the
+// common case this classifier needs to disambiguate against) — flagged in the report as the
+// non-obvious number this brief calls out.
+const RECENT_STORY_CANDIDATE_LIMIT = 20;
+
+// Zero-call fallback label length — first ~80 chars of the post text, used only when there is
+// nothing to compare against (no candidates) or when the classifier call itself failed schema
+// validation (the NoObjectGeneratedError degrade below). The model is the only place a
+// contextual one-line label gets generated well; this is deliberately just a truncation.
+const DETERMINISTIC_SUMMARY_LENGTH = 80;
+
+export type ClusterResult = {
+  storyId: string;
+  calls: CouncilCall[]; // 0 or 1 elements: empty on the zero-candidate path (no model call
+  // made); otherwise exactly one CouncilCall-shaped element for the classifier call that ran.
+};
+
+const clusterVerdictSchema = z.object({
+  match: z
+    .enum(["existing", "new"])
+    .describe(
+      '"existing" when the new post continues one of the candidate stories below; "new" when ' +
+        "it describes a development none of the candidates cover.",
+    ),
+  storyIndex: z
+    .number()
+    .int()
+    .describe(
+      'The 0-based index of the matching candidate when match is "existing"; -1 when match is ' +
+        '"new".',
+    ),
+  summary: z
+    .string()
+    .describe(
+      "A short one-line summary (roughly 80 characters) of the new development when match is " +
+        '"new"; an empty string when match is "existing".',
+    ),
+});
+
+/** ONE helper that builds every clustering `CouncilCall` — thin wrapper around
+ *  `call-meta.ts`'s shared `resolveCallMeta`, which derives `costUsd`/`generationId`/
+ *  `reasoningWithheldByProvider` the same way draft-council-run.ts's own `toCouncilCall` does
+ *  (a null trace is only the provider withholding one when the call actually spent reasoning
+ *  tokens; this classifier runs at `reasoning: "none"`, so it has no trace by design —
+ *  `reasoning-trace.ts`), so the field carries one meaning across both stages. `stage` on the
+ *  shared `CouncilCall` type includes "clustering" alongside draft-council-run.ts's own
+ *  "drafting"/"judge" stages, so this builds a directly-typed object with no cast. */
+function buildClusterCall(params: {
+  output: string | null;
+  reasoning: string | null;
+  usage: unknown;
+  providerMetadata?: Record<string, unknown>;
+}): Promise<CouncilCall> {
+  return resolveCallMeta({
+    kind: "draft",
+    stage: "clustering",
+    role: "primary",
+    model: DEEPSEEK_DRAFT_MODEL,
+    output: params.output,
+    reasoning: params.reasoning,
+    usage: params.usage,
+    providerMetadata: params.providerMetadata,
+  });
+}
+
+function deterministicSummary(text: string): string {
+  const trimmed = text.trim();
+  return trimmed.length > DETERMINISTIC_SUMMARY_LENGTH
+    ? `${trimmed.slice(0, DETERMINISTIC_SUMMARY_LENGTH).trimEnd()}…`
+    : trimmed;
+}
+
+function buildClusterPrompt(
+  candidates: Array<{ id: string; summary: string }>,
+  authorHandle: string,
+  text: string,
+): string {
+  // A tracked account's post text is untrusted and reaches this prompt verbatim — <post> tags
+  // (story-cluster.md instructs the model to treat their content as data, never instructions)
+  // stop a crafted post from steering match/storyIndex or injecting text into `summary`, which
+  // renders directly in the reporter's feed with no human review step before it does.
+  const candidateList = candidates.map((c, i) => `Candidate ${i}: ${c.summary}`).join("\n");
+  return [
+    "Candidate stories:",
+    candidateList,
+    "",
+    `New post by @${authorHandle}:`,
+    "<post>",
+    text,
+    "</post>",
+  ].join("\n");
+}
+
+async function createStory(
+  admin: AdminClient,
+  experimentId: string,
+  summary: string,
+): Promise<string> {
+  const { data, error } = await admin
+    .from("stories")
+    .insert({ experiment_id: experimentId, summary })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+
+/** The atomic claim (D16 rail) — story_assignments carries UNIQUE(source_post_id,
+ *  experiment_id), so this insert IS the race guarantee, not the classification above.
+ *  Scoped per desk, not just per post: `source_posts` dedupes GLOBALLY (L4 — shared stream
+ *  rules mean overlapping tracking across desks), so the same post reaches
+ *  `draftForExperiment` independently for every desk that tracks its author. Each desk clusters
+ *  it into its OWN stories; a global UNIQUE(source_post_id) would let desk B's claim collide
+ *  with desk A's on the shared post and silently inherit A's story_id (fixed post-QC — see
+ *  supabase/migrations/20260724010000_story_assignments_scope_per_desk.sql). Mirrors
+ *  draft-pipeline.ts's `draftForExperiment` insert-then-branch-on-23505 shape. On a 23505
+ *  unique-violation, another concurrent delivery of this exact (sourcePostId, experimentId)
+ *  pair already won the claim — read ITS story_id back rather than the one this call attempted
+ *  (the race-loser path). This function alone never knows whether the `storyId` it was handed
+ *  was just freshly created or an existing candidate from the "existing"-match branch, so it
+ *  does not attempt cleanup itself — `createAndClaimNewStory` below, the only caller that ever
+ *  creates a fresh story, deletes its own orphan when it loses here. */
+async function claimStoryAssignment(
+  admin: AdminClient,
+  sourcePostId: string,
+  experimentId: string,
+  storyId: string,
+): Promise<string> {
+  const { error } = await admin
+    .from("story_assignments")
+    .insert({ source_post_id: sourcePostId, experiment_id: experimentId, story_id: storyId })
+    .select("id");
+  if (!error) return storyId;
+  if (error.code !== "23505") throw error;
+
+  const { data: winner, error: winnerError } = await admin
+    .from("story_assignments")
+    .select("story_id")
+    .eq("source_post_id", sourcePostId)
+    .eq("experiment_id", experimentId)
+    .single();
+  if (winnerError) throw winnerError;
+  return winner.story_id;
+}
+
+async function createAndClaimNewStory(
+  admin: AdminClient,
+  experimentId: string,
+  sourcePostId: string,
+  summary: string,
+): Promise<string> {
+  const storyId = await createStory(admin, experimentId, summary);
+  const winnerId = await claimStoryAssignment(admin, sourcePostId, experimentId, storyId);
+  if (winnerId !== storyId) {
+    // Lost the race: another concurrent delivery of this exact (sourcePostId, experimentId)
+    // pair already claimed a story before our insert landed (the retry-after-later-failure case
+    // this comment documents — the SAME sourcePostId reaching draftForExperiment a second time
+    // after a downstream failure released draft_claims). The story row created just above is now
+    // orphaned — no story_assignments row will ever point at it, since the claim went to the
+    // race winner's story instead — so delete it here rather than leaving dead weight that
+    // fetchFeedPage would still surface as a card with nothing to show. Best-effort: a failed
+    // delete is non-fatal (the winner's story_id below is still correct to return), just logged
+    // so an undeleted orphan stays visible rather than silently swallowed.
+    const { error: cleanupError } = await admin.from("stories").delete().eq("id", storyId);
+    if (cleanupError) {
+      console.error("cluster: failed to delete orphaned story after losing the claim race", {
+        storyId,
+        error: cleanupError,
+      });
+    }
+  }
+  return winnerId;
+}
+
+/** Attach sourcePostId to an existing recent story, or create a new one, atomically.
+ *  The caller (draft-pipeline.ts's draftForExperiment) is responsible for inserting `calls`
+ *  into model_calls (ledger-first, ownerId is the caller's concern — this function does not
+ *  know or need the experiment's owner_id) and is responsible for handling any error this
+ *  function throws (a non-billing DB error propagates normally; do not swallow it here). */
+/**
+ * Clustering is DORMANT — one post becomes one story, and the classifier below never runs.
+ *
+ * The shipped flow is deliberately post-per-story: a tracked X post arrives, gets drafted, and
+ * is notified on its own. Folding several posts into one developing story is a real capability
+ * this module implements in full (and the schema, the story-keyed feed, and `story_assignments`
+ * all stay in place for it) — it is switched off, not removed, so reactivating it is this one
+ * flag rather than a rebuild.
+ *
+ * Flipping this back to `true` re-enables the classifier call. Read the two open questions it
+ * reintroduces before doing so: a story that holds several posts accumulates one `is_winner` row
+ * per (platform, source post) with nothing dethroning the previous one (`feed-query.ts` orders
+ * explicitly so the newest wins, but nothing decides whether a NEWER draft should supersede an
+ * already-POSTED one), and the classifier reads untrusted post text, which is why
+ * `buildClusterPrompt` delimits it and `story-cluster.md` carries a treat-as-data instruction.
+ */
+const CLUSTERING_ENABLED = false;
+
+export async function assignToStory(input: {
+  experimentId: string;
+  sourcePostId: string;
+  authorHandle: string;
+  text: string;
+}): Promise<ClusterResult> {
+  const { experimentId, sourcePostId, authorHandle, text } = input;
+  const admin = createAdminClient();
+
+  // Dormant path (see CLUSTERING_ENABLED): identical to the zero-candidate branch below — a new
+  // story with the deterministic summary, no model call, no candidate query. The caller still
+  // gets a real storyId, so nothing downstream (post_drafts.story_id, the feed) changes shape.
+  if (!CLUSTERING_ENABLED) {
+    const storyId = await createAndClaimNewStory(
+      admin,
+      experimentId,
+      sourcePostId,
+      deterministicSummary(text),
+    );
+    return { storyId, calls: [] };
+  }
+
+  // Bounded recent-story candidates: narrow columns, limited window (see the module-scope
+  // constant's comment) — this runs server-side with no user session, so the admin client is
+  // required regardless (`stories` is select-only via RLS for the owner).
+  const { data: candidates, error: candidatesError } = await admin
+    .from("stories")
+    .select("id, summary")
+    .eq("experiment_id", experimentId)
+    .order("created_at", { ascending: false })
+    .limit(RECENT_STORY_CANDIDATE_LIMIT);
+  if (candidatesError) throw candidatesError;
+
+  if (!candidates || candidates.length === 0) {
+    const storyId = await createAndClaimNewStory(
+      admin,
+      experimentId,
+      sourcePostId,
+      deterministicSummary(text),
+    );
+    return { storyId, calls: [] };
+  }
+
+  // DeepSeek generateObject recipe (.claude/rules/agent.md, this brief's 4-leg copy): leg 1
+  // `reasoning: "none"` + `DEEPSEEK_DRAFT_PROVIDER_OPTIONS` (leg 1); `story-cluster.md` names
+  // `match`/`storyIndex`/`summary` imperatively under its Output heading (leg 2); leg 3 is the
+  // deterministic degrade in the catch block below, not a retry (a temp-0 failure isn't sampling
+  // variance, matching the judge's own reasoning); `maxOutputTokens: 2000` is leg 4.
+  try {
+    const verdictResult = await generateObject({
+      model: DEEPSEEK_DRAFT_MODEL,
+      providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
+      reasoning: "none",
+      temperature: 0,
+      maxOutputTokens: 2000,
+      schema: clusterVerdictSchema,
+      system: STORY_CLUSTER_PROMPT,
+      prompt: buildClusterPrompt(candidates, authorHandle, text),
+      experimental_telemetry: aiTelemetry("story_cluster", "story-cluster-deepseek"),
+    });
+
+    const call = await buildClusterCall({
+      output: JSON.stringify(verdictResult.object),
+      reasoning: verdictResult.reasoning ?? null,
+      usage: verdictResult.usage,
+      providerMetadata: verdictResult.providerMetadata,
+    });
+
+    let storyId: string;
+    if (verdictResult.object.match === "existing") {
+      const index = Math.min(Math.max(0, verdictResult.object.storyIndex), candidates.length - 1);
+      storyId = await claimStoryAssignment(admin, sourcePostId, experimentId, candidates[index].id);
+    } else {
+      const summary = verdictResult.object.summary.trim() || deterministicSummary(text);
+      storyId = await createAndClaimNewStory(admin, experimentId, sourcePostId, summary);
+    }
+
+    return { storyId, calls: [call] };
+  } catch (err) {
+    // Same discriminator as draft-council-run.ts's judge catch: NoObjectGeneratedError means the
+    // call COMPLETED and billed but its output failed schema validation — that call still owes a
+    // ledger row (AGENTS.md's model-call rule), captured off the error (cost degrades to null, no
+    // generationId — the error doesn't surface gateway metadata in resolveGatewayCost's shape).
+    // Degrade deterministically to a new one-source story, matching the zero-candidate path.
+    // Any OTHER error means the call did NOT complete or bill — propagate it, create no story,
+    // return no calls, so the caller's ledger-first ordering never sees a phantom billed call.
+    if (NoObjectGeneratedError.isInstance(err)) {
+      console.error(
+        "cluster: classifier output failed schema validation; degrading to a new one-source story",
+        err,
+      );
+      const call = await buildClusterCall({
+        output: err.text ?? null,
+        reasoning: null,
+        usage: err.usage,
+      });
+      const storyId = await createAndClaimNewStory(
+        admin,
+        experimentId,
+        sourcePostId,
+        deterministicSummary(text),
+      );
+      return { storyId, calls: [call] };
+    }
+    throw err;
+  }
+}

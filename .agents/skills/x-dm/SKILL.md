@@ -25,4 +25,6 @@ Hard-stop immediately if X shows `Failed to send message`, `Failed, Try Again`, 
 
 Do not produce a final response while `next send` returns a record. Do not stop after an arbitrary batch or because one turn reaches its runtime boundary. Continue in the same task until the queue is empty or a hard-stop condition occurs.
 
-Before reporting, run `rtk python3 .codex/outreach/outreach.py count send`. Never open LeanSpark. Return newly sent handles, unavailable outcomes, the stopping reason, and that exact remaining `x_av` count.
+Before completing the goal or reporting for any reason, including normal completion, a hard-stop, or a tool/browser failure, run `rtk .codex/outreach/sync-records.sh`. Run it after the last possible `resolve` and before the final count. The helper commits only `.codex/outreach/records.json` with its fixed message and pushes the current branch; never stage, commit, or push any other path. If it fails, report whether the commit was created and the push failed; do not claim the record update is remote.
+
+Then run `rtk python3 .codex/outreach/outreach.py count send`. Never open LeanSpark. Return newly sent handles, unavailable outcomes, the stopping reason, that exact remaining `x_av` count, and the record-sync result.

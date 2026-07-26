@@ -5,12 +5,14 @@
 // AbortSignal.timeout, non-OK -> Error with status + truncated body. Pure module:
 // no Supabase, no Next.js, no React, no I/O beyond fetch.
 
+import { assertFetchOk, fetchWithTimeout } from "@/lib/http-fetch";
+
 const X_AUTHORIZE_URL = "https://x.com/i/oauth2/authorize";
 const X_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 const X_REVOKE_URL = "https://api.x.com/2/oauth2/revoke";
 const X_API = "https://api.x.com/2";
 
-export const X_SCOPES = "tweet.read tweet.write users.read offline.access";
+const X_SCOPES = "tweet.read tweet.write users.read offline.access";
 
 /** One token grant from X's token endpoint. `refreshToken` is null when a refresh
  *  response omits it (rotation undocumented — caller keeps the prior one). */
@@ -47,20 +49,11 @@ function xBasicAuth(): { clientId: string; header: string } {
  *  TimeoutError/AbortError (xai.ts pattern) so a stalled X call fails fast instead
  *  of hanging indefinitely. */
 async function xFetch(endpoint: string, url: string, init: RequestInit): Promise<Response> {
-  try {
-    return await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
-  } catch (err) {
-    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-      throw new Error(`X ${endpoint} timed out after 15s`);
-    }
-    throw err;
-  }
+  return fetchWithTimeout("X", endpoint, url, init);
 }
 
 async function assertOk(endpoint: string, res: Response): Promise<void> {
-  if (res.ok) return;
-  const text = await res.text();
-  throw new Error(`X ${endpoint} ${res.status}: ${text.slice(0, 500)}`);
+  return assertFetchOk("X", endpoint, res);
 }
 
 /** Builds the X OAuth2 authorize URL (pure string building — no fetch). */

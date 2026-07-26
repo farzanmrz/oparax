@@ -20,6 +20,8 @@ next-env.d.ts
 
 # Local scratch data (regenerable)
 data/
+# scripts/diagnose-extraction.ts transcripts — raw model output and full reasoning traces
+.diag/
 
 # Logs
 *.log
@@ -28,3 +30,8 @@ npm-debug.log*
 # OS junk
 .DS_Store
 .codex/outreach/*.lock
+
+.agents/handoff/
+
+# Sentry Config File
+.env.sentry-build-plugin

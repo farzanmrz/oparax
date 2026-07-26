@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "critiques": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "severity": { "type": "string", "description": "blocking | important | minor" },
+          "target": { "type": "string", "description": "the plan section or task the critique lands on, quoted or named precisely" },
+          "critique": { "type": "string", "description": "the concrete gap, violation, contradiction, or unjustified complexity — with the failure it causes" },
+          "suggestion": { "type": ["string", "null"], "description": "the concrete improvement that resolves it, or null if the right fix is genuinely open" }
+        },
+        "// required-note": "Same rule as qc-findings-schema.json: OpenAI's structured-output API rejects any schema whose `required` omits a key present in `properties` — optionality is expressed with nullable types, never by omission from `required`.",
+        "required": ["severity", "target", "critique", "suggestion"]
+      }
+    }
+  },
+  "required": ["critiques"]
+}
