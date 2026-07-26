@@ -102,49 +102,32 @@ forbids.
 
 ## 4. GATE ✋
 **Paste the full plan into chat** (never a file pointer). Revise until
-the user's explicit go. Before acting on that approval, resolve two values from the
-conversation without re-asking if they were already stated:
+the user's explicit go. Before acting on that approval, resolve one value from the
+conversation without re-asking if it was already stated:
 
-- **mode** — tracked by default; `current` only when the user explicitly asked to
-  work directly on the current branch and that branch is exactly `dev`. Never use
-  current mode on `beta` or `main`.
 - **terminal target** — `dev` by default, or the explicitly requested `beta` / `main`.
+  Nothing persists it, so carry it in the conversation and pass it to `ship.sh`.
 
 On approval, pipe the approved plan — exactly as pasted — into one kickoff command
 on stdin (heredoc; no file argument):
 
 ```bash
-# Default tracked run: stdout is the new issue number.
-.claude/skills/feature/scripts/start.sh --target <dev|beta|main> "<feature name>"
-
-# Explicit direct-dev exception: stdout is "direct:dev".
-.claude/skills/feature/scripts/start.sh --current --target <dev|beta|main> "<feature name>"
+# stdout is the new issue number.
+.claude/skills/feature/scripts/start.sh "<feature name>"
 ```
 
-Tracked mode opens the issue with the plan as its body and cuts `ft/<issue#>` from
-the fetched `origin/dev` without checking out local `dev`; the issue is the single
-source of truth. Direct mode creates no issue or branch: it requires a clean local
-`dev` exactly at `origin/dev`, saves the exact approved plan to ignored
-`.feature/approved-plan.md`, and records that starting `baseSha` as QC's diff
-boundary. Both modes initialize branch-scoped state with the retained terminal
-target. If tracked branch setup or state initialization fails after issue creation,
-the kickoff closes the new issue rather than leaving an orphan.
+The kickoff opens the issue with the plan as its body and cuts `ft/<issue#>` from the
+fetched `origin/dev` without checking out local `dev`; the issue is the single source
+of truth. Nothing is persisted about the run — the branch identifies the slice, and
+the release target is passed to `ship.sh` at ship time. If branch setup fails after
+issue creation, the kickoff closes the new issue rather than leaving an orphan.
 
-**Approval is the trigger — no further prompting.** In tracked mode, the moment the
-kickoff succeeds (issue created carrying the approved plan, `ft/<issue#>` cut and
-checked out, branch-scoped state written), write the checkpoint immediately —
-`feature-handoff` and `feature-continue` are user-invoked only
-(`disable-model-invocation: true`), so do NOT invoke them via the Skill tool here.
-Instead follow `feature-handoff`'s own **Capture** steps directly: write
-`handoff.next.md` in the directory `state.mjs path` returns, using its required
-section structure, then run `state.mjs capture --branch "<branch>" --input
-"<path>/handoff.next.md"` yourself. Same bounded `handoff.md` either way — this
-just does it without crossing the "the model doesn't get to decide to run this
-packaged skill" boundary those two skills now enforce. Then tell the user, in one
-line: the branch is cut and checkpointed — continue in this session, or open a
-fresh session and run `/feature-continue` to pick up with zero context needed.
-Direct-dev mode has no issue or branch, so this auto-checkpoint step does not apply
-there — the kickoff's state write is the whole record.
+**Approval is the trigger — no further prompting.** The moment the kickoff succeeds
+(issue created carrying the approved plan, `ft/<issue#>` cut and checked out), tell
+the user in one line that the branch is cut, naming the retained terminal target so it
+is not lost. Continuity across sessions is the global `/handoff` skill's job: when the
+user wants to stop, they run `/handoff` and resume in a fresh session with
+`/continue <session-id>`.
 
 Rules: scope freezes at this gate. Planning docs never enter the repo — the issue
-body is the tracked record; the direct-run copy is ignored runtime scratch.
+body is the tracked record.

@@ -30,9 +30,10 @@ branch — surface it, then drop it. It never applies to anything the owner repo
 Loop test → implement → re-verify until the owner has nothing left to report (or
 has explicitly deferred what remains).
 
-Before the gate, read branch-scoped feature state and show the **complete** output
-of `git status --short --untracked-files=all`: every modification, deletion, and
-untracked file will be staged. State the saved terminal target in plain words.
+Before the gate, show the **complete** output of `git status --short
+--untracked-files=all`: every modification, deletion, and untracked file will be
+staged. State the terminal target — carried in this conversation or in the handoff
+this session resumed from — in plain words.
 
 GATE ✋: use the one question matching that target:
 
@@ -50,14 +51,10 @@ From the repo root, run the command matching the saved mode. Pass the saved targ
 explicitly rather than inferring it again:
 
 ```bash
-# Tracked run, on ft/<issue#>
 .claude/skills/feature/scripts/ship.sh --target <dev|beta|main> <issue#> "<feature summary>"
-
-# Explicit direct run, on dev
-.claude/skills/feature/scripts/ship.sh --current --target <dev|beta|main> "<feature summary>"
 ```
 
-The tracked command reprints the authorized inventory, stages all of it, commits a
+The command reprints the authorized inventory, stages all of it, commits a
 recovery snapshot when needed, and pushes the exact feature tip without force. It
 then previews the merge without mutating refs and creates the one squash commit on
 `dev` in a temporary detached worktree. That commit carries parseable
@@ -99,24 +96,17 @@ integration report.
 After the saved target and its deployment check have succeeded, finalize:
 
 ```bash
-# Tracked
 .claude/skills/feature/scripts/ship.sh --finalize <issue#>
-
-# Direct dev
-.claude/skills/feature/scripts/ship.sh --finalize --current
 ```
 
 Finalization first proves that the current and live recovery tips still equal the
-tip recorded on `origin/dev`; only then does it close the tracked issue, clear this
-branch's handoff/state, and sweep `.feature/` plus legacy `.superpowers/`. It retains
-the just-shipped branch. Cleanup considers only older exact `ft/<number>` branches
-and deletes one only when its issue is closed, `origin/dev` records the same source
-tip in ship trailers, its local/remote tips are unchanged, and no worktree uses it.
-Remote deletion uses an exact lease; every legacy, moved, open, unverifiable, or
-otherwise ambiguous branch is skipped and reported. A deleted branch's handoff
-state goes with it, and stray `.context/features/ft/<number>` state whose branch is
-already gone everywhere is swept under the same closed-issue proof — anything
-unverifiable is kept and reported.
+tip recorded on `origin/dev`; only then does it close the tracked issue and sweep
+`.feature/` plus legacy `.superpowers/`. It retains the just-shipped branch. Cleanup
+considers only older exact `ft/<number>` branches and deletes one only when its issue
+is closed, `origin/dev` records the same source tip in ship trailers, its local/remote
+tips are unchanged, and no worktree uses it. Remote deletion uses an exact lease;
+every legacy, moved, open, unverifiable, or otherwise ambiguous branch is skipped and
+reported.
 
 Hard rules: never develop directly on `beta`/`main`; never skip `dev → beta → main`;
 never force-push protected branches; no PRs, no CI.

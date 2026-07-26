@@ -20,7 +20,6 @@ next-env.d.ts
 
 # Local scratch data (regenerable)
 data/
-.context/
 # scripts/diagnose-extraction.ts transcripts — raw model output and full reasoning traces
 .diag/
 

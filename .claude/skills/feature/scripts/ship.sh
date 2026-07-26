@@ -1,37 +1,27 @@
 #!/usr/bin/env bash
-# Transactional feature shipping. The default invocation lands a tracked
-# ft/<issue> on dev through a temporary detached worktree; --current ships an
-# explicitly-started direct dev run. A separate --finalize invocation closes the
-# issue and performs conservative old-feature cleanup only after the requested
-# promotion/deployment checks have completed.
+# Transactional feature shipping. Lands ft/<issue> on dev through a temporary
+# detached worktree. A separate --finalize invocation closes the issue and performs
+# conservative old-feature cleanup only after the requested promotion/deployment
+# checks have completed.
 #
 # Usage:
 #   ship.sh [--target dev|beta|main] <issue-number> "<commit message>"
-#   ship.sh --current [--target dev|beta|main] "<commit message>"
 #   ship.sh --finalize <issue-number>
-#   ship.sh --finalize --current
 set -euo pipefail
 
 usage() {
   cat >&2 <<'USAGE'
 usage:
   ship.sh [--target dev|beta|main] <issue-number> "<commit message>"
-  ship.sh --current [--target dev|beta|main] "<commit message>"
   ship.sh --finalize <issue-number>
-  ship.sh --finalize --current
 USAGE
   exit 2
 }
 
-mode="tracked"
 target="dev"
 finalize="false"
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --current)
-      mode="current"
-      shift
-      ;;
     --target)
       [ "$#" -ge 2 ] || usage
       target="$2"
@@ -63,34 +53,22 @@ case "$target" in
     ;;
 esac
 
-if [ "$mode" = "tracked" ]; then
-  if [ "$finalize" = "true" ]; then
-    [ "$#" -eq 1 ] || usage
-    issue="$1"
-    msg=""
-  else
-    [ "$#" -eq 2 ] || usage
-    issue="$1"
-    msg="$2"
-  fi
-  case "$issue" in
-    '' | *[!0-9]*)
-      echo "ship: issue number must contain digits only." >&2
-      exit 2
-      ;;
-  esac
-  branch="ft/${issue}"
+if [ "$finalize" = "true" ]; then
+  [ "$#" -eq 1 ] || usage
+  issue="$1"
+  msg=""
 else
-  issue=""
-  branch="dev"
-  if [ "$finalize" = "true" ]; then
-    [ "$#" -eq 0 ] || usage
-    msg=""
-  else
-    [ "$#" -eq 1 ] || usage
-    msg="$1"
-  fi
+  [ "$#" -eq 2 ] || usage
+  issue="$1"
+  msg="$2"
 fi
+case "$issue" in
+  '' | *[!0-9]*)
+    echo "ship: issue number must contain digits only." >&2
+    exit 2
+    ;;
+esac
+branch="ft/${issue}"
 
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$repo_root" ] || {
@@ -98,11 +76,6 @@ repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
   exit 1
 }
 cd "$repo_root"
-state_helper="$repo_root/.claude/skills/feature-handoff/scripts/state.mjs"
-[ -f "$state_helper" ] || {
-  echo "ship: feature state helper is missing: $state_helper" >&2
-  exit 1
-}
 
 current_branch="$(git symbolic-ref --quiet --short HEAD || true)"
 [ "$current_branch" = "$branch" ] || {
@@ -244,86 +217,35 @@ cleanup_old_feature_branches() {
       fi
     fi
     echo "ship: removed verified old recovery branch $candidate." >&2
-    # The branch is verifiably done and gone; its handoff state is now unreachable
-    # process residue (normally already cleared by its own finalize — this catches
-    # a finalize that died between closing the issue and clearing state).
-    node "$state_helper" clear --branch "$candidate" >&2
   done <<EOF
 $candidates
 EOF
 }
 
-# Feature state whose branch no longer exists anywhere can never be resumed and
-# never becomes a cleanup candidate above (candidates come from live refs), so it
-# would linger forever. Sweep it with the same conservatism: only exact ft/<number>
-# state, only when no local or remote ref remains, and only when the issue is closed.
-cleanup_orphaned_feature_state() {
-  active_branch="$1"
-  state_root="$repo_root/.context/features/ft"
-  [ -d "$state_root" ] || return 0
-  for state_dir in "$state_root"/*/; do
-    [ -d "$state_dir" ] || continue
-    number="$(basename "$state_dir")"
-    case "$number" in
-      '' | *[!0-9]*) continue ;;
-    esac
-    candidate="ft/$number"
-    [ "$candidate" = "$active_branch" ] && continue
-    if git rev-parse --verify --quiet "refs/heads/$candidate" >/dev/null; then
-      continue
-    fi
-    if remote_tip="$(remote_ref_sha origin "refs/heads/$candidate")" && [ -n "$remote_tip" ]; then
-      continue
-    fi
-    if ! issue_state="$(gh issue view "$number" --json state --jq .state 2>/dev/null)"; then
-      echo "ship: keep stray feature state for $candidate (could not verify its issue state)." >&2
-      continue
-    fi
-    if [ "$issue_state" != "CLOSED" ]; then
-      echo "ship: keep stray feature state for $candidate (issue #$number is not closed)." >&2
-      continue
-    fi
-    node "$state_helper" clear --branch "$candidate" >&2
-  done
-}
-
 if [ "$finalize" = "true" ]; then
   git fetch --prune origin dev >&2
-  if [ "$mode" = "tracked" ]; then
-    shipped_tip="$(find_recorded_tip "$branch" || true)"
-    [ -n "$shipped_tip" ] || {
-      echo "ship: cannot finalize $branch — origin/dev lacks its ship trailers." >&2
-      exit 1
-    }
-    current_tip="$(git rev-parse HEAD)"
-    [ "$current_tip" = "$shipped_tip" ] || {
-      echo "ship: cannot finalize $branch — its local tip changed after the recorded ship." >&2
-      exit 1
-    }
-    live_feature="$(remote_ref_sha origin "refs/heads/$branch")" || {
-      echo "ship: cannot finalize $branch — its live remote ref could not be queried." >&2
-      exit 1
-    }
-    [ -n "$live_feature" ] && [ "$live_feature" = "$shipped_tip" ] || {
-      echo "ship: cannot finalize $branch — its live remote tip no longer matches the recorded Feature-Source-Tip." >&2
-      exit 1
-    }
-    gh issue close "$issue" --comment "Shipped to dev and completed the authorized release path." >&2
-  else
-    remote_dev="$(remote_ref_sha origin refs/heads/dev)" || {
-      echo "ship: cannot verify origin/dev before finalizing the direct run." >&2
-      exit 1
-    }
-    [ "$remote_dev" = "$(git rev-parse HEAD)" ] || {
-      echo "ship: direct dev HEAD is not the live origin/dev tip; refusing finalization." >&2
-      exit 1
-    }
-  fi
+  shipped_tip="$(find_recorded_tip "$branch" || true)"
+  [ -n "$shipped_tip" ] || {
+    echo "ship: cannot finalize $branch — origin/dev lacks its ship trailers." >&2
+    exit 1
+  }
+  current_tip="$(git rev-parse HEAD)"
+  [ "$current_tip" = "$shipped_tip" ] || {
+    echo "ship: cannot finalize $branch — its local tip changed after the recorded ship." >&2
+    exit 1
+  }
+  live_feature="$(remote_ref_sha origin "refs/heads/$branch")" || {
+    echo "ship: cannot finalize $branch — its live remote ref could not be queried." >&2
+    exit 1
+  }
+  [ -n "$live_feature" ] && [ "$live_feature" = "$shipped_tip" ] || {
+    echo "ship: cannot finalize $branch — its live remote tip no longer matches the recorded Feature-Source-Tip." >&2
+    exit 1
+  }
+  gh issue close "$issue" --comment "Shipped to dev and completed the authorized release path." >&2
 
   cleanup_old_feature_branches "$branch"
-  cleanup_orphaned_feature_state "$branch"
 
-  node "$state_helper" clear --branch "$branch" >&2
   rm -rf .feature .superpowers
   rmdir .claude/worktrees 2>/dev/null || true
   echo "Finalized $branch; retained it as the current recovery generation."
@@ -342,63 +264,11 @@ fi
 if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
   git add -A
   if ! git diff --cached --quiet; then
-    if [ "$mode" = "tracked" ]; then
-      git commit -m "ship: recovery snapshot for $branch" >&2
-    else
-      git commit -m "$msg" >&2
-    fi
+    git commit -m "ship: recovery snapshot for $branch" >&2
   fi
-fi
-
-if [ "$mode" = "current" ]; then
-  source_tip="$(git rev-parse HEAD)"
-  node "$state_helper" update \
-    --branch "$branch" \
-    --source-tip "$source_tip" \
-    --phase shipping \
-    --gate integrate-dev \
-    --target "$target" >&2
-  git fetch origin dev >&2
-  remote_dev="$(git rev-parse refs/remotes/origin/dev)"
-  if ! git merge-base --is-ancestor "$remote_dev" HEAD; then
-    echo "ship: direct dev no longer descends from origin/dev; no push attempted." >&2
-    exit 1
-  fi
-  dev_tip="$(git rev-parse HEAD)"
-  if ! git push origin "$dev_tip:refs/heads/dev" >&2; then
-    echo "ship: direct dev push was rejected. Local commit $dev_tip remains recoverable." >&2
-    exit 1
-  fi
-  live_dev="$(remote_ref_sha origin refs/heads/dev)" || {
-    echo "ship: pushed dev but could not verify its live remote ref." >&2
-    exit 1
-  }
-  [ "$live_dev" = "$dev_tip" ] || {
-    echo "ship: live origin/dev ($live_dev) does not match the pushed commit ($dev_tip)." >&2
-    exit 1
-  }
-  if [ "$target" = "dev" ]; then
-    next_gate="finalize"
-  else
-    next_gate="promote-beta"
-  fi
-  node "$state_helper" update \
-    --branch "$branch" \
-    --source-tip "$dev_tip" \
-    --phase shipped-dev \
-    --gate "$next_gate" \
-    --target "$target" >&2
-  echo "Shipped direct dev commit $dev_tip. Authorized terminal target: $target."
-  exit 0
 fi
 
 source_tip="$(git rev-parse HEAD)"
-node "$state_helper" update \
-  --branch "$branch" \
-  --source-tip "$source_tip" \
-  --phase shipping \
-  --gate integrate-dev \
-  --target "$target" >&2
 
 # Publish the exact feature tip first. A normal non-force push supplies a remote
 # recovery copy and rejects if somebody moved the branch unexpectedly.
@@ -471,17 +341,5 @@ live_dev="$(remote_ref_sha origin refs/heads/dev)" || {
 git worktree remove "$integration_dir" >&2
 integration_dir=""
 trap - EXIT
-
-if [ "$target" = "dev" ]; then
-  next_gate="finalize"
-else
-  next_gate="promote-beta"
-fi
-node "$state_helper" update \
-  --branch "$branch" \
-  --source-tip "$source_tip" \
-  --phase shipped-dev \
-  --gate "$next_gate" \
-  --target "$target" >&2
 
 echo "Shipped $branch -> dev as $dev_commit; recovery tip $source_tip retained locally and on origin. Authorized terminal target: $target."

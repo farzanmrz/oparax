@@ -19,12 +19,8 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    gather it all and return a compact block; the session only reads the result.
 
    The agent gathers, in order:
-   - **Diff boundary.** `node .claude/skills/feature-handoff/scripts/state.mjs show
-     --branch "$(git branch --show-current)"`. If `.mode === "current"`, the range is
-     **`<state.baseSha>..HEAD`** — never `origin/dev...HEAD` and never a later `dev`
-     SHA; `baseSha` is written once at `init` and immutable after, so it is the correct
-     stable boundary for a direct-dev run. If `.mode === "tracked"` (or no state exists
-     — a standalone run), the range stays `origin/dev...ft/<N>`.
+   - **Diff boundary.** `origin/dev...ft/<N>` — the branch is its own marker, so the
+     range comes from git alone and nothing needs to be recorded at slice start.
    - **Convergence.** All commits on the feature branch; no stray flow worktrees under
      `.claude/worktrees/`; no stray branches.
    - **Diff size.** `git diff --shortstat <range>` and `git diff --stat` (to spot

@@ -73,7 +73,7 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 `.feature/` is the `/feature` flow's live scratch — never delete it by hand; `ship.sh` sweeps it when the slice ships.
 
-`.context/features/<branch>/` is ignored, branch-scoped continuity state for the feature flow. `state.json` carries the run contract and `handoff.md` is the bounded `/feature-handoff` checkpoint. Never load a different branch's snapshot or treat a stale HEAD/worktree fingerprint as current; shipping removes the shipped branch's state and conservatively sweeps state left behind by older branches proven done (issue closed, branch deleted or verifiably shipped).
+Session continuity is **global and branch-agnostic**: `/handoff` writes one checkpoint per Claude Code session to `~/.claude/handoffs/<session-id>.md`, and `/continue <session-id>` resumes it from any session, in this project or another. The feature flow persists nothing of its own — the branch identifies the slice, the issue is its spec, and QC's diff boundary is plain `origin/dev...ft/<N>`. There is no direct-dev mode and no `.context/` state.
 
 ## Conventions
 

@@ -23,9 +23,6 @@ if it exists; otherwise the user's direct instruction is the plan (small-build m
 
 ## Preflight
 
-- Read existing state for the exact current branch with `state.mjs show`. When it
-  exists, update it to phase `building` and gate `implement`; never initialize
-  guessed state here. A standalone small build without state may continue.
 - **Dependency preflight before any task:** run `pnpm install --frozen-lockfile`; an
   unmet-peer warning on a feature-relevant package is a BLOCKER — stop and present
   (proven in #39: a green build hid a worker crash).
@@ -133,6 +130,6 @@ sitting on the critical path).
 - Skill grounding is binding: name the skills the plan grounds each task in — in the
   dispatch prompt when dispatching, and by actually invoking them when working inline.
 
-After all tasks and any foundational reviews pass, update existing state to phase `built`
-and gate `qc`. This intentionally marks an older prose handoff stale until
-`/feature-handoff` captures the new checkpoint.
+After all tasks and any foundational reviews pass, the branch is ready for QC. If the
+session is stopping here rather than continuing into `/feature-qc`, run `/handoff` so a
+fresh session can resume with `/continue <session-id>`.

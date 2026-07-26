@@ -5,8 +5,8 @@ description: >-
   sequence. Use when the user wants a full slice built from idea to shipped commit.
   For a single phase, use the granular skills directly: /feature-plan,
   /feature-build, /feature-qc, /feature-ship (or /simplify, /code-review,
-  /feature-lint for individual QC passes). To resume a checkpointed flow in a
-  fresh session, use /feature-continue.
+  /feature-lint for individual QC passes). To resume in a fresh session, use the
+  global /handoff and /continue skills.
 argument-hint: "[feature description]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
@@ -15,17 +15,16 @@ disable-model-invocation: true
 
 # Idea to shipped — the orchestrator
 
-This skill only conducts; the four phase skills do the work. The default tracked
-run is **ONE issue · ONE feature branch · ONE squashed commit on `dev`.** An
-explicitly requested direct run may instead stay on a clean `dev`; `beta` and
-`main` are promotion destinations, never feature-development branches. No PRs,
+This skill only conducts; the four phase skills do the work. A run is **ONE issue ·
+ONE feature branch · ONE squashed commit on `dev`.** `dev`, `beta`, and `main` are
+integration and promotion destinations, never feature-development branches. No PRs,
 no CI. Parallelism is a private implementation detail.
 
 **Track phases with TaskCreate** — one task each, ticked as each finishes; the flow
 is complete only when the last ticks:
 
-1. `Plan approved (✋ gate) + branch cut, state written, handoff checkpointed (or direct-dev state started)` → invoke **`feature-plan`**
-2. `Built on ft/<issue#> or the explicit direct dev run` → invoke **`feature-build`**
+1. `Plan approved (✋ gate) + issue opened + ft/<issue#> cut` → invoke **`feature-plan`**
+2. `Built on ft/<issue#>` → invoke **`feature-build`**
 3. `QC: cross-model reviews + browser journeys · lint · build · doc sync` → invoke **`feature-qc`**
 4. `Owner feedback implemented + shipped via ship.sh (✋)` → invoke **`feature-ship`**
 
@@ -62,10 +61,9 @@ honest.
 - Preserve behavior contracts (server-action field names, Supabase auth flows,
   the chat scaffold wiring).
 
-Branch-scoped state and the bounded fresh-session summary live under ignored
-`.context/features/<exact branch>/`; `/feature-handoff` owns their content (the plan
-gate captures the first checkpoint automatically the moment the branch is cut), and
-`/feature-continue` resumes from them in a fresh session with zero carried context.
+Nothing about a run is persisted: the branch identifies the slice, the issue is its
+spec, and the terminal target rides in the conversation. To stop mid-flow, run the
+global `/handoff` and resume in a fresh session with `/continue <session-id>`.
 Scripts
 (`start.sh`, `ship.sh`, `promote.sh`) live in
 `.claude/skills/feature/scripts/` and are called by feature-plan and feature-ship.
