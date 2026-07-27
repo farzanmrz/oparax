@@ -6,6 +6,10 @@ AI news desk for reporters: monitors their beat across X, catches stories as the
 
 Capabilities built but deliberately switched off — multi-platform drafting, clustering, email delivery, auto-post, website sources — are listed under "Dormant by design" below. **Treat them as decisions, not gaps.**
 
+## Current roadmap (set 2026-07-26)
+
+Work proceeds through these issues **in order** — feature-plan slices cut from them rather than inventing scope: [#72](https://github.com/farzanmrz/oparax/issues/72) prove the ingestion pipeline live end-to-end (the gate to promoting beta → main) → [#73](https://github.com/farzanmrz/oparax/issues/73) extractor→drafter contract (beat filtration, translation, synthesis actually governing the draft — carries a live bug: a Spanish source produced a Spanish, unfiltered draft on beta) → [#74](https://github.com/farzanmrz/oparax/issues/74) Slack Block Kit notification with synthesis → [#75](https://github.com/farzanmrz/oparax/issues/75) Slack thread-reply rework loop. When a slice ships, update this line.
+
 ## Stack
 
 Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, session replay) · pnpm (a preinstall guard hard-fails npm/yarn) + Biome. Versions live in `package.json` — read it rather than trusting a number here. Version-matched Next.js docs ship inside the install at `node_modules/next/dist/docs/` — consult them before non-trivial Next.js API work instead of trusting training data.
