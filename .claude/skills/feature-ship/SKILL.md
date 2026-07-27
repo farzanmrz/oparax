@@ -113,6 +113,7 @@ tips are unchanged, and no worktree uses it. Remote deletion uses an exact lease
 every legacy, moved, open, unverifiable, or otherwise ambiguous branch is skipped and
 reported.
 
-Hard rules: feature work always happens on `ft/<issue#>` — there is no
-direct-mode escape hatch onto `beta` or `main`; never skip `beta → main`; never
-force-push protected branches; no PRs, no CI.
+Hard rules: feature slices always run on `ft/<issue#>` — app code is never
+developed directly on `beta` or `main` (owner-directed instruction-file/doc
+micro-edits may land directly on `beta`; see feature/SKILL.md's carve-out);
+never skip `beta → main`; never force-push protected branches; no PRs, no CI.

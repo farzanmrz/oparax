@@ -13,11 +13,13 @@ model: inherit
 
 Over the whole branch diff, in order (skip nothing silently — report each step):
 
-**Narration is terse; findings are not.** While working the steps, status narration
-is one short line per step — no elaboration, no restated context, no color
-commentary. This does NOT apply to the findings themselves, the adjudication
-reasoning, or the end-of-run report — those keep full detail regardless of how
-tersely progress was narrated getting there.
+**Silent by default; findings keep full detail.** No status narration between
+steps. Write text mid-run only for a blocker, a deviation from the plan, or a
+load-bearing finding — one sentence each. This does NOT apply to the findings
+themselves, the adjudication reasoning, or the end-of-run report — those keep
+full detail regardless. The same rule goes into every dispatch prompt this
+skill sends (setup, browser-verifier, fix, lint, doc-sync agents): a dispatched
+agent's between-tool-call text reaches nobody but still bills tokens.
 
 0. **Setup — delegate it, don't spend the session model on it.** Everything in this step
    is mechanical (run a command, read the output, move on) — measured on a real run it

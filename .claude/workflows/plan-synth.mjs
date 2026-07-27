@@ -306,7 +306,7 @@ State the spine you chose and why in the Approach section, then commit to it —
 - **## Stack & design acceptance criteria** — the deduped union of the lenses' acceptanceCriteria plus anything the plan itself adds, as a concrete checklist. feature-qc verifies the built diff against this section, so every line must be checkable.
 - **Instruction-file updates** — the AGENTS.md / .claude/rules edits this slice makes necessary, each "FILE: change". Write "none" if truly empty.${SIMPLICITY_RULE}
 
-NARRATION: while you work (reading files, weighing candidates), keep any status narration to one terse line per step. This does NOT apply to the plan itself — the returned document keeps full detail and rationale; only the working narration is compressed.`,
+NARRATION: silent by default while you work — no status narration between tool calls; write text mid-run only for a blocker or a load-bearing finding, one sentence. This does NOT apply to the plan itself — the returned document keeps full detail and rationale.`,
   { label: 'draft', phase: 'Draft', agentType: 'general-purpose' },
 )
 log(`plan-synth draft → ${plan && typeof plan === 'string' ? `${plan.length} chars` : 'MISSING — check Draft stage'}`)
@@ -364,7 +364,7 @@ ${SIMPLICITY_RULE}
 
 Adjudication rules: a critique that names a real requirement gap, guard violation, internal contradiction, or unjustified complexity gets FIXED in the plan; a critique that is wrong, taste, or scope inflation gets REJECTED. Never widen scope to appease a critic, and never weaken a requirement or guard to simplify. Preserve the plan's build-ready bar: the builder executes and never designs, so every fix you fold in must land as concrete file ownership, interfaces, and code — a fix that reopens a decision is not a fix. Emit the COMPLETE final plan as markdown with the SAME sections as the input plan (Definition of done / Approach / In scope, Deferred / Build steps / ## Stack & design acceptance criteria / Instruction-file updates), fully self-contained — it replaces the input plan outright. Append one final section "## Critique adjudication" with one line per critique: [family] accepted-or-rejected — the reason in a clause.
 
-NARRATION: while you adjudicate, keep any status narration to one terse line per critique. This does NOT apply to the plan you emit or the adjudication section — those keep full detail; only the working narration is compressed.`,
+NARRATION: silent by default while you adjudicate — no status narration between tool calls; write text mid-run only for a blocker or a load-bearing finding, one sentence. This does NOT apply to the plan you emit or the adjudication section — those keep full detail.`,
     { label: 'refine', phase: 'Refine', agentType: 'general-purpose' },
   )
   if (refined && typeof refined === 'string' && refined.trim()) plan = refined

@@ -74,7 +74,7 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 `.feature/` is the `/feature` flow's live scratch — never delete it by hand; `ship.sh` sweeps it when the slice ships.
 
-Session continuity is **global and branch-agnostic**: `/handoff` writes one checkpoint per Claude Code session to `~/.claude/handoffs/<session-id>.md`, and `/continue <session-id>` resumes it from any session, in this project or another. The feature flow persists nothing of its own — the branch identifies the slice, the issue is its spec, and QC's diff boundary is plain `origin/beta...ft/<N>`. There is no direct-beta mode and no `.context/` state.
+Session continuity is **global and branch-agnostic**: `/handoff` writes one checkpoint per Claude Code session to `~/.claude/handoffs/<session-id>.md`, and `/continue <session-id>` resumes it from any session, in this project or another. The feature flow persists nothing of its own — the branch identifies the slice, the issue is its spec, and QC's diff boundary is plain `origin/beta...ft/<N>`. There is no direct-beta mode for app code and no `.context/` state; the one exception is owner-directed instruction-file/doc micro-edits, which may land directly on `beta` (see feature/SKILL.md's carve-out).
 
 ## Conventions
 

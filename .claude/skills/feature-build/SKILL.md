@@ -96,11 +96,13 @@ implemented-as-briefed. (Real runs produced 27 reports for 27 tasks, so this con
 not been holding — hold it.) Return messages stay under 10 lines: status, the paths
 changed, a short summary.
 
-**Narration is terse; the record is not.** Working inline or dispatched, status
-narration between tasks is one short line each — no elaboration, no restated
-context. This does NOT apply to exception reports or the end-of-build summary:
-a deviation's rationale keeps full detail regardless of how tersely progress
-was narrated getting there.
+**Silent by default; the record keeps full detail.** Working inline or
+dispatched, no status narration between tasks. Write text mid-run only for a
+blocker, a deviation from the plan, or a load-bearing finding — one sentence
+each. This does NOT apply to exception reports or the end-of-build summary: a
+deviation's rationale keeps full detail regardless. Include this same rule in
+every implementer dispatch prompt — a dispatched agent's between-tool-call text
+reaches nobody but still bills tokens.
 
 ## Review — typecheck always, deep review only where it propagates
 

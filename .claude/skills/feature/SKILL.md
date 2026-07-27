@@ -36,11 +36,14 @@ honest.
 
 ## Global hard rules (bind every phase)
 
-- NEVER create per-task branches or PRs. Feature work always happens on
-  `ft/<issue#>` — there is no direct-mode escape hatch onto `beta` or `main`.
-  `main` moves only through the ordered `beta → main` promotion path after the
-  target-specific final gate; never develop directly on `beta` or `main` and
-  never force-push protected branches.
+- NEVER create per-task branches or PRs. Feature slices always run on
+  `ft/<issue#>` — app code is never developed directly on `beta` or `main`.
+  ONE carve-out (owner decision 2026-07-26): owner-directed micro-edits to
+  instruction files and docs (`.claude/**`, `AGENTS.md`, `docs/**` — nothing the
+  deployed app executes) may land directly on `beta` as ordinary fast-forward
+  commits, skipping the flow. `main` moves only through the ordered
+  `beta → main` promotion path after the target-specific final gate; never
+  force-push protected branches.
 - Carry the terminal release target (`beta` or `main`) in the conversation across
   Build → QC → Ship — nothing persists it to disk. One explicit final
   authorization names the entire consequence; successful target deployment

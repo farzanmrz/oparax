@@ -7,7 +7,9 @@
 # With no plan file (or "-"), the approved plan is read from stdin. stdout is one
 # machine-readable line: the issue number. All Git/GitHub chatter goes to stderr.
 #
-# There is no direct-mode escape hatch and no persisted run state. A slice is
+# Feature slices always run on ft/<issue#> (app code never lands directly on
+# beta — owner instruction-file micro-edits are the one carve-out; see
+# feature/SKILL.md) and there is no persisted run state. A slice is
 # identified by its branch, which is the only marker QC needs
 # (`origin/beta...ft/<N>`). ship.sh always lands on beta; the terminal release
 # target (beta or main) lives only in the conversation and is applied by

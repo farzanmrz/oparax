@@ -15,12 +15,12 @@ model: inherit
 One document, **the plan**: it is the spec and the plan at once. Seed from
 `$ARGUMENTS` or the conversation, then work the steps in order.
 
-**Narration is terse; the plan is not.** While working the steps, status narration
-is one short line per step — no elaboration, no restated context, no color
-commentary. This does NOT apply to the plan document itself or any decision
-rationale recorded in it — those keep full detail regardless of how tersely
-progress was narrated getting there. (The thinking-gate conversations in step 2
-are real discussions, not narration — this rule doesn't compress them either.)
+**Silent by default; the plan keeps full detail.** No status narration between
+steps. Write text mid-run only for a blocker, a deviation, or a load-bearing
+finding — one sentence each. This does NOT apply to the plan document itself or
+any decision rationale recorded in it — those keep full detail regardless. (The
+thinking-gate conversations in step 2 are real discussions, not narration —
+this rule doesn't compress them either.)
 
 ## 1. Preflight
 - The slice comes from the user's ask — never self-served.
