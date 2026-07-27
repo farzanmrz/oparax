@@ -8,7 +8,7 @@ Capabilities built but deliberately switched off — multi-platform drafting, cl
 
 ## Stack
 
-Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, session replay) · pnpm (a preinstall guard hard-fails npm/yarn) + Biome. Versions live in `package.json` — read it rather than trusting a number here.
+Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, session replay) · pnpm (a preinstall guard hard-fails npm/yarn) + Biome. Versions live in `package.json` — read it rather than trusting a number here. Version-matched Next.js docs ship inside the install at `node_modules/next/dist/docs/` — consult them before non-trivial Next.js API work instead of trusting training data.
 
 **Host:** Vercel Git integration — `beta` → beta.oparax.ai; `main` → oparax.ai; promote strictly `beta` → `main`. `dev` remains a permanent, protected ref (see `.githooks`) with its own live Vercel deploy, but the feature flow no longer cuts from or lands on it as of Phase 1 (issue #70) — Phase 3 unwires it from Vercel/GitHub config after a soak period.
 

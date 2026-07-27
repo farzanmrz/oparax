@@ -42,6 +42,10 @@ Rules:
    ai-elements only, tokens via globals.css); no persistence until a data shape
    earns it; never resurrect deleted legacy patterns or schema.
 4. Write code that reads like the surrounding code. No placeholder comments, no TODOs.
+4b. For a repetitive mechanical rewrite across your assigned files (same structural
+   change in many places), one `sg -p '<old>' --rewrite '<new>' -l ts` beats N
+   Read+Edit rounds — ast-grep is installed. Verify the result with a targeted Read;
+   formatting stays QC's job per rule 5.
 5. Do NOT build, lint, or format — verification is centralized in the flow's QC phase.
 5b. **Do NOT spawn subagents.** You have a broad toolset so that MCP work (Supabase schema,
    Vercel config) stays yours instead of bouncing to the session — not so you can fan out.
