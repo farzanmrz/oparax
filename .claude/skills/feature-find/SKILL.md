@@ -30,6 +30,7 @@ record) never drops.
 | Setup scout | one agent, `model: haiku`, `effort: low` | `cx_grounder` |
 | Journeys | `browser-verifier` agents, `model: sonnet`, `effort: medium` | `cx_journey_walker` |
 | Internal review lane | `bug-finder`-style agent, `model: sonnet`, `effort: high` (heavy: `opus` high) | `pr_explorer` + `reviewer` (heavy: spawn reviewer on xhigh) |
+| DB seeding / exploratory Supabase ops | `supabase-runner` (`model: haiku`; sonnet for open-ended) | `cx_supabase_runner` |
 
 ## 1. Setup
 

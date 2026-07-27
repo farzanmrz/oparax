@@ -53,7 +53,9 @@ other's work. The plan already decided the design — your job per task:
 Respect AGENTS.md's Guards (stock shadcn + ai-elements only; no persistence
 until a data shape earns it; never resurrect deleted legacy patterns). A task
 needing MCP (Supabase migration, type regeneration, Vercel config) is an
-ordinary task — do it inline; load tools via ToolSearch.
+ordinary task — do it inline; load tools via ToolSearch. If a DB task turns
+exploratory (schema surprises, repeated query failures), dispatch
+`supabase-runner` instead of thrashing in-session (`.claude/rules/supabase.md`).
 
 ## Hard rules
 
