@@ -19,6 +19,10 @@ fi
 source_branch="$1"
 destination_branch="$2"
 
+# The dev:beta hop is dormant as of Phase 1 (issue #70): start.sh/ship.sh no
+# longer put anything on dev, so the automated flow never calls this hop. It
+# stays available for a manual sweep during the soak period; Phase 3 removes it
+# once dev itself is retired.
 case "${source_branch}:${destination_branch}" in
   dev:beta)
     deployment_alias="beta.oparax.ai"

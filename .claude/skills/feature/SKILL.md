@@ -16,7 +16,7 @@ disable-model-invocation: true
 # Idea to shipped — the orchestrator
 
 This skill only conducts; the four phase skills do the work. A run is **ONE issue ·
-ONE feature branch · ONE squashed commit on `dev`.** `dev`, `beta`, and `main` are
+ONE feature branch · ONE squashed commit on `beta`.** `beta` and `main` are
 integration and promotion destinations, never feature-development branches. No PRs,
 no CI. Parallelism is a private implementation detail.
 
@@ -36,14 +36,15 @@ honest.
 
 ## Global hard rules (bind every phase)
 
-- NEVER create per-task branches or PRs. Feature work happens on `ft/<issue#>` by
-  default, or directly on `dev` only when the user explicitly chose that mode.
-  `beta` and `main` move only through the ordered `dev → beta → main` promotion
-  path after the target-specific final gate; never develop directly on them and
-  never force-push them.
-- Retain the terminal release target (`dev`, `beta`, or `main`) in branch-scoped
-  feature state. One explicit final authorization names the entire consequence;
-  successful target deployment checks do not create extra approval gates.
+- NEVER create per-task branches or PRs. Feature work always happens on
+  `ft/<issue#>` — there is no direct-mode escape hatch onto `beta` or `main`.
+  `main` moves only through the ordered `beta → main` promotion path after the
+  target-specific final gate; never develop directly on `beta` or `main` and
+  never force-push protected branches.
+- Carry the terminal release target (`beta` or `main`) in the conversation across
+  Build → QC → Ship — nothing persists it to disk. One explicit final
+  authorization names the entire consequence; successful target deployment
+  checks do not create extra approval gates.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
 - Scope freezes at the plan gate **for agent-self-generated ideas only**: mid-build
   work an agent notices on its own is out of scope — drop it, never onto this branch;

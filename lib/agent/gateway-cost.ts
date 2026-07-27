@@ -82,7 +82,7 @@ async function resolveGatewayAuth(): Promise<{
  * reading it alone would have recorded $0 for the entire council. Prefer a non-zero total_cost
  * (the non-BYOK path, where it is authoritative) and fall back to upstream.
  */
-export async function fetchGenerationCost(generationId: string): Promise<number | null> {
+async function fetchGenerationCost(generationId: string): Promise<number | null> {
   const auth = await resolveGatewayAuth();
   if (!auth) return null;
   try {

@@ -15,6 +15,13 @@ model: inherit
 One document, **the plan**: it is the spec and the plan at once. Seed from
 `$ARGUMENTS` or the conversation, then work the steps in order.
 
+**Narration is terse; the plan is not.** While working the steps, status narration
+is one short line per step — no elaboration, no restated context, no color
+commentary. This does NOT apply to the plan document itself or any decision
+rationale recorded in it — those keep full detail regardless of how tersely
+progress was narrated getting there. (The thinking-gate conversations in step 2
+are real discussions, not narration — this rule doesn't compress them either.)
+
 ## 1. Preflight
 - The slice comes from the user's ask — never self-served.
 - Scratch lives in `.feature/` (self-gitignoring: `mkdir -p .feature && printf
@@ -127,8 +134,11 @@ forbids.
 the user's explicit go. Before acting on that approval, resolve one value from the
 conversation without re-asking if it was already stated:
 
-- **terminal target** — `dev` by default, or the explicitly requested `beta` / `main`.
-  Nothing persists it, so carry it in the conversation and pass it to `ship.sh`.
+- **terminal target** — `beta` by default, or the explicitly requested `main`.
+  Nothing persists it — carry it in the conversation (or a `/handoff` checkpoint).
+  `ship.sh` itself no longer takes it; `feature-ship/SKILL.md`'s ordered-promotion
+  step reads it, after `ship.sh` has already landed on `beta`, to decide whether to
+  run `promote.sh beta main`.
 
 On approval, pipe the approved plan — exactly as pasted — into one kickoff command
 on stdin (heredoc; no file argument):
@@ -139,10 +149,12 @@ on stdin (heredoc; no file argument):
 ```
 
 The kickoff opens the issue with the plan as its body and cuts `ft/<issue#>` from the
-fetched `origin/dev` without checking out local `dev`; the issue is the single source
-of truth. Nothing is persisted about the run — the branch identifies the slice, and
-the release target is passed to `ship.sh` at ship time. If branch setup fails after
-issue creation, the kickoff closes the new issue rather than leaving an orphan.
+fetched `origin/beta` without checking out local `beta`; the issue is the single
+source of truth. Nothing is persisted about the run — the branch identifies the
+slice, and the terminal target lives only in the conversation, applied by
+`feature-ship/SKILL.md`'s ordered-promotion step after `ship.sh` returns. If branch
+setup fails after issue creation, the kickoff closes the new issue rather than
+leaving an orphan.
 
 **Approval is the trigger — no further prompting.** The moment the kickoff succeeds
 (issue created carrying the approved plan, `ft/<issue#>` cut and checked out), tell

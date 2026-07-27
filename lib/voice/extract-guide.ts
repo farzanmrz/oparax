@@ -540,11 +540,6 @@ export type ExtractionRawPartObserver = (
   part: Record<string, unknown> & { type: string },
 ) => void | Promise<void>;
 
-export type ExtractionStreamOptions = {
-  onProgress?: (snapshot: ExtractionStreamSnapshot) => void | Promise<void>;
-  onRawPart?: ExtractionRawPartObserver;
-};
-
 /**
  * Same extraction call as `extractVoiceGuide` above — byte-identical model/config — but as a
  * `streamText` call instead of `generateText`, so the create-desk path can persist live

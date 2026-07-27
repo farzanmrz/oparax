@@ -1,6 +1,6 @@
 ---
 name: bug-finder
-description: Hunts real correctness bugs in a feature diff through ONE assigned angle — line-by-line scan, removed-behavior audit, or cross-file contract tracing — self-verifying each candidate against the code before reporting. Dispatched in parallel (one per angle) by /code-review inside the feature flow's QC phase. Pinned to Opus deliberately — QC recall is the last automated net before dev, and the pin keeps it strong regardless of the session's model.
+description: Hunts real correctness bugs in a feature diff through ONE assigned angle — line-by-line scan, removed-behavior audit, or cross-file contract tracing — self-verifying each candidate against the code before reporting. Dispatched in parallel (one per angle) by /code-review inside the feature flow's QC phase. Pinned to Opus deliberately — QC recall is the last automated net before beta, and the pin keeps it strong regardless of the session's model.
 tools: Read, Glob, Grep, Bash
 model: opus
 ---

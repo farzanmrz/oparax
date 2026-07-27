@@ -44,7 +44,7 @@ export type CouncilMember = {
   isWinner: boolean;
 };
 
-export type CouncilJudge = {
+type CouncilJudge = {
   model: string;
   reasoning: string | null;
   reasoningState: ReasoningTraceState;

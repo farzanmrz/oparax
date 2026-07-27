@@ -13,13 +13,19 @@ model: inherit
 
 Over the whole branch diff, in order (skip nothing silently — report each step):
 
+**Narration is terse; findings are not.** While working the steps, status narration
+is one short line per step — no elaboration, no restated context, no color
+commentary. This does NOT apply to the findings themselves, the adjudication
+reasoning, or the end-of-run report — those keep full detail regardless of how
+tersely progress was narrated getting there.
+
 0. **Setup — delegate it, don't spend the session model on it.** Everything in this step
    is mechanical (run a command, read the output, move on) — measured on a real run it
    cost 7 main-session turns and produced no decision. Dispatch ONE `haiku` agent to
    gather it all and return a compact block; the session only reads the result.
 
    The agent gathers, in order:
-   - **Diff boundary.** `origin/dev...ft/<N>` — the branch is its own marker, so the
+   - **Diff boundary.** `origin/beta...ft/<N>` — the branch is its own marker, so the
      range comes from git alone and nothing needs to be recorded at slice start.
    - **Convergence.** All commits on the feature branch; no stray flow worktrees under
      `.claude/worktrees/`; no stray branches.
@@ -27,6 +33,15 @@ Over the whole branch diff, in order (skip nothing silently — report each step
      generated files) — these set step 1's `large` flag.
    - **Acceptance criteria.** The ft issue's "Stack & design acceptance criteria"
      section via `gh issue view`, returned verbatim for step 1's `criteria` arg.
+   - **Dead-code sweep.** Run `pnpm deadcode` (knip; `knip.json` already excludes the
+     vendored kits, the isolated `ingest/` package, and tooling dirs). For each hit,
+     verify it is genuinely unreferenced (grep for dynamic/string-keyed references knip
+     can miss), cross-check AGENTS.md's "Dormant by design" table (a switched-off lever
+     is not dead code — flag it but say so), and collapse a dead chain (an export whose
+     only reference is another unused file) into ONE finding at its root. Return the
+     verified hits in the block — the session folds them into adjudication alongside the
+     review findings. This lives here, not in the review fan-out: knip is deterministic
+     (same output whichever model runs it), so mirroring it across families buys nothing.
    - **Dev server + boot smoke. Check for an existing server BEFORE starting one.**
      `lsof -i :3000 -sTCP:LISTEN -t`. If something is already listening, **reuse it and
      record that QC did not start it** — Next 16.2 refuses to start a second dev server
@@ -54,28 +69,31 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    `{ name: "qc-review" }` silently 404s and degrades to the unbounded `/code-review`
    path; the path form runs the repo workflow directly.
 
-   **Find** (models pinned in the workflow, not prose) — **all four families always
-   run**, each on a distinct charter, never the generic "review this diff". Finding is
-   a DIVERGENT task, and a barrier costs its slowest member rather than its width, so
-   extra families ride in the shadow of the opus bug-finders instead of adding wall
-   time. Claude: two `cleanup-finder` angles + `conventions-finder` (sonnet), a
-   repo-wide `dead-code` angle (sonnet `cleanup-finder` running `pnpm deadcode`/knip
-   — the one deliberately NOT diff-scoped charter, because code orphaned by a LATER
-   slice is invisible to diff review; `knip.json` encodes the vendored-kit and
-   ingest exclusions), two `bug-finder` angles (opus). Codex: one combined cleanup
-   (luna), two bug angles
-   (terra). Gemini via `agy`: one combined cleanup (3.6-flash), two bug angles
-   (3.1-pro-high — flash is too thin for recall work). Grok: two combined agents
-   (4.5), since it is a single-model family. Only the exhaustive **line-by-line**
-   scans are conditional on a large diff (Claude sonnet, codex sol, agy pro).
+   **Find** (models AND effort pinned in the workflow, not prose) — **five narrow
+   angles mirrored across all four families**, each family running the identical
+   charter set, never the generic "review this diff". Finding is a DIVERGENT task,
+   and a barrier costs its slowest member rather than its width, so the extra
+   families ride in the shadow of the heavy bug-finders instead of adding wall time.
+   The five angles: reuse+simplification, altitude+efficiency, conventions+criteria,
+   cross-file-contracts, and adversarial. Pins (width-over-depth experiment, owner
+   decision 2026-07-26): every unconditional angle runs at the MID tier — Claude
+   sonnet@medium / Codex terra@medium / Grok 4.5@medium — betting that four-family
+   redundancy catches what any one mid-tier pass misses; agy runs every angle at
+   gemini-3.1-pro-high (its only reasoning rung). Only the large-diff-conditional
+   **line-by-line** scans run at HIGH (sonnet@high / terra@high / grok@high / agy
+   pro-high) — each family's single exhaustive pass has no redundancy to lean on.
+   Every pin is unconditional — depth never depends on the caller classifying the
+   slice as risky. If confirmed-bug recall drops over the next slices, the fallback
+   is the prior scheme: opus@high / sol@high / grok@high on the two bug angles. The
+   repo-wide dead-code sweep is NOT a Find angle — it runs once in step 0's Setup
+   dispatch (knip is deterministic; four families re-running it buys nothing).
 
    **Browser journeys run in this same barrier** — see step 1b. Their findings enter
    the same dedup and get fixed in the same pass as the static ones.
 
-   The `effort` switch drives the external lanes too, not just Claude's. If the
-   workflow logs that all external lanes failed, the review is Claude-only and must
-   NOT be reported as a full cross-model pass — check `.feature/qc-council/*.in.txt`
-   and re-run.
+   If the workflow logs that all external lanes failed, the review is Claude-only and
+   must NOT be reported as a full cross-model pass — check
+   `.feature/qc-council/*.in.txt` and re-run.
 
    **Dedup** (inherits the session model, effort high, single pass) merges
    near-duplicates across lanes and drops plan-frozen vetoes — a CONVERGENT task
@@ -104,21 +122,21 @@ Over the whole branch diff, in order (skip nothing silently — report each step
 
    Pass `args` (from step 0's gathered block): `{ range, generated: "<globs>",
    vetoes: "<plan-frozen decisions>", criteria: "<the ft issue's 'Stack & design
-   acceptance criteria' section>", large: <bool>, effort: "medium" }` — `criteria` is
-   what `conventions-finder` verifies the built diff against; set `large: true` on a
-   big diff (roughly >8 files or >200 changed lines) to add the line-by-line scans,
-   and `effort: "high"` when the slice adds a table/migration, a new trust boundary
-   (auth, server action, agent tool surface), or touches posting/money paths. It
+   acceptance criteria' section>", large: <bool> }` — `criteria` is what the
+   conventions angle verifies the built diff against; set `large: true` on a big
+   diff (roughly >8 files or >200 changed lines) to add the line-by-line scans.
+   There is no `effort` arg anymore — every angle's depth is pinned inside the
+   workflow, so slice-risk classification no longer changes review depth. It
    returns `findings`, each already tagged `raisedBy` (which families independently
    found it) and `confirmed` (the verify quorum), plus `verifiersRun` — the workflow
    only reports, the session still decides.
 
    **`args` must be a real JSON object, never a JSON-encoded string** — a stringified
    payload reaches the script as a string, so every field silently falls back to its
-   default with no error. This has bitten a real run twice: `large`/`effort` never
-   arrived and an 89-file security-touching diff got a small-diff review. The workflow
-   now prints an args-arrival probe as its first log line; read it and confirm the
-   resolved `effort`/`large` match what you passed before trusting the results.
+   default with no error. This has bitten a real run twice: `large` never arrived and
+   an 89-file security-touching diff got a small-diff review. The workflow now prints
+   an args-arrival probe as its first log line; read it and confirm the resolved
+   `large` matches what you passed before trusting the results.
 
 1b. **Browser journeys — dispatched in parallel WITH step 1's fan-out, not after it.**
    Every other pass is static (diff review, tsc, lint, build, a boot smoke that only
@@ -261,10 +279,11 @@ Over the whole branch diff, in order (skip nothing silently — report each step
    step 0 *reused* a server someone else was running, leave it alone and say so. Browser
    sessions were already closed by the orchestrator in step 1b.
 
-Hard rules: the Claude find floor is one barrier of ≤6 finders (5 on a small diff, 6
-on a large one); the external lanes add 8 more (10 on a large diff), and verify is a
-FIXED 4 agents (one per model family, each ruling on the whole list) no matter how many
-findings survived dedup — never reintroduce a per-finding verify fan-out. Browser
+Hard rules: Find is one barrier of 20 mirrored finders (5 angles × 4 families; 24 on a
+large diff, adding one line-by-line scan per family), every one model-and-effort-pinned
+inside the workflow; verify is a FIXED 4 agents (one per model family, each ruling on
+the whole list) no matter how many findings survived dedup — never reintroduce a
+per-finding verify fan-out. Browser
 journeys are dispatched separately, one per journey, alongside the find barrier. The
 session model is spent on ADJUDICATION ONLY — setup, fixes, lint orchestration, doc
 sync, and every browser pass are dispatched to pinned agents; a step that names a model

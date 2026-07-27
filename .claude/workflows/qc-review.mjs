@@ -3,19 +3,23 @@ export const meta = {
   description: 'QC over a frozen diff: a Claude finder floor (always on) plus three conditional cross-model FIND lanes with distinct charters, then a dedup pass and a batched cross-family VERIFY pass (ONE verifier per model family, each ruling on the whole deduped list in a single response; a family\'s verdict on a finding it raised is discounted). Returns verified findings for the session to adjudicate and apply.',
   whenToUse: "feature-qc's review pass — one workflow call replaces the serial /simplify then /code-review passes, with cross-model diversity spent on the two DIVERGENT tasks (finding, verifying) and single ownership kept on the convergent ones (dedup, apply — the session does those).",
   phases: [
-    { title: 'Find', detail: 'Claude floor (2 cleanup + conventions on sonnet, 2 bug angles on opus, +line-by-line on large diffs) + 3 external lanes (codex/grok/agy, conditional on large|risk) — all concurrent' },
+    { title: 'Find', detail: '5 angles (reuse+simplification, altitude+efficiency, conventions, cross-file-contracts, adversarial) x 4 families (claude/codex/grok/agy) + Claude-only repo-wide dead-code, +line-by-line per family on large diffs — every angle effort-pinned, all concurrent' },
     { title: 'Dedup', detail: 'merge near-duplicates across lanes, drop plan-vetoed (inherit — the single-call judgment stage)' },
     { title: 'Verify', detail: '4 agents flat — one verifier per family (claude sonnet · codex medium · grok-4.5 medium · gemini-3.1-pro), each handed the ENTIRE deduped list and returning a verdict per finding; per finding the raising family\'s own verdict is discounted, majority of the remaining verdicts confirms; Claude is the infra-failure floor' },
   ],
 }
 
 // args (from the feature-qc skill):
-//   { range: string,          // git diff range — origin/dev...ft/N (tracked) OR state.baseSha..HEAD (mode:current)
+//   { range: string,          // git diff range — origin/beta...ft/N
 //     generated?: string,     // one line naming generated/vendored paths to skip
 //     vetoes?: string,        // plan-frozen decisions that are vetoes, not findings
 //     criteria?: string,      // the plan's "Stack & design acceptance criteria" — conventions-finder verifies the diff against them
-//     large?: boolean,        // large-diff signal — the session measures the diff and sets this
-//     effort?: 'medium'|'high', // bug-angle depth AND the risk-path signal for the external FIND lanes; defaults to medium
+//     large?: boolean,        // large-diff signal — the session measures the diff and sets this; gates the
+//                             // conditional line-by-line angle only. There is no `effort` arg — every
+//                             // angle's model/tier is now a fixed pin (see Model/effort pins below),
+//                             // not a caller-supplied risk signal. A bug-hunting angle's depth
+//                             // shouldn't depend on whether the caller correctly classified the whole
+//                             // slice as risky; it's pinned to its ceiling unconditionally instead.
 //     repo?: string }         // absolute repo checkout path — this workflow script has no process.cwd()/git-root
 //                             // access of its own, so a caller on a different checkout must pass this; falls back
 //                             // to the one operator path below so existing callers keep working unchanged
@@ -62,19 +66,19 @@ if (rawArgsType === 'string') {
 }
 const a = resolvedArgs && typeof resolvedArgs === 'object' ? resolvedArgs : null
 
-const range = (a && a.range) || 'origin/dev...HEAD'
+const range = (a && a.range) || 'origin/beta...HEAD'
 const generated = (a && a.generated) || 'none named — use judgment on obviously generated/vendored files'
 const vetoes = (a && a.vetoes) || 'none supplied'
 const criteria = (a && a.criteria) || 'none supplied — if the plan/issue has a "Stack & design acceptance criteria" section, treat its lines as the criteria'
-const effort = (a && a.effort) === 'high' ? 'high' : 'medium'
 const large = !!(a && a.large)
-// `large` now gates only the exhaustive line-by-line scans (Claude + codex + agy). The external
-// lanes themselves are unconditional — see the EXTERNAL_LANES comment for why width is free here.
+// `large` gates only the exhaustive line-by-line scans (one per family). Every other angle's
+// model/tier is a fixed pin now — see Model/effort pins below — so `large` is the only remaining
+// caller-supplied signal this workflow reads.
 
 // ARGS ARRIVAL PROBE — print what actually landed AND what was resolved from it, before anything
 // downstream reads either. A recovered run must stay distinguishable from a clean one: the fix
 // above makes the review correct, not the caller.
-log(`args → arrived=${rawArgsType}${argsRecovered ? ' (RECOVERED via JSON.parse)' : ''} keys=${a ? Object.keys(a).join(',') : 'NONE'} · resolved effort=${effort} large=${large} range=${range}`)
+log(`args → arrived=${rawArgsType}${argsRecovered ? ' (RECOVERED via JSON.parse)' : ''} keys=${a ? Object.keys(a).join(',') : 'NONE'} · resolved large=${large} range=${range}`)
 if (argsRecovered) {
   log('⚠️  args arrived JSON-ENCODED and were re-parsed — the review is running at full fidelity, but fix the caller: pass args as a real JSON object.')
 } else if (rawArgsType === 'string') {
@@ -90,30 +94,35 @@ const VERDICT_SCHEMA_FILE = `${REPO}/.claude/workflows/verify-schema.json`
 const SCRATCH = `${REPO}/.feature/qc-council` // self-gitignoring — .feature/ is the flow's live scratch
 
 // ── Model/effort pins ────────────────────────────────────────────────────────────────────────
-// The `effort` switch (medium | high, set by the caller from the slice's risk) now drives the
-// EXTERNAL lanes too, not just the Claude ones. Before this it was Claude-only: a risk-touching
-// diff made Claude reason harder while codex/grok/agy stayed on hardcoded constants.
+// Every Find angle carries a FIXED model+effort pin — never a caller-supplied risk signal.
+// Current scheme (owner experiment, 2026-07-26): with the fan-out mirrored 5-angles-wide across
+// four families, WIDTH replaces DEPTH — every unconditional angle runs at the mid tier (sonnet/
+// terra/grok-4.5 @ medium), betting that cross-family redundancy catches what any one family's
+// mid-tier pass misses. Only the large-diff-conditional line-by-line scans run at high (they are
+// each family's single exhaustive pass, with no redundancy to lean on). agy is the one exception:
+// every angle fixed to gemini-3.1-pro-high (its only reasoning rung — no -medium slug exists).
+// This DEPRIORTIZES the previous opus/sol-ceiling bug-tier pins on purpose, as a measured test;
+// if confirmed-bug recall drops across the next few slices, restore opus@high / sol@high /
+// grok@high on cross-file-contracts + adversarial — that was the prior, safer scheme.
 //
-// Per-family shape differs because the CLIs differ (see council/run.sh):
-//   codex — model and effort are SEPARATE flags. Model rides COUNCIL_MODEL (added for this matrix);
-//           without it codex silently used ~/.codex/config.toml's gpt-5.6-luna while every comment
-//           here claimed gpt-5.6-sol. Capability gradient: luna on cleanup (opinion work), terra on
-//           the bug angles (recall matters), sol reserved for the large-diff exhaustive scan.
-//   agy   — model and effort are FUSED into one slug; gemini-3.1-pro publishes only -high and -low
-//           (no -medium; `--model gemini-3.1-pro --effort medium` is rejected outright), so the pro
-//           lanes are high-always. Flash carries the cleanup lane and does follow the switch.
-//   grok  — single model (grok-4.5, hardcoded in plan-grok.sh), effort only. Ablation says
-//           low≈medium in wall time, so cleanup sits at low for free.
-const CODEX_MODELS = { cleanup: 'gpt-5.6-luna', bug: 'gpt-5.6-terra', scan: 'gpt-5.6-sol' }
-const AGY_FLASH = effort === 'high' ? 'gemini-3.6-flash-high' : 'gemini-3.6-flash-medium'
-const AGY_PRO = 'gemini-3.1-pro-high' // no -medium rung exists; high is the only sane bug tier
+//   claude — sonnet@medium everywhere; sonnet@high on line-by-line only.
+//   codex  — model and tier are SEPARATE flags (COUNCIL_MODEL + COUNCIL_TIER; see council/run.sh).
+//            terra@medium everywhere; terra@high on line-by-line. Luna and sol carry no Find angle.
+//   grok   — single model (grok-4.5, hardcoded in plan-grok.sh): medium everywhere, high on
+//            line-by-line (xhigh/max error on the grok CLI — never pass them).
+//   agy    — gemini-3.1-pro-high everywhere, per explicit instruction: "it will produce results
+//            or it will produce nothing, which is fine regardless."
+const CODEX_MODELS = { terra: 'gpt-5.6-terra' }
+const AGY_PRO = 'gemini-3.1-pro-high' // no -medium rung exists; fixed here regardless, per instruction above
 
 // VERIFY tiers — verification is a bounded read-the-code check, not a search, so it stays lighter
 // than FIND everywhere except agy (raised from -low to -high: it is the only tier that reasons).
 const VERIFY_TIERS = { codex: 'medium', grok: 'medium', agy: 'gemini-3.1-pro-high' }
 const VERIFY_CODEX_MODEL = 'gpt-5.6-sol' // now explicit — was silently config-default luna
 const VERIFY_CLAUDE_MODEL = 'sonnet' // de-pinned from opus — batched verification is a reading task
-const VERIFY_CLAUDE_EFFORT = effort // was unpinned entirely, inheriting the session's ambient effort
+const VERIFY_CLAUDE_EFFORT = 'medium' // pinned, matching codex/grok's already-fixed verify tier — was
+// riding the (now-removed) caller `effort` arg; Verify's own "stays lighter than Find" rationale
+// already argued for a fixed light tier, this just makes Claude's verify agent match that in code.
 const ALL_FAMILIES = ['claude', 'codex', 'grok', 'agy']
 
 const FINDINGS_SCHEMA = {
@@ -230,83 +239,69 @@ PROMPT
 // ── Stage 1 · Find — Claude floor (always) + 3 external lanes (conditional) ──
 phase('Find')
 
+const CHARTER_REUSE_SIMPLIFICATION = `You are the REUSE + SIMPLIFICATION reviewer for this diff — an independent model family, not a rerun of another reviewer. REUSE: logic the repo (or its dependencies) already provides that the diff reimplements — a helper, hook, util, or type that already exists, a hand-rolled version of something stock. SIMPLIFICATION: unnecessary abstraction or indirection, behavior-preserving shortening, dead branches, redundant state, over-general code for a single call site. Report only concrete opportunities, never stylistic preference; every simplification must preserve behavior exactly.`
+const CHARTER_ALTITUDE_EFFICIENCY = `You are the ALTITUDE + EFFICIENCY reviewer for this diff — an independent model family, not a rerun of another reviewer. ALTITUDE: is each piece of logic at the right layer (not leaking a concern up or down), and does comment density + accuracy match the surrounding codebase idiom (no over- or under-commenting, no stale/aspirational comments the diff introduced)? EFFICIENCY: flag only obviously wasteful hot-path work.`
+const CHARTER_CONTRACTS = `You are the CORRECTNESS + CONTRACT + REMOVED-BEHAVIOR reviewer for this diff — an independent model family, not a rerun of another reviewer. Trace every contract the changed code participates in against the ACTUAL dependency sources (read node_modules, don't guess versions), find concrete correctness bugs, and flag any behavior the diff silently removed or narrowed.`
+const CHARTER_ADVERSARIAL = `You are the ADVERSARIAL / TRUST-BOUNDARY reviewer for this diff — bring your OWN threat model, don't reproduce another reviewer's. Attack every trust boundary, state machine, and parser the diff touches; think about the worst-case input, not the happy path.`
+const CHARTER_SCAN = `You are the LINE-BY-LINE reviewer for this diff — an exhaustive scan, distinct from contract tracing and adversarial review. Scrutinize every changed line for defects (edge cases, off-by-one, null/undefined, type assumptions, encoding, ordering). Self-verify each candidate against the code before reporting; drop only what you can REFUTE.`
+function charterConventions() {
+  return `You are the CONVENTIONS reviewer for this diff — an independent model family, not a rerun of another reviewer. Check the diff against the governing instruction files (AGENTS.md, .claude/rules/*) AND the plan's frozen acceptance criteria. Three directions: (1) rule violations — quote the exact rule line and the exact diff line that breaks it; (2) staleness the diff introduces — instruction-file lines the diff has made wrong or incomplete; (3) unmet acceptance criteria — for each of the plan's stack & design criteria below, report any the built diff fails to satisfy (name the criterion + the file/line that misses it).
+Plan-frozen acceptance criteria to verify: ${criteria}`
+}
+
+// Five angles mirrored across all four families, each pinned to the model/tier that matches which
+// Claude tier it corresponds to (see Model/effort pins above) — no angle rides a caller-supplied
+// effort signal anymore. `dead-code` is deliberately NOT mirrored here: it's a repo-wide,
+// deterministic-tool-first check (knip does the detection for zero model tokens), not a genuine
+// review angle to diversify across families — running the same non-stochastic command four times
+// buys nothing. It runs once, folded into feature-qc's Setup step (see feature-qc/SKILL.md).
 const FINDERS = [
-  {
-    class: 'cleanup', angle: 'reuse+simplification', family: 'claude', agentType: 'cleanup-finder', model: 'sonnet',
-    prompt: `Your angles: REUSE + SIMPLIFICATION (they converge — cover both in one pass). REUSE: logic the repo (or its dependencies) already provides that the diff reimplements — a helper, hook, util, or type that already exists, a hand-rolled version of something stock. SIMPLIFICATION: unnecessary abstraction or indirection, behavior-preserving shortening, dead branches, redundant state, over-general code for a single call site. Report only concrete opportunities, never stylistic preference; every simplification must preserve behavior exactly.${commonTail}`,
-  },
-  {
-    class: 'cleanup', angle: 'altitude+efficiency', family: 'claude', agentType: 'cleanup-finder', model: 'sonnet',
-    prompt: `Your angles: ALTITUDE (senior lens) + EFFICIENCY (secondary). ALTITUDE: is each piece of logic at the right layer (not leaking a concern up or down), and does comment density + accuracy match the surrounding codebase idiom (no over- or under-commenting, no stale/aspirational comments the diff introduced)? EFFICIENCY: flag only obviously wasteful hot-path work.${commonTail}`,
-  },
-  {
-    class: 'conventions', angle: 'conventions+docs+criteria', family: 'claude', agentType: 'conventions-finder', model: 'sonnet',
-    prompt: `Check the diff against the governing instruction files (AGENTS.md, .claude/rules/*) AND the plan's frozen acceptance criteria. Three directions: (1) rule violations — quote the exact rule line and the exact diff line that breaks it; (2) staleness the diff introduces — instruction-file lines the diff has made wrong or incomplete (this is also the input to the doc-sync stage that runs after QC — be specific about which line is stale and why); (3) unmet acceptance criteria — for each of the plan's stack & design criteria below, report any the built diff fails to satisfy (name the criterion + the file/line that misses it).
-Plan-frozen acceptance criteria to verify: ${criteria}${commonTail}`,
-  },
-  {
-    // Deliberately REPO-WIDE, not diff-scoped (hence no commonTail): dead code stacks up across
-    // slices precisely because diff-scoped review can never see code that a LATER slice orphaned.
-    // Deterministic-tool-first: knip does the detection for zero model tokens; the agent verifies
-    // and transcribes, and the existing cross-family Verify pass kills any false positive.
-    class: 'cleanup', angle: 'dead-code', family: 'claude', agentType: 'cleanup-finder', model: 'sonnet',
-    prompt: `Your ONE angle: DEAD CODE, repo-wide. Run \`pnpm deadcode\` (knip; knip.json already excludes the vendored components/ai-elements + components/ui kits, the isolated ingest/ package, and tooling dirs — do not re-litigate those exclusions). For each unused file, unused dependency, and unused export it reports: quickly verify it is genuinely unreferenced (grep for dynamic/string-keyed references knip can miss), then report it as a finding. Two cautions: (1) a capability AGENTS.md lists under "Dormant by design" is switched OFF, not dead — its code stays referenced through its lever and normally won't appear in knip output; if a hit does seem to belong to one, report it but say so. (2) An export referenced only by another unused file is still dead — report the chain as ONE finding at its root. Severity: unused files and dependencies over unused exports.
-Report EVERY hit including uncertain ones — do not filter for importance or confidence; the cross-family verification pass decides truth. Report findings only (file, line, severity, one-sentence summary, concrete evidence it is unreferenced). An empty list is a valid result. Never edit a file.`,
-  },
-  // Bug angles: adversarial + cross-file always on opus; line-by-line only on large
-  // diffs (zero yield on small ones) and de-pinned to sonnet.
+  { class: 'cleanup', angle: 'reuse+simplification', family: 'claude', agentType: 'cleanup-finder', model: 'sonnet', effort: 'medium', prompt: `${CHARTER_REUSE_SIMPLIFICATION}${commonTail}` },
+  { class: 'cleanup', angle: 'altitude+efficiency', family: 'claude', agentType: 'cleanup-finder', model: 'sonnet', effort: 'medium', prompt: `${CHARTER_ALTITUDE_EFFICIENCY}${commonTail}` },
+  { class: 'conventions', angle: 'conventions+docs+criteria', family: 'claude', agentType: 'conventions-finder', model: 'sonnet', effort: 'medium', prompt: `${charterConventions()}${commonTail}` },
   ...(large
-    ? [{
-        class: 'bug', angle: 'line-by-line', family: 'claude', agentType: 'bug-finder', model: 'sonnet',
-        prompt: `Your ONE angle: LINE-BY-LINE SCAN of the new/changed code — every line scrutinized for defects (edge cases, off-by-one, null/undefined, type assumptions, encoding, ordering). Self-verify each candidate against the code (a quick repro where feasible) before reporting; drop only what you can REFUTE. Effort: ${effort}.${commonTail}`,
-      }]
+    ? [{ class: 'bug', angle: 'line-by-line', family: 'claude', agentType: 'bug-finder', model: 'sonnet', effort: 'high', prompt: `${CHARTER_SCAN}${commonTail}` }]
     : []),
-  {
-    class: 'bug', angle: 'cross-file-contracts', family: 'claude', agentType: 'bug-finder', model: 'opus',
-    prompt: `Your ONE angle: CROSS-FILE CONTRACT TRACING — trace every contract the changed code participates in end to end (caller↔callee, framework registration, dependency API shape, env availability), reading the actual node_modules sources. Report contracts that are violated or fragile. Effort: ${effort}.${commonTail}`,
-  },
-  {
-    class: 'bug', angle: 'adversarial', family: 'claude', agentType: 'bug-finder', model: 'opus',
-    prompt: `Your ONE angle: ADVERSARIAL — think like an attacker or a worst-case input against any trust boundary, state machine, or parser the diff touches. Classify each candidate CONFIRMED/PLAUSIBLE and give the concrete attack/failure scenario; refute cleanly where a guard makes it impossible. Effort: ${effort}.${commonTail}`,
-  },
+  { class: 'bug', angle: 'cross-file-contracts', family: 'claude', agentType: 'bug-finder', model: 'sonnet', effort: 'medium', prompt: `${CHARTER_CONTRACTS}${commonTail}` },
+  { class: 'bug', angle: 'adversarial', family: 'claude', agentType: 'bug-finder', model: 'sonnet', effort: 'medium', prompt: `${CHARTER_ADVERSARIAL}${commonTail}` },
 ]
 
 const claudeResults = await parallel(
   FINDERS.map((f) => () =>
-    agent(f.prompt, { label: `${f.class}:${f.angle}`, phase: 'Find', agentType: f.agentType, model: f.model, effort, schema: FINDINGS_SCHEMA })
+    agent(f.prompt, { label: `${f.class}:${f.angle}`, phase: 'Find', agentType: f.agentType, model: f.model, effort: f.effort, schema: FINDINGS_SCHEMA })
       .then((out) => ({ finder: f, out })),
   ),
 )
 
-// External lanes — distinct charters, never the generic "review this diff". These are now
-// ALWAYS-ON: finding is a divergent task, and a barrier costs its slowest member rather than its
-// width, so extra families ride in the shadow of the opus bug-finders instead of adding wall time.
-// Only the exhaustive line-by-line scans stay conditional on a large diff, mirroring the Claude
-// floor's own structure. (Previously the whole external block was gated on RISK, which meant an
-// ordinary diff got Claude-only review — and a silently-dropped `large`/`effort` arg degraded a
-// risk-touching diff to the same thing without saying so. Hence the assertion below.)
-const CHARTER_CLEANUP = `You are the CLEANUP reviewer for this diff — an independent model family, not a rerun of another reviewer. Cover all of: REUSE (logic the repo or its dependencies already provide that the diff reimplements), SIMPLIFICATION (unnecessary abstraction/indirection, dead branches, redundant state, behavior-preserving shortening), ALTITUDE (logic sitting at the wrong layer, leaking a concern up or down; comment density/accuracy against surrounding idiom), OVER-ENGINEERING (a complicated architecture where a simpler behavior-preserving one exists), and EFFICIENCY (only obviously wasteful hot-path work). Judgment calls only — never stylistic preference, and every suggestion must preserve behavior exactly.`
-const CHARTER_CONTRACTS = `You are the CORRECTNESS + CONTRACT + REMOVED-BEHAVIOR reviewer for this diff — an independent model family, not a rerun of another reviewer. Trace every contract the changed code participates in against the ACTUAL dependency sources (read node_modules, don't guess versions), find concrete correctness bugs, and flag any behavior the diff silently removed or narrowed.`
-const CHARTER_ADVERSARIAL = `You are the ADVERSARIAL / TRUST-BOUNDARY reviewer for this diff — bring your OWN threat model, don't reproduce another reviewer's. Attack every trust boundary, state machine, and parser the diff touches; think about the worst-case input, not the happy path.`
-const CHARTER_COMBINED_BUG = `${CHARTER_CONTRACTS}\n\nAlso cover, in the same pass: ${CHARTER_ADVERSARIAL}`
-const CHARTER_SCAN = `You are the LINE-BY-LINE reviewer for this diff — an exhaustive scan, distinct from contract tracing and adversarial review. Scrutinize every changed line for defects (edge cases, off-by-one, null/undefined, type assumptions, encoding, ordering). Self-verify each candidate against the code before reporting; drop only what you can REFUTE.`
-
+// External lanes mirror the same five angles, one narrow agent each — always-on: finding is a
+// divergent task, and a barrier costs its slowest member rather than its width, so extra families
+// ride in the shadow of the opus/sol bug-finders instead of adding wall time. Only the exhaustive
+// line-by-line scans stay conditional on a large diff, one per family, mirroring the Claude floor.
 const EXTERNAL_LANES = [
-  // Codex — capability gradient across the three gpt-5.6 models.
-  { family: 'codex', model: CODEX_MODELS.cleanup, tier: effort, class: 'cleanup', angle: 'cleanup-combined', prompt: CHARTER_CLEANUP },
-  { family: 'codex', model: CODEX_MODELS.bug, tier: effort, class: 'bug', angle: 'cross-file-contracts', prompt: CHARTER_CONTRACTS },
-  { family: 'codex', model: CODEX_MODELS.bug, tier: effort, class: 'bug', angle: 'adversarial', prompt: CHARTER_ADVERSARIAL },
-  // Gemini — flash carries cleanup (opinion work); the bug angles need the reasoning tier.
-  { family: 'agy', tier: AGY_FLASH, class: 'cleanup', angle: 'cleanup-combined', prompt: CHARTER_CLEANUP },
+  // Codex — terra@medium on every unconditional angle (width-over-depth scheme; see pins above).
+  { family: 'codex', model: CODEX_MODELS.terra, tier: 'medium', class: 'cleanup', angle: 'reuse+simplification', prompt: CHARTER_REUSE_SIMPLIFICATION },
+  { family: 'codex', model: CODEX_MODELS.terra, tier: 'medium', class: 'cleanup', angle: 'altitude+efficiency', prompt: CHARTER_ALTITUDE_EFFICIENCY },
+  { family: 'codex', model: CODEX_MODELS.terra, tier: 'medium', class: 'conventions', angle: 'conventions+docs+criteria', prompt: charterConventions() },
+  { family: 'codex', model: CODEX_MODELS.terra, tier: 'medium', class: 'bug', angle: 'cross-file-contracts', prompt: CHARTER_CONTRACTS },
+  { family: 'codex', model: CODEX_MODELS.terra, tier: 'medium', class: 'bug', angle: 'adversarial', prompt: CHARTER_ADVERSARIAL },
+  // Grok — grok-4.5@medium on every unconditional angle.
+  { family: 'grok', tier: 'medium', class: 'cleanup', angle: 'reuse+simplification', prompt: CHARTER_REUSE_SIMPLIFICATION },
+  { family: 'grok', tier: 'medium', class: 'cleanup', angle: 'altitude+efficiency', prompt: CHARTER_ALTITUDE_EFFICIENCY },
+  { family: 'grok', tier: 'medium', class: 'conventions', angle: 'conventions+docs+criteria', prompt: charterConventions() },
+  { family: 'grok', tier: 'medium', class: 'bug', angle: 'cross-file-contracts', prompt: CHARTER_CONTRACTS },
+  { family: 'grok', tier: 'medium', class: 'bug', angle: 'adversarial', prompt: CHARTER_ADVERSARIAL },
+  // agy — every angle fixed to gemini-3.1-pro-high, no tier split (explicit instruction).
+  { family: 'agy', tier: AGY_PRO, class: 'cleanup', angle: 'reuse+simplification', prompt: CHARTER_REUSE_SIMPLIFICATION },
+  { family: 'agy', tier: AGY_PRO, class: 'cleanup', angle: 'altitude+efficiency', prompt: CHARTER_ALTITUDE_EFFICIENCY },
+  { family: 'agy', tier: AGY_PRO, class: 'conventions', angle: 'conventions+docs+criteria', prompt: charterConventions() },
   { family: 'agy', tier: AGY_PRO, class: 'bug', angle: 'cross-file-contracts', prompt: CHARTER_CONTRACTS },
   { family: 'agy', tier: AGY_PRO, class: 'bug', angle: 'adversarial', prompt: CHARTER_ADVERSARIAL },
-  // Grok — one model, so the angles collapse into two combined agents rather than four thin ones.
-  { family: 'grok', tier: 'low', class: 'cleanup', angle: 'cleanup-combined', prompt: CHARTER_CLEANUP },
-  { family: 'grok', tier: 'medium', class: 'bug', angle: 'contracts+adversarial', prompt: CHARTER_COMBINED_BUG },
-  // Exhaustive scans — large diffs only, one per external family that has a heavy tier to spend.
+  // Exhaustive scans — large diffs only, one per external family, at HIGH: each family's single
+  // exhaustive pass has no cross-family redundancy to lean on, so it keeps the deep tier.
   ...(large
     ? [
-        { family: 'codex', model: CODEX_MODELS.scan, tier: 'medium', class: 'bug', angle: 'line-by-line', prompt: CHARTER_SCAN },
+        { family: 'codex', model: CODEX_MODELS.terra, tier: 'high', class: 'bug', angle: 'line-by-line', prompt: CHARTER_SCAN },
+        { family: 'grok', tier: 'high', class: 'bug', angle: 'line-by-line', prompt: CHARTER_SCAN },
         { family: 'agy', tier: AGY_PRO, class: 'bug', angle: 'line-by-line', prompt: CHARTER_SCAN },
       ]
     : []),
@@ -321,7 +316,7 @@ const externalResults = (await parallel(EXTERNAL_LANES.map((lane, i) => () =>
 ))).filter(Boolean).filter((r) => r.out)
 
 const claudeOk = claudeResults.filter((r) => r && r.out).length
-log(`find → claude ${claudeOk}/${FINDERS.length}, external ${externalResults.length}/${EXTERNAL_LANES.length} · effort=${effort} large=${large}`)
+log(`find → claude ${claudeOk}/${FINDERS.length}, external ${externalResults.length}/${EXTERNAL_LANES.length} · large=${large}`)
 // Fail LOUD on a degraded review. A prior run silently reported "external lanes 0/0 (skipped)"
 // because an oversized args payload meant `large`/`effort` never arrived — an 89-file security diff
 // got the Claude floor only, and nothing said so. Lanes are always-on now, so zero surviving

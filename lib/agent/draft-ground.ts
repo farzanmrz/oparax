@@ -84,7 +84,7 @@ const groundVerdictSchema = z.object({
     .describe("One post in the reporter's voice, from the source's facts only."),
 });
 
-export type GroundVerdict = z.infer<typeof groundVerdictSchema>;
+type GroundVerdict = z.infer<typeof groundVerdictSchema>;
 
 export type GroundResult = {
   /** ALWAYS present when the call completed and billed — even when the verdict failed schema

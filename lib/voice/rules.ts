@@ -115,7 +115,7 @@ export async function deleteVoiceRule(id: string): Promise<void> {
  *  that means for the prompt they compose. Does NOT read `measuredFacts` or call `deployGuide`
  *  — composing `flattenRulesToPrompt(enabledRules) + measuredFacts` into the actual system
  *  prompt is T2.3 / the drafting call sites' job. */
-export function flattenRulesToPrompt(rules: VoiceRule[]): string {
+function flattenRulesToPrompt(rules: VoiceRule[]): string {
   const ordered = rules
     .filter((r) => r.enabled)
     .slice()

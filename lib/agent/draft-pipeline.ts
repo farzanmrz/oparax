@@ -87,7 +87,7 @@ export type ProcessDeliveryResult = {
  *  or spends, and no story row means no feed card. Deterministic and free on purpose: this
  *  is NOT beat relevance (that's clustering's future job) — it only rejects posts whose text
  *  is structurally empty. */
-export function isLowSignal(text: string): boolean {
+function isLowSignal(text: string): boolean {
   const stripped = text
     .replace(/https?:\/\/\S+/g, "")
     .replace(/[@#][\p{L}\p{N}_]+/gu, "")

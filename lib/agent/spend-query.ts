@@ -35,7 +35,7 @@ import type { createClient } from "@/lib/supabase/server";
 type RlsClient = Awaited<ReturnType<typeof createClient>>;
 
 export type SpendStage = "drafting" | "judge" | "grounding" | "voice_extraction";
-export type SpendRollup = { stage: SpendStage; costUsd: number }[];
+type SpendRollup = { stage: SpendStage; costUsd: number }[];
 
 export type SpendPeriod = "weekly" | "monthly" | "yearly";
 const SPEND_PERIODS: readonly SpendPeriod[] = ["weekly", "monthly", "yearly"];

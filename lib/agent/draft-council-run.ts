@@ -61,7 +61,7 @@ export type CouncilCall = {
  *  known leftover (see `call-meta.ts`'s own header comment).
  *  "Withheld" is derived, not assumed: a null trace only means the PROVIDER held it back when
  *  the call actually spent reasoning tokens (`reasoning-trace.ts`). */
-export async function toCouncilCall(params: {
+async function toCouncilCall(params: {
   kind: CouncilCall["kind"];
   stage: CouncilCall["stage"];
   role: CouncilCall["role"];
@@ -88,15 +88,11 @@ export async function toCouncilCall(params: {
   };
 }
 
-export function formatSourceBrief(brief: SourceBrief): string {
+function formatSourceBrief(brief: SourceBrief): string {
   return `Source post by @${brief.authorHandle}:\n${brief.text}`;
 }
 
-export function buildRepairPrompt(
-  originalPrompt: string,
-  violations: string[],
-  badDraft: string,
-): string {
+function buildRepairPrompt(originalPrompt: string, violations: string[], badDraft: string): string {
   return [
     originalPrompt,
     "",
@@ -112,7 +108,7 @@ export function buildRepairPrompt(
 /** Deterministic self-check on a survivor's raw text — plain code between draft and judge,
  *  never a prompt instruction. Returns the violated rules, in prose, so a repair call can be
  *  fed exactly what to fix. */
-export function checkViolations(text: string, ceiling: number): string[] {
+function checkViolations(text: string, ceiling: number): string[] {
   const violations: string[] = [];
   if (text.includes("**")) {
     violations.push("contains markdown bold (`**`)");
