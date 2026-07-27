@@ -32,7 +32,10 @@ is complete only when the last ticks:
 2. `Built on ft/<issue#>` → invoke **`feature-build`** (Claude path) — **stops
    when built** with a compact build summary; the owner triggers QC. A Codex
    build stops the same way in its own app.
-3. `QC: cross-model reviews + browser journeys · lint · build · doc sync` → invoke **`feature-qc`**, ending at the verification ✋
+3. `QC: cross-model reviews + browser journeys · lint · build · doc sync` → invoke **`feature-qc`**, ending at the verification ✋ — QC is four hoppable
+   sub-steps (`feature-find` → `feature-fix` → `feature-docs` →
+   `feature-verify`), each runnable standalone in either app; under this
+   orchestrator they chain in one session
 4. `Owner feedback implemented + shipped via ship.sh (✋)` → invoke **`feature-ship`**
 5. `Next slice framed` → invoke **`feature-next`** (emits the paste-ready prompt for the next session)
 

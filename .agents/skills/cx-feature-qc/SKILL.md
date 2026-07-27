@@ -15,6 +15,17 @@ Runs over the whole branch diff (`origin/beta...ft/<N>`). Run this chat on
 (step 5); every other step is a pinned subagent or a shell command. No prose
 between steps; the verification ✋ (step 7) is where you write in full.
 
+**Hop-anywhere:** QC is also runnable as four separate harness-neutral steps
+— `$feature-find`, `$feature-fix`, `$feature-docs`, `$feature-verify` (in
+`.agents/skills/`, each with a Codex dials row) — every step reads/writes
+durable state (the issue's `QC round` comments), so any step may run in
+Claude Code instead. This skill is the one-session chain of the same
+contract; findings and fixes are ALWAYS posted as issue comments regardless
+(steps 5 and 6 below), and the verification report follows feature-verify's
+owner-legibility contract: plain-terms-first findings, jargon defined at
+first use, "surfaced" items decidable from the text alone, manual checks as
+concrete user actions.
+
 ## Weight — read it, never re-classify
 
 The ft issue's `## Weight` line (`light | standard | heavy`; missing =

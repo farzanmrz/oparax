@@ -104,8 +104,15 @@ requirements is reported as FAILED — never treated as approval.
 
 Adjudicate each critique on its merits — fix the real ones, reject taste and
 scope inflation — recording every accept/reject in a "Critique adjudication"
-section. Present the final plan to the owner in full and ask for approval.
-Scope discipline is the owner's to enforce at the gate.
+section. Scope discipline is the owner's to enforce at the gate.
+
+Present to the owner in this order (the gate legibility contract — approved
+as a user first, developer second; no clarifying question should ever be
+needed): **1)** Definition of done. **2)** Today → after this slice (what
+exists now, what changes, what's new — plain language). **3)** "As a user,
+what will happen" — a step-through narrative of the feature working. **4)**
+the full plan. **5)** the critique adjudication. Terms of art get a
+one-clause definition at first use; nothing is referenced "as discussed."
 
 ## 7. Close the gate
 

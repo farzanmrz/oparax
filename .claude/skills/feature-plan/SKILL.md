@@ -129,10 +129,26 @@ against that evidence. Wait for all, then return ONLY the schema JSON."
 
 Adjudicate each critique on its merits — fix the real ones, reject taste and
 scope inflation — and record every accept/reject call in a "Critique
-adjudication" section. Present the final plan to the user in full. **Scope
-discipline is the owner's to enforce at the gate**: everything asked for
-together is one slice; Deferred is only a substantial related slice better
-built after this lands; incidental ideas → drop.
+adjudication" section. **Scope discipline is the owner's to enforce at the
+gate**: everything asked for together is one slice; Deferred is only a
+substantial related slice better built after this lands; incidental ideas →
+drop.
+
+**Present the plan to the owner in this order (the gate legibility contract —
+the owner approves as a user first, developer second, and should never need a
+clarifying question):**
+
+1. **Definition of done** — first thing on screen.
+2. **Today → after this slice** — what exists right now, what this changes,
+   what's brand new; plain language, a few lines.
+3. **As a user, what will happen** — a step-through narrative of the feature
+   working ("a post arrives → the judge checks it against your beat → …"),
+   so the owner can see the whole behavior before any technical detail.
+4. The full plan (every section from step 4).
+5. The critique adjudication.
+
+Terms of art get a one-clause definition at first use; anything renamed or
+reworked during drafting is stated fresh, never as "as discussed."
 
 ## 7. Close the gate
 
