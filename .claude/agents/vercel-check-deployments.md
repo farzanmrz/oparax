@@ -21,8 +21,17 @@ The dispatch prompt gives you a target: a deployment id/URL, a branch name, or
 "the latest".
 
 Workflow:
-- Identify the deployment: `list_deployments` (filter by branch via the metadata),
-  or `get_deployment` when you already have an id/URL.
+- Identify the deployment: `get_deployment` DIRECTLY when you have an id, URL, or
+  alias (`beta.oparax.ai` / `oparax.ai` resolve as URLs — checking a sha at an
+  alias means: get_deployment on the alias, compare its commit metadata to the
+  sha). Reach for `list_deployments` ONLY when you genuinely must discover a
+  deployment you cannot address directly, and pass the smallest `limit` that can
+  answer (a real run pulled 20 full records — ~97KB — to read two fields of the
+  newest one; never repeat that).
+- If the target sha hasn't finished building yet, poll `get_deployment` with
+  brief pauses inside THIS context — the caller dispatched you precisely so
+  polling never touches their context. Give up with a clear "still BUILDING
+  after ~Nm" verdict rather than waiting indefinitely.
 - Report its `readyState`/`state`, target (production vs preview), the branch +
   commit it built, and the alias(es) it serves.
 - If it FAILED or ERRORED: pull `get_deployment_build_logs` and name the actual

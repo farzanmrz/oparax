@@ -59,6 +59,13 @@ ordinary task — do it inline; load tools via ToolSearch.
 
 - Never push, never branch, never open PRs. No builds or lint here — that is
   `/feature-qc`.
+- **No browser here — ever.** Build never opens a browser (not `agent-browser`,
+  not an MCP surface) and never dispatches a browser agent. Proving behavior in
+  a rendered page is QC's journeys. When the plan itself demands live
+  demonstration or evidence capture (a verification-type slice), that work IS
+  QC/verification: finish the build tasks, exit into `/feature-qc`, and let the
+  evidence be gathered there or at the owner's manual gate — never improvised
+  mid-build.
 - Mid-flight new scope stays off the branch — drop it; a deferral the user
   names is a future slice.
 - Track progress with TaskUpdate only when the plan has 4+ tasks; otherwise

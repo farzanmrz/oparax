@@ -58,9 +58,11 @@ routes are where bugs hide). Dispatch one `browser-verifier` per journey, each
 with its own `--session` id, in parallel, reusing step 1's server.
 
 Tool: the `agent-browser` CLI, headless (the two MCP browsers are token-heavy
-and rejected). Auth is pre-solved — pass `--state
-~/.agent-browser/oparax-qc-authenticated.json`; a bounce to `/login` is a
-finding, not a reason to prompt for credentials. Rules that keep parallelism
+and rejected). Auth is scripted, never reasoned about: each verifier runs
+`.claude/skills/feature/scripts/qc-login.sh <session> <base>` as its session's
+first command — a deterministic test-user login (fixed selectors, documented
+test credentials). Only the script itself failing is an auth finding; an agent
+must never stall a sweep on login or ask the owner to log in. Rules that keep parallelism
 safe: state each journey's preconditions (seed a row rather than drive the UICP
 that creates it; report a state as unreachable rather than skip it silently);
 a WRITE journey needs its own record or runs serially; never drive

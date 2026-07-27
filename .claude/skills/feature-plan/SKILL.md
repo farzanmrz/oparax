@@ -69,6 +69,16 @@ Write the full plan yourself. Charter:
   interfaces/signatures, and near-code for anything non-obvious — written so a
   sonnet-low executor needs judgment only for implementation nuance (imports,
   adjacent idiom, minor type friction), never for design.
+- **Actor contract — every step names WHO performs it.** A step is either
+  `BUILD` (the executor writes code), `QC` (verified by the QC battery), or
+  `OWNER-MANUAL` (the owner does it by hand — anything in a live/production UI,
+  anything spending real money, anything on the owner's accounts). An
+  `OWNER-MANUAL` step is a handoff: the flow presents it and STOPS; no phase
+  ever performs it, drives a browser toward it, or "sets it up" beyond stating
+  what to do. This is load-bearing: on #72 a plan step reading "manual Post to X
+  in a logged-in production browser session" was absorbed by the build phase,
+  which opened a browser on production and typed login credentials itself.
+  "Manual" without a named actor gets reinterpreted; the label is the fix.
 - Sections (unchanged, downstream depends on them): **Definition of done**
   (the ship gate's yardstick) · **Approach** (with the rejected alternatives) ·
   **In scope / Deferred** · **Build steps** (per-task files + the skills each

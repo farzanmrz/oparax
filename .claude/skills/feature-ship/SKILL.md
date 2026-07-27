@@ -86,32 +86,41 @@ to choose one of exactly three resolutions: preserve compatible parts from both,
 prefer `beta`, or prefer the feature. Never tell them merely to "rebase," and never
 use a destructive reset as recovery.
 
-## Ordered promotion and deployment checks
+## Ordered promotion — no session-side deployment watching
 
 `ship.sh` stops after a verified `beta` ref update — that landing commit is already
 the deployment source for `beta.oparax.ai`, so no `promote.sh` hop is needed to reach
 it. The terminal target (`beta` or `main`) is whatever was carried in the
-conversation from the plan gate onward — nothing on disk records it:
+conversation from the plan gate onward — nothing on disk records it.
 
-1. `ship.sh`'s final line is `Shipped <branch> -> beta. beta_sha=<sha>
-   recovery_tip=<sha>` — invoke `vercel:deployments-cicd` to wait for and verify that
-   **exact `beta_sha` value** (not `recovery_tip`, which is the feature branch's own
-   tip and is never deployed) is READY at `https://beta.oparax.ai`. If verification
-   fails, STOP; the conversation (or a `/handoff` checkpoint) is the only record to
-   resume from. For target `beta`, success here means the ordered promotion is
-   complete — go straight to finalize. For target `main`, continue to step 2.
-2. For target `main`, only after the beta deployment check passes, run
-   `.claude/skills/feature/scripts/promote.sh beta main`, capture its sole stdout
-   line (the new `main` commit SHA), and use `vercel:deployments-cicd` to verify that
-   exact SHA is READY at `https://oparax.ai`. STOP on failure and resume from the
-   conversation. After success, gate `finalize`.
+**The session never watches a deployment.** Vercel deploys the pushed ref on its
+own; a green ref update ends the slice's work. No polling, no waiting for READY,
+no `vercel:*` deployment skills, no Vercel MCP calls from this session — measured,
+that watching bought nothing the owner acts on and billed heavily. When a
+deployment's health genuinely gates a next step (only the `main` path below), the
+check is ONE dispatch of the `vercel-check-deployments` agent (haiku-pinned; any
+polling happens inside its cheap context) returning a one-line verdict.
+
+1. **Target `beta`:** after `ship.sh`'s final line (`Shipped <branch> -> beta.
+   beta_sha=<sha> recovery_tip=<sha>`), go **straight to finalize**. Do not check
+   the deployment — the slice is done when the ref lands; if beta ever fails to
+   deploy, that surfaces on its own and is its own small fix, not this slice's
+   wait state.
+2. **Target `main`:** promoting a broken beta to production is the one real risk,
+   so first dispatch `vercel-check-deployments` once for the exact `beta_sha`
+   (never `recovery_tip`, which is the feature branch's own tip and is never
+   deployed) at `https://beta.oparax.ai`. On a failed verdict, STOP. On a good
+   verdict, run `.claude/skills/feature/scripts/promote.sh beta main`, capture its
+   sole stdout line (the new `main` commit SHA), and dispatch
+   `vercel-check-deployments` once more for that SHA at `https://oparax.ai`. STOP
+   on failure; then finalize.
 
 Promotion uses a clean detached worktree, a normal `--no-ff` merge that preserves
 destination-only history, and a normal fast-forward ref update. It never skips the
 ladder and never force-pushes. Treat its conflict report the same way as the beta
 integration report.
 
-After the authorized target and its deployment check have succeeded, finalize:
+After the authorized target has landed (and, for `main`, its checks passed), finalize:
 
 ```bash
 .claude/skills/feature/scripts/ship.sh --finalize <issue#>
