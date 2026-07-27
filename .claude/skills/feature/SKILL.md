@@ -29,25 +29,28 @@ is complete only when the last ticks:
    Claude session on their build dial, or the **Codex app on a cheap model** (the
    repo's `.agents/skills/feature-build` skill / AGENTS.md's External build
    executors contract). Later phases are owner-triggered.
-2. `Built on ft/<issue#>` → invoke **`feature-build`** (Claude path) → **continue
-   straight into 3, no gate**. A build done in Codex re-enters at 3 directly.
+2. `Built on ft/<issue#>` → invoke **`feature-build`** (Claude path) — **stops
+   when built** with a compact build summary; the owner triggers QC. A Codex
+   build stops the same way in its own app.
 3. `QC: cross-model reviews + browser journeys · lint · build · doc sync` → invoke **`feature-qc`**, ending at the verification ✋
 4. `Owner feedback implemented + shipped via ship.sh (✋)` → invoke **`feature-ship`**
 5. `Next slice framed` → invoke **`feature-next`** (emits the paste-ready prompt for the next session)
 
-**There are exactly TWO gates in a run (owner decision 2026-07-26):**
+**A run pauses at every phase boundary (owner decision 2026-07-27, superseding
+the 2026-07-26 two-gate rule):**
 
-1. **The plan gate (✋)** — after `feature-plan`, before anything is built. (The
-   post-plan stop is this same gate's tail, not a third gate: the plan session
-   ends after cutting the branch instead of auto-continuing into build.)
-2. **The verification gate (✋)** — after `feature-qc` completes, presenting what
-   was implemented and what the owner must manually verify before shipping.
+1. **The plan gate (✋)** — plan approved/denied; on approval the issue + branch
+   are cut and the session stops. Build runs wherever the owner chooses.
+2. **The build stop** — build ends with a compact summary and waits; the owner
+   decides when/where QC runs.
+3. **The verification gate (✋)** — after `feature-qc`, presenting what was
+   implemented and what the owner must manually verify before shipping.
+4. **The ship gate (✋)** — feature-ship's triage + authorization (with its
+   standing pre-approval carve-out when the invocation itself says ship).
 
-**When build runs in Claude, it flows straight into QC with no gate and no prose
-between them.** Do not ask whether to proceed to QC; do not report state between
-phases. The owner watches the reasoning trace — interim narration is forbidden
-output (see the `Flow` output style). Phase transitions are silent: tick the
-TaskUpdate and invoke the next skill.
+Between these stops nothing else pauses or narrates: within a phase the owner
+watches the reasoning trace — interim narration is forbidden output (see the
+`Flow` output style). The stops are checkpoints, not conversations.
 
 The user may jump out at any point and drive the granular skills themselves; when
 they do, this orchestrator's job is only to keep the checklist honest.

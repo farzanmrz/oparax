@@ -71,10 +71,11 @@ ordinary task — do it inline; load tools via ToolSearch.
 - Track progress with TaskUpdate only when the plan has 4+ tasks; otherwise
   skip the ceremony.
 
-## Exit — straight into QC
+## Exit — STOP when built (owner decision 2026-07-27)
 
-When every task is done and the last checkpoint is green, **invoke
-`/feature-qc` immediately — no gate, no prose, no asking.** The owner's next
-decision point is QC's verification report. (Standalone exception: if the user
-invoked /feature-build explicitly outside the full flow and the session should
-stop here, run `/handoff` so a fresh session can resume.)
+When every task is done and the last checkpoint is green, **stop and report**:
+tasks completed, files touched, and any deviations or escalations — a compact
+build summary, nothing more. Then wait for the owner to say whether QC runs
+now (`/feature-qc`), later, or in a different session. Never auto-invoke QC.
+This mirrors the external-executor path (a Codex build necessarily stops when
+done), so every build ends at the same owner checkpoint regardless of harness.
