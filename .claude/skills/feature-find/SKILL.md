@@ -43,7 +43,9 @@ the background, record the real PID, wait for `✓ Ready`. Boot failure = STOP.
 
 ## 2. Deterministic gates
 
-`pnpm build` and `pnpm exec tsc --noEmit`. Red = STOP and report.
+`bash .claude/skills/feature/scripts/qc-gates.sh` — the one scripted gate
+runner (build + tsc hard, residual-lint report). `GATES: RED` = STOP and
+report. Never improvise the compound command.
 
 ## 3. Browser journeys
 

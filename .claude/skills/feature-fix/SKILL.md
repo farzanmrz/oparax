@@ -38,7 +38,8 @@ scope stays off the branch.
 
 Then, in order:
 
-1. Re-run the gates: `pnpm build` + `pnpm exec tsc --noEmit`. Red = STOP.
+1. Re-run the gates: `bash .claude/skills/feature/scripts/qc-gates.sh`.
+   `GATES: RED` = STOP. (Its residual-lint report also feeds step 2.)
 2. Residual lint on the changed files (safe formatting already happened via
    the write hooks): apply what Biome can't auto-fix, flagging any
    behavior-changing rule fix with one sentence of reasoning. Gate on a clean

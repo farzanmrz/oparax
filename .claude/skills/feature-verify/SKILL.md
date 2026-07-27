@@ -18,7 +18,8 @@ round comments (`findings` + `fixes`); nothing conversational is needed.
 
 ## Re-prove
 
-1. **Gates:** `pnpm build` + `pnpm exec tsc --noEmit`. Red = STOP.
+1. **Gates:** `bash .claude/skills/feature/scripts/qc-gates.sh`.
+   `GATES: RED` = STOP.
 2. **Boot + journeys:** reuse a running :3000 server or start one. Re-walk
    only the journeys whose routes the fix rounds touched (readable from the
    fixes comments' file lists); if this branch's journeys were never walked

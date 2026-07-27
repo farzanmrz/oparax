@@ -61,8 +61,9 @@ and report.
 
 ## 2. Deterministic gates — shell
 
-`pnpm build` and `pnpm exec tsc --noEmit`. A red gate stops QC — report and
-wait.
+`bash .claude/skills/feature/scripts/qc-gates.sh` (build + tsc hard,
+residual-lint report; never improvise the compound command). `GATES: RED`
+stops QC — report and wait.
 
 ## 3. Browser journeys — parallel `cx_journey_walker` subagents
 
