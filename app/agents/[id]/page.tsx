@@ -44,13 +44,17 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
   // promising a limit the posting account can't honor.
   const charLimit = X_CHAR_LIMITS.standard;
 
-  // "Ready to review" = at least one platform has a winner, and that story hasn't been posted
-  // to X yet (only X's own winner ever carries a real posted_at — see feed-item.tsx). A story
-  // with no X winner at all (LinkedIn/Bluesky-only) still counts: nothing about it has been
-  // acted on yet either.
-  const readyToReviewCount = stories.filter(
-    (story) => Object.keys(story.winners).length > 0 && story.winners.x?.postedAt == null,
-  ).length;
+  // "Ready to review" = at least one platform has a winner, and that story's X winner is not yet
+  // CONFIRMED (postedAt AND postedUrl both set — see feed-item.tsx). This includes a story with
+  // no X winner at all (LinkedIn/Bluesky-only, nothing acted on yet), an unposted X winner, and
+  // an AMBIGUOUS X winner (postedAt set but postedUrl null — X may have accepted the post but the
+  // outcome stamp failed) — an ambiguous story still needs the reporter's attention.
+  const readyToReviewCount = stories.filter((story) => {
+    if (Object.keys(story.winners).length === 0) return false;
+    const x = story.winners.x;
+    const confirmed = x != null && x.postedAt != null && x.postedUrl != null;
+    return !confirmed;
+  }).length;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 py-4">

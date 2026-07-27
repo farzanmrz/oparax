@@ -27,11 +27,13 @@
 // dialog, T5's `council-query.ts`, is allowed to fetch that).
 //
 // Ordering: `stories` carries no `posted_at` of its own (only X's own winning draft ever gets
-// one — LinkedIn/Bluesky have no posting mechanism this slice), so "unposted-first" can't be
+// one — LinkedIn/Bluesky have no posting mechanism this slice), so "unconfirmed-first" can't be
 // expressed as a single `.order()` against the query root the way the old `post_drafts`-rooted
 // query could. Fetch the bounded story page newest-created-first, then re-sort once winners
-// are known: unposted stories (no X winner, or an X winner not yet posted) sort first, then
-// posted stories fall back to most-recently-posted-first — the same feel the old
+// are known: unconfirmed stories (no X winner, an X winner not yet posted, or an AMBIGUOUS X
+// winner — postedAt set but postedUrl null, meaning X may have accepted the post but the
+// outcome stamp failed) sort first, then confirmed stories (postedAt AND postedUrl both set)
+// fall back to most-recently-confirmed-first — the same feel the old
 // `.order("posted_at", {ascending:false, nullsFirst:true})` gave, just computed post-fetch.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PLATFORMS, type Platform } from "@/lib/agent/desk-config";
@@ -253,17 +255,19 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
     council: summarizeCouncil(councilRowsByStoryId.get(story.id) ?? []),
   }));
 
-  // Unposted-first, then most-recently-posted-first (see the ordering comment at the top of
-  // this file). `Array#sort` is stable (guaranteed since ES2019/Node 12+), so ties keep the
-  // `stories` query's own created_at-desc order.
+  // Unconfirmed-first (unposted OR ambiguous), then most-recently-confirmed-first (see the
+  // ordering comment at the top of this file). `Array#sort` is stable (guaranteed since
+  // ES2019/Node 12+), so ties keep the `stories` query's own created_at-desc order.
   result.sort((a, b) => {
-    const aPostedAt = a.winners.x?.postedAt ?? null;
-    const bPostedAt = b.winners.x?.postedAt ?? null;
-    if (aPostedAt === null || bPostedAt === null) {
-      if (aPostedAt === bPostedAt) return 0;
-      return aPostedAt === null ? -1 : 1;
+    const aX = a.winners.x;
+    const bX = b.winners.x;
+    const aConfirmed = aX != null && aX.postedAt != null && aX.postedUrl != null;
+    const bConfirmed = bX != null && bX.postedAt != null && bX.postedUrl != null;
+    if (!aConfirmed || !bConfirmed || aX == null || bX == null) {
+      if (aConfirmed === bConfirmed) return 0;
+      return aConfirmed ? 1 : -1;
     }
-    return new Date(bPostedAt).getTime() - new Date(aPostedAt).getTime();
+    return new Date(bX.postedAt as string).getTime() - new Date(aX.postedAt as string).getTime();
   });
 
   return result;

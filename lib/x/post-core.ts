@@ -10,8 +10,7 @@
 // no user session available, and import this module directly — never through the Action
 // surface.
 import * as Sentry from "@sentry/nextjs";
-import twitterText from "twitter-text";
-import { X_CHAR_LIMITS } from "@/lib/agent/desk-config";
+import { checkXPostable } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createTweet, refreshTokens } from "@/lib/x/api";
 import { getXAccount, updateXTokens } from "@/lib/x/store";
@@ -82,16 +81,20 @@ export async function postDraftToXForOwner(
   const text = draft.model_calls?.output;
   if (!text) return { ok: false, error: "This draft has no text to post." };
 
-  // Server-side length gate, mirroring the client's twitter-text check (post-to-x-control.tsx) —
-  // a repair failure, a human edit, or a bypassed UI path (e.g. a hand-crafted Slack button
-  // value) could otherwise reach here over the ceiling with no server-side check at all.
-  // accountTier is hard-declared "standard" at every drafting call site this slice (Deferred:
-  // real tier resolution) — the same ceiling drafting itself enforces.
-  const weightedLength = twitterText.parseTweet(text).weightedLength;
-  if (weightedLength > X_CHAR_LIMITS.standard) {
+  // Server-side validity gate, mirroring the client's twitter-text check (post-to-x-control.tsx)
+  // through the SHARED `checkXPostable` helper editDraft also calls — a repair failure, a human
+  // edit, or a bypassed UI path (e.g. a hand-crafted Slack button value) could otherwise reach
+  // here over the ceiling with no server-side check at all. accountTier is hard-declared
+  // "standard" at every drafting call site this slice (Deferred: real tier resolution) — the same
+  // ceiling drafting itself enforces.
+  const postable = checkXPostable(text);
+  if (!postable.ok) {
     return {
       ok: false,
-      error: "This draft is over X's length limit and can't be posted as-is.",
+      error:
+        postable.reason === "too_long"
+          ? "This draft is over X's length limit and can't be posted as-is."
+          : "This draft isn't valid for X and can't be posted as-is.",
     };
   }
 

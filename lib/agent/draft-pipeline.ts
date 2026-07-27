@@ -86,14 +86,18 @@ export type ProcessDeliveryResult = {
  *  nothing to draft, so the delivery is recorded (source_posts) but never claims, clusters,
  *  or spends, and no story row means no feed card. Deterministic and free on purpose: this
  *  is NOT beat relevance (that's clustering's future job) — it only rejects posts whose text
- *  is structurally empty. */
+ *  is structurally empty. Text is NOT low-signal if a link is present AND at least 4 characters
+ *  of caption remain after stripping @/# tags and emoji, OR (independent of any link) the
+ *  stripped text alone is 12+ characters. */
 function isLowSignal(text: string): boolean {
+  const hasLink = /https?:\/\/\S+/.test(text);
   const stripped = text
     .replace(/https?:\/\/\S+/g, "")
     .replace(/[@#][\p{L}\p{N}_]+/gu, "")
     .replace(/\p{Extended_Pictographic}|\u{FE0F}|\u{200D}|\u{20E3}/gu, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (hasLink && stripped.length >= 4) return false; // a link plus a real caption is signal
   return stripped.length < 12;
 }
 
@@ -527,11 +531,21 @@ async function draftForExperiment(
     };
   } catch (err) {
     // Release the claim so a retry of this delivery can re-attempt (see the comment above).
-    await admin
+    // The delete's own result must be inspected: a release that silently fails leaves the claim
+    // held forever, so the worker's retry hits 23505 (already_drafted) and this
+    // (source_post, experiment) pair never produces a draft — capture it so the failure is at
+    // least visible, using the same tagged Sentry.captureException pattern post-core.ts uses
+    // elsewhere in that file (not releaseClaim's own console-only handling).
+    const { error: releaseError } = await admin
       .from("draft_claims")
       .delete()
       .eq("source_post_id", sourcePostId)
       .eq("experiment_id", experiment.id);
+    if (releaseError) {
+      Sentry.captureException(releaseError, {
+        tags: { sourcePostId, experimentId: experiment.id, scope: "draft_claims_release" },
+      });
+    }
     throw err;
   }
 }
@@ -606,6 +620,13 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   // tracked site URLs, saved in Wave 3), matched by hostname (matchesTrackedWebsite above), NOT
   // forced through the same tracked_handles matching function since the match key genuinely
   // differs between the two source types.
+  // Unbounded per-delivery scan, deliberately: bounded by tenant count (a small table today, no
+  // near-term latency risk), not by delivery volume. A `.eq("status", "active")` prefilter was
+  // considered and rejected — it would silently change what counts as "matched" for the
+  // paused-desk metering/unmatched-deliveries behavior documented below (a paused desk must
+  // still count toward `matched` there). A real bound needs a Postgres function doing
+  // server-side case-insensitive array matching, which is schema-adjacent and out of scope for
+  // a no-schema-change slice — deferred, not silently fixed.
   const { data: allExperiments, error: experimentsError } = await admin
     .from("experiments")
     .select(

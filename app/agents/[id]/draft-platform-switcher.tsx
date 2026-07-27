@@ -93,7 +93,13 @@ export function DraftPlatformSwitcher({
 
   if (!winner) return null; // unreachable: DraftCard only mounts this once winners is non-empty
 
-  const posted = activePlatform === "x" && winner.postedAt !== null;
+  // postedAt alone is a CAS claim flag (lib/x/post-core.ts), not proof of a live post — it's set
+  // BEFORE createTweet runs, and survives with postedUrl null on an ambiguous X-side failure (and
+  // on the rarer stamp-failure-after-real-success collision, ~post-core.ts:180-189; from these two
+  // columns alone the UI can't and doesn't try to distinguish the two). Only postedUrl also being
+  // set means the post is confirmed.
+  const confirmed = activePlatform === "x" && winner.postedAt !== null && winner.postedUrl !== null;
+  const ambiguous = activePlatform === "x" && winner.postedAt !== null && winner.postedUrl === null;
 
   return (
     <>
@@ -135,7 +141,7 @@ export function DraftPlatformSwitcher({
         <div className="flex flex-wrap items-center gap-1.5">
           <DraftEditDialog
             currentText={winner.text}
-            disabled={posted}
+            disabled={confirmed}
             postDraftId={winner.postDraftId}
           />
           <DraftHistoryDialog winningPostDraftId={winner.postDraftId} />
@@ -151,7 +157,7 @@ export function DraftPlatformSwitcher({
             <CharCounter platform={activePlatform} text={winner.text} xLimit={charLimit} />
             <span className="text-sm text-muted-foreground">Drafted — not published</span>
           </div>
-        ) : posted ? (
+        ) : confirmed ? (
           <div className="flex items-center gap-2">
             <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-success" />
             <span className="text-sm text-muted-foreground">Posted to X</span>
@@ -165,6 +171,19 @@ export function DraftPlatformSwitcher({
                 View post ↗
               </a>
             ) : null}
+          </div>
+        ) : ambiguous ? (
+          // No PostToXControl mounted here — postDraftToXForOwner (lib/x/post-core.ts) rejects
+          // any draft with postedAt set before ever touching X, so a Post button would
+          // deterministically no-op. The real recovery path is editing: DraftEditDialog is
+          // enabled above (disabled={confirmed}, not this), and a resubmit mints a fresh winner
+          // row with postedAt null, flipping this card back to the unposted branch below.
+          <div className="flex items-center gap-2">
+            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-warning" />
+            <span className="text-sm text-muted-foreground">
+              Couldn't confirm this reached X — check your account, then edit to resend if it didn't
+              post
+            </span>
           </div>
         ) : (
           <div className="flex shrink-0 items-center gap-3">

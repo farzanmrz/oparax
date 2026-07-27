@@ -56,11 +56,14 @@ export async function listVoiceRules(experimentId: string): Promise<VoiceRule[]>
   return (data ?? []).map(toVoiceRule);
 }
 
-async function nextSortOrder(admin: AdminClient, experimentId: string): Promise<number> {
-  const { data, error } = await admin
-    .from("voice_rules")
-    .select("sort_order")
-    .eq("experiment_id", experimentId)
+async function nextSortOrder(
+  admin: AdminClient,
+  experimentId: string,
+  opts?: { reporterOnly?: boolean },
+): Promise<number> {
+  const base = admin.from("voice_rules").select("sort_order").eq("experiment_id", experimentId);
+  const query = opts?.reporterOnly ? base.is("provenance_model_call_id", null) : base;
+  const { data, error } = await query
     .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -190,6 +193,23 @@ export async function materializeRulesFromGuide(
   if (sections.length === 0) return [];
   const admin = createAdminClient();
 
+  // Reporter-authored rules (provenance_model_call_id IS NULL) are untouched by the clear below
+  // and keep their own sort_order — but a fresh machine set always starting at 0 can collide
+  // with whatever sort_order those rows already hold, producing duplicate sort_order values and
+  // unstable interleaving in the Voice UI. Offset the new machine rules past the current max
+  // reporter sort_order so the two sets never overlap; reporter rows' rule text and
+  // provenance_model_call_id are never touched here, only where machine rules start numbering.
+  // Guarantees only: no sort_order collision between the fresh machine set and existing
+  // reporter-authored rows (the original bug this offset was written to fix). Does NOT
+  // guarantee stable relative ordering across a re-extraction — if a reporter adds a custom
+  // rule (via createVoiceRule) after an existing machine set, its sort_order sits above every
+  // machine rule; a later re-extraction then offsets the new machine set past that custom
+  // rule's sort_order too, pushing the custom rule ahead of the fresh machine set even though
+  // the reporter originally placed it after the OLD one. Fixing that requires deciding what
+  // "stable relative order" means when reporter and machine rules interleave — a design
+  // question flagged by QC review and deliberately deferred, not an oversight.
+  const startAt = await nextSortOrder(admin, experimentId, { reporterOnly: true });
+
   const { error: clearError } = await admin
     .from("voice_rules")
     .delete()
@@ -203,7 +223,7 @@ export async function materializeRulesFromGuide(
       sections.map((rule, index) => ({
         experiment_id: experimentId,
         rule,
-        sort_order: index,
+        sort_order: startAt + index,
         provenance_model_call_id: provenanceModelCallId,
       })),
     )
