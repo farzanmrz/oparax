@@ -79,13 +79,27 @@ Write the full plan yourself. Charter:
   in a logged-in production browser session" was absorbed by the build phase,
   which opened a browser on production and typed login credentials itself.
   "Manual" without a named actor gets reinterpreted; the label is the fix.
+- **Weight call — one line, decided here, binding downstream.** Classify the
+  slice and record `## Weight: light | standard | heavy` in the plan:
+  - `light` — ALL of: roughly ≤4 files, no schema/auth/money/posting path, no
+    new dependency, no new route or page.
+  - `heavy` — ANY of: schema/data migration, auth or session surface, real
+    money spend, live posting, a new trust boundary, or roughly >15 files.
+  - `standard` — everything else.
+  The weight rides in the issue body; downstream phases read it and never
+  re-classify mid-flight. A misclassification is visible to the owner at the ✋
+  gate, next to the plan it describes — that is the safety on this lever.
 - Sections (unchanged, downstream depends on them): **Definition of done**
   (the ship gate's yardstick) · **Approach** (with the rejected alternatives) ·
-  **In scope / Deferred** · **Build steps** (per-task files + the skills each
-  task invokes) · **## Stack & design acceptance criteria** (what QC verifies
-  the built diff against).
+  **## Weight** (above) · **In scope / Deferred** · **Build steps** (per-task
+  files + the skills each task invokes) · **## Stack & design acceptance
+  criteria** (what QC verifies the built diff against).
 
 ## 5. Critique — three external families, zero Claude
+
+**Weight gates this step.** `light`: skip external critique entirely — the
+top-dial draft plus its own divergence pass IS the whole plan phase; go
+straight to the gate. `standard` / `heavy`: launch all three families.
 
 Launch all three in background via the council bridge and end the turn — the
 harness re-invokes you as each finishes. For each family, write the prompt

@@ -59,6 +59,10 @@ they do, this orchestrator's job is only to keep the checklist honest.
   authorization names the entire consequence; successful target deployment
   checks do not create extra approval gates.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
+- The plan's `## Weight` line (`light | standard | heavy`) is decided ONCE at
+  the plan gate and scales the machinery downstream (external critics, QC
+  review width, browser journeys). Phases read it from the issue; nothing
+  re-classifies mid-flight.
 - Scope freezes at the plan gate **for agent-self-generated ideas only**: mid-build
   work an agent notices on its own is out of scope — drop it, never onto this branch;
   if it matters, the user re-plans it as its own slice later. Findings the owner

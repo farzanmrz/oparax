@@ -24,13 +24,32 @@ verification ✋ (step 7) is where you write in full. **The session model is
 spent on ADJUDICATION ONLY** — every other step is a pinned dispatch or a shell
 command.
 
+## Weight — read it, never re-classify
+
+The ft issue's `## Weight` line (`light | standard | heavy`; missing =
+`standard`) was decided at the plan gate and is binding — step 1's setup agent
+returns it with the acceptance criteria. It scales exactly two dials:
+
+- **light** — step 4 runs ONE reviewer: the Claude lane only (`model: sonnet`,
+  `effort: high`, same combined charter; no external lanes, no council files).
+  Step 3's journeys run only if the diff touches rendered UI (`app/**` or
+  `components/**` `.tsx`); otherwise record "no UI surface — journeys skipped".
+- **standard** — everything exactly as written below.
+- **heavy** — as standard, but the Claude review lane runs `model: opus`
+  (`effort: high`), and the step-7 verification report ends by offering
+  `/code-review ultra` before ship.
+
+The floor never drops on any weight: build + tsc gates, session adjudication,
+dispatched fixes, feature-lint, doc sync, and the verification ✋ all run.
+
 ## 1. Setup — ONE haiku agent (`model: haiku`, `effort: low`)
 
 Dispatch it to gather and return one compact block:
 - **Diff size.** `git diff --shortstat <range>` + `git diff --stat` (spot
   generated files).
-- **Acceptance criteria.** The ft issue's "Stack & design acceptance criteria"
-  section, verbatim, via `gh issue view`.
+- **Acceptance criteria + weight.** The ft issue's "Stack & design acceptance
+  criteria" section verbatim, and its `## Weight` line (missing = `standard`),
+  via one `gh issue view`.
 - **Dead-code sweep.** `pnpm deadcode` (knip). Verify each hit (grep for
   dynamic/string refs knip misses), cross-check AGENTS.md "Dormant by design"
   (a switched-off lever is not dead code — flag but say so), collapse dead
