@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Emits one line per plan-relevant "stack" skill:  <skill-id><TAB><one-line description>
 #
-# plan-synth's Stage 0 runs this and SELECTS from the output — it is the live skill
-# inventory the planner fans lenses out over. Design notes:
+# feature-plan's grounding-pack agent runs this and SELECTS from the output — it is the
+# live skill inventory the planner grounds against. Design notes:
 #   - Version-agnostic: each plugin's newest cached version is resolved with `sort -V`,
 #     so a plugin update is picked up with zero edits here.
 #   - Scope = the stack (vercel + supabase + railway plugins) + the repo's own build

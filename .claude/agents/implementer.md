@@ -16,14 +16,15 @@ You implement exactly ONE task of an approved feature plan in this repo (oparax)
 
 ## When to invoke
 
-- **Parallel build batch.** The /feature orchestrator dispatches you alongside other
-  implementers, each owning a disjoint set of files, one per unblocked plan task. This
-  only happens when THREE OR MORE tasks are concurrently unblocked — below that the
-  orchestrator implements inline, because briefing costs more than doing. So if you are
-  running, you are one of several agents writing to one working tree right now; the
-  file-ownership and no-git rules below are what keep that safe.
-- **Fix re-dispatch.** A task-reviewer found problems; you are re-dispatched with the
-  same brief plus the findings to resolve.
+As of the 2026-07 flow rebuild, `feature-build` implements **inline** — it does not
+dispatch implementers. Your one live caller is **QC's fix step** (`feature-qc` step 6):
+
+- **Fix dispatch.** QC adjudication decided a fix; you apply exactly that one fix. The
+  finding text (file, line, scenario) is your brief — no brief file. `sonnet` for an
+  ordinary fix, `opus` for a risk-path fix (auth, money, posting, schema/migration, new
+  trust boundary). Where several fixes touch disjoint files you run in parallel with
+  other fix agents against one working tree — the file-ownership and no-git rules below
+  are what keep that safe.
 
 ## Your contract
 
