@@ -18,8 +18,9 @@ paths:
 
 ## Database-ops tooling
 
-- **Migrations, SQL, advisors, type-gen** (anything that touches the actual project) go through the **claude.ai Supabase connector** — project `oparax-chirp`, project ref `pcgvpypzfwuchyfwdlwe`. This is the durable path; every DB-touching migration since 2026-07-22 records "Applied via the claude.ai Supabase connector" in its own header comment (e.g. `supabase/migrations/20260722234500_d16_dedup_and_post_outcome.sql`).
-- **Never the Supabase plugin's MCP server** for DB-touching work — it is interactive-auth only and 401s headless, so it cannot apply a migration or run SQL non-interactively. Its **skills** (`supabase`, `supabase-postgres-best-practices`) stay in use for guidance — best-practice checks, schema/RLS review, client-library patterns. The split is about the *tool that executes* DB operations, not the skills that inform them.
+- **Migrations, SQL, advisors, type-gen** (anything that touches the actual project) go through the **global user-scoped Supabase MCP server** (`claude mcp get supabase` — `https://mcp.supabase.com/mcp?project_ref=pcgvpypzfwuchyfwdlwe&…`, OAuth'd at **user scope**, available in every project; owner decision 2026-07-27, superseding the claude.ai-connector wording used before). Project `oparax-chirp`, project ref `pcgvpypzfwuchyfwdlwe`. New DB-touching migrations record "Applied via the Supabase MCP server" in their header comment; pre-2026-07-27 headers say "Applied via the claude.ai Supabase connector" and stay as-is — they are historical records.
+- **Never re-add a project-scoped `supabase` entry to `.mcp.json`.** OAuth tokens are stored **per endpoint URL**: a project-scope entry with a different URL (even just a narrower `features=` list) shadows the authenticated global server with an unauthenticated endpoint, and every session then sees "needs authentication" while `claude mcp list` shows the global one Connected. This exactly happened 2026-07-27 (the actions-only project entry from c86dae5) and was removed the same day. One server, user scope, one URL.
+- The Supabase **skills** (`supabase`, `supabase-postgres-best-practices`) stay in use for guidance — best-practice checks, schema/RLS review, client-library patterns — independent of which tool executes the DB operation.
 
 ## Dashboard-side configuration (not in this repo at all)
 
