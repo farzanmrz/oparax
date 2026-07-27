@@ -15,6 +15,28 @@ disable-model-invocation: true
 
 # Idea to shipped — the orchestrator
 
+## Resume detection — run on EVERY invocation, before anything else
+
+The flow's state lives entirely in durable markers, so this orchestrator must
+locate the slice before conducting: `git branch -a | grep ft/` + the current
+branch, then for an existing `ft/<N>`: `gh issue view N --comments`. Decide
+the entry point from the FIRST missing marker, in order:
+
+| Marker present? | Meaning | Next |
+|---|---|---|
+| no ft branch / open ft issue for this ask | nothing started | `feature-plan` |
+| ft/N + issue, no commits beyond the branch cut | planned, not built | build (owner picks harness) |
+| build commits, no `## QC round` comments | built | `feature-find` |
+| `— findings` without matching `— fixes` | adjudicated | `feature-fix` |
+| `— fixes` without `— docs` | fixed | `feature-docs` |
+| `— docs` without `— verified` | synced | `feature-verify` |
+| `— verified` present | verified | triage/`feature-ship` (✋) |
+
+State the detected position in one line ("ft/73 has round-1 findings but no
+fixes — resuming at feature-fix") and continue from there. Never re-run a
+completed phase, and never skip forward past a missing marker — in
+particular, NEVER enter ship while the latest round lacks `— verified`.
+
 This skill only conducts; the four phase skills do the work. A run is **ONE issue ·
 ONE feature branch · ONE squashed commit on `beta`.** `beta` and `main` are
 integration and promotion destinations, never feature-development branches. No PRs,

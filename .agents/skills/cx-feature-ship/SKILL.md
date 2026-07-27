@@ -9,6 +9,14 @@ description: >-
 
 # Triage ✋ then ship ✋ (Codex orchestrator)
 
+## QC-completeness guard — before anything else
+
+`gh issue view <N> --comments`: the latest `## QC round <R>` family must
+include `— findings`, `— fixes`, `— docs`, AND `— verified`. Any marker
+missing → name it and STOP; the missing step runs first (either app). The
+owner may explicitly override ("ship anyway") — record the override in the
+ship summary.
+
 ## Triage (owner feedback is binding)
 
 Every finding the owner reports during manual verification is implemented on

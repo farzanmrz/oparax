@@ -31,5 +31,9 @@ If anything changed: commit it (`qc: doc sync round <R>`) and note the edits
 in one sentence each. If nothing changed, say so — that is the expected
 outcome most rounds.
 
+Either way, post `## QC round <R> — docs` on the issue: one line ("synced: N
+edits" or "no change needed"). This marker is what resume detection and
+feature-ship's guard read — post it even when nothing changed.
+
 Standalone: STOP — name the next hop (`/feature-verify`, either app). Under
 `/feature-qc`: continue into feature-verify.

@@ -64,7 +64,15 @@ Sections, in order:
    feed, relink a different X account, confirm the counter drops to 280"),
    each with one clause on why it can't be proven automatically.
 
-Heavy weight: end by offering `/code-review ultra` before ship. Then STOP and
-wait — this is the run's verification gate; ship is `/feature-ship` (or
-`$cx-feature-ship`), owner-triggered. If the owner reports findings, they go
-through `/feature-fix` (owner findings are binding) and verify re-runs.
+Heavy weight: end by offering `/code-review ultra` before ship.
+
+**Persist the report too:** post the full report as `## QC round <R> —
+verified` on the ft issue (same content as the chat message). This is the
+durable marker resume detection and feature-ship's guard require — without
+it, a later session cannot distinguish "verified" from "fixed but never
+re-proven" — and it means the owner can re-read the report anywhere.
+
+Then STOP and wait — this is the run's verification gate; ship is
+`/feature-ship` (or `$cx-feature-ship`), owner-triggered. If the owner
+reports findings, they go through `/feature-fix` (owner findings are binding)
+and verify re-runs, posting a new round's marker.

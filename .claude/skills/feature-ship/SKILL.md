@@ -11,6 +11,16 @@ model: inherit
 
 # Triage ✋ then ship ✋
 
+## QC-completeness guard — before anything else
+
+`gh issue view <N> --comments`: the latest `## QC round <R>` family must
+include `— findings`, `— fixes`, `— docs`, AND `— verified`. If any marker is
+missing, name what's missing and STOP — the branch has unfinished QC (e.g.
+fixes applied but never re-proven), and the missing step runs first in
+whichever app the owner likes. The owner may explicitly override ("ship
+anyway"); record that override in the ship summary. A slice with NO QC round
+comments at all predates this contract or skipped QC — say so and ask.
+
 ## Triage (owner feedback is binding)
 
 Every finding the owner reports during manual verification is implemented on this

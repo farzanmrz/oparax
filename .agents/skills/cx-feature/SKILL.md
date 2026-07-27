@@ -17,6 +17,18 @@ chooses per-slice (or per-phase) which harness runs; the two flows are
 interchangeable at every phase boundary because each phase starts from durable
 state only (the ft issue body, the branch, `origin/beta...ft/<N>`).
 
+## Resume detection — run on EVERY invocation, before anything else
+
+Locate the slice from durable markers only: the current/ft branches, then
+`gh issue view N --comments`. Enter at the FIRST missing marker, in order:
+no ft branch/issue → plan · no commits beyond the cut → build · no
+`## QC round` comments → `$feature-find` · `— findings` without `— fixes` →
+`$feature-fix` · `— fixes` without `— docs` → `$feature-docs` · `— docs`
+without `— verified` → `$feature-verify` · `— verified` → triage/ship (✋).
+State the detected position in one line and continue. Never re-run a
+completed phase; never enter ship while the latest round lacks `— verified`.
+This is what makes mid-flow hops from Claude Code land correctly here.
+
 ## The phases — each ends at an owner stop
 
 1. **Plan** — `$cx-feature-plan`. Ends at the plan gate ✋; on approval the
