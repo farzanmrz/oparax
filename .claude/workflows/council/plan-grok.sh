@@ -26,4 +26,7 @@ fi
 if jq -e --arg k "$KEY" '.structuredOutput[$k]|length' "$raw" >/dev/null 2>&1; then
   jq --argjson t "$SECONDS" --arg tier "$EFF" '.structuredOutput + {elapsed_s:$t, tier:$tier}' "$raw" > "$OUT"
   rm -f "$raw"; exit 0
-else echo "GROK_FAILED (${SECONDS}s)" >&2; rm -f "$raw"; exit 1; fi
+else
+  mv -f "$raw" "${OUT%.out.json}.raw.err" 2>/dev/null || true
+  echo "GROK_FAILED (${SECONDS}s) — raw kept at ${OUT%.out.json}.raw.err" >&2; exit 1
+fi

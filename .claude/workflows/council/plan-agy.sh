@@ -28,5 +28,14 @@ agy --print "$PROMPT" --sandbox --print-timeout 45m --json-schema "$SCHEMA" --ou
     --model "$MODEL" --add-dir "$REPO" > "$raw" 2>&1
 if jq -e --arg k "$KEY" '.structured_output[$k]|length' "$raw" >/dev/null 2>&1; then
   jq --argjson t "$SECONDS" --arg tier "$MODEL" '.structured_output + {elapsed_s:$t, tier:$tier}' "$raw" > "$OUT"
+  # Empty payload is technically valid but has been agy's silent-punt signature
+  # (measured 2026-07-27: 0 items in 11-57s on inputs codex/grok worked minutes on).
+  # Surface it so the caller can weigh the lane accordingly.
+  n="$(jq -r --arg k "$KEY" '.structured_output[$k]|length' "$raw")"
+  [ "$n" = "0" ] && echo "AGY_EMPTY (${SECONDS}s) — valid envelope, zero ${KEY}; treat as no-signal, not clean pass" >&2
   rm -f "$raw"; exit 0
-else echo "AGY_FAILED (${SECONDS}s)" >&2; rm -f "$raw"; exit 1; fi
+else
+  # Keep the raw envelope on failure — deleting it made every past failure undiagnosable.
+  mv -f "$raw" "${OUT%.out.json}.raw.err" 2>/dev/null || true
+  echo "AGY_FAILED (${SECONDS}s) — raw envelope kept at ${OUT%.out.json}.raw.err" >&2; exit 1
+fi
