@@ -15,6 +15,10 @@ raw="$(mktemp)"
 #       and NO --disallowed-tools (that flag named a non-existent tool anyway; read-only sandbox still
 #       blocks writes/network). SIMPLE: the old no-survey invocation (prompt forbids reads).
 if [ "$DEPTH" = "deep" ]; then
+  # GROK_SUBAGENTS=1: experimental (2026-07-27) — enables grok's native subagent
+  # types (explore/plan/general-purpose) so a deep run may fan out; undocumented
+  # for headless, harmless if ignored. Set GROK_SUBAGENTS=0 to switch off.
+  GROK_SUBAGENTS="${GROK_SUBAGENTS:-1}" \
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
        --always-approve --effort "$EFF" -m grok-4.5 --max-turns 150 \
        --output-format json > "$raw" 2>&1

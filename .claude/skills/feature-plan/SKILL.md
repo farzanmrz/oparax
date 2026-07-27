@@ -115,9 +115,15 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
 ```
 
 Families and models: `codex` (`COUNCIL_MODEL=gpt-5.6-sol`, tier high) · `grok`
-(grok-4.5, tier high) · `agy` (`COUNCIL_TIER=gemini-3.1-pro-high`). A lane that
-fails or returns empty without having worked the requirements is reported as
-failed — never treated as approval.
+(grok-4.5, tier high) · `agy` (`COUNCIL_TIER=gemini-3.1-pro-high`; runs through
+its interactive TUI via tmux — the wrapper handles it, nothing changes here). A
+lane that fails or returns empty without having worked the requirements is
+reported as failed — never treated as approval.
+
+**Codex delegation line:** append to the codex lane's `.in.txt` only — "You have
+repo-defined subagents: spawn `pr_explorer` to map and evidence the code paths
+each build task names, then have `reviewer` judge requirement-by-requirement
+against that evidence. Wait for all, then return ONLY the schema JSON."
 
 ## 6. Refine + gate ✋
 
@@ -138,6 +144,17 @@ On the user's explicit approval:
   issue is ever created.
 
 Either way the script prints the issue number and cuts `ft/<issue#>` from
-fetched `origin/beta`. Under `/feature` the run continues; standalone, stop —
-the next session picks up with `/feature-build <issue#>` on the owner's build
-dial (sonnet low).
+fetched `origin/beta`. **Then STOP — always, under `/feature` too.** The plan
+phase's last words name the owner's two equivalent build paths and end the
+session's involvement:
+
+> Issue #N opened, `ft/N` cut. Build it whenever and wherever you like:
+> **(a)** a Claude session on your build dial — `/feature-build N` — or
+> **(b)** the Codex app on a cheap model — invoke the repo's `feature-build`
+> skill (or say "build issue N per AGENTS.md's External build executors
+> contract"). Either way, come back to Claude Code afterwards for
+> `/feature-qc`.
+
+The issue body is the complete spec by this phase's contract, so the build
+executor needs nothing from this conversation — that is what makes the
+app-jump clean.

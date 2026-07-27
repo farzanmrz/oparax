@@ -125,10 +125,15 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
 ```
 
 (codex additionally: `COUNCIL_MODEL=gpt-5.6-sol`; grok/codex tier defaults to
-high already; agy carries its model in the tier slug.) Each returns findings in
-`qc-findings-schema.json` shape. A lane that fails is reported as failed, never
-as a clean pass — if ALL external lanes fail, the review is Claude-only and
-must be reported as such, not as a full cross-model pass.
+high already; agy carries its model in the tier slug and runs through its
+interactive TUI via tmux — the wrapper handles it.) Append to the codex lane's
+`.in.txt` only: "You have repo-defined subagents: spawn `pr_explorer` to map
+and evidence the changed code paths, then have `reviewer` judge the diff
+against that evidence. Wait for all, then return ONLY the schema JSON." Each
+lane returns findings in `qc-findings-schema.json` shape. A lane that fails is
+reported as failed, never as a clean pass — an `AGY_EMPTY` stderr note means
+no-signal, not a clean pass. If ALL external lanes fail, the review is
+Claude-only and must be reported as such, not as a full cross-model pass.
 
 ## 5. Merge + adjudicate — this session (the one judgment stage)
 

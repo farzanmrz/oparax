@@ -24,22 +24,30 @@ no CI. Parallelism is a private implementation detail.
 is complete only when the last ticks:
 
 1. `Plan approved (✋ gate) + issue opened + ft/<issue#> cut` → invoke **`feature-plan`**
-2. `Built on ft/<issue#>` → invoke **`feature-build`** → **continue straight into 3, no gate**
+   — **the session STOPS here (owner decision 2026-07-27).** The issue body is the
+   complete spec, so the owner chooses where build runs: `/feature-build N` in a
+   Claude session on their build dial, or the **Codex app on a cheap model** (the
+   repo's `.agents/skills/feature-build` skill / AGENTS.md's External build
+   executors contract). Later phases are owner-triggered.
+2. `Built on ft/<issue#>` → invoke **`feature-build`** (Claude path) → **continue
+   straight into 3, no gate**. A build done in Codex re-enters at 3 directly.
 3. `QC: cross-model reviews + browser journeys · lint · build · doc sync` → invoke **`feature-qc`**, ending at the verification ✋
 4. `Owner feedback implemented + shipped via ship.sh (✋)` → invoke **`feature-ship`**
 5. `Next slice framed` → invoke **`feature-next`** (emits the paste-ready prompt for the next session)
 
 **There are exactly TWO gates in a run (owner decision 2026-07-26):**
 
-1. **The plan gate (✋)** — after `feature-plan`, before anything is built.
+1. **The plan gate (✋)** — after `feature-plan`, before anything is built. (The
+   post-plan stop is this same gate's tail, not a third gate: the plan session
+   ends after cutting the branch instead of auto-continuing into build.)
 2. **The verification gate (✋)** — after `feature-qc` completes, presenting what
    was implemented and what the owner must manually verify before shipping.
 
-**Build flows straight into QC with no gate and no prose between them.** Do not
-ask whether to proceed to QC; do not report state between phases. The owner
-watches the reasoning trace — interim narration is forbidden output (see the
-`Flow` output style). Phase transitions are silent: tick the TaskUpdate and
-invoke the next skill.
+**When build runs in Claude, it flows straight into QC with no gate and no prose
+between them.** Do not ask whether to proceed to QC; do not report state between
+phases. The owner watches the reasoning trace — interim narration is forbidden
+output (see the `Flow` output style). Phase transitions are silent: tick the
+TaskUpdate and invoke the next skill.
 
 The user may jump out at any point and drive the granular skills themselves; when
 they do, this orchestrator's job is only to keep the checklist honest.

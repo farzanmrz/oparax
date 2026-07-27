@@ -80,6 +80,8 @@ Gitignored, regenerable (delete freely when nothing runs): `.next/`, `data/`, `.
 
 Session continuity is **global and branch-agnostic**: `/handoff` writes one checkpoint per Claude Code session to `~/.claude/handoffs/<session-id>.md`, and `/continue <session-id>` resumes it from any session, in this project or another. The feature flow persists nothing of its own — the branch identifies the slice, the issue is its spec, and QC's diff boundary is plain `origin/beta...ft/<N>`. There is no direct-beta mode for app code and no `.context/` state; the one exception is owner-directed instruction-file/doc micro-edits, which may land directly on `beta` (see feature/SKILL.md's carve-out).
 
+**External build executors** (Codex app, agy, any non-Claude harness): the build phase is portable by design — the plan session stops after opening the ft issue and cutting `ft/<N>`, and the issue body is the complete spec. An external harness building a slice follows `.agents/skills/feature-build/SKILL.md` (the harness-neutral executor contract: switch to `ft/<N>`, execute the issue's Build steps in order, tsc-green commit checkpoints, escalate rather than improvise, never push). QC and ship always come back to Claude Code (`/feature-qc`, `/feature-ship`).
+
 ## Conventions
 
 - **Formatting is automatic — never run it by hand.** A `PostToolUse(Edit|Write)` hook

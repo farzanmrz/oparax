@@ -1,41 +1,106 @@
 #!/usr/bin/env bash
-# Council member: agy (Google Antigravity, routed to gemini-3.1-pro / 3.6-flash). Read-only, schema-bound.
+# Council member: agy (Google Antigravity) — driven through its INTERACTIVE TUI via tmux.
 # Usage: plan-agy.sh <prompt-file> <schema-file> <model> <out-file>
-#   model: gemini-3.1-pro-high | gemini-3.6-flash-high | gemini-3.6-flash-medium (flash = smoke-test tier)
-# CRITICAL nuances (learned by iteration):
-#   - prompt MUST be passed as the --print ARGUMENT, not piped stdin (piped stdin is ignored → agy explores).
-#   - --output-format json yields a clean envelope; the plan is .structured_output (no fence/escape issues).
-#   - the global RTK ~/.gemini/GEMINI.md was REMOVED (it derailed agy); no per-run mutation, parallel-safe.
-# Emits the plan JSON to <out-file>; exit 0 on success, 1 (+ AGY_FAILED) otherwise. Best-effort.
+#   model: gemini-3.1-pro-high | gemini-3.1-pro-medium | gemini-3.6-flash-high
+#
+# WHY TUI, NOT --print (measured 2026-07-27): `agy --print` is structurally single-shot —
+# num_turns=1 in every variant tested (deep prompt, no schema, no sandbox, --mode plan,
+# invoke_subagent, toolPermission always-proceed). It stuffs 150-500K tokens of retrieved
+# context and generates once, so on a real brief it returns {critiques:[]} while codex/grok
+# run genuine agentic loops. The TUI IS the agentic harness: the identical brief produced
+# 3 grounded critiques (2 blocking) in ~3 min, with real file reads and subagent access.
+#
+# Mechanics: tmux session per label → accept trust prompt if shown → /model dance →
+# one short prompt pointing at the brief FILE and an output FILE (the model itself writes
+# the JSON — no pane scraping) → poll for the file → tolerant-parse → normalize to OUT.
+# The model picker is keyboard-driven and version-sensitive (rows/effort slider verified
+# on agy 1.1.7); if agy's menu changes, update MODEL_ROW/EFFORT_PRESSES below.
 set -uo pipefail
-SECONDS=0  # bash stopwatch: wall-seconds for this member (folded into OUT as .elapsed_s)
+SECONDS=0
 PF="$1"; SCHEMA="$2"; MODEL="${3:-gemini-3.1-pro-high}"; OUT="$4"
 REPO="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-DEPTH="${COUNCIL_DEPTH:-simple}"
-KEY="${COUNCIL_CHECK_KEY:-plan}"  # QC's find/verify stages pass "findings" / "verdict"
-# DEEP: invite agy to explore the working tree (--add-dir already exposes it) at its own depth.
-# SIMPLE: the old anti-exploration suffix — answer from the fed context only.
-if [ "$DEPTH" = "deep" ]; then
-  SUFFIX="Explore the repository at the working directory as deeply as you need — read the real files, search, use your own subagents — to ground your response in the actual code. Then respond with ONLY the JSON object matching the schema."
-else
-  SUFFIX="Respond with ONLY the JSON object matching the schema. Do NOT use tools, do NOT read files, do NOT explore the filesystem."
-fi
-PROMPT="$(cat "$PF")
+KEY="${COUNCIL_CHECK_KEY:-plan}"
+TIMEOUT_S="${COUNCIL_AGY_TIMEOUT_S:-900}"
 
-$SUFFIX"
-raw="$(mktemp)"
-agy --print "$PROMPT" --sandbox --print-timeout 45m --json-schema "$SCHEMA" --output-format json \
-    --model "$MODEL" --add-dir "$REPO" > "$raw" 2>&1
-if jq -e --arg k "$KEY" '.structured_output[$k]|length' "$raw" >/dev/null 2>&1; then
-  jq --argjson t "$SECONDS" --arg tier "$MODEL" '.structured_output + {elapsed_s:$t, tier:$tier}' "$raw" > "$OUT"
-  # Empty payload is technically valid but has been agy's silent-punt signature
-  # (measured 2026-07-27: 0 items in 11-57s on inputs codex/grok worked minutes on).
-  # Surface it so the caller can weigh the lane accordingly.
-  n="$(jq -r --arg k "$KEY" '.structured_output[$k]|length' "$raw")"
-  [ "$n" = "0" ] && echo "AGY_EMPTY (${SECONDS}s) — valid envelope, zero ${KEY}; treat as no-signal, not clean pass" >&2
-  rm -f "$raw"; exit 0
+command -v tmux >/dev/null || { echo "AGY_FAILED (no tmux — brew install tmux)" >&2; exit 1; }
+
+# --- model slug → TUI picker actions (rows below current default "Gemini 3.6 Flash") ---
+case "$MODEL" in
+  gemini-3.1-pro-high)   MODEL_ROW=2; EFFORT_PRESSES=2 ;;  # Down Down, then Right Right (low→high)
+  gemini-3.1-pro-medium) MODEL_ROW=2; EFFORT_PRESSES=1 ;;
+  gemini-3.6-flash-high) MODEL_ROW=0; EFFORT_PRESSES=2 ;;
+  *) echo "plan-agy: unknown model slug '$MODEL'" >&2; exit 2 ;;
+esac
+
+SES="agy-$(basename "${OUT%.out.json}" | tr -c 'a-zA-Z0-9' '-' | cut -c1-40)$$"
+OUTFILE_ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "${OUT%.out.json}").tui.json"
+PANE_LOG="${OUT%.out.json}.pane.log"
+rm -f "$OUTFILE_ABS"
+
+cleanup() { tmux kill-session -t "$SES" 2>/dev/null || true; }
+trap cleanup EXIT
+
+tmux new-session -d -s "$SES" -x 220 -y 50 -c "$REPO" 'agy' || { echo "AGY_FAILED (tmux launch)" >&2; exit 1; }
+sleep 12
+# Trust prompt appears for a not-yet-trusted workspace; "Yes, I trust" is preselected.
+if tmux capture-pane -t "$SES" -p 2>/dev/null | grep -q "Do you trust"; then
+  tmux send-keys -t "$SES" Enter; sleep 6
+fi
+# Model picker: /model → rows down → effort right (slider resets to low on row change) → Enter.
+tmux send-keys -t "$SES" "/model" Enter; sleep 4
+i=0; while [ "$i" -lt "$MODEL_ROW" ]; do tmux send-keys -t "$SES" Down; i=$((i+1)); done
+sleep 1; tmux send-keys -t "$SES" Enter; sleep 3          # select model (lands at low effort)
+if [ "$EFFORT_PRESSES" -gt 0 ]; then
+  tmux send-keys -t "$SES" "/model" Enter; sleep 3        # reopen: current model preselected
+  i=0; while [ "$i" -lt "$EFFORT_PRESSES" ]; do tmux send-keys -t "$SES" Right; i=$((i+1)); done
+  sleep 1; tmux send-keys -t "$SES" Enter; sleep 3
+fi
+
+PF_ABS="$(cd "$(dirname "$PF")" && pwd)/$(basename "$PF")"
+SCHEMA_ABS="$(cd "$(dirname "$SCHEMA")" && pwd)/$(basename "$SCHEMA")"
+tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a review brief with its own instructions. Execute it faithfully: verify every claim against the actual repository code by reading the real files (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
+
+# Poll for the model-written file, then require it stable (agy may write incrementally).
+waited=0; last=-1
+while [ "$waited" -lt "$TIMEOUT_S" ]; do
+  sleep 10; waited=$((waited+10))
+  if [ -s "$OUTFILE_ABS" ]; then
+    sz="$(wc -c < "$OUTFILE_ABS")"
+    if [ "$sz" = "$last" ] && tmux capture-pane -t "$SES" -p 2>/dev/null | grep -q "READY"; then break; fi
+    last="$sz"
+  fi
+  tmux has-session -t "$SES" 2>/dev/null || break
+done
+tmux capture-pane -t "$SES" -p > "$PANE_LOG" 2>/dev/null || true
+cleanup; trap - EXIT
+
+# Tolerant parse (Gemini emits \$ and similar non-JSON escapes inside code samples),
+# then normalize to the standard council envelope.
+if python3 - "$OUTFILE_ABS" "$OUT" "$KEY" "$SECONDS" "$MODEL" <<'PYEOF'
+import json, re, sys
+src, out, key, elapsed, tier = sys.argv[1:6]
+try:
+    raw = open(src).read()
+except OSError:
+    sys.exit(1)
+try:
+    d = json.loads(raw)
+except json.JSONDecodeError:
+    fixed = re.sub(r'\\(?!["\\/bfnrtu])', '', raw)
+    try:
+        d = json.loads(fixed)
+    except json.JSONDecodeError:
+        sys.exit(1)
+if not isinstance(d, dict) or key not in d or not isinstance(d[key], list):
+    sys.exit(1)
+d.update(elapsed_s=int(elapsed), tier=tier)
+json.dump(d, open(out, "w"), indent=1)
+n = len(d[key])
+print(f"AGY_EMPTY ({elapsed}s) — valid but zero {key}; treat as no-signal" if n == 0 else f"agy ok: {n} {key} in {elapsed}s", file=sys.stderr)
+PYEOF
+then
+  rm -f "$OUTFILE_ABS"; exit 0
 else
-  # Keep the raw envelope on failure — deleting it made every past failure undiagnosable.
-  mv -f "$raw" "${OUT%.out.json}.raw.err" 2>/dev/null || true
-  echo "AGY_FAILED (${SECONDS}s) — raw envelope kept at ${OUT%.out.json}.raw.err" >&2; exit 1
+  echo "AGY_FAILED (${SECONDS}s) — no valid output file; pane log kept at $PANE_LOG" >&2
+  exit 1
 fi
