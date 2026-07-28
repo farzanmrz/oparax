@@ -64,9 +64,17 @@ the bridge (there is no Claude CLI lane).
   background shell, wait for :3000, confirm the harness URL returns 200, present the
   owner ONE clickable URL — `http://localhost:3000/dev/directions` — and STOP for the
   pick.
-- The session critiques all boards against the brief (design-critic charter) and
-  presents critiques WITH the URL. On a heavy slice, optionally one adversarial
-  cross-critique round between external lanes first.
+- **The 200-check is the LAST tool action before the stop (owner rule 2026-07-27).**
+  Once `pnpm dev` is up and the URL returned 200, the session dispatches NO agents and
+  touches NO browser tools — no render-verification pass, no click-through, no
+  screenshot run, in this harness or any other (Claude Code and Codex alike). tsc +
+  Biome green plus the 200 is the whole pre-present verification; the OWNER is the only
+  reviewer of the boards. A runtime defect the owner hits is feedback for the re-brief,
+  not something to pre-empt.
+- The session critiques all boards against the brief (design-critic charter) — from the
+  board SOURCE it already read/wrote, never from driving a browser — and presents
+  critiques WITH the URL. On a heavy slice, optionally one adversarial cross-critique
+  round between external lanes first.
 - The owner picks a winner or names a hybrid; grafting the best parts of runners-up is
   normal. **After design approval: kill the :3000 dev server specifically** (by port,
   nothing else).

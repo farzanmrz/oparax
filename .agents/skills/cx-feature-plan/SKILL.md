@@ -61,6 +61,9 @@ Write the full plan yourself. Charter (identical to the Claude flow's):
   the repo's actual components, kit-native ideation, both viewports per page,
   the three-switcher harness at `app/dev/directions/`, self-served on :3000,
   one clickable URL, stop for the owner's pick, kill :3000 after approval.
+  The 200-check is the LAST tool action before the stop: once the URL returns
+  200, dispatch NO subagents and touch NO browser tooling — the owner is the
+  only reviewer of the boards (owner rule 2026-07-27, binding in both flows).
   Codex roster: this session designs the codex board natively; grok + agy run
   via the council bridge (there is no Claude CLI lane). Record the rollup as
   `## Design freedom: none | reuse only | elevated: <surfaces>` next to
