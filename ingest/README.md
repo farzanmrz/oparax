@@ -2,9 +2,13 @@
 
 The always-on Railway forwarder for Oparax's ingestion path (slice 3, issue #68). It holds
 ONE persistent connection to the X filtered stream (`GET /2/tweets/search/stream`) and
-POSTs each matching tweet to the app's `POST /api/ingest`. This package is CODE ONLY — no
-deployment, project creation, secret-setting, or live X connection has been done as part of
-building it. Everything below is a checklist for the human operator.
+POSTs each matching tweet to the app's `POST /api/ingest`. **Deployed and live-verified**
+(issue #72, 2026-07-27): the Railway project/service exist, `INGEST_SECRET` parity against
+`/api/ingest`'s Bearer auth is proven by a live 422/401 probe pair, and one real tracked-source
+post has been observed traversing the full chain — worker → `/api/ingest` 200 → story claim →
+`gpt-5-nano` draft → Slack delivery → Post to X — with evidence on the issue. The deploy
+checklist below remains the reference for redeploying or re-verifying, not a "never done"
+disclaimer.
 
 ## Isolation
 
@@ -130,18 +134,29 @@ scoped to build/deploy settings, not secrets).
 | `INGEST_LIVENESS_TIMEOUT_MS` | no (default `90000`) | No stream activity for this long forces a reconnect + alarm. |
 | `INGEST_ALARM_COOLDOWN_MS` | no (default `3600000` = 1h) | Debounce window shared by both alarms. |
 
-## Deploy checklist (operator — not executed as part of building this package)
+## Deploy checklist (operator)
 
-This section documents the Railway config shape from the `railway:use-railway` skill for
-the operator to apply; nothing here was run.
+**The project and service below already exist and are live** — Railway project
+`oparax-ingest` (workspace "Oparax", id `15319bb7-542f-43dc-ac16-4a2a86eb2d8d`), service
+`oparax-ingest-worker` (id `d9342a33-915f-497e-a185-7855c1584131`), verified end-to-end live
+in production as of issue #72 (2026-07-27). This checklist is the **reference for
+redeploying or re-verifying that existing service** — step 3 is first-time provisioning
+only; skip it for any normal redeploy (`railway up` against the IDs above), and never create
+a second project/service for this worker. X allows exactly ONE concurrent filtered-stream
+connection per account, so a duplicate service would fight the real one for that single
+connection rather than adding capacity.
 
 1. **Never trust documented X caps.** Before doing anything else, re-probe
    `GET /2/tweets/search/stream/rules/counts` and a bare stream connect with the real
    `X_BEARER_TOKEN`, and repeat this after ANY account/app/tier/billing change — the live
    app returned 5 rules/app when the docs said 1,000.
 2. Verify `INGEST_SECRET` is **byte-identical** between Railway and Vercel before the first
-   deploy — copy it directly, don't retype it.
-3. Create the Railway project `oparax-ingest` (workspace "Oparax") and a service pointed at
+   deploy — copy it directly, don't retype it. (As of issue #72: Vercel stores this as a
+   "sensitive" variable, so it can never be read back via `vercel env pull`/`ls` for a
+   direct comparison — the only viable proof is a live authorized/unauthorized probe pair
+   against `/api/ingest` returning 422/401; see the issue for the confirmed values.)
+3. **First-time provisioning only (already done — see above).** Create the Railway project
+   `oparax-ingest` (workspace "Oparax") and a service pointed at
    this repo with **`source.rootDirectory = /ingest`** — `ingest/railway.json` (this
    package's service-level config-as-code, per the `railway:use-railway` skill's
    `railway.json` fallback model, since this repo has no `.railway/railway.ts` project-wide

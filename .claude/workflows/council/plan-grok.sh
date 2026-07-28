@@ -15,6 +15,10 @@ raw="$(mktemp)"
 #       and NO --disallowed-tools (that flag named a non-existent tool anyway; read-only sandbox still
 #       blocks writes/network). SIMPLE: the old no-survey invocation (prompt forbids reads).
 if [ "$DEPTH" = "deep" ]; then
+  # GROK_SUBAGENTS=1: experimental (2026-07-27) — enables grok's native subagent
+  # types (explore/plan/general-purpose) so a deep run may fan out; undocumented
+  # for headless, harmless if ignored. Set GROK_SUBAGENTS=0 to switch off.
+  GROK_SUBAGENTS="${GROK_SUBAGENTS:-1}" \
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
        --always-approve --effort "$EFF" -m grok-4.5 --max-turns 150 \
        --output-format json > "$raw" 2>&1
@@ -26,4 +30,7 @@ fi
 if jq -e --arg k "$KEY" '.structuredOutput[$k]|length' "$raw" >/dev/null 2>&1; then
   jq --argjson t "$SECONDS" --arg tier "$EFF" '.structuredOutput + {elapsed_s:$t, tier:$tier}' "$raw" > "$OUT"
   rm -f "$raw"; exit 0
-else echo "GROK_FAILED (${SECONDS}s)" >&2; rm -f "$raw"; exit 1; fi
+else
+  mv -f "$raw" "${OUT%.out.json}.raw.err" 2>/dev/null || true
+  echo "GROK_FAILED (${SECONDS}s) — raw kept at ${OUT%.out.json}.raw.err" >&2; exit 1
+fi

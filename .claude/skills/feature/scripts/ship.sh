@@ -1,32 +1,26 @@
 #!/usr/bin/env bash
-# Transactional feature shipping. Lands ft/<issue> on dev through a temporary
+# Transactional feature shipping. Lands ft/<issue> on beta through a temporary
 # detached worktree. A separate --finalize invocation closes the issue and performs
 # conservative old-feature cleanup only after the requested promotion/deployment
 # checks have completed.
 #
 # Usage:
-#   ship.sh [--target dev|beta|main] <issue-number> "<commit message>"
+#   ship.sh <issue-number> "<commit message>"
 #   ship.sh --finalize <issue-number>
 set -euo pipefail
 
 usage() {
   cat >&2 <<'USAGE'
 usage:
-  ship.sh [--target dev|beta|main] <issue-number> "<commit message>"
+  ship.sh <issue-number> "<commit message>"
   ship.sh --finalize <issue-number>
 USAGE
   exit 2
 }
 
-target="dev"
 finalize="false"
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --target)
-      [ "$#" -ge 2 ] || usage
-      target="$2"
-      shift 2
-      ;;
     --finalize)
       finalize="true"
       shift
@@ -44,14 +38,6 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
-
-case "$target" in
-  dev | beta | main) ;;
-  *)
-    echo "ship: target must be dev, beta, or main (got: $target)." >&2
-    exit 2
-    ;;
-esac
 
 if [ "$finalize" = "true" ]; then
   [ "$#" -eq 1 ] || usage
@@ -110,9 +96,15 @@ show_conflict_report() {
   echo "Choose explicitly: preserve compatible parts from both; prefer the destination; or prefer the feature. No ref was changed by this preview." >&2
 }
 
+# Trailer lookups intentionally walk only origin/beta. Pre-Phase-1 (issue #70)
+# ships recorded their Feature-Branch/Feature-Source-Tip trailers on origin/dev;
+# those are out of scope for --finalize and cleanup_old_feature_branches by
+# design — dev-only history predates the beta cutover and is not swept
+# automatically. Nothing open today has such history (see issue #70's own
+# branch-state check), so this costs no live recovery branch.
 find_recorded_tip() {
   recorded_branch="$1"
-  git log --first-parent refs/remotes/origin/dev \
+  git log --first-parent refs/remotes/origin/beta \
     --format='%H%x09%(trailers:key=Feature-Branch,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Source-Tip,valueonly,separator=%x2C)' \
     | awk -F '\t' -v wanted="$recorded_branch" '$2 == wanted && $3 != "" { print $3; exit }'
 }
@@ -121,7 +113,7 @@ find_recorded_ship_commit() {
   recorded_branch="$1"
   recorded_issue="$2"
   recorded_source_tip="$3"
-  git log --first-parent refs/remotes/origin/dev \
+  git log --first-parent refs/remotes/origin/beta \
     --format='%H%x09%(trailers:key=Feature-Issue,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Branch,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Source-Tip,valueonly,separator=%x2C)' \
     | awk -F '\t' \
       -v wanted_issue="#$recorded_issue" \
@@ -139,7 +131,7 @@ cleanup_old_feature_branches() {
   active_branch="$1"
   echo "ship: checking older ft/<number> recovery branches conservatively." >&2
 
-  git fetch --prune origin dev >&2
+  git fetch --prune origin beta >&2
   candidates="$({
     git for-each-ref --format='%(refname:short)' refs/heads/ft/
     git for-each-ref --format='%(refname:short)' refs/remotes/origin/ft/
@@ -179,7 +171,7 @@ cleanup_old_feature_branches() {
 
     recorded_tip="$(find_recorded_tip "$candidate" || true)"
     if [ -z "$recorded_tip" ]; then
-      echo "ship: skip $candidate (origin/dev has no matching Feature-Branch and Feature-Source-Tip trailers)." >&2
+      echo "ship: skip $candidate (origin/beta has no matching Feature-Branch and Feature-Source-Tip trailers)." >&2
       continue
     fi
 
@@ -223,10 +215,10 @@ EOF
 }
 
 if [ "$finalize" = "true" ]; then
-  git fetch --prune origin dev >&2
+  git fetch --prune origin beta >&2
   shipped_tip="$(find_recorded_tip "$branch" || true)"
   [ -n "$shipped_tip" ] || {
-    echo "ship: cannot finalize $branch — origin/dev lacks its ship trailers." >&2
+    echo "ship: cannot finalize $branch — origin/beta lacks its ship trailers." >&2
     exit 1
   }
   current_tip="$(git rev-parse HEAD)"
@@ -242,7 +234,7 @@ if [ "$finalize" = "true" ]; then
     echo "ship: cannot finalize $branch — its live remote tip no longer matches the recorded Feature-Source-Tip." >&2
     exit 1
   }
-  gh issue close "$issue" --comment "Shipped to dev and completed the authorized release path." >&2
+  gh issue close "$issue" --comment "Shipped to beta and completed the authorized release path." >&2
 
   cleanup_old_feature_branches "$branch"
 
@@ -273,25 +265,25 @@ source_tip="$(git rev-parse HEAD)"
 # Publish the exact feature tip first. A normal non-force push supplies a remote
 # recovery copy and rejects if somebody moved the branch unexpectedly.
 if ! git push origin "$source_tip:refs/heads/$branch" >&2; then
-  echo "ship: feature recovery push was rejected; dev was not changed." >&2
+  echo "ship: feature recovery push was rejected; beta was not changed." >&2
   exit 1
 fi
 live_feature="$(remote_ref_sha origin "refs/heads/$branch")" || {
-  echo "ship: could not verify the live recovery branch; dev was not changed." >&2
+  echo "ship: could not verify the live recovery branch; beta was not changed." >&2
   exit 1
 }
 [ "$live_feature" = "$source_tip" ] || {
-  echo "ship: live $branch moved after push; dev was not changed." >&2
+  echo "ship: live $branch moved after push; beta was not changed." >&2
   exit 1
 }
 
-git fetch origin dev >&2
-dev_base="$(git rev-parse refs/remotes/origin/dev)"
+git fetch origin beta >&2
+beta_base="$(git rev-parse refs/remotes/origin/beta)"
 
 # Preview the exact two commits without touching the index, working tree, or a
 # branch ref. A conflict exits before the integration worktree exists.
-if ! git merge-tree --write-tree --quiet "$dev_base" "$source_tip"; then
-  show_conflict_report "$dev_base" "$source_tip" "$branch -> dev"
+if ! git merge-tree --write-tree --quiet "$beta_base" "$source_tip"; then
+  show_conflict_report "$beta_base" "$source_tip" "$branch -> beta"
   exit 1
 fi
 
@@ -305,7 +297,7 @@ cleanup_integration() {
 }
 trap cleanup_integration EXIT
 
-git worktree add --detach "$integration_dir" "$dev_base" >&2
+git worktree add --detach "$integration_dir" "$beta_base" >&2
 if ! git -C "$integration_dir" merge --squash "$source_tip" >&2; then
   keep_integration="true"
   echo "ship: the clean preview and real squash disagreed. Recovery worktree kept at $integration_dir; no ref was pushed." >&2
@@ -317,24 +309,24 @@ git -C "$integration_dir" commit \
   --trailer "Feature-Issue: #$issue" \
   --trailer "Feature-Branch: $branch" \
   --trailer "Feature-Source-Tip: $source_tip" >&2
-dev_commit="$(git -C "$integration_dir" rev-parse HEAD)"
+beta_commit="$(git -C "$integration_dir" rev-parse HEAD)"
 
-# The new commit's parent is the fetched dev tip, so this is a normal
+# The new commit's parent is the fetched beta tip, so this is a normal
 # fast-forward update. Remote movement is rejected; no force option is used.
-if ! git -C "$integration_dir" push origin "$dev_commit:refs/heads/dev" >&2; then
+if ! git -C "$integration_dir" push origin "$beta_commit:refs/heads/beta" >&2; then
   keep_integration="true"
-  echo "ship: origin/dev moved or the push failed. Recovery commit $dev_commit and worktree $integration_dir were kept; the feature branch is also safe on origin." >&2
+  echo "ship: origin/beta moved or the push failed. Recovery commit $beta_commit and worktree $integration_dir were kept; the feature branch is also safe on origin." >&2
   exit 1
 fi
 
-live_dev="$(remote_ref_sha origin refs/heads/dev)" || {
+live_beta="$(remote_ref_sha origin refs/heads/beta)" || {
   keep_integration="true"
-  echo "ship: dev push returned success but its live ref could not be verified. Recovery worktree kept at $integration_dir." >&2
+  echo "ship: beta push returned success but its live ref could not be verified. Recovery worktree kept at $integration_dir." >&2
   exit 1
 }
-[ "$live_dev" = "$dev_commit" ] || {
+[ "$live_beta" = "$beta_commit" ] || {
   keep_integration="true"
-  echo "ship: live origin/dev ($live_dev) differs from the pushed integration commit ($dev_commit). Recovery worktree kept at $integration_dir." >&2
+  echo "ship: live origin/beta ($live_beta) differs from the pushed integration commit ($beta_commit). Recovery worktree kept at $integration_dir." >&2
   exit 1
 }
 
@@ -342,4 +334,4 @@ git worktree remove "$integration_dir" >&2
 integration_dir=""
 trap - EXIT
 
-echo "Shipped $branch -> dev as $dev_commit; recovery tip $source_tip retained locally and on origin. Authorized terminal target: $target."
+echo "Shipped $branch -> beta. beta_sha=$beta_commit recovery_tip=$source_tip"

@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write|edit|write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .codex/hooks/biome-write-codex.sh",
+            "timeout": 15,
+            "statusMessage": "Biome: format-on-write"
+          }
+        ]
+      }
+    ]
+  }
+}

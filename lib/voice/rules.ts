@@ -14,6 +14,7 @@
 // best-effort), CRUD failures here surface to their callers — throw on real DB errors.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
+import { BEAT_SCOPE_HEADING_RE, stripBeatScope } from "./deploy-guide";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type VoiceRuleRow = Database["public"]["Tables"]["voice_rules"]["Row"];
@@ -56,11 +57,14 @@ export async function listVoiceRules(experimentId: string): Promise<VoiceRule[]>
   return (data ?? []).map(toVoiceRule);
 }
 
-async function nextSortOrder(admin: AdminClient, experimentId: string): Promise<number> {
-  const { data, error } = await admin
-    .from("voice_rules")
-    .select("sort_order")
-    .eq("experiment_id", experimentId)
+async function nextSortOrder(
+  admin: AdminClient,
+  experimentId: string,
+  opts?: { reporterOnly?: boolean },
+): Promise<number> {
+  const base = admin.from("voice_rules").select("sort_order").eq("experiment_id", experimentId);
+  const query = opts?.reporterOnly ? base.is("provenance_model_call_id", null) : base;
+  const { data, error } = await query
     .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -114,10 +118,19 @@ export async function deleteVoiceRule(id: string): Promise<void> {
  *  regardless of how it was fetched. Returns "" for an empty enabled set — callers decide what
  *  that means for the prompt they compose. Does NOT read `measuredFacts` or call `deployGuide`
  *  — composing `flattenRulesToPrompt(enabledRules) + measuredFacts` into the actual system
- *  prompt is T2.3 / the drafting call sites' job. */
-export function flattenRulesToPrompt(rules: VoiceRule[]): string {
+ *  prompt is T2.3 / the drafting call sites' job.
+ *
+ *  The `BEAT_SCOPE_HEADING_RE` filter below is now a SAFETY NET, not the primary mechanism
+ *  (#73): `materializeRulesFromGuide` receives `guideDeploy` already stripped of `## Beat &
+ *  Scope` by `deployGuide()`, so no fresh extraction can insert a Beat & Scope row at all — the
+ *  real beat-filtration spec is read from `voice_guides.guide_raw` via `extractBeatSpec()` and
+ *  routed to the drafter as its own `beatSpec` input. This filter defends desks whose Beat &
+ *  Scope row was materialized before that fix landed, until the cleanup migration
+ *  (`20260727170004_delete_machine_beat_scope_rules.sql`) removes those rows; it stays cheap
+ *  enough to leave in place afterward regardless. */
+function flattenRulesToPrompt(rules: VoiceRule[]): string {
   const ordered = rules
-    .filter((r) => r.enabled)
+    .filter((r) => r.enabled && !BEAT_SCOPE_HEADING_RE.test(r.rule.trim()))
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder);
   if (ordered.length === 0) return "";
@@ -139,7 +152,7 @@ export function resolveDraftingPrompt(
   guideDeploy: string,
 ): string {
   const flattened = flattenRulesToPrompt(rules);
-  return flattened ? `${flattened}\n\n${measuredFacts}` : guideDeploy;
+  return flattened ? `${flattened}\n\n${measuredFacts}` : stripBeatScope(guideDeploy);
 }
 
 /** Splits a deployed guide into its `## ` (level-2) sections, each kept whole (heading + body)
@@ -190,6 +203,23 @@ export async function materializeRulesFromGuide(
   if (sections.length === 0) return [];
   const admin = createAdminClient();
 
+  // Reporter-authored rules (provenance_model_call_id IS NULL) are untouched by the clear below
+  // and keep their own sort_order — but a fresh machine set always starting at 0 can collide
+  // with whatever sort_order those rows already hold, producing duplicate sort_order values and
+  // unstable interleaving in the Voice UI. Offset the new machine rules past the current max
+  // reporter sort_order so the two sets never overlap; reporter rows' rule text and
+  // provenance_model_call_id are never touched here, only where machine rules start numbering.
+  // Guarantees only: no sort_order collision between the fresh machine set and existing
+  // reporter-authored rows (the original bug this offset was written to fix). Does NOT
+  // guarantee stable relative ordering across a re-extraction — if a reporter adds a custom
+  // rule (via createVoiceRule) after an existing machine set, its sort_order sits above every
+  // machine rule; a later re-extraction then offsets the new machine set past that custom
+  // rule's sort_order too, pushing the custom rule ahead of the fresh machine set even though
+  // the reporter originally placed it after the OLD one. Fixing that requires deciding what
+  // "stable relative order" means when reporter and machine rules interleave — a design
+  // question flagged by QC review and deliberately deferred, not an oversight.
+  const startAt = await nextSortOrder(admin, experimentId, { reporterOnly: true });
+
   const { error: clearError } = await admin
     .from("voice_rules")
     .delete()
@@ -203,7 +233,7 @@ export async function materializeRulesFromGuide(
       sections.map((rule, index) => ({
         experiment_id: experimentId,
         rule,
-        sort_order: index,
+        sort_order: startAt + index,
         provenance_model_call_id: provenanceModelCallId,
       })),
     )

@@ -7,10 +7,9 @@
 // `lib/agent/draft-council-run.ts`/`lib/sysprompts` — that chain is server-only AND drags
 // the drafting prompts into anything that imports it; this module is read-only shaping,
 // so it has no business depending on it. The `judgeVerdictShape` below is a parallel,
-// intentionally minimal re-declaration of the two keys `draft-council-run.ts`'s
-// `judgeVerdictSchema` actually writes (`winner`, `rationale` — confirmed by reading that
-// file; there is no third `reasons` key despite the design mock showing bulleted verdict
-// reasons — the mock's copy doesn't match what the judge model is asked to produce).
+// intentionally minimal re-declaration of the legacy council judge's two keys (`winner`,
+// `rationale`). #73 leaves `judge_verdict` null and stores judge metadata in `judge_review`, so
+// this legacy shape remains only for historical rows.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/lib/supabase/database.types";
@@ -26,8 +25,7 @@ const judgeVerdictShape = z.object({
 
 // Deliberately NOT read off the stored `usage.reasoningWithheldByProvider` flag. Until this
 // slice that flag was written as a restatement of `reasoning == null`, so every traceless call
-// carried it — including the judge, which runs at `reasoning: "none"` and has no trace by
-// design. Classifying off the reasoning-token count instead (`reasoning-trace.ts`) reads the
+// carried it. Classifying off the reasoning-token count instead (`reasoning-trace.ts`) reads the
 // same distinction out of rows already written, so history stops being described wrongly rather
 // than only new rows getting it right.
 function traceStateOf(call: NonNullable<ModelCallEmbed>): ReasoningTraceState {
@@ -44,7 +42,7 @@ export type CouncilMember = {
   isWinner: boolean;
 };
 
-export type CouncilJudge = {
+type CouncilJudge = {
   model: string;
   reasoning: string | null;
   reasoningState: ReasoningTraceState;

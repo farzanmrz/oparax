@@ -23,8 +23,10 @@ import { extractionConversationId } from "@/lib/observability/ai-conversation";
 import { withAiSpan } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import { X_HANDLE_RE } from "@/lib/x/handle";
+import { normalizeHandle, X_HANDLE_RE } from "@/lib/x/handle";
+import { getXAccount, updateXAccountTier } from "@/lib/x/store";
 import { fetchCorpus } from "./corpus";
+import { accumulateCorpus, markCorpusExclusions } from "./corpus-store";
 import { deployGuide } from "./deploy-guide";
 import {
   EXTRACTION_MODEL,
@@ -33,6 +35,7 @@ import {
 } from "./extract-guide";
 import { finishRun, recordProgress } from "./extraction-run";
 import { materializeRulesFromGuide } from "./rules";
+import { inferAccountTier } from "./tier";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -295,6 +298,49 @@ async function runExtractionSpendPhaseInner(
       return { status: "corpus_failed" };
     }
 
+    // These analysis side-writes happen only after the usable-corpus guard. A failed or empty
+    // pull must never wipe a known corpus or overwrite a linked account's tier inference.
+    try {
+      await accumulateCorpus(experimentId, corpus);
+    } catch (corpusStoreError) {
+      console.error(
+        `runExtractionSpendPhase: accumulateCorpus failed for @${reporterHandle}`,
+        corpusStoreError,
+      );
+      Sentry.captureException(corpusStoreError, {
+        tags: { stage: "voice_extraction", error_code: "corpus_store_failed" },
+        contexts: { extraction: { experimentId, handle: reporterHandle } },
+      });
+    }
+
+    try {
+      const account = await getXAccount(ownerId);
+      const sameReporter =
+        account &&
+        normalizeHandle(account.handle).toLowerCase() ===
+          normalizeHandle(reporterHandle).toLowerCase();
+      if (sameReporter) {
+        const inferred = inferAccountTier(corpus);
+        // Premium evidence is proof; absence of long posts proves nothing. A manually seeded
+        // premium account is therefore never downgraded by a standard inference.
+        if (inferred === "premium" || account.tier === null) {
+          // Guard the write by the exact linked X account observed above. If relinking happens
+          // between the read and this update, PostgREST matches zero rows rather than applying
+          // the old account's inference to the new account.
+          await updateXAccountTier(ownerId, account.x_user_id, inferred);
+        }
+      }
+    } catch (tierError) {
+      console.error(
+        `runExtractionSpendPhase: tier inference write failed for @${reporterHandle}`,
+        tierError,
+      );
+      Sentry.captureException(tierError, {
+        tags: { stage: "voice_extraction", error_code: "tier_store_failed" },
+        contexts: { extraction: { experimentId, handle: reporterHandle } },
+      });
+    }
+
     // The model reads the corpus and decides scope BEFORE it writes anything, so the run row
     // says so — otherwise the first ~60s of a run (measured: first text delta at 60.5s) shows a
     // reporter nothing but "extracting" while the model is actually still working out their beat.
@@ -326,6 +372,20 @@ async function runExtractionSpendPhaseInner(
               ? `Set aside ${scope.postIds.length} off-beat posts — ${scope.reason}`
               : `Kept all posts — ${scope.note.slice(0, 120)}`,
           });
+          if (scope.applied && scope.postIds.length > 0) {
+            try {
+              await markCorpusExclusions(experimentId, scope.postIds, scope.reason);
+            } catch (exclusionError) {
+              console.error(
+                `runExtractionSpendPhase: markCorpusExclusions failed for @${reporterHandle}`,
+                exclusionError,
+              );
+              Sentry.captureException(exclusionError, {
+                tags: { stage: "voice_extraction", error_code: "corpus_exclusion_store_failed" },
+                contexts: { extraction: { experimentId, handle: reporterHandle } },
+              });
+            }
+          }
         },
       );
 

@@ -13,6 +13,10 @@ You are NOT hunting correctness bugs — quality only.
 - Read every hunk in scope, then the enclosing code, before flagging anything.
 - Grep the shared modules adjacent to the change before calling something duplicated —
   a finding must NAME the existing helper, the simpler form, or the cheaper alternative.
+- For structural sweeps (all usages of a pattern/call shape), prefer ast-grep —
+  `sg -p '<pattern>' -l ts` — over regex grep: it matches code structure regardless of
+  formatting, and its hits tell you exactly which files/lines to Read instead of
+  reading whole files.
 - Skip generated files (the dispatch prompt lists them).
 - Respect plan-frozen decisions: when the dispatch names a plan issue, read it
   (`gh issue view`) and do not flag what it deliberately chose.

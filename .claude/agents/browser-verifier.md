@@ -45,24 +45,31 @@ is opt-in — never pass it). Do not reach for an MCP browser surface instead. R
 ## Authenticated routes
 
 Almost every route under `/agents/*` requires a signed-in session (`app/agents/layout.tsx`'s
-auth guard). A pre-authenticated state file already exists at
-`~/.agent-browser/oparax-qc-authenticated.json` (a `testuser@oparax.ai` session, captured via
-`agent-browser state save`) — pass it on the FIRST command of your session:
+auth guard). **Authentication is a script action, never your judgment.** Before your first
+journey step, run the deterministic login script as your session's first command:
 
 ```bash
-agent-browser --session <name> --state ~/.agent-browser/oparax-qc-authenticated.json open <base><route>
+bash "${CLAUDE_PROJECT_DIR:-.}/.claude/skills/feature/scripts/qc-login.sh" <session-name> <base>
 ```
 
-Use `--state <path>` (loads a state file once, no other side effects) — **never `--restore`**
-for this. `--restore` auto-saves on close/shutdown/idle-timeout/"compatible relaunch," and a
-relaunch triggered by a config mismatch mid-session can silently discard the live authenticated
-state and reload a stale pre-login snapshot instead — this happened once already. `--state` has
-no implicit save/relaunch behavior, so it's safe.
+It signs your session in as the documented frontend test user (`testuser@oparax.ai` — fixed
+selectors, fixed credentials, owner-sanctioned for exactly this) and prints `authenticated`
+or `already-authenticated` on success. You never open, read, fill, or reason about the login
+form yourself, and you never treat logging in as a decision to make — the script IS the login,
+the same way `git` is the commit. Do not hesitate, ask, or skip journeys because auth "might"
+be needed: run the script, then walk.
 
-If a route bounces to `/login` despite `--state` (the saved session expired or was invalidated),
-STOP and report it as a finding (`kind: auth` — "saved session no longer authenticates, needs a
-fresh `state save`") rather than attempting to log in yourself — you have no credentials and must
-never try to obtain or guess any.
+- Script exits 0 → proceed with the journey.
+- Script exits 1 → the login flow itself is broken. Report it as a finding (`kind: auth`,
+  quoting the script's stderr) and mark the journey's remaining steps blocked-by-earlier-failure.
+- A LATER step bounces to `/login` anyway (session invalidated mid-journey) → run the script
+  once more and retry that one step; a second bounce is a `kind: auth` finding.
+
+(The old `--state ~/.agent-browser/oparax-qc-authenticated.json` snapshot approach is retired
+as the primary path — saved sessions kept expiring and stalled entire sweeps. The script
+refreshes that snapshot as a side effect, but you never depend on it. Never use `--restore`:
+its auto-save-on-relaunch can silently swap live auth state for a stale pre-login snapshot —
+this happened on a real run.)
 
 ## Per step
 

@@ -5,151 +5,220 @@ description: >-
   Use when the user says /feature-plan, "plan this feature", "spec this out", or
   wants a plan gate without committing to the full flow. Not for building — that
   is /feature-build.
-argument-hint: "[feature description]"
+argument-hint: "[feature description | roadmap issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
 ---
 
 # The plan ✋ — spec and plan, one gate
 
-One document, **the plan**: it is the spec and the plan at once. Seed from
-`$ARGUMENTS` or the conversation, then work the steps in order.
+One document, **the plan**: it is the spec and the plan at once. It must be
+**hyper-specific** — the build phase runs as a dumb executor on a cheap model,
+so everything that requires judgment is decided HERE, on this session's model
+(run plan sessions on the owner's top dial). Seed from `$ARGUMENTS` (a feature
+description, or an existing roadmap issue number to graduate) or the
+conversation.
+
+Communication: the `Flow` output style governs — no interim prose; the ✋ gate
+is where you write in full.
 
 ## 1. Preflight
-- The slice comes from the user's ask — never self-served.
+
+- The slice comes from the user's ask — never self-served. If `$ARGUMENTS`
+  names an existing issue, `gh issue view` it: its body is the raw ask.
 - Scratch lives in `.feature/` (self-gitignoring: `mkdir -p .feature && printf
   '*\n' > .feature/.gitignore`).
 
 ## 2. Clear the thinking — before any drafting
-1. Invoke `first-principles-thinking` seeded with the raw ask **first** — this
-   phase's thinking gate, not optional. It strips the ask to its load-bearing
-   problem and the minimal rebuild; its concluded action IS the confirmed ask.
-2. Still rambling / multi-directional after that → interview one question at a
-   time, each with your best-guess answer attached, until the ask is coherent.
-3. Direction still genuinely unknown → `idea-refine` (save-path override
-   `.feature/`).
 
-These are conversations, not sign-offs — the ✋ gate in step 4 is this flow's only
-approval gate.
+Invoke `first-principles-thinking` seeded with the raw ask — this phase's
+thinking gate, not optional. It strips the ask to its load-bearing problem and
+the minimal rebuild; its concluded action IS the confirmed ask. Still rambling
+after that → interview one question at a time, each with your best-guess answer
+attached, until the ask is coherent. (These are conversations, not sign-offs —
+the ✋ in step 6 is this flow's only approval gate.)
 
-## 3. Plan the slice — skill-grounded synthesis
+## 3. Grounding pack — ONE cheap agent, not a fan-out
 
-The plan is synthesized by a fixed workflow, not drafted freehand, so the stack
-skills that apply to the slice are consulted **deterministically** every time (not
-left to whether the session remembers to). One
-`Workflow({ scriptPath: ".claude/workflows/plan-synth.mjs", args })` call runs the
-whole pass — address it by **`scriptPath`, never `name`** (same reason as the QC
-workflow: `{ name }` doesn't scan the repo's `.claude/workflows/`). Pass `args`:
-`{ ask: "<the confirmed ask from step 2>", context: "<any seed worth carrying>" }`.
+Dispatch **one agent, `model: sonnet`, `effort: low`** (state both explicitly
+in the dispatch — a model named in prose silently runs on whatever the session
+is). It returns one compact pack; the session never re-derives any of it.
 
-It runs six stages, grounded **once** (Scope + Lenses), drafted by **the session
-model alone**, then hardened by an external adversarial critique round. (The
-four-family draft council this replaces was measured on the slice-69 run: all four
-families independently chose the same spine, and the cross-draft merge introduced
-contradictions the critique stage then had to catch — cross-model spend belongs on
-attack, not on drafting the same plan four times.)
+The agent gathers:
 
-**Scope** selects the lenses from the **live skill inventory** (`list-plan-skills.sh`
-— the stack plugins + repo build skills, self-updating; not a fixed menu) rather than
-a hardcoded set, so a slice needing `vercel:marketplace` / `vercel-connect` /
-`chat-sdk` / `workflow` actually reaches them; the same pass reads AGENTS.md and
-glob-matches the slice's predicted paths against the `.claude/rules/` `paths:`
-frontmatter to gather the applicable guards into a digest (there is no diff at plan
-time to auto-inject them). The digest seeds every downstream stage; the external
-critics additionally explore the repository themselves (deep, read-only), so it is
-their starting map rather than their only ground truth.
+- **Skill constraints.** Run `bash .claude/workflows/list-plan-skills.sh` for
+  the live inventory, select ONLY the knowledge skills whose remit the
+  confirmed ask genuinely touches — **status/action skills (env listing,
+  deployment status, deploy commands) are never selected**; they are facts, not
+  constraints, and planning runs on the decisions already in AGENTS.md. Invoke
+  each selected skill and distill its hard constraints for this slice.
+- **Guards.** AGENTS.md plus every `.claude/rules/*.md` whose `paths:`
+  frontmatter matches the predicted touch-paths — distilled, not pasted.
+- **Ground truth.** Excerpts (signatures, exported types, route shapes) of the
+  files the slice will touch or interface with.
 
-**Lenses** fan out **one repo-grounded agent per selected skill, named after the
-skill** (no bundling, no cap below the inventory); each invokes its skill and returns
-hard constraints + acceptance criteria + conflicts to watch.
+## 4. Draft — this session, hyper-specific
 
-**Consolidate** merges every lens's constraints into one deduped constraint set and
-names a **2–3 candidate menu** — a seed for the Draft stage, not a ceiling; the
-drafter is free to deviate from it if it sees a stronger spine.
+Write the full plan yourself. Charter:
 
-**Draft** is ONE plan, written by the session model: pick a spine from the menu (or
-a stronger one), commit to it, and emit the full build-ready plan directly in its
-final sections — no council, no synthesis-across-drafts.
+- **Diverge before committing** (this replaces the retired idea-refine skill):
+  enumerate 2–3 candidate approaches that differ in SHAPE, not parameters —
+  name the angle each takes (e.g. data-model-first, UI-first, pipeline-first,
+  reuse-what-exists) — with one-line trade-offs; commit to one; record the
+  rejections in the Approach section. Three flavors of the same idea is a
+  failed divergence. Simplicity is the tiebreaker among correct designs,
+  never a license to drop a requirement.
+- **Design intent is part of the spec for UI-touching tasks.** Any task that
+  renders something states its hierarchy, spacing, states (loading/empty/
+  error), and motion/streaming behavior in the near-code — grounded in the
+  repo's UI rules (AGENTS.md conventions, `.claude/rules/components.md`,
+  ai-elements idioms), which the grounding pack must distill for UI slices.
+  "Works but ugly" is a spec defect, not an executor defect: QC's design
+  critic judges the rendered result against exactly this intent.
+- **Design freedom is tagged PER SURFACE, like the actor contract.** Every
+  UI-touching task carries `[design: reuse]` or `[design: elevated]`:
+  - `reuse` — the default, and ALWAYS the tag for modifying an existing
+    surface. The component ladder is binding, in order: existing vendored
+    component (shadcn/ai-elements) → existing bespoke chrome → composition of
+    existing primitives → only then a new component, with a one-line
+    justification for why the ladder failed. No new visual patterns, no new
+    spacing/radius/color decisions — the surface must read as if it was
+    always part of the app.
+  - `elevated` — net-new surfaces that are a new kind of moment, proposed
+    with a one-line reason; the owner accepts or flips it at the gate. For a
+    slice's elevated set (together, once), run the **direction council** —
+    the creativity twin of the critique council, one direction board PER
+    MODEL FAMILY: this session designs one, and codex, grok, and agy each
+    design one via their CLIs (same background-invocation pattern as the
+    critique lanes; each writes a self-contained static HTML board to
+    `.feature/directions/<family>.html`). All four get the SAME brief: the
+    real prop types/state model, every observable state, the repo's UI rules
+    and copy conventions, and "differ in shape, not parameters." Then the
+    session critiques all boards against the brief on UI/UX grounds (the
+    design-critic charter; on a heavy slice, optionally send each external
+    family the others' boards for one adversarial critique round first) and
+    presents boards + critiques at the gate. The owner picks; the choice is
+    FROZEN into per-state design intent; each new pattern it introduces is
+    NAMED (so it becomes a reusable convention, not a one-off). Downstream
+    phases inherit the decision, never the discretion.
+  Record the rollup next to `## Weight` as `## Design freedom:` — `none` (no
+  UI), `reuse only`, or `elevated: <surfaces>` — so the gate shows at a
+  glance whether a direction decision is coming. Exploration exists ONLY
+  before the gate: build executes, and the critic judges against the frozen
+  intent, never its own taste.
+  **States are part of the spec:** enumerate the surface's observable states
+  (pending / streaming-empty / mid-stream / done / each failure), specify
+  intent per state, and keep render paths presentational-pure (props in,
+  pixels out — no timers, no pipeline knowledge) so every state is reachable
+  deterministically. When the repo's dev state-gallery covers (or should
+  cover) the surface, adding/updating its fixtures is a BUILD task in this
+  same slice — the way a schema change carries its migration.
+- **Specificity contract:** every build task names its files, its exact
+  interfaces/signatures, and near-code for anything non-obvious — written so a
+  sonnet-low executor needs judgment only for implementation nuance (imports,
+  adjacent idiom, minor type friction), never for design.
+- **Actor contract — every step names WHO performs it.** A step is either
+  `BUILD` (the executor writes code), `QC` (verified by the QC battery), or
+  `OWNER-MANUAL` (the owner does it by hand — anything in a live/production UI,
+  anything spending real money, anything on the owner's accounts). An
+  `OWNER-MANUAL` step is a handoff: the flow presents it and STOPS; no phase
+  ever performs it, drives a browser toward it, or "sets it up" beyond stating
+  what to do. This is load-bearing: on #72 a plan step reading "manual Post to X
+  in a logged-in production browser session" was absorbed by the build phase,
+  which opened a browser on production and typed login credentials itself.
+  "Manual" without a named actor gets reinterpreted; the label is the fix.
+- **Weight call — one line, decided here, binding downstream.** Classify the
+  slice and record `## Weight: light | standard | heavy` in the plan:
+  - `light` — ALL of: roughly ≤4 files, no schema/auth/money/posting path, no
+    new dependency, no new route or page.
+  - `heavy` — ANY of: schema/data migration, auth or session surface, real
+    money spend, live posting, a new trust boundary, or roughly >15 files.
+  - `standard` — everything else.
+  The weight rides in the issue body; downstream phases read it and never
+  re-classify mid-flight. A misclassification is visible to the owner at the ✋
+  gate, next to the plan it describes — that is the safety on this lever.
+- Sections (unchanged, downstream depends on them): **Definition of done**
+  (the ship gate's yardstick) · **Approach** (with the rejected alternatives) ·
+  **## Weight** (above) · **In scope / Deferred** · **Build steps** (per-task
+  files + the skills each task invokes) · **## Stack & design acceptance
+  criteria** (what QC verifies the built diff against).
 
-**Critique** sends the plan to three external families, each **deep** (repo-resident,
-read-only, verifying the plan's claims against the actual code) at its **tier
-ceiling** — critique is each family's only seat and the terminal gate before the
-human one. Charters are distinct: Codex/gpt-5.6-sol (high) digs deepest on
-infrastructure durability + internal consistency; Grok-4.5 (high) on requirement
-traceability + unjustified complexity; Gemini-3.1-pro (high) via `agy` on repo-guard
-compliance + concrete risk. Each must work through the plan requirement by
-requirement before an empty list counts as a valid verdict; the charter forbids
-performative criticism. No Claude critic — the session model wrote the plan, so
-that would be self-review. (Known risk, accepted 2026-07-26: the agy lane returned
-5/5 empty critiques in the old shallow text-only mode; deep mode is the bet that
-bounded evidence-checking — the shape of its productive QC Verify seat — engages
-it. Repeated deep empties are the new fact that reopens the seat.)
+## 5. Critique — three external families, zero Claude
 
-**Refine** adjudicates each critique on its merits (fix the real ones, reject taste
-and scope inflation) and emits the final hardened plan, with a "Critique
-adjudication" section recording every accept/reject call. Zero surviving critiques
-skips Refine and ships the Draft output unchanged.
+**Weight gates this step.** `light`: skip external critique entirely — the
+top-dial draft plus its own divergence pass IS the whole plan phase; go
+straight to the gate. `standard` / `heavy`: launch all three families.
 
-Every design stage carries a calibrated simplicity pressure: the simplest
-architecture that satisfies every requirement wins, complexity must pay rent — but
-simplicity is a tiebreaker among correct designs, never a license to drop a
-requirement or weaken a guard.
-
-**Model policy (the Fable discipline — locked with Farzan):** Scope and Lenses are
-extraction/comprehension, not generation — **pinned sonnet, effort medium** (depth is
-bought with effort, not tier; Lenses is also the highest-fan-out stage in this
-workflow, so it must never inherit — that would multiply spend N skills wide). The
-external critique tiers are fixed production values, never re-litigated per run. Exactly
-**three** stages inherit your session model + tier and may spend Fable: **Consolidate**
-(candidate-menu generation), **Draft** (the plan itself), and **Refine** (critique
-adjudication) — all generative, single-call, ceiling-setting acts.
-Nothing else in this workflow can spend Fable, by design. There is no `repo-fit` lens — the guards ride in via the Scope digest and via
-path-rule auto-injection when a lens reads a matching file.
-
-The returned `plan` carries the standard sections the workflow enforces (so they are
-not re-specified here) — Definition of done, Approach, In scope / Deferred, Build steps
-(per-task file ownership + the skills each task invokes), and a **## Stack & design
-acceptance criteria** checklist. Two are load-bearing downstream: the Definition of
-done is the ship gate's yardstick for what finished means (owner-reported
-manual-verification findings are implemented regardless of it — feature-ship's triage
-rule), and feature-qc verifies the built diff against the acceptance-criteria
-checklist.
-
-**Scope discipline is yours to enforce at the gate** — the workflow drafts, you decide:
-everything asked for together is one slice (a minimal UI tweak *and* a major schema
-change ship together); Deferred is only a substantial related slice better built after
-this lands; incidental "while we're here" ideas → drop, never inflate. Read the plan
-critically, fix anything it got wrong, and never let it propose what a hard guard
-forbids.
-
-## 4. GATE ✋
-**Paste the full plan into chat** (never a file pointer). Revise until
-the user's explicit go. Before acting on that approval, resolve one value from the
-conversation without re-asking if it was already stated:
-
-- **terminal target** — `dev` by default, or the explicitly requested `beta` / `main`.
-  Nothing persists it, so carry it in the conversation and pass it to `ship.sh`.
-
-On approval, pipe the approved plan — exactly as pasted — into one kickoff command
-on stdin (heredoc; no file argument):
+Launch all three in background via the council bridge and end the turn — the
+harness re-invokes you as each finishes. For each family, write the prompt
+(plan + grounding pack + "verify claims against the actual code, cite paths;
+work requirement by requirement; an empty list is a valid verdict only after
+that") to `.feature/critique-<family>.in.txt`, then run — with
+`run_in_background: true` on each:
 
 ```bash
-# stdout is the new issue number.
-.claude/skills/feature/scripts/start.sh "<feature name>"
+CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
+  COUNCIL_DEPTH=deep COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
+  bash .claude/workflows/council/run.sh <family> critique-<family>
 ```
 
-The kickoff opens the issue with the plan as its body and cuts `ft/<issue#>` from the
-fetched `origin/dev` without checking out local `dev`; the issue is the single source
-of truth. Nothing is persisted about the run — the branch identifies the slice, and
-the release target is passed to `ship.sh` at ship time. If branch setup fails after
-issue creation, the kickoff closes the new issue rather than leaving an orphan.
+Families and models: `codex` (`COUNCIL_MODEL=gpt-5.6-sol`, tier high) · `grok`
+(grok-4.5, tier high) · `agy` (`COUNCIL_TIER=gemini-3.1-pro-high`; runs through
+its interactive TUI via tmux — the wrapper handles it, nothing changes here). A
+lane that fails or returns empty without having worked the requirements is
+reported as failed — never treated as approval.
 
-**Approval is the trigger — no further prompting.** The moment the kickoff succeeds
-(issue created carrying the approved plan, `ft/<issue#>` cut and checked out), tell
-the user in one line that the branch is cut, naming the retained terminal target so it
-is not lost. Continuity across sessions is the global `/handoff` skill's job: when the
-user wants to stop, they run `/handoff` and resume in a fresh session with
-`/continue <session-id>`.
+**Codex delegation line:** append to the codex lane's `.in.txt` only — "You have
+repo-defined subagents: spawn `pr_explorer` to map and evidence the code paths
+each build task names, then have `reviewer` judge requirement-by-requirement
+against that evidence. Wait for all, then return ONLY the schema JSON."
 
-Rules: scope freezes at this gate. Planning docs never enter the repo — the issue
-body is the tracked record.
+## 6. Refine + gate ✋
+
+Adjudicate each critique on its merits — fix the real ones, reject taste and
+scope inflation — and record every accept/reject call in a "Critique
+adjudication" section. **Scope discipline is the owner's to enforce at the
+gate**: everything asked for together is one slice; Deferred is only a
+substantial related slice better built after this lands; incidental ideas →
+drop.
+
+**Present the plan to the owner in this order (the gate legibility contract —
+the owner approves as a user first, developer second, and should never need a
+clarifying question):**
+
+1. **Definition of done** — first thing on screen.
+2. **Today → after this slice** — what exists right now, what this changes,
+   what's brand new; plain language, a few lines.
+3. **As a user, what will happen** — a step-through narrative of the feature
+   working ("a post arrives → the judge checks it against your beat → …"),
+   so the owner can see the whole behavior before any technical detail.
+4. The full plan (every section from step 4).
+5. The critique adjudication.
+
+Terms of art get a one-clause definition at first use; anything renamed or
+reworked during drafting is stated fresh, never as "as discussed."
+
+## 7. Close the gate
+
+On the user's explicit approval:
+
+- New ask: `bash .claude/skills/feature/scripts/start.sh "<title>" <plan-file>`
+- Graduating a roadmap issue: `bash .claude/skills/feature/scripts/start.sh
+  --issue <N> <plan-file>` — the plan becomes that issue's body; no duplicate
+  issue is ever created.
+
+Either way the script prints the issue number and cuts `ft/<issue#>` from
+fetched `origin/beta`. **Then STOP — always, under `/feature` too.** The plan
+phase's last words name the owner's two equivalent build paths and end the
+session's involvement:
+
+> Issue #N opened, `ft/N` cut. Build it whenever and wherever you like:
+> **(a)** a Claude session on your build dial — `/feature-build N` — or
+> **(b)** the Codex app on a cheap model — invoke the repo's `feature-build`
+> skill (or say "build issue N per AGENTS.md's External build executors
+> contract"). Either way, come back to Claude Code afterwards for
+> `/feature-qc`.
+
+The issue body is the complete spec by this phase's contract, so the build
+executor needs nothing from this conversation — that is what makes the
+app-jump clean.

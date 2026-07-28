@@ -8,9 +8,6 @@
 // that forgets this object is invisible, with no warning, no empty span, and no way to notice
 // except by looking for a span that was never going to be there. Eight literals across four files
 // is eight chances to forget one; a helper is one.
-//
-// It also puts the record-content decision in a single table instead of a boolean repeated at
-// every call, which matters because that decision is not uniform (see below).
 import * as Sentry from "@sentry/nextjs";
 import type { TelemetryOptions } from "ai";
 
@@ -26,40 +23,12 @@ export type AiStage =
 /**
  * Whether a stage's prompt and completion text are recorded, per stage — NOT a global switch.
  *
- * `dataCollection.genAI` in sentry-shared.ts is the outer gate; this is the inner one, and the two
- * together are what make it honest to have turned the outer one on. The split follows what the
- * text actually IS, not how convenient it would be to see:
+ * `dataCollection.genAI` in sentry-shared.ts is the outer gate; this is the inner one. Public
+ * extraction and classification content may be recorded, but unpublished drafts must not enter
+ * third-party error reports in production. Preview/local keep draft content visible for debugging.
  *
- * - `voice_extraction` — ON. Input is the reporter's PUBLIC X posts plus our own system prompt;
- *   output is the voice guide, which AGENTS.md argues is derived wholly from public posts. This is
- *   also the stage that produced an unexplained empty guide, which is what this whole setup exists
- *   to make visible.
- * - `story_cluster` — ON. Input is public source posts and existing story headlines; the output is
- *   a classification verdict. Nothing here is the reporter's own writing.
- * - `draft_ground` / `draft_council` / `draft_judge` — ON outside production, OFF in production.
- *   `draft_ground` sits with the drafting stages rather than the classification ones because,
- *   unlike `story_cluster`'s bare verdict, its output carries a `firstDraft` — the reporter's
- *   unpublished journalism, the same artifact the council's output is. The output is
- *   an UNPUBLISHED DRAFT in the reporter's voice: their unpublished journalism, the single most
- *   sensitive artifact the product handles, and the one thing that must not sit in a third-party
- *   store waiting to leak — so on oparax.ai only token counts, latency, model, cost and finish
- *   reason are recorded. But an invisible drafting stage was undebuggable in practice (owner
- *   request, 2026-07-25: council spans rendered with no input/output at all), and this file
- *   always prescribed the fix: narrow by environment rather than flip the switch. `VERCEL_ENV`
- *   is unset locally and "preview" on the dev/beta deployments, so every debugging surface
- *   records full prompts and completions; only `production` stays words-free.
- */
-const DRAFT_CONTENT_ALLOWED = process.env.VERCEL_ENV !== "production";
-const RECORDS_CONTENT: Record<AiStage, boolean> = {
-  voice_extraction: true,
-  story_cluster: true,
-  draft_ground: DRAFT_CONTENT_ALLOWED,
-  draft_council: DRAFT_CONTENT_ALLOWED,
-  draft_judge: DRAFT_CONTENT_ALLOWED,
-};
-
-/**
- * Build the `experimental_telemetry` block for one AI call.
+ * `voice_extraction` and `story_cluster` carry public posts or classification output. The drafting
+ * stages carry unpublished journalism, so their content is disabled only in production.
  *
  * `functionId` groups calls in Sentry's AI dashboard — pass something stable and specific
  * (`"voice-extraction-stream"`, `"draft-council-deepseek"`), because it is the axis latency and
@@ -72,13 +41,19 @@ const RECORDS_CONTENT: Record<AiStage, boolean> = {
  * Ids that identify a run — the desk, the handle, the corpus size — go on the WRAPPING span
  * instead: see `withAiSpan`.
  */
+const DRAFT_CONTENT_ALLOWED = process.env.VERCEL_ENV !== "production";
+const RECORDS_CONTENT: Record<AiStage, boolean> = {
+  voice_extraction: true,
+  story_cluster: true,
+  draft_ground: DRAFT_CONTENT_ALLOWED,
+  draft_council: DRAFT_CONTENT_ALLOWED,
+  draft_judge: DRAFT_CONTENT_ALLOWED,
+};
+
 export function aiTelemetry(stage: AiStage, functionId: string): TelemetryOptions {
   const recordsContent = RECORDS_CONTENT[stage];
   return {
     isEnabled: true,
-    // Set explicitly in both directions rather than relying on the SDK's "enabled by default":
-    // the default is what `dataCollection.genAI` overrides, and leaving a stage's most consequential
-    // privacy property to the interaction of two defaults is how it silently becomes the wrong one.
     recordInputs: recordsContent,
     recordOutputs: recordsContent,
     functionId,

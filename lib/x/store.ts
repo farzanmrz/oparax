@@ -34,6 +34,20 @@ export async function upsertXAccount(
   },
 ): Promise<void> {
   const admin = createAdminClient();
+  const { data: existing, error: selectError } = await admin
+    .from("x_accounts")
+    .select("x_user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (selectError) throw selectError;
+
+  // A different X account must never inherit the old account's inferred tier — relinking to a
+  // standard account while a stale `premium` row survives would draft/post to a 25,000-char
+  // ceiling the new account can't actually publish at. Null lets the next extraction re-infer
+  // (resolveXTier(null) falls back to the safe standard ceiling meanwhile). Same account
+  // relinking or no prior row: leave `tier` untouched, as before.
+  const isDifferentAccount = existing !== null && existing.x_user_id !== data.xUserId;
+
   const { error } = await admin.from("x_accounts").upsert({
     user_id: userId,
     x_user_id: data.xUserId,
@@ -43,6 +57,7 @@ export async function upsertXAccount(
     token_expires_at: data.tokenExpiresAt,
     scopes: data.scopes,
     updated_at: new Date().toISOString(),
+    ...(isDifferentAccount ? { tier: null } : {}),
   });
   if (error) throw error;
 }
@@ -66,6 +81,20 @@ export async function updateXTokens(
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function updateXAccountTier(
+  userId: string,
+  xUserId: string,
+  tier: "standard" | "premium",
+): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("x_accounts")
+    .update({ tier, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("x_user_id", xUserId);
   if (error) throw error;
 }
 

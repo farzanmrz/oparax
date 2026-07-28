@@ -23,7 +23,6 @@ import { toast } from "sonner";
 // bundler at build time. Import the default and read parseTweet off it.
 import twitterText from "twitter-text";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { postDraftToX } from "@/lib/x/actions";
 import styles from "./source-tweet.module.css";
 
@@ -35,8 +34,8 @@ export function PostToXControl({
 }: {
   postDraftId: string;
   draftText: string;
-  /** The desk's X ceiling — 280, or 25,000 when the reporter's corpus proves premium
-   *  (inferred in page.tsx). Also why the disable check below uses this rather than
+  /** The desk's X ceiling — 280, or 25,000 when the posting account's stored `x_accounts.tier`
+   *  is premium (resolved by `resolveXTier` in page.tsx). Also why the disable check below uses this rather than
    *  twitter-text's `parsed.valid`, which is hardwired to 280 and would wrongly block a
    *  premium-length draft. */
   charLimit: number;
@@ -59,7 +58,6 @@ export function PostToXControl({
 
   const parsed = twitterText.parseTweet(draftText);
   const overLimit = parsed.weightedLength > charLimit;
-  const nearLimit = !overLimit && parsed.weightedLength / charLimit > 0.9;
 
   function handleConfirm() {
     setError(null);
@@ -87,14 +85,9 @@ export function PostToXControl({
       <div className="flex flex-col items-end gap-2">
         <p className="text-sm text-muted-foreground">Post this draft to X? It publishes now.</p>
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "font-mono text-xs tabular-nums",
-              overLimit ? "text-destructive" : nearLimit ? "text-warning" : "text-muted-foreground",
-            )}
-          >
-            {parsed.weightedLength} / {charLimit}
-          </span>
+          {/* No counter here — the card's own char counter (draft-platform-switcher.tsx's
+              CharCounter, rendered beside this control in both the idle and confirming states)
+              already shows this number; a second one here duplicated it verbatim. */}
           <Button disabled={isPending || overLimit} onClick={handleConfirm} size="sm">
             {isPending ? "Posting…" : "Post to X"}
           </Button>

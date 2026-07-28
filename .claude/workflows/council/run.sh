@@ -35,4 +35,12 @@ case "$FAM" in
   agy)   TIER="${COUNCIL_TIER:-gemini-3.1-pro-high}" ;; # reference tier. Bake-off tests gemini-3.6-flash-high.
   *) echo "run.sh: unknown family '$FAM'" >&2; exit 2 ;;
 esac
+# Success key: callers used to have to export COUNCIL_CHECK_KEY to match the schema
+# (default "plan"), and the rebuilt skills never did — a lane returning perfect
+# {critiques:[...]} would have been branded FAILED. Derive it from the schema itself:
+# the first top-level property IS the payload key for every council schema.
+if [ -z "${COUNCIL_CHECK_KEY:-}" ]; then
+  COUNCIL_CHECK_KEY="$(jq -r '.properties | keys_unsorted[0] // "plan"' "$SCHEMA" 2>/dev/null || echo plan)"
+fi
+export COUNCIL_CHECK_KEY
 exec bash "$HERE/plan-$FAM.sh" "$SCRATCH/$LABEL.in.txt" "$SCHEMA" "$TIER" "$SCRATCH/$LABEL.out.json"

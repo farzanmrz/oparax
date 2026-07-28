@@ -5,7 +5,7 @@ description: >-
   rules `biome check --write` can't safely auto-fix. Invoked by /feature-qc as its
   final pass; also runnable standalone on a branch (/feature-lint). NOT for
   formatting — the PostToolUse hook already does that on every write.
-argument-hint: "[base ref, default dev]"
+argument-hint: "[base ref, default beta]"
 allowed-tools: Bash(git *) Bash(pnpm *)
 # sonnet, not inherit: this skill's own work is mechanical (run lint, group the findings
 # by file, dispatch lint-fixer agents, re-run). Under `inherit` it ran that grouping pass
@@ -37,10 +37,12 @@ for review** rather than shipped silently.
 
 ## Sequence
 
-1. **Scope to the feature diff.** Base defaults to `dev` (or `$ARGUMENTS`). Exclude
+1. **Scope to the feature diff.** Base defaults to `origin/beta` (or `$ARGUMENTS`) —
+   local `beta` is never checked out or fast-forwarded by this flow (see `start.sh`),
+   so it can sit arbitrarily stale; only `origin/beta` is guaranteed current. Exclude
    deletions so Biome isn't handed missing paths:
    ```bash
-   base="${ARGUMENTS:-dev}"
+   base="${ARGUMENTS:-origin/beta}"
    files=$(git diff --name-only --diff-filter=ACMR "$base...HEAD" \
      -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs')
    ```

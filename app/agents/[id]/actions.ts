@@ -14,9 +14,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { checkXPostable, resolveXTier } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
+import { getXLinkState } from "@/lib/x/link-state";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -170,14 +172,17 @@ const editDraftPostDraftIdSchema = z.string().uuid();
  *      (the existing owner-scoped EXISTS-join policy). This IS the ownership proof for the
  *      admin-client writes below — reaching this line already establishes the caller owns
  *      the desk this draft belongs to.
- *   2. Admin client: INSERT one `model_calls` row that exists PURELY to satisfy the FK — not
+ *   2. Admin client: dethrone the current winner via a compare-and-set on its EXACT row id,
+ *      guarded by `is_winner = true` AND `posted_url IS NULL` — `post_drafts` carries no
+ *      owner-scoped UPDATE policy at all, so this step has no RLS-client alternative regardless
+ *      of preference. The `posted_url` leg re-checks at WRITE time what step 1 only read: a
+ *      concurrent Post-to-X that CONFIRMED this winner in between must not be dethroned.
+ *   3. Admin client: INSERT one `model_calls` row that exists PURELY to satisfy the FK — not
  *      a real billed call. `model: "human-edit"` / `stage: "manual_edit"` / `cost_usd: 0` /
  *      `reasoning: null` / `usage: null` mark it unmistakably as the deliberate, documented
  *      exception to "every model_calls row is a real billed call" (AGENTS.md) that it is —
- *      a future reader must not mistake this for an L12 violation.
- *   3. Admin client: dethrone the current winner for this (source_post_id, experiment_id,
- *      platform) — `post_drafts` carries no owner-scoped UPDATE policy at all, so this step
- *      has no RLS-client alternative regardless of preference.
+ *      a future reader must not mistake this for an L12 violation. It runs AFTER the CAS so an
+ *      aborted edit never leaves an orphaned, unreferenced ledger row behind.
  *   4. RLS/cookie client: INSERT the new `post_drafts` row. THIS is the step the plan text
  *      calls out — "via the owner-scoped RLS client... never service-role for a browser
  *      write" — the `post_drafts_insert_via_experiment` policy's `WITH CHECK` clause is what
@@ -213,9 +218,16 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
   // (already-live) story as unposted with an enabled Post button — one click from a
   // near-duplicate tweet. Scoped by source_post_id + experiment_id + platform, the same triple
   // applyCorrection's dethrone step in draft-pipeline.ts uses.
+  // postedAt alone is the ambiguous state, not proof of a live post (mirrors
+  // draft-platform-switcher.tsx's three-way signal) — only a confirmed post (postedAt &&
+  // postedUrl) blocks editing. Editing an ambiguous draft is the reporter's actual recovery
+  // path: it mints a fresh, unposted winner they can then post cleanly. Accepted tradeoff: if
+  // the original ambiguous post genuinely went through, resubmitting and posting the new
+  // winner risks a real duplicate on X — the UI's ambiguous-state copy tells the reporter to
+  // check their account first; this function does not and cannot verify that for them.
   const { data: currentWinner, error: currentWinnerError } = await supabase
     .from("post_drafts")
-    .select("id, posted_at")
+    .select("id, posted_at, posted_url")
     .eq("source_post_id", parentDraft.source_post_id)
     .eq("experiment_id", parentDraft.experiment_id)
     .eq("platform", parentDraft.platform)
@@ -224,13 +236,66 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
   if (currentWinnerError) {
     return { ok: false, error: "Could not verify this draft's status. Please try again." };
   }
-  if (currentWinner?.posted_at) {
+  if (currentWinner?.posted_at && currentWinner?.posted_url) {
     return { ok: false, error: "This draft was already posted to X and can't be edited." };
+  }
+
+  // Server-side validity gate for X, mirroring post-core.ts's postDraftToXForOwner exactly
+  // (the SHARED `checkXPostable` helper, so the two can't drift) — a repair failure, a
+  // hand-edited draft, or any path reaching editDraft without going through the Post button's
+  // client-side check could otherwise save an unpostable winner that then fails at X with
+  // claim-release churn.
+  if (parentDraft.platform === "x") {
+    const { tier } = await getXLinkState();
+    const postable = checkXPostable(trimmedText, resolveXTier(tier));
+    if (!postable.ok) {
+      return {
+        ok: false,
+        error:
+          postable.reason === "too_long"
+            ? "This draft is over X's length limit and can't be posted as-is."
+            : "This draft isn't valid for X and can't be posted as-is.",
+      };
+    }
   }
 
   const admin = createAdminClient();
 
-  // Step 2 — the FK-satisfying model_calls row. Not a real model call: see the comment above.
+  // Step 2 — CAS-scoped dethrone of the EXACT winner row this call observed. Two concurrent
+  // editDraft calls reading the same currentWinner: only the call that actually flips THIS row
+  // from true to false proceeds past this point; the loser's update matches zero rows and aborts
+  // before ever inserting a second winner. A currentWinner read as null — no is_winner:true row
+  // visible at Step 1, either a genuine transient window between another call's dethrone and its
+  // own insert, or an inconsistent state — aborts here too, rather than proceeding unguarded:
+  // there is nothing to prove exclusive ownership over. Traced through both interleavings (same
+  // winner observed by both callers; second caller lands in the transient zero-winner window),
+  // this closes the double-insert race by construction.
+  //
+  // `.is("posted_url", null)` re-checks at WRITE time what the already-posted guard above only
+  // READ: a concurrent Post-to-X click can confirm this exact winner (posted_at AND posted_url
+  // both stamped) between that read and this update, and dethroning a confirmed post would put
+  // the feed back into "unposted" with a live tweet already out. An ambiguous row (posted_at set,
+  // posted_url null) still dethrones — that is the reporter's intended recovery path — as does a
+  // wholly unposted one. A row confirmed in the interim simply matches zero rows and falls
+  // through to the same "edited elsewhere" error below.
+  if (!currentWinner) {
+    return { ok: false, error: "This draft was just edited elsewhere — refresh and try again." };
+  }
+  const { data: dethroned, error: dethroneError } = await admin
+    .from("post_drafts")
+    .update({ is_winner: false })
+    .eq("id", currentWinner.id)
+    .eq("is_winner", true)
+    .is("posted_url", null)
+    .select("id");
+  if (dethroneError) return { ok: false, error: "Could not save your edit. Please try again." };
+  if (!dethroned || dethroned.length === 0) {
+    return { ok: false, error: "This draft was just edited elsewhere — refresh and try again." };
+  }
+
+  // Step 3 — the FK-satisfying model_calls row. Not a real model call: see the comment above.
+  // Deliberately AFTER the CAS: this call now uniquely owns the dethroned row, so the row it
+  // writes here is always referenced by the insert below rather than orphaned by an abort.
   const { data: modelCall, error: modelCallError } = await admin
     .from("model_calls")
     .insert({
@@ -249,20 +314,11 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
     .select("id")
     .single();
   if (modelCallError || !modelCall) {
+    // The CAS already dethroned the winner, so this abort owes the same compensation the insert
+    // failure below owes — otherwise the story is left with no winner at all.
+    await admin.from("post_drafts").update({ is_winner: true }).eq("id", currentWinner.id);
     return { ok: false, error: "Could not save your edit. Please try again." };
   }
-
-  // Step 3 — dethrone the current winner for this (source_post, experiment, platform). A
-  // story can only have one winner per platform; no owner-scoped UPDATE policy exists here
-  // regardless, same reasoning as applyCorrection's own dethrone step.
-  const { error: dethroneError } = await admin
-    .from("post_drafts")
-    .update({ is_winner: false })
-    .eq("source_post_id", parentDraft.source_post_id)
-    .eq("experiment_id", parentDraft.experiment_id)
-    .eq("platform", parentDraft.platform)
-    .eq("is_winner", true);
-  if (dethroneError) return { ok: false, error: "Could not save your edit. Please try again." };
 
   // Step 4 — the owner-scoped write the plan text specifically calls out.
   const { error: insertError } = await supabase.from("post_drafts").insert({
@@ -273,30 +329,29 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
     model_call_id: modelCall.id,
     is_winner: true,
     judge_verdict: null,
-    parent_draft_id: parentDraft.id,
+    // The lineage parent is the row that was actually dethroned, NOT `parentDraft.id` — the
+    // browser can pass any council member's id, including a losing candidate, so pointing at it
+    // would record a parent this draft never superseded.
+    parent_draft_id: currentWinner.id,
   });
   if (insertError) {
-    // KNOWN SCHEMA GAP (flagged, not fixed here — see the codebase agent's report): post_drafts
-    // carries no partial unique index enforcing one is_winner=true row per (source_post_id,
-    // experiment_id, platform), so steps 3-4 are two non-transactional calls with no
-    // serialization. Without that constraint an insert failure here would otherwise leave the
-    // story with ZERO winners for this platform (dethroned in step 3, nothing crowned) —
-    // compensate by restoring the dethroned winner rather than silently leaving that broken
-    // state. This does NOT cover two concurrent editDraft calls both passing the guard above
-    // and both inserting a winner (TWO winners) — that race needs the missing unique index (or
-    // a stored procedure) to close; this compensation only bounds the single-call failure path.
-    if (currentWinner) {
-      const { error: restoreError } = await admin
-        .from("post_drafts")
-        .update({ is_winner: true })
-        .eq("id", currentWinner.id);
-      if (restoreError) {
-        return {
-          ok: false,
-          error:
-            "Could not save your edit, and the previous draft's status could not be restored. Please refresh and check the feed before retrying.",
-        };
-      }
+    // post_drafts still carries no partial unique index enforcing one is_winner=true row per
+    // (source_post_id, experiment_id, platform), so steps 2-4 remain non-transactional calls
+    // with no serialization at the database layer. But the double-insert race that index would
+    // have closed is now closed at the application level instead — Step 2's CAS above guarantees
+    // this call uniquely owns currentWinner before reaching this point, so an insert failure here
+    // only ever leaves a single dethroned winner to restore, never a competing second winner to
+    // reconcile against.
+    const { error: restoreError } = await admin
+      .from("post_drafts")
+      .update({ is_winner: true })
+      .eq("id", currentWinner.id);
+    if (restoreError) {
+      return {
+        ok: false,
+        error:
+          "Could not save your edit, and the previous draft's status could not be restored. Please refresh and check the feed before retrying.",
+      };
     }
     return { ok: false, error: "Could not save your edit. Please try again." };
   }

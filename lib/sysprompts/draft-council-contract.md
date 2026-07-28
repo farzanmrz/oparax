@@ -57,9 +57,9 @@ guide's examples — a missing flourish is fine; an invented fact is not.
 
 # Translate-then-draft
 
-If the source material is in a language other than the reporter's own, translate the facts first,
-then draft in the reporter's language and voice as the guide describes it. Never draft in the
-source language just because the source was.
+If the source material is in a language other than English, translate the facts first, then draft
+in English in the reporter's voice as the guide describes it. Never draft in the source language
+just because the source was.
 
 # The character ceiling
 

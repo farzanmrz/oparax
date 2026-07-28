@@ -164,9 +164,14 @@ export function FeedItemCard({
 }) {
   const sourcePost = story.sourcePosts[0];
   // Only X ever carries a real posted_at (the only platform with a posting mechanism this
-  // slice) — a story counts as "posted" once its X winner has been posted, regardless of
-  // whether LinkedIn/Bluesky winners exist alongside it.
-  const opacityClass = story.winners.x?.postedAt != null ? "opacity-[0.66]" : undefined;
+  // slice) — a story dims only once its X winner is CONFIRMED (postedAt AND postedUrl both
+  // set), regardless of whether LinkedIn/Bluesky winners exist alongside it. An AMBIGUOUS
+  // winner (postedAt set, postedUrl null) does not dim — it still needs the reporter's
+  // attention, so it must not read as "done".
+  const opacityClass =
+    story.winners.x?.postedAt != null && story.winners.x?.postedUrl != null
+      ? "opacity-[0.66]"
+      : undefined;
 
   if (!sourcePost) return null; // defensive: a winner whose source_posts row went missing
 

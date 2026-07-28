@@ -26,4 +26,7 @@ if jq -e --arg k "$KEY" '.[$k]|length' "$last" >/dev/null 2>&1; then
   jq --argjson t "$SECONDS" --arg tier "$EFF" --arg model "${MODEL:-config-default}" \
      '. + {elapsed_s:$t, tier:$tier, model:$model}' "$last" > "$OUT"
   rm -f "$last"; exit 0
-else echo "CODEX_FAILED (${SECONDS}s)" >&2; rm -f "$last"; exit 1; fi
+else
+  mv -f "$last" "${OUT%.out.json}.raw.err" 2>/dev/null || true
+  echo "CODEX_FAILED (${SECONDS}s) — raw kept at ${OUT%.out.json}.raw.err" >&2; exit 1
+fi

@@ -32,9 +32,12 @@ export function DraftEditDialog({
 }: {
   postDraftId: string;
   currentText: string;
-  /** True once this draft has been posted to X — editDraft itself rejects this server-side
-   *  too (a fresh version would carry no posted_at, re-offering Post to X on the edited
-   *  text), this is just the earlier, clearer signal. */
+  /** True once this draft is confirmed-posted to X — both `posted_at` AND `posted_url` set
+   *  (see `draft-platform-switcher.tsx`'s `confirmed` check). editDraft itself rejects this
+   *  server-side too (a fresh version would carry no posted_at, re-offering Post to X on the
+   *  edited text), this is just the earlier, clearer signal. A draft in the ambiguous state
+   *  (`posted_at` set but `posted_url` null — X accepted the post but the outcome stamp
+   *  failed) deliberately stays editable: editing it IS its recovery path. */
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);

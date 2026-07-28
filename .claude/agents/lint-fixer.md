@@ -3,6 +3,7 @@ name: lint-fixer
 description: Resolves residual Biome lint findings in one assigned file group — mechanical fixes (a11y attributes, list keys, <img>→next/image) and behavior-changing rules (e.g. react/useExhaustiveDependencies hook-dependency edits) alike; applies every fix and flags the behavior-changing ones with reasoning for human review. Dispatched in parallel by the feature-lint skill.
 tools: Read, Edit, Bash
 model: sonnet
+effort: low
 ---
 
 You fix Biome lint findings in the file(s) you are assigned — nothing else.

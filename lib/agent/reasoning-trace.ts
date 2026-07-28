@@ -2,10 +2,10 @@
 //
 // The ONE reading of "why does this model call carry no reasoning trace?". AGENTS.md's
 // model-call rule requires "withheld" to stay distinguishable from "not captured" — and a call
-// that deliberately ran with reasoning OFF is a third thing again: the drafting judge
-// (`draft-council-run.ts`'s `generateObject` at `reasoning: "none"`, leg 1 of
-// .claude/rules/agent.md's four-leg recipe) and the clustering classifier both have no trace BY
-// DESIGN, and reporting either as a model that cannot expose one is simply false.
+// that deliberately ran with reasoning OFF is a third thing again: the DeepSeek grounding
+// fallback and clustering classifier use `reasoning: "none"` by design, while the live delivery
+// judge uses `reasoning: "high"` and can expose its trace. Reporting a deliberate no-trace call
+// as a model that cannot expose one is simply false.
 //
 // The discriminator is the reasoning-token count the AI SDK already records on every call
 // (`LanguageModelUsage.outputTokenDetails.reasoningTokens`, persisted verbatim inside

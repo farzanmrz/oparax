@@ -25,14 +25,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .from("experiments")
       .select("id, name, beat, status")
       .order("created_at", { ascending: false }),
-    // Winner drafts not yet posted, across the owner's desks — owner-scoped by post_drafts'
-    // EXISTS-join RLS. Counted per desk in memory below (PostgREST has no GROUP BY here; volume
-    // is small — one row per unreviewed winning draft).
+    // Winner drafts not yet posted, or posted but AMBIGUOUS (posted_at set, posted_url null —
+    // X may have accepted the post but the outcome stamp failed), across the owner's desks —
+    // owner-scoped by post_drafts' EXISTS-join RLS. posted_url is only ever set as part of a
+    // successful CONFIRMED post in this codebase's write paths (never set while posted_at is
+    // null), so `posted_url IS NULL` alone correctly covers both the never-posted and ambiguous
+    // cases while excluding only confirmed rows. Counted per desk in memory below (PostgREST has
+    // no GROUP BY here; volume is small — one row per unreviewed winning draft).
     supabase
       .from("post_drafts")
       .select("experiment_id")
       .eq("is_winner", true)
-      .is("posted_at", null),
+      .is("posted_url", null),
   ]);
 
   if (!user) {

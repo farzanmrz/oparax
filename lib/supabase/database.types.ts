@@ -1,6 +1,3 @@
-// GENERATED — Supabase schema types for project pcgvpypzfwuchyfwdlwe.
-// Regenerate after any migration (Supabase MCP generate_typescript_types) and
-// paste verbatim; only this header comment and Biome formatting are local.
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -64,6 +61,110 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      beat_conflicts: {
+        Row: {
+          created_at: string;
+          experiment_id: string;
+          ground_on_beat: boolean;
+          ground_reason: string;
+          id: string;
+          judge_on_beat: boolean;
+          judge_reason: string;
+          source_post_id: string;
+          status: string;
+        };
+        Insert: {
+          created_at?: string;
+          experiment_id: string;
+          ground_on_beat: boolean;
+          ground_reason: string;
+          id?: string;
+          judge_on_beat: boolean;
+          judge_reason: string;
+          source_post_id: string;
+          status?: string;
+        };
+        Update: {
+          created_at?: string;
+          experiment_id?: string;
+          ground_on_beat?: boolean;
+          ground_reason?: string;
+          id?: string;
+          judge_on_beat?: boolean;
+          judge_reason?: string;
+          source_post_id?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "beat_conflicts_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "beat_conflicts_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: false;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      corpus_posts: {
+        Row: {
+          created_at: string;
+          exclude_reason: string | null;
+          excluded_off_beat: boolean;
+          experiment_id: string;
+          id: string;
+          is_long: boolean;
+          like_count: number;
+          media: Json;
+          posted_at: string;
+          repost_count: number;
+          text: string;
+          x_post_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          exclude_reason?: string | null;
+          excluded_off_beat?: boolean;
+          experiment_id: string;
+          id?: string;
+          is_long?: boolean;
+          like_count?: number;
+          media?: Json;
+          posted_at: string;
+          repost_count?: number;
+          text: string;
+          x_post_id: string;
+        };
+        Update: {
+          created_at?: string;
+          exclude_reason?: string | null;
+          excluded_off_beat?: boolean;
+          experiment_id?: string;
+          id?: string;
+          is_long?: boolean;
+          like_count?: number;
+          media?: Json;
+          posted_at?: string;
+          repost_count?: number;
+          text?: string;
+          x_post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "corpus_posts_experiment_id_fkey";
+            columns: ["experiment_id"];
+            isOneToOne: false;
+            referencedRelation: "experiments";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       draft_claims: {
         Row: {
@@ -254,6 +355,7 @@ export type Database = {
           feedback: string | null;
           id: string;
           is_winner: boolean;
+          judge_review: Json | null;
           judge_verdict: Json | null;
           model_call_id: string;
           parent_draft_id: string | null;
@@ -263,6 +365,8 @@ export type Database = {
           posted_url: string | null;
           source_post_id: string;
           story_id: string | null;
+          synthesis: string | null;
+          translation: string | null;
         };
         Insert: {
           created_at?: string;
@@ -270,6 +374,7 @@ export type Database = {
           feedback?: string | null;
           id?: string;
           is_winner?: boolean;
+          judge_review?: Json | null;
           judge_verdict?: Json | null;
           model_call_id: string;
           parent_draft_id?: string | null;
@@ -279,6 +384,8 @@ export type Database = {
           posted_url?: string | null;
           source_post_id: string;
           story_id?: string | null;
+          synthesis?: string | null;
+          translation?: string | null;
         };
         Update: {
           created_at?: string;
@@ -286,6 +393,7 @@ export type Database = {
           feedback?: string | null;
           id?: string;
           is_winner?: boolean;
+          judge_review?: Json | null;
           judge_verdict?: Json | null;
           model_call_id?: string;
           parent_draft_id?: string | null;
@@ -295,6 +403,8 @@ export type Database = {
           posted_url?: string | null;
           source_post_id?: string;
           story_id?: string | null;
+          synthesis?: string | null;
+          translation?: string | null;
         };
         Relationships: [
           {
@@ -789,6 +899,7 @@ export type Database = {
           handle: string;
           refresh_token: string;
           scopes: string;
+          tier: string | null;
           token_expires_at: string;
           updated_at: string;
           user_id: string;
@@ -800,6 +911,7 @@ export type Database = {
           handle: string;
           refresh_token: string;
           scopes: string;
+          tier?: string | null;
           token_expires_at: string;
           updated_at?: string;
           user_id: string;
@@ -811,6 +923,7 @@ export type Database = {
           handle?: string;
           refresh_token?: string;
           scopes?: string;
+          tier?: string | null;
           token_expires_at?: string;
           updated_at?: string;
           user_id?: string;
