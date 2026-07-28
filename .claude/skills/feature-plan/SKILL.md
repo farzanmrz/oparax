@@ -75,6 +75,37 @@ Write the full plan yourself. Charter:
   ai-elements idioms), which the grounding pack must distill for UI slices.
   "Works but ugly" is a spec defect, not an executor defect: QC's design
   critic judges the rendered result against exactly this intent.
+- **Design freedom is tagged PER SURFACE, like the actor contract.** Every
+  UI-touching task carries `[design: reuse]` or `[design: elevated]`:
+  - `reuse` — the default, and ALWAYS the tag for modifying an existing
+    surface. The component ladder is binding, in order: existing vendored
+    component (shadcn/ai-elements) → existing bespoke chrome → composition of
+    existing primitives → only then a new component, with a one-line
+    justification for why the ladder failed. No new visual patterns, no new
+    spacing/radius/color decisions — the surface must read as if it was
+    always part of the app.
+  - `elevated` — net-new surfaces that are a new kind of moment, proposed
+    with a one-line reason; the owner accepts or flips it at the gate. For a
+    slice's elevated set (together, once), run the **direction council** —
+    the creativity twin of the critique council, one direction board PER
+    MODEL FAMILY: this session designs one, and codex, grok, and agy each
+    design one via their CLIs (same background-invocation pattern as the
+    critique lanes; each writes a self-contained static HTML board to
+    `.feature/directions/<family>.html`). All four get the SAME brief: the
+    real prop types/state model, every observable state, the repo's UI rules
+    and copy conventions, and "differ in shape, not parameters." Then the
+    session critiques all boards against the brief on UI/UX grounds (the
+    design-critic charter; on a heavy slice, optionally send each external
+    family the others' boards for one adversarial critique round first) and
+    presents boards + critiques at the gate. The owner picks; the choice is
+    FROZEN into per-state design intent; each new pattern it introduces is
+    NAMED (so it becomes a reusable convention, not a one-off). Downstream
+    phases inherit the decision, never the discretion.
+  Record the rollup next to `## Weight` as `## Design freedom:` — `none` (no
+  UI), `reuse only`, or `elevated: <surfaces>` — so the gate shows at a
+  glance whether a direction decision is coming. Exploration exists ONLY
+  before the gate: build executes, and the critic judges against the frozen
+  intent, never its own taste.
   **States are part of the spec:** enumerate the surface's observable states
   (pending / streaming-empty / mid-stream / done / each failure), specify
   intent per state, and keep render paths presentational-pure (props in,

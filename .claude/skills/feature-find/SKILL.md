@@ -68,11 +68,26 @@ later steps reuse it.
 ## 3b. Design critic — UI-touching slices only
 
 ONE pass (Claude: `model: sonnet`, `effort: high`; heavy: `opus`; Codex: the
-`reviewer` agent with this charter) judging the rendered result against the
-plan's per-state design intent plus the repo's UI rules (AGENTS.md
-conventions, `components.md`, ai-elements idioms) and experiential quality —
-hierarchy, spacing, states, streaming/motion feel, layout shift. Evidence
-ladder, in order:
+`reviewer` agent with this charter). **The yardstick follows each surface's
+plan tag — the critic NEVER judges from its own taste:**
+
+- `[design: reuse]` → conformance to the app: ladder respected (existing
+  components before new), the surface reads as native, per-state intent met.
+- `[design: elevated]` → conformance to the FROZEN direction in the issue:
+  the built surface matches the board the owner picked, named patterns
+  implemented as named.
+
+Both modes also check experiential quality — hierarchy, spacing, all states,
+streaming/motion feel, layout shift — and this distilled tells checklist
+(sourced from taste-skill v2 / ECC / ui-ux-pro-max research, 2026-07-28):
+decorative status dots and `00 / INDEX` eyebrows; uppercase-tracking labels
+multiplying past one per ~3 sections; cards nested inside cards; borders on
+every row edge; mixed corner-radius systems; duplicate-intent CTAs; layout
+shifting between states or on hover (dimensions must be stable); loading
+states that don't match final layout; missing empty/error states; `useState`
+tracking continuous input (mouse/scroll) instead of motion values; WCAG AA
+contrast on every CTA/form control; and this repo's own hard rules (sentence
+case, no eyebrow headers, uniform form fields). Evidence ladder, in order:
 
 1. **State gallery first:** if a dev state-gallery route covers the touched
    surface, screenshot its contact sheet (every state at once, deterministic,
