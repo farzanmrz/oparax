@@ -51,6 +51,20 @@ Write the full plan yourself. Charter (identical to the Claude flow's):
 
 - **Diverge before committing:** 2–3 candidate approaches with one-line
   trade-offs; commit to one; record the rejections in the Approach section.
+- **Design freedom is tagged PER SURFACE:** every UI-touching task carries
+  `[design: reuse]` (the default, always for modifying an existing surface —
+  the component ladder binds: vendored shadcn/ai-elements → existing bespoke
+  chrome → composition → only then new, with justification) or
+  `[design: elevated]` (net-new kind of moment). For a slice's elevated set,
+  run the **direction council** per the binding shared contract in
+  `.claude/skills/feature-plan/direction-council.md` — real-render boards of
+  the repo's actual components, kit-native ideation, both viewports per page,
+  the three-switcher harness at `app/dev/directions/`, self-served on :3000,
+  one clickable URL, stop for the owner's pick, kill :3000 after approval.
+  Codex roster: this session designs the codex board natively; grok + agy run
+  via the council bridge (there is no Claude CLI lane). Record the rollup as
+  `## Design freedom: none | reuse only | elevated: <surfaces>` next to
+  `## Weight`.
 - **Specificity contract:** every build task names its files, exact
   interfaces/signatures, and near-code for anything non-obvious — written so a
   cheap executor needs judgment only for implementation nuance, never design.

@@ -87,48 +87,27 @@ Write the full plan yourself. Charter:
   - `elevated` — net-new surfaces that are a new kind of moment, proposed
     with a one-line reason; the owner accepts or flips it at the gate. For a
     slice's elevated set (together, once), run the **direction council** —
-    the creativity twin of the critique council, one direction board PER
-    MODEL FAMILY: this session designs one, and codex, grok, and agy each
-    design one via their CLIs (same background-invocation pattern as the
-    critique lanes). **A board is a REAL RENDER, never a lookalike** (owner
-    decision 2026-07-27: static HTML mocks are retired — the owner judges
-    what implementation will actually produce, or the pick is worthless).
-    Each family delivers ONE self-contained `"use client"` page at
-    `app/dev/directions/<family>/page.tsx` composing the repo's ACTUAL
-    components — vendored `components/ai-elements/*` + `components/ui/*`
-    (imported, never edited) and existing bespoke chrome — with hardcoded
-    fixture props rendering EVERY observable state as a labeled stacked
-    section at mobile width. Bespoke DOM is allowed only where the kit
-    genuinely cannot express the idea, and each such element is a proposed
-    named pattern. Delivery per lane capability: lanes that can write the
-    working tree write the file; read-only lanes return the TSX in their
-    JSON envelope and the session writes it. The session then gets every
-    board to compile (`tsc` — mechanical fixes only, never design edits;
-    a board needing design surgery goes back to its lane or is reported
-    failed), then **serves the boards itself — always** (owner convention
-    2026-07-27, overriding any harness preference for preview tooling):
-    kill whatever holds port 3000 (`lsof -ti:3000 | xargs kill` — the
-    owner's standing authorization), start `pnpm dev` as a background
-    shell, wait until it answers on :3000, and confirm each board URL
-    returns 200. Present the owner the full clickable URLs — one per
-    family, e.g. `http://localhost:3000/dev/directions/claude` — judged
-    live at 375px, and STOP for the pick. **After the owner approves the
-    design, kill the port-3000 dev server specifically** (again by port,
-    nothing else). These pages
-    are plan-phase scratch in the WORKING TREE ONLY — never committed by
-    the plan phase; after the pick the winning page's composition is frozen
-    into the plan as near-code AND seeds the slice's state-gallery/fixture
-    BUILD task, and the losing pages are deleted. All four lanes get the
-    SAME brief: the real prop types/state model, pointers to the exact kit
-    component files to read before designing, every observable state, the
-    repo's UI rules and copy conventions, and "differ in shape, not
-    parameters." Then the session critiques all boards against the brief on
-    UI/UX grounds (the design-critic charter; on a heavy slice, optionally
-    send each external family the others' boards for one adversarial
-    critique round first) and presents boards + critiques at the gate. The
-    owner picks; the choice is FROZEN into per-state design intent; each
-    new pattern it introduces is NAMED (so it becomes a reusable
-    convention, not a one-off). Downstream phases inherit the decision,
+    the creativity twin of the critique council, one board per model family
+    against one identical brief. The full operational contract lives in
+    `direction-council.md` next to this file (single source, shared with the
+    Codex flow) and is BINDING: boards are real renders of the repo's actual
+    components (never static mocks), ideated kit-native (read the component
+    inventory first; wireframe-then-map is the named forbidden failure
+    mode; not-yet-vendored registry components may be proposed by name),
+    fresh commission every round, every page designed for BOTH mobile and
+    web, delivered as per-page lane modules under a session-built
+    three-switcher harness (model · page · viewport) at
+    `app/dev/directions/`, tsc/Biome-verified, self-served on :3000 (kill
+    the port, `pnpm dev` background, 200-check), presented as ONE clickable
+    URL with the session's critiques, STOPPING for the pick — after which
+    the :3000 server is killed, the winner is frozen into per-state design
+    intent with every new pattern NAMED (a reusable convention, not a
+    one-off), the winning composition seeds the slice's state-gallery BUILD
+    task, and the losers are deleted. The brief carries the real prop
+    types/state model, pointers to the exact kit files to read, every
+    observable state, the repo's UI rules and copy conventions,
+    owner-stated interaction patterns as binding constraints, and "differ
+    in shape, not parameters." Downstream phases inherit the decision,
     never the discretion.
   Record the rollup next to `## Weight` as `## Design freedom:` — `none` (no
   UI), `reuse only`, or `elevated: <surfaces>` — so the gate shows at a
