@@ -7,13 +7,17 @@ import { getXAccount } from "./store";
 
 /** The frozen accessor for the UI issue (#65). Server-only — call from a Server
  *  Component or Server Action. Returns NO token material, ever. */
-export async function getXLinkState(): Promise<{ linked: boolean; handle: string | null }> {
+export async function getXLinkState(): Promise<{
+  linked: boolean;
+  handle: string | null;
+  tier: string | null;
+}> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { linked: false, handle: null };
+  if (!user) return { linked: false, handle: null, tier: null };
 
   const account = await getXAccount(user.id);
-  return { linked: account !== null, handle: account?.handle ?? null };
+  return { linked: account !== null, handle: account?.handle ?? null, tier: account?.tier ?? null };
 }

@@ -14,10 +14,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { checkXPostable } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveXTier } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
+import { getXLinkState } from "@/lib/x/link-state";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -245,7 +246,8 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
   // client-side check could otherwise save an unpostable winner that then fails at X with
   // claim-release churn.
   if (parentDraft.platform === "x") {
-    const postable = checkXPostable(trimmedText);
+    const { tier } = await getXLinkState();
+    const postable = checkXPostable(trimmedText, resolveXTier(tier));
     if (!postable.ok) {
       return {
         ok: false,

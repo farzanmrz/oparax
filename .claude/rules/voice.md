@@ -14,14 +14,21 @@ verified against their originals at port time. Full rationale and measurements:
 
 A raw guide may carry sections that exist to verify the EXTRACTOR. The drafting model gains
 nothing and pays for them on every draft: **16.1% off every draft, forever, at zero risk**
-(measured, 10 guides, when `## Dimension Coverage` was still generated). Verified
-**byte-identical to the Python original on all 10 lab guides**.
+(measured, 10 guides, when `## Dimension Coverage` was still generated). The `LAB_ONLY_SECTIONS`
+strip was verified byte-identical to the Python original at port time — that no longer covers
+`deployGuide()`'s full output, since it also strips `## Beat & Scope` out-of-band (below).
 
 **`LAB_ONLY_SECTIONS` is empty today and that is correct** — its one entry, `## Dimension
 Coverage`, is no longer emitted at all (see the extraction recipe below). Not generating a
 section beats generating and stripping it: the same 16.1% is now saved at extraction time too.
 Do not "clean up" the empty array or inline the call — the raw/deployed split is what
 `voice_guides` provenance rests on, and the rule outlives its one instance.
+
+Stripping is no longer exclusively `LAB_ONLY_SECTIONS`-driven: `deployGuide()` also strips
+`## Beat & Scope` via `stripBeatScope()`, rerouting that section to the drafting pipeline's
+`beatSpec` (`extractBeatSpec()` reads it back off `guide_raw`) instead of leaving it in
+`voiceGuidance`. A new lab-only section still goes into `LAB_ONLY_SECTIONS`; a new
+first-class-input section like Beat & Scope needs its own extractor + strip pair instead.
 
 **Store the raw guide, draft from `deployGuide(raw)`.** Never the reverse — the raw guide is
 the audit trail for what the extractor claimed to examine. Adding a new lab-only section to
@@ -112,5 +119,7 @@ documentation you might read:
   tokens; every variant returned HTTP 200. The param is accepted and silently ignored. Bound
   it with `max_completion_tokens` (hard ceiling over reasoning + content), and verify any
   model's cap by reading `reasoning_tokens` back — **never by trusting a 200**.
-- **`deepseek-v4-flash` takes no `reasoning` param** in the judgment roles (native adaptive is
-  the tested config); the judge role is the one exception, pinned `none` + temp 0.
+- **`deepseek-v4-flash` uses native adaptive reasoning** for revision/repair roles. The #73
+  verification judge is the deliberate exception: it passes `reasoning: "high"` so its trace is
+  available in the model-call ledger; the grounding fallback and dormant clustering classifier
+  pass `reasoning: "none"` as part of their structured-output recipe.

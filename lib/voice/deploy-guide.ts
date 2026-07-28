@@ -23,11 +23,35 @@
  *  Empty by design — see the file header before adding or removing an entry. */
 const LAB_ONLY_SECTIONS: string[] = [];
 
+/** `## Beat & Scope` heading matcher — the one section routed to the drafter as its own
+ * first-class beatSpec input (#73) instead of riding inside `voiceGuidance`. */
+export const BEAT_SCOPE_HEADING_RE = /^##\s+Beat\s*&\s*Scope\b/i;
+
+/** Pulls the `## Beat & Scope` section body (heading excluded) out of a RAW guide.
+ * Returns null when the guide has no such section — callers fall back to the reporter's
+ * typed `experiments.beat` sentence. */
+export function extractBeatSpec(rawGuideMd: string): string | null {
+  const m = rawGuideMd.match(/^##\s+Beat\s*&\s*Scope\b[^\n]*\n([\s\S]*?)(?=^##\s|$(?![\s\S]))/im);
+  const body = m?.[1]?.trim();
+  return body ? body : null;
+}
+
+/** Strips the `## Beat & Scope` section from guide markdown. Used (1) inside deployGuide so a
+ * freshly deployed guide never carries the section into drafting, and (2) at compose time on
+ * legacy guide_deploy rows written before #73. NOT part of LAB_ONLY_SECTIONS: the section is
+ * not lab-only noise, it is rerouted to the drafter as beatSpec via extractBeatSpec(guide_raw). */
+export function stripBeatScope(md: string): string {
+  return md
+    .replace(/^##\s+Beat\s*&\s*Scope\b[\s\S]*?(?=^##\s|$(?![\s\S]))/im, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Strip lab-only sections from a raw voice guide, yielding the guide used as a drafting prompt. */
 export function deployGuide(rawGuideMd: string): string {
   let md = rawGuideMd;
   for (const name of LAB_ONLY_SECTIONS) {
     md = md.replace(new RegExp(String.raw`^##\s+${name}\b[\s\S]*?(?=^##\s|$(?![\s\S]))`, "gm"), "");
   }
-  return `${md.replace(/\n{3,}/g, "\n\n").trim()}\n`;
+  return `${stripBeatScope(md)}\n`;
 }

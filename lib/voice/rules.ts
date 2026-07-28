@@ -14,6 +14,7 @@
 // best-effort), CRUD failures here surface to their callers — throw on real DB errors.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
+import { BEAT_SCOPE_HEADING_RE, stripBeatScope } from "./deploy-guide";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type VoiceRuleRow = Database["public"]["Tables"]["voice_rules"]["Row"];
@@ -117,10 +118,19 @@ export async function deleteVoiceRule(id: string): Promise<void> {
  *  regardless of how it was fetched. Returns "" for an empty enabled set — callers decide what
  *  that means for the prompt they compose. Does NOT read `measuredFacts` or call `deployGuide`
  *  — composing `flattenRulesToPrompt(enabledRules) + measuredFacts` into the actual system
- *  prompt is T2.3 / the drafting call sites' job. */
+ *  prompt is T2.3 / the drafting call sites' job.
+ *
+ *  The `BEAT_SCOPE_HEADING_RE` filter below is now a SAFETY NET, not the primary mechanism
+ *  (#73): `materializeRulesFromGuide` receives `guideDeploy` already stripped of `## Beat &
+ *  Scope` by `deployGuide()`, so no fresh extraction can insert a Beat & Scope row at all — the
+ *  real beat-filtration spec is read from `voice_guides.guide_raw` via `extractBeatSpec()` and
+ *  routed to the drafter as its own `beatSpec` input. This filter defends desks whose Beat &
+ *  Scope row was materialized before that fix landed, until the cleanup migration
+ *  (`20260727170004_delete_machine_beat_scope_rules.sql`) removes those rows; it stays cheap
+ *  enough to leave in place afterward regardless. */
 function flattenRulesToPrompt(rules: VoiceRule[]): string {
   const ordered = rules
-    .filter((r) => r.enabled)
+    .filter((r) => r.enabled && !BEAT_SCOPE_HEADING_RE.test(r.rule.trim()))
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder);
   if (ordered.length === 0) return "";
@@ -142,7 +152,7 @@ export function resolveDraftingPrompt(
   guideDeploy: string,
 ): string {
   const flattened = flattenRulesToPrompt(rules);
-  return flattened ? `${flattened}\n\n${measuredFacts}` : guideDeploy;
+  return flattened ? `${flattened}\n\n${measuredFacts}` : stripBeatScope(guideDeploy);
 }
 
 /** Splits a deployed guide into its `## ` (level-2) sections, each kept whole (heading + body)

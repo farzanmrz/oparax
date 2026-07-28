@@ -1,5 +1,5 @@
 import { PageHeading } from "@/components/page-heading";
-import { X_CHAR_LIMITS } from "@/lib/agent/desk-config";
+import { resolveXTier, X_CHAR_LIMITS } from "@/lib/agent/desk-config";
 import { fetchFeedPage } from "@/lib/agent/feed-query";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -33,16 +33,9 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
     throw new Error("Failed to load the agent. Please try again.");
   }
   const reporterHandle = experimentResult.data.reporter_handle;
-  // Drafting is hard-declared `accountTier: "standard"` at every call site, and posting always
-  // publishes via `postDraftToXForOwner`'s `getXAccount(ownerId)` — the OWNER's linked X
-  // account, which is deliberately a DIFFERENT account from the desk's `reporter_handle` under
-  // the admin extract-from-override feature. So the displayed/enforced limit here must match
-  // what drafting/posting actually enforce (standard), never a premium ceiling inferred from
-  // the desk's voice corpus (`voice_guides.measured_facts` describes the REPORTER's account,
-  // not the account that will actually publish). `X_CHAR_LIMITS.premium` and `accountTier`
-  // stay in place for when a real per-account tier is resolved — this just stops the UI from
-  // promising a limit the posting account can't honor.
-  const charLimit = X_CHAR_LIMITS.standard;
+  // The displayed limit reads the STORED tier of the posting account — safe precisely because
+  // extraction writes a tier only when the extracted reporter IS that linked posting account.
+  const charLimit = X_CHAR_LIMITS[resolveXTier(xLink.tier)];
 
   // "Ready to review" = at least one platform has a winner, and that story's X winner is not yet
   // CONFIRMED (postedAt AND postedUrl both set — see feed-item.tsx). This includes a story with

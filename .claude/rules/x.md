@@ -34,7 +34,7 @@ a billing flip with **zero architecture change** (same endpoint, same code path)
 
 ## Tokens never leave `lib/x`
 
-`x_accounts` has RLS enabled with NO policies (deny-all) on purpose — the browser's publishable key can't read the token columns. Only `lib/x/store.ts` (service-role) reads/writes them, scoped by `user_id`. `getXLinkState()` is the ONLY link info that crosses to the client, and it returns `{ linked, handle }` — never a token.
+`x_accounts` has RLS enabled with NO policies (deny-all) on purpose — the browser's publishable key can't read the token columns. Only `lib/x/store.ts` (service-role) reads/writes them, scoped by `user_id`. `getXLinkState()` is the ONLY link info that crosses to the client, and it returns `{ linked, handle, tier }` — never a token.
 
 ## Refresh-token rotation is undocumented
 

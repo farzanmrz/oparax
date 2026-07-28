@@ -16,9 +16,17 @@
 // artifact write never loses the record of a call already paid for.
 import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
-import { AUTO_POST_ENABLED, PLATFORMS, type Platform } from "@/lib/agent/desk-config";
+import {
+  AUTO_POST_ENABLED,
+  checkXPostable,
+  PLATFORMS,
+  type Platform,
+  resolveXTier,
+  X_CHAR_LIMITS,
+} from "@/lib/agent/desk-config";
 import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
-import { groundSourcePost } from "@/lib/agent/draft-ground";
+import { GROUND_MODEL, groundSourcePost } from "@/lib/agent/draft-ground";
+import { isUsableJudgeVerdict, judgeGroundVerdict } from "@/lib/agent/draft-judge";
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
@@ -27,8 +35,10 @@ import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
+import { extractBeatSpec } from "@/lib/voice/deploy-guide";
 import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
 import { postDraftToXForOwner } from "@/lib/x/post-core";
+import { getXAccount } from "@/lib/x/store";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -297,7 +307,7 @@ async function draftForExperiment(
   // never use.
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
-    .select("guide_deploy, measured_facts")
+    .select("guide_raw, guide_deploy, measured_facts")
     .eq("experiment_id", experiment.id)
     .maybeSingle();
   if (guideError) throw guideError;
@@ -312,6 +322,10 @@ async function draftForExperiment(
     guide.measured_facts,
     guide.guide_deploy,
   );
+  const beatSpec = extractBeatSpec(guide.guide_raw) ?? experiment.beat;
+  const xAccount = await getXAccount(experiment.owner_id);
+  const accountTier = resolveXTier(xAccount?.tier);
+  const ceiling = X_CHAR_LIMITS[accountTier];
 
   // Atomic claim (D16): draft_claims carries UNIQUE(source_post_id, experiment_id), so this
   // insert IS the idempotency check — a non-atomic select-then-check here could let two
@@ -343,16 +357,15 @@ async function draftForExperiment(
   // against a silently lost draft. The on-beat happy path AND the off-beat outcome both leave the
   // claim in place (dedup intact) — an off-beat verdict must not be re-billed on redelivery.
   try {
-    // THE drafting call (I2/I3: ledgered like every other call). One gpt-5-nano pass per
-    // delivery answers "is this on-beat, what's in the picture, what's the translation, what's
-    // the draft" — its firstDraft is the post the reporter sees (the owner collapsed the
-    // ground→revise→synthesize pipeline to this single call; see draft-ground.ts's header).
+    // THE grounding call (ledgered like every other call). One gpt-5-nano pass per delivery
+    // answers "is this on-beat, what's in the picture, what's the translation, what's the
+    // synthesis, what's the draft"; the judge verifies this result before it ships.
     const ground = await groundSourcePost({
       brief,
-      beat: experiment.beat,
+      beatSpec,
       voiceGuidance,
       platform: "x",
-      accountTier: "standard",
+      accountTier,
     });
     const [groundCallId] = await insertModelCalls(
       admin,
@@ -377,7 +390,118 @@ async function draftForExperiment(
     }
     const verdict = ground.verdict;
 
-    if (!verdict.onBeat) {
+    let judge: Awaited<ReturnType<typeof judgeGroundVerdict>> | null = null;
+    if (ground.call.model === GROUND_MODEL && verdict !== null) {
+      try {
+        judge = await judgeGroundVerdict({
+          brief,
+          beatSpec,
+          voiceGuidance,
+          ground: verdict,
+          ceiling,
+        });
+      } catch (judgeError) {
+        console.error(
+          "draft-pipeline: judge call failed to transport, proceeding with ground verdict",
+          judgeError,
+        );
+      }
+    }
+
+    let judgeCallId: string | null = null;
+    if (judge) {
+      [judgeCallId] = await insertModelCalls(
+        admin,
+        experiment.owner_id,
+        [judge.call],
+        sourcePostId,
+      );
+      await stampUsageEvent(admin, {
+        owner_id: experiment.owner_id,
+        kind: "judging",
+        units: 1,
+        cost_usd: judge.call.costUsd,
+        ref_id: sourcePostId,
+      });
+    }
+
+    const judged = judge?.verdict ?? null;
+    const usableJudge = verdict !== null && judged !== null && isUsableJudgeVerdict(judged);
+
+    // The judge is TOLD the ceiling in its prompt, but nothing verified it obeyed — an
+    // over-ceiling correction was persisted and delivered, and only the Post to X action caught
+    // it much later. This is the deterministic check (no extra model call), through the SAME
+    // shared gate the posting and edit paths call: AGENTS.md requires a third writer of a
+    // post_drafts winner to call `checkXPostable` rather than re-derive the length rule, and
+    // twitter-text's weighted length is not `.length` anyway. The gate is X-specific and so is
+    // this draft — groundSourcePost ran with platform "x" against X_CHAR_LIMITS — so it is the
+    // right gate for the one text `final` carries; a future non-X platform needs its own.
+    let draftLengthFallback: "none" | "substituted_nano" | "kept_judge" = "none";
+    if (usableJudge && judged.finalDraft !== null) {
+      const judgeFit = checkXPostable(judged.finalDraft, accountTier);
+      if (!judgeFit.ok) {
+        // Falling back to nano's own draft is safe ONLY when nano's text was not itself the
+        // thing the judge corrected. If `language` or `translation` is in correctedFields, the
+        // judge fixed a wrong-language draft — the live Spanish-source bug — and nano's
+        // firstDraft is precisely that defective text, so substituting it would reintroduce the
+        // bug this slice exists to kill. Then the judge's over-limit English text ships instead:
+        // delivered, Post button disabled by the same gate, reporter trims it in place. That is
+        // today's behaviour — an acceptable floor, not a regression.
+        const judgeFixedLanguage =
+          judged.correctedFields.includes("language") ||
+          judged.correctedFields.includes("translation");
+        draftLengthFallback =
+          !judgeFixedLanguage && checkXPostable(verdict.firstDraft, accountTier).ok
+            ? "substituted_nano"
+            : "kept_judge";
+        console.error(
+          `draft-pipeline: judge draft fails the X gate (${judgeFit.reason}) for source post ${sourcePostId} — ceiling ${ceiling}, judge draft ${judged.finalDraft.length} chars, resolution ${draftLengthFallback}`,
+        );
+      }
+    }
+
+    const final =
+      verdict === null
+        ? null
+        : usableJudge
+          ? {
+              ...verdict,
+              language: judged.language,
+              translation: judged.translation,
+              newsSynthesis: judged.newsSynthesis,
+              onBeat: verdict.onBeat && judged.onBeat,
+              onBeatReason: judged.onBeatReason,
+              // Only the draft TEXT is ever in question here — every other judge field above is
+              // a judgment, not length-constrained, and is kept in all cases.
+              firstDraft:
+                draftLengthFallback === "substituted_nano"
+                  ? verdict.firstDraft
+                  : (judged.finalDraft ?? verdict.firstDraft),
+            }
+          : verdict;
+
+    if (usableJudge && judged.onBeat !== verdict.onBeat) {
+      const { error: conflictError } = await admin.from("beat_conflicts").upsert(
+        {
+          experiment_id: experiment.id,
+          source_post_id: sourcePostId,
+          ground_on_beat: verdict.onBeat,
+          ground_reason: verdict.onBeatReason,
+          judge_on_beat: judged.onBeat,
+          judge_reason: judged.onBeatReason,
+        },
+        { onConflict: "experiment_id,source_post_id", ignoreDuplicates: true },
+      );
+      if (conflictError) {
+        console.error("draft-pipeline: beat conflict persistence failed", conflictError);
+      }
+    }
+
+    if (!final) {
+      throw new Error(`draft-pipeline: grounding verdict unusable for source post ${sourcePostId}`);
+    }
+
+    if (!final.onBeat) {
       // Off-beat: no story row, no council, no post_drafts row — reported, not drafted-and-hidden.
       return {
         experimentId: experiment.id,
@@ -415,9 +539,13 @@ async function draftForExperiment(
     // exist before it; every AI span below inherits it from the isolation scope.
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
-    // Part C: one post_drafts winner row per platform, all pointing at the SAME grounding call —
-    // there is no per-platform model call anymore. The row is the reporter-facing draft record;
-    // judge_verdict stays null (nothing judges, nothing merges).
+    // Part C: one post_drafts winner row per platform. The winner points at the final model call;
+    // when the judge changed the output, a second audit row keeps nano's ground verdict visible
+    // to the existing council reader. judge_verdict remains null because it is the legacy council
+    // partition key, not judge metadata. Both rows go in ONE insert: post_drafts has no unique
+    // constraint on (source_post, experiment, platform), so a winner that committed before a
+    // failing audit row would survive the claim release and let a retry write a SECOND winner —
+    // which is exactly what editDraft's `.eq("is_winner", true).maybeSingle()` lookup cannot read.
     const runPlatformDraft = async (
       platform: Platform,
     ): Promise<{
@@ -427,26 +555,77 @@ async function draftForExperiment(
       degraded: boolean;
       winningPostDraftId: string;
     }> => {
-      const { data, error } = await admin
-        .from("post_drafts")
-        .insert({
-          source_post_id: sourcePostId,
-          experiment_id: experiment.id,
-          story_id: cluster.storyId,
-          platform,
-          model_call_id: groundCallId,
-          is_winner: true,
-          judge_verdict: null,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
+      const winnerRow = {
+        source_post_id: sourcePostId,
+        experiment_id: experiment.id,
+        story_id: cluster.storyId,
+        platform,
+        // Provenance must identify the text that actually ships. If the deterministic X gate
+        // rejected the judge text and we substituted nano's draft, the ground call is the source
+        // of the delivered text even though the judge still supplied review metadata.
+        model_call_id:
+          usableJudge && draftLengthFallback !== "substituted_nano"
+            ? (judgeCallId ?? groundCallId)
+            : groundCallId,
+        is_winner: true,
+        judge_verdict: null,
+        synthesis: final.newsSynthesis,
+        translation: final.translation,
+        judge_review: usableJudge
+          ? {
+              judgeModelCallId: judgeCallId,
+              groundModelCallId: groundCallId,
+              correctedFields: judged?.correctedFields ?? [],
+              judgeNotes: judged?.judgeNotes ?? "",
+              // Which text actually shipped, and why — provenance stays honest when the length
+              // guard above rejected the judge's own draft.
+              draftLengthFallback,
+            }
+          : null,
+      };
+
+      let winningPostDraftId: string;
+      if (usableJudge) {
+        const { data, error } = await admin
+          .from("post_drafts")
+          .insert([
+            winnerRow,
+            {
+              source_post_id: sourcePostId,
+              experiment_id: experiment.id,
+              story_id: cluster.storyId,
+              platform,
+              model_call_id: groundCallId,
+              is_winner: false,
+              judge_verdict: null,
+            },
+          ])
+          .select("id, is_winner");
+        if (error) throw error;
+        // One PostgREST request is one statement, so the audit row failing takes the winner with
+        // it. Read the winner off the flag rather than the row order, which is not guaranteed.
+        const winner = data.find((row) => row.is_winner);
+        if (!winner) {
+          throw new Error(
+            `draft-pipeline: winner row missing from ${platform} insert for experiment ${experiment.id}`,
+          );
+        }
+        winningPostDraftId = winner.id;
+      } else {
+        const { data, error } = await admin
+          .from("post_drafts")
+          .insert(winnerRow)
+          .select("id")
+          .single();
+        if (error) throw error;
+        winningPostDraftId = data.id;
+      }
       return {
         platform,
-        winningText: verdict.firstDraft,
-        winningModel: ground.call.model,
+        winningText: final.firstDraft,
+        winningModel: usableJudge ? (judge?.call.model ?? ground.call.model) : ground.call.model,
         degraded: false,
-        winningPostDraftId: data.id,
+        winningPostDraftId,
       };
     };
 
@@ -470,9 +649,10 @@ async function draftForExperiment(
       )
       .map((outcome) => outcome.value);
 
-    // Zero fulfilled platforms means no post_drafts row exists: propagate so the outer catch
-    // releases draft_claims and allows a retry. The grounding call's ledger row is already
-    // committed above, so no paid call is discarded by this throw.
+    // Zero fulfilled platforms means no post_drafts row exists — the single-statement insert
+    // above is what makes that true, a rejected platform having written neither of its rows.
+    // Propagate so the outer catch releases draft_claims and allows a retry. The grounding
+    // call's ledger row is already committed above, so no paid call is discarded by this throw.
     if (fulfilled.length === 0) {
       throw new Error(`draft-pipeline: all platforms failed for experiment ${experiment.id}`);
     }
@@ -794,9 +974,10 @@ export async function applyCorrection(input: {
     media: [],
   };
 
+  const revisionAccount = await getXAccount(experiment.owner_id);
   const revision = await reviseDraft({
     voiceGuidance,
-    accountTier: "standard",
+    accountTier: resolveXTier(revisionAccount?.tier),
     brief,
     previousDraft,
     feedback: input.feedback,

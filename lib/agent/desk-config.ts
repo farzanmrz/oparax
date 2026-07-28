@@ -9,6 +9,13 @@ import twitterText from "twitter-text";
  *  the drift guard in .claude/rules/sysprompts.md). A ceiling, never a target. */
 export const X_CHAR_LIMITS = { standard: 280, premium: 25_000 } as const;
 
+export type XAccountTier = keyof typeof X_CHAR_LIMITS;
+
+/** Narrows a DB-stored tier (string | null from the generated row type) to a usable tier. */
+export function resolveXTier(value: string | null | undefined): XAccountTier {
+  return value === "premium" ? "premium" : "standard";
+}
+
 /** Shared X validity gate — the same weighted-length + validity check both the posting path
  *  (lib/x/post-core.ts) and the edit path (app/agents/[id]/actions.ts) must enforce identically,
  *  so a draft that passes at edit time is guaranteed to also pass at actual post time. Length
@@ -16,10 +23,25 @@ export const X_CHAR_LIMITS = { standard: 280, premium: 25_000 } as const;
  *  certain control characters), which a short-but-malformed draft would otherwise sail past. */
 export function checkXPostable(
   text: string,
+  tier: XAccountTier = "standard",
 ): { ok: true } | { ok: false; reason: "too_long" | "invalid" } {
-  const parsed = twitterText.parseTweet(text);
-  if (!parsed.valid) return { ok: false, reason: "invalid" };
-  if (parsed.weightedLength > X_CHAR_LIMITS.standard) return { ok: false, reason: "too_long" };
+  // `configs.version3` is present on twitter-text's runtime export but omitted from its
+  // @types package; the shape was verified against node_modules/twitter-text/dist/configs.js.
+  type ParseTweetOptions = NonNullable<Parameters<typeof twitterText.parseTweet>[1]>;
+  const twitterTextWithConfigs = twitterText as typeof twitterText & {
+    configs: { version3: ParseTweetOptions };
+  };
+  const parsed = twitterText.parseTweet(text, {
+    ...twitterTextWithConfigs.configs.version3,
+    maxWeightedTweetLength: X_CHAR_LIMITS[tier],
+  });
+  if (!parsed.valid) {
+    return {
+      ok: false,
+      reason: parsed.weightedLength > X_CHAR_LIMITS[tier] ? "too_long" : "invalid",
+    };
+  }
+  if (parsed.weightedLength > X_CHAR_LIMITS[tier]) return { ok: false, reason: "too_long" };
   return { ok: true };
 }
 

@@ -10,7 +10,7 @@
 // no user session available, and import this module directly — never through the Action
 // surface.
 import * as Sentry from "@sentry/nextjs";
-import { checkXPostable } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveXTier } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createTweet, refreshTokens } from "@/lib/x/api";
 import { getXAccount, updateXTokens } from "@/lib/x/store";
@@ -81,13 +81,15 @@ export async function postDraftToXForOwner(
   const text = draft.model_calls?.output;
   if (!text) return { ok: false, error: "This draft has no text to post." };
 
+  const account = await getXAccount(ownerId);
+  if (!account) return { ok: false, error: "Connect your X account first." };
+
   // Server-side validity gate, mirroring the client's twitter-text check (post-to-x-control.tsx)
   // through the SHARED `checkXPostable` helper editDraft also calls — a repair failure, a human
   // edit, or a bypassed UI path (e.g. a hand-crafted Slack button value) could otherwise reach
-  // here over the ceiling with no server-side check at all. accountTier is hard-declared
-  // "standard" at every drafting call site this slice (Deferred: real tier resolution) — the same
-  // ceiling drafting itself enforces.
-  const postable = checkXPostable(text);
+  // here over the ceiling with no server-side check at all. The stored posting-account tier is
+  // the same ceiling drafting and the feed counter enforce.
+  const postable = checkXPostable(text, resolveXTier(account.tier));
   if (!postable.ok) {
     return {
       ok: false,
@@ -114,12 +116,6 @@ export async function postDraftToXForOwner(
 
   // Resolve a usable access token. A missing account or a failed refresh means nothing was
   // posted, so releasing the claim here is safe and lets the reporter retry after fixing it.
-  const account = await getXAccount(ownerId);
-  if (!account) {
-    await releaseClaim(admin, postDraftId);
-    return { ok: false, error: "Connect your X account first." };
-  }
-
   let accessToken = account.access_token;
   if (new Date(account.token_expires_at).getTime() - Date.now() < 60_000) {
     try {

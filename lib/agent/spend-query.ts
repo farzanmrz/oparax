@@ -6,14 +6,12 @@
 // `deliverDraft`/`draftForExperiment` `stampUsageEvent` calls); a kind-based split can't
 // tell drafting from judging apart and would silently render $0.00 for Judging.
 // `model_calls.stage` is where they're actually distinct — verified against the real
-// writers: `draft-ground.ts`'s ONE drafting call stamps `"grounding"` (a real per-delivery
+// writers: `draft-ground.ts`'s ONE grounding call stamps `"grounding"` (a real per-delivery
 // cost, not folded into "drafting", since it runs even on off-beat posts and is the only call
 // today — the owner collapsed the ground→revise×2→synthesize pipeline down to this single
-// gpt-5-nano pass, so `"drafting"` now has no live writer except `draft-council-run.ts`'s
-// dormant `reviseDraft` (the emailed-correction path) and its repair leg, and
-// `scripts/extract-voice-guide.ts` stamps `"voice_extraction"`. The `"judge"` stage has no live
-// writer at all since the old parallel council + judge architecture was replaced — kept in the
-// type/filter for historical rows, not because anything writes it today.
+// gpt-5-nano pass, followed by `draft-judge.ts`'s live `"judge"` stage. `"drafting"` remains
+// the dormant emailed-correction path (`draft-council-run.ts`'s `reviseDraft` and repair leg),
+// while `scripts/extract-voice-guide.ts` stamps `"voice_extraction"`.
 // These are the entire live write surface — no remapping needed, just an explicit
 // `stage IN (...)` filter so a future stage (e.g. a `"scan"` stage, mentioned as a placeholder
 // in the `model_calls` migration's column comment but never written) can't leak into this

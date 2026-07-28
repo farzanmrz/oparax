@@ -15,10 +15,11 @@ paths:
   (OAuth), so there is no fuzzy-beat-clarifying assistant to re-link. `tools.ts` and
   `lib/agent/xai.ts` (the `oparax_x_search` Grok executor) — both already fully dead code, no
   importer left — have since been deleted outright.
-- The one live headless model caller on the primary delivery path is
-  `lib/agent/draft-ground.ts`'s `groundSourcePost` (a single `gpt-5-nano` call, behind
-  `POST /api/ingest` via `draft-pipeline.ts`, with a DeepSeek `generateObject` fallback — the
-  same four-leg recipe below — when the nano call's transport fails). `draft-council-run.ts`
+- The live headless model callers on the primary delivery path are `lib/agent/draft-ground.ts`'s
+  `groundSourcePost` (a single `gpt-5-nano` call, behind `POST /api/ingest` via
+  `draft-pipeline.ts`, with a DeepSeek `generateObject` fallback — the same three-leg recipe
+  below — when the nano call's transport fails) and `draft-judge.ts`'s `judgeGroundVerdict`,
+  which runs on every nano verdict (see "Ships today" below for the detail). `draft-council-run.ts`
   survives only for `reviseDraft`, called solely from `applyCorrection` — reachable from
   `POST /api/email/inbound` on every delivery **independent of `EMAIL_DELIVERY_ENABLED`** (that
   flag gates only the OUTBOUND draft-email send in `draft-pipeline.ts`; the inbound webhook
@@ -39,18 +40,17 @@ paths:
   `x_accounts` row (`getXLinkState()`) and stamps `reporter_verified_at` at insert, so every
   agent is born verified — the old post-create verify gate it replaced is deleted.
 
-## Reasoning: DeepSeek's own default everywhere except structuring
+## Reasoning: DeepSeek's own default, with explicit judge reasoning
 
-DeepSeek V4 defaults to thinking ON and self-scales effort by problem difficulty (its native adaptive behavior; the AI SDK's `low`/`medium` both coerce to its `high`, so an explicit mid level is a no-op). So the judgment calls — `draft-council-run.ts`'s `reviseDraft` revision/repair calls — pass **no `reasoning` param** and let native adaptivity run. Do not re-add a level there; it buys nothing.
+DeepSeek V4 defaults to thinking ON and self-scales effort by problem difficulty (its native adaptive behavior; the AI SDK's `low`/`medium` both coerce to its `high`, so an explicit mid level is a no-op). The revision/repair calls in `draft-council-run.ts` pass **no `reasoning` param** and let native adaptivity run. The delivery judge deliberately passes `reasoning: "high"` because judgment is the one stage where a readable trace is useful.
 
-The exception is DeepSeek's **`generateObject`** call. There is no judge function anywhere in the codebase, and `draft-council-run.ts` is not the recipe's only site — its two current call sites are **(a)** `draft-ground.ts`'s DeepSeek fallback, live on the primary drafting path when the `gpt-5-nano` call fails to transport, and **(b)** `cluster.ts`'s classifier, dormant behind `CLUSTERING_ENABLED = false`. `reasoning: "none"` alone is **not** the fix for either; it is one leg of a four-part recipe, all load-bearing:
+The exception is DeepSeek's **`generateObject`** calls. The current sites are **(a)** `draft-ground.ts`'s DeepSeek fallback, live when the `gpt-5-nano` call fails to transport, **(b)** `draft-judge.ts`'s verification judge after every nano verdict, and **(c)** `cluster.ts`'s classifier, dormant behind `CLUSTERING_ENABLED = false`. A 29-call live probe on 2026-07-27 established that schema↔prompt field-name consistency, not the reasoning level, determines structured-output success: Round 1's inconsistent schema/prompt failed across every configuration; Round 2's consistent pair passed 5/5 under every tested configuration. `reasoning: "none"` is therefore appropriate where no trace is wanted, while the judge intentionally uses `reasoning: "high"` for its trace. The three-part recipe remains load-bearing:
 
-1. `reasoning: "none"` — thinking-on interleaves reasoning into the JSON (`NoObjectGeneratedError`); omitting it silently re-enables thinking.
-2. a prompt that **names each output field imperatively** (`draft-ground.md` for site (a), `story-cluster.md`'s `STORY_CLUSTER_PROMPT` for site (b)) — without it the model emits a wrong envelope (prose as a JSON key, or a bare `{}`) *even though it reasoned correctly*.
-3. a defined behavior on schema-validation failure, not silent degradation: `draft-ground.ts`'s fallback returns a null verdict, which the caller treats as its own error path (release the claim, let the whole delivery retry) — never silently defaulted; `cluster.ts`'s classifier instead deterministically creates a new one-source story on the same failure, a different but equally explicit degradation, not a retry loop.
-4. a high `maxOutputTokens` ceiling (`draft-ground.ts`'s fallback sets 8192) — guards against mid-JSON truncation on a larger schema.
+1. A schema↔prompt pair with **imperatively named fields** (`draft-ground.md`, `draft-judge.md`, and `story-cluster.md`'s `STORY_CLUSTER_PROMPT`) — without it the model emits a wrong envelope or a bare `{}` even when its reasoning is sound.
+2. A defined behavior on schema-validation failure, not silent degradation: grounding returns a null verdict and releases the claim for retry; the judge returns a ledgered null verdict and the pipeline fails open to nano; clustering deterministically creates a new one-source story.
+3. A high `maxOutputTokens` ceiling (`8192` on the ground fallback and judge) to guard against mid-JSON truncation on larger schemas.
 
-Copy all four into any new DeepSeek `generateObject`. Carrying only leg 1 is exactly how a prior version of this call broke, returning `{}` deterministically — a proven repo pattern must be copied whole, not one knob at a time.
+Copy all three into any new DeepSeek `generateObject`. A prior version of this call carried only a reasoning knob, without leg 1's schema↔prompt consistency, and broke, returning `{}` deterministically — a proven repo pattern must be copied whole, not one knob at a time.
 
 `draft-council-run.ts`'s deterministic self-check (`checkViolations`) is **hygiene-only** — markdown, `<post>` tags, preamble, char ceiling. It does **not** verify the carry-over trap (every name/@handle/number in the draft appears in the brief); fabrication like an invented source tag is caught by the drafting-contract **prompt alone**. A deterministic @handle-against-brief check is available hardening if prompt-guarding proves insufficient.
 - Prompt-writing conventions and drift guards for `lib/sysprompts/*.md` live in `.claude/rules/sysprompts.md`, not here — this file is the TypeScript/architecture side.
@@ -59,14 +59,14 @@ Copy all four into any new DeepSeek `generateObject`. Carrying only leg 1 is exa
 
 Why cheap models at all, and the reporter-vs-model measurement, are in `AGENTS.md`. Council-specific:
 
-- **Ships today:** primary drafting is ONE `openai/gpt-5-nano` call per delivery (`groundSourcePost`, `draft-ground.ts`) — translates, judges on-beat, and drafts in a single pass — with a DeepSeek `generateObject` fallback (the four-leg recipe above) on transport failure. The parallel-council-plus-judge architecture this bullet used to describe (`deepseek-v4-flash` + `gpt-5-nano` @ `low` + `glm-4.7-flashx` @ `low` drafting in parallel, `v4-flash` judging) no longer exists in any code path — retired, not merely paused (see `draft-ground.ts`'s own header comment and commit `d19f16a`).
+- **Ships today:** primary drafting is one `openai/gpt-5-nano` grounding call per delivery (`groundSourcePost`, `draft-ground.ts`) — translating, filtering, synthesizing, and drafting in one pass — followed by `draft-judge.ts`'s DeepSeek verification judge on every nano verdict. The judge's usable output is final, a transport failure fails open to nano, and the DeepSeek grounding fallback skips the judge because it already has a structured verdict.
 - **The carry-over trap** (the drafting contract's core rule): every name, handle, number, quote and time must appear in the BRIEF. The guide supplies voice and structure, **never facts**. The deterministic self-check catches hygiene only (markdown, `<post>` tags, preamble, char ceiling) — fabrication is caught by the prompt alone.
 - **Governance — admitted by budget, retired by production data (historical: this describes how models were evaluated while the parallel council still ran, not what runs today — the council itself, not just individual models, was subsequently retired for the primary path).** "Untested" and "same-family" are NOT elimination rules; family is a diversity *weight* and budget arbitrates. A family whose drafts never win the judge gets dropped. There is no fixed council-size ceiling — that was asserted, never derived, and withdrawn.
 - **Rejected, with the killing fact:** `gpt-5.4-nano` (good at $1.37/1k but the duo breaks the cap even cached — "tested" doesn't beat unaffordable) · `deepseek-v4-pro` ($2.71/1k = $4.07/mo alone; killed by input-token dominance, which is why it sits in *extraction* where input is read once) · Gemini (0-for-2 on-task; no 3.6 Pro exists on the gateway; uncapped reasoning inflated output 6.6× — caps fix cost, not rank) · MiniMax (the only family whose residual violations never cleared across 1,000 drafts) · `qwen3.5-flash` (ran and lost: $2.95 vs $1.23, style 0.37 vs 0.35) · `grok-4.1-fast` (deprecated; its successor can't fit the budget) · `mistral-large-3` (absent from every writing board surveyed; bench-only as the EU option) · `kimi-k2.6` (K3 exists at 3× the price; saving $0.19 one-time to drop a tier in the quality-dominant stage fails proportionality).
 
 ## Foreign-language sources
 
-Handled at drafting only, per `lib/sysprompts/draft-council-contract.md`: translate the source facts first, then draft in the reporter's own language and voice — never draft in the source language just because the source was. (The old scan pipeline's grok-relay/DeepSeek-clustering translation step no longer exists — there is no clustering pass; `POST /api/ingest` receives one already-scraped post at a time.)
+Handled at drafting only, per `lib/sysprompts/draft-council-contract.md`: translate the source facts first, then draft in English in the reporter's voice — never draft in the source language just because the source was. (The old scan pipeline's grok-relay/DeepSeek-clustering translation step no longer exists — there is no clustering pass; `POST /api/ingest` receives one already-scraped post at a time.)
 
 ## `x_search` billing footgun
 

@@ -91,11 +91,10 @@ export function dropProgressPollTransactions<T extends { tags?: { [k: string]: u
  *
  * What that costs, stated plainly rather than waved past: the extraction corpus (public X posts),
  * the system prompt, the reasoning summary, and the finished voice guide are stored by Sentry
- * under its retention policy. The guide is the softest of the sensitive artifacts — AGENTS.md's
- * own argument for the shared-guide model was that a guide is derived wholly from PUBLIC posts.
- * The hard one is an unpublished draft, and drafting is gated separately: see
- * `lib/observability/ai-telemetry.ts`, which records inputs/outputs per call and turns them OFF
- * for the drafting council. Turning this key on does not by itself publish a single draft.
+ * under its retention policy — and, by owner decision (2026-07-27), so is every drafting stage's
+ * unpublished draft. `lib/observability/ai-telemetry.ts` records inputs/outputs for every AI stage
+ * in every environment now, drafting included; this key is the outer gate that makes that possible
+ * at all, so turning it off here would silently blind that file regardless of what it asks for.
  *
  * `userInfo` stays on: knowing WHICH reporter hit an error is most of the diagnostic value, and it
  * is their own account identity, not their work. `frameContextLines` stays on too: source lines

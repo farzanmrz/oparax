@@ -34,8 +34,8 @@ export function PostToXControl({
 }: {
   postDraftId: string;
   draftText: string;
-  /** The desk's X ceiling — 280, or 25,000 when the reporter's corpus proves premium
-   *  (inferred in page.tsx). Also why the disable check below uses this rather than
+  /** The desk's X ceiling — 280, or 25,000 when the posting account's stored `x_accounts.tier`
+   *  is premium (resolved by `resolveXTier` in page.tsx). Also why the disable check below uses this rather than
    *  twitter-text's `parsed.valid`, which is hardwired to 280 and would wrongly block a
    *  premium-length draft. */
   charLimit: number;

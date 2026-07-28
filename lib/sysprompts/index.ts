@@ -15,4 +15,5 @@ export const DRAFT_REVISE_PROMPT = load("draft-revise.md");
 // beat relevance, and writes the post the reporter sees (the revise/synthesize stages that
 // once followed it were deleted — see draft-ground.ts's header).
 export const DRAFT_GROUND_PROMPT = load("draft-ground.md");
+export const DRAFT_JUDGE_PROMPT = load("draft-judge.md");
 export const STORY_CLUSTER_PROMPT = load("story-cluster.md");
