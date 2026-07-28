@@ -58,7 +58,7 @@ fi
 
 PF_ABS="$(cd "$(dirname "$PF")" && pwd)/$(basename "$PF")"
 SCHEMA_ABS="$(cd "$(dirname "$SCHEMA")" && pwd)/$(basename "$SCHEMA")"
-tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a review brief with its own instructions. Execute it faithfully: verify every claim against the actual repository code by reading the real files (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
+tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a council brief with its own instructions (review, design, or verification). Execute it faithfully, grounding everything in the actual repository code by reading the real files (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
 
 # Poll for the model-written file, then require it stable (agy may write incrementally).
 waited=0; last=-1
@@ -91,7 +91,10 @@ except json.JSONDecodeError:
         d = json.loads(fixed)
     except json.JSONDecodeError:
         sys.exit(1)
-if not isinstance(d, dict) or key not in d or not isinstance(d[key], list):
+# The payload may be a list (critiques, findings) OR an object (board, verdict) —
+# mirror the jq `length` check the codex/grok wrappers use. A list-only assumption
+# here branded two complete, valid board runs AGY_FAILED (2026-07-27).
+if not isinstance(d, dict) or key not in d or not isinstance(d[key], (list, dict)):
     sys.exit(1)
 d.update(elapsed_s=int(elapsed), tier=tier)
 json.dump(d, open(out, "w"), indent=1)
