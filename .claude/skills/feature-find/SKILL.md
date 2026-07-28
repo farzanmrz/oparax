@@ -65,11 +65,39 @@ collect runtime errors once from `http://localhost:3000/_next/mcp`
 (`get_errors` tools/call POST), then close sessions. Leave the dev server up —
 later steps reuse it.
 
+## 3b. Design critic — UI-touching slices only
+
+ONE pass (Claude: `model: sonnet`, `effort: high`; heavy: `opus`; Codex: the
+`reviewer` agent with this charter) judging the rendered result against the
+plan's per-state design intent plus the repo's UI rules (AGENTS.md
+conventions, `components.md`, ai-elements idioms) and experiential quality —
+hierarchy, spacing, states, streaming/motion feel, layout shift. Evidence
+ladder, in order:
+
+1. **State gallery first:** if a dev state-gallery route covers the touched
+   surface, screenshot its contact sheet (every state at once, deterministic,
+   no paid runs) and judge that.
+2. **Live fallback:** otherwise the journey walkers screenshot the changed
+   surfaces they walk (one `agent-browser screenshot` per surface), and the
+   critic judges those.
+3. **Honest gaps:** any behavior that is time-domain or gated on real spend
+   (streaming feel, a paid model's thinking window) with no replay/gallery
+   fixture is reported `NOT VERIFIABLE — <reason>`, never silently skipped —
+   these lines flow verbatim into feature-verify's manual-check set.
+
+Design findings enter step 5's adjudication like any lane's. No UI in the
+diff → record "no UI surface — design critic skipped".
+
 ## 4. Review council — one combined charter
 
 Every reviewer does ONE deep pass over the whole diff: **correctness bugs +
 cross-file contract breaks + acceptance-criteria compliance + convention
-violations + instruction-file staleness.** External lanes via the council
+violations + instruction-file staleness + security (authz, injection,
+secret/token handling, trust boundaries) + concurrency/races + error-path
+handling.** When the diff's behavior composes with a vendored component
+(`components/ui`, `components/ai-elements`), read the relevant vendored code
+too — undiffed does not mean out of scope (a real bug hid in ai-elements'
+Reasoning auto-open, which no diff ever showed). External lanes via the council
 bridge (background; poll `.feature/*.out.json`; agy ~8 min) — write charter +
 range + criteria + plan-frozen vetoes to `.feature/review-<family>.in.txt`,
 then per family:

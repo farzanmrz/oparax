@@ -62,9 +62,26 @@ The agent gathers:
 Write the full plan yourself. Charter:
 
 - **Diverge before committing** (this replaces the retired idea-refine skill):
-  enumerate 2–3 candidate approaches with one-line trade-offs, commit to one,
-  and record the rejections in the Approach section. Simplicity is the
-  tiebreaker among correct designs, never a license to drop a requirement.
+  enumerate 2–3 candidate approaches that differ in SHAPE, not parameters —
+  name the angle each takes (e.g. data-model-first, UI-first, pipeline-first,
+  reuse-what-exists) — with one-line trade-offs; commit to one; record the
+  rejections in the Approach section. Three flavors of the same idea is a
+  failed divergence. Simplicity is the tiebreaker among correct designs,
+  never a license to drop a requirement.
+- **Design intent is part of the spec for UI-touching tasks.** Any task that
+  renders something states its hierarchy, spacing, states (loading/empty/
+  error), and motion/streaming behavior in the near-code — grounded in the
+  repo's UI rules (AGENTS.md conventions, `.claude/rules/components.md`,
+  ai-elements idioms), which the grounding pack must distill for UI slices.
+  "Works but ugly" is a spec defect, not an executor defect: QC's design
+  critic judges the rendered result against exactly this intent.
+  **States are part of the spec:** enumerate the surface's observable states
+  (pending / streaming-empty / mid-stream / done / each failure), specify
+  intent per state, and keep render paths presentational-pure (props in,
+  pixels out — no timers, no pipeline knowledge) so every state is reachable
+  deterministically. When the repo's dev state-gallery covers (or should
+  cover) the surface, adding/updating its fixtures is a BUILD task in this
+  same slice — the way a schema change carries its migration.
 - **Specificity contract:** every build task names its files, its exact
   interfaces/signatures, and near-code for anything non-obvious — written so a
   sonnet-low executor needs judgment only for implementation nuance (imports,

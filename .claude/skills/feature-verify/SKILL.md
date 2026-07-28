@@ -51,7 +51,10 @@ Sections, in order:
 1. **What this slice changed, as a user** — a short walk-through of the new
    behavior: "when X happens, the app now does Y; before, it did Z."
 2. **Status + coverage** — builds/boots/gates/journeys one-liner; review-lane
-   coverage with per-lane finding counts; anything NOT REACHED, verbatim.
+   coverage with per-lane finding counts; anything NOT REACHED or NOT
+   VERIFIABLE (from journeys and the design critic), verbatim — these ARE the
+   owner's manual-check set, and the report must never imply coverage of a
+   state no automated pass actually experienced.
 3. **Fixed** — per finding: *what was wrong in plain terms → what a user
    could have hit → what changed* (with `file:line`). The plain-terms
    sentence comes first, the technical one second.
