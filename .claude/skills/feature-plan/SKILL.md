@@ -90,17 +90,38 @@ Write the full plan yourself. Charter:
     the creativity twin of the critique council, one direction board PER
     MODEL FAMILY: this session designs one, and codex, grok, and agy each
     design one via their CLIs (same background-invocation pattern as the
-    critique lanes; each writes a self-contained static HTML board to
-    `.feature/directions/<family>.html`). All four get the SAME brief: the
-    real prop types/state model, every observable state, the repo's UI rules
-    and copy conventions, and "differ in shape, not parameters." Then the
-    session critiques all boards against the brief on UI/UX grounds (the
-    design-critic charter; on a heavy slice, optionally send each external
-    family the others' boards for one adversarial critique round first) and
-    presents boards + critiques at the gate. The owner picks; the choice is
-    FROZEN into per-state design intent; each new pattern it introduces is
-    NAMED (so it becomes a reusable convention, not a one-off). Downstream
-    phases inherit the decision, never the discretion.
+    critique lanes). **A board is a REAL RENDER, never a lookalike** (owner
+    decision 2026-07-27: static HTML mocks are retired — the owner judges
+    what implementation will actually produce, or the pick is worthless).
+    Each family delivers ONE self-contained `"use client"` page at
+    `app/dev/directions/<family>/page.tsx` composing the repo's ACTUAL
+    components — vendored `components/ai-elements/*` + `components/ui/*`
+    (imported, never edited) and existing bespoke chrome — with hardcoded
+    fixture props rendering EVERY observable state as a labeled stacked
+    section at mobile width. Bespoke DOM is allowed only where the kit
+    genuinely cannot express the idea, and each such element is a proposed
+    named pattern. Delivery per lane capability: lanes that can write the
+    working tree write the file; read-only lanes return the TSX in their
+    JSON envelope and the session writes it. The session then gets every
+    board to compile (`tsc` — mechanical fixes only, never design edits;
+    a board needing design surgery goes back to its lane or is reported
+    failed), boots the dev server, and hands the owner the
+    `/dev/directions/<family>` links to judge live at 375px. These pages
+    are plan-phase scratch in the WORKING TREE ONLY — never committed by
+    the plan phase; after the pick the winning page's composition is frozen
+    into the plan as near-code AND seeds the slice's state-gallery/fixture
+    BUILD task, and the losing pages are deleted. All four lanes get the
+    SAME brief: the real prop types/state model, pointers to the exact kit
+    component files to read before designing, every observable state, the
+    repo's UI rules and copy conventions, and "differ in shape, not
+    parameters." Then the session critiques all boards against the brief on
+    UI/UX grounds (the design-critic charter; on a heavy slice, optionally
+    send each external family the others' boards for one adversarial
+    critique round first) and presents boards + critiques at the gate. The
+    owner picks; the choice is FROZEN into per-state design intent; each
+    new pattern it introduces is NAMED (so it becomes a reusable
+    convention, not a one-off). Downstream phases inherit the decision,
+    never the discretion.
   Record the rollup next to `## Weight` as `## Design freedom:` — `none` (no
   UI), `reuse only`, or `elevated: <surfaces>` — so the gate shows at a
   glance whether a direction decision is coming. Exploration exists ONLY
