@@ -105,8 +105,13 @@ Write the full plan yourself. Charter:
     JSON envelope and the session writes it. The session then gets every
     board to compile (`tsc` — mechanical fixes only, never design edits;
     a board needing design surgery goes back to its lane or is reported
-    failed), boots the dev server, and hands the owner the
-    `/dev/directions/<family>` links to judge live at 375px. These pages
+    failed), **boots the dev server itself if one isn't already running**
+    (the harness's preview tooling / launch config — never a raw shell dev
+    server), and presents the owner the full clickable URLs — one per
+    family, e.g. `http://localhost:3000/dev/directions/claude` — so each
+    opens in the owner's browser with one click, judged live at 375px.
+    **After the owner's pick, the session stops the dev server it started**
+    (a server the owner already had running is left alone). These pages
     are plan-phase scratch in the WORKING TREE ONLY — never committed by
     the plan phase; after the pick the winning page's composition is frozen
     into the plan as near-code AND seeds the slice's state-gallery/fixture
