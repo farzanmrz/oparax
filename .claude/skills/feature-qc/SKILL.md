@@ -29,10 +29,17 @@ by writing durable state back:
 between** — the chain's only gate is feature-verify's ✋ at the end. Each
 sub-skill's own text governs its step; nothing here overrides them.
 
-Session-model advice (the reason to start smart or switch mid-wait): the
-session's own tokens are spent almost entirely in feature-find's adjudication
-and feature-verify's report. Invoke on a smart dial, or start cheap and switch
-(`/model`) while the external review lanes run in the background.
+**Session model — pick the smart dial AT INVOCATION for a chained run**
+(Claude: fable/opus high; Codex: gpt-5.6-sol high). The session's own tokens go
+almost entirely to feature-find's adjudication and feature-verify's report —
+the two places that must be smart — and a chained run offers no reliable
+moment for a human mid-run flip, so don't plan on one. The cheap-start + flip
+pattern applies ONLY when running `feature-find` standalone: its milestone
+line "council lanes launched" is the flip cue, and adjudication runs on
+whatever model is selected when the lanes return. A chain invoked on a cheap
+dial must say so in its first milestone line ("running chain on <model> —
+adjudication will use this dial") so the owner can stop it early if that's
+not intended.
 
 ## Hard rules (bind the whole chain)
 
@@ -43,6 +50,12 @@ and feature-verify's report. Invoke on a smart dial, or start cheap and switch
 - One combined review charter per lane — never re-expand into per-angle ×
   per-family fan-outs, and never a separate verifier quorum.
 - A failed review lane is reported as failed, never as a clean pass.
+- **Milestone lines are required output, not verbosity:** one line entering
+  each of the four steps, one line launching any long background wait (name +
+  expected duration). Nothing else between them.
+- **When pausing to ask the owner anything, stop or await write-capable
+  subagents first** — read-only agents (scouts, walkers, reviewers) may drain
+  in the background; nothing may edit files while an owner question is open.
 - Findings and fixes ALWAYS land as issue comments even in the one-session
   chain — the durable record is what makes hop-anywhere (and post-hoc audit)
   possible, and it costs two `gh issue comment` calls.

@@ -16,6 +16,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 range="${1:-origin/beta...HEAD}"
 fail=0
 
+echo "GATE build: running (pnpm build typically takes 1-4 min; silence here is normal)..."
 out="$(pnpm build 2>&1)"; rc=$?
 if [ "$rc" -eq 0 ]; then
   echo "GATE build: PASS"
@@ -24,6 +25,7 @@ else
   printf '%s\n' "$out" | grep -iE "error|failed" | head -20
 fi
 
+echo "GATE tsc: running..."
 out="$(pnpm exec tsc --noEmit 2>&1)"; rc=$?
 if [ "$rc" -eq 0 ]; then
   echo "GATE tsc: PASS"

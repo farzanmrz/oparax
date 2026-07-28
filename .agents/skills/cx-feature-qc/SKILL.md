@@ -43,6 +43,14 @@ family), or shell scripts.
 ## Hard rules (bind the whole chain)
 
 - Session model = adjudication + the final report ONLY.
+- **Milestone lines are required output, not verbosity:** one line entering
+  each of the four steps, one line launching any long background wait (name +
+  expected duration). If this chain was invoked on a cheap dial, the FIRST
+  milestone line must say so ("running chain on <model> — adjudication will
+  use this dial") so the owner can stop early.
+- **When pausing to ask the owner anything, stop or await write-capable
+  subagents first** — read-only agents may drain; nothing edits files while an
+  owner question is open.
 - The issue's `## Weight` line is binding — read it, never re-classify.
 - One combined review charter per lane; a failed lane is reported as failed,
   never as a clean pass; `AGY_EMPTY` = no-signal.

@@ -14,8 +14,13 @@ model: inherit
 
 Runs over `origin/beta...ft/<N>`. **The session model is spent on ADJUDICATION
 ONLY** — run this chat on a smart dial (Claude: opus/fable high; Codex:
-gpt-5.6-sol high), or switch to one before the review lanes return. Everything
-else is a pinned dispatch or shell. No prose between steps.
+gpt-5.6-sol high), or start cheap and switch at the announced cue below.
+Everything else is a pinned dispatch or shell. No prose between steps EXCEPT
+milestone lines — one entering each numbered step, one launching any long wait
+(name + expected duration). The step-4 milestone line is also the model-flip
+cue and must say so verbatim: "council lanes launched (~5–8 min) — switch
+models now if you started cheap; adjudication uses whatever is selected when
+lanes return."
 
 **Weight** (the issue's `## Weight` line; missing = standard) is binding:
 `light` = one internal reviewer only, journeys only if the diff touches
