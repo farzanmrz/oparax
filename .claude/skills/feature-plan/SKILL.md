@@ -105,13 +105,16 @@ Write the full plan yourself. Charter:
     JSON envelope and the session writes it. The session then gets every
     board to compile (`tsc` — mechanical fixes only, never design edits;
     a board needing design surgery goes back to its lane or is reported
-    failed), **boots the dev server itself if one isn't already running**
-    (the harness's preview tooling / launch config — never a raw shell dev
-    server), and presents the owner the full clickable URLs — one per
-    family, e.g. `http://localhost:3000/dev/directions/claude` — so each
-    opens in the owner's browser with one click, judged live at 375px.
-    **After the owner's pick, the session stops the dev server it started**
-    (a server the owner already had running is left alone). These pages
+    failed), then **serves the boards itself — always** (owner convention
+    2026-07-27, overriding any harness preference for preview tooling):
+    kill whatever holds port 3000 (`lsof -ti:3000 | xargs kill` — the
+    owner's standing authorization), start `pnpm dev` as a background
+    shell, wait until it answers on :3000, and confirm each board URL
+    returns 200. Present the owner the full clickable URLs — one per
+    family, e.g. `http://localhost:3000/dev/directions/claude` — judged
+    live at 375px, and STOP for the pick. **After the owner approves the
+    design, kill the port-3000 dev server specifically** (again by port,
+    nothing else). These pages
     are plan-phase scratch in the WORKING TREE ONLY — never committed by
     the plan phase; after the pick the winning page's composition is frozen
     into the plan as near-code AND seeds the slice's state-gallery/fixture
