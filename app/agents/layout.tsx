@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SentryUserContext } from "@/components/sentry-user-context";
 import { SiteHeader } from "@/components/site-header";
 import { createClient } from "@/lib/supabase/server";
 import { getUsername } from "@/lib/user";
@@ -54,6 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-dvh min-h-0 min-w-0 flex-col bg-background text-foreground">
+      <SentryUserContext email={user.email} id={user.id} />
       <SiteHeader desks={headerDesks} username={getUsername(user)} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex h-full w-full max-w-[102rem] flex-col px-4 sm:px-6">

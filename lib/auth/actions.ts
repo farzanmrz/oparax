@@ -7,6 +7,7 @@
 // on failure, so the pages' useActionState forms can show feedback inline
 // without navigating away. Success paths still redirect().
 
+import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
 import { mapAuthError } from "@/lib/auth-errors";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -33,6 +34,32 @@ export interface AuthFormState {
   email?: string;
 }
 
+/**
+ * Graceful auth failures return form state, so they never reach Sentry's
+ * unhandled-error hooks. Capture a deliberately generic error event instead:
+ * the operation + normalized class are searchable, while passwords, emails,
+ * Supabase's raw message, and session data never leave the action.
+ */
+function captureAuthFailure(operation: "login" | "signup", rawMessage: string) {
+  const mappedMessage = mapAuthError(rawMessage);
+  const failureClass =
+    mappedMessage === "Invalid email or password."
+      ? "invalid_credentials"
+      : mappedMessage === "Too many attempts. Please wait a moment and try again."
+        ? "rate_limited"
+        : mappedMessage === "Unable to create account. Please try again or log in."
+          ? "already_registered"
+          : "unexpected";
+
+  Sentry.withScope((scope) => {
+    scope.setLevel("error");
+    scope.setFingerprint(["oparax-auth-failure", operation, failureClass]);
+    scope.setTag("oparax.auth.operation", operation);
+    scope.setTag("oparax.auth.failure_class", failureClass);
+    Sentry.captureMessage("Oparax authentication operation failed");
+  });
+}
+
 export async function loginAction(
   _prevState: AuthFormState,
   formData: FormData,
@@ -53,6 +80,7 @@ export async function loginAction(
   });
 
   if (error) {
+    captureAuthFailure("login", error.message);
     return {
       error: mapAuthError(error.message),
       email,
@@ -89,6 +117,7 @@ export async function signupAction(
   });
 
   if (error) {
+    captureAuthFailure("signup", error.message);
     return {
       error: mapAuthError(error.message),
       email,
