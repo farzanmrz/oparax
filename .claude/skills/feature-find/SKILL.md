@@ -87,7 +87,11 @@ shifting between states or on hover (dimensions must be stable); loading
 states that don't match final layout; missing empty/error states; `useState`
 tracking continuous input (mouse/scroll) instead of motion values; WCAG AA
 contrast on every CTA/form control; and this repo's own hard rules (sentence
-case, no eyebrow headers, uniform form fields). Evidence ladder, in order:
+case, no eyebrow headers, uniform form fields). For rule lookups the critic
+may query the repo-local ui-ux-pro-max database (no dependencies):
+`python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux`
+(also `--stack shadcn` / `--stack nextjs`) — severity-tagged Do/Don't rules
+to cite, not an aesthetic authority. Evidence ladder, in order:
 
 1. **State gallery first:** if a dev state-gallery route covers the touched
    surface, screenshot its contact sheet (every state at once, deterministic,
