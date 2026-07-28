@@ -97,8 +97,13 @@ Write the full plan yourself. Charter:
     fresh commission every round, every page designed for BOTH mobile and
     web, delivered as per-page lane modules under a session-built
     three-switcher harness (model · page · viewport) at
-    `app/dev/directions/`, tsc/Biome-verified, self-served on :3000 (kill
-    the port, `pnpm dev` background, 200-check), presented as ONE clickable
+    `app/dev/directions/`, every state a FULL PAGE (real shared chrome, an
+    explicit viewport frame, annotations outside it — per the shared
+    contract and `design-notes.md`, the standing owner-decision ledger),
+    tsc/Biome-verified, self-served on :3000 (kill the port, `pnpm dev`
+    background, 200-check — **the 200-check is the LAST tool action before
+    the stop: no agents, no browser tools after it; the owner is the only
+    reviewer of the boards**), presented as ONE clickable
     URL with the session's critiques, STOPPING for the pick — after which
     the :3000 server is killed, the winner is frozen into per-state design
     intent with every new pattern NAMED (a reusable convention, not a

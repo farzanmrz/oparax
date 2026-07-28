@@ -35,18 +35,40 @@ the bridge (there is no Claude CLI lane).
 - A pass designs one or more PAGES. **Every page is designed for BOTH mobile (375px)
   and web** — mobile is primary (the product's real users arrive on phones; the owner
   designs on a wide monitor, which is exactly the bias this rule corrects).
-- A page's observable STATES all render stacked on that page's board, labeled — states
-  never hide behind navigation.
+- **Every state renders as a FULL PAGE inside an explicit viewport frame** (owner rule
+  2026-07-27, after a round was rejected for exactly this): the owner must see what the
+  user sees — where the page begins and ends, at what dimensions, with the real shared
+  chrome (site header; the mobile desk-tab bar on desk pages) present even when the
+  slice doesn't touch it. Floating fragments on the harness background are the rejected
+  format. A page's observable STATES all render stacked on that page's board — one
+  framed full page per state, never hidden behind navigation.
+- **Lane annotations live OUTSIDE the frame**: each state's one-line label renders
+  between framed pages in a visually distinct, obviously-not-page-UI style. Board
+  commentary that can be mistaken for page elements invalidates the board.
+- **Standing design decisions live in `design-notes.md`** (next to this file): the brief
+  includes it verbatim, every lane obeys it, and a general decision the owner states at
+  a pick is appended there in the same session — set once, never repeated per round and
+  never re-litigated by a lane.
 
 ## Delivery + the review harness
 
+- The SESSION builds the shared fixture chrome ONCE at `app/dev/directions/chrome.tsx`:
+  a `PageFrame` component providing (a) the viewport frame — mobile 375×812 and a
+  labeled web frame (~1280×800), visible bounds, page content scrolling INSIDE — with
+  its dimensions chip, (b) faithful fixture renders of the shared chrome (site header;
+  desk tab bar when `chrome="desk"`; none of it interactive), and (c) the outside-frame
+  annotation slot. Lanes import and wrap — they never rebuild chrome, so it cannot
+  drift between boards and the owner compares pages, not chromes. Chrome fixtures may
+  be faithful stand-ins (the real chrome components often need live route/session
+  state); the DESIGNED surface itself must still be real vendored/bespoke components.
 - Each lane delivers one self-contained `"use client"` module PER PAGE at
   `app/dev/directions/boards/<family>/<page>.tsx`, default-exporting
   `({ viewport }: { viewport: "mobile" | "web" })` and rendering every state for that
-  viewport. Fixture props only — no fetching, no timers; local state for real
-  interactions is encouraged. Vendored files imported, never edited; bespoke DOM only
-  where the kit genuinely can't express the idea, each such element a proposed named
-  pattern; file starts with a `// kit mapping` comment block.
+  viewport as `<PageFrame …>` wrapping its full page content. Fixture props only — no
+  fetching, no timers; local state for real interactions is encouraged. Vendored files
+  imported, never edited; bespoke DOM only where the kit genuinely can't express the
+  idea, each such element a proposed named pattern; file starts with a `// kit mapping`
+  comment block.
 - Lanes that can write the working tree write their files; read-only lanes return TSX
   in their JSON envelope and the session writes it.
 - The SESSION builds the harness shell at `app/dev/directions/page.tsx`: three

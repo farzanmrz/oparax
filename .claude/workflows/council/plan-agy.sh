@@ -13,8 +13,9 @@
 # Mechanics: tmux session per label → accept trust prompt if shown → /model dance →
 # one short prompt pointing at the brief FILE and an output FILE (the model itself writes
 # the JSON — no pane scraping) → poll for the file → tolerant-parse → normalize to OUT.
-# The model picker is keyboard-driven and version-sensitive (rows/effort slider verified
-# on agy 1.1.7); if agy's menu changes, update MODEL_ROW/EFFORT_PRESSES below.
+# The model picker is keyboard-driven and version-sensitive; rows are searched and the
+# selection is VERIFIED against the status line, so a menu change fails loudly instead
+# of silently running another family (which happened 2026-07-27: Opus 4.6 ran as "agy").
 set -uo pipefail
 SECONDS=0
 PF="$1"; SCHEMA="$2"; MODEL="${3:-gemini-3.1-pro-high}"; OUT="$4"
@@ -24,11 +25,15 @@ TIMEOUT_S="${COUNCIL_AGY_TIMEOUT_S:-900}"
 
 command -v tmux >/dev/null || { echo "AGY_FAILED (no tmux — brew install tmux)" >&2; exit 1; }
 
-# --- model slug → TUI picker actions (rows below current default "Gemini 3.6 Flash") ---
+# --- model slug → the display name to VERIFY in the status line + effort presses ---
+# Row positions are NOT hardcoded any more: on 2026-07-27 the picker's roster shifted and
+# the old "2 rows down" dance silently selected "Claude Opus 4.6 (Thinking)" — a whole
+# council round ran the wrong FAMILY and nothing failed. The picker is searched row by
+# row and the status line is read back after each try; no verified match → loud failure.
 case "$MODEL" in
-  gemini-3.1-pro-high)   MODEL_ROW=2; EFFORT_PRESSES=2 ;;  # Down Down, then Right Right (low→high)
-  gemini-3.1-pro-medium) MODEL_ROW=2; EFFORT_PRESSES=1 ;;
-  gemini-3.6-flash-high) MODEL_ROW=0; EFFORT_PRESSES=2 ;;
+  gemini-3.1-pro-high)   MODEL_NAME="Gemini 3.1 Pro"; EFFORT_PRESSES=2 ;;
+  gemini-3.1-pro-medium) MODEL_NAME="Gemini 3.1 Pro"; EFFORT_PRESSES=1 ;;
+  gemini-3.6-flash-high) MODEL_NAME="Gemini 3.6 Flash"; EFFORT_PRESSES=2 ;;
   *) echo "plan-agy: unknown model slug '$MODEL'" >&2; exit 2 ;;
 esac
 
@@ -46,10 +51,23 @@ sleep 12
 if tmux capture-pane -t "$SES" -p 2>/dev/null | grep -q "Do you trust"; then
   tmux send-keys -t "$SES" Enter; sleep 6
 fi
-# Model picker: /model → rows down → effort right (slider resets to low on row change) → Enter.
-tmux send-keys -t "$SES" "/model" Enter; sleep 4
-i=0; while [ "$i" -lt "$MODEL_ROW" ]; do tmux send-keys -t "$SES" Down; i=$((i+1)); done
-sleep 1; tmux send-keys -t "$SES" Enter; sleep 3          # select model (lands at low effort)
+# Model picker: try each row in turn, select, then VERIFY via the status line ("READY
+# [<model name> …]"). The slider resets to low on row change; effort is set only after
+# the model itself is confirmed. A roster we can't find the target in is a hard failure —
+# a lane silently running another family is worse than a lane reported failed.
+selected=""
+for row in 0 1 2 3 4 5 6 7; do
+  tmux send-keys -t "$SES" "/model" Enter; sleep 3
+  i=0; while [ "$i" -lt "$row" ]; do tmux send-keys -t "$SES" Down; i=$((i+1)); done
+  sleep 1; tmux send-keys -t "$SES" Enter; sleep 3        # select candidate (lands at low effort)
+  if tmux capture-pane -t "$SES" -p 2>/dev/null | grep -qi "READY \[.*${MODEL_NAME}"; then
+    selected="yes"; break
+  fi
+done
+if [ -z "$selected" ]; then
+  echo "AGY_FAILED (model picker: '$MODEL_NAME' not found in roster — menu changed again; status line: $(tmux capture-pane -t "$SES" -p 2>/dev/null | grep READY | tail -1))" >&2
+  exit 1
+fi
 if [ "$EFFORT_PRESSES" -gt 0 ]; then
   tmux send-keys -t "$SES" "/model" Enter; sleep 3        # reopen: current model preselected
   i=0; while [ "$i" -lt "$EFFORT_PRESSES" ]; do tmux send-keys -t "$SES" Right; i=$((i+1)); done
