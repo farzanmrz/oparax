@@ -1,0 +1,42 @@
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - beta
+      - main
+  pull_request:
+    branches:
+      - beta
+      - main
+  schedule:
+    # Scheduled scans apply newly released CodeQL queries even when no code changed.
+    - cron: "17 9 * * *"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze JavaScript and TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
