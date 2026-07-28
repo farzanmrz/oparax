@@ -13,7 +13,7 @@
     "format": "biome format --write ."
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.2",
+    "@supabase/supabase-js": "^2.111.0",
     "tsx": "^4.19.2"
   },
   "devDependencies": {
