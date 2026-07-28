@@ -27,6 +27,16 @@ instruction-file lines the diff falsified). Dispatch ONE agent — Claude Code:
 - Never document scaffolding the slice deleted, and never let a doc line
   drift from the one place it cites.
 
+**Mirror check (deterministic, every round):**
+
+```bash
+diff <(ls .claude/skills/) <(ls .agents/skills/ | grep -v "^cx-\|^x-\|^lean-log\|^sentry-")
+```
+
+Any `.claude/skills` entry absent from `.agents/skills` is a finding — add
+the symlink in this round (AGENTS.md's mirror rule; a missing link silently
+strips that skill from every non-Claude harness).
+
 If anything changed: commit it (`qc: doc sync round <R>`) and note the edits
 in one sentence each. If nothing changed, say so — that is the expected
 outcome most rounds.
