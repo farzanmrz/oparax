@@ -42,19 +42,31 @@ ONE feature branch · ONE squashed commit on `beta`.** `beta` and `main` are
 integration and promotion destinations, never feature-development branches. No PRs,
 no CI. Parallelism is a private implementation detail.
 
+**One flow, two harnesses.** Codex invokes these same skills through the
+`.agents/skills/` symlinks — `$feature`, `$feature-plan`, `$feature-build`,
+`$feature-qc`, `$feature-ship` — reading the Codex column of each skill's dials
+table. The parallel `cx-feature*` family was deleted 2026-07-30: duplication had
+made the Codex plan skill a measurably weaker spec-writer than the Claude one
+for no intended reason, which is the failure mode a second copy always drifts
+into. A genuine per-harness difference (session dial, subagent names, which
+council lanes run) belongs in a dials row; nothing else differs. Because each
+phase starts from durable state only — the issue body, the branch,
+`origin/beta...ft/<N>`, the `## QC round` comments — a slice may switch harness
+at any phase boundary, in either direction.
+
 **Track phases with TaskCreate** — one task each, ticked as each finishes; the flow
 is complete only when the last ticks:
 
 1. `Plan approved (✋ gate) + issue opened + ft/<issue#> cut` → invoke **`feature-plan`**
    — **the session STOPS here (owner decision 2026-07-27).** The issue body is the
    complete spec, so the owner chooses where build runs: `/feature-build N` in a
-   Claude session on their build dial, or the **Codex app on a cheap model** (the
-   repo's `.agents/skills/feature-build` skill / AGENTS.md's External build
-   executors contract). Later phases are owner-triggered.
+   Claude session on their build dial, or a **Codex chat on a cheap dial**
+   (`$feature-build`; AGENTS.md's External build executors contract). Later
+   phases are owner-triggered.
 2. `Built on ft/<issue#>` → invoke **`feature-build`** (Claude path) — **stops
    when built** with a compact build summary; the owner triggers QC. A Codex
    build stops the same way in its own app.
-3. `QC: cross-model reviews + browser journeys · lint · build · doc sync` → invoke **`feature-qc`**, ending at the verification ✋ — QC is four hoppable
+3. `QC: cross-model reviews · lint · build · doc sync` → invoke **`feature-qc`**, ending at the verification ✋ — QC is four hoppable
    sub-steps (`feature-find` → `feature-fix` → `feature-docs` →
    `feature-verify`), each runnable standalone in either app; under this
    orchestrator they chain in one session
@@ -94,10 +106,6 @@ they do, this orchestrator's job is only to keep the checklist honest.
   authorization names the entire consequence; successful target deployment
   checks do not create extra approval gates.
 - **≤10 agents TOTAL per fan-out**, whatever any sub-skill's default says.
-- The plan's `## Weight` line (`light | standard | heavy`) is decided ONCE at
-  the plan gate and scales the machinery downstream (external critics, QC
-  review width, browser journeys). Phases read it from the issue; nothing
-  re-classifies mid-flight.
 - Scope freezes at the plan gate **for agent-self-generated ideas only**: mid-build
   work an agent notices on its own is out of scope — drop it, never onto this branch;
   if it matters, the user re-plans it as its own slice later. Findings the owner

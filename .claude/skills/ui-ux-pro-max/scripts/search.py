@@ -29,7 +29,7 @@ import argparse
 import json as json_module
 import sys
 import io
-from core import CSV_CONFIG, AVAILABLE_STACKS, MAX_RESULTS, UNTRUNCATED_COLS, search, search_stack
+from core import CSV_CONFIG, AVAILABLE_STACKS, MAX_RESULTS, UNTRUNCATED_COLS, DATA_DIR, search, search_stack
 from design_system import generate_design_system
 
 # Force UTF-8 for stdout/stderr to handle emojis on Windows (cp1252 default)
@@ -88,8 +88,15 @@ def format_output(result, full=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI Pro Max Search")
     parser.add_argument("query", help="Search query")
-    parser.add_argument("--domain", "-d", choices=list(CSV_CONFIG.keys()), help="Search domain")
-    parser.add_argument("--stack", "-s", choices=AVAILABLE_STACKS, help=f"Stack-specific search. Available: {', '.join(AVAILABLE_STACKS)}")
+    # oparax keeps only the data this repo can act on (trimmed 2026-07-30, 1.8M -> 412K):
+    # the platforms it does not target, and the design-GENERATION corpus (fonts, colors,
+    # typography, styles) that `[design: reuse]` forbids, were deleted. Offering a choice
+    # whose CSV is gone would turn a normal query into a "File not found" that reads like
+    # tool breakage, so the pickers are narrowed to what still exists.
+    _DOMAINS = [d for d in CSV_CONFIG if (DATA_DIR / CSV_CONFIG[d]["file"]).exists()]
+    _STACKS = [s for s in AVAILABLE_STACKS if (DATA_DIR / "stacks" / f"{s}.csv").exists()]
+    parser.add_argument("--domain", "-d", choices=_DOMAINS, help=f"Search domain. Available: {', '.join(_DOMAINS)}")
+    parser.add_argument("--stack", "-s", choices=_STACKS, help=f"Stack-specific search. Available: {', '.join(_STACKS)}")
     parser.add_argument("--max-results", "-n", type=int, default=MAX_RESULTS, help="Max results (default: 3)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--full", action="store_true", help="Do not truncate long field values in text output")

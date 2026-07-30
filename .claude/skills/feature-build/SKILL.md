@@ -32,7 +32,7 @@ green build hid a worker crash).
 ## Execute — no dispatch, no briefs
 
 Work the plan's Build steps **yourself, in order, in this session**. Dispatching
-implementers was measured and removed: 204KB of briefs across 27 tasks bought
+per-task implementer agents was measured and removed: 204KB of briefs across 27 tasks bought
 parallelism that mostly wasn't there, and concurrent agents confused each
 other's work. The plan already decided the design — your job per task:
 
@@ -63,10 +63,10 @@ exploratory (schema surprises, repeated query failures), dispatch
   `/feature-qc`.
 - **No browser here — ever.** Build never opens a browser (not `agent-browser`,
   not an MCP surface) and never dispatches a browser agent. Proving behavior in
-  a rendered page is QC's journeys. When the plan itself demands live
-  demonstration or evidence capture (a verification-type slice), that work IS
-  QC/verification: finish the build tasks, exit into `/feature-qc`, and let the
-  evidence be gathered there or at the owner's manual gate — never improvised
+  a rendered page is the owner's manual check. When the plan itself demands
+  live demonstration or evidence capture (a verification-type slice), that work
+  IS QC/verification: finish the build tasks, exit into `/feature-qc`, and let
+  the evidence be gathered at the owner's manual gate — never improvised
   mid-build.
 - Mid-flight new scope stays off the branch — drop it; a deferral the user
   names is a future slice.

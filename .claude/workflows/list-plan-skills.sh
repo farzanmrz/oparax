@@ -45,10 +45,17 @@ emit() { # emit <skills-dir> <id-prefix>
 }
 
 # --- stack plugins (id prefix = the Skill-tool invocation namespace) ---
-emit "$(newest "$CACHE/vercel/vercel-plugin")skills"          "vercel:"
-emit "$(newest "$CACHE/claude-plugins-official/supabase")skills" "supabase:"
-emit "$(newest "$CACHE/claude-plugins-official/railway")skills"  "railway:"
-emit "$(newest "$CACHE/claude-plugins-official/sentry")skills"   "sentry:"
+# Only ENABLED plugins may be emitted: a cache directory survives disabling, so
+# enumerating the cache would offer the planner skills the Skill tool cannot invoke.
+# Enabled as of 2026-07-30: vercel, railway. Sentry and Slack were removed — Sentry
+# because the authed `sentry` CLI is a strict superset of its MCP, Slack because
+# nothing in this repo ever invoked it. A supabase plugin has never existed; that
+# knowledge reaches the planner through `.claude/rules/supabase.md`.
+ENABLED="$HOME/.claude/settings.json"
+enabled() { jq -e --arg k "$1" '.enabledPlugins[$k] == true' "$ENABLED" >/dev/null 2>&1; }
+
+enabled "vercel-plugin@vercel"         && emit "$(newest "$CACHE/vercel/vercel-plugin")skills"         "vercel:"
+enabled "railway@claude-plugins-official" && emit "$(newest "$CACHE/claude-plugins-official/railway")skills" "railway:"
 
 # --- repo build skills (bare ids), excluding the feature-* process skills ---
 for d in "$REPO"/.claude/skills/*/; do

@@ -23,8 +23,8 @@ session's conversation is needed — the comment is the contract.
 
 | Work | Claude Code | Codex |
 |---|---|---|
-| Ordinary fix | `implementer`-style agent, `model: sonnet` | `cx_fixer` |
-| Risk-path fix (auth, money, posting, schema/migration, new trust boundary) | `model: opus` | spawn `cx_fixer` on `gpt-5.6-sol` high |
+| Ordinary fix | `fixer`, `model: sonnet` | `cx_fixer` |
+| Risk-path fix (auth, money, posting, schema/migration, new trust boundary) | `fixer` on `model: opus` | spawn `cx_fixer` on `gpt-5.6-sol` high |
 | Residual lint | `feature-lint` (its own fixer agents) | `cx_fixer` per file group |
 
 ## Apply

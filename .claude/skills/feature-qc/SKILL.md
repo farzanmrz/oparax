@@ -6,6 +6,7 @@ description: >-
   feature-docs → feature-verify with no stops between. Use when the user says
   /feature-qc, "run QC", or wants the branch proven in one sitting. To hop
   between apps/sessions mid-QC, run the four steps individually instead.
+  Harness-neutral: runs in Claude Code or Codex.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Skill
 model: inherit
 ---
@@ -17,17 +18,32 @@ of them in any session or app (Claude Code or Codex) — every step starts from
 durable state only (the branch, the issue, its `QC round` comments) and ends
 by writing durable state back:
 
-1. **`feature-find`** — gates + browser journeys + the cross-model review
-   council + adjudication → findings posted to the ft issue.
+1. **`feature-find`** — gates + the cross-model review council +
+   adjudication → findings posted to the ft issue.
 2. **`feature-fix`** — apply the round (one fixer per finding, gates re-run,
    residual lint) → fixes recorded on the issue.
 3. **`feature-docs`** — doc sync, subtractive first, default no change.
-4. **`feature-verify`** — re-prove (gates + journey re-walks) → the
+4. **`feature-verify`** — re-prove (gates + the runtime sweep) → the
    verification ✋, written to the owner-legibility contract.
 
 **Under /feature-qc, invoke them in that order in THIS session with no stops
 between** — the chain's only gate is feature-verify's ✋ at the end. Each
-sub-skill's own text governs its step; nothing here overrides them.
+sub-skill's own text governs its step; nothing here overrides them, and each
+carries its own per-harness dials table naming the subagents it dispatches.
+
+## Dials — per harness
+
+Codex invokes this same file (`$feature-qc`, via the `.agents/skills/` symlink);
+the `cx-feature-qc` twin was deleted 2026-07-30. All four `— findings` /
+`— fixes` / `— docs` / `— verified` markers are posted even in the one-session
+chain — they are what resume detection and both ships' completeness guards read.
+
+| | Claude Code | Codex |
+|---|---|---|
+| Session dial | fable/opus, high | `gpt-5.6-sol` high — set with `/model` before starting |
+| Review council (step 1) | internal `bug-finder` lane + the `codex` and `grok` externals | native `reviewer` + `pr_explorer` pair + the `grok` external (no codex lane — that family IS this session) |
+| Subagents | `bug-finder`, `fixer`, `supabase-runner` | `cx_grounder`, `cx_fixer`, `cx_supabase_runner` |
+| Concurrency cap | ≤10 agents per fan-out | ≤6 threads (the global `[agents]` cap) |
 
 **Session model — pick the smart dial AT INVOCATION for a chained run**
 (Claude: fable/opus high; Codex: gpt-5.6-sol high). The session's own tokens go
@@ -43,10 +59,9 @@ not intended.
 
 ## Hard rules (bind the whole chain)
 
-- Session model = adjudication + the final report ONLY. Setup, journeys,
-  reviews, fixes, lint, doc sync are all dispatched with explicit
-  model+effort (or the Codex subagent roster) or run in shell.
-- The issue's `## Weight` line is binding — read it, never re-classify.
+- Session model = adjudication + the final report ONLY. Setup, reviews,
+  fixes, lint, doc sync are all dispatched with explicit model+effort (or the
+  Codex subagent roster) or run in shell.
 - One combined review charter per lane — never re-expand into per-angle ×
   per-family fan-outs, and never a separate verifier quorum.
 - A failed review lane is reported as failed, never as a clean pass.
@@ -54,7 +69,7 @@ not intended.
   each of the four steps, one line launching any long background wait (name +
   expected duration). Nothing else between them.
 - **When pausing to ask the owner anything, stop or await write-capable
-  subagents first** — read-only agents (scouts, walkers, reviewers) may drain
+  subagents first** — read-only agents (scouts, reviewers) may drain
   in the background; nothing may edit files while an owner question is open.
 - Findings and fixes ALWAYS land as issue comments even in the one-session
   chain — the durable record is what makes hop-anywhere (and post-hoc audit)

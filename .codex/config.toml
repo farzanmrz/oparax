@@ -1,3 +1,15 @@
+# Project-scoped Codex config for oparax.
+
+# Owner's working preference: no sandbox friction in this repo. Restored
+# 2026-07-30 after its removal caused Codex to prompt at every phase boundary
+# (council launch, build, Supabase calls) because the user-level fallback is
+# workspace-write + on-request.
+# Caveat, recorded not enforced: this file is committed, so it applies to anyone
+# who clones and runs Codex here. Move it to ~/.codex/config.toml if that ever
+# matters.
 sandbox_mode = "danger-full-access"
 
-approval_policy = "on-request"
+# AGENTS.md is ~40 KB and Codex's default cap (32768) silently truncated its
+# tail — "Settled decisions", "Dormant by design" and "Cross-tool" were provably
+# ABSENT from Codex's instruction context (verified 2026-07-30).
+project_doc_max_bytes = 65536

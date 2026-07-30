@@ -30,7 +30,7 @@ instruction-file lines the diff falsified). Dispatch ONE agent — Claude Code:
 **Mirror check (deterministic, every round):**
 
 ```bash
-diff <(ls .claude/skills/) <(ls .agents/skills/ | grep -v "^cx-\|^x-\|^lean-log\|^sentry-")
+diff <(ls .claude/skills/) <(ls .agents/skills/ | grep -v "^x-\|^lean-log")
 ```
 
 Any `.claude/skills` entry absent from `.agents/skills` is a finding — add

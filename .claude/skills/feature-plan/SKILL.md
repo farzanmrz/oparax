@@ -4,7 +4,7 @@ description: >-
   Phase 1 of the feature flow, standalone: the plan gate (the plan is the spec).
   Use when the user says /feature-plan, "plan this feature", "spec this out", or
   wants a plan gate without committing to the full flow. Not for building — that
-  is /feature-build.
+  is /feature-build. Harness-neutral: runs in Claude Code or Codex.
 argument-hint: "[feature description | issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
@@ -21,6 +21,24 @@ conversation.
 
 Communication: the `Flow` output style governs — no interim prose; the ✋ gate
 is where you write in full.
+
+## Dials — per harness
+
+This skill is single-source: Codex invokes the same file (`$feature-plan`, via
+the `.agents/skills/` symlink) and reads the Codex column. The `cx-feature*`
+twins were deleted 2026-07-30 — they had drifted into weaker copies (the Codex
+plan skill carried the `OWNER-MANUAL` rule but had lost the #72 incident that
+justifies it, and had dropped design-intent-is-spec entirely), which is what a
+duplicated skill does over time. A per-harness difference belongs in this
+table, never in a second file.
+
+| Stage | Claude Code | Codex |
+|---|---|---|
+| Session dial | owner's top dial (opus/fable, high) | `gpt-5.6-sol` high — set with `/model` before starting |
+| Thinking gate (step 2) | invoke `first-principles-thinking` | do it inline in this chat: name the load-bearing problem, the minimal rebuild, and what the ask does NOT require |
+| Grounding pack (step 3) | one agent, `model: sonnet`, `effort: low` | `cx_grounder` (pinned cheap + read-only in its TOML) |
+| Critique (step 5) | both externals: `codex` + `grok` | `grok` external + the native `reviewer` agent — the codex family's perspective IS this session, so it never launches a codex lane against itself |
+| Close (step 7) | same `start.sh` invocation | same `start.sh` invocation |
 
 ## 1. Preflight
 
@@ -75,50 +93,14 @@ Write the full plan yourself. Charter:
   ai-elements idioms), which the grounding pack must distill for UI slices.
   "Works but ugly" is a spec defect, not an executor defect: QC's design
   critic judges the rendered result against exactly this intent.
-- **Design freedom is tagged PER SURFACE, like the actor contract.** Every
-  UI-touching task carries `[design: reuse]` or `[design: elevated]`:
-  - `reuse` — the default, and ALWAYS the tag for modifying an existing
-    surface. The component ladder is binding, in order: existing vendored
-    component (shadcn/ai-elements) → existing bespoke chrome → composition of
-    existing primitives → only then a new component, with a one-line
-    justification for why the ladder failed. No new visual patterns, no new
-    spacing/radius/color decisions — the surface must read as if it was
-    always part of the app.
-  - `elevated` — net-new surfaces that are a new kind of moment, proposed
-    with a one-line reason; the owner accepts or flips it at the gate. For a
-    slice's elevated set (together, once), run the **direction council** —
-    the creativity twin of the critique council, one board per model family
-    against one identical brief. The full operational contract lives in
-    `direction-council.md` next to this file (single source, shared with the
-    Codex flow) and is BINDING: boards are real renders of the repo's actual
-    components (never static mocks), ideated kit-native (read the component
-    inventory first; wireframe-then-map is the named forbidden failure
-    mode; not-yet-vendored registry components may be proposed by name),
-    fresh commission every round, every page designed for BOTH mobile and
-    web, delivered as per-page lane modules under a session-built
-    three-switcher harness (model · page · viewport) at
-    `app/dev/directions/`, every state a FULL PAGE (real shared chrome, an
-    explicit viewport frame, annotations outside it — per the shared
-    contract and `design-notes.md`, the standing owner-decision ledger),
-    tsc/Biome-verified, self-served on :3000 (kill the port, `pnpm dev`
-    background, 200-check — **the 200-check is the LAST tool action before
-    the stop: no agents, no browser tools after it; the owner is the only
-    reviewer of the boards**), presented as ONE clickable
-    URL with the session's critiques, STOPPING for the pick — after which
-    the :3000 server is killed, the winner is frozen into per-state design
-    intent with every new pattern NAMED (a reusable convention, not a
-    one-off), the winning composition seeds the slice's state-gallery BUILD
-    task, and the losers are deleted. The brief carries the real prop
-    types/state model, pointers to the exact kit files to read, every
-    observable state, the repo's UI rules and copy conventions,
-    owner-stated interaction patterns as binding constraints, and "differ
-    in shape, not parameters." Downstream phases inherit the decision,
-    never the discretion.
-  Record the rollup next to `## Weight` as `## Design freedom:` — `none` (no
-  UI), `reuse only`, or `elevated: <surfaces>` — so the gate shows at a
-  glance whether a direction decision is coming. Exploration exists ONLY
-  before the gate: build executes, and the critic judges against the frozen
-  intent, never its own taste.
+- **Design freedom is `reuse`, always.** Every UI-touching task carries
+  `[design: reuse]`, and the component ladder is binding, in order: existing
+  vendored component (shadcn/ai-elements) → existing bespoke chrome →
+  composition of existing primitives → only then a new component, with a
+  one-line justification for why the ladder failed. No new visual patterns, no
+  new spacing/radius/color decisions — the surface must read as if it was
+  always part of the app. Build executes the intent this plan freezes, and the
+  critic judges against that intent, never its own taste.
   **States are part of the spec:** enumerate the surface's observable states
   (pending / streaming-empty / mid-stream / done / each failure), specify
   intent per state, and keep render paths presentational-pure (props in,
@@ -140,46 +122,56 @@ Write the full plan yourself. Charter:
   in a logged-in production browser session" was absorbed by the build phase,
   which opened a browser on production and typed login credentials itself.
   "Manual" without a named actor gets reinterpreted; the label is the fix.
-- **Weight call — one line, decided here, binding downstream.** Classify the
-  slice and record `## Weight: light | standard | heavy` in the plan:
-  - `light` — ALL of: roughly ≤4 files, no schema/auth/money/posting path, no
-    new dependency, no new route or page.
-  - `heavy` — ANY of: schema/data migration, auth or session surface, real
-    money spend, live posting, a new trust boundary, or roughly >15 files.
-  - `standard` — everything else.
-  The weight rides in the issue body; downstream phases read it and never
-  re-classify mid-flight. A misclassification is visible to the owner at the ✋
-  gate, next to the plan it describes — that is the safety on this lever.
 - Sections (unchanged, downstream depends on them): **Definition of done**
   (the ship gate's yardstick) · **Approach** (with the rejected alternatives) ·
-  **## Weight** (above) · **In scope / Deferred** · **Build steps** (per-task
-  files + the skills each task invokes) · **## Stack & design acceptance
-  criteria** (what QC verifies the built diff against).
+  **In scope / Deferred** · **Build steps** (per-task files + the skills each
+  task invokes) · **## Stack & design acceptance criteria** (what QC verifies
+  the built diff against).
 
-## 5. Critique — three external families, zero Claude
+## 5. Critique — two external families, zero Claude
 
-**Weight gates this step.** `light`: skip external critique entirely — the
-top-dial draft plus its own divergence pass IS the whole plan phase; go
-straight to the gate. `standard` / `heavy`: launch all three families.
+This is the phase where external critique demonstrably earned its keep (~86
+accepted critiques against 7 rejections across six slices). Two lanes run:
+**`codex`** and **`grok`**.
 
-Launch all three in background via the council bridge and end the turn — the
-harness re-invokes you as each finishes. For each family, write the prompt
-(plan + grounding pack + "verify claims against the actual code, cite paths;
-work requirement by requirement; an empty list is a valid verdict only after
-that") to `.feature/critique-<family>.in.txt`, then run — with
-`run_in_background: true` on each:
+**Each lane needs a brief, not a toolkit.** Both CLIs run read-only over this
+working tree with full file access and read `AGENTS.md` themselves, so a critic
+is never short of capability — it is short of *this slice's* context. That is
+the `.in.txt`'s job, and it is why neither family gets skills, rules, agents or
+MCP of its own: the grounding pack from step 3 already distilled the matching
+`.claude/rules/*.md` guards, and pasting those distilled guards into the brief
+beats any harness-side rules import (it is slice-scoped instead of blanket, and
+it works identically for a family that has no rules mechanism at all).
+
+**`agy` is retired, not detached** (2026-07-30) — `agy --print` is structurally
+single-shot, its only agentic path was tmux keyboard puppetry, and that picker
+once silently ran Claude Opus 4.6 as the "agy" lane. A cross-model council
+cannot use a lane that may quietly become another family, and no amount of
+setup fixes a CLI's shape.
+
+Write each lane's prompt — plan + grounding pack + "verify claims against the
+actual code, cite paths; work requirement by requirement; an empty list is a
+valid verdict only after that" — to `.feature/critique-<family>.in.txt`, launch
+BOTH in background, and end the turn; the harness re-invokes you when they
+finish. With `run_in_background: true`:
 
 ```bash
 CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
   COUNCIL_DEPTH=deep COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
-  bash .claude/workflows/council/run.sh <family> critique-<family>
+  bash .claude/workflows/council/run.sh codex critique-codex
 ```
 
-Families and models: `codex` (`COUNCIL_MODEL=gpt-5.6-sol`, tier high) · `grok`
-(grok-4.5, tier high) · `agy` (`COUNCIL_TIER=gemini-3.1-pro-high`; runs through
-its interactive TUI via tmux — the wrapper handles it, nothing changes here). A
-lane that fails or returns empty without having worked the requirements is
-reported as failed — never treated as approval.
+```bash
+CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
+  COUNCIL_DEPTH=deep COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
+  bash .claude/workflows/council/run.sh grok critique-grok
+```
+
+Models: codex `COUNCIL_MODEL=gpt-5.6-sol` at tier high; grok is single-model
+(`grok-4.5`, hardcoded in its wrapper) at tier high — never pass it xhigh/max,
+which error. A lane that fails, or returns empty without having worked the
+requirements, is reported as FAILED — never treated as approval. Both failing =
+no external critique, and the adjudication must say so.
 
 **Codex delegation line:** append to the codex lane's `.in.txt` only — "You have
 repo-defined subagents: spawn `pr_explorer` to map and evidence the code paths
@@ -227,10 +219,9 @@ session's involvement:
 
 > Issue #N opened, `ft/N` cut. Build it whenever and wherever you like:
 > **(a)** a Claude session on your build dial — `/feature-build N` — or
-> **(b)** the Codex app on a cheap model — invoke the repo's `feature-build`
-> skill (or say "build issue N per AGENTS.md's External build executors
-> contract"). Either way, come back to Claude Code afterwards for
-> `/feature-qc`.
+> **(b)** a Codex chat on a cheap dial (`gpt-5.3-codex-spark`) —
+> `$feature-build` for issue N. Then QC in either app: `/feature-qc` or
+> `$feature-qc`.
 
 The issue body is the complete spec by this phase's contract, so the build
 executor needs nothing from this conversation — that is what makes the

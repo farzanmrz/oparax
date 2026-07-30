@@ -3,13 +3,26 @@ name: feature-ship
 description: >-
   Phase 4 of the feature flow, standalone: the triage + ship gates. Use when
   the user says /feature-ship, "ship it", "close the slice", or brings
-  manual-test findings on a finished branch.
+  manual-test findings on a finished branch. Harness-neutral: runs in Claude
+  Code or Codex.
 argument-hint: "[issue#]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *) Skill
 model: inherit
 ---
 
 # Triage ✋ then ship ✋
+
+## Dials — per harness
+
+Codex invokes this same file (`$feature-ship`, via the `.agents/skills/`
+symlink); the `cx-feature-ship` twin was deleted 2026-07-30. Everything below
+is identical across harnesses — the scripts, the gates, the gate questions —
+except these two rows.
+
+| | Claude Code | Codex |
+|---|---|---|
+| Session dial | inherit (owner's dial) | `gpt-5.6-sol` high |
+| Deployment check (the `main` path only) | dispatch `vercel-check-deployments` | spawn `cx_deploy_checker` |
 
 ## QC-completeness guard — before anything else
 
@@ -28,10 +41,9 @@ branch before the ship gate — no push-back, no deferral, no "not this slice," 
 no measuring it against the definition-of-done first. The ONLY way an item is
 deferred is the owner explicitly saying it can wait; a deferred item becomes a
 future slice the flow doesn't track. After each batch of fixes, re-run
-`feature-lint` + the boot smoke + feature-qc's browser sweep (step 5 — parallel
-`browser-verifier` agents driving the `agent-browser` CLI headless) over the flows
-the fixes touched (ship-stage fixes are usually UI fixes — the browser is the only
-gate that proves them).
+`feature-lint` + the boot smoke, and hand the flows the fixes touched back to the
+owner to re-test (ship-stage fixes are usually UI fixes, and the owner's own pass
+is what proves them).
 
 The scope firewall survives only for agent-self-generated ideas: unrelated work an
 agent notices while fixing (a tempting refactor, a someday cleanup) stays off the
