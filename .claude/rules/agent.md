@@ -28,14 +28,13 @@ paths:
   clustering `generateObject` classifier remains, dormant behind `CLUSTERING_ENABLED = false`.
   `lib/agent/scan-run.ts`, `draft-run.ts`, the cron dispatcher
   (`app/api/cron/tick/route.ts`), and `next-run.ts`'s fire math were the desk's other headless
-  callers — all deleted along with the retired `agents`/`runs`/`drafts` pipeline the new UI
-  replaces. There is no scan dispatcher and no scan-frequency-driven scheduler anywhere in the
+  callers — all deleted with the retired scan/draft pipeline the new UI replaces. There is no
+  scan dispatcher and no scan-frequency-driven scheduler anywhere in the
   app today — every draft now originates from an inbound delivery at `POST /api/ingest` (the
   always-on ingestion worker, or a hand-seeded demo post), not from a polled scan.
 - `/agents/new` (`create-desk-form.tsx` → `createDesk`, `app/agents/new/actions.ts`) is a
-  plain form that inserts straight into `experiments` (no `scan_frequency` — the table has no
-  such column, that concept belonged only to the retired `agents` table): no typed handle
-  field, no assistant. `createDesk` reads `reporter_handle` off the reporter's linked
+  plain form that inserts straight into `agents`: no typed handle field, no assistant.
+  `createDesk` reads `reporter_handle` off the reporter's linked
   `x_accounts` row (`getXLinkState()`) and stamps `reporter_verified_at` at insert, so every
   agent is born verified — the old post-create verify gate it replaced is deleted.
 

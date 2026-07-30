@@ -10,250 +10,6 @@ export type Database = {
     Tables: {
       agents: {
         Row: {
-          account_tier: string;
-          beat: string;
-          created_at: string;
-          drafting_instructions: string;
-          handles: string[];
-          id: string;
-          name: string;
-          next_run_at: string | null;
-          scan_frequency: Json;
-          search_template: Json | null;
-          setup_session_id: string | null;
-          setup_transcript: Json;
-          status: string;
-          updated_at: string;
-          user_id: string;
-        };
-        Insert: {
-          account_tier: string;
-          beat: string;
-          created_at?: string;
-          drafting_instructions: string;
-          handles: string[];
-          id?: string;
-          name: string;
-          next_run_at?: string | null;
-          scan_frequency: Json;
-          search_template?: Json | null;
-          setup_session_id?: string | null;
-          setup_transcript: Json;
-          status?: string;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          account_tier?: string;
-          beat?: string;
-          created_at?: string;
-          drafting_instructions?: string;
-          handles?: string[];
-          id?: string;
-          name?: string;
-          next_run_at?: string | null;
-          scan_frequency?: Json;
-          search_template?: Json | null;
-          setup_session_id?: string | null;
-          setup_transcript?: Json;
-          status?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      beat_conflicts: {
-        Row: {
-          created_at: string;
-          experiment_id: string;
-          ground_on_beat: boolean;
-          ground_reason: string;
-          id: string;
-          judge_on_beat: boolean;
-          judge_reason: string;
-          source_post_id: string;
-          status: string;
-        };
-        Insert: {
-          created_at?: string;
-          experiment_id: string;
-          ground_on_beat: boolean;
-          ground_reason: string;
-          id?: string;
-          judge_on_beat: boolean;
-          judge_reason: string;
-          source_post_id: string;
-          status?: string;
-        };
-        Update: {
-          created_at?: string;
-          experiment_id?: string;
-          ground_on_beat?: boolean;
-          ground_reason?: string;
-          id?: string;
-          judge_on_beat?: boolean;
-          judge_reason?: string;
-          source_post_id?: string;
-          status?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "beat_conflicts_experiment_id_fkey";
-            columns: ["experiment_id"];
-            isOneToOne: false;
-            referencedRelation: "experiments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "beat_conflicts_source_post_id_fkey";
-            columns: ["source_post_id"];
-            isOneToOne: false;
-            referencedRelation: "source_posts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      corpus_posts: {
-        Row: {
-          created_at: string;
-          exclude_reason: string | null;
-          excluded_off_beat: boolean;
-          experiment_id: string;
-          id: string;
-          is_long: boolean;
-          like_count: number;
-          media: Json;
-          posted_at: string;
-          repost_count: number;
-          text: string;
-          x_post_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          exclude_reason?: string | null;
-          excluded_off_beat?: boolean;
-          experiment_id: string;
-          id?: string;
-          is_long?: boolean;
-          like_count?: number;
-          media?: Json;
-          posted_at: string;
-          repost_count?: number;
-          text: string;
-          x_post_id: string;
-        };
-        Update: {
-          created_at?: string;
-          exclude_reason?: string | null;
-          excluded_off_beat?: boolean;
-          experiment_id?: string;
-          id?: string;
-          is_long?: boolean;
-          like_count?: number;
-          media?: Json;
-          posted_at?: string;
-          repost_count?: number;
-          text?: string;
-          x_post_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "corpus_posts_experiment_id_fkey";
-            columns: ["experiment_id"];
-            isOneToOne: false;
-            referencedRelation: "experiments";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      draft_claims: {
-        Row: {
-          created_at: string;
-          experiment_id: string;
-          id: string;
-          source_post_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          experiment_id: string;
-          id?: string;
-          source_post_id: string;
-        };
-        Update: {
-          created_at?: string;
-          experiment_id?: string;
-          id?: string;
-          source_post_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "draft_claims_experiment_id_fkey";
-            columns: ["experiment_id"];
-            isOneToOne: false;
-            referencedRelation: "experiments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "draft_claims_source_post_id_fkey";
-            columns: ["source_post_id"];
-            isOneToOne: false;
-            referencedRelation: "source_posts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      drafts: {
-        Row: {
-          agent_id: string;
-          cost_deepseek: number | null;
-          created_at: string;
-          id: string;
-          item: Json;
-          posted_at: string | null;
-          posted_tweet_id: string | null;
-          posted_url: string | null;
-          source: string;
-          text: string;
-          usage: Json | null;
-        };
-        Insert: {
-          agent_id: string;
-          cost_deepseek?: number | null;
-          created_at?: string;
-          id?: string;
-          item: Json;
-          posted_at?: string | null;
-          posted_tweet_id?: string | null;
-          posted_url?: string | null;
-          source?: string;
-          text: string;
-          usage?: Json | null;
-        };
-        Update: {
-          agent_id?: string;
-          cost_deepseek?: number | null;
-          created_at?: string;
-          id?: string;
-          item?: Json;
-          posted_at?: string | null;
-          posted_tweet_id?: string | null;
-          posted_url?: string | null;
-          source?: string;
-          text?: string;
-          usage?: Json | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "drafts_agent_id_fkey";
-            columns: ["agent_id"];
-            isOneToOne: false;
-            referencedRelation: "agents";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      experiments: {
-        Row: {
           auto_post_master: boolean;
           auto_post_sources: Json;
           beat: string;
@@ -299,6 +55,242 @@ export type Database = {
           websites?: Json;
         };
         Relationships: [];
+      };
+      beat_conflicts: {
+        Row: {
+          created_at: string;
+          agent_id: string;
+          ground_on_beat: boolean;
+          ground_reason: string;
+          id: string;
+          judge_on_beat: boolean;
+          judge_reason: string;
+          source_post_id: string;
+          status: string;
+        };
+        Insert: {
+          created_at?: string;
+          agent_id: string;
+          ground_on_beat: boolean;
+          ground_reason: string;
+          id?: string;
+          judge_on_beat: boolean;
+          judge_reason: string;
+          source_post_id: string;
+          status?: string;
+        };
+        Update: {
+          created_at?: string;
+          agent_id?: string;
+          ground_on_beat?: boolean;
+          ground_reason?: string;
+          id?: string;
+          judge_on_beat?: boolean;
+          judge_reason?: string;
+          source_post_id?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "beat_conflicts_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "beat_conflicts_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: false;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      corpus_posts: {
+        Row: {
+          created_at: string;
+          exclude_reason: string | null;
+          excluded_off_beat: boolean;
+          agent_id: string;
+          id: string;
+          is_long: boolean;
+          like_count: number;
+          media: Json;
+          posted_at: string;
+          repost_count: number;
+          text: string;
+          x_post_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          exclude_reason?: string | null;
+          excluded_off_beat?: boolean;
+          agent_id: string;
+          id?: string;
+          is_long?: boolean;
+          like_count?: number;
+          media?: Json;
+          posted_at: string;
+          repost_count?: number;
+          text: string;
+          x_post_id: string;
+        };
+        Update: {
+          created_at?: string;
+          exclude_reason?: string | null;
+          excluded_off_beat?: boolean;
+          agent_id?: string;
+          id?: string;
+          is_long?: boolean;
+          like_count?: number;
+          media?: Json;
+          posted_at?: string;
+          repost_count?: number;
+          text?: string;
+          x_post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "corpus_posts_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      draft_claims: {
+        Row: {
+          created_at: string;
+          agent_id: string;
+          id: string;
+          source_post_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          agent_id: string;
+          id?: string;
+          source_post_id: string;
+        };
+        Update: {
+          created_at?: string;
+          agent_id?: string;
+          id?: string;
+          source_post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "draft_claims_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "draft_claims_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: false;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      drafts: {
+        Row: {
+          agent_id: string;
+          created_at: string;
+          feedback: string | null;
+          id: string;
+          is_winner: boolean;
+          judge_review: Json | null;
+          judge_verdict: Json | null;
+          model_call_id: string;
+          parent_draft_id: string | null;
+          platform: string;
+          posted_at: string | null;
+          posted_tweet_id: string | null;
+          posted_url: string | null;
+          source_post_id: string;
+          story_id: string | null;
+          synthesis: string | null;
+          translation: string | null;
+        };
+        Insert: {
+          agent_id: string;
+          created_at?: string;
+          feedback?: string | null;
+          id?: string;
+          is_winner?: boolean;
+          judge_review?: Json | null;
+          judge_verdict?: Json | null;
+          model_call_id: string;
+          parent_draft_id?: string | null;
+          platform?: string;
+          posted_at?: string | null;
+          posted_tweet_id?: string | null;
+          posted_url?: string | null;
+          source_post_id: string;
+          story_id?: string | null;
+          synthesis?: string | null;
+          translation?: string | null;
+        };
+        Update: {
+          agent_id?: string;
+          created_at?: string;
+          feedback?: string | null;
+          id?: string;
+          is_winner?: boolean;
+          judge_review?: Json | null;
+          judge_verdict?: Json | null;
+          model_call_id?: string;
+          parent_draft_id?: string | null;
+          platform?: string;
+          posted_at?: string | null;
+          posted_tweet_id?: string | null;
+          posted_url?: string | null;
+          source_post_id?: string;
+          story_id?: string | null;
+          synthesis?: string | null;
+          translation?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "drafts_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "drafts_model_call_id_fkey";
+            columns: ["model_call_id"];
+            isOneToOne: false;
+            referencedRelation: "model_calls";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "drafts_parent_draft_id_fkey";
+            columns: ["parent_draft_id"];
+            isOneToOne: false;
+            referencedRelation: "drafts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "drafts_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: false;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "drafts_story_id_fkey";
+            columns: ["story_id"];
+            isOneToOne: false;
+            referencedRelation: "stories";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       model_calls: {
         Row: {
@@ -348,155 +340,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      post_drafts: {
-        Row: {
-          created_at: string;
-          experiment_id: string;
-          feedback: string | null;
-          id: string;
-          is_winner: boolean;
-          judge_review: Json | null;
-          judge_verdict: Json | null;
-          model_call_id: string;
-          parent_draft_id: string | null;
-          platform: string;
-          posted_at: string | null;
-          posted_tweet_id: string | null;
-          posted_url: string | null;
-          source_post_id: string;
-          story_id: string | null;
-          synthesis: string | null;
-          translation: string | null;
-        };
-        Insert: {
-          created_at?: string;
-          experiment_id: string;
-          feedback?: string | null;
-          id?: string;
-          is_winner?: boolean;
-          judge_review?: Json | null;
-          judge_verdict?: Json | null;
-          model_call_id: string;
-          parent_draft_id?: string | null;
-          platform?: string;
-          posted_at?: string | null;
-          posted_tweet_id?: string | null;
-          posted_url?: string | null;
-          source_post_id: string;
-          story_id?: string | null;
-          synthesis?: string | null;
-          translation?: string | null;
-        };
-        Update: {
-          created_at?: string;
-          experiment_id?: string;
-          feedback?: string | null;
-          id?: string;
-          is_winner?: boolean;
-          judge_review?: Json | null;
-          judge_verdict?: Json | null;
-          model_call_id?: string;
-          parent_draft_id?: string | null;
-          platform?: string;
-          posted_at?: string | null;
-          posted_tweet_id?: string | null;
-          posted_url?: string | null;
-          source_post_id?: string;
-          story_id?: string | null;
-          synthesis?: string | null;
-          translation?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "post_drafts_experiment_id_fkey";
-            columns: ["experiment_id"];
-            isOneToOne: false;
-            referencedRelation: "experiments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "post_drafts_model_call_id_fkey";
-            columns: ["model_call_id"];
-            isOneToOne: false;
-            referencedRelation: "model_calls";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "post_drafts_parent_draft_id_fkey";
-            columns: ["parent_draft_id"];
-            isOneToOne: false;
-            referencedRelation: "post_drafts";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "post_drafts_source_post_id_fkey";
-            columns: ["source_post_id"];
-            isOneToOne: false;
-            referencedRelation: "source_posts";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "post_drafts_story_id_fkey";
-            columns: ["story_id"];
-            isOneToOne: false;
-            referencedRelation: "stories";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      runs: {
-        Row: {
-          agent_id: string;
-          cost_deepseek: number | null;
-          cost_grok: number | null;
-          error: string | null;
-          finished_at: string | null;
-          id: string;
-          result: Json | null;
-          source: string;
-          started_at: string;
-          status: string;
-          trace: Json | null;
-          usage: Json | null;
-        };
-        Insert: {
-          agent_id: string;
-          cost_deepseek?: number | null;
-          cost_grok?: number | null;
-          error?: string | null;
-          finished_at?: string | null;
-          id?: string;
-          result?: Json | null;
-          source?: string;
-          started_at?: string;
-          status?: string;
-          trace?: Json | null;
-          usage?: Json | null;
-        };
-        Update: {
-          agent_id?: string;
-          cost_deepseek?: number | null;
-          cost_grok?: number | null;
-          error?: string | null;
-          finished_at?: string | null;
-          id?: string;
-          result?: Json | null;
-          source?: string;
-          started_at?: string;
-          status?: string;
-          trace?: Json | null;
-          usage?: Json | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "runs_agent_id_fkey";
-            columns: ["agent_id"];
-            isOneToOne: false;
-            referencedRelation: "agents";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       slack_accounts: {
         Row: {
           access_token: string;
@@ -504,7 +347,7 @@ export type Database = {
           channel_id: string;
           channel_name: string;
           created_at: string;
-          experiment_id: string;
+          agent_id: string;
           id: string;
           scopes: string;
           team_id: string;
@@ -517,7 +360,7 @@ export type Database = {
           channel_id: string;
           channel_name: string;
           created_at?: string;
-          experiment_id: string;
+          agent_id: string;
           id?: string;
           scopes: string;
           team_id: string;
@@ -530,7 +373,7 @@ export type Database = {
           channel_id?: string;
           channel_name?: string;
           created_at?: string;
-          experiment_id?: string;
+          agent_id?: string;
           id?: string;
           scopes?: string;
           team_id?: string;
@@ -539,10 +382,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "slack_accounts_experiment_id_fkey";
-            columns: ["experiment_id"];
+            foreignKeyName: "slack_accounts_agent_id_fkey";
+            columns: ["agent_id"];
             isOneToOne: true;
-            referencedRelation: "experiments";
+            referencedRelation: "agents";
             referencedColumns: ["id"];
           },
         ];
@@ -550,28 +393,28 @@ export type Database = {
       slack_delivery_receipts: {
         Row: {
           created_at: string;
-          experiment_id: string;
+          agent_id: string;
           id: string;
           interaction_id: string;
         };
         Insert: {
           created_at?: string;
-          experiment_id: string;
+          agent_id: string;
           id?: string;
           interaction_id: string;
         };
         Update: {
           created_at?: string;
-          experiment_id?: string;
+          agent_id?: string;
           id?: string;
           interaction_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "slack_delivery_receipts_experiment_id_fkey";
-            columns: ["experiment_id"];
+            foreignKeyName: "slack_delivery_receipts_agent_id_fkey";
+            columns: ["agent_id"];
             isOneToOne: false;
-            referencedRelation: "experiments";
+            referencedRelation: "agents";
             referencedColumns: ["id"];
           },
         ];
@@ -621,31 +464,31 @@ export type Database = {
       stories: {
         Row: {
           created_at: string;
-          experiment_id: string;
+          agent_id: string;
           id: string;
           summary: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
-          experiment_id: string;
+          agent_id: string;
           id?: string;
           summary: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
-          experiment_id?: string;
+          agent_id?: string;
           id?: string;
           summary?: string;
           updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "stories_experiment_id_fkey";
-            columns: ["experiment_id"];
+            foreignKeyName: "stories_agent_id_fkey";
+            columns: ["agent_id"];
             isOneToOne: false;
-            referencedRelation: "experiments";
+            referencedRelation: "agents";
             referencedColumns: ["id"];
           },
         ];
@@ -653,31 +496,31 @@ export type Database = {
       story_assignments: {
         Row: {
           created_at: string;
-          experiment_id: string;
+          agent_id: string;
           id: string;
           source_post_id: string;
           story_id: string;
         };
         Insert: {
           created_at?: string;
-          experiment_id: string;
+          agent_id: string;
           id?: string;
           source_post_id: string;
           story_id: string;
         };
         Update: {
           created_at?: string;
-          experiment_id?: string;
+          agent_id?: string;
           id?: string;
           source_post_id?: string;
           story_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "story_assignments_experiment_id_fkey";
-            columns: ["experiment_id"];
+            foreignKeyName: "story_assignments_agent_id_fkey";
+            columns: ["agent_id"];
             isOneToOne: false;
-            referencedRelation: "experiments";
+            referencedRelation: "agents";
             referencedColumns: ["id"];
           },
           {
@@ -752,7 +595,7 @@ export type Database = {
           cost_usd: number | null;
           created_at: string;
           error_code: string | null;
-          experiment_id: string;
+          agent_id: string;
           finished_at: string | null;
           id: string;
           progress_note: string | null;
@@ -766,7 +609,7 @@ export type Database = {
           cost_usd?: number | null;
           created_at?: string;
           error_code?: string | null;
-          experiment_id: string;
+          agent_id: string;
           finished_at?: string | null;
           id?: string;
           progress_note?: string | null;
@@ -780,7 +623,7 @@ export type Database = {
           cost_usd?: number | null;
           created_at?: string;
           error_code?: string | null;
-          experiment_id?: string;
+          agent_id?: string;
           finished_at?: string | null;
           id?: string;
           progress_note?: string | null;
@@ -792,10 +635,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "voice_extraction_runs_experiment_id_fkey";
-            columns: ["experiment_id"];
+            foreignKeyName: "voice_extraction_runs_agent_id_fkey";
+            columns: ["agent_id"];
             isOneToOne: true;
-            referencedRelation: "experiments";
+            referencedRelation: "agents";
             referencedColumns: ["id"];
           },
         ];
@@ -804,7 +647,7 @@ export type Database = {
         Row: {
           cost_usd: number | null;
           created_at: string;
-          experiment_id: string;
+          agent_id: string;
           guide_deploy: string;
           guide_raw: string;
           id: string;
@@ -815,7 +658,7 @@ export type Database = {
         Insert: {
           cost_usd?: number | null;
           created_at?: string;
-          experiment_id: string;
+          agent_id: string;
           guide_deploy: string;
           guide_raw: string;
           id?: string;
@@ -826,7 +669,7 @@ export type Database = {
         Update: {
           cost_usd?: number | null;
           created_at?: string;
-          experiment_id?: string;
+          agent_id?: string;
           guide_deploy?: string;
           guide_raw?: string;
           id?: string;
@@ -836,10 +679,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "voice_guides_experiment_id_fkey";
-            columns: ["experiment_id"];
+            foreignKeyName: "voice_guides_agent_id_fkey";
+            columns: ["agent_id"];
             isOneToOne: false;
-            referencedRelation: "experiments";
+            referencedRelation: "agents";
             referencedColumns: ["id"];
           },
         ];
@@ -848,7 +691,7 @@ export type Database = {
         Row: {
           created_at: string;
           enabled: boolean;
-          experiment_id: string;
+          agent_id: string;
           id: string;
           provenance_model_call_id: string | null;
           rule: string;
@@ -858,7 +701,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           enabled?: boolean;
-          experiment_id: string;
+          agent_id: string;
           id?: string;
           provenance_model_call_id?: string | null;
           rule: string;
@@ -868,7 +711,7 @@ export type Database = {
         Update: {
           created_at?: string;
           enabled?: boolean;
-          experiment_id?: string;
+          agent_id?: string;
           id?: string;
           provenance_model_call_id?: string | null;
           rule?: string;
@@ -877,10 +720,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "voice_rules_experiment_id_fkey";
-            columns: ["experiment_id"];
+            foreignKeyName: "voice_rules_agent_id_fkey";
+            columns: ["agent_id"];
             isOneToOne: false;
-            referencedRelation: "experiments";
+            referencedRelation: "agents";
             referencedColumns: ["id"];
           },
           {

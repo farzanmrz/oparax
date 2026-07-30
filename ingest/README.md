@@ -22,7 +22,7 @@ This is a standalone Node/TypeScript package under `ingest/**`:
   own inline `@supabase/supabase-js` client — it shares only CONFIG with the app (the same
   Supabase project URL + a service-role key, read from this package's own env vars), never
   code, never the app's generated `lib/supabase/database.types.ts`. It is read-only: rule
-  sync selects `experiments.tracked_handles`, the cap alarm selects a count from
+  sync selects `agents.tracked_handles`, the cap alarm selects a count from
   `usage_events`. This worker never writes to Supabase — metering (`usage_events` inserts)
   happens app-side in `processDelivery`, per the plan.
 - Runs via `tsx` (both `dev` and `start`) rather than a `tsc` build step, so `tsx` and its
@@ -34,7 +34,7 @@ This is a standalone Node/TypeScript package under `ingest/**`:
 
 - `env.ts` — validates all required env vars at startup; missing/blank is a **fatal state**
   (see below) and exits immediately (`process.exit(1)`).
-- `rules.ts` — the inline Supabase client; `fetchTrackedHandles` (all `experiments`, deduped
+- `rules.ts` — the inline Supabase client; `fetchTrackedHandles` (all `agents`, deduped
   case-insensitively, mirroring `lib/agent/draft-pipeline.ts`'s own author-routing shape);
   `buildRuleGroups` (chunks into ≤5 rules × ≤40 handles, **drops and logs** any overflow —
   never silently truncates); `syncRules` (rebuilds the X stream rules from scratch every

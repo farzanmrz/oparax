@@ -158,7 +158,7 @@ export async function groundSourcePost(input: {
   ];
 
   // Shared success-path builder: this call's draft IS the post the reporter sees, and
-  // post_drafts.model_call_id points straight at this row — so `output` must be the PLAIN post
+  // drafts.model_call_id points straight at this row — so `output` must be the PLAIN post
   // text (the provenance UI and posting both render model_calls.output verbatim). The verdict's
   // other fields become readable prose in `reasoning`, alongside the model's own trace.
   const buildResult = async (

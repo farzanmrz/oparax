@@ -33,7 +33,7 @@ function traceStateOf(call: NonNullable<ModelCallEmbed>): ReasoningTraceState {
 }
 
 export type CouncilMember = {
-  postDraftId: string;
+  draftId: string;
   model: string;
   output: string;
   reasoning: string | null;
@@ -79,10 +79,23 @@ type DraftRow = {
   model_calls: ModelCallEmbed;
 };
 
+async function fetchModelCalls(
+  supabase: Client,
+  modelCallIds: string[],
+): Promise<Map<string, NonNullable<ModelCallEmbed>>> {
+  if (modelCallIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("model_calls")
+    .select("id, model, output, reasoning, usage, cost_usd")
+    .in("id", modelCallIds);
+  if (error) throw error;
+  return new Map((data ?? []).map((call) => [call.id, call]));
+}
+
 function toMember(row: DraftRow): CouncilMember | null {
   if (!row.model_calls) return null;
   return {
-    postDraftId: row.id,
+    draftId: row.id,
     model: row.model_calls.model,
     output: row.model_calls.output ?? "",
     reasoning: row.model_calls.reasoning,
@@ -127,10 +140,10 @@ function buildGroup(candidateRows: DraftRow[], judgeRows: DraftRow[]): CouncilGr
 }
 
 const DRAFT_DETAIL_SELECT =
-  "id, parent_draft_id, is_winner, judge_verdict, created_at, model_calls(model, output, reasoning, usage, cost_usd)";
+  "id, parent_draft_id, is_winner, judge_verdict, created_at, model_call_id";
 
-/** The current winner's provenance for one story: every `post_drafts` row sharing
- *  `(source_post_id, experiment_id)`, partitioned by `parent_draft_id IS NULL` (the
+/** The current winner's provenance for one story: every `drafts` row sharing
+ *  `(source_post_id, agent_id)`, partitioned by `parent_draft_id IS NULL` (the
  *  originally judged council) vs not (a revision). If the current winner is an original
  *  member, the council IS the judged set. If the winner is a revision, its single model
  *  call is the primary content and the judged original council is returned alongside for
@@ -139,17 +152,25 @@ const DRAFT_DETAIL_SELECT =
 export async function queryCouncilDetail(
   supabase: Client,
   sourcePostId: string,
-  experimentId: string,
+  agentId: string,
 ): Promise<CouncilDetail> {
   const { data, error } = await supabase
-    .from("post_drafts")
+    .from("drafts")
     .select(DRAFT_DETAIL_SELECT)
     .eq("source_post_id", sourcePostId)
-    .eq("experiment_id", experimentId)
+    .eq("agent_id", agentId)
     .order("created_at", { ascending: true });
   if (error) throw error;
 
-  const rows = (data ?? []) as unknown as DraftRow[];
+  const draftRows = data ?? [];
+  const modelCallIds = [
+    ...new Set(draftRows.map((row) => row.model_call_id).filter((id): id is string => id !== null)),
+  ];
+  const modelCallsById = await fetchModelCalls(supabase, modelCallIds);
+  const rows: DraftRow[] = draftRows.map((row) => ({
+    ...row,
+    model_calls: modelCallsById.get(row.model_call_id) ?? null,
+  }));
   const winnerRow = rows.find((r) => r.is_winner);
   if (!winnerRow) return { kind: "not_found" };
 
@@ -168,7 +189,7 @@ export async function queryCouncilDetail(
 }
 
 export type HistoryVersion = {
-  postDraftId: string;
+  draftId: string;
   depth: number; // 0 = the original council's winner, increasing per correction applied
   createdAt: string;
   isCurrent: boolean;
@@ -192,29 +213,37 @@ type HistoryRow = {
 };
 
 /** Walks the `parent_draft_id` chain from the current winner back to the original council's
- *  winner — ONE batched fetch of every `post_drafts` row for the story (not one query per
+ *  winner — ONE batched fetch of every `drafts` row for the story (not one query per
  *  chain hop), then the chain itself is built in memory by following `parent_draft_id`
  *  pointers through a Map. */
 export async function queryDraftHistory(
   supabase: Client,
-  winningPostDraftId: string,
+  winningDraftId: string,
 ): Promise<DraftHistoryDetail> {
   const { data: base, error: baseError } = await supabase
-    .from("post_drafts")
-    .select("source_post_id, experiment_id")
-    .eq("id", winningPostDraftId)
+    .from("drafts")
+    .select("source_post_id, agent_id")
+    .eq("id", winningDraftId)
     .maybeSingle();
   if (baseError) throw baseError;
   if (!base) return { kind: "not_found" };
 
   const { data, error } = await supabase
-    .from("post_drafts")
-    .select("id, parent_draft_id, feedback, created_at, model_calls(output)")
+    .from("drafts")
+    .select("id, parent_draft_id, feedback, created_at, model_call_id")
     .eq("source_post_id", base.source_post_id)
-    .eq("experiment_id", base.experiment_id);
+    .eq("agent_id", base.agent_id);
   if (error) throw error;
 
-  const rows = (data ?? []) as unknown as HistoryRow[];
+  const draftRows = data ?? [];
+  const modelCallIds = [
+    ...new Set(draftRows.map((row) => row.model_call_id).filter((id): id is string => id !== null)),
+  ];
+  const modelCallsById = await fetchModelCalls(supabase, modelCallIds);
+  const rows: HistoryRow[] = draftRows.map((row) => ({
+    ...row,
+    model_calls: modelCallsById.get(row.model_call_id) ?? null,
+  }));
   const byId = new Map(rows.map((r) => [r.id, r]));
 
   // Newest-first by construction: start at the winner and walk parent pointers up to the
@@ -222,7 +251,7 @@ export async function queryDraftHistory(
   // judge row is never any node's parent (`applyCorrection` only ever points a revision's
   // `parent_draft_id` at a previously-winning draft id).
   const chain: HistoryRow[] = [];
-  let cursor: string | null = winningPostDraftId;
+  let cursor: string | null = winningDraftId;
   while (cursor) {
     const node = byId.get(cursor);
     if (!node) break;
@@ -232,7 +261,7 @@ export async function queryDraftHistory(
   if (chain.length === 0) return { kind: "not_found" };
 
   const versions: HistoryVersion[] = chain.map((row, i) => ({
-    postDraftId: row.id,
+    draftId: row.id,
     depth: chain.length - 1 - i,
     createdAt: row.created_at,
     isCurrent: i === 0,

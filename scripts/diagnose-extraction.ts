@@ -204,13 +204,13 @@ async function main(): Promise<void> {
   // the same way scripts/verify-externals.ts scopes its probes.
   const admin = createAdminClient();
   const { data: owner, error: ownerError } = await admin
-    .from("experiments")
+    .from("agents")
     .select("owner_id")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (ownerError) throw ownerError;
-  if (!owner) throw new Error("no experiments row to meter the corpus read against");
+  if (!owner) throw new Error("no agents row to meter the corpus read against");
   const ownerId = owner.owner_id;
 
   console.log(`Pulling corpus for @${handle}…`);

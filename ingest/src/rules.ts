@@ -6,7 +6,7 @@ import type { RuleGroup } from "./types";
  *  "Isolation exception"): its own inline @supabase/supabase-js client, sharing only CONFIG
  *  (the Supabase project URL + a service-role key) with the app — never code, never the
  *  app's generated database.types.ts. Read-only here: rule sync selects
- *  experiments.tracked_handles, the cap alarm (alarm.ts) selects usage_events counts. This
+ *  agents.tracked_handles, the cap alarm (alarm.ts) selects usage_events counts. This
  *  worker never writes to Supabase — metering (usage_events inserts) happens app-side in
  *  processDelivery, per the plan text. */
 export function createRulesClient(url: string, serviceRoleKey: string) {
@@ -36,7 +36,7 @@ const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
  *  desks: the pipeline is the immediate guard, this rebuild (every ~5 min) is the eventual one. */
 export async function fetchTrackedHandles(client: RulesClient): Promise<string[]> {
   const { data, error } = await client
-    .from("experiments")
+    .from("agents")
     .select("tracked_handles, status")
     .returns<{ tracked_handles: string[]; status: string }[]>();
   if (error) throw error;
@@ -74,7 +74,7 @@ export async function fetchTrackedHandles(client: RulesClient): Promise<string[]
  *  is DROPPED, never silently truncated into the last group — the caller must log
  *  `dropped`. Which handles survive the cap is decided by a stable, case-insensitive
  *  alphabetical sort — never "however the DB happened to return rows" (fetchTrackedHandles's
- *  `experiments` select carries no ORDER BY), so the same overflow handles drop on every
+ *  `agents` select carries no ORDER BY), so the same overflow handles drop on every
  *  sync instead of shuffling around unpredictably as row order happens to vary. */
 export function buildRuleGroups(handles: string[]): { groups: RuleGroup[]; dropped: string[] } {
   const capacity = MAX_RULES * MAX_HANDLES_PER_RULE;

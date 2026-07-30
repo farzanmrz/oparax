@@ -3,7 +3,7 @@
 // app/agents/[id]/post-to-x-control.tsx
 //
 // Self-contained per-draft post control — a hard export contract T4 (the Feed draft
-// card, a later task) drops this into verbatim: `postDraftId` + `draftText` +
+// card, a later task) drops this into verbatim: `draftId` + `draftText` +
 // `xLinked`. Nothing else is threaded through — this component owns its own confirm
 // state and calls `postDraftToX` directly.
 //
@@ -23,16 +23,16 @@ import { toast } from "sonner";
 // bundler at build time. Import the default and read parseTweet off it.
 import twitterText from "twitter-text";
 import { Button } from "@/components/ui/button";
-import { postDraftToX } from "@/lib/x/actions";
+import { publishDraftToX } from "@/lib/x/actions";
 import styles from "./source-tweet.module.css";
 
 export function PostToXControl({
-  postDraftId,
+  draftId,
   draftText,
   charLimit,
   xLinked,
 }: {
-  postDraftId: string;
+  draftId: string;
   draftText: string;
   /** The desk's X ceiling — 280, or 25,000 when the posting account's stored `x_accounts.tier`
    *  is premium (resolved by `resolveXTier` in page.tsx). Also why the disable check below uses this rather than
@@ -62,7 +62,7 @@ export function PostToXControl({
   function handleConfirm() {
     setError(null);
     startTransition(async () => {
-      const result = await postDraftToX(postDraftId);
+      const result = await publishDraftToX(draftId);
       if (result.ok) {
         setConfirming(false);
         // No Undo action: the mock's 5s undo implied unpublishing, but a real tweet is

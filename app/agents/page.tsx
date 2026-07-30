@@ -6,7 +6,7 @@ import { AgentsList } from "./agents-list";
 /**
  * Feed-first landing — `/agents` never renders a listing of its own. It reads
  * the `last_desk_id` cookie (set by proxy.ts on every `/agents/{id}` visit),
- * validates it against the reporter's own `experiments` rows (RLS scopes the
+ * validates it against the reporter's own `agents` rows (RLS scopes the
  * select, so a stale or foreign id just misses), and redirects straight into
  * that desk. On a miss it falls back to the most recently created owned desk.
  * A reporter with zero desks is redirected straight to `/agents/new` — there
@@ -20,16 +20,12 @@ export default async function AgentsListingPage() {
   const lastDeskId = cookieStore.get("last_desk_id")?.value;
 
   if (lastDeskId) {
-    const { data } = await supabase
-      .from("experiments")
-      .select("id")
-      .eq("id", lastDeskId)
-      .maybeSingle();
+    const { data } = await supabase.from("agents").select("id").eq("id", lastDeskId).maybeSingle();
     if (data) redirect(`/agents/${data.id}`);
   }
 
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("id")
     .order("created_at", { ascending: false })
     .limit(1)

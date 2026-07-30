@@ -53,7 +53,7 @@ export function isExtractionRunStale(updatedAt: string, now = Date.now()): boole
  * is the one that claimed it. `true` means claim held — go spend; `false` means a run is already
  * in flight for this desk (or the claim could not be written), so the caller must not spend.
  *
- * The database decides, not the process: a plain INSERT wins against `UNIQUE(experiment_id)`
+ * The database decides, not the process: a plain INSERT wins against `UNIQUE(agent_id)`
  * when no row exists, and a 23505 conflict falls through to an UPDATE guarded by
  * `.neq("status", "running")` OR'd with `updated_at` older than `STALE_RUN_MS` — a row stuck at
  * `running` past that ceiling is reclaimable too. Both conditions are evaluated by Postgres
@@ -73,7 +73,7 @@ export function isExtractionRunStale(updatedAt: string, now = Date.now()): boole
  * on it — so an unexpected write failure resolves to `false` (don't spend) rather than being
  * swallowed into an optimistic `true`.
  */
-export async function startRun(experimentId: string): Promise<boolean> {
+export async function startRun(agentId: string): Promise<boolean> {
   const now = new Date().toISOString();
   const staleCutoff = new Date(Date.now() - STALE_RUN_MS).toISOString();
   const fresh = {
@@ -92,7 +92,7 @@ export async function startRun(experimentId: string): Promise<boolean> {
     const admin = createAdminClient();
     const { error: insertError } = await admin
       .from("voice_extraction_runs")
-      .insert({ experiment_id: experimentId, ...fresh });
+      .insert({ agent_id: agentId, ...fresh });
     if (!insertError) return true;
     // 23505 = unique_violation: this desk has run before, so reopen its one row instead.
     if (insertError.code !== "23505") throw insertError;
@@ -100,13 +100,13 @@ export async function startRun(experimentId: string): Promise<boolean> {
     const { data, error: updateError } = await admin
       .from("voice_extraction_runs")
       .update(fresh)
-      .eq("experiment_id", experimentId)
+      .eq("agent_id", agentId)
       .or(`status.neq.running,updated_at.lt.${staleCutoff}`)
       .select("id");
     if (updateError) throw updateError;
     return (data ?? []).length > 0;
   } catch (e) {
-    console.error(`startRun: failed for experiment ${experimentId}`, e);
+    console.error(`startRun: failed for agent ${agentId}`, e);
     return false;
   }
 }
@@ -119,7 +119,7 @@ export async function startRun(experimentId: string): Promise<boolean> {
  * work is already paid for.
  */
 export async function recordProgress(
-  experimentId: string,
+  agentId: string,
   patch: { stage?: RunStage; progressNote?: string; reasoningPartial?: string },
 ): Promise<void> {
   try {
@@ -134,10 +134,10 @@ export async function recordProgress(
           : {}),
         updated_at: new Date().toISOString(),
       })
-      .eq("experiment_id", experimentId);
+      .eq("agent_id", agentId);
     if (error) throw error;
   } catch (e) {
-    console.error(`recordProgress: failed for experiment ${experimentId}`, e);
+    console.error(`recordProgress: failed for agent ${agentId}`, e);
   }
 }
 
@@ -148,7 +148,7 @@ export async function recordProgress(
  * Same best-effort discipline as the two above.
  */
 export async function finishRun(
-  experimentId: string,
+  agentId: string,
   result: { status: "completed" | "failed"; costUsd?: number | null; errorCode?: string | null },
 ): Promise<void> {
   try {
@@ -165,9 +165,9 @@ export async function finishRun(
         finished_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("experiment_id", experimentId);
+      .eq("agent_id", agentId);
     if (error) throw error;
   } catch (e) {
-    console.error(`finishRun: failed for experiment ${experimentId}`, e);
+    console.error(`finishRun: failed for agent ${agentId}`, e);
   }
 }

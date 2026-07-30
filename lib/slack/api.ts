@@ -24,7 +24,7 @@ const SLACK_API = "https://slack.com/api";
 export const SLACK_SCOPES = "chat:write,incoming-webhook";
 
 /** The interactive button's `action_id` — the interactions route (a later Wave 3 task) reads
- *  this back to know which action fired, and `value` carries the `post_drafts.id` it applies
+ *  this back to know which action fired, and `value` carries the `drafts.id` it applies
  *  to. Exported so both sides of that contract import the same literal instead of duplicating
  *  the string (see task-15-report.md). */
 export const SLACK_POST_TO_X_ACTION_ID = "post_to_x";
@@ -67,7 +67,7 @@ async function assertOk(endpoint: string, res: Response): Promise<void> {
  *  "Post to X" button carrying the draft's id as `value`. The Feed's draft card (read for
  *  this task) offers exactly one actionable next step on an unposted draft — Post to X — so
  *  there is no second button here; a later task can extend this if the card grows one. */
-export function buildDraftBlocks(input: { text: string; postDraftId: string }): unknown[] {
+export function buildDraftBlocks(input: { text: string; draftId: string }): unknown[] {
   return [
     {
       type: "section",
@@ -81,7 +81,7 @@ export function buildDraftBlocks(input: { text: string; postDraftId: string }): 
           text: { type: "plain_text", text: "Post to X", emoji: true },
           style: "primary",
           action_id: SLACK_POST_TO_X_ACTION_ID,
-          value: input.postDraftId,
+          value: input.draftId,
         },
       ],
     },

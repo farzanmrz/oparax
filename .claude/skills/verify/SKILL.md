@@ -35,16 +35,16 @@ Surfaces and the commands that reach them (all verified working):
      test post","posted_at":"2026-07-22T12:00:00Z"}'` → expect `200` and a
      `ProcessDeliveryResult` JSON body (`sourcePostId`, `drafted[]`) — this is
      `processDelivery` running for real: a council drafts, a judge picks a
-     winner, `model_calls`/`post_drafts`/`usage_events` rows land, and (if
+     winner, `model_calls`/`drafts`/`usage_events` rows land, and (if
      Slack/Resend env vars are set) a real notification sends.
    - **Concurrent-duplicate-delivery, proving exactly one council run**: fire
      the same authorized request body (same `x_post_id`, same matching
      `author_handle`) twice, back to back. `draft_claims`'s
-     `UNIQUE(source_post_id, experiment_id)` (D16) means only the first
+     `UNIQUE(source_post_id, agent_id)` (D16) means only the first
      request's atomic claim insert wins; the second's `processDelivery` call
-     returns `drafted[].skipped: "already_drafted"` for that experiment with
+     returns `drafted[].skipped: "already_drafted"` for that agent with
      no new council run — confirm in the DB that exactly one set of
-     `model_calls` rows (one council's worth) and one `post_drafts` winner
+     `model_calls` rows (one council's worth) and one `drafts` winner
      exist for that `source_post_id`, not two.
 3. **Browser UI**: log in at `/login` with the AGENTS.md test account, then:
    - **Feed-first landing**: visiting `/agents` redirects straight into a

@@ -3,7 +3,7 @@
 // Setup tab's Spend rollup. Aggregates `model_calls` GROUPED BY `stage` — never
 // `usage_events.kind` — because `draft-pipeline.ts` stamps every drafting-family call AND
 // the judge call under the SAME `usage_events.kind === "drafting"` (see its
-// `deliverDraft`/`draftForExperiment` `stampUsageEvent` calls); a kind-based split can't
+// `deliverDraft`/`draftForAgent` `stampUsageEvent` calls); a kind-based split can't
 // tell drafting from judging apart and would silently render $0.00 for Judging.
 // `model_calls.stage` is where they're actually distinct — verified against the real
 // writers: `draft-ground.ts`'s ONE grounding call stamps `"grounding"` (a real per-delivery
@@ -22,7 +22,7 @@
 // carry no dollar cost in this app), so they're COUNTED here, never costed.
 //
 // Owner-wide, not per-desk: neither `model_calls` nor `usage_events` carries an
-// `experiment_id` column, so "spend" here is genuinely across every desk the signed-in
+// `agent_id` column, so "spend" here is genuinely across every desk the signed-in
 // owner has — the Setup card's copy says "across all your desks" for exactly this reason.
 //
 // Read-only, RLS-scoped (`model_calls_select_own` / `usage_events_select_own` — both

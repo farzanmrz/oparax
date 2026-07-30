@@ -3,7 +3,7 @@
 // Server actions for disconnecting a desk's Slack link and sending a test message. The
 // link/connect flow's entry point is the OAuth route (Wave 3) — this file only owns
 // disconnect + test-send. Both actions prove desk ownership the same way
-// `lib/slack/link-state.ts` does: a cookie-client (RLS) SELECT against `experiments`, which
+// `lib/slack/link-state.ts` does: a cookie-client (RLS) SELECT against `agents`, which
 // is owner-scoped — no row back means either "not signed in" or "not this reporter's desk",
 // and both are treated identically as "please sign in again" rather than leaking which.
 "use server";
@@ -14,12 +14,12 @@ import { postMessage } from "@/lib/slack/api";
 import { ownsDesk } from "@/lib/slack/link-state";
 import { deleteSlackAccount, getSlackAccount } from "@/lib/slack/store";
 
-const experimentIdSchema = z.string().uuid();
+const agentIdSchema = z.string().uuid();
 
 export async function unlinkSlack(
-  experimentId: string,
+  agentId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const parsedId = experimentIdSchema.safeParse(experimentId);
+  const parsedId = agentIdSchema.safeParse(agentId);
   if (!parsedId.success) return { ok: false, error: "Select a desk to unlink." };
   if (!(await ownsDesk(parsedId.data))) return { ok: false, error: "Please sign in again." };
 
@@ -34,9 +34,9 @@ export async function unlinkSlack(
 }
 
 export async function sendTestSlack(
-  experimentId: string,
+  agentId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const parsedId = experimentIdSchema.safeParse(experimentId);
+  const parsedId = agentIdSchema.safeParse(agentId);
   if (!parsedId.success) return { ok: false, error: "Select a desk to test." };
   if (!(await ownsDesk(parsedId.data))) return { ok: false, error: "Please sign in again." };
 

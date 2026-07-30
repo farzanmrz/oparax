@@ -11,12 +11,12 @@ import { FeedEmptyState, FeedItemCard, type FeedReadiness } from "./feed-item";
 /**
  * The Feed — this desk's story/draft card pairs, reverse chronological (unposted stories
  * first, then most-recently-posted). `app/agents/[id]/layout.tsx` already resolved and
- * owner-checked this `id` before this page can render at all (its own `experiments` read
+ * owner-checked this `id` before this page can render at all (its own `agents` read
  * 404s on a foreign or malformed id), so this page trusts it and does its own small
  * `reporter_handle` read via the owner-scoped cookie client. `fetchFeedPage` runs on the
  * SERVICE-ROLE client instead — `source_posts` carries deny-all RLS (no SELECT policy),
  * so the cookie client would silently return zero rows for the news-card side; every query
- * inside `fetchFeedPage` re-scopes to this `experimentId` explicitly, so the elevated client
+ * inside `fetchFeedPage` re-scopes to this `agentId` explicitly, so the elevated client
  * never reads outside this desk.
  */
 export default async function FeedPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,32 +24,27 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  const [experimentResult, stories, xLink, voiceGuideResult] = await Promise.all([
+  const [agentResult, stories, xLink, voiceGuideResult] = await Promise.all([
     supabase
-      .from("experiments")
+      .from("agents")
       .select("reporter_handle, status, tracked_handles")
       .eq("id", id)
       .maybeSingle(),
     fetchFeedPage(admin, id),
     getXLinkState(),
-    supabase
-      .from("voice_guides")
-      .select("experiment_id")
-      .eq("experiment_id", id)
-      .limit(1)
-      .maybeSingle(),
+    supabase.from("voice_guides").select("agent_id").eq("agent_id", id).limit(1).maybeSingle(),
   ]);
 
-  if (experimentResult.error || !experimentResult.data) {
+  if (agentResult.error || !agentResult.data) {
     throw new Error("Failed to load the agent. Please try again.");
   }
-  const experiment = experimentResult.data;
-  const reporterHandle = experiment.reporter_handle;
+  const agent = agentResult.data;
+  const reporterHandle = agent.reporter_handle;
   const deskHasGuide = Boolean(voiceGuideResult.data);
 
-  const hasSources = (experiment.tracked_handles?.length ?? 0) > 0;
+  const hasSources = (agent.tracked_handles?.length ?? 0) > 0;
   let readiness: FeedReadiness;
-  if (experiment.status !== "active") {
+  if (agent.status !== "active") {
     readiness = { kind: "paused" };
   } else if (!hasSources) {
     readiness = { kind: "no_sources" };
@@ -131,7 +126,7 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
             {stories.map((story) => (
               <FeedItemCard
                 charLimit={charLimit}
-                experimentId={id}
+                agentId={id}
                 key={story.storyId}
                 reporterHandle={reporterHandle}
                 story={story}

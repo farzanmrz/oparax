@@ -22,7 +22,7 @@ export default async function SetupPage({ params }: { params: Promise<{ id: stri
 
   const [deskResult, spendWindows, slackLinkState] = await Promise.all([
     supabase
-      .from("experiments")
+      .from("agents")
       .select("id, tracked_handles, websites, auto_post_master, auto_post_sources")
       .eq("id", id)
       .maybeSingle(),

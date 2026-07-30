@@ -7,28 +7,29 @@
 // rows back — not an error, just an empty result that would masquerade as "no stories". The
 // caller (`page.tsx`, rendering inside `app/agents/[id]/layout.tsx`'s already-enforced
 // ownership check on this same `id`) must pass the SERVICE-ROLE client here; every query
-// below re-scopes to `experimentId` explicitly anyway, exactly like the cron dispatcher's
-// and `lib/x/`'s own admin-client reads. `post_drafts`/`model_calls`/`stories` would also
+// below re-scopes to `agentId` explicitly anyway, exactly like the cron dispatcher's
+// and `lib/x/`'s own admin-client reads. `drafts`/`model_calls`/`stories` would also
 // work through the owner-scoped RLS client, but splitting the client per table inside one
 // function buys nothing — one client, explicit filters everywhere.
 //
 // `stories` is the query root now (Slice 5, T2.4b clustering is live — every source post that
 // reaches drafting is first assigned to a `stories` row, one row per desk-scoped news
 // development, not one row per delivery). Four batched reads, never N+1: (1) the bounded
-// `stories` page for this experiment, newest first (the SAME row cap the old `post_drafts`-
+// `stories` page for this agent, newest first (the SAME row cap the old `drafts`-
 // rooted query had); (2) the batched `story_assignments` -> `source_posts` read for the
 // news-card side, now genuinely a LIST per story (clustering can fold multiple deliveries
-// into one story); (3) the batched winning `post_drafts` rows for those stories — now
-// potentially MULTIPLE per story, one per platform that produced a winner — joined to their
-// `model_calls` row for text/model/cost; (4) council metadata for those same stories in one
-// `.in("story_id", ids)` select — existence/cost only (`parent_draft_id`, `judge_verdict`,
-// `model_calls(cost_usd)`), never `output`/`reasoning` on a non-winner row, which would leak
-// a candidate's reasoning trace into the list payload (only the on-demand "Why this draft"
-// dialog, T5's `council-query.ts`, is allowed to fetch that).
+// into one story); (3) the batched winning `drafts` rows for those stories — now
+// potentially MULTIPLE per story, one per platform that produced a winner; (4) council
+// metadata for those same stories in one `.in("story_id", ids)` select; and (5) one batched
+// `model_calls` read by the collected draft foreign keys. The last read supplies winner
+// text/model/cost and council cost without relying on PostgREST relationship embeds, which
+// are not available in every deployed schema cache. It never selects `output`/`reasoning` for
+// a non-winner row, so a candidate's reasoning trace cannot leak into the list payload (only
+// the on-demand "Why this draft" dialog, T5's `council-query.ts`, is allowed to fetch that).
 //
 // Ordering: `stories` carries no `posted_at` of its own (only X's own winning draft ever gets
 // one — LinkedIn/Bluesky have no posting mechanism this slice), so "unconfirmed-first" can't be
-// expressed as a single `.order()` against the query root the way the old `post_drafts`-rooted
+// expressed as a single `.order()` against the query root the way the old `drafts`-rooted
 // query could. Fetch the bounded story page newest-created-first, then re-sort once winners
 // are known: unconfirmed stories (no X winner, an X winner not yet posted, or an AMBIGUOUS X
 // winner — postedAt set but postedUrl null, meaning X may have accepted the post but the
@@ -81,7 +82,7 @@ export type FeedStory = {
     Record<
       Platform,
       {
-        postDraftId: string;
+        draftId: string;
         text: string;
         model: string;
         /** When the council produced this draft — the draft card's own timestamp, distinct
@@ -120,6 +121,7 @@ type WinnerRow = {
   posted_at: string | null;
   posted_url: string | null;
   created_at: string;
+  model_call_id: string;
   model_calls: WinnerModelCall;
 };
 
@@ -127,6 +129,7 @@ type CouncilRow = {
   story_id: string | null;
   parent_draft_id: string | null;
   judge_verdict: unknown;
+  model_call_id: string;
   model_calls: { cost_usd: number | null } | null;
 };
 
@@ -161,11 +164,11 @@ function summarizeCouncil(rows: CouncilRow[]): {
   };
 }
 
-export async function fetchFeedPage(supabase: Client, experimentId: string): Promise<FeedStory[]> {
+export async function fetchFeedPage(supabase: Client, agentId: string): Promise<FeedStory[]> {
   const { data: storyData, error: storyError } = await supabase
     .from("stories")
     .select("id, summary, created_at")
-    .eq("experiment_id", experimentId)
+    .eq("agent_id", agentId)
     .order("created_at", { ascending: false })
     .limit(STORY_PAGE_LIMIT);
   if (storyError) throw storyError;
@@ -185,28 +188,47 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
       .in("story_id", storyIds)
       .order("created_at", { ascending: true }),
     supabase
-      .from("post_drafts")
+      .from("drafts")
       // Oldest-first, for the same reason as the assignments query above: a story that clustered
       // more than one source post carries one is_winner row per (platform, source post) — each
       // delivery's council crowns its own winner and nothing dethrones the last one — so the
       // winners loop below would otherwise keep whichever row PostgREST happened to return last.
       // Ascending means the NEWEST winner is applied last and wins, deterministically.
-      .select(
-        "id, story_id, platform, posted_at, posted_url, created_at, model_calls(model, output, cost_usd)",
-      )
-      .eq("experiment_id", experimentId)
+      .select("id, story_id, platform, posted_at, posted_url, created_at, model_call_id")
+      .eq("agent_id", agentId)
       .in("story_id", storyIds)
       .eq("is_winner", true)
       .order("created_at", { ascending: true }),
     supabase
-      .from("post_drafts")
-      .select("story_id, parent_draft_id, judge_verdict, model_calls(cost_usd)")
-      .eq("experiment_id", experimentId)
+      .from("drafts")
+      .select("story_id, parent_draft_id, judge_verdict, model_call_id")
+      .eq("agent_id", agentId)
       .in("story_id", storyIds),
   ]);
   if (assignmentsResult.error) throw assignmentsResult.error;
   if (winnersResult.error) throw winnersResult.error;
   if (councilResult.error) throw councilResult.error;
+
+  const winnerRows = winnersResult.data ?? [];
+  const councilRows = councilResult.data ?? [];
+  const modelCallIds = [
+    ...new Set(
+      [...winnerRows, ...councilRows]
+        .map((row) => row.model_call_id)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const modelCallsById = new Map<string, WinnerModelCall>();
+  if (modelCallIds.length > 0) {
+    const { data: modelCallData, error: modelCallError } = await supabase
+      .from("model_calls")
+      .select("id, model, output, cost_usd")
+      .in("id", modelCallIds);
+    if (modelCallError) throw modelCallError;
+    for (const call of modelCallData ?? []) {
+      modelCallsById.set(call.id, call);
+    }
+  }
 
   const sourcePostsByStoryId = new Map<string, FeedStory["sourcePosts"]>();
   for (const row of (assignmentsResult.data ?? []) as unknown as AssignmentRow[]) {
@@ -224,11 +246,15 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
   }
 
   const winnersByStoryId = new Map<string, FeedStory["winners"]>();
-  for (const winner of (winnersResult.data ?? []) as unknown as WinnerRow[]) {
+  const winnersWithModelCalls: WinnerRow[] = winnerRows.map((row) => ({
+    ...row,
+    model_calls: modelCallsById.get(row.model_call_id) ?? null,
+  }));
+  for (const winner of winnersWithModelCalls) {
     if (!winner.story_id || !isPlatform(winner.platform)) continue;
     const entry = winnersByStoryId.get(winner.story_id) ?? {};
     entry[winner.platform] = {
-      postDraftId: winner.id,
+      draftId: winner.id,
       text: winner.model_calls?.output ?? "",
       model: winner.model_calls?.model ?? "unknown",
       createdAt: winner.created_at,
@@ -239,7 +265,11 @@ export async function fetchFeedPage(supabase: Client, experimentId: string): Pro
   }
 
   const councilRowsByStoryId = new Map<string, CouncilRow[]>();
-  for (const row of (councilResult.data ?? []) as unknown as CouncilRow[]) {
+  const councilRowsWithModelCalls: CouncilRow[] = councilRows.map((draft) => ({
+    ...draft,
+    model_calls: modelCallsById.get(draft.model_call_id) ?? null,
+  }));
+  for (const row of councilRowsWithModelCalls) {
     if (!row.story_id) continue;
     const list = councilRowsByStoryId.get(row.story_id) ?? [];
     list.push(row);

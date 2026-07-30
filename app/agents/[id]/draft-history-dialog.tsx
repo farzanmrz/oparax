@@ -3,12 +3,12 @@
 // Self-contained "Draft history" overlay: `DraftHistoryDialog` renders its own trigger
 // icon-button AND owns its open state — plain local `useState`, mirroring
 // `draft-edit-dialog.tsx`'s pattern. This dialog used to mirror its open state to
-// `?history=<winningPostDraftId>` for deep-linkability, but the page is fully dynamic, so
+// `?history=<winningDraftId>` for deep-linkability, but the page is fully dynamic, so
 // every open/close forced a full server round trip (re-running the feed query) before the
 // dialog visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an
 // instant open. The heavy body — the fetch + the version timeline + the corrections thread —
 // is mounted only once the dialog is actually opened (the `{open ? ... : null}` guard below);
-// the trigger renders immediately. T4 drops `<DraftHistoryDialog winningPostDraftId=.. />`
+// the trigger renders immediately. T4 drops `<DraftHistoryDialog winningDraftId=.. />`
 // straight into the draft-card action row.
 "use client";
 
@@ -97,7 +97,7 @@ function DraftHistorySkeleton() {
   );
 }
 
-function DraftHistoryBodyImpl({ winningPostDraftId }: { winningPostDraftId: string }) {
+function DraftHistoryBodyImpl({ winningDraftId }: { winningDraftId: string }) {
   const [state, setState] = useState<
     { status: "loading" } | { status: "error" } | { status: "ready"; detail: DraftHistoryDetail }
   >({ status: "loading" });
@@ -105,7 +105,7 @@ function DraftHistoryBodyImpl({ winningPostDraftId }: { winningPostDraftId: stri
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    fetchDraftHistory(winningPostDraftId)
+    fetchDraftHistory(winningDraftId)
       .then((detail) => {
         if (!cancelled) setState({ status: "ready", detail });
       })
@@ -115,7 +115,7 @@ function DraftHistoryBodyImpl({ winningPostDraftId }: { winningPostDraftId: stri
     return () => {
       cancelled = true;
     };
-  }, [winningPostDraftId]);
+  }, [winningDraftId]);
 
   if (state.status === "loading") return <DraftHistorySkeleton />;
   if (state.status === "error") {
@@ -132,7 +132,7 @@ function DraftHistoryBodyImpl({ winningPostDraftId }: { winningPostDraftId: stri
       <div className="space-y-2">
         <p className="font-mono text-xs text-muted-foreground">X draft · newest first</p>
         {state.detail.versions.map((version) => (
-          <VersionRow key={version.postDraftId} version={version} />
+          <VersionRow key={version.draftId} version={version} />
         ))}
       </div>
       <div className="space-y-2 border-t pt-4">
@@ -162,7 +162,7 @@ function HistoryTrigger() {
   );
 }
 
-export function DraftHistoryDialog({ winningPostDraftId }: { winningPostDraftId: string }) {
+export function DraftHistoryDialog({ winningDraftId }: { winningDraftId: string }) {
   // Plain local state, not URL-synced — see the file header comment for why.
   const [open, setOpen] = useState(false);
 
@@ -177,7 +177,7 @@ export function DraftHistoryDialog({ winningPostDraftId }: { winningPostDraftId:
           </DialogDescription>
         </DialogHeader>
         <div aria-live="polite">
-          {open ? <DraftHistoryBodyImpl winningPostDraftId={winningPostDraftId} /> : null}
+          {open ? <DraftHistoryBodyImpl winningDraftId={winningDraftId} /> : null}
         </div>
       </DialogContent>
     </Dialog>

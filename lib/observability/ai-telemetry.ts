@@ -70,7 +70,7 @@ export type SpanAttributeValue = string | number | boolean;
  * This does three jobs one `experimental_telemetry` block used to be expected to do:
  *
  *  1. **Attributes.** Since v7 dropped telemetry metadata (above), this span is the only place
- *     `oparax.experiment_id` / `oparax.handle` / `oparax.corpus_posts` can live. Those are what
+ *     `oparax.agent_id` / `oparax.handle` / `oparax.corpus_posts` can live. Those are what
  *     make a Sentry search answer "show me every extraction over 90 posts" instead of "show me
  *     every extraction".
  *  2. **A parent.** The AI SDK's spans become children of a named stage rather than floating

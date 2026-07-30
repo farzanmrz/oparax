@@ -79,14 +79,14 @@ function DraftHeader({ handle, draftedAt }: { handle: string; draftedAt?: string
 
 function DraftCard({
   story,
-  experimentId,
+  agentId,
   publishHandle,
   charLimit,
   xLinked,
   opacityClass,
 }: {
   story: FeedStory;
-  experimentId: string;
+  agentId: string;
   publishHandle: string;
   charLimit: number;
   xLinked: boolean;
@@ -142,7 +142,7 @@ function DraftCard({
         <DraftHeader draftedAt={draftedAt} handle={publishHandle} />
         <DraftPlatformSwitcher
           charLimit={charLimit}
-          experimentId={experimentId}
+          agentId={agentId}
           story={story}
           xLinked={xLinked}
         />
@@ -156,14 +156,14 @@ function DraftCard({
  *  `page.tsx`). Posted stories render both cards at reduced opacity per the design (§4). */
 export function FeedItemCard({
   story,
-  experimentId,
+  agentId,
   reporterHandle,
   xHandle,
   charLimit,
   xLinked,
 }: {
   story: FeedStory;
-  experimentId: string;
+  agentId: string;
   reporterHandle: string;
   xHandle: string | null;
   charLimit: number;
@@ -191,7 +191,7 @@ export function FeedItemCard({
       />
       <DraftCard
         charLimit={charLimit}
-        experimentId={experimentId}
+        agentId={agentId}
         opacityClass={opacityClass}
         publishHandle={xHandle ?? reporterHandle}
         story={story}

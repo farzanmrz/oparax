@@ -23,8 +23,8 @@
 // dashes or underscores, never a handle, URL, or anything free-form a user typed.
 
 /** One desk's voice extraction, across retries. */
-export function extractionConversationId(experimentId: string): string {
-  return `ext-${experimentId}`;
+export function extractionConversationId(agentId: string): string {
+  return `ext-${agentId}`;
 }
 
 /** One story's drafting council + judge. */
