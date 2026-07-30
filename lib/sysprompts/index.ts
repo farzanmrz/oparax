@@ -11,7 +11,7 @@ const load = (name: string) => readFileSync(join(process.cwd(), "lib/sysprompts"
 export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
 export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
 export const DRAFT_REVISE_PROMPT = load("draft-revise.md");
-// THE drafting call's prompt: one gpt-5-nano pass that sees the images, translates, judges
+// THE drafting call's prompt: one Qwen 3.7 Flash pass that sees the images, translates, judges
 // beat relevance, and writes the post the reporter sees (the revise/synthesize stages that
 // once followed it were deleted — see draft-ground.ts's header).
 export const DRAFT_GROUND_PROMPT = load("draft-ground.md");

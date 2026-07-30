@@ -2,7 +2,7 @@
 //
 // The drafting pipeline's shared types plus `reviseDraft` — the one still-live piece of the
 // old parallel council, kept because `applyCorrection` (the dormant emailed-correction path)
-// depends on it. The live delivery path's drafting itself is now ONE gpt-5-nano call
+// depends on it. The live delivery path's drafting itself is now one Qwen 3.7 Flash ground call
 // (`draft-ground.ts`) — the sequential ground → revise ×2 → synthesize pipeline that briefly
 // replaced the parallel 3-model-draft + judge architecture was itself collapsed to that single
 // call (see draft-ground.ts's header; git history has `runDraftCouncil` and
@@ -20,13 +20,9 @@
 import { generateText } from "ai";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { DRAFT_COUNCIL_CONTRACT, DRAFT_REVISE_PROMPT } from "@/lib/sysprompts";
-import {
-  DEEPSEEK_DRAFT_MODEL,
-  DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
-  stripMarkdown,
-} from "./deepseek-draft-config";
 import { X_CHAR_LIMITS } from "./desk-config";
 import { resolveGatewayCost } from "./gateway-cost";
+import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS, stripMarkdown } from "./qwen-draft-config";
 import { reasoningTraceState } from "./reasoning-trace";
 
 export type SourceBrief = {
@@ -35,9 +31,8 @@ export type SourceBrief = {
   authorHandle: string;
   text: string;
   /** Attached photos (full image) or video/GIF poster frames — descriptors only. Only the
-   *  grounding stage (draft-ground.ts) is vision-capable and reads this; every downstream
-   *  stage (revise, synthesize) sees grounding's mediaDescription instead, never the images
-   *  themselves. */
+   *  vision-capable grounding and judge stages read these original attachments directly;
+   *  correction-only revision calls remain text-only. */
   media: { kind: string; imageUrl: string }[];
 };
 
@@ -129,8 +124,7 @@ function checkViolations(text: string, ceiling: number): string[] {
 }
 
 /** One revision call applying a reporter's emailed correction to a previous draft. Returns the
- *  same shape so the caller persists it identically. Same DeepSeek config as the drafting
- *  families — no `reasoning` param, native adaptive thinking. */
+ *  same shape so the caller persists it identically. */
 export async function reviseDraft(input: {
   voiceGuidance: string;
   accountTier: "standard" | "premium";
@@ -154,11 +148,11 @@ export async function reviseDraft(input: {
 
   const generate = (p: string) =>
     generateText({
-      model: DEEPSEEK_DRAFT_MODEL,
-      providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
+      model: QWEN_DRAFT_MODEL,
+      providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       system,
       prompt: p,
-      experimental_telemetry: aiTelemetry("draft_council", "draft-revision-deepseek"),
+      experimental_telemetry: aiTelemetry("draft_council", "draft-revision-qwen"),
     });
 
   const calls: CouncilCall[] = [];
@@ -168,7 +162,7 @@ export async function reviseDraft(input: {
       kind: "revision",
       stage: "drafting",
       role: "revision",
-      model: DEEPSEEK_DRAFT_MODEL,
+      model: QWEN_DRAFT_MODEL,
       output: revision.text,
       reasoning: revision.reasoningText ?? null,
       usage: revision.usage,
@@ -190,7 +184,7 @@ export async function reviseDraft(input: {
           kind: "repair",
           stage: "drafting",
           role: "revision",
-          model: DEEPSEEK_DRAFT_MODEL,
+          model: QWEN_DRAFT_MODEL,
           output: repair.text,
           reasoning: repair.reasoningText ?? null,
           usage: repair.usage,
@@ -199,7 +193,7 @@ export async function reviseDraft(input: {
       );
       finalText = repair.text;
     } catch (err) {
-      console.error(`draft council: revision repair call failed for ${DEEPSEEK_DRAFT_MODEL}`, err);
+      console.error(`draft council: revision repair call failed for ${QWEN_DRAFT_MODEL}`, err);
     }
   }
 

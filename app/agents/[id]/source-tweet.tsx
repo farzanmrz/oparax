@@ -36,7 +36,7 @@
 // longer on X · archived" — because holding the record X no longer serves is part of what the
 // product is. Fetch failures are normal operation here, never an error.
 import type { Tweet } from "react-tweet/api";
-import { getTweet } from "react-tweet/api";
+import { fetchTweet } from "react-tweet/api";
 import type { FeedStory } from "@/lib/agent/feed-query";
 import { buildSyntheticTweet } from "@/lib/x/tweet-shape";
 import { ExpandableBody } from "./expandable-body";
@@ -46,7 +46,7 @@ import styles from "./source-tweet.module.css";
 import { XAvatar } from "./x-avatar";
 
 /** Tweet data is public and identical for every viewer, so it caches at the FETCH layer —
- *  `getTweet` forwards its second argument straight to `fetch`, and Next's `next.revalidate`
+ *  `fetchTweet` forwards its second argument straight to `fetch`, and Next's `next.revalidate`
  *  keys on the request URL, which already carries the tweet id. A day is long relative to how
  *  fast a post's content changes and short relative to how long a story stays on the feed.
  *
@@ -56,7 +56,13 @@ import { XAvatar } from "./x-avatar";
  *  live against the dev server. Fetch-level revalidation is also the Next 16 idiom. */
 async function getCachedTweet(id: string): Promise<Tweet | undefined> {
   try {
-    return await getTweet(id, { next: { revalidate: 60 * 60 * 24 } } as RequestInit);
+    const result = await fetchTweet(id, {
+      next: { revalidate: 60 * 60 * 24 },
+    } as RequestInit);
+    // `getTweet()` wraps this call but logs every tombstone as "made private", even when X's
+    // payload says the author deleted it. The Feed already has the truthful archived fallback,
+    // so consume the quiet lower-level result and let either absence case select that fallback.
+    return result.data;
   } catch {
     // A syndication outage must never take the Feed down — the stored copy still renders.
     return undefined;

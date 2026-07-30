@@ -32,17 +32,21 @@ export type RunStage =
 
 /**
  * A `running` row older than this is treated as dead, not in-flight, and becomes reclaimable.
- * The real-world ceiling is the route's own `maxDuration = 300` (see `extract-guide.ts`'s
- * `EXTRACT_TIMEOUT_MS = 280_000` comment for the measured numbers behind that figure) — a
+ * The real-world ceiling is the route's own `maxDuration = 800` (see `extract-guide.ts`'s
+ * `EXTRACT_TIMEOUT_MS = 770_000` comment for the measured numbers behind that figure) — a
  * killed invocation (Vercel's hard timeout, a crash) leaves the row stuck at `running` forever
- * with no cleanup, since there is no process left to reach `finishRun`. 10 minutes is 2x the
- * route ceiling: comfortably past any real run, including one killed right at the deadline,
- * while still recovering a genuinely dead row in a bounded time rather than never. This is
+ * with no cleanup, since there is no process left to reach `finishRun`. 15 minutes is beyond the
+ * route ceiling, including a run killed right at the deadline, while still recovering a genuinely
+ * dead row in a bounded time rather than never. This is
  * reclaiming a dead row, NOT the deleted per-reporter/per-day rationing — it does not shorten
  * or ration how often a healthy desk may run; it only unsticks one that provably can't still be
  * running.
  */
-const STALE_RUN_MS = 10 * 60 * 1000;
+export const STALE_RUN_MS = 15 * 60 * 1000;
+
+export function isExtractionRunStale(updatedAt: string, now = Date.now()): boolean {
+  return now - new Date(updatedAt).getTime() > STALE_RUN_MS;
+}
 
 /**
  * Opens (or reopens) this desk's run record, marks it running, and reports whether THIS caller
@@ -59,7 +63,7 @@ const STALE_RUN_MS = 10 * 60 * 1000;
  * `updated_at`, matches neither condition, and updates zero rows — so a double-click (or a
  * double-click racing a stale reclaim) still bills once. This is NOT the rationing the owner
  * deleted: nothing here is per-reporter, per-day, or a spend reservation. It bounds one desk to
- * one concurrent run, and now also bounds a dead run to a 10-minute recovery window instead of
+ * one concurrent run, and now also bounds a dead run to a 15-minute recovery window instead of
  * forever.
  *
  * Every progress field from a prior run is cleared on reopen so a stale reasoning trace or error
@@ -153,7 +157,9 @@ export async function finishRun(
       .from("voice_extraction_runs")
       .update({
         status: result.status,
-        stage: result.status === "completed" ? "done" : "failed",
+        // A failed status already carries the terminal fact. Retain the last real stage so the
+        // UI can identify which semantic step failed instead of guessing from a broad error code.
+        ...(result.status === "completed" ? { stage: "done" as const } : {}),
         ...(result.costUsd !== undefined ? { cost_usd: result.costUsd } : {}),
         ...(result.errorCode !== undefined ? { error_code: result.errorCode } : {}),
         finished_at: new Date().toISOString(),

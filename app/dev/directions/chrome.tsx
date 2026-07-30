@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 type Viewport = "mobile" | "web";
 type Chrome = "desk" | "deskless";
+type HeaderVariant = "existing" | "v1";
 
 const TABS = ["Feed", "Voice", "Setup"] as const;
 
@@ -39,32 +40,65 @@ function TabPills({ stretch = false }: { readonly stretch?: boolean }) {
   );
 }
 
-function HeaderFixture({ viewport, chrome }: { viewport: Viewport; chrome: Chrome }) {
+function HeaderFixture({
+  viewport,
+  chrome,
+  variant,
+}: {
+  viewport: Viewport;
+  chrome: Chrome;
+  variant: HeaderVariant;
+}) {
   const desk = chrome === "desk";
+  const compactV1 = variant === "v1" && viewport === "mobile";
+  const pickerContent = (
+    <>
+      {desk ? (
+        <>
+          <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-success" />
+          <span className="truncate font-medium">Arsenal watch</span>
+        </>
+      ) : (
+        <span className="truncate font-medium">Your agents</span>
+      )}
+      <ChevronsUpDownIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+    </>
+  );
   return (
     <div className="sticky top-0 z-10 shrink-0 bg-card">
-      <header className="relative flex h-14 shrink-0 items-center justify-between gap-3 border-border border-b px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
+      <header
+        className={cn(
+          "relative flex h-14 shrink-0 items-center justify-between border-border border-b px-4 sm:px-6",
+          compactV1 ? "gap-2" : "gap-3",
+        )}
+      >
+        <div className={cn("flex min-w-0 items-center", compactV1 ? "gap-1.5" : "gap-3")}>
           <span className="flex items-center gap-2">
             <OparaxMark className="size-5 text-foreground" />
-            <span className="font-bold text-[19px] tracking-tight">Oparax</span>
-          </span>
-          <Separator className="h-4" orientation="vertical" />
-          <span className="flex min-w-0 items-center gap-1.5 text-sm">
-            {desk ? (
-              <>
-                <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-success" />
-                <span className="truncate font-medium">Arsenal watch</span>
-              </>
-            ) : (
-              <span className="truncate font-medium">Your agents</span>
+            {compactV1 ? null : (
+              <span className="font-bold text-[19px] tracking-tight">Oparax</span>
             )}
-            <ChevronsUpDownIcon aria-hidden className="size-3.5 text-muted-foreground" />
           </span>
+          {compactV1 ? null : <Separator className="h-4" orientation="vertical" />}
+          {compactV1 ? (
+            <button
+              aria-haspopup="listbox"
+              className="flex h-8 min-w-0 max-w-36 items-center gap-1.5 rounded-md border border-border bg-background px-2 text-sm"
+              type="button"
+            >
+              {pickerContent}
+            </button>
+          ) : (
+            <span className="flex min-w-0 items-center gap-1.5 text-sm">{pickerContent}</span>
+          )}
           {desk ? (
-            <span className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
-              <PauseIcon aria-hidden className="size-4 text-warning" />
-              <Trash2Icon aria-hidden className="size-4 text-destructive" />
+            <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
+              <span className="flex size-7 items-center justify-center rounded-md">
+                <PauseIcon aria-hidden className="size-4 text-warning" />
+              </span>
+              <span className="flex size-7 items-center justify-center rounded-md">
+                <Trash2Icon aria-hidden className="size-4 text-destructive" />
+              </span>
             </span>
           ) : null}
         </div>
@@ -96,11 +130,13 @@ function HeaderFixture({ viewport, chrome }: { viewport: Viewport; chrome: Chrom
 export function PageFrame({
   viewport,
   chrome,
+  headerVariant = "existing",
   note,
   children,
 }: {
   readonly viewport: Viewport;
   readonly chrome: Chrome;
+  readonly headerVariant?: HeaderVariant;
   readonly note: string;
   readonly children: ReactNode;
 }) {
@@ -124,7 +160,7 @@ export function PageFrame({
             : "h-[800px] w-full max-w-[1280px] rounded-xl",
         )}
       >
-        <HeaderFixture chrome={chrome} viewport={viewport} />
+        <HeaderFixture chrome={chrome} variant={headerVariant} viewport={viewport} />
         <div className="mx-auto flex w-full max-w-[102rem] flex-1 flex-col px-4 sm:px-6">
           {children}
         </div>

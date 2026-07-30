@@ -1,12 +1,12 @@
 // lib/voice/extract-guide.ts
 //
-// The L2 voice-extraction call: ONE anthropic/claude-opus-5 call over a reporter's corpus,
-// adaptive thinking @ high effort, NO schema (the guide is markdown prose), and exactly ONE
+// The L2 voice-extraction call: ONE anthropic/claude-sonnet-5 call over a reporter's corpus,
+// adaptive thinking @ medium effort, NO schema (the guide is markdown prose), and exactly ONE
 // tool — `exclude_off_beat_posts`, a pure local recompute of the measured-facts block over the
 // on-beat subset (see buildScopeTool for why it is not the web search `.claude/rules/voice.md`
 // rules out, and for the three guardrails that bound it).
 // Config ported from the lab (.voice-lab/sdk-lab/extract-fable80.mjs, measured $0.855/reporter
-// on Fable 5); the model moved to Opus 5 at half the per-token price — see EXTRACTION_MODEL.
+// on Fable 5); Sonnet 5 is the lower-cost trial model — see EXTRACTION_MODEL.
 // SERVER-ONLY: imports lib/sysprompts (readFileSync at module scope) — never import from a
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.
 import { generateText, stepCountIs, streamText, tool } from "ai";
@@ -14,18 +14,26 @@ import { z } from "zod";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
+import type {
+  ExtractionReasoningByStage,
+  ExtractionReasoningStage,
+  ExtractionTextByStage,
+  ExtractionToolActivity,
+} from "./extraction-progress-reasoning";
 import { measuredFacts } from "./measured-facts";
 
 /** The extraction model. Exported so `model_calls.model` records it without a second literal.
  *
- *  Opus 5, not Fable 5, as of this change. Fable won the original 8-model on-task panel, but
- *  Opus 5 postdates that panel entirely — it wasn't a contestant, so this isn't re-auditioning a
- *  settled decision. It is HALF the price ($5/$25 per MTok vs Fable's $10/$50), which should put
- *  a reporter's extraction near ~$0.43 against Fable's measured $0.855 — an expected figure, not
- *  a reserved or enforced one: there is no spend gate or cap on extraction (owner decision; see
- *  AGENTS.md's settled decisions). Same reasoning surface: adaptive thinking, and
- *  `display: "summarized"` still required because it also defaults to "omitted" here. */
-export const EXTRACTION_MODEL = "anthropic/claude-opus-5";
+ *  Sonnet 5 is temporarily replacing Opus 5 while the extraction stream is exercised live. The
+ *  Gateway catalog gives both models the same contract this call consumes (1M context, 128K
+ *  output, image input, tools, reasoning, streamed text); Sonnet is cheaper, but guide quality
+ *  remains an eval question rather than something capability metadata can establish.
+ *
+ *  Thinking is adaptive by default on Sonnet 5. Because this call also needs Anthropic's
+ *  summarized display, effort lives inside the SAME provider thinking object; a competing flat
+ *  `reasoning` setting can be accepted yet ignored once provider-specific reasoning options are
+ *  present. */
+export const EXTRACTION_MODEL = "anthropic/claude-sonnet-5";
 
 /** UNDER INVESTIGATION — do not treat the current value as settled.
  *
@@ -476,11 +484,10 @@ export async function extractVoiceGuide(
     // on this model, and "omitted" still returns a thinking block — with `text: ""`, which
     // reads exactly like a model that cannot expose its reasoning. Probed: summarized yields
     // real text, omitted yields none, with zero warnings either way.
-    // Effort sits INSIDE `thinking` (the SDK's shape); `outputConfig` is the REST shape.
-    // Never add a top-level `reasoning` param alongside this — the two are never merged, and
-    // any reasoning key in providerOptions makes the top-level one silently ignored in full.
+    // Keep type, effort, and display together. A display-only object is rejected by Gateway, and
+    // a top-level reasoning value can lose precedence once this provider object is present.
     providerOptions: {
-      anthropic: { thinking: { type: "adaptive", effort: "high", display: "summarized" } },
+      anthropic: { thinking: { type: "adaptive", effort: "medium", display: "summarized" } },
     },
     // NO `tools` key — enforced by review, invisible to the type system.
     abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
@@ -522,17 +529,23 @@ export async function extractVoiceGuide(
   };
 }
 
-/** One accumulated snapshot of the in-flight stream, handed to `onProgress` as text/reasoning
- *  deltas arrive — the caller (create-desk-extraction.ts) throttles how often it actually
- *  persists these, this function just reports every delta it sees. */
-export type ExtractionStreamSnapshot = { text: string; reasoning: string };
+/** One accumulated snapshot of the in-flight stream. Reasoning is separated by the SDK's real
+ * model-step boundary: the first step decides scope; a post-tool step writes the guide. This is
+ * deliberately not inferred from a text character or a client poll, either of which can split a
+ * word between UI stages. */
+export type ExtractionStreamSnapshot = {
+  text: string;
+  reasoningByStage: ExtractionReasoningByStage;
+  textByStage: ExtractionTextByStage;
+  toolActivities: ExtractionToolActivity[];
+  activeStage: ExtractionReasoningStage;
+};
 
 /** Every part `fullStream` yields, handed over untouched and unfiltered.
  *
- *  Separate from `onProgress` on purpose. `onProgress` fires only on text/reasoning deltas and
- *  reports an ACCUMULATION, which is precisely why a live empty-guide run could not be explained:
- *  a callback that fires on either kind of delta cannot answer "did any TEXT arrive at all?", and
- *  an accumulator cannot answer "in what order, and what else came through?". This one is the
+ *  Separate from `onProgress` on purpose. `onProgress` reports the accumulated user-facing
+ *  reasoning, text, tool activity, and semantic stage. It still cannot answer the wire-level
+ *  question "in what exact order did every raw part arrive?". This observer is the
  *  unabridged record — `start`, `start-step`, `reasoning-start`/`-delta`/`-end`,
  *  `text-start`/`-delta`/`-end`, `finish-step`, `finish`, `error`, `abort`, anything the SDK adds
  *  later — so the stream can be read back part by part instead of inferred from a total. */
@@ -543,8 +556,9 @@ export type ExtractionRawPartObserver = (
 /**
  * Same extraction call as `extractVoiceGuide` above — byte-identical model/config — but as a
  * `streamText` call instead of `generateText`, so the create-desk path can persist live
- * progress while a single extraction call (adaptive/high thinking, no output ceiling) runs.
- * `onProgress` fires on every text/reasoning delta with the accumulated-so-far snapshot;
+ * progress while a single extraction call (adaptive/medium thinking, no output ceiling) runs.
+ * `onProgress` fires on model-step boundaries and every content-bearing reasoning, text, and
+ * tool event with the accumulated-so-far snapshot;
  * consuming the stream this way is also what resolves `result.text`/`result.usage`/etc. below,
  * so no separate `consumeStream()` call is needed.
  *
@@ -573,7 +587,7 @@ export async function extractVoiceGuideStreaming(
     stopWhen: stepCountIs(MAX_EXTRACTION_STEPS),
     // Same reasoning as extractVoiceGuide's call above — kept byte-identical on purpose.
     providerOptions: {
-      anthropic: { thinking: { type: "adaptive", effort: "high", display: "summarized" } },
+      anthropic: { thinking: { type: "adaptive", effort: "medium", display: "summarized" } },
     },
     // NO `tools` key — enforced by review, invisible to the type system.
     abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
@@ -583,15 +597,97 @@ export async function extractVoiceGuideStreaming(
   });
 
   let textSoFar = "";
-  let reasoningSoFar = "";
+  let modelStep = -1;
+  let activeReasoningStage: ExtractionReasoningStage = "scope";
+  const reasoningByStage: ExtractionReasoningByStage = {};
+  const textByStage: ExtractionTextByStage = {};
+  const toolActivities = new Map<string, ExtractionToolActivity>();
+
+  const reportProgress = async () => {
+    if (!onProgress) return;
+    await onProgress({
+      text: textSoFar,
+      reasoningByStage: { ...reasoningByStage },
+      textByStage: { ...textByStage },
+      toolActivities: [...toolActivities.values()].map((activity) => ({ ...activity })),
+      activeStage: activeReasoningStage,
+    });
+  };
+
   for await (const part of result.fullStream) {
     // The raw observer sees EVERY part, before any filtering — it is the only witness to the
     // parts the accumulation below discards, which is where an unexplained empty guide hides.
     if (onRawPart) await onRawPart(part as unknown as Record<string, unknown> & { type: string });
-    if (part.type === "text-delta") textSoFar += part.text;
-    else if (part.type === "reasoning-delta") reasoningSoFar += part.text;
-    else continue;
-    if (onProgress) await onProgress({ text: textSoFar, reasoning: reasoningSoFar });
+    if (part.type === "start-step") {
+      modelStep += 1;
+      activeReasoningStage = modelStep === 0 ? "scope" : "extract";
+      await reportProgress();
+      continue;
+    }
+    if (part.type === "text-start") {
+      // The tool is optional when every post is on-beat, so guide generation can begin in the
+      // first SDK step. Ordinary output text is always the guide, regardless of step count.
+      activeReasoningStage = "extract";
+      await reportProgress();
+      continue;
+    }
+    if (part.type === "text-delta") {
+      activeReasoningStage = "extract";
+      textSoFar += part.text;
+      textByStage[activeReasoningStage] = (textByStage[activeReasoningStage] ?? "") + part.text;
+    } else if (part.type === "reasoning-delta") {
+      reasoningByStage[activeReasoningStage] =
+        (reasoningByStage[activeReasoningStage] ?? "") + part.text;
+    } else if (part.type === "tool-input-start") {
+      toolActivities.set(part.id, {
+        id: part.id,
+        toolName: part.toolName,
+        stage: activeReasoningStage,
+        state: "input-streaming",
+        inputText: "",
+      });
+    } else if (part.type === "tool-input-delta") {
+      const activity = toolActivities.get(part.id);
+      if (activity) activity.inputText += part.delta;
+    } else if (part.type === "tool-input-end") {
+      const activity = toolActivities.get(part.id);
+      if (activity) activity.state = "input-available";
+    } else if (part.type === "tool-call") {
+      const previous = toolActivities.get(part.toolCallId);
+      toolActivities.set(part.toolCallId, {
+        id: part.toolCallId,
+        toolName: part.toolName,
+        stage: previous?.stage ?? activeReasoningStage,
+        state: "input-available",
+        inputText: previous?.inputText ?? JSON.stringify(part.input),
+        input: part.input,
+      });
+    } else if (part.type === "tool-result") {
+      const previous = toolActivities.get(part.toolCallId);
+      toolActivities.set(part.toolCallId, {
+        id: part.toolCallId,
+        toolName: part.toolName,
+        stage: previous?.stage ?? activeReasoningStage,
+        state: "output-available",
+        inputText: previous?.inputText ?? JSON.stringify(part.input),
+        input: part.input,
+        output: part.output,
+      });
+    } else if (part.type === "tool-error") {
+      const previous = toolActivities.get(part.toolCallId);
+      toolActivities.set(part.toolCallId, {
+        id: part.toolCallId,
+        toolName: part.toolName,
+        stage: previous?.stage ?? activeReasoningStage,
+        state: "output-error",
+        inputText: previous?.inputText ?? JSON.stringify(part.input),
+        input: part.input,
+        errorText: part.error instanceof Error ? part.error.message : String(part.error),
+      });
+    } else {
+      continue;
+    }
+    await reportProgress();
   }
 
   // `result.steps` resolves the same underlying per-step array `generateText`'s does (it's a

@@ -19,7 +19,7 @@ set -euo pipefail
 
 usage() {
   echo 'usage: start.sh "<title>" [<plan-body-file>]' >&2
-  echo '       start.sh --issue <N> [<plan-body-file>]   # graduate an existing roadmap issue' >&2
+  echo '       start.sh --issue <N> [<plan-body-file>]   # plan an existing issue' >&2
   exit 2
 }
 

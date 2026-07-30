@@ -25,7 +25,7 @@ import {
   X_CHAR_LIMITS,
 } from "@/lib/agent/desk-config";
 import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
-import { GROUND_MODEL, groundSourcePost } from "@/lib/agent/draft-ground";
+import { groundSourcePost } from "@/lib/agent/draft-ground";
 import { isUsableJudgeVerdict, judgeGroundVerdict } from "@/lib/agent/draft-judge";
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
@@ -34,7 +34,7 @@ import { draftingConversationId } from "@/lib/observability/ai-conversation";
 import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
 import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
 import { postDraftToXForOwner } from "@/lib/x/post-core";
@@ -357,7 +357,7 @@ async function draftForExperiment(
   // against a silently lost draft. The on-beat happy path AND the off-beat outcome both leave the
   // claim in place (dedup intact) — an off-beat verdict must not be re-billed on redelivery.
   try {
-    // THE grounding call (ledgered like every other call). One gpt-5-nano pass per delivery
+    // THE grounding call (ledgered like every other call). One Qwen 3.7 Flash pass per delivery
     // answers "is this on-beat, what's in the picture, what's the translation, what's the
     // synthesis, what's the draft"; the judge verifies this result before it ships.
     const ground = await groundSourcePost({
@@ -391,21 +391,19 @@ async function draftForExperiment(
     const verdict = ground.verdict;
 
     let judge: Awaited<ReturnType<typeof judgeGroundVerdict>> | null = null;
-    if (ground.call.model === GROUND_MODEL && verdict !== null) {
-      try {
-        judge = await judgeGroundVerdict({
-          brief,
-          beatSpec,
-          voiceGuidance,
-          ground: verdict,
-          ceiling,
-        });
-      } catch (judgeError) {
-        console.error(
-          "draft-pipeline: judge call failed to transport, proceeding with ground verdict",
-          judgeError,
-        );
-      }
+    try {
+      judge = await judgeGroundVerdict({
+        brief,
+        beatSpec,
+        voiceGuidance,
+        ground: verdict,
+        ceiling,
+      });
+    } catch (judgeError) {
+      console.error(
+        "draft-pipeline: judge call failed to transport, proceeding with ground verdict",
+        judgeError,
+      );
     }
 
     let judgeCallId: string | null = null;
@@ -436,13 +434,13 @@ async function draftForExperiment(
     // twitter-text's weighted length is not `.length` anyway. The gate is X-specific and so is
     // this draft — groundSourcePost ran with platform "x" against X_CHAR_LIMITS — so it is the
     // right gate for the one text `final` carries; a future non-X platform needs its own.
-    let draftLengthFallback: "none" | "substituted_nano" | "kept_judge" = "none";
+    let draftLengthFallback: "none" | "substituted_ground" | "kept_judge" = "none";
     if (usableJudge && judged.finalDraft !== null) {
       const judgeFit = checkXPostable(judged.finalDraft, accountTier);
       if (!judgeFit.ok) {
-        // Falling back to nano's own draft is safe ONLY when nano's text was not itself the
+        // Falling back to the grounder's draft is safe ONLY when that text was not itself the
         // thing the judge corrected. If `language` or `translation` is in correctedFields, the
-        // judge fixed a wrong-language draft — the live Spanish-source bug — and nano's
+        // judge fixed a wrong-language draft — the live Spanish-source bug — and the grounder's
         // firstDraft is precisely that defective text, so substituting it would reintroduce the
         // bug this slice exists to kill. Then the judge's over-limit English text ships instead:
         // delivered, Post button disabled by the same gate, reporter trims it in place. That is
@@ -452,7 +450,7 @@ async function draftForExperiment(
           judged.correctedFields.includes("translation");
         draftLengthFallback =
           !judgeFixedLanguage && checkXPostable(verdict.firstDraft, accountTier).ok
-            ? "substituted_nano"
+            ? "substituted_ground"
             : "kept_judge";
         console.error(
           `draft-pipeline: judge draft fails the X gate (${judgeFit.reason}) for source post ${sourcePostId} — ceiling ${ceiling}, judge draft ${judged.finalDraft.length} chars, resolution ${draftLengthFallback}`,
@@ -474,7 +472,7 @@ async function draftForExperiment(
               // Only the draft TEXT is ever in question here — every other judge field above is
               // a judgment, not length-constrained, and is kept in all cases.
               firstDraft:
-                draftLengthFallback === "substituted_nano"
+                draftLengthFallback === "substituted_ground"
                   ? verdict.firstDraft
                   : (judged.finalDraft ?? verdict.firstDraft),
             }
@@ -540,7 +538,7 @@ async function draftForExperiment(
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
     // Part C: one post_drafts winner row per platform. The winner points at the final model call;
-    // when the judge changed the output, a second audit row keeps nano's ground verdict visible
+    // when the judge changed the output, a second audit row keeps the ground verdict visible
     // to the existing council reader. judge_verdict remains null because it is the legacy council
     // partition key, not judge metadata. Both rows go in ONE insert: post_drafts has no unique
     // constraint on (source_post, experiment, platform), so a winner that committed before a
@@ -561,22 +559,25 @@ async function draftForExperiment(
         story_id: cluster.storyId,
         platform,
         // Provenance must identify the text that actually ships. If the deterministic X gate
-        // rejected the judge text and we substituted nano's draft, the ground call is the source
+        // rejected the judge text and we substituted the grounder's draft, the ground call is the source
         // of the delivered text even though the judge still supplied review metadata.
         model_call_id:
-          usableJudge && draftLengthFallback !== "substituted_nano"
+          usableJudge && draftLengthFallback !== "substituted_ground"
             ? (judgeCallId ?? groundCallId)
             : groundCallId,
         is_winner: true,
         judge_verdict: null,
         synthesis: final.newsSynthesis,
         translation: final.translation,
-        judge_review: usableJudge
+        judge_review: judgeCallId
           ? {
               judgeModelCallId: judgeCallId,
               groundModelCallId: groundCallId,
+              usable: usableJudge,
               correctedFields: judged?.correctedFields ?? [],
-              judgeNotes: judged?.judgeNotes ?? "",
+              judgeNotes:
+                judged?.judgeNotes ??
+                "The verification response failed schema validation; the grounder draft was used.",
               // Which text actually shipped, and why — provenance stays honest when the length
               // guard above rejected the judge's own draft.
               draftLengthFallback,
@@ -585,21 +586,41 @@ async function draftForExperiment(
       };
 
       let winningPostDraftId: string;
-      if (usableJudge) {
+      if (usableJudge || judgeCallId) {
+        let auditRow: Database["public"]["Tables"]["post_drafts"]["Insert"];
+        if (usableJudge) {
+          auditRow = {
+            source_post_id: sourcePostId,
+            experiment_id: experiment.id,
+            story_id: cluster.storyId,
+            platform,
+            model_call_id: groundCallId,
+            is_winner: false,
+            judge_verdict: null,
+          };
+        } else {
+          if (!judgeCallId) {
+            throw new Error(
+              `draft-pipeline: judge audit row missing its model call for source post ${sourcePostId}`,
+            );
+          }
+          auditRow = {
+            source_post_id: sourcePostId,
+            experiment_id: experiment.id,
+            story_id: cluster.storyId,
+            platform,
+            model_call_id: judgeCallId,
+            is_winner: false,
+            judge_verdict: {
+              status: "invalid",
+              rationale:
+                "The verification response failed schema validation; the grounder draft was used.",
+            },
+          };
+        }
         const { data, error } = await admin
           .from("post_drafts")
-          .insert([
-            winnerRow,
-            {
-              source_post_id: sourcePostId,
-              experiment_id: experiment.id,
-              story_id: cluster.storyId,
-              platform,
-              model_call_id: groundCallId,
-              is_winner: false,
-              judge_verdict: null,
-            },
-          ])
+          .insert([winnerRow, auditRow])
           .select("id, is_winner");
         if (error) throw error;
         // One PostgREST request is one statement, so the audit row failing takes the winner with

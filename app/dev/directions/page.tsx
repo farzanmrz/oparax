@@ -14,11 +14,13 @@ import CodexCreateAgent from "./boards/codex/create-agent";
 import CodexFeedPreReady from "./boards/codex/feed-pre-ready";
 import GrokCreateAgent from "./boards/grok/create-agent";
 import GrokFeedPreReady from "./boards/grok/feed-pre-ready";
+import V1CreateAgent from "./boards/v1/create-agent";
+import V1FeedPreReady from "./boards/v1/feed-pre-ready";
 
 type Viewport = "mobile" | "web";
 type BoardModule = ComponentType<{ viewport: Viewport }>;
 
-const FAMILIES = ["claude", "codex", "grok", "agy"] as const;
+const FAMILIES = ["claude", "codex", "grok", "agy", "v1"] as const;
 const PAGES = ["create-agent", "feed-pre-ready"] as const;
 const VIEWPORTS: Viewport[] = ["mobile", "web"];
 
@@ -27,6 +29,7 @@ const BOARDS: Record<(typeof FAMILIES)[number], Record<(typeof PAGES)[number], B
   claude: { "create-agent": ClaudeCreateAgent, "feed-pre-ready": ClaudeFeedPreReady },
   codex: { "create-agent": CodexCreateAgent, "feed-pre-ready": CodexFeedPreReady },
   grok: { "create-agent": GrokCreateAgent, "feed-pre-ready": GrokFeedPreReady },
+  v1: { "create-agent": V1CreateAgent, "feed-pre-ready": V1FeedPreReady },
 };
 
 function Switcher<T extends string>({

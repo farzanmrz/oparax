@@ -5,7 +5,7 @@ description: >-
   Use when the user says /feature-plan, "plan this feature", "spec this out", or
   wants a plan gate without committing to the full flow. Not for building — that
   is /feature-build.
-argument-hint: "[feature description | roadmap issue #]"
+argument-hint: "[feature description | issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
 ---
@@ -16,7 +16,7 @@ One document, **the plan**: it is the spec and the plan at once. It must be
 **hyper-specific** — the build phase runs as a dumb executor on a cheap model,
 so everything that requires judgment is decided HERE, on this session's model
 (run plan sessions on the owner's top dial). Seed from `$ARGUMENTS` (a feature
-description, or an existing roadmap issue number to graduate) or the
+description, or an existing issue number to plan) or the
 conversation.
 
 Communication: the `Flow` output style governs — no interim prose; the ✋ gate
@@ -216,7 +216,7 @@ reworked during drafting is stated fresh, never as "as discussed."
 On the user's explicit approval:
 
 - New ask: `bash .claude/skills/feature/scripts/start.sh "<title>" <plan-file>`
-- Graduating a roadmap issue: `bash .claude/skills/feature/scripts/start.sh
+- Planning an existing issue: `bash .claude/skills/feature/scripts/start.sh
   --issue <N> <plan-file>` — the plan becomes that issue's body; no duplicate
   issue is ever created.
 

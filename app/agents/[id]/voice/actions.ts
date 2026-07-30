@@ -31,6 +31,10 @@ import {
 } from "@/lib/voice/create-desk-extraction";
 import { startRun } from "@/lib/voice/extraction-run";
 import { createVoiceRule, deleteVoiceRule, updateVoiceRule } from "@/lib/voice/rules";
+import {
+  type ExtractionProgressResult,
+  getOwnedExtractionProgress,
+} from "./get-extraction-progress";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -129,17 +133,7 @@ export async function deleteVoiceRuleAction(deskId: string, ruleId: string): Pro
  * run row exists yet (nothing has started), distinguishable from a real run's own status
  * ("running" | "completed" | "failed").
  */
-export async function getExtractionProgress(deskId: string): Promise<
-  | {
-      ok: true;
-      stage: string | null;
-      progressNote: string | null;
-      reasoningPartial: string | null;
-      status: string;
-      errorCode: string | null;
-    }
-  | { ok: false; error: string }
-> {
+export async function getExtractionProgress(deskId: string): Promise<ExtractionProgressResult> {
   // Marks THIS transaction as the progress poll so `dropProgressPollTransactions` can discard it
   // on the way out. It has to be a tag set from inside the request rather than a sampling rule:
   // this action and the extraction it reports on are both server actions on the same routes, so
@@ -147,34 +141,7 @@ export async function getExtractionProgress(deskId: string): Promise<
   // precisely so extractions are never sampled away; this is what keeps that affordable.
   Sentry.setTag(TRANSACTION_KIND_TAG, PROGRESS_POLL_KIND);
 
-  const owned = await ownedDesk(deskId);
-  if ("error" in owned) return { ok: false, error: owned.error };
-
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("voice_extraction_runs")
-    .select("stage, progress_note, reasoning_partial, status, error_code")
-    .eq("experiment_id", deskId)
-    .maybeSingle();
-
-  if (!data) {
-    return {
-      ok: true,
-      stage: null,
-      progressNote: null,
-      reasoningPartial: null,
-      status: "none",
-      errorCode: null,
-    };
-  }
-  return {
-    ok: true,
-    stage: data.stage,
-    progressNote: data.progress_note,
-    reasoningPartial: data.reasoning_partial,
-    status: data.status,
-    errorCode: data.error_code,
-  };
+  return getOwnedExtractionProgress(deskId);
 }
 
 /** `proceed` means "keep going to the next step". Gates are returned so the caller can render

@@ -18,10 +18,10 @@ import { sumCosts } from "./usage-cost";
 
 type Client = SupabaseClient<Database>;
 
-const judgeVerdictShape = z.object({
-  winner: z.number().int(),
-  rationale: z.string(),
-});
+const judgeVerdictShape = z.union([
+  z.object({ winner: z.number().int(), rationale: z.string() }),
+  z.object({ status: z.literal("invalid"), rationale: z.string() }),
+]);
 
 // Deliberately NOT read off the stored `usage.reasoningWithheldByProvider` flag. Until this
 // slice that flag was written as a restatement of `reasoning == null`, so every traceless call

@@ -9,7 +9,7 @@
 // writers: `draft-ground.ts`'s ONE grounding call stamps `"grounding"` (a real per-delivery
 // cost, not folded into "drafting", since it runs even on off-beat posts and is the only call
 // today — the owner collapsed the ground→revise×2→synthesize pipeline down to this single
-// gpt-5-nano pass, followed by `draft-judge.ts`'s live `"judge"` stage. `"drafting"` remains
+// Qwen 3.7 Flash pass, followed by `draft-judge.ts`'s live `"judge"` stage. `"drafting"` remains
 // the dormant emailed-correction path (`draft-council-run.ts`'s `reviseDraft` and repair leg),
 // while `scripts/extract-voice-guide.ts` stamps `"voice_extraction"`.
 // These are the entire live write surface — no remapping needed, just an explicit

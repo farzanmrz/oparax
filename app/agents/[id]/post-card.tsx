@@ -11,7 +11,7 @@
 // Tailwind classes are dead is a trap for whoever writes the next one, so the presentation
 // layer is hand-rolled and the reset is gone. Tailwind works normally in these cards again.
 //
-// react-tweet's DATA layer is deliberately KEPT (`getTweet`/`Tweet` in source-tweet.tsx): the
+// react-tweet's DATA layer is deliberately KEPT (`fetchTweet`/`Tweet` in source-tweet.tsx): the
 // syndication API is free, unauthenticated, off our metered X tier, and supplies avatars,
 // media and URL entities. It never caused a problem — only its CSS did.
 //

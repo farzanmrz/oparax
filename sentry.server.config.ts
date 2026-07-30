@@ -4,7 +4,6 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
-import { nodeProfilingIntegration } from "@sentry/profiling-node";
 import {
   dropProgressPollTransactions,
   SENTRY_DATA_COLLECTION,
@@ -16,17 +15,18 @@ import {
 // SDK defaults, verified in the installed build's default-integration lists (@sentry/node's
 // auto-performance list and @sentry/node-core's base list respectively):
 //
-// - `vercelAIIntegration` — auto-registered whenever tracing is enabled. At `ai@7` its documented
-//   OpenTelemetry path is dead (v7 dropped OTel entirely; Sentry's OTel instrumentation is
-//   version-gated to `<7`) and what actually carries it is @sentry/server-utils' subscriber on
-//   v7's `ai:telemetry` Node diagnostics channel, which builds the `gen_ai.*` spans natively
+// - `vercelAIIntegration` — auto-registered whenever tracing is enabled. AI SDK v7 moved its
+//   OpenTelemetry integration out of `ai` into the optional `@ai-sdk/otel` package; Oparax does
+//   not install that second export path. Sentry instead subscribes directly to v7's native
+//   `ai:telemetry` Node diagnostics channel and builds the `gen_ai.*` spans itself
 //   (`invoke_agent {functionId}`, `generate_content {model}`) honoring each call's
 //   `recordInputs`/`recordOutputs`. Two standing rules from that finding: every AI call must pass
-//   `experimental_telemetry.isEnabled: true` (per-call opt-in — lib/observability/ai-telemetry.ts
-//   builds it; a call that omits it produces no span at all), and NEVER add a hand-rolled
-//   `registerTelemetry` bridge alongside — one was built here on the wrong belief that v7 was
-//   unsupported, and it double-counted every call (two spans, two model-name spellings, twice the
-//   tokens) until deleted.
+//   `experimental_telemetry.isEnabled: true` in production (per-call opt-in —
+//   lib/observability/ai-telemetry.ts builds it). Local development also registers AI SDK
+//   DevTools globally, which enables telemetry there without adding a second Sentry/OTel exporter.
+//   NEVER add a hand-rolled Sentry OpenTelemetry bridge alongside this subscriber — one was built
+//   here on the wrong belief that v7 was unsupported, and it double-counted every call (two spans,
+//   two model-name spellings, twice the tokens) until deleted.
 // - `conversationIdIntegration` — in the base defaults; it is what makes `Sentry.setConversationId`
 //   stamp `gen_ai.conversation.id` onto AI spans so Explore > Conversations can group them. See
 //   lib/observability/ai-conversation.ts for what a "conversation" means in this product.
@@ -50,19 +50,7 @@ Sentry.init({
   enableLogs: true,
   enableMetrics: true,
 
-  integrations: [
-    Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] }),
-    // CPU profiling for sampled transactions (Profiling > Node). The extraction and drafting
-    // pipelines are long-running server work — a profile is what turns "the pipeline was slow"
-    // into "which function was hot". Ships its own prebuilt native binary; server-only, which is
-    // why it lives here and not in sentry-shared.ts.
-    nodeProfilingIntegration(),
-  ],
-
-  // Relative to tracesSampleRate: profile every sampled transaction. Traces run at 1.0 (see
-  // sentry-shared.ts — the poll, the only volume problem, is dropped by tag instead), so this
-  // profiles every real transaction.
-  profilesSampleRate: 1.0,
+  integrations: [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })],
 
   // Drop the extraction progress poll — see dropProgressPollTransactions. The poll is a server
   // action, so it is a server transaction too, not only a browser one.

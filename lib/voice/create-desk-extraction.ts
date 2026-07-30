@@ -30,9 +30,11 @@ import { accumulateCorpus, markCorpusExclusions } from "./corpus-store";
 import { deployGuide } from "./deploy-guide";
 import {
   EXTRACTION_MODEL,
+  type ExtractionStreamSnapshot,
   extractVoiceGuideStreaming,
   type VoiceExtraction,
 } from "./extract-guide";
+import { serializeExtractionProgress } from "./extraction-progress-reasoning";
 import { finishRun, recordProgress } from "./extraction-run";
 import { materializeRulesFromGuide } from "./rules";
 import { inferAccountTier } from "./tier";
@@ -111,24 +113,43 @@ async function insertExtractionModelCall(
   return data.id;
 }
 
-/** Throttles `recordProgress` calls raised by `extractVoiceGuideStreaming`'s per-delta
- *  `onProgress` to roughly once per second — the stream can emit many deltas/sec and this is
+/** Throttles `recordProgress` calls raised by `extractVoiceGuideStreaming`'s stream-event
+ *  `onProgress` to roughly once per second — the stream can emit many parts/sec and this is
  *  the ONE DB write in that loop, so hammering it on every delta would be a lot of update
  *  traffic against a single row for no user-visible benefit (a human can't perceive sub-second
- *  progress updates anyway). The first delta always flushes immediately so the run row shows
- *  `"extracting"` as soon as anything has streamed, rather than waiting a full second. */
+ *  progress updates anyway). The first text-bearing delta always flushes immediately so the run
+ *  row shows `"extracting"` as soon as the guide starts streaming, rather than waiting a full
+ *  second. */
 function throttledStreamProgress(
   experimentId: string,
-): (snapshot: { text: string; reasoning: string }) => Promise<void> {
+): (snapshot: ExtractionStreamSnapshot) => Promise<void> {
   let lastFlush = 0;
-  return async ({ text, reasoning }) => {
+  let hasFlushedText = false;
+  let lastFlushedStage: ExtractionStreamSnapshot["activeStage"] | null = null;
+  let lastToolState = "";
+  return async ({ text, reasoningByStage, textByStage, toolActivities, activeStage }) => {
+    const hasText = text.length > 0;
+    const toolState = toolActivities
+      .map((activity) => `${activity.id}:${activity.state}`)
+      .join("|");
+    const bypassThrottle =
+      (hasText && !hasFlushedText) ||
+      activeStage !== lastFlushedStage ||
+      toolState !== lastToolState;
     const now = Date.now();
-    if (lastFlush !== 0 && now - lastFlush < 1000) return;
+    if (lastFlush !== 0 && !bypassThrottle && now - lastFlush < 1000) return;
     lastFlush = now;
+    lastFlushedStage = activeStage;
+    lastToolState = toolState;
+    if (hasText) hasFlushedText = true;
     await recordProgress(experimentId, {
-      stage: "extracting",
-      progressNote: `${text.length} chars generated`,
-      reasoningPartial: reasoning,
+      stage: activeStage === "scope" ? "scoping" : "extracting",
+      ...(hasText ? { progressNote: `${text.length} chars generated` } : {}),
+      reasoningPartial: serializeExtractionProgress({
+        reasoningByStage,
+        textByStage,
+        toolActivities,
+      }),
     });
   };
 }
@@ -187,7 +208,7 @@ export function checkHandleShape(reporterHandle: string): PreflightResult {
  *       progress persisted roughly once/sec. Once the stream resolves, ledger-first: one
  *       `model_calls` row, then `voice_guides` with `provenance: { modelCallId }` (a pointer —
  *       the output/reasoning/usage/cost live exactly once, in model_calls), then materialize the
- *       guide's initial `voice_rules` split (best-effort, swallows its own errors).
+ *       guide's initial `voice_rules` split.
  *   (d) `finishRun` stamps the terminal status either way.
  *
  * The "already-billed call must still get its ledger row" discipline (AGENTS.md's model-call
@@ -278,7 +299,7 @@ async function runExtractionSpendPhaseInner(
 
     // A corpus with zero posts carrying real text (a brand-new or inactive reporter, or every
     // post being media-only) has nothing for the extractor to measure or quote from. Refuse to
-    // bill the ~$0.43-0.86 Opus 5 call on a prompt that would embed literal "undefined"s into
+    // bill the extraction call on a prompt that would embed literal "undefined"s into
     // its MEASURED FACTS block (see measured-facts.ts) — fail here, honestly and for free,
     // rather than after the extraction already ran.
     const representativePosts = corpus.filter((p) => (p.text ?? "").trim()).length;
@@ -342,8 +363,8 @@ async function runExtractionSpendPhaseInner(
     }
 
     // The model reads the corpus and decides scope BEFORE it writes anything, so the run row
-    // says so — otherwise the first ~60s of a run (measured: first text delta at 60.5s) shows a
-    // reporter nothing but "extracting" while the model is actually still working out their beat.
+    // says so — otherwise the first ~60s of a run (measured: first text-bearing delta at 60.5s)
+    // shows a reporter nothing but "extracting" while the model is still working out their beat.
     await recordProgress(experimentId, {
       stage: "scoping",
       progressNote: "Working out what's on your beat…",
@@ -367,7 +388,6 @@ async function runExtractionSpendPhaseInner(
             "oparax.scope_reason": scope.reason,
           });
           await recordProgress(experimentId, {
-            stage: "scoping",
             progressNote: scope.applied
               ? `Set aside ${scope.postIds.length} off-beat posts — ${scope.reason}`
               : `Kept all posts — ${scope.note.slice(0, 120)}`,
@@ -455,16 +475,11 @@ async function runExtractionSpendPhaseInner(
       );
       if (voiceGuideError) throw voiceGuideError;
 
-      try {
-        await materializeRulesFromGuide(experimentId, guideDeploy, modelCallId);
-      } catch (rulesError) {
-        // A degraded-but-recoverable state (guide saved, initial rules split missing) — never
-        // a reason to roll back a real extraction that already happened and was billed.
-        console.error(
-          `runExtractionSpendPhase: materializeRulesFromGuide failed for @${reporterHandle}`,
-          rulesError,
-        );
-      }
+      // A guide without its editable rules is not ready: drafting reads voice_rules, not the
+      // guide blob. Let a failure reach the terminal catch so this run remains visibly failed
+      // at the materializing_rules stage and Retry can run a fresh, idempotent materialization.
+      // The guide and its billed model-call provenance intentionally remain durable for audit.
+      await materializeRulesFromGuide(experimentId, guideDeploy, modelCallId);
 
       await finishRun(experimentId, { status: "completed", costUsd: ext.costUsd });
 

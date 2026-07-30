@@ -13,7 +13,7 @@ One document, **the plan**: spec and plan at once, hyper-specific — build runs
 as a dumb executor on a cheap model, so every judgment call is decided HERE.
 Run this chat on `gpt-5.6-sol` at high (xhigh for a heavy slice); switch with
 `/model` before starting if needed. Seed from the owner's ask or an existing
-roadmap issue number (`gh issue view N` — its body is the raw ask).
+issue number (`gh issue view N` — its body is the raw ask).
 
 No interim narration between steps; the ✋ gate is where you write in full.
 
@@ -136,7 +136,7 @@ one-clause definition at first use; nothing is referenced "as discussed."
 On explicit approval:
 
 - New ask: `bash .claude/skills/feature/scripts/start.sh "<title>" <plan-file>`
-- Graduating a roadmap issue: `bash .claude/skills/feature/scripts/start.sh
+- Planning an existing issue: `bash .claude/skills/feature/scripts/start.sh
   --issue <N> <plan-file>`
 
 The script prints the issue number and cuts `ft/<issue#>` from fetched

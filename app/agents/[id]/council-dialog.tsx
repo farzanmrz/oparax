@@ -51,9 +51,9 @@ const CRITERIA = [
 ] as const;
 
 // A Reasoning expander renders ONLY when a readable trace exists. Absence is deliberately
-// silent: a drafter that skipped deliberation (DeepSeek's adaptive thinking on a short brief),
-// a provider that keeps its chain-of-thought private (OpenAI policy), and the judge's
-// intentional reasoning-off config are all normal operation — and a label narrating any of
+// silent: a support call configured with reasoning off, a provider that keeps its chain-of-thought
+// private (OpenAI policy), or a readable trace omitted despite the live Qwen judge requesting high
+// reasoning are all normal provider behavior — and a label narrating any of
 // them reads as a malfunction to a reporter ("Ran without reasoning" was the owner's literal
 // "what the fuck is this"). The forensic distinction (present/withheld/none/unknown) still
 // lives in `lib/agent/reasoning-trace.ts` and the `model_calls` ledger, where debugging

@@ -54,9 +54,9 @@ function captureAuthFailure(operation: "login" | "signup", rawMessage: string) {
           ? "already_registered"
           : "unexpected";
 
-  if (failureClass === "invalid_credentials" || failureClass === "already_registered") {
-    return;
-  }
+  Sentry.logger.warn("Authentication operation failed", { operation, failure_class: failureClass });
+
+  if (failureClass === "invalid_credentials" || failureClass === "already_registered") return;
 
   Sentry.withScope((scope) => {
     scope.setLevel(failureClass === "rate_limited" ? "warning" : "error");
@@ -132,6 +132,7 @@ export async function signupAction(
   }
 
   if (data.user?.identities?.length === 0) {
+    captureAuthFailure("signup", "User already registered");
     return {
       error: "An account with this email already exists. Please log in instead.",
       email,

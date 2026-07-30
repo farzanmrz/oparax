@@ -28,11 +28,11 @@ export async function createDesk(input: {
    *  check is re-run below rather than trusted from whichever client set this. */
   extractFromHandle?: string;
 }): Promise<CreateDeskResult> {
+  const name = input.name.trim();
+  if (!name) return { error: "Name this agent." };
+
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this agent should watch." };
-
-  // Optional — the switcher falls back to a beat-derived label when it's blank.
-  const name = input.name.trim() || null;
 
   // Every tracked handle is charset-validated too — not just normalized. An unvalidated handle
   // flows into the ingestion worker's globally-shared X stream rule where it could inject stream
@@ -49,6 +49,9 @@ export async function createDesk(input: {
       };
     }
     if (!trackedHandles.includes(handle)) trackedHandles.push(handle);
+  }
+  if (trackedHandles.length === 0) {
+    return { error: "Add at least one tracked X account." };
   }
 
   const supabase = await createClient();
@@ -117,10 +120,10 @@ export async function createDesk(input: {
   // Extraction is NOT fired here any more. It used to run as
   // `after(() => attemptVoiceExtraction(...))`, whose return value nothing could read — so the
   // four pre-flight gates ran invisibly and a rejection reached the reporter as a spinner that
-  // never resolved. The create screen now calls `startExtraction` (app/agents/[id]/voice/
-  // actions.ts) itself: it awaits the pre-flight so it can render each gate, then that action
-  // hands the billable phase to its own `after()`, which preserves the survives-navigation
-  // property for the half that actually costs money.
+  // never resolved. After `createDesk` returns, the client calls `startExtraction`
+  // (app/agents/[id]/voice/actions.ts), awaits its free ownership/shape gate and durable run claim,
+  // then replaces to Feed. That action hands the billable phase to its own `after()`, while Feed
+  // and Voice poll the durable run row.
   //
   // The consequence is deliberate: a desk whose creator closes the tab before the pre-flight
   // returns is created WITHOUT extraction having started. That is a valid, working agent — its

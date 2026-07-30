@@ -4,12 +4,20 @@
 //
 // The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Setup nav, active
 // state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
-// `DESK_TABS` is exported so components/mobile-nav-sheet.tsx renders the SAME three
-// Links at the SAME URLs — one URL tree, no parallel nav model.
+// `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME three
+// links at the SAME URLs — one URL tree, no parallel nav model.
 
-import { PauseIcon, PlayIcon, Trash2Icon } from "lucide-react";
+import {
+  FileTextIcon,
+  MicVocalIcon,
+  PauseIcon,
+  PlayIcon,
+  SettingsIcon,
+  Trash2Icon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ComponentType, SVGProps } from "react";
 import { useState, useTransition } from "react";
 import {
   AlertDialog,
@@ -36,11 +44,37 @@ import { formatBadgeCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { deleteDesk, pauseDesk, resumeDesk } from "./actions";
 
+export type DeskTab = {
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  label: "Feed" | "Voice" | "Setup";
+  href: (id: string) => string;
+  exact: boolean;
+};
+
 export const DESK_TABS = [
-  { label: "Feed", href: (id: string) => `/agents/${id}`, exact: true },
-  { label: "Voice", href: (id: string) => `/agents/${id}/voice`, exact: false },
-  { label: "Setup", href: (id: string) => `/agents/${id}/setup`, exact: false },
+  {
+    label: "Feed",
+    icon: FileTextIcon,
+    href: (id: string) => `/agents/${id}`,
+    exact: true,
+  },
+  {
+    label: "Voice",
+    icon: MicVocalIcon,
+    href: (id: string) => `/agents/${id}/voice`,
+    exact: false,
+  },
+  {
+    label: "Setup",
+    icon: SettingsIcon,
+    href: (id: string) => `/agents/${id}/setup`,
+    exact: false,
+  },
 ] as const;
+
+export function isDeskTabActive(pathname: string, href: string, exact: boolean): boolean {
+  return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+}
 
 /** The Feed/Voice/Setup tab nav, wide layout (`hidden md:flex` at the call site). */
 export function DeskTabs({
@@ -56,9 +90,7 @@ export function DeskTabs({
     <nav aria-label="Agent sections" className="flex items-center gap-1">
       {DESK_TABS.map((tab) => {
         const href = tab.href(deskId);
-        const active = tab.exact
-          ? pathname === href
-          : pathname === href || pathname.startsWith(`${href}/`);
+        const active = isDeskTabActive(pathname, href, tab.exact);
         return (
           <Link
             className={cn(
@@ -69,6 +101,7 @@ export function DeskTabs({
             )}
             href={href}
             key={tab.label}
+            aria-current={active ? "page" : undefined}
           >
             {tab.label}
             {tab.label === "Feed" && needsReviewCount > 0 ? (

@@ -1,7 +1,7 @@
 // scripts/extract-voice-guide.ts
 //
 // One-off runner for the L2 voice-extraction slice. Seeds an `experiments` row, stores a
-// reporter's lab corpus in `source_posts`, runs the ~$0.43 extraction call (Opus 5), and
+// reporter's lab corpus in `source_posts`, runs the configured paid extraction call, and
 // writes the resulting guide to `voice_guides` + a `usage_events` stamp — all through the
 // service-role admin client (every write target here is service-role-write only, by design).
 //

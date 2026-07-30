@@ -119,7 +119,8 @@ documentation you might read:
   tokens; every variant returned HTTP 200. The param is accepted and silently ignored. Bound
   it with `max_completion_tokens` (hard ceiling over reasoning + content), and verify any
   model's cap by reading `reasoning_tokens` back — **never by trusting a 200**.
-- **`deepseek-v4-flash` uses native adaptive reasoning** for revision/repair roles. The #73
-  verification judge is the deliberate exception: it passes `reasoning: "high"` so its trace is
-  available in the model-call ledger; the grounding fallback and dormant clustering classifier
-  pass `reasoning: "none"` as part of their structured-output recipe.
+- **`alibaba/qwen3.7-flash` is the shared drafting support model.** Revision/repair leaves
+  reasoning at the model default; the vision-capable verification judge passes `reasoning:
+  "high"`; the grounding fallback passes `reasoning: "medium"`; and the dormant clustering
+  classifier passes `reasoning: "none"`. The judge receives original source media, not merely
+  another model's media description, so visual verification is independent.

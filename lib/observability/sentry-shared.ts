@@ -19,9 +19,10 @@ export const SENTRY_DSN =
 /**
  * 100%, everywhere — deliberately raised from the 10%-in-production this carried before.
  *
- * The reason it was 10% is unchanged and still true: the create-agent screen polls
- * `getExtractionProgress` every 1.75s for the whole length of an extraction, and a server action
- * is a POST, so one reporter watching one extraction produces ~34 transactions/minute on its own.
+ * The reason it was 10% is unchanged and still true: after `createDesk`, the client starts the
+ * extraction and Feed or Voice polls `getExtractionProgress` every 1.75s for its duration. A
+ * server action is a POST, so one reporter watching one extraction produces ~34 transactions per
+ * minute on its own.
  * What changed is the fix. Sampling was the wrong instrument for it, because **an agent run is a
  * span tree and sampling decides at the ROOT**: the `gen_ai.*` spans are children of the route
  * that triggered them, so a 10% rate does not thin AI data, it deletes nine out of ten extractions

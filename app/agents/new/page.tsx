@@ -13,7 +13,8 @@ import { CreateDeskForm } from "./create-desk-form";
 export const maxDuration = 800;
 
 /**
- * New-desk page — the create-desk form + live extraction view (create-desk-form.tsx). Fetches
+ * New-desk page — the create-desk form. After creation the client starts the durable extraction
+ * claim and replaces this route with the new agent's Feed, which owns the live progress view. Fetches
  * link state server-side (getXLinkState()) so the client form knows, on first paint, whether
  * to show the "Connect X" control or the connected @handle — a client component can't read
  * the reporter's own X link without a round trip, so this thin server wrapper resolves it once

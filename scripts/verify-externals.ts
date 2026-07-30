@@ -22,8 +22,8 @@
 // NOTHING here posts to X, sends an email, or writes a draft. Read-only or self-addressed.
 
 import { generateText } from "ai";
-import { DEEPSEEK_DRAFT_MODEL } from "@/lib/agent/deepseek-draft-config";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
+import { QWEN_DRAFT_MODEL } from "@/lib/agent/qwen-draft-config";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { EXTRACTION_MODEL } from "@/lib/voice/extract-guide";
@@ -95,7 +95,7 @@ function buildChecks(owner: { ownerId: string; handle: string | null }): Check[]
         // budget is consumed entirely by reasoning, returning empty text that reads as a
         // failure when the model is fine.
         const r = await generateText({
-          model: DEEPSEEK_DRAFT_MODEL,
+          model: QWEN_DRAFT_MODEL,
           prompt: "Reply with the single word: ok",
           maxOutputTokens: 512,
         });

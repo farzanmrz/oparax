@@ -6,6 +6,7 @@
     "build": "next build",
     "deadcode": "knip --no-progress --no-config-hints",
     "dev": "next dev",
+    "ai:devtools": "devtools",
     "format": "biome format --write .",
     "preinstall": "node -e \"if(!/pnpm/.test(process.env.npm_config_user_agent||'')){console.error('This repo uses pnpm. Run pnpm install (npm/yarn are blocked).');process.exit(1)}\"",
     "lint": "biome check .",
@@ -18,7 +19,6 @@
     "@radix-ui/react-use-controllable-state": "^1.2.3",
     "@rive-app/react-webgl2": "^4.29.3",
     "@sentry/nextjs": "^10.68.0",
-    "@sentry/profiling-node": "10.68.0",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
     "@streamdown/math": "^1.0.2",
@@ -55,6 +55,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@ai-sdk/devtools": "^1.0.9",
     "@biomejs/biome": "^2.5.5",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^24.12.4",

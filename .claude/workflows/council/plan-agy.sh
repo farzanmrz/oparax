@@ -22,6 +22,7 @@ PF="$1"; SCHEMA="$2"; MODEL="${3:-gemini-3.1-pro-high}"; OUT="$4"
 REPO="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 KEY="${COUNCIL_CHECK_KEY:-plan}"
 TIMEOUT_S="${COUNCIL_AGY_TIMEOUT_S:-900}"
+EXPECTED_HEAD="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || printf 'UNKNOWN')"
 
 command -v tmux >/dev/null || { echo "AGY_FAILED (no tmux — brew install tmux)" >&2; exit 1; }
 
@@ -40,7 +41,9 @@ esac
 SES="agy-$(basename "${OUT%.out.json}" | tr -c 'a-zA-Z0-9' '-' | cut -c1-40)$$"
 OUTFILE_ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "${OUT%.out.json}").tui.json"
 PANE_LOG="${OUT%.out.json}.pane.log"
-rm -f "$OUTFILE_ABS"
+# A caller must use a round/HEAD-unique label, but clear both artifacts too: a
+# restarted lane must never look complete merely because a prior run left OUT.
+rm -f "$OUT" "$OUTFILE_ABS"
 
 cleanup() { tmux kill-session -t "$SES" 2>/dev/null || true; }
 trap cleanup EXIT
@@ -76,7 +79,7 @@ fi
 
 PF_ABS="$(cd "$(dirname "$PF")" && pwd)/$(basename "$PF")"
 SCHEMA_ABS="$(cd "$(dirname "$SCHEMA")" && pwd)/$(basename "$SCHEMA")"
-tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a council brief with its own instructions (review, design, or verification). Execute it faithfully, grounding everything in the actual repository code by reading the real files (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
+tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a council brief with its own instructions (review, design, or verification). Before analysis, run git rev-parse HEAD in $REPO and require exactly $EXPECTED_HEAD; if it differs, write no findings and report the mismatch. Execute the brief faithfully against the live working tree, never remembered or cached code. Before reporting any file:line finding, confirm the path currently exists and reread that exact current range; a deleted path or stale line invalidates the finding. Ground everything in the actual repository code (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
 
 # Poll for the model-written file, then require it stable (agy may write incrementally).
 waited=0; last=-1

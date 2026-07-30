@@ -59,7 +59,6 @@ is complete only when the last ticks:
    `feature-verify`), each runnable standalone in either app; under this
    orchestrator they chain in one session
 4. `Owner feedback implemented + shipped via ship.sh (✋)` → invoke **`feature-ship`**
-5. `Next slice framed` → invoke **`feature-next`** (emits the paste-ready prompt for the next session)
 
 **A run pauses at every phase boundary (owner decision 2026-07-27, superseding
 the 2026-07-26 two-gate rule):**

@@ -9,15 +9,13 @@
 // (AGENTS.md's model-call rule).
 // SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
 // scope) — never importable from a client component.
+import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveCallMeta } from "@/lib/agent/call-meta";
-import {
-  DEEPSEEK_DRAFT_MODEL,
-  DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
-} from "@/lib/agent/deepseek-draft-config";
 // TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
+import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
@@ -83,7 +81,7 @@ function buildClusterCall(params: {
     kind: "draft",
     stage: "clustering",
     role: "primary",
-    model: DEEPSEEK_DRAFT_MODEL,
+    model: QWEN_DRAFT_MODEL,
     output: params.output,
     reasoning: params.reasoning,
     usage: params.usage,
@@ -266,22 +264,28 @@ export async function assignToStory(input: {
     return { storyId, calls: [] };
   }
 
-  // DeepSeek generateObject recipe (.claude/rules/agent.md, this brief's 4-leg copy): leg 1
-  // `reasoning: "none"` + `DEEPSEEK_DRAFT_PROVIDER_OPTIONS` (leg 1); `story-cluster.md` names
+  // Qwen structured-output recipe: deterministic settings plus imperatively named fields in
+  // `story-cluster.md`; schema failure degrades to a one-source story instead of hiding a post.
   // `match`/`storyIndex`/`summary` imperatively under its Output heading (leg 2); leg 3 is the
   // deterministic degrade in the catch block below, not a retry (a temp-0 failure isn't sampling
   // variance, matching the judge's own reasoning); `maxOutputTokens: 2000` is leg 4.
+  // `onStepEnd` fires before JSON parsing/schema validation in AI SDK v7, so the completed
+  // provider response remains ledgerable even when Zod rejects the structured verdict.
+  const completedStepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
   try {
     const verdictResult = await generateObject({
-      model: DEEPSEEK_DRAFT_MODEL,
-      providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
+      model: QWEN_DRAFT_MODEL,
+      providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "none",
       temperature: 0,
       maxOutputTokens: 2000,
       schema: clusterVerdictSchema,
       system: STORY_CLUSTER_PROMPT,
       prompt: buildClusterPrompt(candidates, authorHandle, text),
-      experimental_telemetry: aiTelemetry("story_cluster", "story-cluster-deepseek"),
+      onStepEnd: (event) => {
+        completedStepRef.value = event;
+      },
+      experimental_telemetry: aiTelemetry("story_cluster", "story-cluster-qwen"),
     });
 
     const call = await buildClusterCall({
@@ -302,10 +306,10 @@ export async function assignToStory(input: {
 
     return { storyId, calls: [call] };
   } catch (err) {
-    // Same discriminator as draft-council-run.ts's judge catch: NoObjectGeneratedError means the
-    // call COMPLETED and billed but its output failed schema validation — that call still owes a
-    // ledger row (AGENTS.md's model-call rule), captured off the error (cost degrades to null, no
-    // generationId — the error doesn't surface gateway metadata in resolveGatewayCost's shape).
+    // NoObjectGeneratedError means the call COMPLETED and billed but its output failed schema
+    // validation. `onStepEnd` captured the provider response before validation, so this call still
+    // reaches the ledger with its raw output, reasoning, usage, Gateway cost metadata, and
+    // generation id. The error fields remain a defensive fallback if no callback event arrived.
     // Degrade deterministically to a new one-source story, matching the zero-candidate path.
     // Any OTHER error means the call did NOT complete or bill — propagate it, create no story,
     // return no calls, so the caller's ledger-first ordering never sees a phantom billed call.
@@ -314,10 +318,12 @@ export async function assignToStory(input: {
         "cluster: classifier output failed schema validation; degrading to a new one-source story",
         err,
       );
+      const step = completedStepRef.value;
       const call = await buildClusterCall({
-        output: err.text ?? null,
-        reasoning: null,
-        usage: err.usage,
+        output: step?.objectText ?? err.text ?? null,
+        reasoning: step?.reasoning ?? null,
+        usage: step?.usage ?? err.usage,
+        providerMetadata: step?.providerMetadata,
       });
       const storyId = await createAndClaimNewStory(
         admin,
