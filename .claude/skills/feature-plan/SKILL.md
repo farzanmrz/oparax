@@ -180,6 +180,16 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   bash .claude/workflows/council/run.sh agy critique-agy
 ```
 
+**Manual lane (optional, owner-driven).** A GUI-only surface — Antigravity 2.0
+or the Antigravity IDE — can join the council with no orchestration at all:
+the `.in.txt` files above are already on disk, so the owner opens the project
+there and runs `/critique-plan` (`.agents/workflows/critique-plan.md`), which
+writes `.feature/critique-manual.out.md`. Adjudicate it exactly like a CLI
+lane's output. **Never wait on this and never launch it yourself** — it exists
+because a GUI has no headless entry point, and its whole cost is the owner's
+attention. The CLI lanes above already run free in the background; this is for
+when the owner wants a deeper second opinion or a lane came back FAILED.
+
 Tier is family-shaped, so don't copy one lane's `COUNCIL_TIER` onto another:
 codex takes `COUNCIL_MODEL=gpt-5.6-sol` at effort high; grok is single-model
 (`grok-4.5`) at effort high — never xhigh/max, which error; **agy's tier IS its
