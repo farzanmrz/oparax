@@ -45,36 +45,28 @@ chain — they are what resume detection and both ships' completeness guards rea
 | Subagents | `bug-finder`, `fixer`, `supabase-runner` | `cx_grounder`, `cx_fixer`, `cx_supabase_runner` |
 | Concurrency cap | ≤10 agents per fan-out | ≤6 threads (the global `[agents]` cap) |
 
-**Session model — pick the smart dial AT INVOCATION for a chained run**
-(Claude: fable/opus high; Codex: gpt-5.6-sol high). The session's own tokens go
-almost entirely to feature-find's adjudication and feature-verify's report —
-the two places that must be smart — and a chained run offers no reliable
-moment for a human mid-run flip, so don't plan on one. The cheap-start + flip
-pattern applies ONLY when running `feature-find` standalone: its milestone
-line "council lanes launched" is the flip cue, and adjudication runs on
-whatever model is selected when the lanes return. A chain invoked on a cheap
-dial must say so in its first milestone line ("running chain on <model> —
-adjudication will use this dial") so the owner can stop it early if that's
-not intended.
+**Pick the smart dial AT INVOCATION.** A chain offers no reliable moment for a
+mid-run flip. The cheap-start-then-flip pattern applies only to `feature-find`
+run standalone, where "council lanes launched" is the cue. A chain started on a
+cheap dial must say so in its first milestone line.
 
 ## Hard rules (bind the whole chain)
 
-- Session model = adjudication + the final report ONLY. Setup, reviews,
-  fixes, lint, doc sync are all dispatched with explicit model+effort (or the
-  Codex subagent roster) or run in shell.
-- One combined review charter per lane — never re-expand into per-angle ×
-  per-family fan-outs, and never a separate verifier quorum.
-- A failed review lane is reported as failed, never as a clean pass.
-- **Milestone lines are required output, not verbosity:** one line entering
-  each of the four steps, one line launching any long background wait (name +
-  expected duration). Nothing else between them.
-- **When pausing to ask the owner anything, stop or await write-capable
-  subagents first** — read-only agents (scouts, reviewers) may drain
-  in the background; nothing may edit files while an owner question is open.
-- Findings and fixes ALWAYS land as issue comments even in the one-session
-  chain — the durable record is what makes hop-anywhere (and post-hoc audit)
-  possible, and it costs two `gh issue comment` calls.
-- Cleanup/simplification is quality, not correctness — not a QC step; run
-  `/simplify` on demand, off the critical path.
+- Session model = adjudication + the final report ONLY. Everything else is a
+  pinned dispatch or shell.
+- One combined review charter per lane. Never re-expand into per-angle ×
+  per-family fan-outs; never add a separate verifier quorum.
+- **A failed lane is reported FAILED, never as a clean pass.** `AGY_EMPTY` is
+  no-signal. Before trusting the council at all, prove it: `bash
+  .claude/workflows/council/selftest.sh`.
+- **Milestone lines are required output:** one entering each of the four steps,
+  one launching any long background wait (name + expected duration). Nothing
+  else between them.
+- **Before pausing to ask the owner anything, stop or await write-capable
+  subagents.** Read-only agents may drain; nothing edits files while a question
+  is open.
+- All four markers land as issue comments even in the one-session chain — that
+  record is what makes hop-anywhere and post-hoc audit possible.
+- Cleanup/simplification is not a QC step; run `/simplify` off the critical path.
 - A dependency MAJOR upgrade, framework migration, or schema/data migration
   surfacing here → STOP and present options; never autonomous.

@@ -44,7 +44,20 @@ Then sweep runtime errors once from `http://localhost:3000/_next/mcp`
 (`get_errors` tools/call POST) and carry anything it returns into step 5's
 adjudication. Leave the dev server up — later steps reuse it.
 
-## 2. Deterministic gates
+## 2. Deterministic gates + the council self-test
+
+```bash
+bash .claude/workflows/council/selftest.sh
+```
+
+Run it in the background alongside the gates below; it costs ~90s and drives
+every lane through the real wrapper, the real schema, and a brief that cannot be
+answered without opening a file. **A lane that fails here is FAILED for this
+round — do not launch it in step 4 and say so in the record.** This exists
+because liveness probes kept passing while real briefs returned nothing, and a
+lane returning nothing looks exactly like a lane finding nothing.
+
+
 
 `bash .claude/skills/feature/scripts/qc-gates.sh` — the one scripted gate
 runner (build + tsc hard, residual-lint report). `GATES: RED` = STOP and
@@ -59,17 +72,19 @@ respected (existing components before new), the surface reads as native,
 per-state intent met.
 
 It also checks experiential quality — hierarchy, spacing, all states,
-streaming/motion feel, layout shift — and this distilled tells checklist
-(sourced from taste-skill v2 / ECC / ui-ux-pro-max research, 2026-07-28):
-decorative status dots and `00 / INDEX` eyebrows; uppercase-tracking labels
-multiplying past one per ~3 sections; cards nested inside cards; borders on
-every row edge; mixed corner-radius systems; duplicate-intent CTAs; layout
-shifting between states or on hover (dimensions must be stable); loading
-states that don't match final layout; missing empty/error states; `useState`
-tracking continuous input (mouse/scroll) instead of motion values; WCAG AA
-contrast on every CTA/form control; and this repo's own hard rules (sentence
-case, no eyebrow headers, uniform form fields). For rule lookups the critic
-may query the repo-local ui-ux-pro-max database (no dependencies):
+streaming/motion feel, layout shift — plus this tells checklist:
+
+- decorative status dots; `00 / INDEX` eyebrows; uppercase-tracking labels past
+  one per ~3 sections
+- cards inside cards; borders on every row edge; mixed corner-radius systems;
+  duplicate-intent CTAs
+- layout shifting between states or on hover (dimensions must be stable);
+  loading states that don't match final layout; missing empty/error states
+- `useState` tracking continuous input (mouse/scroll) instead of motion values
+- WCAG AA contrast on every CTA and form control
+- this repo's hard rules: sentence case, no eyebrow headers, uniform form fields
+
+For rule lookups the critic may query the repo-local database (no dependencies):
 `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux`
 (also `--stack shadcn` / `--stack nextjs`) — severity-tagged Do/Don't rules
 to cite, not an aesthetic authority.
