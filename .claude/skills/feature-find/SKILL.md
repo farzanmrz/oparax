@@ -129,20 +129,28 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   bash .claude/workflows/council/run.sh codex "$LABEL"
 ```
 
-Claude Code runs TWO externals — `codex` (`COUNCIL_MODEL=gpt-5.6-sol`) and
-`grok` — plus the internal lane. Codex runs its native `reviewer`/`pr_explorer`
-pair (the codex family's perspective is the session itself) plus the `grok`
-external. A failed lane is reported FAILED, never as a clean pass. All
-externals failing = single-family review, and the record must say so.
+Claude Code runs THREE externals — `codex` (`COUNCIL_MODEL=gpt-5.6-sol`),
+`grok`, and `agy` — plus the internal lane. Codex runs its native
+`reviewer`/`pr_explorer` pair (the codex family's perspective is the session
+itself) plus the `grok` and `agy` externals. A failed lane is reported FAILED,
+never as a clean pass; `AGY_EMPTY` is no-signal, not approval. All externals
+failing = single-family review, and the record must say so.
 
-**`agy` is retired** (2026-07-30) and its wrapper is deleted — never launch it.
-`agy --print` is structurally single-shot, its only agentic path was 131 lines
-of tmux keyboard puppetry, and that model picker once silently ran Claude Opus
-4.6 as the "agy" lane. A cross-model council cannot use a lane that may quietly
-become another family. The grok lane, by contrast, was never capability-limited:
-its wrapper's stdout/stderr split was broken, that fix landed untested, and a
-real-brief probe afterwards returned 7 grounded findings in 436s — including a
-stale-extraction-run bug the owner had found by hand.
+**Judge a lane on POST-FIX behaviour, never on its accumulated failure count.**
+A detach of grok+agy was proposed 2026-07-30 and reversed the same day, because
+each family's failure history predated a wrapper fix that had already landed.
+agy's picker contamination (07-27 — the TUI silently selected Claude Opus 4.6
+and ran a whole round as "agy") was fixed the same day in `f6dc493`, which
+searches the picker row by row, verifies against the status line, and fails
+loudly on no match; agy then returned `ok: 10 critiques` twice on 07-28, and
+issue #79's round records "agy: passed, 3 findings". grok's `GROK_FAILED` runs
+likewise predated its stdout/stderr fix, after which it returned 7 grounded
+findings in 436s including a stale-extraction-run bug the owner had found by
+hand. Retiring either on the pre-fix record would have deleted a working lane.
+
+Tier is family-shaped: codex and grok take an EFFORT tier, but **agy's
+`COUNCIL_TIER` is its model slug** (`gemini-3.1-pro-high`), because that CLI
+fuses model and effort. Don't copy one lane's tier onto another.
 
 ## 5. Adjudicate — this session
 

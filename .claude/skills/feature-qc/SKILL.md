@@ -41,7 +41,7 @@ chain — they are what resume detection and both ships' completeness guards rea
 | | Claude Code | Codex |
 |---|---|---|
 | Session dial | fable/opus, high | `gpt-5.6-sol` high — set with `/model` before starting |
-| Review council (step 1) | internal `bug-finder` lane + the `codex` and `grok` externals | native `reviewer` + `pr_explorer` pair + the `grok` external (no codex lane — that family IS this session) |
+| Review council (step 1) | internal `bug-finder` lane + the `codex`, `grok` and `agy` externals | native `reviewer` + `pr_explorer` pair + the `grok` and `agy` externals (no codex lane — that family IS this session) |
 | Subagents | `bug-finder`, `fixer`, `supabase-runner` | `cx_grounder`, `cx_fixer`, `cx_supabase_runner` |
 | Concurrency cap | ≤10 agents per fan-out | ≤6 threads (the global `[agents]` cap) |
 

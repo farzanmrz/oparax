@@ -128,32 +128,39 @@ Write the full plan yourself. Charter:
   task invokes) · **## Stack & design acceptance criteria** (what QC verifies
   the built diff against).
 
-## 5. Critique — two external families, zero Claude
+## 5. Critique — three external families, zero Claude
 
 This is the phase where external critique demonstrably earned its keep (~86
-accepted critiques against 7 rejections across six slices). Two lanes run:
-**`codex`** and **`grok`**.
+accepted critiques against 7 rejections across six slices). Three lanes run:
+**`codex`**, **`grok`** and **`agy`**.
 
-**Each lane needs a brief, not a toolkit.** Both CLIs run read-only over this
-working tree with full file access and read `AGENTS.md` themselves, so a critic
-is never short of capability — it is short of *this slice's* context. That is
-the `.in.txt`'s job, and it is why neither family gets skills, rules, agents or
-MCP of its own: the grounding pack from step 3 already distilled the matching
+**Each lane needs a brief, not a toolkit.** All three CLIs reach this working
+tree with full read access and read `AGENTS.md` themselves, so a critic is never
+short of capability — it is short of *this slice's* context. That is the
+`.in.txt`'s job, and it is why no family gets skills, rules, agents or MCP of
+its own: the grounding pack from step 3 already distilled the matching
 `.claude/rules/*.md` guards, and pasting those distilled guards into the brief
-beats any harness-side rules import (it is slice-scoped instead of blanket, and
-it works identically for a family that has no rules mechanism at all).
+beats any harness-side rules import (slice-scoped instead of blanket, and it
+works identically for a family with no rules mechanism at all).
 
-**`agy` is retired, not detached** (2026-07-30) — `agy --print` is structurally
-single-shot, its only agentic path was tmux keyboard puppetry, and that picker
-once silently ran Claude Opus 4.6 as the "agy" lane. A cross-model council
-cannot use a lane that may quietly become another family, and no amount of
-setup fixes a CLI's shape.
+**Judge a lane on POST-FIX behaviour, never on its accumulated failure count.**
+A detach of grok+agy was proposed 2026-07-30 and reversed the same day, because
+each family's failure history predated a wrapper fix that had already landed.
+agy's picker contamination — 07-27, where the TUI silently selected Claude Opus
+4.6 and ran a whole round as "agy" — was fixed the same day (`f6dc493`): the
+picker is now searched row by row, verified against the status line, and fails
+loudly on no match. After that fix agy returned `ok: 10 critiques` twice on
+07-28, and issue #79's round records "agy: passed, 3 findings". grok's
+`GROK_FAILED` runs likewise predated its stdout/stderr fix, after which it
+returned 7 grounded findings in 436s. Retiring either on the pre-fix record
+would have deleted a working lane. `agy --print` really is single-shot — that
+is *why* its wrapper drives the TUI, and the TUI is the part that works.
 
 Write each lane's prompt — plan + grounding pack + "verify claims against the
 actual code, cite paths; work requirement by requirement; an empty list is a
 valid verdict only after that" — to `.feature/critique-<family>.in.txt`, launch
-BOTH in background, and end the turn; the harness re-invokes you when they
-finish. With `run_in_background: true`:
+ALL THREE in background, and end the turn; the harness re-invokes you when they
+finish. With `run_in_background: true`, one call per family:
 
 ```bash
 CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
@@ -167,10 +174,19 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
   bash .claude/workflows/council/run.sh grok critique-grok
 ```
 
-Models: codex `COUNCIL_MODEL=gpt-5.6-sol` at tier high; grok is single-model
-(`grok-4.5`, hardcoded in its wrapper) at tier high — never pass it xhigh/max,
-which error. A lane that fails, or returns empty without having worked the
-requirements, is reported as FAILED — never treated as approval. Both failing =
+```bash
+CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
+  COUNCIL_DEPTH=deep COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
+  bash .claude/workflows/council/run.sh agy critique-agy
+```
+
+Tier is family-shaped, so don't copy one lane's `COUNCIL_TIER` onto another:
+codex takes `COUNCIL_MODEL=gpt-5.6-sol` at effort high; grok is single-model
+(`grok-4.5`) at effort high — never xhigh/max, which error; **agy's tier IS its
+model slug** (`gemini-3.1-pro-high` by default), because that CLI fuses model
+and effort and rejects them as separate flags. A lane that fails, or returns
+empty without having worked the requirements, is reported as FAILED — never
+treated as approval. `AGY_EMPTY` is no-signal, not approval. All three failing =
 no external critique, and the adjudication must say so.
 
 **Codex delegation line:** append to the codex lane's `.in.txt` only — "You have
