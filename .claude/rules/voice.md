@@ -54,43 +54,21 @@ constructor→literal rewrite is classified **safe**, so the format-on-write hoo
 kept rewriting it back. A `biome-ignore` only binds when placed on the line immediately above
 the flagged expression, not above the enclosing declaration.)
 
-## The extraction recipe, and why each part is fixed
+## Voice-guide guardrails
 
-- **Model: `anthropic/claude-opus-5`, adaptive thinking @ high effort, NO web search.** The
-  8-model on-task panel (verbatim-quote fidelity, unique catches) was won by `claude-fable-5` at a
-  measured **$0.855/reporter**; Opus 5 replaced it because it postdates that panel entirely and
-  costs **half** ($5/$25 per MTok vs $10/$50). **Rejected as primaries:** opus-4.8, sonnet-5,
-  gpt-5.6-sol/terra, grok-4.5 — all tested, all lost to Fable, sol despite an 81.7 Longform Elo,
-  which is exactly why writing leaderboards don't override on-task results. A model that did not
-  exist at panel time is a new fact, not a re-audition — that is the bar for reopening this.
-- **`maxOutputTokens` caps thinking AND output together.** Raised to 64k on the Opus 5 switch: at
-  adaptive/high, thinking can eat a tight budget and truncate the guide mid-section, which reads
-  as a bad extraction rather than a clipped one. It is a ceiling, not a reservation — unused
-  headroom costs nothing.
+- **Keep the live extraction call streaming.** The Feed and Voice surfaces poll the durable run
+  row and render the shared `extraction-steps.ts` mapping: recent posts → beat → voice → rules.
+  Model-step boundaries, rather than arbitrary client polls, own the scope and extraction
+  reasoning/text streams. Do not introduce a second stage vocabulary or a separate progress path.
 - **The extractor never fabricates a post.** Every example in a guide is text the reporter actually
   published. The `## Anti-Examples` section (invented "they would never write this" posts) was
   removed: it was the one place the prompt licensed invention, it shipped into every drafting
   prompt as bloat, and corrective guidance is better sourced from real reporter feedback than from
   model invention. `## Hard Rules — Never` stays — those are evidence-grounded observations of what
   the writer demonstrably avoids, not inventions.
-- **Corpus: 100 posts, split 80 train / 20 held-out** (most recent). The holdout exists so drafting
-  evaluation can never score against a post the extractor read — contamination control, not sample
-  size.
 - **Measured facts are computed, not read.** Reading under-counts sparse habits: the extractor
   called one reporter hashtag-free when the true count was 6/80. A count cannot miss that and
   costs $0.
-- **No self-verification section, and no competitive framing.** Both were removed against
-  Anthropic's official Opus 5 prompting guidance, not by read-through. (1) `## Dimension
-  Coverage` — the extractor's closing self-audit checklist — is gone: the guidance says explicit
-  verification instructions "cause over-verification on Claude Opus 5, and removing them reduces
-  wasted tokens with no loss in quality," and `deployGuide()` was already discarding it, so it
-  was pure waste. (2) `Thoroughness is scored; padding and repetition are penalized` became a
-  length-calibration line: the same guidance flags "be conservative"-shaped instructions as
-  literally followed on Opus 5, which suppresses real findings — the replacement targets padding
-  without chilling coverage, since Opus 5 also writes longer deliverables by default. (3) "judged
-  against guides produced by rival models" was dropped — it was a true statement during the
-  8-model ablation and is now a motivational fiction; competitive framing appears nowhere in
-  Anthropic's guidance. **The four criteria themselves stay** — they define what "good" means.
 - **The Absence Rule and all 33 dimensions stay — do not "simplify" them into a prohibition
   list.** A blocklist ("do not invent hashtags", "do not invent slants") can never be finished:
   it enumerates the three failures the ablation happened to catch and silently authorizes every
@@ -102,25 +80,3 @@ the flagged expression, not above the enclosing declaration.)
   Cutting either one makes the other actively harmful.
 - **Deploy strip:** store the raw guide (audit trail), draft from the stripped one — 16.1% off
   every draft forever, at zero risk. Now saved at extraction time instead (see above).
-
-## Model configs are decided; don't re-choose them mid-task
-
-Extraction and drafting model/reasoning picks are fixed, with EXPECTED costs (~$0.43/reporter
-one-time extraction on Opus 5, ~$3/mo drafting) — not enforced ceilings. Extraction in particular
-carries no spend cap or reservation: the previous once-per-reporter-per-UTC-day claim and the
-`$2` worst-case spend gate it reserved against (`lib/voice/spend-gate.ts`) were deleted outright
-as an owner decision when the shared-guide model was dropped (see AGENTS.md's settled decisions)
-— it optimized a case (two desks sharing one extraction) that no longer exists now that a guide
-belongs to one desk. Don't re-derive a cap or claim table here; if spend ever needs bounding
-again, it is bounded per OWNER, never per handle. Two live-probed facts that outrank any
-documentation you might read:
-
-- **`moonshotai/kimi-k3` cannot cap reasoning.** `effort: "none"` still emitted 119 reasoning
-  tokens; every variant returned HTTP 200. The param is accepted and silently ignored. Bound
-  it with `max_completion_tokens` (hard ceiling over reasoning + content), and verify any
-  model's cap by reading `reasoning_tokens` back — **never by trusting a 200**.
-- **`alibaba/qwen3.7-flash` is the shared drafting support model.** Revision/repair leaves
-  reasoning at the model default; the vision-capable verification judge passes `reasoning:
-  "high"`; the grounding fallback passes `reasoning: "medium"`; and the dormant clustering
-  classifier passes `reasoning: "none"`. The judge receives original source media, not merely
-  another model's media description, so visual verification is independent.
