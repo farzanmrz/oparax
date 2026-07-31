@@ -69,8 +69,8 @@ for review** rather than shipped silently.
    times**, because the residual is always small enough for step 4's inline
    path. Its rules live here instead, where they are actually read:
 
-   - Apply the mechanical tier directly — a11y attributes, list `key`s,
-     `<img>` → `next/image` with real `width`/`height`.
+   - Apply the mechanical tier directly, to every occurrence in every changed file —
+     a11y attributes, list `key`s, `<img>` → `next/image` with real `width`/`height`.
    - Apply the behavior-changing tier too, but **flag each one with a sentence
      of reasoning** for the ⚠ Review section — `pnpm build` cannot vouch for it.
    - Never pass `--unsafe`. Never touch a file outside the changed set. Do not
@@ -92,7 +92,7 @@ for review** rather than shipped silently.
    are the changes `pnpm build` can't vouch for.
 
 ## Notes
-- Scope is **changed files only** — never fix pre-existing findings in untouched code.
+- Scope is **every changed file, and only changed files** — cover all of them, and never fix pre-existing findings in untouched code.
   That's scope creep; surface them to the user instead of fixing them here.
 - The safe pass is **not** this skill's job — the `PostToolUse` hook owns it, continuously.
   Never re-run `biome check --write` in bulk here; that would put formatting churn back

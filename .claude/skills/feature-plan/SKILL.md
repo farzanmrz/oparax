@@ -70,8 +70,9 @@ The agent gathers:
   deployment status, deploy commands) are never selected**; they are facts, not
   constraints, and planning runs on the decisions already in AGENTS.md. Invoke
   each selected skill and distill its hard constraints for this slice.
-- **Guards.** AGENTS.md plus every `.claude/rules/*.md` whose `paths:`
-  frontmatter matches the predicted touch-paths — distilled, not pasted.
+- **Guards.** AGENTS.md plus **every** `.claude/rules/*.md` whose `paths:`
+  frontmatter matches **any** predicted touch-path — check each rule against each
+  path, distil, do not paste.
 - **Ground truth.** Excerpts (signatures, exported types, route shapes) of the
   files the slice will touch or interface with.
 

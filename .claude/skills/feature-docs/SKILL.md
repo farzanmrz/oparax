@@ -28,8 +28,9 @@ Dispatch ONE agent (Claude Code: `model: sonnet`, `effort: high`; Codex:
 Input: the branch diff plus the staleness findings in the latest
 `## QC round <R> — findings` comment.
 
-- Subtract any AGENTS.md / `.claude/rules/*.md` / skill line the diff falsified
-  or made code-recoverable.
+- Subtract **every** AGENTS.md / `.claude/rules/*.md` / skill line the diff falsified
+  or made code-recoverable — check all three surfaces, not only the one the findings
+  happened to mention.
 - Add ONLY a non-recoverable keeper: a new guard, a retired pattern with its
   reason, a new trust boundary.
 - Single-source every fact. If it lives in the code map, it does not also live

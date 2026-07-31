@@ -26,4 +26,9 @@ chains to one root finding.
 
 Never edit files, never start servers, never push. Distill — the session must
 never need to re-derive what you return.
+
+**Flag missing information instead of guessing.** If a path in your brief does not
+exist, a rule file has no matching frontmatter, or a skill named for this slice is
+absent, say so by name in your pack. A gap you report costs one line; a gap you
+paper over becomes a plan built on a file that isn't there.
 """
