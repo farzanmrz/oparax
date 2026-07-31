@@ -20,8 +20,14 @@ next-env.d.ts
 
 # Local scratch data (regenerable)
 data/
-# scripts/diagnose-extraction.ts transcripts — raw model output and full reasoning traces
+# Stream-transcript dumps — raw model output and full reasoning traces
 .diag/
+# The voice lab: 35 MB / 2,300+ files of corpora and extraction artifacts. AGENTS.md always
+# described it as gitignored and it was NOT, which mattered because ship.sh stages with
+# `git add -A` after `--untracked-files=all` — one ship would have committed the whole lab.
+.voice-lab/
+# 21st design-context generator output — regenerated on demand, nothing reads it
+.21st/
 # AI SDK DevTools — complete local prompts, outputs, reasoning, and provider payloads
 .devtools/
 
