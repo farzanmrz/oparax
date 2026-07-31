@@ -27,7 +27,7 @@ lanes return."
 | Stage | Claude Code | Codex |
 |---|---|---|
 | Setup scout | one agent, `model: haiku`, `effort: low` | `cx_grounder` |
-| Internal review lane | `bug-finder`-style agent, `model: sonnet`, `effort: high` | `pr_explorer` + `reviewer` |
+| Internal review lane | `bug-finder` — **opus, pinned in the agent**; do not override | `pr_explorer` + `reviewer` |
 | DB seeding / exploratory Supabase ops | `supabase-runner` (`model: haiku`; sonnet for open-ended) | `cx_supabase_runner` |
 
 ## 1. Setup

@@ -3,8 +3,8 @@ name: oparax-critic
 description: >
   Oparax council critic. Reviews a plan (before build) or a diff (during QC)
   against the code as it actually exists, and returns schema-bound findings.
-  Read-only. Loaded by .claude/workflows/council/plan-grok.sh via
-  --agent-profile; not for interactive use.
+  Read-only. Loaded by .claude/workflows/council/plan-grok.sh with `--agent <path>`;
+  not for interactive use.
 prompt_mode: full
 model: inherit
 permission_mode: plan

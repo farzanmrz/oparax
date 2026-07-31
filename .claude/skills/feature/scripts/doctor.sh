@@ -5,7 +5,8 @@
 # a non-interactive session and says nothing about Codex, Grok or agy. This runs
 # the same class of checks against all four: is every config file parseable, does
 # every hook script referenced by a config actually exist and parse, is every
-# agent definition well-formed, and are the MCP servers reachable.
+# agent definition well-formed. It does NOT probe MCP reachability — `claude mcp
+# list` does that and it needs network.
 #
 # Scope, deliberately: CONFIGURATION health only. Whether a council lane actually
 # WORKS is a different question and a stronger one — that is

@@ -23,8 +23,7 @@ never unformatted for longer than one tool call, in this session or any sub-agen
 What reaches this skill is only the residual: rules with **no fix** (most `next` rules,
 e.g. `noImgElement`) or an **unsafe** fix (`react/useExhaustiveDependencies`) — the ones
 `--write` deliberately won't touch without `--unsafe`. Those need a human-style edit. This
-skill clears them on the feature's changed files **without bloating the main
-conversation** — it fans the fixes out to isolated sub-agents and returns a compact report.
+This skill clears them on the feature's changed files and returns a compact report.
 
 ## Correctness is the constraint
 
@@ -69,8 +68,9 @@ for review** rather than shipped silently.
    times**, because the residual is always small enough for step 4's inline
    path. Its rules live here instead, where they are actually read:
 
-   - Apply the mechanical tier directly, to every occurrence in every changed file —
-     a11y attributes, list `key`s, `<img>` → `next/image` with real `width`/`height`.
+   - Apply the mechanical tier directly, to every finding residual.json reported —
+     all of them, across all files, not just the first file's. a11y attributes,
+     list `key`s, `<img>` → `next/image` with real `width`/`height`.
    - Apply the behavior-changing tier too, but **flag each one with a sentence
      of reasoning** for the ⚠ Review section — `pnpm build` cannot vouch for it.
    - Never pass `--unsafe`. Never touch a file outside the changed set. Do not
