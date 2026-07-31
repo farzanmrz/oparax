@@ -7,9 +7,9 @@
 // extract-guide.ts) unchanged — this module does not reimplement the extraction call itself,
 // only consumes it as a stream instead of a one-shot. extractVoiceGuideStreaming does NOT write
 // a model_calls row (it only returns the extraction result once the stream finishes), so this
-// module is the ONE place that writes the "voice_extraction" ledger row reached via the app
-// path (scripts/extract-voice-guide.ts remains the ledger writer for the manual/CLI path, via
-// the plain extractVoiceGuide, and the two never run for the same call).
+// module is the ONE place that writes the "voice_extraction" ledger row. (A manual/CLI path
+// with its own ledger writer existed alongside this; it and its non-streaming extractor were
+// deleted once the slice shipped, so there is no second writer to keep in step.)
 //
 // A guide belongs to the desk that paid for it. There is no sharing, no dedup, no per-day
 // claim and no per-handle lookup cap: extraction runs whenever it is asked to, and two desks on
@@ -74,7 +74,7 @@ export type PreflightResult =
   | { proceed: false; gates: GateReport[]; outcome: ExtractionOutcome; message: string };
 
 /** The ONE model_calls row for this stage, written ledger-first (before voice_guides) per
- *  AGENTS.md's model-call rule — same ordering and shape as scripts/extract-voice-guide.ts's
+ *  AGENTS.md's model-call rule — the same ordering and shape the deleted CLI extractor's
  *  insert for this exact stage. */
 async function insertExtractionModelCall(
   admin: AdminClient,
@@ -416,7 +416,7 @@ async function runExtractionSpendPhaseInner(
       // $0.31 billed — and an empty guide. Token arithmetic confirms the output really was all
       // reasoning and zero text (9,443 × $25/MTok out + 15,387 × $5/MTok in ≈ the $0.31 billed).
       // WHY the model stopped without answering is still unestablished — a fully instrumented
-      // rerun (scripts/diagnose-extraction.ts, which records every stream part verbatim) did NOT
+      // rerun (a recorder attached to onRawPart, capturing every stream part verbatim) did NOT
       // reproduce it: 200s, 293 text-deltas, a 23,261-char guide, $0.436. One clean run against
       // one dirty run characterizes nothing; do not write "nondeterminism" or any other cause here
       // until a failing run has been CAUGHT by that instrumentation. What is established: the

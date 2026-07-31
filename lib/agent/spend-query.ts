@@ -11,7 +11,7 @@
 // today — the owner collapsed the ground→revise×2→synthesize pipeline down to this single
 // Qwen 3.7 Flash pass, followed by `draft-judge.ts`'s live `"judge"` stage. `"drafting"` remains
 // the dormant emailed-correction path (`draft-council-run.ts`'s `reviseDraft` and repair leg),
-// while `scripts/extract-voice-guide.ts` stamps `"voice_extraction"`.
+// while the extraction path stamps `"voice_extraction"`.
 // These are the entire live write surface — no remapping needed, just an explicit
 // `stage IN (...)` filter so a future stage (e.g. a `"scan"` stage, mentioned as a placeholder
 // in the `model_calls` migration's column comment but never written) can't leak into this
