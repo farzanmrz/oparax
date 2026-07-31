@@ -172,8 +172,14 @@ Every phase starts from durable state only — issue body, branch,
 `origin/beta...ft/<N>`, the `## QC round <R>` comments — so a slice may switch
 harness at any phase boundary in either direction.
 
+Two health checks, and they answer different questions. `bash
+.claude/skills/feature/scripts/doctor.sh` is the four-CLI equivalent of Claude
+Code's `/doctor` — every config parses, every hook script exists, every agent
+definition is well-formed, across all four harnesses. It proves CONFIGURATION
+only.
+
 The external review council is `codex` + `grok` + `agy`, launched by
-`.claude/workflows/council/run.sh`. **Prove it before trusting it:**
+`.claude/workflows/council/run.sh`. **Prove it FUNCTIONS before trusting it:**
 `bash .claude/workflows/council/selftest.sh` drives every lane through the real
 wrapper and schema on cheap dials in ~90s. A failed lane is FAILED, never a clean
 pass.
