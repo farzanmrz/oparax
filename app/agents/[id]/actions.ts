@@ -14,7 +14,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { checkXPostable, resolveXTier } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveXTier, xUnpostableMessage } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
@@ -251,10 +251,7 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
     if (!postable.ok) {
       return {
         ok: false,
-        error:
-          postable.reason === "too_long"
-            ? "This draft is over X's length limit and can't be posted as-is."
-            : "This draft isn't valid for X and can't be posted as-is.",
+        error: xUnpostableMessage(postable.reason),
       };
     }
   }

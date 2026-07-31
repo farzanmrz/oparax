@@ -21,6 +21,21 @@ export function resolveXTier(value: string | null | undefined): XAccountTier {
  *  so a draft that passes at edit time is guaranteed to also pass at actual post time. Length
  *  alone was never enough: twitter-text's own `valid` flag also rejects text X will refuse (e.g.
  *  certain control characters), which a short-but-malformed draft would otherwise sail past. */
+/**
+ * The user-facing message for a failed `checkXPostable`.
+ *
+ * Lives beside the gate because both writers of a posted draft — `editDraft`
+ * (app/agents/[id]/actions.ts) and `postDraftToXForOwner` (lib/x/post-core.ts) —
+ * showed the reporter the same two sentences from their own copy. Two copies of a
+ * string a user reads is two chances for them to diverge and for the same failure
+ * to be described two ways.
+ */
+export function xUnpostableMessage(reason: "too_long" | "invalid"): string {
+  return reason === "too_long"
+    ? "This draft is over X's length limit and can't be posted as-is."
+    : "This draft isn't valid for X and can't be posted as-is.";
+}
+
 export function checkXPostable(
   text: string,
   tier: XAccountTier = "standard",
