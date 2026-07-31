@@ -35,7 +35,7 @@ table, never in a second file.
 | Stage | Claude Code | Codex |
 |---|---|---|
 | Session dial | owner's top dial (opus/fable, high) | `gpt-5.6-sol` high — set with `/model` before starting |
-| Thinking gate (step 2) | invoke `first-principles-thinking` | do it inline in this chat: name the load-bearing problem, the minimal rebuild, and what the ask does NOT require |
+| Thinking gate (step 2) | `/first-principles-thinking` | `$first-principles-thinking` — same skill, mirrored into `.agents/skills` |
 | Grounding pack (step 3) | one agent, `model: sonnet`, `effort: low` | `cx_grounder` (pinned cheap + read-only in its TOML) |
 | Critique (step 5) | both externals: `codex` + `grok` | `grok` + `agy` externals + the native `reviewer` agent (`.codex/agents/reviewer.toml` — the oparax critic contract, spawning `pr_explorer` for evidence). The codex family's perspective IS this session, so it never launches a codex lane against itself. **Spawn `reviewer` explicitly** — Codex never delegates off a description. |
 | Close (step 7) | same `start.sh` invocation | same `start.sh` invocation |
@@ -50,7 +50,8 @@ table, never in a second file.
 ## 2. Clear the thinking — before any drafting
 
 Invoke `first-principles-thinking` seeded with the raw ask — this phase's
-thinking gate, not optional. It strips the ask to its load-bearing problem and
+thinking gate, not optional. It is a global skill mirrored into `.agents/skills`,
+so Codex reaches the same file as `$first-principles-thinking`. It strips the ask to its load-bearing problem and
 the minimal rebuild; its concluded action IS the confirmed ask. Still rambling
 after that → interview one question at a time, each with your best-guess answer
 attached, until the ask is coherent. (These are conversations, not sign-offs —
