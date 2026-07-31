@@ -5,7 +5,7 @@
 // tool — `exclude_off_beat_posts`, a pure local recompute of the measured-facts block over the
 // on-beat subset (see buildScopeTool for why it is not the web search `.claude/rules/voice.md`
 // rules out, and for the three guardrails that bound it).
-// Config ported from the lab (.voice-lab/sdk-lab/extract-fable80.mjs, measured $0.855/reporter
+// Config ported from the lab's extract-fable80.mjs (measured $0.855/reporter
 // on Fable 5); Sonnet 5 is the lower-cost trial model — see EXTRACTION_MODEL.
 // SERVER-ONLY: imports lib/sysprompts (readFileSync at module scope) — never import from a
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.

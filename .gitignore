@@ -22,9 +22,8 @@ next-env.d.ts
 data/
 # Stream-transcript dumps — raw model output and full reasoning traces
 .diag/
-# The voice lab: 35 MB / 2,300+ files of corpora and extraction artifacts. AGENTS.md always
-# described it as gitignored and it was NOT, which mattered because ship.sh stages with
-# `git add -A` after `--untracked-files=all` — one ship would have committed the whole lab.
+# The voice lab — deleted 2026-07-30 once every port landed. Kept ignored so a restored
+# copy can never be swept into a commit by ship.sh's `git add -A`.
 .voice-lab/
 # 21st design-context generator output — regenerated on demand, nothing reads it
 .21st/
