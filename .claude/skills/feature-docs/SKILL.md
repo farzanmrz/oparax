@@ -28,8 +28,9 @@ Dispatch ONE agent (Claude Code: `model: sonnet`, `effort: high`; Codex:
 Input: the branch diff plus the staleness findings in the latest
 `## QC round <R> — findings` comment.
 
-- Subtract any AGENTS.md / `.claude/rules/*.md` / skill line the diff falsified
-  or made code-recoverable.
+- Subtract **every** AGENTS.md / `.claude/rules/*.md` / skill line the diff falsified
+  or made code-recoverable — check all three surfaces, not only the one the findings
+  happened to mention.
 - Add ONLY a non-recoverable keeper: a new guard, a retired pattern with its
   reason, a new trust boundary.
 - Single-source every fact. If it lives in the code map, it does not also live
@@ -37,6 +38,13 @@ Input: the branch diff plus the staleness findings in the latest
 
 Default outcome here is genuinely no change. That is fine — duty 2 is not
 optional just because duty 1 was empty.
+
+**Write for the model that will execute the file.** An instruction file is a
+system prompt, and the model guides disagree with each other — Fable 5 wants
+brief steering over enumeration, Opus 5 wants verification scaffolding REMOVED,
+Sonnet 5 needs scope stated explicitly, Codex needs paths named. The mapping and
+the per-model rules are in the global `harness-nuances` skill; read it before
+editing an agent or skill you did not write.
 
 ## Duty 2 — the subtractive pass (MANDATORY, not diff-scoped)
 

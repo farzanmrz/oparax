@@ -35,9 +35,9 @@ table, never in a second file.
 | Stage | Claude Code | Codex |
 |---|---|---|
 | Session dial | owner's top dial (opus/fable, high) | `gpt-5.6-sol` high — set with `/model` before starting |
-| Thinking gate (step 2) | invoke `first-principles-thinking` | do it inline in this chat: name the load-bearing problem, the minimal rebuild, and what the ask does NOT require |
+| Thinking gate (step 2) | `/first-principles-thinking` | `$first-principles-thinking` — same skill, mirrored into `.agents/skills` |
 | Grounding pack (step 3) | one agent, `model: sonnet`, `effort: low` | `cx_grounder` (pinned cheap + read-only in its TOML) |
-| Critique (step 5) | both externals: `codex` + `grok` | `grok` external + the native `reviewer` agent — the codex family's perspective IS this session, so it never launches a codex lane against itself |
+| Critique (step 5) | both externals: `codex` + `grok` | `grok` + `agy` externals + the native `reviewer` agent (`.codex/agents/reviewer.toml` — the oparax critic contract, spawning `pr_explorer` for evidence). The codex family's perspective IS this session, so it never launches a codex lane against itself. **Spawn `reviewer` explicitly** — Codex never delegates off a description. |
 | Close (step 7) | same `start.sh` invocation | same `start.sh` invocation |
 
 ## 1. Preflight
@@ -50,7 +50,8 @@ table, never in a second file.
 ## 2. Clear the thinking — before any drafting
 
 Invoke `first-principles-thinking` seeded with the raw ask — this phase's
-thinking gate, not optional. It strips the ask to its load-bearing problem and
+thinking gate, not optional. It is a global skill mirrored into `.agents/skills`,
+so Codex reaches the same file as `$first-principles-thinking`. It strips the ask to its load-bearing problem and
 the minimal rebuild; its concluded action IS the confirmed ask. Still rambling
 after that → interview one question at a time, each with your best-guess answer
 attached, until the ask is coherent. (These are conversations, not sign-offs —
@@ -70,8 +71,9 @@ The agent gathers:
   deployment status, deploy commands) are never selected**; they are facts, not
   constraints, and planning runs on the decisions already in AGENTS.md. Invoke
   each selected skill and distill its hard constraints for this slice.
-- **Guards.** AGENTS.md plus every `.claude/rules/*.md` whose `paths:`
-  frontmatter matches the predicted touch-paths — distilled, not pasted.
+- **Guards.** AGENTS.md plus **every** `.claude/rules/*.md` whose `paths:`
+  frontmatter matches **any** predicted touch-path — check each rule against each
+  path, distil, do not paste.
 - **Ground truth.** Excerpts (signatures, exported types, route shapes) of the
   files the slice will touch or interface with.
 
@@ -144,10 +146,11 @@ works identically for a family with no rules mechanism at all).
 **Judge a lane on POST-FIX behaviour, never on its accumulated failure count** —
 a detach of grok+agy was proposed 2026-07-30 and reversed the same day once the
 record was read. The evidence is in `council/run.sh`'s header; don't re-derive
-it. Prove the lanes instead of trusting them:
+it. Prove the lanes instead of trusting them — this exits in 0.2s unless a
+wrapper, profile or CLI version moved since the last green run:
 
 ```bash
-bash .claude/workflows/council/selftest.sh
+bash .claude/workflows/council/selftest.sh --if-changed
 ```
 
 Write each lane's prompt — plan + grounding pack + "verify claims against the
@@ -173,16 +176,6 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   COUNCIL_DEPTH=deep COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
   bash .claude/workflows/council/run.sh agy critique-agy
 ```
-
-**Manual lane (optional, owner-driven).** A GUI-only surface — Antigravity 2.0
-or the Antigravity IDE — can join the council with no orchestration at all:
-the `.in.txt` files above are already on disk, so the owner opens the project
-there and runs `/critique-plan` (`.agents/workflows/critique-plan.md`), which
-writes `.feature/critique-manual.out.md`. Adjudicate it exactly like a CLI
-lane's output. **Never wait on this and never launch it yourself** — it exists
-because a GUI has no headless entry point, and its whole cost is the owner's
-attention. The CLI lanes above already run free in the background; this is for
-when the owner wants a deeper second opinion or a lane came back FAILED.
 
 Tier is family-shaped, so don't copy one lane's `COUNCIL_TIER` onto another:
 codex takes `COUNCIL_MODEL=gpt-5.6-sol` at effort high; grok is single-model

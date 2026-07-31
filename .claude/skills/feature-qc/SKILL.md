@@ -41,7 +41,7 @@ chain — they are what resume detection and both ships' completeness guards rea
 | | Claude Code | Codex |
 |---|---|---|
 | Session dial | fable/opus, high | `gpt-5.6-sol` high — set with `/model` before starting |
-| Review council (step 1) | internal `bug-finder` lane + the `codex`, `grok` and `agy` externals | native `reviewer` + `pr_explorer` pair + the `grok` and `agy` externals (no codex lane — that family IS this session) |
+| Review council (step 1) | internal `bug-finder` lane + the `codex`, `grok` and `agy` externals | native `reviewer` (the oparax critic contract in `.codex/agents/reviewer.toml`) spawning `pr_explorer` for evidence, **named explicitly in the prompt**, + the `grok` and `agy` externals. No codex lane — that family IS this session |
 | Subagents | `bug-finder`, `fixer`, `supabase-runner` | `cx_grounder`, `cx_fixer`, `cx_supabase_runner` |
 | Concurrency cap | ≤10 agents per fan-out | ≤6 threads (the global `[agents]` cap) |
 
@@ -58,7 +58,8 @@ cheap dial must say so in its first milestone line.
   per-family fan-outs; never add a separate verifier quorum.
 - **A failed lane is reported FAILED, never as a clean pass.** `AGY_EMPTY` is
   no-signal. Before trusting the council at all, prove it: `bash
-  .claude/workflows/council/selftest.sh`.
+  .claude/workflows/council/selftest.sh --if-changed` — 0.2s unless a wrapper,
+  profile or CLI version moved since the last green run.
 - **Milestone lines are required output:** one entering each of the four steps,
   one launching any long background wait (name + expected duration). Nothing
   else between them.

@@ -10,8 +10,9 @@
 # skills drive a flow grok never runs, and Claude's agent roster is not
 # dispatchable from here.
 #
-# Role scoping happens in .grok/agents/oparax-critic.md (--agent-profile), not by
-# subtracting tools.
+# Role scoping happens in .grok/agents/oparax-critic.md, passed with `--agent <path>`
+# (NOT --agent-profile: the bundled README documents that name, the binary rejects it).
+# Not by subtracting tools.
 #
 # Measured 2026-07-30, so nobody retries these dead ends:
 #   * `[skills].ignore` governs ONLY the extra `paths` key below. It cannot

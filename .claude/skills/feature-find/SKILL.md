@@ -27,7 +27,7 @@ lanes return."
 | Stage | Claude Code | Codex |
 |---|---|---|
 | Setup scout | one agent, `model: haiku`, `effort: low` | `cx_grounder` |
-| Internal review lane | `bug-finder`-style agent, `model: sonnet`, `effort: high` | `pr_explorer` + `reviewer` |
+| Internal review lane | `bug-finder` — **opus, pinned in the agent**; do not override | `pr_explorer` + `reviewer` |
 | DB seeding / exploratory Supabase ops | `supabase-runner` (`model: haiku`; sonnet for open-ended) | `cx_supabase_runner` |
 
 ## 1. Setup
@@ -47,15 +47,20 @@ adjudication. Leave the dev server up — later steps reuse it.
 ## 2. Deterministic gates + the council self-test
 
 ```bash
-bash .claude/workflows/council/selftest.sh
+bash .claude/workflows/council/selftest.sh --if-changed
 ```
 
-Run it in the background alongside the gates below; it costs ~90s and drives
-every lane through the real wrapper, the real schema, and a brief that cannot be
-answered without opening a file. **A lane that fails here is FAILED for this
-round — do not launch it in step 4 and say so in the record.** This exists
-because liveness probes kept passing while real briefs returned nothing, and a
-lane returning nothing looks exactly like a lane finding nothing.
+**Usually this exits in 0.2s and costs nothing.** It probes only when a council
+wrapper, an agent profile, a council config or a CLI version has moved since the
+last green run — the only things that can actually break a lane. When it does
+probe it drives every lane through the real wrapper, the real schema and a brief
+that cannot be answered without opening a file (~90s on cheap dials, in the
+background alongside the gates).
+
+**A lane that fails here is FAILED for this round** — do not launch it in step 4,
+and say so in the record. This exists because liveness probes kept passing while
+real briefs returned nothing, and a lane returning nothing looks exactly like a
+lane finding nothing.
 
 
 
@@ -148,9 +153,11 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
 ```
 
 Claude Code runs THREE externals — `codex` (`COUNCIL_MODEL=gpt-5.6-sol`),
-`grok`, and `agy` — plus the internal lane. Codex runs its native
-`reviewer`/`pr_explorer` pair (the codex family's perspective is the session
-itself) plus the `grok` and `agy` externals. A failed lane is reported FAILED,
+`grok`, and `agy` — plus the internal lane. Codex runs its native `reviewer`
+(`.codex/agents/reviewer.toml` carries the same oparax critic contract as the
+grok and agy lanes) spawning `pr_explorer` for evidence — **named explicitly,
+since Codex never delegates off a description** — plus the `grok` and `agy`
+externals. The codex family's perspective is the session itself. A failed lane is reported FAILED,
 never as a clean pass; `AGY_EMPTY` is no-signal, not approval. All externals
 failing = single-family review, and the record must say so.
 

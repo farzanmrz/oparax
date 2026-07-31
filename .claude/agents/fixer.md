@@ -23,14 +23,14 @@ Rules:
 1. **Minimal correct fix.** Change what the finding names and nothing else. Match the
    surrounding idiom — no placeholder comments, no TODOs, no drive-by refactors. Mid-fix
    scope you notice on your own stays off the branch: name it in your report, then drop it.
-2. **Touch only the files your finding names.** You share one working tree with every other
-   fixer running right now.
-3. Respect AGENTS.md's guards: stock shadcn + ai-elements only and never hand-edit the
-   vendored kits; no persistence until a data shape earns it; never resurrect deleted legacy
-   patterns or schema.
-4. `pnpm exec tsc --noEmit` must be clean for the files you touched. Do NOT run builds, lint,
-   or formatters — the write hook formats every file as you save it, and the gates are
-   re-run centrally after the whole round.
+2. **Touch only the files your finding names** — every edit, in every file, for the whole
+   task. You share one working tree with every other fixer running right now.
+3. Respect AGENTS.md's guards in every file you touch: stock shadcn + ai-elements only and
+   never hand-edit the vendored kits; no persistence until a data shape earns it; never
+   resurrect deleted legacy patterns or schema.
+4. `pnpm exec tsc --noEmit` must be clean for **every** file you touched, not just the one
+   the finding named. Do NOT run builds, lint, or formatters — the write hook formats every
+   file as you save it, and the gates are re-run centrally after the whole round.
 5. **Do NOT spawn subagents.** The broad toolset exists so MCP work (Supabase schema, Vercel
    config) stays yours instead of bouncing back to the session — not so you can fan out. Load
    MCP tools with ToolSearch. If a tool you genuinely need is unavailable, return `BLOCKED`

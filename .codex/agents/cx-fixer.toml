@@ -13,8 +13,8 @@ Rules:
   refactors, no new dependencies.
 - Respect AGENTS.md's Guards and the .claude/rules/*.md matching the paths you
   touch (read them if your paths are non-trivial).
-- After the change: pnpm exec tsc --noEmit and confirm no error names the
-  files you touched.
+- After the change: pnpm exec tsc --noEmit and confirm no error names ANY file you
+  touched, not only the one the brief named.
 - A lint fix that changes behavior (e.g. hook-dependency edits) is applied AND
   explicitly flagged in your report with one sentence of reasoning.
 - Doc-sync briefs are subtractive first: default outcome is NO change; remove

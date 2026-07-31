@@ -8,9 +8,8 @@ description: >-
 argument-hint: "[base ref, default beta]"
 allowed-tools: Bash(git *) Bash(pnpm *)
 # sonnet, not inherit: this skill's own work is mechanical (run lint, group the findings
-# by file, dispatch lint-fixer agents, re-run). Under `inherit` it ran that grouping pass
-# on whatever the calling session was set to — opus orchestrating a file-grouping loop.
-# The fixes themselves are already pinned in lint-fixer.
+# by file, apply, re-run). Under `inherit` it ran that pass on whatever the calling
+# session was set to — opus orchestrating a file-grouping loop.
 model: sonnet
 ---
 
@@ -24,8 +23,7 @@ never unformatted for longer than one tool call, in this session or any sub-agen
 What reaches this skill is only the residual: rules with **no fix** (most `next` rules,
 e.g. `noImgElement`) or an **unsafe** fix (`react/useExhaustiveDependencies`) — the ones
 `--write` deliberately won't touch without `--unsafe`. Those need a human-style edit. This
-skill clears them on the feature's changed files **without bloating the main
-conversation** — it fans the fixes out to isolated sub-agents and returns a compact report.
+This skill clears them on the feature's changed files and returns a compact report.
 
 ## Correctness is the constraint
 
@@ -65,22 +63,27 @@ for review** rather than shipped silently.
      swapping `<img>`→`next/image` (needs real `width`/`height`; can shift layout, but the
      failure is visible/compile-checked, not silent).
 
-4. **Inline vs. fan-out.** If the residual is tiny (≈≤3 findings across ≤2 files), just
-   fix it inline — dispatch overhead isn't worth it. Otherwise **partition by file** (each
-   file is owned by exactly one sub-agent — never two agents in the same file) and dispatch
-   in parallel:
-   - **Every tier → `lint-fixer`**, many in parallel. The one agent handles both kinds:
-     mechanical fixes directly, behavior-changing fixes with care **and a ⚠ REVIEW flag**.
-   Give each sub-agent only its file(s), that file's findings, and each finding's risk
-   tier. The agent definition already carries the rules (no `--unsafe`, stay
-   in-assignment, don't build); don't restate them — just pass the work.
+4. **Fix them yourself, in this session.** A dedicated fixer agent was deleted
+   2026-07-30: across six recorded runs of this skill it was dispatched **zero
+   times**, because the residual is always small enough for step 4's inline
+   path. Its rules live here instead, where they are actually read:
 
-5. **Gate.** After the sub-agents converge:
+   - Apply the mechanical tier directly, to every finding residual.json reported —
+     all of them, across all files, not just the first file's. a11y attributes,
+     list `key`s, `<img>` → `next/image` with real `width`/`height`.
+   - Apply the behavior-changing tier too, but **flag each one with a sentence
+     of reasoning** for the ⚠ Review section — `pnpm build` cannot vouch for it.
+   - Never pass `--unsafe`. Never touch a file outside the changed set. Do not
+     run builds mid-fix; the gate is step 5.
+
+   If a round ever produces a genuinely large residual across many files,
+   dispatch `fixer` per file group — one file has exactly one owner, never two.
+
+5. **Gate.** Once the residual is clear:
    ```bash
    pnpm build   # the only authority
    ```
-   Their edits are already formatted — `lint-fixer` writes via the Edit tool, so the
-   hook fired on each one. A clean `pnpm build` is the completion gate. If it fails, the
+   Edits are already formatted — the write hook fired on each one. A clean `pnpm build` is the completion gate. If it fails, the
    error names the file — fix and re-run build.
 
 6. **Report.** Return a compact summary: findings resolved per file, anything still
@@ -89,7 +92,7 @@ for review** rather than shipped silently.
    are the changes `pnpm build` can't vouch for.
 
 ## Notes
-- Scope is **changed files only** — never fix pre-existing findings in untouched code.
+- Scope is **every changed file, and only changed files** — cover all of them, and never fix pre-existing findings in untouched code.
   That's scope creep; surface them to the user instead of fixing them here.
 - The safe pass is **not** this skill's job — the `PostToolUse` hook owns it, continuously.
   Never re-run `biome check --write` in bulk here; that would put formatting churn back

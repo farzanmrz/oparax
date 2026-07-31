@@ -91,7 +91,7 @@ Every table has RLS enabled in one of **three shapes**, and a new table picks on
 
 ## Conventions
 
-- **Parallel delegation.** Proactively use subagents for two or more independent, bounded workstreams; assign disjoint file ownership and keep shared/write-heavy coordination in the primary session.
+- **Delegation, with a floor.** Current models reach for subagents readily, so the useful instruction is where NOT to: don't delegate work you'd finish in a handful of tool calls, and don't spawn one to check your own work. When you do delegate, give each agent disjoint file ownership and keep shared or write-heavy coordination in the primary session.
 - **Formatting is automatic — never run it by hand.** A `PostToolUse(Edit|Write)` hook (`.claude/hooks/biome-write.sh`) runs `biome check --write` on every file as it's written, in this session and in every subagent. Don't run `pnpm format` / `pnpm lint:fix` in bulk to "clean up" — it's already done, and a bulk pass only adds churn to the diff. `pnpm lint` stays useful as a read-only check. Only the residual Biome won't auto-fix (no-fix or `--unsafe` rules) needs an agent: that's `feature-lint`'s job.
 - **Codex network commands are fail-loud.** Its pre-tool hook rejects silent `curl` without failure/error flags, and `curl` pipelines without `pipefail`: an empty result must never mask a DNS or HTTP failure. Use `curl -fsS` and enable `pipefail` before a pipeline.
 - **No persistence until a data shape earns it.** Every new table is a real feature slice (plan it), not a quick add mid-task, and it picks one of the three RLS shapes above.
@@ -172,10 +172,17 @@ Every phase starts from durable state only — issue body, branch,
 `origin/beta...ft/<N>`, the `## QC round <R>` comments — so a slice may switch
 harness at any phase boundary in either direction.
 
+Two health checks, and they answer different questions. `bash
+.claude/skills/feature/scripts/doctor.sh` is the four-CLI equivalent of Claude
+Code's `/doctor` — every config parses, every hook script exists, every agent
+definition is well-formed, across all four harnesses. It proves CONFIGURATION
+only.
+
 The external review council is `codex` + `grok` + `agy`, launched by
-`.claude/workflows/council/run.sh`. **Prove it before trusting it:**
-`bash .claude/workflows/council/selftest.sh` drives every lane through the real
-wrapper and schema on cheap dials in ~90s. A failed lane is FAILED, never a clean
+`.claude/workflows/council/run.sh`. **Prove it FUNCTIONS before trusting it:**
+`bash .claude/workflows/council/selftest.sh --if-changed` drives every lane through
+the real wrapper and schema on cheap dials — ~90s, but only when a wrapper, profile
+or CLI version moved since the last green run; otherwise it exits in 0.2s. A failed lane is FAILED, never a clean
 pass.
 
 **Per-harness setup facts — which directory each CLI really scans, why a subagent
