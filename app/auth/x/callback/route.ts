@@ -7,11 +7,11 @@
 // x_error=<code>. Never puts token material or the auth code in a redirect URL.
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
+import { safeReturnPath } from "@/lib/auth/return-path";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
 import { exchangeCode, fetchMe } from "@/lib/x/api";
 import { upsertXAccount } from "@/lib/x/store";
-import { safeReturnPath } from "@/lib/auth/return-path";
 
 export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();

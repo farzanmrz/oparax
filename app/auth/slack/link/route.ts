@@ -13,11 +13,11 @@
 // in an httpOnly cookie here, must round-trip back inside `state` and match at the callback.
 import { randomBytes } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import { safeReturnPath } from "@/lib/auth/return-path";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { SLACK_SCOPES } from "@/lib/slack/api";
 import { ownsDesk } from "@/lib/slack/link-state";
 import { createClient } from "@/lib/supabase/server";
-import { safeReturnPath } from "@/lib/auth/return-path";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
 

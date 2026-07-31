@@ -1,11 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "scripts/*.ts"
-  ],
-  "project": [
-    "**/*.{ts,tsx,mjs}"
-  ],
+  "entry": ["scripts/*.ts"],
+  "project": ["**/*.{ts,tsx,mjs}"],
   "ignore": [
     ".agents/**",
     ".claude/**",

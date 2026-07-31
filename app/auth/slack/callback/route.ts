@@ -13,12 +13,12 @@
 // matching cookie on the victim's browser and fails here before any exchange happens.
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
+import { safeReturnPath } from "@/lib/auth/return-path";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { exchangeCodeForToken } from "@/lib/slack/api";
 import { ownsDesk } from "@/lib/slack/link-state";
 import { upsertSlackAccount } from "@/lib/slack/store";
 import { createClient } from "@/lib/supabase/server";
-import { safeReturnPath } from "@/lib/auth/return-path";
 
 function decodeState(
   raw: string,

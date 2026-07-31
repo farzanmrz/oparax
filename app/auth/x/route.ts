@@ -4,10 +4,10 @@
 // the callback to verify.
 import { createHash, randomBytes } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import { safeReturnPath } from "@/lib/auth/return-path";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
 import { buildAuthorizeUrl } from "@/lib/x/api";
-import { safeReturnPath } from "@/lib/auth/return-path";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
 
