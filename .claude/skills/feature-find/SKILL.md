@@ -47,15 +47,20 @@ adjudication. Leave the dev server up — later steps reuse it.
 ## 2. Deterministic gates + the council self-test
 
 ```bash
-bash .claude/workflows/council/selftest.sh
+bash .claude/workflows/council/selftest.sh --if-changed
 ```
 
-Run it in the background alongside the gates below; it costs ~90s and drives
-every lane through the real wrapper, the real schema, and a brief that cannot be
-answered without opening a file. **A lane that fails here is FAILED for this
-round — do not launch it in step 4 and say so in the record.** This exists
-because liveness probes kept passing while real briefs returned nothing, and a
-lane returning nothing looks exactly like a lane finding nothing.
+**Usually this exits in 0.2s and costs nothing.** It probes only when a council
+wrapper, an agent profile, a council config or a CLI version has moved since the
+last green run — the only things that can actually break a lane. When it does
+probe it drives every lane through the real wrapper, the real schema and a brief
+that cannot be answered without opening a file (~90s on cheap dials, in the
+background alongside the gates).
+
+**A lane that fails here is FAILED for this round** — do not launch it in step 4,
+and say so in the record. This exists because liveness probes kept passing while
+real briefs returned nothing, and a lane returning nothing looks exactly like a
+lane finding nothing.
 
 
 
