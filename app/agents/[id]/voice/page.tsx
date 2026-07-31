@@ -210,7 +210,7 @@ function EmptyState({
 
 /**
  * The Voice tab. The guide, its rules, and its extraction run all belong to THIS desk
- * (`experiment_id`), so every read here is scoped by the desk id already proven above.
+ * (`agent_id`), so every read here is scoped by the desk id already proven above.
  *
  * An in-flight extraction takes precedence over a saved prior guide: retry replaces that guide
  * with the shared live progress view until it reaches a terminal state. Otherwise a saved guide
@@ -224,7 +224,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
   const supabase = await createClient();
 
   const { data: desk, error: deskError } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("reporter_handle")
     .eq("id", id)
     .maybeSingle();
@@ -237,7 +237,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
     supabase
       .from("voice_guides")
       .select("guide_deploy, measured_facts, provenance")
-      .eq("experiment_id", id)
+      .eq("agent_id", id)
       .maybeSingle(),
     listVoiceRules(id),
   ]);

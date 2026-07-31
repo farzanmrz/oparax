@@ -37,48 +37,50 @@ function httpStatusOf(error: unknown): number | null {
  *  swallowed) since an unreleased claim permanently blocks retry. */
 async function releaseClaim(
   admin: ReturnType<typeof createAdminClient>,
-  postDraftId: string,
+  draftId: string,
 ): Promise<void> {
-  const { error } = await admin
-    .from("post_drafts")
-    .update({ posted_at: null })
-    .eq("id", postDraftId);
+  const { error } = await admin.from("drafts").update({ posted_at: null }).eq("id", draftId);
   if (error) {
-    console.error(`releaseClaim: failed to release claim for draft ${postDraftId}`, error);
+    console.error(`releaseClaim: failed to release claim for draft ${draftId}`, error);
   }
 }
 
 /** The actual posting logic, independent of how the caller resolved ownerId. `postDraftToX`
  *  (the "use server" browser action in lib/x/actions.ts) resolves ownerId via the live
  *  session, does its own RLS-scoped ownership proof, THEN calls this; `draft-pipeline.ts`'s
- *  auto-post path already knows ownerId from the experiment row and calls this directly, with
+ *  auto-post path already knows ownerId from the agent row and calls this directly, with
  *  no session; `app/api/slack/interactions/route.ts` resolves ownerId from the linked
  *  `slack_accounts` row. Same CAS-claim, token-refresh, createTweet, outcome-stamp behavior
  *  either way — only the ownership-resolution step differs between callers, so this re-reads
  *  the draft via the ADMIN client (not any RLS-scoped read a caller may already have done — that
  *  read exists purely to prove a browser caller may act on this draft, and its result isn't
- *  passed in here) to get the text to post and the experiment_id for revalidation, and
+ *  passed in here) to get the text to post and the agent_id for revalidation, and
  *  cross-checks the passed `ownerId` against the draft's OWN owner (defense in depth — this is
  *  not itself an authentication check, since this function is never reachable as a Server
  *  Action; every real caller already resolved ownerId server-side before calling here). */
-export async function postDraftToXForOwner(
-  postDraftId: string,
+export async function publishDraftToXForOwner(
+  draftId: string,
   ownerId: string,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const admin = createAdminClient();
 
   const { data: draft, error: draftError } = await admin
-    .from("post_drafts")
-    .select("id, experiment_id, posted_at, model_calls(output), experiments(owner_id)")
-    .eq("id", postDraftId)
+    .from("drafts")
+    .select("id, agent_id, posted_at, model_call_id")
+    .eq("id", draftId)
     .maybeSingle();
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
-  if (draft.experiments?.owner_id !== ownerId) {
+  const [{ data: agent, error: agentError }, { data: modelCall, error: modelCallError }] =
+    await Promise.all([
+      admin.from("agents").select("owner_id").eq("id", draft.agent_id).maybeSingle(),
+      admin.from("model_calls").select("output").eq("id", draft.model_call_id).maybeSingle(),
+    ]);
+  if (agentError || modelCallError || agent?.owner_id !== ownerId) {
     return { ok: false, error: "That draft could not be found." };
   }
   if (draft.posted_at) return { ok: false, error: "This draft was already posted to X." };
 
-  const text = draft.model_calls?.output;
+  const text = modelCall?.output;
   if (!text) return { ok: false, error: "This draft has no text to post." };
 
   const account = await getXAccount(ownerId);
@@ -105,9 +107,9 @@ export async function postDraftToXForOwner(
   // — otherwise two concurrent clicks would both spend the same rotating refresh token,
   // invalidating one another.
   const { data: claimed, error: claimError } = await admin
-    .from("post_drafts")
+    .from("drafts")
     .update({ posted_at: new Date().toISOString() })
-    .eq("id", postDraftId)
+    .eq("id", draftId)
     .is("posted_at", null)
     .select("id");
   if (claimError || !claimed || claimed.length === 0) {
@@ -126,7 +128,7 @@ export async function postDraftToXForOwner(
       const tokenExpiresAt = new Date(Date.now() + refreshed.expiresInSec * 1000).toISOString();
       await updateXTokens(ownerId, { accessToken, refreshToken: newRefresh, tokenExpiresAt });
     } catch {
-      await releaseClaim(admin, postDraftId);
+      await releaseClaim(admin, draftId);
       return {
         ok: false,
         error: "Your X connection expired — reconnect your X account in settings.",
@@ -144,12 +146,12 @@ export async function postDraftToXForOwner(
     // double-post on retry.
     const status = httpStatusOf(error);
     if (status !== null && status >= 400 && status < 500) {
-      await releaseClaim(admin, postDraftId);
+      await releaseClaim(admin, draftId);
       // Definitive failure — release + surface + unsampled Sentry capture is the frozen
       // three-leg protocol (AGENTS.md); error capture is unsampled regardless of
       // tracesSampleRate, so this is always recorded, not subject to the 10% trace sample.
       Sentry.captureException(error, {
-        tags: { postDraftId, ownerId, xStatus: status },
+        tags: { draftId, ownerId, xStatus: status },
       });
       if (status === 401) {
         return {
@@ -177,12 +179,12 @@ export async function postDraftToXForOwner(
   // posted_tweet_id after a real post is a real support-relevant discrepancy.
   const url = `https://x.com/${account.handle}/status/${tweet.id}`;
   const { error: stampError } = await admin
-    .from("post_drafts")
+    .from("drafts")
     .update({ posted_tweet_id: tweet.id, posted_url: url })
-    .eq("id", postDraftId);
+    .eq("id", draftId);
   if (stampError) {
     console.error(
-      `postDraftToXForOwner: post-outcome stamp failed for draft ${postDraftId} (post IS live at ${url})`,
+      `postDraftToXForOwner: post-outcome stamp failed for draft ${draftId} (post IS live at ${url})`,
       stampError,
     );
   }
@@ -197,7 +199,7 @@ export async function postDraftToXForOwner(
     kind: "x_post",
     units: 1,
     cost_usd: X_POST_COST_USD(text),
-    ref_id: postDraftId,
+    ref_id: draftId,
   });
   if (meterError) {
     console.error("postDraftToXForOwner: usage_events stamp failed", meterError);

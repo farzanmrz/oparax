@@ -21,23 +21,37 @@ import { createClient } from "@/lib/supabase/server";
 
 function decodeState(
   raw: string,
-): { experimentId: string; returnTo: string | null; nonce: string } | null {
+): { agentId: string; returnTo: string | null; nonce: string } | null {
   try {
     const parsed: unknown = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    if (Array.isArray(parsed)) {
+      if (
+        parsed.length !== 4 ||
+        parsed[0] !== 2 ||
+        typeof parsed[1] !== "string" ||
+        (typeof parsed[2] !== "string" && parsed[2] !== null) ||
+        typeof parsed[3] !== "string"
+      ) {
+        return null;
+      }
+      return { agentId: parsed[1], returnTo: parsed[2], nonce: parsed[3] };
+    }
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const values = Object.values(parsed);
     if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      typeof (parsed as { experimentId?: unknown }).experimentId !== "string" ||
-      typeof (parsed as { nonce?: unknown }).nonce !== "string"
+      values.length !== 3 ||
+      typeof values[0] !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        values[0],
+      ) ||
+      (values[1] !== null &&
+        (typeof values[1] !== "string" || !values[1].startsWith("/agents/"))) ||
+      typeof values[2] !== "string" ||
+      !/^[A-Za-z0-9_-]{43}$/.test(values[2])
     ) {
       return null;
     }
-    const returnTo = (parsed as { returnTo?: unknown }).returnTo;
-    return {
-      experimentId: (parsed as { experimentId: string }).experimentId,
-      returnTo: typeof returnTo === "string" ? returnTo : null,
-      nonce: (parsed as { nonce: string }).nonce,
-    };
+    return { agentId: values[0], returnTo: values[1], nonce: values[2] };
   } catch {
     return null;
   }
@@ -57,7 +71,7 @@ export async function GET(request: NextRequest) {
 
   const returnPath = decoded.returnTo?.startsWith("/agents/")
     ? decoded.returnTo
-    : `/agents/${decoded.experimentId}/setup`;
+    : `/agents/${decoded.agentId}/setup`;
 
   const redirectBack = (params: Record<string, string>) => {
     const url = new URL(returnPath, origin);
@@ -98,7 +112,7 @@ export async function GET(request: NextRequest) {
   // lib/slack/actions.ts / the link route above: no row back means the signed-in user doesn't
   // own the desk `state` claims, and the link is refused rather than silently applied to the
   // wrong desk.
-  if (!(await ownsDesk(decoded.experimentId))) {
+  if (!(await ownsDesk(decoded.agentId))) {
     return redirectBack({ slack_error: "ownership" });
   }
 
@@ -106,7 +120,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await exchangeCodeForToken({ code, redirectUri });
-    await upsertSlackAccount(decoded.experimentId, {
+    await upsertSlackAccount(decoded.agentId, {
       teamId: result.team.id,
       teamName: result.team.name,
       channelId: result.channel.id,

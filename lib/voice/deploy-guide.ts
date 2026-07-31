@@ -29,7 +29,7 @@ export const BEAT_SCOPE_HEADING_RE = /^##\s+Beat\s*&\s*Scope\b/i;
 
 /** Pulls the `## Beat & Scope` section body (heading excluded) out of a RAW guide.
  * Returns null when the guide has no such section — callers fall back to the reporter's
- * typed `experiments.beat` sentence. */
+ * typed `agents.beat` sentence. */
 export function extractBeatSpec(rawGuideMd: string): string | null {
   const m = rawGuideMd.match(/^##\s+Beat\s*&\s*Scope\b[^\n]*\n([\s\S]*?)(?=^##\s|$(?![\s\S]))/im);
   const body = m?.[1]?.trim();

@@ -53,7 +53,7 @@ Dead keys, so nobody rewires them: `XAI_API_KEY` and `CRON_SECRET` — both thei
 
 - **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. Nothing polls; there is no scan dispatcher.
 - **`app/api/slack/interactions`** is `after()`-deferred so Slack's 3s ack deadline is met before the slow X-post work runs.
-- **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by both `lib/x/post-core.ts`'s posting path and the desk's `editDraft`. A draft that passes at edit time is therefore guaranteed to pass at post time. A third writer of a `post_drafts` winner must call it too, never re-derive it.
+- **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by both `lib/x/post-core.ts`'s posting path and the desk's `editDraft`. A draft that passes at edit time is therefore guaranteed to pass at post time. A third writer of a `drafts` winner must call it too, never re-derive it.
 - **`lib/x/timeline.ts` is the ONE designated extraction X-read** — 100 most recent ORIGINAL posts, app-only bearer, `exclude=retweets,replies`, because a reply-heavy corpus teaches `measuredFacts` a mention rate that opens every draft with an @handle.
 - **Tokens never leave `lib/x/` and `lib/slack/`.** Both stores are service-role only.
 - **`lib/voice/rules.ts` holds the drafting input of record:** `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide in the system prompt; the guide blob survives only as audit provenance. `corpus-store.ts` upserts and never prunes. `extraction-run.ts`'s `startRun` is an atomic claim returning a boolean — callers must not spend when it returns false. That bounds one desk to ONE concurrent run; it is **not** rationing and must never grow into it. Progress reaches the browser by POLLING an ownership-proving server action, never Realtime — the table is deny-all RLS.
@@ -69,11 +69,10 @@ Gitignored and regenerable: `.next/`, `data/`, `.vercel/`. `.feature/` is the fl
 
 | Table | What it holds | RLS shape |
 | --- | --- | --- |
-| `experiments` | a desk (the unit a reporter owns) | owner-scoped |
-| `agents`, `runs`, `drafts` | **legacy, dormant — no live reader** | owner-scoped / EXISTS-join |
-| `voice_guides`, `voice_rules` | the extracted voice, keyed by `experiment_id` | EXISTS-join, select-only, no `owner_id` |
+| `agents` | a desk (the unit a reporter owns) | owner-scoped |
+| `voice_guides`, `voice_rules` | the extracted voice, keyed by `agent_id` | EXISTS-join, select-only, no `owner_id` |
 | `stories`, `story_assignments` | clustered stories and their per-desk claim | EXISTS-join, select-only |
-| `post_drafts` | a drafted post + its post-outcome stamps | EXISTS-join (**insert policy too**) |
+| `drafts` | a drafted post + its post-outcome stamps | EXISTS-join (**insert policy too**) |
 | `usage_events` | metering for every billable touch point | owner-scoped, select-only |
 | `source_posts`, `model_calls` | ingested posts; one row per model call | deny-all |
 | `corpus_posts` | per-desk extracted corpus, including off-beat exclusions | deny-all |
@@ -84,11 +83,11 @@ Gitignored and regenerable: `.next/`, `data/`, `.vercel/`. `.feature/` is the fl
 
 Every table has RLS enabled in one of **three shapes**, and a new table picks one rather than inventing a fourth:
 
-- **Owner-scoped** — full 4-policy on `owner_id` (`agents`, `experiments`), some select-only (`usage_events`).
-- **EXISTS-join through an owner-scoped parent** — children joining `experiments`/`agents` **by `experiment_id`**, including `voice_guides`/`voice_rules`, which carry no `owner_id` of their own. (Those two joined by `reporter_handle` until the shared-guide model was deleted; the id join is what closed the cross-user read it allowed.)
+- **Owner-scoped** — full 4-policy on `owner_id` (`agents`), some select-only (`usage_events`).
+- **EXISTS-join through an owner-scoped parent** — children joining `agents` **by `agent_id`**, including `voice_guides`/`voice_rules`, which carry no `owner_id` of their own. (Those two joined by `reporter_handle` until the shared-guide model was deleted; the id join is what closed the cross-user read it allowed.)
 - **Deny-all — RLS on, zero policies** — token stores, ledgers, the atomic claim counters, `voice_extraction_runs`.
 
-**Writes:** the pipeline tables have **no insert/update/delete policies at all**, service-role only, so a browser cannot forge a guide, a rule, a story, a ledger row, a Slack token, or zero its own spend. `post_drafts` is the one exception, carrying **both** an owner-scoped INSERT policy (`post_drafts_insert_via_experiment`, the edit-in-place path) **and** service-role writes, with post-outcome columns stamped service-role after an RLS ownership check.
+**Writes:** the pipeline tables have **no insert/update/delete policies at all**, service-role only, so a browser cannot forge a guide, a rule, a story, a ledger row, a Slack token, or zero its own spend. `drafts` is the one exception, carrying **both** an owner-scoped INSERT policy (`drafts_insert_via_agent`, the edit-in-place path) **and** service-role writes, with post-outcome columns stamped service-role after an RLS ownership check.
 
 ## Conventions
 
@@ -106,7 +105,7 @@ The row is owed by **any call that completed and billed, including on an error p
 
 **On Claude models the trace is a summary gated on `thinking.display`, which defaults to `"omitted"` — and "omitted" still returns a thinking block with an empty `text`, so a default call looks exactly like a model that cannot expose reasoning.** Pass flat `reasoning` for effort plus `thinking: { type, display: "summarized" }` for Anthropic's visible summary. In AI SDK v7 an effort-free provider object and flat reasoning coexist. Provider-specific effort/budget overrides flat reasoning rather than merging with it, and `type` remains required once a `thinking` object is present (display-only provider options return 400). Every call also stamps `usage.reasoningWithheldByProvider` to keep "withheld" distinguishable from "not captured".
 
-Write via the service-role client (the table has no insert policy) and never duplicate the output elsewhere: `voice_guides.provenance` is a `{ modelCallId }` pointer and `post_drafts` joins through `model_call_id`.
+Write via the service-role client (the table has no insert policy) and never duplicate the output elsewhere: `voice_guides.provenance` is a `{ modelCallId }` pointer and `drafts` joins through `model_call_id`.
 
 **Two epistemic rules this cost real money to learn:** a parameter accepted with HTTP 200 is not a parameter honored — read the effect back, never trust the status. And an absent value under DEFAULT configuration is not proof that no configuration produces it — find the parameter that governs the field and test *that* before recording an impossibility.
 
@@ -136,7 +135,7 @@ re-argued. These bind **planning**. Area-specific rejects live in that area's ru
 - **Model picks.** Extraction on `anthropic/claude-sonnet-5`; grounding and verification on `alibaba/qwen3.7-flash` with original media on both calls. The 8-model extraction panel was won by `claude-fable-5` at a measured **$0.855/reporter** across 10/10; later changes are new-model trials, not a rewrite of that evidence. A 1,000-draft run found the reporter guide mattered far more than the draft model. Model-routing architecture is a new feature, never a silent change here. **Rejected:** OpenRouter (crowd-spend routing, Fusion 4–5× cost, free models train on inputs, ~5.5% fee).
 - **The voice corpus comes from X's API, not a scraper.** Bright Data returns ZERO records for every profile because X serves logged-out clients a signup wall. The API returns 100 posts minutes old, within 2,000,000/month. The old "a user-context read bills our tier" objection was about USER-context reads; this uses the app-only bearer, which also lets the owner override read any public timeline without impersonation.
 - **A voice guide belongs to ONE desk. Extraction is never deduped, shared, or rationed.** Two desks on the same reporter each extract and each pay. The shared-per-handle model was **deleted outright, not reduced**: it optimized a case that does not occur and cost four pipeline gates, a table, a cross-user read hole, and an undiagnosable failure mode. **Never reintroduce sharing, per-day claims, or lookup caps.** If spend needs bounding, bound it per OWNER.
-- **Connect X is a UI gate, not a security boundary.** `createDesk` derives `reporter_handle` from the linked `x_accounts` row — a product rule, not an RLS one, since `experiments`' INSERT policy has no value constraint. **Never argue that relaxing the form gate widens a security boundary; there is none there.** Extraction uses the app-only bearer and never the reporter's token, and posting resolves via `getXAccount(ownerId)`. Voice and publishing were only ever coupled in the form.
+- **Connect X is a UI gate, not a security boundary.** `createDesk` derives `reporter_handle` from the linked `x_accounts` row — a product rule, not an RLS one, since `agents`' INSERT policy has no value constraint. **Never argue that relaxing the form gate widens a security boundary; there is none there.** Extraction uses the app-only bearer and never the reporter's token, and posting resolves via `getXAccount(ownerId)`. Voice and publishing were only ever coupled in the form.
 - **Handle casing is stored exactly as typed.** Matching is case-insensitive at compare time and x.com resolves either casing; the one real reason to lowercase died with the shared-guide model.
 - **UI is feed-first, no global sidebar.** The sidebar served exactly one nav destination (measured), and the reporter arrives from a notification. **The container holds the future, not reserved blank chrome:** no greyed placeholder for an unspecified stage; greying a specified-but-unbacked control is fine.
 - **Metering from the first commit.** Every touch point stamps `usage_events`. Per-request cost resolves via `getGenerationInfo()` on the gateway generation id, which works for every provider.

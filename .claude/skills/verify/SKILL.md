@@ -33,14 +33,14 @@ curl -i localhost:3000/api/ingest -X POST \
 ```
 
 The `200` is `processDelivery` running for real: a council drafts, a judge picks
-a winner, `model_calls` / `post_drafts` / `usage_events` rows land, and a real
+a winner, `model_calls` / `drafts` / `usage_events` rows land, and a real
 notification sends if the env vars are set.
 
 **Concurrent-duplicate check.** Fire that same authorized body twice, back to
-back. `draft_claims`'s `UNIQUE(source_post_id, experiment_id)` means only the
+back. `draft_claims`'s `UNIQUE(source_post_id, agent_id)` means only the
 first claim wins; the second returns `drafted[].skipped: "already_drafted"`.
 Confirm in the DB that exactly ONE council's worth of `model_calls` and ONE
-`post_drafts` winner exist for that `source_post_id`.
+`drafts` winner exist for that `source_post_id`.
 
 ## 3. Browser UI
 

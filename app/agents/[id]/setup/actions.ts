@@ -3,7 +3,7 @@
 // Setup-tab server actions (T3) — colocated here rather than the top-level `../actions.ts`,
 // which owns Feed/desk-layout concerns only (pause/resume/delete, tracked handles). Same
 // shape as that file: `"use server"`, the shared `ActionResult` (imported, not redefined),
-// the RLS/cookie client for every `experiments` read-modify-write (owner-scoped 4-policy RLS
+// the RLS/cookie client for every `agents` read-modify-write (owner-scoped 4-policy RLS
 // covers `websites`/`auto_post_master`/`auto_post_sources` — no admin client needed), and
 // `revalidatePath("/agents", "layout")` on every write a switcher/status-visible surface
 // could depend on.
@@ -40,7 +40,7 @@ function normalizeWebsiteUrl(raw: string): string | null {
     const url = new URL(candidate);
     // Reject any scheme but http(s) — a bare "example.com" gets https:// prepended above, but
     // an explicit "javascript://…" / "file://…" / "ftp://…" entry matched the scheme regex
-    // above too and would otherwise pass through unrestricted into experiments.websites (and
+    // above too and would otherwise pass through unrestricted into agents.websites (and
     // from there into the scraper/ingestion worker).
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     return url.toString();
@@ -50,7 +50,7 @@ function normalizeWebsiteUrl(raw: string): string | null {
 }
 
 /**
- * Save one or more websites to `experiments.websites` (plain `string[]` — no metadata beyond
+ * Save one or more websites to `agents.websites` (plain `string[]` — no metadata beyond
  * the URL is asked for this slice). Read-modify-write under RLS, same shape as
  * `addTrackedHandles`: read current `websites`, merge/dedupe the normalized candidates,
  * update, revalidate. Unlike `addTrackedHandles`, an invalid entry rejects the whole call
@@ -71,7 +71,7 @@ export async function saveWebsites(
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("websites")
     .eq("id", deskId)
     .maybeSingle();
@@ -90,7 +90,7 @@ export async function saveWebsites(
   }
 
   const { error: updateError } = await supabase
-    .from("experiments")
+    .from("agents")
     .update({ websites: merged })
     .eq("id", deskId);
   if (updateError) return { ok: false, error: "Could not save those websites. Please try again." };
@@ -102,7 +102,7 @@ export async function saveWebsites(
 export async function removeWebsite(deskId: string, url: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("websites")
     .eq("id", deskId)
     .maybeSingle();
@@ -110,7 +110,7 @@ export async function removeWebsite(deskId: string, url: string): Promise<Action
 
   const next = parseWebsites(data.websites).filter((entry) => entry !== url);
   const { error: updateError } = await supabase
-    .from("experiments")
+    .from("agents")
     .update({ websites: next })
     .eq("id", deskId);
   if (updateError) return { ok: false, error: "Could not remove that website. Please try again." };
@@ -119,8 +119,8 @@ export async function removeWebsite(deskId: string, url: string): Promise<Action
 }
 
 /**
- * `patch.master` updates `experiments.auto_post_master` directly (a plain boolean column).
- * `patch.source` + `patch.sourceEnabled` merge into `experiments.auto_post_sources`
+ * `patch.master` updates `agents.auto_post_master` directly (a plain boolean column).
+ * `patch.source` + `patch.sourceEnabled` merge into `agents.auto_post_sources`
  * (`{ x?: boolean; website?: boolean }`, per T2.4b — the ingest pipeline already reads it
  * keyed by source TYPE, not per-handle), same read-modify-write shape as the handles actions.
  */
@@ -132,7 +132,7 @@ export async function toggleAutoPost(
 
   if (patch.master !== undefined) {
     const { error } = await supabase
-      .from("experiments")
+      .from("agents")
       .update({ auto_post_master: patch.master })
       .eq("id", deskId);
     if (error) return { ok: false, error: "Could not update auto-post. Please try again." };
@@ -140,7 +140,7 @@ export async function toggleAutoPost(
 
   if (patch.source && patch.sourceEnabled !== undefined) {
     const { data, error } = await supabase
-      .from("experiments")
+      .from("agents")
       .select("auto_post_sources")
       .eq("id", deskId)
       .maybeSingle();
@@ -156,7 +156,7 @@ export async function toggleAutoPost(
     const next = { ...current, [patch.source]: patch.sourceEnabled };
 
     const { error: updateError } = await supabase
-      .from("experiments")
+      .from("agents")
       .update({ auto_post_sources: next })
       .eq("id", deskId);
     if (updateError) return { ok: false, error: "Could not update auto-post. Please try again." };
@@ -187,11 +187,7 @@ export async function unlinkSlack(deskId: string): Promise<ActionResult> {
  */
 export async function sendTestEmail(deskId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id")
-    .eq("id", deskId)
-    .maybeSingle();
+  const { data, error } = await supabase.from("agents").select("id").eq("id", deskId).maybeSingle();
   if (error || !data) return { ok: false, error: "Please sign in again." };
 
   if (!process.env.RESEND_API_KEY) return { ok: false, error: "Email delivery isn't set up yet." };

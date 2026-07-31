@@ -1,6 +1,6 @@
 // scripts/extract-voice-guide.ts
 //
-// One-off runner for the L2 voice-extraction slice. Seeds an `experiments` row, stores a
+// One-off runner for the L2 voice-extraction slice. Seeds an `agents` row, stores a
 // reporter's lab corpus in `source_posts`, runs the configured paid extraction call, and
 // writes the resulting guide to `voice_guides` + a `usage_events` stamp — all through the
 // service-role admin client (every write target here is service-role-write only, by design).
@@ -86,25 +86,25 @@ async function main() {
 
   const ownerId = await resolveOwnerId(admin, ownerEmail);
 
-  // Seed the experiment. Idempotent by hand: the schema has no unique constraint on
+  // Seed the agent. Idempotent by hand: the schema has no unique constraint on
   // (owner_id, reporter_handle), so select-then-insert, and never overwrite an existing
   // row — beat/tracked_handles may have been set by the app and are not ours to clobber.
-  const { data: existingExperiments, error: existingExperimentError } = await admin
-    .from("experiments")
+  const { data: existingAgents, error: existingAgentError } = await admin
+    .from("agents")
     .select("id")
     .eq("owner_id", ownerId)
     .eq("reporter_handle", reporterHandle)
     .order("created_at", { ascending: true })
     .limit(1);
-  if (existingExperimentError) throw existingExperimentError;
+  if (existingAgentError) throw existingAgentError;
 
-  // The guide is keyed by experiment_id, so this id is now load-bearing rather than incidental
+  // The guide is keyed by agent_id, so this id is now load-bearing rather than incidental
   // — the insert has to hand it back rather than being fire-and-forget as it was when guides
   // were keyed by reporter_handle.
-  let experimentId = existingExperiments?.[0]?.id;
-  if (!experimentId) {
+  let agentId = existingAgents?.[0]?.id;
+  if (!agentId) {
     const { data, error } = await admin
-      .from("experiments")
+      .from("agents")
       .insert({
         owner_id: ownerId,
         beat: `@${reporterHandle}'s beat`,
@@ -115,7 +115,7 @@ async function main() {
       .select("id")
       .single();
     if (error) throw error;
-    experimentId = data.id;
+    agentId = data.id;
   }
 
   // Store the full corpus in source_posts (deny-all table, service-role write). Deduped by
@@ -169,8 +169,8 @@ async function main() {
       } as unknown as Json,
       cost_usd: ext.costUsd,
       generation_id: ext.generationId,
-      ref_kind: "experiment_id",
-      ref_id: experimentId,
+      ref_kind: "agent_id",
+      ref_id: agentId,
     })
     .select("id")
     .single();
@@ -180,14 +180,14 @@ async function main() {
   // reasoning, usage and cost have exactly one home, in model_calls.
   const { error: voiceGuideError } = await admin.from("voice_guides").upsert(
     {
-      experiment_id: experimentId,
+      agent_id: agentId,
       guide_raw: ext.guideRaw,
       guide_deploy: deployGuide(ext.guideRaw),
       measured_facts: ext.measuredFactsBlock,
       cost_usd: ext.costUsd,
       provenance: { modelCallId: modelCall.id } as unknown as Json,
     },
-    { onConflict: "experiment_id" },
+    { onConflict: "agent_id" },
   );
   if (voiceGuideError) throw voiceGuideError;
 

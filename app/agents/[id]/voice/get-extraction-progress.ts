@@ -41,7 +41,7 @@ export async function getOwnedExtractionProgress(
   if (!user) return { ok: false, error: "Please sign in again." };
 
   const { data: desk, error: deskError } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("id")
     .eq("id", deskId)
     .maybeSingle();
@@ -52,7 +52,7 @@ export async function getOwnedExtractionProgress(
   const { data, error: progressError } = await admin
     .from("voice_extraction_runs")
     .select("stage, progress_note, reasoning_partial, status, error_code, updated_at")
-    .eq("experiment_id", deskId)
+    .eq("agent_id", deskId)
     .maybeSingle();
   if (progressError) return { ok: false, error: "Could not load this agent." };
 
@@ -73,14 +73,11 @@ export async function getOwnedExtractionProgress(
   // retries, so expose only facts the table can prove rather than reconstructing a transient
   // progress note that a poll may have missed.
   const [corpusCountResult, excludedCountResult] = await Promise.all([
+    admin.from("corpus_posts").select("*", { count: "exact", head: true }).eq("agent_id", deskId),
     admin
       .from("corpus_posts")
       .select("*", { count: "exact", head: true })
-      .eq("experiment_id", deskId),
-    admin
-      .from("corpus_posts")
-      .select("*", { count: "exact", head: true })
-      .eq("experiment_id", deskId)
+      .eq("agent_id", deskId)
       .eq("excluded_off_beat", true),
   ]);
   if (corpusCountResult.error || excludedCountResult.error) {

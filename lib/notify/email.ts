@@ -4,15 +4,15 @@
 const DRAFT_ADDR_RE = /draft\+([0-9a-f-]{36})@/i;
 const SUBJECT_TAG_RE = /\[draft:([0-9a-f-]{36})\]/i;
 
-/** Reply-to address that routes an email reply back to its post_drafts row. */
-function draftReplyAddress(postDraftId: string): string {
+/** Reply-to address that routes an email reply back to its drafts row. */
+function draftReplyAddress(draftId: string): string {
   const domain = process.env.RESEND_REPLY_DOMAIN;
   if (!domain) throw new Error("RESEND_REPLY_DOMAIN is not set");
-  return `draft+${postDraftId}@${domain}`;
+  return `draft+${draftId}@${domain}`;
 }
 
 /** Inverse of the encoding above + the subject-tag fallback. Used by the inbound webhook. */
-export function extractPostDraftId(input: {
+export function extractDraftId(input: {
   to?: string | string[] | null;
   subject?: string | null;
 }): string | null {
@@ -61,13 +61,13 @@ export async function sendDraftEmail(input: {
   to: string;
   subject: string;
   text: string;
-  postDraftId: string;
+  draftId: string;
 }): Promise<void> {
   await sendEmail({
     to: input.to,
-    subject: `${input.subject} [draft:${input.postDraftId}]`,
+    subject: `${input.subject} [draft:${input.draftId}]`,
     text: input.text,
-    replyTo: draftReplyAddress(input.postDraftId),
+    replyTo: draftReplyAddress(input.draftId),
   });
 }
 

@@ -27,7 +27,7 @@ scan dispatcher, no polling, and no scan-frequency scheduler anywhere in the app
   dormant because `RESEND_*` is unprovisioned, not because of the flag.
 - **`cluster.ts`** — dormant behind `CLUSTERING_ENABLED = false`.
 
-`/agents/new` inserts straight into `experiments`: no typed handle field, no
+`/agents/new` inserts straight into `agents`: no typed handle field, no
 assistant. `createDesk` reads `reporter_handle` off the linked `x_accounts` row and
 stamps `reporter_verified_at` at insert, so every desk is born verified.
 

@@ -71,5 +71,5 @@ export const NON_X_PLATFORM_CHAR_LIMITS: Record<Exclude<Platform, "x">, number> 
  *  path, so the UI being disabled is never the only thing standing between a delivery and an
  *  unreviewed post. Flipping this back is the lever's whole reactivation on the server side —
  *  the master switch also needs a UI path to ever become true, which does not exist yet (see
- *  `auto_post_master`'s own comment in the `experiments` table). */
+ *  `auto_post_master`'s own comment in the `agents` table). */
 export const AUTO_POST_ENABLED = false;

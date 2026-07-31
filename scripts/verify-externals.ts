@@ -45,13 +45,13 @@ const only = onlyArg ? onlyArg.slice("--only=".length).split(",") : null;
 async function resolveOwner(): Promise<{ ownerId: string; handle: string | null }> {
   const admin = createAdminClient();
   const { data, error } = await admin
-    .from("experiments")
+    .from("agents")
     .select("owner_id, reporter_handle")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("no experiments row to scope probes against — create an agent first");
+  if (!data) throw new Error("no agents row to scope probes against — create an agent first");
   return { ownerId: data.owner_id, handle: data.reporter_handle };
 }
 
@@ -191,7 +191,7 @@ function buildChecks(owner: { ownerId: string; handle: string | null }): Check[]
       run: async () => {
         const admin = createAdminClient();
         const { data: desk } = await admin
-          .from("experiments")
+          .from("agents")
           .select("id")
           .order("created_at", { ascending: false })
           .limit(1)

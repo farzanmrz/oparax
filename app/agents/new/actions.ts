@@ -9,7 +9,7 @@ import { getXLinkState } from "@/lib/x/link-state";
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
 /**
- * Create a desk (an `experiments` row) as the signed-in reporter, then kick off best-effort
+ * Create a desk (an `agents` row) as the signed-in reporter, then kick off best-effort
  * voice extraction for their handle in `after()` — the request finishes and the client
  * navigates before extraction resolves; a failure there never rolls back the desk (see
  * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
@@ -80,7 +80,7 @@ export async function createDesk(input: {
   //
   // The override sets `reporter_handle` — it does NOT keep the agent on the owner's handle
   // while pulling someone else's corpus. `reporter_handle` is what the corpus is pulled for,
-  // and `voice_guides`/`voice_rules` are keyed by this desk's `experiment_id`, not by handle —
+  // and `voice_guides`/`voice_rules` are keyed by this desk's `agent_id`, not by handle —
   // so the other direction (extracting the owner's own voice while labeling the desk for
   // someone else) would just mislabel whose voice the desk claims to be drafting in.
   let reporterHandle = connectedHandle;
@@ -95,7 +95,7 @@ export async function createDesk(input: {
   }
 
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .insert({
       owner_id: user.id,
       name,
@@ -105,7 +105,7 @@ export async function createDesk(input: {
       // Identity is proven by the linked X account at this exact moment, not typed and
       // verified later — verification is immediate now, not a separate step. Stamped on the
       // owner-override path too, even though `voice_guides`' SELECT policy no longer conditions
-      // on this column (it checks only `e.id = voice_guides.experiment_id and e.owner_id =
+      // on this column (it checks only `e.id = voice_guides.agent_id and e.owner_id =
       // auth.uid()`) — so this is a record of how identity was proven at creation, not an RLS
       // gate. On the override path the allowlist is the verification.
       reporter_verified_at: new Date().toISOString(),

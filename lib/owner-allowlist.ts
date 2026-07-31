@@ -9,7 +9,7 @@
 // — on localhost, on preview, and in production independently. A literal list behaves identically
 // in all three with nothing to sync.
 //
-// **This is not a security boundary, and must never be described as one.** `experiments` has an
+// **This is not a security boundary, and must never be described as one.** `agents` has an
 // owner-scoped INSERT policy with no value constraint, so any signed-in user can already mint a
 // row with an arbitrary `reporter_handle` — see AGENTS.md's Connect-X settled decision. This list
 // gates a FORM AFFORDANCE. It exists so the product rule ("extract your own voice") holds for

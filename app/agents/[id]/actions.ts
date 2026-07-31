@@ -2,7 +2,7 @@
 //
 // The desk layout's server actions — pause/resume/delete a desk, plus add/remove a
 // tracked X handle. All writes run as the signed-in reporter via the RLS client
-// (@/lib/supabase/server) against `experiments`, which carries full 4-policy owner RLS —
+// (@/lib/supabase/server) against `agents`, which carries full 4-policy owner RLS —
 // there is no service-role client here, unlike the old agents/[id] actions this file
 // replaces. Every mutation revalidates the desk's own path on success so the layout and
 // its children re-render with the fresh row. The revalidate is `"layout"`-scoped, not the
@@ -35,7 +35,7 @@ export async function pauseDesk(id: string): Promise<ActionResult> {
   // success — without this check the caller was told `{ ok: true }` while nothing changed,
   // same honest-outcome convention as postDraftToXForOwner's CAS-claim (`claimed.length === 0`).
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .update({ status: "paused" })
     .eq("id", id)
     .select("id");
@@ -55,7 +55,7 @@ export async function resumeDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   // See pauseDesk's comment — same zero-row-match check.
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .update({ status: "active" })
     .eq("id", id)
     .select("id");
@@ -71,7 +71,7 @@ export async function resumeDesk(id: string): Promise<ActionResult> {
 }
 
 /**
- * Delete a desk. `post_drafts.experiment_id` carries `ON DELETE CASCADE`, and so now do
+ * Delete a desk. `drafts.agent_id` carries `ON DELETE CASCADE`, and so now do
  * `voice_guides`, `voice_rules`, and `voice_extraction_runs` — all four are desk-owned, so the
  * database cleans them up. `source_posts` is deliberately untouched: it is genuinely cross-desk
  * (one ingested post can feed several desks), so it is not this desk's to delete. On success it redirects
@@ -80,7 +80,7 @@ export async function resumeDesk(id: string): Promise<ActionResult> {
  */
 export async function deleteDesk(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("experiments").delete().eq("id", id);
+  const { error } = await supabase.from("agents").delete().eq("id", id);
   if (error) return { ok: false, error: "Could not delete the agent. Please try again." };
   redirect("/agents");
 }
@@ -117,7 +117,7 @@ export async function addTrackedHandles(id: string, raw: string): Promise<AddHan
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("tracked_handles")
     .eq("id", id)
     .maybeSingle();
@@ -147,7 +147,7 @@ export async function addTrackedHandles(id: string, raw: string): Promise<AddHan
   }
 
   const { error: updateError } = await supabase
-    .from("experiments")
+    .from("agents")
     .update({ tracked_handles: merged })
     .eq("id", id);
   if (updateError) return { ok: false, error: "Could not add those handles. Please try again." };
@@ -158,22 +158,22 @@ export async function addTrackedHandles(id: string, raw: string): Promise<AddHan
   return { ok: true, dropped };
 }
 
-const editDraftPostDraftIdSchema = z.string().uuid();
+const editDraftIdSchema = z.string().uuid();
 
 /**
  * Draft edit-in-place (item 9, T3.6). A human edit has no model call behind it, but
- * `post_drafts.model_call_id` is a real NOT-NULL FK to `model_calls` — and `model_calls`
+ * `drafts.model_call_id` is a real NOT-NULL FK to `model_calls` — and `model_calls`
  * carries deny-all RLS (no insert policy at all, service-role only), so there is no way to
  * satisfy that FK from the owner-scoped client alone. The resolved shape mirrors
  * `draft-pipeline.ts`'s `applyCorrection` (dethrone-then-insert) as closely as the trust
  * boundary allows:
  *
- *   1. RLS/cookie client: SELECT the parent draft through `post_drafts_select_via_experiment`
+ *   1. RLS/cookie client: SELECT the parent draft through `drafts_select_via_agent`
  *      (the existing owner-scoped EXISTS-join policy). This IS the ownership proof for the
  *      admin-client writes below — reaching this line already establishes the caller owns
  *      the desk this draft belongs to.
  *   2. Admin client: dethrone the current winner via a compare-and-set on its EXACT row id,
- *      guarded by `is_winner = true` AND `posted_url IS NULL` — `post_drafts` carries no
+ *      guarded by `is_winner = true` AND `posted_url IS NULL` — `drafts` carries no
  *      owner-scoped UPDATE policy at all, so this step has no RLS-client alternative regardless
  *      of preference. The `posted_url` leg re-checks at WRITE time what step 1 only read: a
  *      concurrent Post-to-X that CONFIRMED this winner in between must not be dethroned.
@@ -183,13 +183,13 @@ const editDraftPostDraftIdSchema = z.string().uuid();
  *      exception to "every model_calls row is a real billed call" (AGENTS.md) that it is —
  *      a future reader must not mistake this for an L12 violation. It runs AFTER the CAS so an
  *      aborted edit never leaves an orphaned, unreferenced ledger row behind.
- *   4. RLS/cookie client: INSERT the new `post_drafts` row. THIS is the step the plan text
+ *   4. RLS/cookie client: INSERT the new `drafts` row. THIS is the step the plan text
  *      calls out — "via the owner-scoped RLS client... never service-role for a browser
- *      write" — the `post_drafts_insert_via_experiment` policy's `WITH CHECK` clause is what
+ *      write" — the `drafts_insert_via_agent` policy's `WITH CHECK` clause is what
  *      actually proves the browser caller owns this desk for the write itself.
  */
-export async function editDraft(postDraftId: string, newText: string): Promise<ActionResult> {
-  const parsedId = editDraftPostDraftIdSchema.safeParse(postDraftId);
+export async function editDraft(draftId: string, newText: string): Promise<ActionResult> {
+  const parsedId = editDraftIdSchema.safeParse(draftId);
   if (!parsedId.success) return { ok: false, error: "Select a draft to edit." };
   const trimmedText = newText.trim();
   if (trimmedText.length === 0) return { ok: false, error: "Draft text can't be empty." };
@@ -202,21 +202,21 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
 
   // Step 1 — the ownership proof (see the function comment above).
   const { data: parentDraft, error: parentError } = await supabase
-    .from("post_drafts")
-    .select("id, source_post_id, experiment_id, story_id, platform")
+    .from("drafts")
+    .select("id, source_post_id, agent_id, story_id, platform")
     .eq("id", parsedId.data)
     .maybeSingle();
   if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
 
   // The already-posted guard checks the STORY's current winner for this platform, not
   // `parentDraft`'s own `posted_at` — `parentDraft` is whatever draft id the browser passed in,
-  // and council-query.ts exposes every council member's postDraftId to the browser, including
+  // and council-query.ts exposes every council member's draftId to the browser, including
   // losing candidates. A losing candidate's own row always carries `posted_at: null`, even
   // after the actual winner has posted — so checking the passed-in row directly let a stale
   // losing-candidate id sail past this guard, dethrone the ACTUAL posted winner below, and
   // insert a fresh `is_winner: true` row with `posted_at: null`, making the feed render the
   // (already-live) story as unposted with an enabled Post button — one click from a
-  // near-duplicate tweet. Scoped by source_post_id + experiment_id + platform, the same triple
+  // near-duplicate tweet. Scoped by source_post_id + agent_id + platform, the same triple
   // applyCorrection's dethrone step in draft-pipeline.ts uses.
   // postedAt alone is the ambiguous state, not proof of a live post (mirrors
   // draft-platform-switcher.tsx's three-way signal) — only a confirmed post (postedAt &&
@@ -226,10 +226,10 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
   // winner risks a real duplicate on X — the UI's ambiguous-state copy tells the reporter to
   // check their account first; this function does not and cannot verify that for them.
   const { data: currentWinner, error: currentWinnerError } = await supabase
-    .from("post_drafts")
+    .from("drafts")
     .select("id, posted_at, posted_url")
     .eq("source_post_id", parentDraft.source_post_id)
-    .eq("experiment_id", parentDraft.experiment_id)
+    .eq("agent_id", parentDraft.agent_id)
     .eq("platform", parentDraft.platform)
     .eq("is_winner", true)
     .maybeSingle();
@@ -282,7 +282,7 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
     return { ok: false, error: "This draft was just edited elsewhere — refresh and try again." };
   }
   const { data: dethroned, error: dethroneError } = await admin
-    .from("post_drafts")
+    .from("drafts")
     .update({ is_winner: false })
     .eq("id", currentWinner.id)
     .eq("is_winner", true)
@@ -316,14 +316,14 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
   if (modelCallError || !modelCall) {
     // The CAS already dethroned the winner, so this abort owes the same compensation the insert
     // failure below owes — otherwise the story is left with no winner at all.
-    await admin.from("post_drafts").update({ is_winner: true }).eq("id", currentWinner.id);
+    await admin.from("drafts").update({ is_winner: true }).eq("id", currentWinner.id);
     return { ok: false, error: "Could not save your edit. Please try again." };
   }
 
   // Step 4 — the owner-scoped write the plan text specifically calls out.
-  const { error: insertError } = await supabase.from("post_drafts").insert({
+  const { error: insertError } = await supabase.from("drafts").insert({
     source_post_id: parentDraft.source_post_id,
-    experiment_id: parentDraft.experiment_id,
+    agent_id: parentDraft.agent_id,
     story_id: parentDraft.story_id,
     platform: parentDraft.platform,
     model_call_id: modelCall.id,
@@ -335,15 +335,15 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
     parent_draft_id: currentWinner.id,
   });
   if (insertError) {
-    // post_drafts still carries no partial unique index enforcing one is_winner=true row per
-    // (source_post_id, experiment_id, platform), so steps 2-4 remain non-transactional calls
+    // drafts still carries no partial unique index enforcing one is_winner=true row per
+    // (source_post_id, agent_id, platform), so steps 2-4 remain non-transactional calls
     // with no serialization at the database layer. But the double-insert race that index would
     // have closed is now closed at the application level instead — Step 2's CAS above guarantees
     // this call uniquely owns currentWinner before reaching this point, so an insert failure here
     // only ever leaves a single dethroned winner to restore, never a competing second winner to
     // reconcile against.
     const { error: restoreError } = await admin
-      .from("post_drafts")
+      .from("drafts")
       .update({ is_winner: true })
       .eq("id", currentWinner.id);
     if (restoreError) {
@@ -356,7 +356,7 @@ export async function editDraft(postDraftId: string, newText: string): Promise<A
     return { ok: false, error: "Could not save your edit. Please try again." };
   }
 
-  revalidatePath(`/agents/${parentDraft.experiment_id}`, "layout");
+  revalidatePath(`/agents/${parentDraft.agent_id}`, "layout");
   return { ok: true };
 }
 
@@ -365,7 +365,7 @@ export async function removeTrackedHandle(id: string, handle: string): Promise<A
   const normalized = normalizeHandle(handle);
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("tracked_handles")
     .eq("id", id)
     .maybeSingle();
@@ -377,7 +377,7 @@ export async function removeTrackedHandle(id: string, handle: string): Promise<A
     (tracked) => tracked.toLowerCase() !== normalized.toLowerCase(),
   );
   const { error: updateError } = await supabase
-    .from("experiments")
+    .from("agents")
     .update({ tracked_handles: nextHandles })
     .eq("id", id);
   if (updateError) return { ok: false, error: "Could not remove that handle. Please try again." };

@@ -18,11 +18,7 @@ export default async function DeskLayout({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id")
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await supabase.from("agents").select("id").eq("id", id).maybeSingle();
   if (error || !data) notFound();
 
   return <div className="flex min-h-0 flex-1 flex-col">{children}</div>;

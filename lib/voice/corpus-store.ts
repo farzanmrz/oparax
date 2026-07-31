@@ -6,14 +6,14 @@ import type { CorpusPost } from "./extract-guide";
 // of the latest extraction. A re-extraction NEVER deletes previously stored posts — it only adds
 // posts not already present and refreshes the ones that are. X's timeline read returns the 100
 // most recent original posts, so consecutive extractions overlap heavily; treating each run as a
-// replacement would discard history the owner wants kept. The `unique (experiment_id, x_post_id)`
+// replacement would discard history the owner wants kept. The `unique (agent_id, x_post_id)`
 // constraint (see the corpus_posts migration) is what makes a re-extraction idempotent: an upsert
 // on that conflict target inserts posts the desk has never seen and refreshes engagement/text on
 // posts it has, without ever touching a row outside this run's fetch. A failed upsert leaves
 // everything previously stored for this desk fully intact — there is no delete step to have run
 // first or to run after, so there is no window where a failure can leave the desk with fewer
 // rows than it had before the call.
-export async function accumulateCorpus(experimentId: string, posts: CorpusPost[]): Promise<void> {
+export async function accumulateCorpus(agentId: string, posts: CorpusPost[]): Promise<void> {
   if (posts.length === 0) {
     // Nothing usable came back from this run's fetch. With deletion off the table, an empty new
     // set is a plain no-op: nothing to add, nothing to refresh, and — per the accumulation
@@ -39,7 +39,7 @@ export async function accumulateCorpus(experimentId: string, posts: CorpusPost[]
   // the accumulation model intends.
   const { error: upsertError } = await admin.from("corpus_posts").upsert(
     posts.map((p) => ({
-      experiment_id: experimentId,
+      agent_id: agentId,
       x_post_id: p.id,
       text: p.text,
       posted_at: p.date,
@@ -50,13 +50,13 @@ export async function accumulateCorpus(experimentId: string, posts: CorpusPost[]
       excluded_off_beat: false,
       exclude_reason: null,
     })),
-    { onConflict: "experiment_id,x_post_id" },
+    { onConflict: "agent_id,x_post_id" },
   );
   if (upsertError) throw upsertError;
 }
 
 export async function markCorpusExclusions(
-  experimentId: string,
+  agentId: string,
   postIds: string[],
   reason: string,
 ): Promise<void> {
@@ -65,7 +65,7 @@ export async function markCorpusExclusions(
   const { error } = await admin
     .from("corpus_posts")
     .update({ excluded_off_beat: true, exclude_reason: reason })
-    .eq("experiment_id", experimentId)
+    .eq("agent_id", agentId)
     .in("x_post_id", postIds);
   if (error) throw error;
 }
