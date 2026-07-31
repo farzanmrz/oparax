@@ -139,6 +139,7 @@ re-argued. These bind **planning**. Area-specific rejects live in that area's ru
 - **Handle casing is stored exactly as typed.** Matching is case-insensitive at compare time and x.com resolves either casing; the one real reason to lowercase died with the shared-guide model.
 - **UI is feed-first, no global sidebar.** The sidebar served exactly one nav destination (measured), and the reporter arrives from a notification. **The container holds the future, not reserved blank chrome:** no greyed placeholder for an unspecified stage; greying a specified-but-unbacked control is fine.
 - **Metering from the first commit.** Every touch point stamps `usage_events`. Per-request cost resolves via `getGenerationInfo()` on the gateway generation id, which works for every provider.
+- **Two dependency majors are held on purpose — `pnpm outdated` offers both every time.** `@types/node` stays on 24.x: Vercel serves only 24.x/22.x/20.x, so Node 26 types describe a runtime we cannot deploy and `tsc` cannot catch the gap. `typescript` stays on 6.x: TS 7 is the Go-native port from `microsoft/typescript-go`, and its package `exports` no longer expose the JS compiler API from the root — `knip` and `ts-morph` (via `shadcn`) both import it. **The new fact that reopens each:** a Vercel 26.x runtime; a knip release supporting TS 7.
 
 ### Dormant by design — switched off, not missing
 
