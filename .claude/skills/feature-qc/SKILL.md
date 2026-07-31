@@ -58,7 +58,8 @@ cheap dial must say so in its first milestone line.
   per-family fan-outs; never add a separate verifier quorum.
 - **A failed lane is reported FAILED, never as a clean pass.** `AGY_EMPTY` is
   no-signal. Before trusting the council at all, prove it: `bash
-  .claude/workflows/council/selftest.sh`.
+  .claude/workflows/council/selftest.sh --if-changed` — 0.2s unless a wrapper,
+  profile or CLI version moved since the last green run.
 - **Milestone lines are required output:** one entering each of the four steps,
   one launching any long background wait (name + expected duration). Nothing
   else between them.
