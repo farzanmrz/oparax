@@ -180,8 +180,9 @@ only.
 
 The external review council is `codex` + `grok` + `agy`, launched by
 `.claude/workflows/council/run.sh`. **Prove it FUNCTIONS before trusting it:**
-`bash .claude/workflows/council/selftest.sh` drives every lane through the real
-wrapper and schema on cheap dials in ~90s. A failed lane is FAILED, never a clean
+`bash .claude/workflows/council/selftest.sh --if-changed` drives every lane through
+the real wrapper and schema on cheap dials — ~90s, but only when a wrapper, profile
+or CLI version moved since the last green run; otherwise it exits in 0.2s. A failed lane is FAILED, never a clean
 pass.
 
 **Per-harness setup facts — which directory each CLI really scans, why a subagent

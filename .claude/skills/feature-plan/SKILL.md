@@ -146,10 +146,11 @@ works identically for a family with no rules mechanism at all).
 **Judge a lane on POST-FIX behaviour, never on its accumulated failure count** —
 a detach of grok+agy was proposed 2026-07-30 and reversed the same day once the
 record was read. The evidence is in `council/run.sh`'s header; don't re-derive
-it. Prove the lanes instead of trusting them:
+it. Prove the lanes instead of trusting them — this exits in 0.2s unless a
+wrapper, profile or CLI version moved since the last green run:
 
 ```bash
-bash .claude/workflows/council/selftest.sh
+bash .claude/workflows/council/selftest.sh --if-changed
 ```
 
 Write each lane's prompt — plan + grounding pack + "verify claims against the

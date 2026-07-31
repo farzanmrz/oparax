@@ -88,9 +88,50 @@ for a in oparax-critic code-verifier; do
   [ -f "$HOME/.gemini/config/agents/$a.md" ] && ok "subagent installed  $a" || bad "subagent MISSING  ~/.gemini/config/agents/$a.md"
 done
 
+echo "── internal consistency ──"
+# The failure mode this repo actually has is not a broken config — it is an edit
+# applied to one file and not its siblings. Three instances cost real trust:
+# a dials row claiming sonnet while the agent was pinned opus; a critic contract
+# updated in three harnesses and not the fourth; selftest gated in feature-find
+# and left unconditional in feature-plan. All three are mechanically detectable.
+py=$(command -v python3 || echo python3)
+"$py" - <<'PYEOF' || FAIL=1
+import re,glob,sys,tomllib
+bad=0
+# 1. every selftest call site is gated
+for f in glob.glob('.claude/skills/*/SKILL.md')+['AGENTS.md']:
+    for line in open(f,encoding='utf-8',errors='replace'):
+        if 'selftest.sh' in line and '--if-changed' not in line:
+            print(f"  \033[31m✗\033[0m ungated selftest call: {f}"); bad=1
+# 2. the four critic lanes carry the same contract
+lanes={'bug-finder':'.claude/agents/bug-finder.md','grok':'.grok/agents/oparax-critic.md',
+       'agy':'.agents/agents/oparax-critic.md','codex':'.codex/agents/reviewer.toml'}
+need=[r'Settled [Dd]ecisions',r'[Dd]ormant',r'COVERAGE,\s+not filtering',r'file:line']
+for name,p in lanes.items():
+    try:
+        t=tomllib.load(open(p,'rb'))['developer_instructions'] if p.endswith('.toml') else open(p).read()
+    except Exception as e:
+        print(f"  \033[31m✗\033[0m critic lane unreadable: {p}"); bad=1; continue
+    for pat in need:
+        if not re.search(pat,t): print(f"  \033[31m✗\033[0m {name} missing contract element: {pat}"); bad=1
+# 3. dials tables must not contradict an agent's pinned model
+pins={}
+for f in glob.glob('.claude/agents/*.md'):
+    m=re.search(r'^---\n(.*?)\n---',open(f).read(),re.S)
+    mm=re.search(r'^model:\s*(\S+)',m.group(1),re.M) if m else None
+    if mm: pins[f.split('/')[-1][:-3]]=mm.group(1)
+for f in glob.glob('.claude/skills/*/SKILL.md'):
+    for line in open(f,encoding='utf-8',errors='replace'):
+        if 'Internal review lane' in line and 'bug-finder' in line:
+            if pins.get('bug-finder','') not in line:
+                print(f"  \033[31m✗\033[0m {f}: internal-lane row contradicts bug-finder's pin ({pins.get('bug-finder')})"); bad=1
+sys.exit(bad)
+PYEOF
+[ $FAIL -eq 0 ] && echo "  ✓ selftest gated everywhere, critic contracts in parity, dials match pins"
+
 echo
 [ $FAIL -eq 0 ] && echo "doctor: all configuration checks passed." \
   || echo "doctor: FAILURES above — fix before trusting a run." >&2
 echo "doctor: this proves configuration only. Prove the lanes with:"
-echo "        bash .claude/workflows/council/selftest.sh"
+echo "        bash .claude/workflows/council/selftest.sh --if-changed"
 exit $FAIL
