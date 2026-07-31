@@ -13,7 +13,7 @@
 # one for human review.
 #
 # Deliberately SILENT and always exit 0: a residual finding surfaced mid-build
-# would pull an implementer off its task, and feature-lint catches it at QC anyway.
+# would pull an agent off its task, and feature-lint catches it at QC anyway.
 # (PostToolUse cannot block a tool call regardless — the tool has already run.)
 set -uo pipefail
 

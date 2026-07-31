@@ -1,11 +1,31 @@
 ---
 name: ui-ux-pro-max
-description: "UI/UX design intelligence for web and mobile. Searchable local database with 84 styles, 192 color palettes, 74 font pairings, 192 product types, 98 UX guidelines, 104 icon entries, 16 GSAP motion presets, and 25 chart types across 22 stacks (React, Next.js, Vue, Nuxt, Svelte, Astro, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui, Jetpack Compose, Angular, Laravel, JavaFX, WPF, WinUI, Avalonia, Uno Platform, UWP, Three.js, and HTML/CSS). Use when designing, building, or reviewing UI: pages, components, color schemes, typography, layout, accessibility, animation, or data visualization."
+description: "UX and stack-conventions lookup for reviewing UI in this repo: 98 UX guidelines (accessibility, touch targets, states, motion, performance) plus per-stack guidelines for Next.js, React, shadcn/ui and Tailwind. Query it for a severity-tagged Do/Don't rule to cite when judging a UI surface. NOT a design-system generator — this repo's plans are [design: reuse] and never invent visual systems."
 ---
 
-# UI/UX Pro Max - Design Intelligence
+# UI/UX Pro Max — UX rules lookup
 
-Searchable database of UI/UX design rules with priority-based recommendations: 84 styles, 192 color palettes, 74 font pairings, 192 product types with reasoning rules, 98 UX guidelines, 104 icon entries, 16 GSAP motion presets, and 25 chart types across 22 technology stacks.
+**Trimmed for oparax, 2026-07-30: 1.8 MB → 412 KB.** What survives is what this repo can
+act on — `--domain ux`, `--domain gsap`, and `--stack {nextjs,react,shadcn,html-tailwind}`.
+The picker in `scripts/search.py` is generated from the files that exist, so an unavailable
+choice is rejected by argparse rather than failing later as "File not found".
+
+Deleted, deliberately: the 18 stacks this repo does not target (SwiftUI, Flutter, WPF,
+WinUI, JavaFX, Avalonia, Uno, UWP, Three.js, Laravel, Angular, Vue, Svelte, Astro,
+Nuxt, React Native, Jetpack Compose), and the design-**generation** corpus — 743 KB of
+Google Fonts plus the colors, typography, styles, products, icons, charts and landing
+CSVs. This repo's plans carry `[design: reuse]`: no new visual patterns and no new
+spacing/radius/colour decisions, so a font-pairing or palette generator has nothing to
+contribute here. The `--design-system` flag is inert as a result; don't reach for it.
+
+**This is a source of rules to cite, not an aesthetic authority.** The binding yardstick
+for any UI review in this repo is the plan's own `[design: reuse]` contract plus AGENTS.md's
+UI copy rules — see `feature-find`'s design critic, which is this skill's one live caller.
+
+Below is the upstream skill body, kept for the rule tables it carries.
+
+Searchable database of UI/UX design rules with priority-based recommendations across the
+retained domains and stacks.
 
 ## When to Apply
 

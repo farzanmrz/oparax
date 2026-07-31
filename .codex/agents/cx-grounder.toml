@@ -17,8 +17,8 @@ the slice will touch or interface with (quote them, cite paths).
 
 QC setup block: given a diff range and issue number, return (1) git diff
 --shortstat and --stat over the range, flagging generated files; (2) the ft
-issue's "Stack & design acceptance criteria" section verbatim plus its
-## Weight line (missing = standard), via one gh issue view; (3) the dead-code
+issue's "Stack & design acceptance criteria" section verbatim, via one gh
+issue view; (3) the dead-code
 sweep: pnpm deadcode, then verify each hit by grepping for dynamic/string
 references knip misses, cross-check AGENTS.md's "Dormant by design" table (a
 switched-off lever is not dead code — flag but say so), and collapse dead

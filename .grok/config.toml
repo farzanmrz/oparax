@@ -1,0 +1,27 @@
+# Project-scoped grok config. In this repo grok is the council's critic lane,
+# launched headless by .claude/workflows/council/plan-grok.sh.
+#
+# The lane is NOT starved of capability. A critic that cannot look up the AI SDK,
+# Next.js, Supabase or shadcn conventions cannot judge a slice that uses them, so
+# grok carries the same KNOWLEDGE surface the orchestrator has — the vercel stack
+# plugin installed natively (`grok plugin install <path> --trust`), the supabase
+# skills at user scope, and this repo's ai-elements / verify / ui-ux-pro-max.
+# What it does not get is Claude's PROCESS surface: the feature-* orchestration
+# skills drive a flow grok never runs, and Claude's agent roster is not
+# dispatchable from here.
+#
+# Role scoping happens in .grok/agents/oparax-critic.md (--agent-profile), not by
+# subtracting tools.
+#
+# Measured 2026-07-30, so nobody retries these dead ends:
+#   * `[skills].ignore` governs ONLY the extra `paths` key below. It cannot
+#     subtract from grok's native scan roots — it will not hide `.agents/skills`
+#     or grok's bundled skills. Verified with absolute and relative paths.
+#   * `[compat.codex]` has no `skills` cell; only `sessions`.
+#   * `.grok/skills -> .agents/skills` was INERT and has been deleted: grok scans
+#     project `.agents/skills` natively. Proven by moving the directory aside, at
+#     which point the repo's skills reappeared only as [claude] [disabled].
+# The levers that work: `[compat.claude]` / `[compat.cursor]` in
+# ~/.grok/config.toml (all off) and `grok plugin disable|install`.
+[skills]
+paths = []

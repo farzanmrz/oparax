@@ -1,9 +1,9 @@
 ---
 name: feature-verify
 description: >-
-  QC step 4 of 4, hop-anywhere: re-prove the branch after fixes (gates, journey
-  re-walks, runtime sweep) and present the verification gate — the full
-  owner-facing report written so no clarifying question is ever needed. Use
+  QC step 4 of 4, hop-anywhere: re-prove the branch after fixes (gates, boot,
+  runtime sweep) and present the verification gate — the full owner-facing
+  report written so no clarifying question is ever needed. Use
   standalone (/feature-verify) in any session/app after /feature-fix, or let
   /feature-qc chain it. Harness-neutral. Ends at the verification ✋.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
@@ -20,12 +20,9 @@ round comments (`findings` + `fixes`); nothing conversational is needed.
 
 1. **Gates:** `bash .claude/skills/feature/scripts/qc-gates.sh`.
    `GATES: RED` = STOP.
-2. **Boot + journeys:** reuse a running :3000 server or start one. Re-walk
-   only the journeys whose routes the fix rounds touched (readable from the
-   fixes comments' file lists); if this branch's journeys were never walked
-   in this round-trip (e.g. find ran in another app days ago), walk the full
-   journey set. Same journey-agent dials as feature-find. Collect runtime
-   errors once from the `_next/mcp` endpoint before closing sessions.
+2. **Boot + runtime sweep:** reuse a running :3000 server or start one
+   (`lsof -i :3000 -sTCP:LISTEN -t` first), then collect runtime errors once
+   from the `_next/mcp` endpoint.
 3. **Teardown:** kill the dev server by its real PID only if THIS session
    started it; a reused server is left running and reported.
 
@@ -50,11 +47,12 @@ Sections, in order:
 
 1. **What this slice changed, as a user** — a short walk-through of the new
    behavior: "when X happens, the app now does Y; before, it did Z."
-2. **Status + coverage** — builds/boots/gates/journeys one-liner; review-lane
-   coverage with per-lane finding counts; anything NOT REACHED or NOT
-   VERIFIABLE (from journeys and the design critic), verbatim — these ARE the
-   owner's manual-check set, and the report must never imply coverage of a
-   state no automated pass actually experienced.
+2. **Status + coverage** — builds/boots/gates one-liner; review-lane
+   coverage with per-lane finding counts; anything NOT VERIFIABLE (from the
+   design critic), verbatim — these ARE the owner's manual-check set, and the
+   report must never imply coverage of a state no automated pass actually
+   experienced. Nothing here is proven in a browser: every rendered behavior
+   the owner cares about belongs in section 6.
 3. **Fixed** — per finding: *what was wrong in plain terms → what a user
    could have hit → what changed* (with `file:line`). The plain-terms
    sentence comes first, the technical one second.
@@ -68,7 +66,7 @@ Sections, in order:
    feed, relink a different X account, confirm the counter drops to 280"),
    each with one clause on why it can't be proven automatically.
 
-Heavy weight: end by offering `/code-review ultra` before ship.
+End by offering `/code-review ultra` before ship.
 
 **Persist the report too:** post the full report as `## QC round <R> —
 verified` on the ft issue (same content as the chat message). This is the
@@ -77,6 +75,6 @@ it, a later session cannot distinguish "verified" from "fixed but never
 re-proven" — and it means the owner can re-read the report anywhere.
 
 Then STOP and wait — this is the run's verification gate; ship is
-`/feature-ship` (or `$cx-feature-ship`), owner-triggered. If the owner
+`/feature-ship` (`$feature-ship` in Codex), owner-triggered. If the owner
 reports findings, they go through `/feature-fix` (owner findings are binding)
 and verify re-runs, posting a new round's marker.

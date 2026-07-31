@@ -1,5 +1,11 @@
 ---
+# Two audiences, and BOTH must be globbed. The auth-flow paths were here from the
+# start; the service-role paths were not, and for weeks this rule matched ZERO of
+# the 21 files that import `lib/supabase/admin` — every file the RLS/service-role
+# half of this rule exists to govern. When a new file imports the admin client,
+# add its path here or the rule silently stops applying to it.
 paths:
+  # auth flows
   - "lib/supabase/**"
   - "lib/auth/**"
   - "lib/auth-errors.ts"
@@ -9,6 +15,16 @@ paths:
   - "app/signup/**"
   - "app/forgot-password/**"
   - "proxy.ts"
+  # service-role writers (RLS-bypassing) — `grep -rl supabase/admin app lib scripts`
+  - "lib/agent/**"
+  - "lib/voice/**"
+  - "lib/x/**"
+  - "lib/slack/**"
+  - "app/agents/**"
+  - "app/api/**"
+  - "scripts/**"
+  # the migration mirror
+  - "supabase/migrations/**"
 ---
 
 # Supabase & auth
