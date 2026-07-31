@@ -25,8 +25,8 @@ Before writing any SQL that isn't verbatim in the brief:
    generated from the live database and always current. NEVER guess a column
    or key name; the classic failure is assuming a key column (e.g.
    `x_accounts` is owner-keyed) instead of reading it.
-2. Check AGENTS.md's RLS table (the `supabase/migrations/` entry in the Code
-   map) when ownership scoping matters — the MCP runs at service level, so
+2. Check AGENTS.md's RLS table (the Data section) when ownership scoping
+   matters — the MCP runs at service level, so
    YOUR queries must scope by owner explicitly where the brief implies it.
 3. Regex/backslash literals (`~* '^##\s...'`) survive the MCP's JSON layer
    only when escaped carefully — on a syntax error, fix the escaping and

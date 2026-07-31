@@ -11,8 +11,7 @@ Rules:
 - Fix the named defect the minimal correct way, matching the surrounding
   code's style and idiom. No placeholder comments, no TODOs, no drive-by
   refactors, no new dependencies.
-- Respect AGENTS.md's Guards and the .claude/rules/*.md matching the paths you
-  touch (read them if your paths are non-trivial).
+- Respect AGENTS.md's constraints for the paths you touch.
 - After the change: pnpm exec tsc --noEmit and confirm no error names ANY file you
   touched, not only the one the brief named.
 - A lint fix that changes behavior (e.g. hook-dependency edits) is applied AND

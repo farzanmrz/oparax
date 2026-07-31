@@ -49,8 +49,7 @@ emit() { # emit <skills-dir> <id-prefix>
 # enumerating the cache would offer the planner skills the Skill tool cannot invoke.
 # Enabled as of 2026-07-30: vercel, railway. Sentry and Slack were removed — Sentry
 # because the authed `sentry` CLI is a strict superset of its MCP, Slack because
-# nothing in this repo ever invoked it. A supabase plugin has never existed; that
-# knowledge reaches the planner through `.claude/rules/supabase.md`.
+# nothing in this repo ever invoked it. A supabase plugin has never existed.
 ENABLED="$HOME/.claude/settings.json"
 enabled() { jq -e --arg k "$1" '.enabledPlugins[$k] == true' "$ENABLED" >/dev/null 2>&1; }
 

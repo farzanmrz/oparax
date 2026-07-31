@@ -34,7 +34,7 @@ def paras(p):
             out.append(blk)
     return out
 
-files = sorted(glob.glob('.claude/skills/*/SKILL.md')) + sorted(glob.glob('.claude/rules/*.md')) + ['AGENTS.md']
+files = sorted(glob.glob('.claude/skills/*/SKILL.md')) + ['AGENTS.md']
 tot = over = 0
 offenders = []
 print(f"{'FILE':<34}{'BYTES':>7}{'max/w':>7}{'mean':>6}{'>120w':>7}")
@@ -50,7 +50,7 @@ for p in files:
     for x in paras(p):
         if len(x.split()) > CEIL:
             offenders.append((len(x.split()), p, ' '.join(x.split())[:88]))
-    name = p.replace('.claude/skills/', '').replace('/SKILL.md', '').replace('.claude/rules/', 'rules/')
+    name = p.replace('.claude/skills/', '').replace('/SKILL.md', '')
     print(f"{name:<34}{b:>7}{max(ws):>7}{sum(ws)//len(ws):>6}{n:>7}")
 
 print(f"\nCORPUS {tot} B    paragraphs over {CEIL} words: {over}")

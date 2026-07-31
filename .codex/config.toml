@@ -9,7 +9,7 @@
 # matters.
 sandbox_mode = "danger-full-access"
 
-# AGENTS.md is ~40 KB and Codex's default cap (32768) silently truncated its
-# tail — "Settled decisions", "Dormant by design" and "Cross-tool" were provably
-# ABSENT from Codex's instruction context (verified 2026-07-30).
+# Codex's default project-doc cap (32768) once silently truncated a larger
+# AGENTS.md's tail (verified 2026-07-30). AGENTS.md is short now; the raised
+# cap stays as headroom so future growth never silently truncates again.
 project_doc_max_bytes = 65536

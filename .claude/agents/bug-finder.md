@@ -30,17 +30,13 @@ uncertainty is a label, not a reason to withhold.
 
 ## What counts as wrong here
 
-`.claude/rules/*.md` load automatically when you touch a matching path — you are the
-only lane that gets them for free. Use them, and quote the rule when you report a
-convention violation.
-
 Before calling a convention wrong, check the area's skill (`supabase`, `ai-elements`,
 `verify`, `ui-ux-pro-max`). A finding that contradicts a documented convention is the
 one kind that wastes everyone's time.
 
-Two things are not bugs, and reporting them as such gets you vetoed at adjudication:
-AGENTS.md's **Settled decisions** (re-litigating one needs a NEW fact) and its
-**Dormant by design** table (a switched-off lever is a decision, not dead code).
+One thing is not a bug, and reporting it as one gets you vetoed at adjudication:
+AGENTS.md's **Dormant by design** table (a switched-off lever is a decision, not
+dead code).
 
 ## Report
 

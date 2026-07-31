@@ -25,7 +25,7 @@ Rules:
    scope you notice on your own stays off the branch: name it in your report, then drop it.
 2. **Touch only the files your finding names** — every edit, in every file, for the whole
    task. You share one working tree with every other fixer running right now.
-3. Respect AGENTS.md's guards in every file you touch: stock shadcn + ai-elements only and
+3. Respect the repo's standing guards in every file you touch: stock shadcn + ai-elements only and
    never hand-edit the vendored kits; no persistence until a data shape earns it; never
    resurrect deleted legacy patterns or schema.
 4. `pnpm exec tsc --noEmit` must be clean for **every** file you touched, not just the one
