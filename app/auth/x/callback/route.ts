@@ -11,6 +11,7 @@ import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
 import { exchangeCode, fetchMe } from "@/lib/x/api";
 import { upsertXAccount } from "@/lib/x/store";
+import { safeReturnPath } from "@/lib/auth/return-path";
 
 export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();
@@ -20,8 +21,7 @@ export async function GET(request: NextRequest) {
   // Return to the page the connect flow started from (a desk), falling back to
   // settings. Only an app-internal `/agents/` path is honored — never an external
   // origin — so a tampered cookie can't turn the callback into an open redirect.
-  const rawReturn = cookieStore.get("x_oauth_return")?.value;
-  const returnPath = rawReturn?.startsWith("/agents/") ? rawReturn : "/agents/settings";
+  const returnPath = safeReturnPath(cookieStore.get("x_oauth_return")?.value, "/agents/settings");
 
   const redirectBack = (params: Record<string, string>) => {
     const url = new URL(returnPath, origin);

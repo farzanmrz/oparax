@@ -17,6 +17,7 @@ import { getSiteOrigin } from "@/lib/site-origin";
 import { SLACK_SCOPES } from "@/lib/slack/api";
 import { ownsDesk } from "@/lib/slack/link-state";
 import { createClient } from "@/lib/supabase/server";
+import { safeReturnPath } from "@/lib/auth/return-path";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
 
@@ -35,10 +36,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/agents", origin));
   }
 
-  // Only an app-internal `/agents/` path is accepted for the post-link return — never an
-  // external origin — so this can't be abused as an open redirect.
-  const rawReturn = searchParams.get("returnTo");
-  const returnTo = rawReturn?.startsWith("/agents/") ? rawReturn : null;
+  const returnTo = safeReturnPath(searchParams.get("returnTo"));
 
   const supabase = await createClient();
   const {

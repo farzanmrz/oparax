@@ -7,17 +7,15 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
 import { buildAuthorizeUrl } from "@/lib/x/api";
+import { safeReturnPath } from "@/lib/auth/return-path";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
 
 export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();
 
-  // Remember the page that started the flow (a desk) so the callback can return
-  // there. Only an app-internal `/agents/` path is accepted — never an external
-  // origin — so this can't be abused as an open redirect.
-  const rawReturn = request.nextUrl.searchParams.get("returnTo");
-  const returnTo = rawReturn?.startsWith("/agents/") ? rawReturn : null;
+  // Remember the page that started the flow (a desk) so the callback can return there.
+  const returnTo = safeReturnPath(request.nextUrl.searchParams.get("returnTo"));
 
   const supabase = await createClient();
   const {
