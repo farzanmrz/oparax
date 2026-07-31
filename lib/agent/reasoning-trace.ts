@@ -2,8 +2,8 @@
 //
 // The ONE reading of "why does this model call carry no reasoning trace?". AGENTS.md's
 // model-call rule requires "withheld" to stay distinguishable from "not captured" — and a call
-// that deliberately ran with reasoning OFF is a third thing again: the DeepSeek grounding
-// fallback and clustering classifier use `reasoning: "none"` by design, while the live delivery
+// that deliberately ran with reasoning OFF is a third thing again: the dormant clustering
+// classifier uses `reasoning: "none"` by design, while the live delivery
 // judge uses `reasoning: "high"` and can expose its trace. Reporting a deliberate no-trace call
 // as a model that cannot expose one is simply false.
 //

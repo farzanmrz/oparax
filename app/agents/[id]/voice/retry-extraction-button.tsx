@@ -2,9 +2,8 @@
 
 // app/agents/[id]/voice/retry-extraction-button.tsx
 //
-// A desk with no guide yet gets a real retry action instead of a dead-end empty state. Calls
-// retryExtraction, which runs both pre-flight gates inline (so a bad handle or an unresolvable
-// profile comes back as a specific message), claims the desk's run row, and hands the billable
+// A stopped extraction gets a real retry action instead of a dead end. Calls retryExtraction,
+// which runs the handle-shape gate inline, claims the desk's run row, and hands the billable
 // phase to after().
 
 import { useState, useTransition } from "react";
@@ -21,9 +20,9 @@ export function RetryExtractionButton({ deskId }: { readonly deskId: string }) {
       const result = await retryExtraction(deskId);
       if (!result.ok) setError(result.error);
       // {ok:true}: retryExtraction claimed the run row before returning, so the revalidate it
-      // already issued re-renders the Voice tab against a "running" row — this empty state is
-      // replaced by the live ExtractionProgress view, which polls until the run reaches a
-      // terminal status and then calls router.refresh() itself. Nothing to do here.
+      // already issued re-renders the Voice tab against a "running" row. Whether it began from
+      // an empty state or a failed guide, the page switches to ExtractionProgress, which polls
+      // until the terminal status and then refreshes itself. Nothing to do here.
     });
   }
 

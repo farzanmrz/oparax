@@ -481,10 +481,10 @@ export function ConnectionsCard({
               <Button asChild size="sm" variant="outline">
                 {/* Plain link, not a fetch: /auth/slack/link is a full-page OAuth redirect to
                     Slack (that route is a separate task). returnTo brings the reporter back
-                    here; experimentId tells the callback which desk's slack_accounts row to
+                    here; agentId tells the callback which desk's slack_accounts row to
                     write — mirrors PostToXControl's /auth/x?returnTo= pattern exactly. */}
                 <a
-                  href={`/auth/slack/link?returnTo=${encodeURIComponent(pathname)}&experimentId=${encodeURIComponent(deskId)}`}
+                  href={`/auth/slack/link?returnTo=${encodeURIComponent(pathname)}&agentId=${encodeURIComponent(deskId)}`}
                 >
                   Connect Slack
                 </a>
@@ -562,7 +562,7 @@ const NOTIFICATION_ROWS: readonly NotificationRow[] = [
 /**
  * The event × Slack/Email matrix — every switch and the frequency dropdown are real and
  * toggleable (local component state via `useTransition`-free `useState`: there's no
- * `experiments` column or table reserved for notification preferences this slice, so there's
+ * `agents` column or table reserved for notification preferences this slice, so there's
  * nothing to call a server action against yet). Clicking genuinely changes what's shown;
  * it just doesn't survive a reload — see task-22-report.md for why no fake persistence call
  * was wired instead of leaving this note.

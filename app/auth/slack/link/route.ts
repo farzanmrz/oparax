@@ -1,7 +1,7 @@
 // Connect entry point — GET /auth/slack/link. Starts the Slack OAuth v2 install flow for one
-// desk — unlike X's per-user link, Slack's link is desk-scoped (per `experiment_id`), so this
-// requires a signed-in Oparax user who owns the desk named by the `experimentId` query param,
-// then redirects to Slack's authorize endpoint with `state` carrying `experimentId` (+
+// desk — unlike X's per-user link, Slack's link is desk-scoped (per `agent_id`), so this
+// requires a signed-in Oparax user who owns the desk named by the `agentId` query param,
+// then redirects to Slack's authorize endpoint with `state` carrying `agentId` (+
 // `returnTo` + a CSRF nonce) for the callback to resume. Mirrors app/auth/x/route.ts's shape.
 //
 // QC fix: the desk-ownership re-check alone is NOT a CSRF boundary — it proves the signed-in
@@ -20,20 +20,18 @@ import { createClient } from "@/lib/supabase/server";
 
 const OAUTH_COOKIE_MAX_AGE_SEC = 600;
 
-function encodeState(input: {
-  experimentId: string;
-  returnTo: string | null;
-  nonce: string;
-}): string {
-  return Buffer.from(JSON.stringify(input)).toString("base64url");
+function encodeState(input: { agentId: string; returnTo: string | null; nonce: string }): string {
+  return Buffer.from(JSON.stringify([2, input.agentId, input.returnTo, input.nonce])).toString(
+    "base64url",
+  );
 }
 
 export async function GET(request: NextRequest) {
   const origin = await getSiteOrigin();
   const { searchParams } = request.nextUrl;
 
-  const experimentId = searchParams.get("experimentId");
-  if (!experimentId) {
+  const agentId = searchParams.get("agentId");
+  if (!agentId) {
     return NextResponse.redirect(new URL("/agents", origin));
   }
 
@@ -52,20 +50,18 @@ export async function GET(request: NextRequest) {
 
   // Desk-ownership proof — shared with lib/slack/link-state.ts / lib/slack/actions.ts / the
   // callback route below (previously each reimplemented this same RLS read).
-  if (!(await ownsDesk(experimentId))) {
+  if (!(await ownsDesk(agentId))) {
     return NextResponse.redirect(new URL("/agents", origin));
   }
 
   const clientId = process.env.SLACK_CLIENT_ID;
   if (!clientId) {
-    return NextResponse.redirect(
-      new URL(`/agents/${experimentId}/setup?slack_error=config`, origin),
-    );
+    return NextResponse.redirect(new URL(`/agents/${agentId}/setup?slack_error=config`, origin));
   }
 
   const redirectUri = `${origin}/auth/slack/callback`;
   const nonce = randomBytes(32).toString("base64url");
-  const state = encodeState({ experimentId, returnTo, nonce });
+  const state = encodeState({ agentId, returnTo, nonce });
 
   const authorizeUrl = new URL("https://slack.com/oauth/v2/authorize");
   authorizeUrl.searchParams.set("client_id", clientId);

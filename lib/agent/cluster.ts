@@ -4,20 +4,18 @@
 // new one, atomically. PURE-ish orchestration in the same shape as draft-council-run.ts: this
 // module owns its own story-table writes (creation + the atomic claim below), but the model
 // call's ledger row is NOT this module's job — the caller (draft-pipeline.ts's
-// draftForExperiment, which calls assignToStory and inserts `calls` into `model_calls`
+// draftForAgent, which calls assignToStory and inserts `calls` into `model_calls`
 // ledger-first) is already wired, same as every other CouncilCall producer in this repo
 // (AGENTS.md's model-call rule).
 // SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
 // scope) — never importable from a client component.
+import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveCallMeta } from "@/lib/agent/call-meta";
-import {
-  DEEPSEEK_DRAFT_MODEL,
-  DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
-} from "@/lib/agent/deepseek-draft-config";
 // TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
+import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
@@ -83,7 +81,7 @@ function buildClusterCall(params: {
     kind: "draft",
     stage: "clustering",
     role: "primary",
-    model: DEEPSEEK_DRAFT_MODEL,
+    model: QWEN_DRAFT_MODEL,
     output: params.output,
     reasoning: params.reasoning,
     usage: params.usage,
@@ -119,14 +117,10 @@ function buildClusterPrompt(
   ].join("\n");
 }
 
-async function createStory(
-  admin: AdminClient,
-  experimentId: string,
-  summary: string,
-): Promise<string> {
+async function createStory(admin: AdminClient, agentId: string, summary: string): Promise<string> {
   const { data, error } = await admin
     .from("stories")
-    .insert({ experiment_id: experimentId, summary })
+    .insert({ agent_id: agentId, summary })
     .select("id")
     .single();
   if (error) throw error;
@@ -134,15 +128,15 @@ async function createStory(
 }
 
 /** The atomic claim (D16 rail) — story_assignments carries UNIQUE(source_post_id,
- *  experiment_id), so this insert IS the race guarantee, not the classification above.
+ *  agent_id), so this insert IS the race guarantee, not the classification above.
  *  Scoped per desk, not just per post: `source_posts` dedupes GLOBALLY (L4 — shared stream
  *  rules mean overlapping tracking across desks), so the same post reaches
- *  `draftForExperiment` independently for every desk that tracks its author. Each desk clusters
+ *  `draftForAgent` independently for every desk that tracks its author. Each desk clusters
  *  it into its OWN stories; a global UNIQUE(source_post_id) would let desk B's claim collide
  *  with desk A's on the shared post and silently inherit A's story_id (fixed post-QC — see
  *  supabase/migrations/20260724010000_story_assignments_scope_per_desk.sql). Mirrors
- *  draft-pipeline.ts's `draftForExperiment` insert-then-branch-on-23505 shape. On a 23505
- *  unique-violation, another concurrent delivery of this exact (sourcePostId, experimentId)
+ *  draft-pipeline.ts's `draftForAgent` insert-then-branch-on-23505 shape. On a 23505
+ *  unique-violation, another concurrent delivery of this exact (sourcePostId, agentId)
  *  pair already won the claim — read ITS story_id back rather than the one this call attempted
  *  (the race-loser path). This function alone never knows whether the `storyId` it was handed
  *  was just freshly created or an existing candidate from the "existing"-match branch, so it
@@ -151,12 +145,12 @@ async function createStory(
 async function claimStoryAssignment(
   admin: AdminClient,
   sourcePostId: string,
-  experimentId: string,
+  agentId: string,
   storyId: string,
 ): Promise<string> {
   const { error } = await admin
     .from("story_assignments")
-    .insert({ source_post_id: sourcePostId, experiment_id: experimentId, story_id: storyId })
+    .insert({ source_post_id: sourcePostId, agent_id: agentId, story_id: storyId })
     .select("id");
   if (!error) return storyId;
   if (error.code !== "23505") throw error;
@@ -165,7 +159,7 @@ async function claimStoryAssignment(
     .from("story_assignments")
     .select("story_id")
     .eq("source_post_id", sourcePostId)
-    .eq("experiment_id", experimentId)
+    .eq("agent_id", agentId)
     .single();
   if (winnerError) throw winnerError;
   return winner.story_id;
@@ -173,16 +167,16 @@ async function claimStoryAssignment(
 
 async function createAndClaimNewStory(
   admin: AdminClient,
-  experimentId: string,
+  agentId: string,
   sourcePostId: string,
   summary: string,
 ): Promise<string> {
-  const storyId = await createStory(admin, experimentId, summary);
-  const winnerId = await claimStoryAssignment(admin, sourcePostId, experimentId, storyId);
+  const storyId = await createStory(admin, agentId, summary);
+  const winnerId = await claimStoryAssignment(admin, sourcePostId, agentId, storyId);
   if (winnerId !== storyId) {
-    // Lost the race: another concurrent delivery of this exact (sourcePostId, experimentId)
+    // Lost the race: another concurrent delivery of this exact (sourcePostId, agentId)
     // pair already claimed a story before our insert landed (the retry-after-later-failure case
-    // this comment documents — the SAME sourcePostId reaching draftForExperiment a second time
+    // this comment documents — the SAME sourcePostId reaching draftForAgent a second time
     // after a downstream failure released draft_claims). The story row created just above is now
     // orphaned — no story_assignments row will ever point at it, since the claim went to the
     // race winner's story instead — so delete it here rather than leaving dead weight that
@@ -201,9 +195,9 @@ async function createAndClaimNewStory(
 }
 
 /** Attach sourcePostId to an existing recent story, or create a new one, atomically.
- *  The caller (draft-pipeline.ts's draftForExperiment) is responsible for inserting `calls`
+ *  The caller (draft-pipeline.ts's draftForAgent) is responsible for inserting `calls`
  *  into model_calls (ledger-first, ownerId is the caller's concern — this function does not
- *  know or need the experiment's owner_id) and is responsible for handling any error this
+ *  know or need the agent's owner_id) and is responsible for handling any error this
  *  function throws (a non-billing DB error propagates normally; do not swallow it here). */
 /**
  * Clustering is DORMANT — one post becomes one story, and the classifier below never runs.
@@ -224,21 +218,21 @@ async function createAndClaimNewStory(
 const CLUSTERING_ENABLED = false;
 
 export async function assignToStory(input: {
-  experimentId: string;
+  agentId: string;
   sourcePostId: string;
   authorHandle: string;
   text: string;
 }): Promise<ClusterResult> {
-  const { experimentId, sourcePostId, authorHandle, text } = input;
+  const { agentId, sourcePostId, authorHandle, text } = input;
   const admin = createAdminClient();
 
   // Dormant path (see CLUSTERING_ENABLED): identical to the zero-candidate branch below — a new
   // story with the deterministic summary, no model call, no candidate query. The caller still
-  // gets a real storyId, so nothing downstream (post_drafts.story_id, the feed) changes shape.
+  // gets a real storyId, so nothing downstream (drafts.story_id, the feed) changes shape.
   if (!CLUSTERING_ENABLED) {
     const storyId = await createAndClaimNewStory(
       admin,
-      experimentId,
+      agentId,
       sourcePostId,
       deterministicSummary(text),
     );
@@ -251,7 +245,7 @@ export async function assignToStory(input: {
   const { data: candidates, error: candidatesError } = await admin
     .from("stories")
     .select("id, summary")
-    .eq("experiment_id", experimentId)
+    .eq("agent_id", agentId)
     .order("created_at", { ascending: false })
     .limit(RECENT_STORY_CANDIDATE_LIMIT);
   if (candidatesError) throw candidatesError;
@@ -259,29 +253,35 @@ export async function assignToStory(input: {
   if (!candidates || candidates.length === 0) {
     const storyId = await createAndClaimNewStory(
       admin,
-      experimentId,
+      agentId,
       sourcePostId,
       deterministicSummary(text),
     );
     return { storyId, calls: [] };
   }
 
-  // DeepSeek generateObject recipe (.claude/rules/agent.md, this brief's 4-leg copy): leg 1
-  // `reasoning: "none"` + `DEEPSEEK_DRAFT_PROVIDER_OPTIONS` (leg 1); `story-cluster.md` names
+  // Qwen structured-output recipe: deterministic settings plus imperatively named fields in
+  // `story-cluster.md`; schema failure degrades to a one-source story instead of hiding a post.
   // `match`/`storyIndex`/`summary` imperatively under its Output heading (leg 2); leg 3 is the
   // deterministic degrade in the catch block below, not a retry (a temp-0 failure isn't sampling
   // variance, matching the judge's own reasoning); `maxOutputTokens: 2000` is leg 4.
+  // `onStepEnd` fires before JSON parsing/schema validation in AI SDK v7, so the completed
+  // provider response remains ledgerable even when Zod rejects the structured verdict.
+  const completedStepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
   try {
     const verdictResult = await generateObject({
-      model: DEEPSEEK_DRAFT_MODEL,
-      providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
+      model: QWEN_DRAFT_MODEL,
+      providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "none",
       temperature: 0,
       maxOutputTokens: 2000,
       schema: clusterVerdictSchema,
       system: STORY_CLUSTER_PROMPT,
       prompt: buildClusterPrompt(candidates, authorHandle, text),
-      experimental_telemetry: aiTelemetry("story_cluster", "story-cluster-deepseek"),
+      onStepEnd: (event) => {
+        completedStepRef.value = event;
+      },
+      experimental_telemetry: aiTelemetry("story_cluster", "story-cluster-qwen"),
     });
 
     const call = await buildClusterCall({
@@ -294,18 +294,18 @@ export async function assignToStory(input: {
     let storyId: string;
     if (verdictResult.object.match === "existing") {
       const index = Math.min(Math.max(0, verdictResult.object.storyIndex), candidates.length - 1);
-      storyId = await claimStoryAssignment(admin, sourcePostId, experimentId, candidates[index].id);
+      storyId = await claimStoryAssignment(admin, sourcePostId, agentId, candidates[index].id);
     } else {
       const summary = verdictResult.object.summary.trim() || deterministicSummary(text);
-      storyId = await createAndClaimNewStory(admin, experimentId, sourcePostId, summary);
+      storyId = await createAndClaimNewStory(admin, agentId, sourcePostId, summary);
     }
 
     return { storyId, calls: [call] };
   } catch (err) {
-    // Same discriminator as draft-council-run.ts's judge catch: NoObjectGeneratedError means the
-    // call COMPLETED and billed but its output failed schema validation — that call still owes a
-    // ledger row (AGENTS.md's model-call rule), captured off the error (cost degrades to null, no
-    // generationId — the error doesn't surface gateway metadata in resolveGatewayCost's shape).
+    // NoObjectGeneratedError means the call COMPLETED and billed but its output failed schema
+    // validation. `onStepEnd` captured the provider response before validation, so this call still
+    // reaches the ledger with its raw output, reasoning, usage, Gateway cost metadata, and
+    // generation id. The error fields remain a defensive fallback if no callback event arrived.
     // Degrade deterministically to a new one-source story, matching the zero-candidate path.
     // Any OTHER error means the call did NOT complete or bill — propagate it, create no story,
     // return no calls, so the caller's ledger-first ordering never sees a phantom billed call.
@@ -314,14 +314,16 @@ export async function assignToStory(input: {
         "cluster: classifier output failed schema validation; degrading to a new one-source story",
         err,
       );
+      const step = completedStepRef.value;
       const call = await buildClusterCall({
-        output: err.text ?? null,
-        reasoning: null,
-        usage: err.usage,
+        output: step?.objectText ?? err.text ?? null,
+        reasoning: step?.reasoning ?? null,
+        usage: step?.usage ?? err.usage,
+        providerMetadata: step?.providerMetadata,
       });
       const storyId = await createAndClaimNewStory(
         admin,
-        experimentId,
+        agentId,
         sourcePostId,
         deterministicSummary(text),
       );

@@ -35,16 +35,16 @@ Surfaces and the commands that reach them (all verified working):
      test post","posted_at":"2026-07-22T12:00:00Z"}'` → expect `200` and a
      `ProcessDeliveryResult` JSON body (`sourcePostId`, `drafted[]`) — this is
      `processDelivery` running for real: a council drafts, a judge picks a
-     winner, `model_calls`/`post_drafts`/`usage_events` rows land, and (if
+     winner, `model_calls`/`drafts`/`usage_events` rows land, and (if
      Slack/Resend env vars are set) a real notification sends.
    - **Concurrent-duplicate-delivery, proving exactly one council run**: fire
      the same authorized request body (same `x_post_id`, same matching
      `author_handle`) twice, back to back. `draft_claims`'s
-     `UNIQUE(source_post_id, experiment_id)` (D16) means only the first
+     `UNIQUE(source_post_id, agent_id)` (D16) means only the first
      request's atomic claim insert wins; the second's `processDelivery` call
-     returns `drafted[].skipped: "already_drafted"` for that experiment with
+     returns `drafted[].skipped: "already_drafted"` for that agent with
      no new council run — confirm in the DB that exactly one set of
-     `model_calls` rows (one council's worth) and one `post_drafts` winner
+     `model_calls` rows (one council's worth) and one `drafts` winner
      exist for that `source_post_id`, not two.
 3. **Browser UI**: log in at `/login` with the AGENTS.md test account, then:
    - **Feed-first landing**: visiting `/agents` redirects straight into a
@@ -54,12 +54,11 @@ Surfaces and the commands that reach them (all verified working):
      destination looks right.
    - **Per-page nav affordance**: every `/agents/*` page shows the sticky
      site header (Oparax mark, desk switcher, account menu — no page ever
-     shows an offcanvas sidebar trigger, there is no sidebar). Every page
-     under a desk (`/agents/{id}`, `/voice`, `/setup`) additionally shows the
-     second sticky bar with the desk's status pill and the Feed/Voice/Setup
-     tab nav at `md:` width, collapsing to the mobile nav sheet below it —
-     confirm both bars render and the tabs navigate to the right URL on at
-     least one narrow- and one wide-viewport pass.
+     shows an offcanvas sidebar trigger, there is no sidebar). On a desk, the
+     same header also shows Feed/Voice/Setup tabs: desktop tabs at `md:` width
+     and a persistent mobile tab row below it. Confirm the shell and tabs
+     render and navigate to the right URL on at least one narrow- and one
+     wide-viewport pass.
    - `/agents/new` (the create-agent form — NOT a chat, no typed handle
      field): fill Beat, add a tracked X handle, Connect X (Create stays
      disabled until it's linked); submit; expect a redirect into the new

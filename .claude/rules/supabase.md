@@ -34,9 +34,9 @@ paths:
 
 ## The voice tables are per-desk, and that closed the old cross-user read
 
-`voice_guides` and `voice_rules` are keyed by `experiment_id`, one row per desk, joined through the owner-scoped `experiments` row by **id**. `voice_extraction_runs` is the same shape (deny-all, read via an ownership-proving server action).
+`voice_guides` and `voice_rules` are keyed by `agent_id`, one row per desk, joined through the owner-scoped `agents` row by **id**. `voice_extraction_runs` is the same shape (deny-all, read via an ownership-proving server action).
 
-This replaced a `reporter_handle`-keyed model where a guide was global and shared across every desk on that reporter. Under it, the read policy joined by handle, and any authenticated user could self-mint an `experiments` row with any `reporter_handle` — so every guide was readable by every signed-in user, found by exploit rather than by reading. That is gone: a join on the desk's own id cannot be satisfied by a row the reader doesn't own.
+This replaced a `reporter_handle`-keyed model where a guide was global and shared across every desk on that reporter. Under it, the read policy joined by handle, and any authenticated user could self-mint an `agents` row with any `reporter_handle` — so every guide was readable by every signed-in user, found by exploit rather than by reading. That is gone: a join on the desk's own id cannot be satisfied by a row the reader doesn't own.
 
 **There is no extraction spend RATIONING any more, deliberately.** The per-reporter/UTC-day atomic claim and the per-handle profile-lookup cap were both deleted (owner decision): extraction runs whenever a desk owner asks for it and pays each time. If that ever needs bounding again, bound it per owner — not per handle, which was never the unit anyone shared.
 

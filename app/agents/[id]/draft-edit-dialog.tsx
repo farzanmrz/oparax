@@ -26,11 +26,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { editDraft } from "./actions";
 
 export function DraftEditDialog({
-  postDraftId,
+  draftId,
   currentText,
   disabled,
 }: {
-  postDraftId: string;
+  draftId: string;
   currentText: string;
   /** True once this draft is confirmed-posted to X — both `posted_at` AND `posted_url` set
    *  (see `draft-platform-switcher.tsx`'s `confirmed` check). editDraft itself rejects this
@@ -63,7 +63,7 @@ export function DraftEditDialog({
     }
     setError(null);
     startTransition(async () => {
-      const result = await editDraft(postDraftId, trimmed);
+      const result = await editDraft(draftId, trimmed);
       if (result.ok) {
         setOpen(false);
         toast.success("Draft updated");

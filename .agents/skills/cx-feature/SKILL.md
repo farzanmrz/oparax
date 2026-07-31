@@ -43,7 +43,6 @@ This is what makes mid-flow hops from Claude Code land correctly here.
 4. **Ship** — `$cx-feature-ship`. Triage owner findings, then the ship gate ✋
    (with the standing pre-approval carve-out when the invocation itself says
    ship). Runs `ship.sh`, ordered promotion, finalize.
-
 Any phase may equally run in Claude Code (`/feature-plan`, `/feature-build N`,
 `/feature-qc`, `/feature-ship`) — the boundaries are identical by design.
 

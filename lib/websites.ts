@@ -6,7 +6,7 @@
 // A reasonable cap, not a measured limit.
 export const MAX_WEBSITES = 20;
 
-/** Narrows `experiments.websites` (jsonb) to a plain string array. Shared by every reader —
+/** Narrows `agents.websites` (jsonb) to a plain string array. Shared by every reader —
  *  setup/page.tsx's initial render, setup/actions.ts's saveWebsites/removeWebsite — so a
  *  future validation change (trimming, case-folding) happens in one place. */
 export function parseWebsites(json: unknown): string[] {

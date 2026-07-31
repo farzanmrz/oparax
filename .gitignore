@@ -22,6 +22,8 @@ next-env.d.ts
 data/
 # scripts/diagnose-extraction.ts transcripts — raw model output and full reasoning traces
 .diag/
+# AI SDK DevTools — complete local prompts, outputs, reasoning, and provider payloads
+.devtools/
 
 # Logs
 *.log

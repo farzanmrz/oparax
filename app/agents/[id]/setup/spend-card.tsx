@@ -6,7 +6,7 @@
 // `loadSpendWindows` precomputes all three period windows server-side (Weekly / Monthly /
 // Yearly) in `page.tsx` — this component only switches which precomputed window it renders,
 // never queries the DB itself. Spend is owner-wide ("across all your desks") because
-// neither `model_calls` nor `usage_events` carries an `experiment_id` — see spend-query.ts's
+// neither `model_calls` nor `usage_events` carries an `agent_id` — see spend-query.ts's
 // header comment.
 
 import { useState } from "react";

@@ -2,7 +2,7 @@
 //
 // Thin "use server" wrappers around lib/agent/council-query.ts's pure query/shaping —
 // this file's only job is supplying the RLS-scoped server client. Both actions are plain
-// reads through `post_drafts` (EXISTS-joined to `experiments`, so the RLS client scopes
+// reads through `drafts` (EXISTS-joined to `agents`, so the RLS client scopes
 // ownership automatically): no admin client, no model calls, no writes. Never import
 // `draft-council-run.ts`/`lib/sysprompts` here — council-dialog.tsx/draft-history-dialog.tsx
 // call these two actions directly from a client component, so anything this file imports
@@ -15,13 +15,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function fetchCouncilDetail(
   sourcePostId: string,
-  experimentId: string,
+  agentId: string,
 ): Promise<CouncilDetail> {
   const supabase = await createClient();
-  return queryCouncilDetail(supabase, sourcePostId, experimentId);
+  return queryCouncilDetail(supabase, sourcePostId, agentId);
 }
 
-export async function fetchDraftHistory(winningPostDraftId: string): Promise<DraftHistoryDetail> {
+export async function fetchDraftHistory(winningDraftId: string): Promise<DraftHistoryDetail> {
   const supabase = await createClient();
-  return queryDraftHistory(supabase, winningPostDraftId);
+  return queryDraftHistory(supabase, winningDraftId);
 }

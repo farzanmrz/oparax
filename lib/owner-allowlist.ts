@@ -9,7 +9,7 @@
 // — on localhost, on preview, and in production independently. A literal list behaves identically
 // in all three with nothing to sync.
 //
-// **This is not a security boundary, and must never be described as one.** `experiments` has an
+// **This is not a security boundary, and must never be described as one.** `agents` has an
 // owner-scoped INSERT policy with no value constraint, so any signed-in user can already mint a
 // row with an arbitrary `reporter_handle` — see AGENTS.md's Connect-X settled decision. This list
 // gates a FORM AFFORDANCE. It exists so the product rule ("extract your own voice") holds for
@@ -20,7 +20,7 @@
 // `testuser@oparax.ai` is gated to non-production only: AGENTS.md publishes that exact
 // account's password as the frontend test login, so on production the override is a spend
 // hole — anyone who reads the repo can sign in with the published credential and extract a
-// voice from ANY public X handle, each run costing an ~$0.43 Opus 5 extraction call. Locally and in preview it's exactly the convenience it was
+// voice from ANY public X handle, with each run paying for a full extraction call. Locally and in preview it's exactly the convenience it was
 // added for. Gated on `process.env.NODE_ENV === "production"` rather than `VERCEL_ENV`: this
 // module is imported by both server actions and client components (see the file header above),
 // and `NODE_ENV` is the one of the two Next.js guarantees is set correctly in every one of

@@ -5,7 +5,7 @@ description: >-
   Use when the user says /feature-plan, "plan this feature", "spec this out", or
   wants a plan gate without committing to the full flow. Not for building — that
   is /feature-build.
-argument-hint: "[feature description | roadmap issue #]"
+argument-hint: "[feature description | issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
 ---
@@ -16,7 +16,7 @@ One document, **the plan**: it is the spec and the plan at once. It must be
 **hyper-specific** — the build phase runs as a dumb executor on a cheap model,
 so everything that requires judgment is decided HERE, on this session's model
 (run plan sessions on the owner's top dial). Seed from `$ARGUMENTS` (a feature
-description, or an existing roadmap issue number to graduate) or the
+description, or an existing issue number to plan) or the
 conversation.
 
 Communication: the `Flow` output style governs — no interim prose; the ✋ gate
@@ -87,20 +87,33 @@ Write the full plan yourself. Charter:
   - `elevated` — net-new surfaces that are a new kind of moment, proposed
     with a one-line reason; the owner accepts or flips it at the gate. For a
     slice's elevated set (together, once), run the **direction council** —
-    the creativity twin of the critique council, one direction board PER
-    MODEL FAMILY: this session designs one, and codex, grok, and agy each
-    design one via their CLIs (same background-invocation pattern as the
-    critique lanes; each writes a self-contained static HTML board to
-    `.feature/directions/<family>.html`). All four get the SAME brief: the
-    real prop types/state model, every observable state, the repo's UI rules
-    and copy conventions, and "differ in shape, not parameters." Then the
-    session critiques all boards against the brief on UI/UX grounds (the
-    design-critic charter; on a heavy slice, optionally send each external
-    family the others' boards for one adversarial critique round first) and
-    presents boards + critiques at the gate. The owner picks; the choice is
-    FROZEN into per-state design intent; each new pattern it introduces is
-    NAMED (so it becomes a reusable convention, not a one-off). Downstream
-    phases inherit the decision, never the discretion.
+    the creativity twin of the critique council, one board per model family
+    against one identical brief. The full operational contract lives in
+    `direction-council.md` next to this file (single source, shared with the
+    Codex flow) and is BINDING: boards are real renders of the repo's actual
+    components (never static mocks), ideated kit-native (read the component
+    inventory first; wireframe-then-map is the named forbidden failure
+    mode; not-yet-vendored registry components may be proposed by name),
+    fresh commission every round, every page designed for BOTH mobile and
+    web, delivered as per-page lane modules under a session-built
+    three-switcher harness (model · page · viewport) at
+    `app/dev/directions/`, every state a FULL PAGE (real shared chrome, an
+    explicit viewport frame, annotations outside it — per the shared
+    contract and `design-notes.md`, the standing owner-decision ledger),
+    tsc/Biome-verified, self-served on :3000 (kill the port, `pnpm dev`
+    background, 200-check — **the 200-check is the LAST tool action before
+    the stop: no agents, no browser tools after it; the owner is the only
+    reviewer of the boards**), presented as ONE clickable
+    URL with the session's critiques, STOPPING for the pick — after which
+    the :3000 server is killed, the winner is frozen into per-state design
+    intent with every new pattern NAMED (a reusable convention, not a
+    one-off), the winning composition seeds the slice's state-gallery BUILD
+    task, and the losers are deleted. The brief carries the real prop
+    types/state model, pointers to the exact kit files to read, every
+    observable state, the repo's UI rules and copy conventions,
+    owner-stated interaction patterns as binding constraints, and "differ
+    in shape, not parameters." Downstream phases inherit the decision,
+    never the discretion.
   Record the rollup next to `## Weight` as `## Design freedom:` — `none` (no
   UI), `reuse only`, or `elevated: <surfaces>` — so the gate shows at a
   glance whether a direction decision is coming. Exploration exists ONLY
@@ -203,7 +216,7 @@ reworked during drafting is stated fresh, never as "as discussed."
 On the user's explicit approval:
 
 - New ask: `bash .claude/skills/feature/scripts/start.sh "<title>" <plan-file>`
-- Graduating a roadmap issue: `bash .claude/skills/feature/scripts/start.sh
+- Planning an existing issue: `bash .claude/skills/feature/scripts/start.sh
   --issue <N> <plan-file>` — the plan becomes that issue's body; no duplicate
   issue is ever created.
 

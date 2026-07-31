@@ -17,7 +17,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { after } from "next/server";
 import { applyCorrection } from "@/lib/agent/draft-pipeline";
-import { extractPostDraftId } from "@/lib/notify/email";
+import { extractDraftId } from "@/lib/notify/email";
 
 // Its after() callback runs a full revision model call plus two deliveries — matches every
 // other model-calling route in the repo (/api/chat, /api/cron/tick, /api/ingest all set 300).
@@ -200,11 +200,11 @@ export async function POST(req: Request) {
 
   // 4. Route by draft id. Unknown/absent id → log and 200 (a non-2xx makes Resend retry a
   // message we can never route).
-  const postDraftId = extractPostDraftId({
+  const draftId = extractDraftId({
     to: payload.data.to ?? null,
     subject: payload.data.subject ?? null,
   });
-  if (!postDraftId) {
+  if (!draftId) {
     console.error("email/inbound: no draft id in to/subject; dropping", payload.data);
     return new Response("OK", { status: 200 });
   }
@@ -227,7 +227,7 @@ export async function POST(req: Request) {
   const rawText = email.text ?? (email.html ? stripHtmlTags(email.html) : "");
   const feedback = stripQuotedHistory(rawText);
   if (!feedback) {
-    console.error(`email/inbound: empty correction after stripping for draft ${postDraftId}`);
+    console.error(`email/inbound: empty correction after stripping for draft ${draftId}`);
     return new Response("OK", { status: 200 });
   }
 
@@ -237,9 +237,9 @@ export async function POST(req: Request) {
   // delivery becomes a no-op inside applyCorrection.
   after(async () => {
     try {
-      await applyCorrection({ postDraftId, feedback, idempotencyKey: svixId });
+      await applyCorrection({ draftId, feedback, idempotencyKey: svixId });
     } catch (err) {
-      console.error(`email/inbound: applyCorrection failed for draft ${postDraftId}`, err);
+      console.error(`email/inbound: applyCorrection failed for draft ${draftId}`, err);
     }
   });
 

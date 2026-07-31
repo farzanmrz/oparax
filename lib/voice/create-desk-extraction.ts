@@ -30,9 +30,11 @@ import { accumulateCorpus, markCorpusExclusions } from "./corpus-store";
 import { deployGuide } from "./deploy-guide";
 import {
   EXTRACTION_MODEL,
+  type ExtractionStreamSnapshot,
   extractVoiceGuideStreaming,
   type VoiceExtraction,
 } from "./extract-guide";
+import { serializeExtractionProgress } from "./extraction-progress-reasoning";
 import { finishRun, recordProgress } from "./extraction-run";
 import { materializeRulesFromGuide } from "./rules";
 import { inferAccountTier } from "./tier";
@@ -77,7 +79,7 @@ export type PreflightResult =
 async function insertExtractionModelCall(
   admin: AdminClient,
   ownerId: string,
-  experimentId: string,
+  agentId: string,
   ext: VoiceExtraction,
 ): Promise<string> {
   const { data, error } = await admin
@@ -102,8 +104,8 @@ async function insertExtractionModelCall(
       } as unknown as Json,
       cost_usd: ext.costUsd,
       generation_id: ext.generationId,
-      ref_kind: "experiment_id",
-      ref_id: experimentId,
+      ref_kind: "agent_id",
+      ref_id: agentId,
     })
     .select("id")
     .single();
@@ -111,24 +113,43 @@ async function insertExtractionModelCall(
   return data.id;
 }
 
-/** Throttles `recordProgress` calls raised by `extractVoiceGuideStreaming`'s per-delta
- *  `onProgress` to roughly once per second — the stream can emit many deltas/sec and this is
+/** Throttles `recordProgress` calls raised by `extractVoiceGuideStreaming`'s stream-event
+ *  `onProgress` to roughly once per second — the stream can emit many parts/sec and this is
  *  the ONE DB write in that loop, so hammering it on every delta would be a lot of update
  *  traffic against a single row for no user-visible benefit (a human can't perceive sub-second
- *  progress updates anyway). The first delta always flushes immediately so the run row shows
- *  `"extracting"` as soon as anything has streamed, rather than waiting a full second. */
+ *  progress updates anyway). The first text-bearing delta always flushes immediately so the run
+ *  row shows `"extracting"` as soon as the guide starts streaming, rather than waiting a full
+ *  second. */
 function throttledStreamProgress(
-  experimentId: string,
-): (snapshot: { text: string; reasoning: string }) => Promise<void> {
+  agentId: string,
+): (snapshot: ExtractionStreamSnapshot) => Promise<void> {
   let lastFlush = 0;
-  return async ({ text, reasoning }) => {
+  let hasFlushedText = false;
+  let lastFlushedStage: ExtractionStreamSnapshot["activeStage"] | null = null;
+  let lastToolState = "";
+  return async ({ text, reasoningByStage, textByStage, toolActivities, activeStage }) => {
+    const hasText = text.length > 0;
+    const toolState = toolActivities
+      .map((activity) => `${activity.id}:${activity.state}`)
+      .join("|");
+    const bypassThrottle =
+      (hasText && !hasFlushedText) ||
+      activeStage !== lastFlushedStage ||
+      toolState !== lastToolState;
     const now = Date.now();
-    if (lastFlush !== 0 && now - lastFlush < 1000) return;
+    if (lastFlush !== 0 && !bypassThrottle && now - lastFlush < 1000) return;
     lastFlush = now;
-    await recordProgress(experimentId, {
-      stage: "extracting",
-      progressNote: `${text.length} chars generated`,
-      reasoningPartial: reasoning,
+    lastFlushedStage = activeStage;
+    lastToolState = toolState;
+    if (hasText) hasFlushedText = true;
+    await recordProgress(agentId, {
+      stage: activeStage === "scope" ? "scoping" : "extracting",
+      ...(hasText ? { progressNote: `${text.length} chars generated` } : {}),
+      reasoningPartial: serializeExtractionProgress({
+        reasoningByStage,
+        textByStage,
+        toolActivities,
+      }),
     });
   };
 }
@@ -187,7 +208,7 @@ export function checkHandleShape(reporterHandle: string): PreflightResult {
  *       progress persisted roughly once/sec. Once the stream resolves, ledger-first: one
  *       `model_calls` row, then `voice_guides` with `provenance: { modelCallId }` (a pointer —
  *       the output/reasoning/usage/cost live exactly once, in model_calls), then materialize the
- *       guide's initial `voice_rules` split (best-effort, swallows its own errors).
+ *       guide's initial `voice_rules` split.
  *   (d) `finishRun` stamps the terminal status either way.
  *
  * The "already-billed call must still get its ledger row" discipline (AGENTS.md's model-call
@@ -198,7 +219,7 @@ export function checkHandleShape(reporterHandle: string): PreflightResult {
  * billed) and returns, or throws before returning anything — nothing completed, nothing to record.
  */
 export async function runExtractionSpendPhase(
-  experimentId: string,
+  agentId: string,
   reporterHandle: string,
   ownerId: string,
 ): Promise<ExtractionOutcome> {
@@ -210,14 +231,14 @@ export async function runExtractionSpendPhase(
   return withAiSpan(
     {
       name: "invoke_agent voice-extraction",
-      conversationId: extractionConversationId(experimentId),
+      conversationId: extractionConversationId(agentId),
       attributes: {
         "gen_ai.agent.name": "voice-extraction",
-        "oparax.experiment_id": experimentId,
+        "oparax.agent_id": agentId,
         "oparax.handle": reporterHandle,
       },
     },
-    () => runExtractionSpendPhaseInner(experimentId, reporterHandle, ownerId),
+    () => runExtractionSpendPhaseInner(agentId, reporterHandle, ownerId),
   );
 }
 
@@ -225,7 +246,7 @@ export async function runExtractionSpendPhase(
  *  every line of it. Never call this directly — the span carries the attributes and conversation
  *  id that make an extraction findable after the fact. */
 async function runExtractionSpendPhaseInner(
-  experimentId: string,
+  agentId: string,
   reporterHandle: string,
   ownerId: string,
 ): Promise<ExtractionOutcome> {
@@ -235,7 +256,7 @@ async function runExtractionSpendPhaseInner(
     // Stamped BEFORE the pull, not after it. Recording the stage only on completion left the
     // polled row blank for the whole of the read, which is the step a watching reporter is
     // most likely to be staring at.
-    await recordProgress(experimentId, {
+    await recordProgress(agentId, {
       stage: "corpus_fetch",
       progressNote: "Pulling recent posts from X…",
     });
@@ -246,9 +267,9 @@ async function runExtractionSpendPhaseInner(
     // beat to include whatever else the reporter happens to post about (voice-extract.md).
     // Read here rather than threaded through every caller: this function already has the desk id.
     const { data: deskRow } = await admin
-      .from("experiments")
+      .from("agents")
       .select("beat")
-      .eq("id", experimentId)
+      .eq("id", agentId)
       .maybeSingle();
     const beat = deskRow?.beat ?? "";
 
@@ -262,12 +283,12 @@ async function runExtractionSpendPhaseInner(
       );
       Sentry.captureException(corpusError, {
         tags: { stage: "voice_extraction", error_code: "corpus_failed" },
-        contexts: { extraction: { experimentId, handle: reporterHandle } },
+        contexts: { extraction: { agentId, handle: reporterHandle } },
       });
-      await finishRun(experimentId, { status: "failed", errorCode: "corpus_failed" });
+      await finishRun(agentId, { status: "failed", errorCode: "corpus_failed" });
       return { status: "corpus_failed" };
     }
-    await recordProgress(experimentId, {
+    await recordProgress(agentId, {
       stage: "corpus_ready",
       progressNote: `Read ${corpus.length} posts`,
     });
@@ -278,7 +299,7 @@ async function runExtractionSpendPhaseInner(
 
     // A corpus with zero posts carrying real text (a brand-new or inactive reporter, or every
     // post being media-only) has nothing for the extractor to measure or quote from. Refuse to
-    // bill the ~$0.43-0.86 Opus 5 call on a prompt that would embed literal "undefined"s into
+    // bill the extraction call on a prompt that would embed literal "undefined"s into
     // its MEASURED FACTS block (see measured-facts.ts) — fail here, honestly and for free,
     // rather than after the extraction already ran.
     const representativePosts = corpus.filter((p) => (p.text ?? "").trim()).length;
@@ -291,17 +312,17 @@ async function runExtractionSpendPhaseInner(
         level: "warning",
         tags: { stage: "voice_extraction", error_code: "empty_corpus" },
         contexts: {
-          extraction: { experimentId, handle: reporterHandle, rawPosts: corpus.length },
+          extraction: { agentId, handle: reporterHandle, rawPosts: corpus.length },
         },
       });
-      await finishRun(experimentId, { status: "failed", errorCode: "empty_corpus" });
+      await finishRun(agentId, { status: "failed", errorCode: "empty_corpus" });
       return { status: "corpus_failed" };
     }
 
     // These analysis side-writes happen only after the usable-corpus guard. A failed or empty
     // pull must never wipe a known corpus or overwrite a linked account's tier inference.
     try {
-      await accumulateCorpus(experimentId, corpus);
+      await accumulateCorpus(agentId, corpus);
     } catch (corpusStoreError) {
       console.error(
         `runExtractionSpendPhase: accumulateCorpus failed for @${reporterHandle}`,
@@ -309,7 +330,7 @@ async function runExtractionSpendPhaseInner(
       );
       Sentry.captureException(corpusStoreError, {
         tags: { stage: "voice_extraction", error_code: "corpus_store_failed" },
-        contexts: { extraction: { experimentId, handle: reporterHandle } },
+        contexts: { extraction: { agentId, handle: reporterHandle } },
       });
     }
 
@@ -337,14 +358,14 @@ async function runExtractionSpendPhaseInner(
       );
       Sentry.captureException(tierError, {
         tags: { stage: "voice_extraction", error_code: "tier_store_failed" },
-        contexts: { extraction: { experimentId, handle: reporterHandle } },
+        contexts: { extraction: { agentId, handle: reporterHandle } },
       });
     }
 
     // The model reads the corpus and decides scope BEFORE it writes anything, so the run row
-    // says so — otherwise the first ~60s of a run (measured: first text delta at 60.5s) shows a
-    // reporter nothing but "extracting" while the model is actually still working out their beat.
-    await recordProgress(experimentId, {
+    // says so — otherwise the first ~60s of a run (measured: first text-bearing delta at 60.5s)
+    // shows a reporter nothing but "extracting" while the model is still working out their beat.
+    await recordProgress(agentId, {
       stage: "scoping",
       progressNote: "Working out what's on your beat…",
     });
@@ -355,7 +376,7 @@ async function runExtractionSpendPhaseInner(
         reporterHandle,
         corpus,
         beat,
-        throttledStreamProgress(experimentId),
+        throttledStreamProgress(agentId),
         undefined,
         async (scope) => {
           // Both the reporter and Sentry learn what the model set aside and whether the guardrail
@@ -366,15 +387,14 @@ async function runExtractionSpendPhaseInner(
             "oparax.scope_applied": scope.applied,
             "oparax.scope_reason": scope.reason,
           });
-          await recordProgress(experimentId, {
-            stage: "scoping",
+          await recordProgress(agentId, {
             progressNote: scope.applied
               ? `Set aside ${scope.postIds.length} off-beat posts — ${scope.reason}`
               : `Kept all posts — ${scope.note.slice(0, 120)}`,
           });
           if (scope.applied && scope.postIds.length > 0) {
             try {
-              await markCorpusExclusions(experimentId, scope.postIds, scope.reason);
+              await markCorpusExclusions(agentId, scope.postIds, scope.reason);
             } catch (exclusionError) {
               console.error(
                 `runExtractionSpendPhase: markCorpusExclusions failed for @${reporterHandle}`,
@@ -382,14 +402,14 @@ async function runExtractionSpendPhaseInner(
               );
               Sentry.captureException(exclusionError, {
                 tags: { stage: "voice_extraction", error_code: "corpus_exclusion_store_failed" },
-                contexts: { extraction: { experimentId, handle: reporterHandle } },
+                contexts: { extraction: { agentId, handle: reporterHandle } },
               });
             }
           }
         },
       );
 
-      const modelCallId = await insertExtractionModelCall(admin, ownerId, experimentId, ext);
+      const modelCallId = await insertExtractionModelCall(admin, ownerId, agentId, ext);
 
       // An extraction can finish cleanly and produce NOTHING. Observed live once, 2026-07-25: a
       // run returned `finishReason: "stop"`, 9,443 thinking tokens, 7,365 characters of reasoning,
@@ -439,34 +459,29 @@ async function runExtractionSpendPhaseInner(
         );
       }
 
-      await recordProgress(experimentId, { stage: "materializing_rules" });
+      await recordProgress(agentId, { stage: "materializing_rules" });
 
       const guideDeploy = deployGuide(ext.guideRaw);
       const { error: voiceGuideError } = await admin.from("voice_guides").upsert(
         {
-          experiment_id: experimentId,
+          agent_id: agentId,
           guide_raw: ext.guideRaw,
           guide_deploy: guideDeploy,
           measured_facts: ext.measuredFactsBlock,
           cost_usd: ext.costUsd,
           provenance: { modelCallId } as unknown as Json,
         },
-        { onConflict: "experiment_id" },
+        { onConflict: "agent_id" },
       );
       if (voiceGuideError) throw voiceGuideError;
 
-      try {
-        await materializeRulesFromGuide(experimentId, guideDeploy, modelCallId);
-      } catch (rulesError) {
-        // A degraded-but-recoverable state (guide saved, initial rules split missing) — never
-        // a reason to roll back a real extraction that already happened and was billed.
-        console.error(
-          `runExtractionSpendPhase: materializeRulesFromGuide failed for @${reporterHandle}`,
-          rulesError,
-        );
-      }
+      // A guide without its editable rules is not ready: drafting reads voice_rules, not the
+      // guide blob. Let a failure reach the terminal catch so this run remains visibly failed
+      // at the materializing_rules stage and Retry can run a fresh, idempotent materialization.
+      // The guide and its billed model-call provenance intentionally remain durable for audit.
+      await materializeRulesFromGuide(agentId, guideDeploy, modelCallId);
 
-      await finishRun(experimentId, { status: "completed", costUsd: ext.costUsd });
+      await finishRun(agentId, { status: "completed", costUsd: ext.costUsd });
 
       // Metrics + a structured completion log. The metrics answer trend questions no single span
       // can ("is extraction cost drifting up?", "are guides shrinking?") without scanning traces;
@@ -482,7 +497,7 @@ async function runExtractionSpendPhaseInner(
         attributes: { handle: reporterHandle },
       });
       Sentry.logger.info("voice extraction completed", {
-        experimentId,
+        agentId,
         handle: reporterHandle,
         guideChars: ext.guideRaw.length,
         thinkingTokens: ext.thinkingTokens ?? 0,
@@ -507,7 +522,7 @@ async function runExtractionSpendPhaseInner(
         tags: { stage: "voice_extraction", error_code: "extraction_failed" },
         contexts: {
           extraction: {
-            experimentId,
+            agentId,
             handle: reporterHandle,
             costUsd: ext?.costUsd ?? null,
             finishReason: ext?.finishReason ?? null,
@@ -516,7 +531,7 @@ async function runExtractionSpendPhaseInner(
           },
         },
       });
-      await finishRun(experimentId, {
+      await finishRun(agentId, {
         status: "failed",
         costUsd: ext?.costUsd ?? null,
         errorCode: "extraction_failed",
@@ -527,9 +542,9 @@ async function runExtractionSpendPhaseInner(
     console.error(`runExtractionSpendPhase: failed for @${reporterHandle}`, e);
     Sentry.captureException(e, {
       tags: { stage: "voice_extraction", error_code: "internal_error" },
-      contexts: { extraction: { experimentId, handle: reporterHandle } },
+      contexts: { extraction: { agentId, handle: reporterHandle } },
     });
-    await finishRun(experimentId, { status: "failed", errorCode: "internal_error" });
+    await finishRun(agentId, { status: "failed", errorCode: "internal_error" });
     return { status: "failed" };
   }
 }

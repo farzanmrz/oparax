@@ -3,29 +3,61 @@
 // lib/voice/use-extraction-progress.ts
 //
 // Shared poll loop for `voice_extraction_runs` progress, used by both watching surfaces —
-// the create screen's `app/agents/new/extraction-progress.tsx` and the Voice tab's
-// `app/agents/[id]/voice/extraction-progress.tsx`. Both call `getExtractionProgress(deskId)`
+// Feed's pre-ready panel and the Voice tab's extraction-progress component. Both call
+// `getExtractionProgress(deskId)`
 // on an interval and spread the same five fields into local state before branching on
 // terminal status; this hook is that shared plumbing so the poll loop is never written twice.
 //
 // The two callers differ in exactly the ways their `options` capture: whether polling is
 // gated on something else first (`enabled`), whether the first poll fires immediately or
 // waits one interval (`immediate`), and what happens on a terminal result (`onResult`, which
-// receives a `stop()` it can call to end polling early — mirroring the Voice tab's
-// `settledRef` + `clearInterval` on a terminal status, while the create screen never calls
-// it and keeps polling until the component unmounts).
+// receives a `stop()` it can call to end polling early when the run reaches a terminal status).
 import { useEffect, useRef, useState } from "react";
 import { getExtractionProgress } from "@/app/agents/[id]/voice/actions";
+import {
+  type ExtractionReasoningByStage,
+  type ExtractionTextByStage,
+  type ExtractionToolActivity,
+  mergeExtractionReasoning,
+  mergeExtractionToolActivities,
+} from "@/lib/voice/extraction-progress-reasoning";
 
 type ExtractionProgressResult = Awaited<ReturnType<typeof getExtractionProgress>>;
 
 export type ExtractionProgressState = {
   stage: string | null;
   progressNote: string | null;
-  reasoningPartial: string | null;
+  /** Reasoning observed while each semantic model stage owned the stream. */
+  reasoningByStage: ExtractionReasoningByStage;
+  /** Every ordinary text block observed while each semantic model stage owned the stream. */
+  textByStage: ExtractionTextByStage;
+  /** Streamed tool inputs and their eventual calls/results. */
+  toolActivities: ExtractionToolActivity[];
   status: string;
   errorCode: string | null;
+  /** Evidence hydrated from the persisted, accumulating corpus. */
+  corpusPostCount?: number;
+  scopeExcludedCount?: number;
 };
+
+function retainEvidence(
+  current: ExtractionProgressState,
+  result: ExtractionProgressState,
+): Pick<ExtractionProgressState, "corpusPostCount" | "scopeExcludedCount"> {
+  const corpusMatch = result.progressNote?.match(/^Read (\d+) posts?$/);
+  const scopeMatch = result.progressNote?.match(/^Set aside (\d+) off-beat posts?/);
+  return {
+    corpusPostCount:
+      result.corpusPostCount ?? (corpusMatch ? Number(corpusMatch[1]) : current.corpusPostCount),
+    scopeExcludedCount:
+      result.scopeExcludedCount ??
+      (scopeMatch
+        ? Number(scopeMatch[1])
+        : result.progressNote?.startsWith("Kept all posts")
+          ? 0
+          : current.scopeExcludedCount),
+  };
+}
 
 export function useExtractionProgress(
   deskId: string,
@@ -42,7 +74,10 @@ export function useExtractionProgress(
   },
 ): ExtractionProgressState {
   const { enabled, intervalMs, immediate } = options;
-  const [run, setRun] = useState<ExtractionProgressState>(options.initial);
+  const [run, setRun] = useState<ExtractionProgressState>(() => ({
+    ...options.initial,
+    ...retainEvidence(options.initial, options.initial),
+  }));
   const onResultRef = useRef(options.onResult);
   onResultRef.current = options.onResult;
 
@@ -60,12 +95,35 @@ export function useExtractionProgress(
       if (cancelled) return;
       const result = await getExtractionProgress(deskId);
       if (cancelled || !result.ok) return;
-      setRun({
-        stage: result.stage,
-        progressNote: result.progressNote,
-        reasoningPartial: result.reasoningPartial,
-        status: result.status,
-        errorCode: result.errorCode,
+      setRun((current) => {
+        const next = {
+          stage: result.stage,
+          progressNote: result.progressNote,
+          reasoningByStage: mergeExtractionReasoning(
+            current.reasoningByStage,
+            result.reasoningByStage,
+          ),
+          textByStage: {
+            ...current.textByStage,
+            ...Object.fromEntries(
+              (["scope", "extract"] as const).map((stage) => [
+                stage,
+                (result.textByStage[stage]?.length ?? 0) >=
+                (current.textByStage[stage]?.length ?? 0)
+                  ? result.textByStage[stage]
+                  : current.textByStage[stage],
+              ]),
+            ),
+          },
+          toolActivities: mergeExtractionToolActivities(
+            current.toolActivities,
+            result.toolActivities,
+          ),
+          status: result.status,
+          errorCode: result.errorCode,
+          ...retainEvidence(current, result),
+        };
+        return next;
       });
       onResultRef.current(result, stop);
     }

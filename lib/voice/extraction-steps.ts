@@ -14,7 +14,7 @@ import type { ExtractionStep } from "@/components/extraction-chain";
 /** Stage names as written by lib/voice/extraction-run.ts, in pipeline order. A stage's index is
  *  how far the run has got; every step below that index is complete, the step at it is active. */
 const STAGE_RANK: Record<string, number> = {
-  starting: 0,
+  starting: 1,
   corpus_fetch: 1,
   corpus_ready: 2,
   scoping: 3,
@@ -26,37 +26,73 @@ const STAGE_RANK: Record<string, number> = {
 
 /** Which step owns which stages. Index into this array IS the step's position in the chain. */
 const STEPS = [
-  { key: "corpus", label: "Reading recent posts", stages: [1, 2] },
+  {
+    key: "corpus",
+    label: "Reading recent posts",
+    failedLabel: "Couldn't read recent posts",
+    stages: [1, 2],
+  },
   // The model's own off-beat pass (exclude_off_beat_posts) — a real, observable step, not a
   // sub-phase of extraction: it is where the binding measured facts get recomputed, and a
   // reporter watching deserves to see that their gaming posts were set aside deliberately.
-  { key: "scope", label: "Working out your beat", stages: [3] },
-  { key: "extract", label: "Learning how you write", stages: [4] },
-  { key: "rules", label: "Saving your voice rules", stages: [5] },
+  {
+    key: "scope",
+    label: "Working out your beat",
+    failedLabel: "Couldn't work out your beat",
+    stages: [3],
+  },
+  {
+    key: "extract",
+    label: "Learning how you write",
+    failedLabel: "Couldn't learn how you write",
+    stages: [4],
+  },
+  {
+    key: "rules",
+    label: "Saving your voice rules",
+    failedLabel: "Couldn't save your voice rules",
+    stages: [5],
+  },
 ] as const;
-
-/** Reporter-facing sentence per terminal error code written by the spend phase. Anything
- *  unrecognised falls back rather than rendering a raw code at a human. */
-const ERROR_COPY: Record<string, string> = {
-  corpus_failed: "Couldn't read posts for this handle.",
-  extraction_failed: "The extraction call didn't finish.",
-  internal_error: "Something went wrong partway through.",
-};
 
 export type RunSnapshot = {
   stage: string | null;
   progressNote: string | null;
   status: string;
   errorCode: string | null;
+  corpusPostCount?: number;
+  scopeExcludedCount?: number;
 };
+
+function completedLabel(stepKey: (typeof STEPS)[number]["key"], run: RunSnapshot): string {
+  switch (stepKey) {
+    case "corpus":
+      return run.corpusPostCount === undefined
+        ? "Read recent posts"
+        : `Read ${run.corpusPostCount} ${run.corpusPostCount === 1 ? "post" : "posts"}`;
+    case "scope":
+      return run.scopeExcludedCount === undefined
+        ? "Worked out your beat"
+        : `Worked out your beat (Ignored ${run.scopeExcludedCount} unrelated ${run.scopeExcludedCount === 1 ? "post" : "posts"})`;
+    case "extract":
+      return "Learned how you write";
+    case "rules":
+      return "Saved your voice rules";
+  }
+}
 
 export function pipelineSteps(run: RunSnapshot): ExtractionStep[] {
   const failed = run.status === "failed";
   const completed = run.status === "completed";
-  // A failed run's `stage` is stamped "failed", which carries no position — so the LAST stage the
-  // run actually reported is recovered from its error code instead. Without this the failure
-  // would render against the first step regardless of how far the run really got.
-  const failedAt = failed ? (run.errorCode === "corpus_failed" ? 1 : 3) : null;
+  // New failures retain the last real stage. Older rows stamped with the legacy `failed` stage
+  // fall back to the error code so their recovery UI remains intelligible.
+  const failedAt = failed
+    ? run.stage && run.stage !== "failed"
+      ? (STAGE_RANK[run.stage] ?? 0)
+      : run.errorCode === "corpus_failed" || run.errorCode === "empty_corpus"
+        ? 1
+        : 4
+    : null;
   const rank =
     failedAt ?? (run.status === "none" ? -1 : (STAGE_RANK[run.stage ?? "starting"] ?? 0));
 
@@ -65,29 +101,25 @@ export function pipelineSteps(run: RunSnapshot): ExtractionStep[] {
     const last = step.stages[step.stages.length - 1];
 
     if (completed) {
-      return { key: step.key, label: step.label, detail: null, state: "complete" as const };
+      return { key: step.key, label: completedLabel(step.key, run), state: "complete" as const };
     }
     if (failed && failedAt !== null && failedAt >= first && failedAt <= last) {
       return {
         key: step.key,
-        label: step.label,
-        detail: ERROR_COPY[run.errorCode ?? ""] ?? "This step didn't finish.",
+        label: step.failedLabel,
         state: "failed" as const,
       };
     }
     if (rank > last) {
-      return { key: step.key, label: step.label, detail: null, state: "complete" as const };
+      return { key: step.key, label: completedLabel(step.key, run), state: "complete" as const };
     }
     if (rank >= first) {
       return {
         key: step.key,
         label: step.label,
-        // The note is the live evidence the step is really moving ("Read 100 posts",
-        // "4,812 chars generated") rather than a spinner asserting that it is.
-        detail: run.progressNote,
         state: "active" as const,
       };
     }
-    return { key: step.key, label: step.label, detail: null, state: "pending" as const };
+    return { key: step.key, label: step.label, state: "pending" as const };
   });
 }

@@ -2,18 +2,19 @@ import { MicVocalIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { PageHeading } from "@/components/page-heading";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { listVoiceRules } from "@/lib/voice/rules";
-import { getExtractionProgress } from "./actions";
 import type { AuditData } from "./audit-dialog";
 import { ExtractionProgress } from "./extraction-progress";
+import { getOwnedExtractionProgress } from "./get-extraction-progress";
 import { RetryExtractionButton } from "./retry-extraction-button";
 import { RulesEditor } from "./rules-editor";
 
 // Mirrors app/agents/new/page.tsx's maxDuration (see its comment for the 800 rationale):
-// this page's retryExtraction action awaits only the pre-flight gates (checkHandleShape,
-// then runProfilePreflightGate) synchronously, then hands the billable phase to `after()`,
+// this page's retryExtraction action awaits the handle-shape pre-flight gate synchronously,
+// then hands the billable phase to `after()`,
 // same as the create flow — but that after() call still runs under this route's lifetime, so
 // the function needs the same ceiling to survive a full extraction.
 export const maxDuration = 800;
@@ -209,14 +210,12 @@ function EmptyState({
 
 /**
  * The Voice tab. The guide, its rules, and its extraction run all belong to THIS desk
- * (`experiment_id`), so every read here is scoped by the desk id already proven above.
+ * (`agent_id`), so every read here is scoped by the desk id already proven above.
  *
- * Two states:
- *   1. guide exists → the guide (`guide_deploy` as read-only audit prose) + the real
- *      `measured_facts` stat tiles + `RulesEditor` (the drafting input of record).
- *   2. no guide yet → if an extraction is in flight for this desk right now (an `after()` job
- *      that survives navigation), a live progress view (`ExtractionProgress`); otherwise the
- *      static empty state + a real retry action.
+ * An in-flight extraction takes precedence over a saved prior guide: retry replaces that guide
+ * with the shared live progress view until it reaches a terminal state. Otherwise a saved guide
+ * renders as audit prose, measured facts, and the drafting-input rules; no guide renders the
+ * static empty state with a retry action.
  */
 export default async function VoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -225,7 +224,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
   const supabase = await createClient();
 
   const { data: desk, error: deskError } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("reporter_handle")
     .eq("id", id)
     .maybeSingle();
@@ -238,7 +237,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
     supabase
       .from("voice_guides")
       .select("guide_deploy, measured_facts, provenance")
-      .eq("experiment_id", id)
+      .eq("agent_id", id)
       .maybeSingle(),
     listVoiceRules(id),
   ]);
@@ -262,10 +261,12 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
 
   const facts = guide ? parseMeasuredFacts(guide.measured_facts) : null;
 
-  // Only checked when there's no guide yet — a guide already existing means extraction is
-  // done, so there's nothing in flight to poll for.
-  const progress = guide ? null : await getExtractionProgress(id);
+  // A saved guide alone is not a completed extraction: materializing its editable rules can
+  // fail after the guide and paid-call provenance are stored. Read the terminal run state even
+  // when a guide exists so that partial state exposes Voice's retry action rather than Ready.
+  const progress = await getOwnedExtractionProgress(id);
   const extractionInFlight = progress?.ok === true && progress.status === "running";
+  const extractionFailed = progress?.ok === true && progress.status === "failed";
 
   return (
     <div className="flex flex-col gap-4 py-4">
@@ -276,8 +277,30 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
       </PageHeading>
       <Card>
         <CardContent className="flex flex-col gap-4">
-          {guide ? (
+          {extractionInFlight && progress.ok ? (
+            <ExtractionProgress
+              deskId={id}
+              initialProgressNote={progress.progressNote}
+              initialReasoningByStage={progress.reasoningByStage}
+              initialTextByStage={progress.textByStage}
+              initialToolActivities={progress.toolActivities}
+              initialCorpusPostCount={progress.corpusPostCount}
+              initialScopeExcludedCount={progress.scopeExcludedCount}
+              initialStage={progress.stage}
+            />
+          ) : guide ? (
             <>
+              {extractionFailed ? (
+                <Alert>
+                  <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                    <span>
+                      We saved your writing guide, but couldn&apos;t finish turning it into editable
+                      rules. Retry extraction to finish setup.
+                    </span>
+                    <RetryExtractionButton deskId={id} />
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               <GuideMarkdown content={guide.guide_deploy} />
               {facts ? (
                 <MeasuredFactsGrid facts={facts} />
@@ -286,14 +309,6 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
               )}
               <RulesEditor deskId={id} rules={rules} />
             </>
-          ) : extractionInFlight && progress.ok ? (
-            <ExtractionProgress
-              deskId={id}
-              initialProgressNote={progress.progressNote}
-              initialReasoningPartial={progress.reasoningPartial}
-              initialStage={progress.stage}
-              reporterHandle={reporterHandle}
-            />
           ) : (
             <EmptyState deskId={id} reporterHandle={reporterHandle} />
           )}

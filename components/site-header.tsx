@@ -5,9 +5,8 @@ import { DeskControls, DeskTabs } from "@/app/agents/[id]/desk-controls";
 import { AccountMenu } from "@/components/account-menu";
 import { DeskSwitcher } from "@/components/desk-switcher";
 import { OparaxMark } from "@/components/logo";
-import { MobileNavSheet } from "@/components/mobile-nav-sheet";
+import { MobileDeskTabs } from "@/components/mobile-desk-tabs";
 import { Separator } from "@/components/ui/separator";
-import { deskDisplayName } from "@/lib/agent/desk-label";
 
 export type HeaderDesk = {
   id: string;
@@ -21,12 +20,11 @@ export type HeaderDesk = {
  * The single always-on site chrome for every /agents/* page: one sticky 56px topbar. Left: the
  * Oparax mark, the desk switcher (current desk name + live/paused dot), and — when on a desk —
  * the pause/delete controls. Center (desktop): the Feed/Voice/Setup tabs for the current desk.
- * Right: the mobile nav trigger (narrow, on a desk) + the account menu.
+ * Right: the account menu.
  *
  * This is a client component so it can read `usePathname` and render the desk-scoped bits
- * (tabs, controls) only on a desk page — replacing the old two-row layout (a desk-agnostic
- * header + a separate desk sub-nav) with the mock's single bar. On desk-less pages (/agents,
- * /agents/new, /agents/settings) `currentDesk` is undefined, so only logo + switcher + account
+ * (tabs, controls) only on a desk page. On desk-less pages (`/agents`, `/agents/new`,
+ * `/agents/settings`) `currentDesk` is undefined, so only logo + switcher + account
  * render. This header is the way-back-to-nav guarantee on every page below /agents.
  */
 export function SiteHeader({
@@ -40,35 +38,35 @@ export function SiteHeader({
   const currentDesk = desks.find((desk) => pathname.startsWith(`/agents/${desk.id}`));
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="flex items-center gap-2">
-          <OparaxMark className="size-5 text-foreground" />
-          <span className="text-[19px] font-bold tracking-tight">Oparax</span>
-        </span>
-        <Separator className="h-4" orientation="vertical" />
-        <DeskSwitcher desks={desks} />
-        {currentDesk ? <DeskControls deskId={currentDesk.id} status={currentDesk.status} /> : null}
-      </div>
-
-      {/* Tabs are absolutely centered on the viewport — a plain flex-1 center drifts right when
-          the left cluster (a long desk name + controls) is wider than the right. */}
-      {currentDesk ? (
-        <div className="-translate-x-1/2 absolute left-1/2 hidden md:block">
-          <DeskTabs deskId={currentDesk.id} needsReviewCount={currentDesk.needsReviewCount} />
+    <div className="sticky top-0 z-40 bg-card">
+      <header className="relative flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4 sm:px-6 md:gap-3">
+        <div className="flex min-w-0 items-center gap-1.5 md:gap-3">
+          <span className="flex items-center gap-2">
+            <OparaxMark className="size-5 text-foreground" />
+            <span className="hidden font-bold text-[19px] tracking-tight md:inline">Oparax</span>
+          </span>
+          <Separator className="hidden h-4 md:block" orientation="vertical" />
+          <DeskSwitcher desks={desks} />
+          {currentDesk ? (
+            <DeskControls deskId={currentDesk.id} status={currentDesk.status} />
+          ) : null}
         </div>
-      ) : null}
 
-      <div className="flex items-center gap-1.5">
+        {/* Tabs are absolutely centered on the viewport — a plain flex-1 center drifts right when
+            the left cluster (a long desk name + controls) is wider than the right. */}
         {currentDesk ? (
-          <MobileNavSheet
-            deskId={currentDesk.id}
-            deskLabel={deskDisplayName(currentDesk)}
-            needsReviewCount={currentDesk.needsReviewCount}
-          />
+          <div className="-translate-x-1/2 absolute left-1/2 hidden md:block">
+            <DeskTabs deskId={currentDesk.id} needsReviewCount={currentDesk.needsReviewCount} />
+          </div>
         ) : null}
-        <AccountMenu username={username} />
-      </div>
-    </header>
+
+        <div className="flex items-center gap-1.5">
+          <AccountMenu username={username} />
+        </div>
+      </header>
+      {currentDesk ? (
+        <MobileDeskTabs deskId={currentDesk.id} needsReviewCount={currentDesk.needsReviewCount} />
+      ) : null}
+    </div>
   );
 }

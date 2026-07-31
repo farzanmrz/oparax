@@ -13,9 +13,16 @@
 // person for a normal reporter; for the owner-override case (admin extracts from a reporter
 // they can't authenticate as) they deliberately differ, and the card must show where the post
 // would actually land. Falls back to `reporter_handle` when no X account is linked yet.
+
+import { CheckCircle2Icon } from "lucide-react";
+import Link from "next/link";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import type { FeedStory } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
+import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
 import { DraftPlatformSwitcher } from "./draft-platform-switcher";
+import { FeedSetupProgress } from "./feed-setup-progress";
 import { ExtraSourcesBadge } from "./feed-tooltips";
 import { PostCard } from "./post-card";
 import { RelativeTime } from "./relative-time";
@@ -72,14 +79,14 @@ function DraftHeader({ handle, draftedAt }: { handle: string; draftedAt?: string
 
 function DraftCard({
   story,
-  experimentId,
+  agentId,
   publishHandle,
   charLimit,
   xLinked,
   opacityClass,
 }: {
   story: FeedStory;
-  experimentId: string;
+  agentId: string;
   publishHandle: string;
   charLimit: number;
   xLinked: boolean;
@@ -98,7 +105,7 @@ function DraftCard({
     // is genuinely being written right now); stale gets the honest no-draft copy. The feed
     // auto-refresh re-renders this every ~20s, so both states resolve without a reload.
     // Clocked off the STORY's own council start (`stories.created_at`), never off a source
-    // post's `postedAt` — a backfilled/seeded/redelivered post can carry a `posted_at` hours
+    // post's `posted_at` — a backfilled/seeded/redelivered post can carry a `posted_at` hours
     // or days old, which would fire `stale` immediately even while the council is actively
     // running and being paid for.
     const stale = Date.now() - new Date(story.createdAt).getTime() > 10 * 60 * 1000;
@@ -108,7 +115,7 @@ function DraftCard({
           <DraftHeader handle={publishHandle} />
           {stale ? (
             <p className="text-sm text-muted-foreground">
-              Nothing drafted from this post — there wasn't enough to write from.
+              Nothing drafted from this post — there wasn&apos;t enough to write from.
             </p>
           ) : (
             // A status line, not a skeleton: gray bars imply a layout waiting on data, and
@@ -135,7 +142,7 @@ function DraftCard({
         <DraftHeader draftedAt={draftedAt} handle={publishHandle} />
         <DraftPlatformSwitcher
           charLimit={charLimit}
-          experimentId={experimentId}
+          agentId={agentId}
           story={story}
           xLinked={xLinked}
         />
@@ -144,19 +151,19 @@ function DraftCard({
   );
 }
 
-/** One story's news-card/draft-card pair — TWO sibling grid children, not a wrapped pair, so
- *  the caller's `grid-cols-2` places them side by side across the whole page's grid flow (see
+/** One story's news-card/draft-card pair — TWO sibling grid children, not a wrapped pair, so the
+ *  caller's `grid-cols-2` places them side by side across the whole page's grid flow (see
  *  `page.tsx`). Posted stories render both cards at reduced opacity per the design (§4). */
 export function FeedItemCard({
   story,
-  experimentId,
+  agentId,
   reporterHandle,
   xHandle,
   charLimit,
   xLinked,
 }: {
   story: FeedStory;
-  experimentId: string;
+  agentId: string;
   reporterHandle: string;
   xHandle: string | null;
   charLimit: number;
@@ -166,8 +173,8 @@ export function FeedItemCard({
   // Only X ever carries a real posted_at (the only platform with a posting mechanism this
   // slice) — a story dims only once its X winner is CONFIRMED (postedAt AND postedUrl both
   // set), regardless of whether LinkedIn/Bluesky winners exist alongside it. An AMBIGUOUS
-  // winner (postedAt set, postedUrl null) does not dim — it still needs the reporter's
-  // attention, so it must not read as "done".
+  // winner (postedAt set, postedUrl null) does not dim — it still needs the reporter&apos;s
+  // attention, so it must not read as &quot;done&quot;.
   const opacityClass =
     story.winners.x?.postedAt != null && story.winners.x?.postedUrl != null
       ? "opacity-[0.66]"
@@ -184,7 +191,7 @@ export function FeedItemCard({
       />
       <DraftCard
         charLimit={charLimit}
-        experimentId={experimentId}
+        agentId={agentId}
         opacityClass={opacityClass}
         publishHandle={xHandle ?? reporterHandle}
         story={story}
@@ -194,16 +201,85 @@ export function FeedItemCard({
   );
 }
 
-/** The Feed's designed empty state — the pre-worker Feed WILL be sparse (no drafting worker
- *  exists yet to populate it), so this copy is deliberate, not a placeholder. */
-export function FeedEmptyState() {
+/**
+ * The Feed&apos;s designed empty state — the pre-worker Feed WILL be sparse (no drafting worker
+ * exists yet to populate it), so this copy is deliberate, not a placeholder.
+ */
+export type FeedReadiness =
+  | { kind: "paused" }
+  | { kind: "no_sources" }
+  | { kind: "extraction_running"; initial: ExtractionProgressState }
+  | { kind: "extraction_failed"; initial: ExtractionProgressState }
+  | { kind: "extraction_missing" }
+  | { kind: "ready" };
+
+type FeedReadinessContent = {
+  title: string;
+  body: string;
+  actionLabel?: string;
+  actionHref?: string;
+};
+
+type StaticFeedReadiness = Exclude<
+  FeedReadiness["kind"],
+  "extraction_running" | "extraction_failed"
+>;
+
+const FEED_EMPTY_STATE_COPY: Record<StaticFeedReadiness, FeedReadinessContent> = {
+  ready: {
+    title: "Your voice is ready",
+    body: "You can review it in Voice. New stories and drafts will appear here as soon as your agent finds something on-beat.",
+  },
+  paused: {
+    title: "Your agent is paused",
+    body: "It won't create new drafts until you resume it from the agent controls.",
+  },
+  no_sources: {
+    title: "Add a source to get drafts",
+    body: "Your agent needs at least one tracked X account before it can watch for on-beat posts.",
+    actionLabel: "Add sources",
+    actionHref: "/setup",
+  },
+  extraction_missing: {
+    title: "Finish setting up your agent",
+    body: "Your agent still needs to learn your voice before it can create drafts.",
+    actionLabel: "Go to Voice",
+    actionHref: "/voice",
+  },
+};
+
+export function FeedEmptyState({
+  deskId,
+  readiness,
+}: {
+  deskId: string;
+  readonly readiness: FeedReadiness;
+}) {
+  if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed") {
+    return <FeedSetupProgress deskId={deskId} initial={readiness.initial} />;
+  }
+
+  const content = FEED_EMPTY_STATE_COPY[readiness.kind];
+
+  if (readiness.kind === "ready") {
+    return (
+      <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status">
+        <CheckCircle2Icon aria-hidden="true" />
+        <AlertTitle>{content.title}</AlertTitle>
+        <AlertDescription className="text-foreground/90">{content.body}</AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-14 text-center">
-      <h3 className="text-sm font-semibold">Nothing on the wire yet</h3>
-      <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">
-        As your agent drafts posts on this beat, they'll appear here — a source story and its
-        winning draft, side by side, newest first.
-      </p>
+      <h3 className="text-sm font-semibold">{content.title}</h3>
+      <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">{content.body}</p>
+      {content.actionHref ? (
+        <Button asChild className="min-h-11" size="sm">
+          <Link href={`/agents/${deskId}${content.actionHref}`}>{content.actionLabel}</Link>
+        </Button>
+      ) : null}
     </div>
   );
 }

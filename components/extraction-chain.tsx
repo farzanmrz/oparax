@@ -1,101 +1,366 @@
 "use client";
 
-// components/extraction-chain.tsx
-//
-// The shared step display for voice extraction, used by BOTH surfaces that watch a run: the
-// create-agent screen (app/agents/new/extraction-progress.tsx, which drives the pre-flight gates
-// itself and then polls) and the Voice tab (app/agents/[id]/voice/extraction-progress.tsx, which
-// only polls a run someone else started). One component so the two can never drift into
-// describing the same pipeline differently.
-//
-// Presentational only — it holds no timers, calls no actions, and knows nothing about the
-// pipeline's stages. Its callers own all of that and hand it a settled list of steps. That split
-// is what lets the create screen show steps the polled run row cannot express (the pre-flight
-// gates run before a run row exists) while the Voice tab shows only what polling can see.
-//
-// Built on the vendored components/ai-elements/chain-of-thought.tsx primitive rather than a
-// bespoke list: it already carries the connector rail, the per-step status styling, and the
-// fade/slide-in animation for a step that has just appeared.
-
-import { AlertCircleIcon, CheckIcon, CircleIcon, Loader2Icon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  CircleIcon,
+  ListChecksIcon,
+  ListFilterIcon,
+  PenLineIcon,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChainOfThought,
   ChainOfThoughtContent,
-  ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "@/components/ai-elements/chain-of-thought";
+import { CodeBlock } from "@/components/ai-elements/code-block";
+import { MessageResponse } from "@/components/ai-elements/message";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
-
-type StepState = "pending" | "active" | "complete" | "failed";
+import { Shimmer } from "@/components/ai-elements/shimmer";
+import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
+import { cn } from "@/lib/utils";
+import type {
+  ExtractionReasoningByStage,
+  ExtractionReasoningStage,
+  ExtractionTextByStage,
+  ExtractionToolActivity,
+} from "@/lib/voice/extraction-progress-reasoning";
 
 export type ExtractionStep = {
-  /** Stable identity for React's key — never the label, which changes as a step progresses. */
   key: string;
   label: string;
-  /** The one line of evidence under the label: "@reshadrahman — 3,412 posts", "Read 100 posts",
-   *  or the reason a step failed. Null renders nothing rather than an empty row. */
+  /** Legacy direction-board evidence; production completion evidence belongs in `label`. */
   detail?: string | null;
-  state: StepState;
+  state: "pending" | "active" | "complete" | "failed";
 };
 
-/** `ChainOfThoughtStep` only knows "complete" | "active" | "pending", so a failed step maps onto
- *  "active" (full-strength foreground text) and is distinguished by its icon and detail colour
- *  instead. Mapping it to "complete" would grey out the one step the reporter most needs to read. */
-const STEP_STATUS = {
-  pending: "pending",
-  active: "active",
-  complete: "complete",
-  failed: "active",
-} as const;
+const STEP_ICON: Record<string, LucideIcon> = {
+  corpus: BookOpenIcon,
+  scope: ListFilterIcon,
+  extract: PenLineIcon,
+  rules: ListChecksIcon,
+};
 
-const STEP_ICON = {
-  pending: CircleIcon,
-  active: Loader2Icon,
-  complete: CheckIcon,
-  failed: AlertCircleIcon,
-} as const;
+function StageLabel({ step }: { readonly step: ExtractionStep }) {
+  if (step.state === "active") {
+    return (
+      <Shimmer className="font-medium text-sm" duration={1.7}>
+        {step.label}
+      </Shimmer>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "font-medium text-sm",
+        step.state === "pending" ? "text-muted-foreground" : "text-foreground",
+      )}
+    >
+      {step.label}
+    </span>
+  );
+}
+
+/** The ledger intentionally updates at human-scale intervals instead of writing on every model
+ * token. Reveal each newly observed suffix across that interval so provider/DB batches read as
+ * one continuous stream. Reduced-motion users receive each snapshot immediately. */
+function useProgressiveText(text: string, isStreaming: boolean): string {
+  const [visible, setVisible] = useState(isStreaming ? "" : text);
+  const visibleRef = useRef(visible);
+
+  useEffect(() => {
+    const update = (next: string) => {
+      visibleRef.current = next;
+      setVisible(next);
+    };
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!isStreaming || reducedMotion || !text.startsWith(visibleRef.current)) {
+      update(text);
+      return;
+    }
+
+    const startLength = visibleRef.current.length;
+    const added = text.length - startLength;
+    if (added <= 0) return;
+
+    const duration = Math.min(1500, Math.max(300, added * 18));
+    const startedAt = performance.now();
+    let frame = 0;
+    const reveal = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const nextLength = startLength + Math.max(1, Math.floor(added * progress));
+      update(text.slice(0, nextLength));
+      if (progress < 1) frame = requestAnimationFrame(reveal);
+    };
+    frame = requestAnimationFrame(reveal);
+    return () => cancelAnimationFrame(frame);
+  }, [isStreaming, text]);
+
+  return visible;
+}
+
+function ProgressiveReasoningContent({
+  text,
+  isStreaming,
+}: {
+  readonly text: string;
+  readonly isStreaming: boolean;
+}) {
+  const visible = useProgressiveText(text, isStreaming);
+
+  return (
+    <ReasoningContent className="mt-2 ml-3 pr-2 text-xs leading-relaxed">
+      {visible}
+    </ReasoningContent>
+  );
+}
+
+function ProgressiveTextContent({
+  text,
+  isStreaming,
+  label,
+}: {
+  readonly text: string;
+  readonly isStreaming: boolean;
+  readonly label?: string;
+}) {
+  const visible = useProgressiveText(text, isStreaming);
+  return (
+    <div className="mt-3 ml-3 border-border border-t pt-3 text-xs leading-relaxed">
+      {label ? <p className="mb-2 font-medium text-foreground">{label}</p> : null}
+      <MessageResponse isAnimating={isStreaming}>{visible}</MessageResponse>
+    </div>
+  );
+}
+
+function displayToolName(toolName: string): string {
+  return toolName === "exclude_off_beat_posts"
+    ? "Checking off-beat posts"
+    : toolName.replaceAll("_", " ");
+}
+
+function displayToolValue(value: unknown, fallback: string): string {
+  if (value === undefined) return fallback;
+  if (typeof value === "string") return value;
+  return JSON.stringify(value, null, 2) ?? String(value);
+}
+
+function ToolActivity({ activity }: { readonly activity: ExtractionToolActivity }) {
+  const input = displayToolValue(activity.input, activity.inputText);
+  const output =
+    activity.state === "output-error" ? activity.errorText : displayToolValue(activity.output, "");
+  const active = activity.state === "input-streaming" || activity.state === "input-available";
+
+  return (
+    <Tool className="mt-3 ml-3" defaultOpen={active} key={`${activity.id}:${activity.state}`}>
+      <ToolHeader
+        state={activity.state}
+        title={displayToolName(activity.toolName)}
+        toolName={activity.toolName}
+        type="dynamic-tool"
+      />
+      <ToolContent className="space-y-3">
+        {input ? (
+          <div className="space-y-2">
+            <p className="font-medium text-muted-foreground text-xs">Input</p>
+            <CodeBlock code={input} language="json" />
+          </div>
+        ) : null}
+        {output ? (
+          <div className="space-y-2">
+            <p className="font-medium text-muted-foreground text-xs">
+              {activity.state === "output-error" ? "Error" : "Result"}
+            </p>
+            <CodeBlock code={output} language="json" />
+          </div>
+        ) : null}
+      </ToolContent>
+    </Tool>
+  );
+}
+
+function findScrollOwner(node: HTMLElement): HTMLElement | null {
+  let parent = node.parentElement;
+  while (parent) {
+    const overflowY = window.getComputedStyle(parent).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return parent;
+    parent = parent.parentElement;
+  }
+  return document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null;
+}
+
+/** Follow a growing stream only while the reader is already following it. Wheel, touch, or
+ * pointer input immediately releases control; scrolling back to the bottom opts in again. */
+function useFollowExtractionStream(streamVersion: string, isStreaming: boolean) {
+  const endRef = useRef<HTMLDivElement>(null);
+  const scrollOwnerRef = useRef<HTMLElement | null>(null);
+  const shouldFollowRef = useRef(true);
+  const autoScrollingRef = useRef(false);
+  const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const end = endRef.current;
+    if (!end) return;
+    const owner = findScrollOwner(end);
+    if (!owner) return;
+    scrollOwnerRef.current = owner;
+
+    const releaseAutoScroll = () => {
+      autoScrollingRef.current = false;
+      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
+      releaseTimerRef.current = null;
+    };
+    const handleUserIntent = () => {
+      releaseAutoScroll();
+      shouldFollowRef.current = false;
+    };
+    const handleScroll = () => {
+      if (autoScrollingRef.current) return;
+      const distanceFromBottom = owner.scrollHeight - owner.scrollTop - owner.clientHeight;
+      shouldFollowRef.current = distanceFromBottom < 96;
+    };
+
+    owner.addEventListener("scroll", handleScroll, { passive: true });
+    owner.addEventListener("wheel", handleUserIntent, { passive: true });
+    owner.addEventListener("touchstart", handleUserIntent, { passive: true });
+    owner.addEventListener("pointerdown", handleUserIntent, { passive: true });
+    return () => {
+      releaseAutoScroll();
+      scrollOwnerRef.current = null;
+      owner.removeEventListener("scroll", handleScroll);
+      owner.removeEventListener("wheel", handleUserIntent);
+      owner.removeEventListener("touchstart", handleUserIntent);
+      owner.removeEventListener("pointerdown", handleUserIntent);
+    };
+  }, []);
+
+  useEffect(() => {
+    const owner = scrollOwnerRef.current;
+    if (!streamVersion || !isStreaming || !owner || !shouldFollowRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      autoScrollingRef.current = true;
+      owner.scrollTo({ top: owner.scrollHeight, behavior: "smooth" });
+      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
+      releaseTimerRef.current = setTimeout(() => {
+        autoScrollingRef.current = false;
+        releaseTimerRef.current = null;
+      }, 1000);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isStreaming, streamVersion]);
+
+  return endRef;
+}
 
 export function ExtractionChain({
   steps,
-  title,
-  reasoning,
+  reasoningByStage,
+  textByStage = {},
+  toolActivities = [],
   isStreaming = false,
 }: {
   readonly steps: ExtractionStep[];
-  readonly title: string;
-  /** The extractor's live reasoning trace. Rendered inside its own collapsible block below the
-   *  steps, not as a step: it is a continuous stream, not a discrete stage. */
-  readonly reasoning?: string | null;
+  readonly reasoningByStage?: ExtractionReasoningByStage;
+  readonly textByStage?: ExtractionTextByStage;
+  readonly toolActivities?: ExtractionToolActivity[];
   readonly isStreaming?: boolean;
 }) {
+  const [openByStage, setOpenByStage] = useState<
+    Partial<Record<ExtractionReasoningStage, boolean>>
+  >({});
+  const [suppressNewStageAutoOpen, setSuppressNewStageAutoOpen] = useState(false);
+  const toolStreamVersion = toolActivities
+    .map((activity) => `${activity.id}:${activity.state}:${activity.inputText.length}`)
+    .join("|");
+  const streamEndRef = useFollowExtractionStream(
+    `${reasoningByStage?.scope?.length ?? 0}:${reasoningByStage?.extract?.length ?? 0}:${textByStage.scope?.length ?? 0}:${textByStage.extract?.length ?? 0}:${toolStreamVersion}`,
+    isStreaming,
+  );
+
   return (
     <ChainOfThought className="w-full" defaultOpen>
-      <ChainOfThoughtHeader>{title}</ChainOfThoughtHeader>
-      <ChainOfThoughtContent>
+      <ChainOfThoughtContent className="mt-0 space-y-4">
         {steps.map((step) => {
-          const Icon = STEP_ICON[step.state];
+          const Icon = STEP_ICON[step.key] ?? CircleIcon;
+          const reasoningStage = step.key as ExtractionReasoningStage;
+          const reasoning = reasoningByStage?.[reasoningStage];
+          const hasReasoning = Boolean(reasoning);
+          const stageText = textByStage[reasoningStage] ?? "";
+          const stageTools = toolActivities.filter((activity) => activity.stage === reasoningStage);
+          const isStageStreaming = isStreaming && step.state === "active";
+          const hasDisclosure =
+            hasReasoning ||
+            Boolean(stageText) ||
+            stageTools.length > 0 ||
+            (isStageStreaming && (reasoningStage === "scope" || reasoningStage === "extract"));
+          const reasoningOpen =
+            openByStage[reasoningStage] ?? (isStageStreaming && !suppressNewStageAutoOpen);
+          const status =
+            step.state === "pending"
+              ? "pending"
+              : step.state === "complete"
+                ? "complete"
+                : "active";
+
           return (
             <ChainOfThoughtStep
-              description={
-                step.detail ? (
-                  <span className={step.state === "failed" ? "text-destructive" : undefined}>
-                    {step.detail}
-                  </span>
-                ) : undefined
-              }
+              className={cn(
+                "items-start",
+                step.state === "complete" && "text-success",
+                step.state === "active" && "text-muted-foreground",
+                step.state === "failed" && "text-destructive",
+              )}
               icon={Icon}
               key={step.key}
-              label={step.label}
-              status={STEP_STATUS[step.state]}
+              label={
+                hasDisclosure ? (
+                  <Reasoning
+                    className="mb-0 w-full"
+                    defaultOpen={false}
+                    isStreaming={isStageStreaming}
+                    onOpenChange={(open) => {
+                      setOpenByStage((current) => ({ ...current, [reasoningStage]: open }));
+                      if (isStageStreaming) setSuppressNewStageAutoOpen(!open);
+                    }}
+                    open={reasoningOpen}
+                  >
+                    <ReasoningTrigger className="w-full text-foreground">
+                      <span className="flex min-w-0 flex-1 items-center text-left">
+                        <StageLabel step={step} />
+                      </span>
+                    </ReasoningTrigger>
+                    {reasoning ? (
+                      <ProgressiveReasoningContent
+                        isStreaming={isStageStreaming}
+                        text={reasoning}
+                      />
+                    ) : null}
+                    {stageTools.map((activity) => (
+                      <ToolActivity activity={activity} key={activity.id} />
+                    ))}
+                    {stageText ? (
+                      <ProgressiveTextContent
+                        isStreaming={isStageStreaming}
+                        label={
+                          reasoningStage === "extract" ? "Writing your voice guide" : undefined
+                        }
+                        text={stageText}
+                      />
+                    ) : null}
+                  </Reasoning>
+                ) : (
+                  <span className="flex min-h-5 items-center">
+                    <StageLabel step={step} />
+                  </span>
+                )
+              }
+              status={status}
             />
           );
         })}
-        {reasoning ? (
-          <Reasoning defaultOpen isStreaming={isStreaming}>
-            <ReasoningTrigger />
-            <ReasoningContent>{reasoning}</ReasoningContent>
-          </Reasoning>
-        ) : null}
+        <div aria-hidden="true" ref={streamEndRef} />
       </ChainOfThoughtContent>
     </ChainOfThought>
   );

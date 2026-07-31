@@ -72,12 +72,12 @@ function CharCounter({
 
 export function DraftPlatformSwitcher({
   story,
-  experimentId,
+  agentId,
   charLimit,
   xLinked,
 }: {
   story: FeedStory;
-  experimentId: string;
+  agentId: string;
   /** The desk's X character ceiling — 280, or 25,000 when the reporter's own corpus proves a
    *  premium account (an over-280 post exists). Inferred in page.tsx, never asked for. */
   charLimit: number;
@@ -142,15 +142,13 @@ export function DraftPlatformSwitcher({
           <DraftEditDialog
             currentText={winner.text}
             disabled={confirmed}
-            postDraftId={winner.postDraftId}
+            draftId={winner.draftId}
           />
-          <DraftHistoryDialog winningPostDraftId={winner.postDraftId} />
+          <DraftHistoryDialog winningDraftId={winner.draftId} />
           {/* The model-count/cost badge is gone from the card — that breakdown lives in the
               council dialog behind the info button, where someone actually asking for it
               looks. */}
-          {sourcePost ? (
-            <CouncilDialog experimentId={experimentId} sourcePostId={sourcePost.id} />
-          ) : null}
+          {sourcePost ? <CouncilDialog agentId={agentId} sourcePostId={sourcePost.id} /> : null}
         </div>
         {activePlatform !== "x" ? (
           <div className="flex items-center gap-2">
@@ -191,7 +189,7 @@ export function DraftPlatformSwitcher({
             <PostToXControl
               charLimit={charLimit}
               draftText={winner.text}
-              postDraftId={winner.postDraftId}
+              draftId={winner.draftId}
               xLinked={xLinked}
             />
           </div>

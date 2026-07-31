@@ -19,7 +19,7 @@ import { z } from "zod";
 import { postMessage, SLACK_POST_TO_X_ACTION_ID, verifySlackSignature } from "@/lib/slack/api";
 import { claimDeliveryReceipt, getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { postDraftToXForOwner } from "@/lib/x/post-core";
+import { publishDraftToXForOwner } from "@/lib/x/post-core";
 
 export const maxDuration = 300;
 
@@ -38,11 +38,11 @@ const blockActionsPayloadSchema = z.object({
   user: z.object({ id: z.string().min(1) }),
 });
 
-// The button's `value` is the `post_drafts.id` buildDraftBlocks() stamped into it. Validated
+// The button's `value` is the `drafts.id` buildDraftBlocks() stamped into it. Validated
 // as a UUID before it reaches the admin-scoped lookup below, mirroring what
 // lib/x/actions.ts's `postDraftToX` does with the browser-supplied id: a malformed value is
 // rejected at the edge rather than handed to the DB as garbage input.
-const postDraftIdSchema = z.string().uuid();
+const draftIdSchema = z.string().uuid();
 
 function parseInteractionPayload(
   rawBody: string,
@@ -67,28 +67,33 @@ function parseInteractionPayload(
  *  to, then a plain-text follow-up message reporting the outcome back into the same channel. */
 async function handleInteraction(input: {
   interactionId: string;
-  postDraftId: string;
+  draftId: string;
   teamId: string;
   channelId: string;
   slackUserId: string;
 }): Promise<void> {
-  const { interactionId, postDraftId, teamId, channelId, slackUserId } = input;
+  const { interactionId, draftId, teamId, channelId, slackUserId } = input;
   const admin = createAdminClient();
 
   const { data: draft, error } = await admin
-    .from("post_drafts")
-    .select("experiment_id, experiments(owner_id)")
-    .eq("id", postDraftId)
+    .from("drafts")
+    .select("agent_id")
+    .eq("id", draftId)
     .maybeSingle();
   if (error || !draft) {
-    console.error("api/slack/interactions: draft not found", postDraftId, error);
+    console.error("api/slack/interactions: draft not found", draftId, error);
     return;
   }
 
-  const experimentId = draft.experiment_id;
-  const ownerId = draft.experiments?.owner_id;
-  if (!ownerId) {
-    console.error("api/slack/interactions: draft has no resolvable owner", postDraftId);
+  const agentId = draft.agent_id;
+  const { data: agent, error: agentError } = await admin
+    .from("agents")
+    .select("owner_id")
+    .eq("id", agentId)
+    .maybeSingle();
+  const ownerId = agent?.owner_id;
+  if (agentError || !ownerId) {
+    console.error("api/slack/interactions: draft has no resolvable owner", draftId);
     return;
   }
 
@@ -96,10 +101,10 @@ async function handleInteraction(input: {
   // Slack's signing secret is shared app-wide, not per-workspace-install, so it doesn't prove
   // the click came from the desk that actually owns this draft. Bind it here instead: the
   // interaction's own team/channel must match the draft's desk's linked slack_accounts row.
-  const account = await getSlackAccount(experimentId);
+  const account = await getSlackAccount(agentId);
   if (!account) return; // Slack got disconnected between the click and now — nowhere to reply.
   if (account.team_id !== teamId || account.channel_id !== channelId) {
-    console.error("api/slack/interactions: team/channel mismatch for draft", postDraftId, {
+    console.error("api/slack/interactions: team/channel mismatch for draft", draftId, {
       expected: { team: account.team_id, channel: account.channel_id },
       got: { teamId, channelId },
     });
@@ -115,19 +120,19 @@ async function handleInteraction(input: {
   // is what makes a later per-user policy (a stored installer id, or an allowlist) a real change
   // rather than a guess. Do NOT treat this line as authorization; the team/channel bind above is.
   console.log("api/slack/interactions: post_to_x clicked", {
-    postDraftId,
-    experimentId,
+    draftId,
+    agentId,
     slackUserId,
     teamId,
     channelId,
   });
 
-  const claimed = await claimDeliveryReceipt(interactionId, experimentId);
+  const claimed = await claimDeliveryReceipt(interactionId, agentId);
   if (!claimed) return; // Slack redelivered this exact click — idempotency, not an error.
 
-  const result = await postDraftToXForOwner(postDraftId, ownerId);
+  const result = await publishDraftToXForOwner(draftId, ownerId);
   console.log("api/slack/interactions: post_to_x outcome", {
-    postDraftId,
+    draftId,
     slackUserId,
     ok: result.ok,
   });
@@ -161,8 +166,8 @@ export async function POST(req: Request) {
 
   // A `value` that isn't a draft id can only come from a forged or corrupted payload — it is
   // never something a retry fixes, so it acks 200 (a non-200 only buys Slack's retry storm)
-  // and stops here rather than reaching the admin-scoped post_drafts lookup.
-  const parsedDraftId = postDraftIdSchema.safeParse(action.value);
+  // and stops here rather than reaching the admin-scoped drafts lookup.
+  const parsedDraftId = draftIdSchema.safeParse(action.value);
   if (!parsedDraftId.success) {
     console.error("api/slack/interactions: action value is not a draft id", {
       value: action.value.slice(0, 100),
@@ -177,7 +182,7 @@ export async function POST(req: Request) {
   after(() =>
     handleInteraction({
       interactionId: payload.trigger_id,
-      postDraftId: parsedDraftId.data,
+      draftId: parsedDraftId.data,
       teamId: payload.team.id,
       channelId: payload.channel.id,
       slackUserId: payload.user.id,

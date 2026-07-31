@@ -116,15 +116,26 @@ secret/token handling, trust boundaries) + concurrency/races + error-path
 handling.** When the diff's behavior composes with a vendored component
 (`components/ui`, `components/ai-elements`), read the relevant vendored code
 too — undiffed does not mean out of scope (a real bug hid in ai-elements'
-Reasoning auto-open, which no diff ever showed). External lanes via the council
-bridge (background; poll `.feature/*.out.json`; agy ~8 min) — write charter +
-range + criteria + plan-frozen vetoes to `.feature/review-<family>.in.txt`,
-then per family:
+Reasoning auto-open, which no diff ever showed). Before launching an external,
+calculate `R` exactly as step 6 does and `HEAD12=$(git rev-parse --short=12
+HEAD)`. Every lane label is `review-r${R}-${HEAD12}-<family>`; write its
+charter + range + criteria + plan-frozen vetoes only to the matching
+`.feature/<label>.in.txt`, and consume only that exact `<label>.out.json`.
+Never glob old `*.out.json` files or reuse an unqualified `review-<family>`
+label.
+
+Launch each lane in a named persistent task/session (a harness-native durable
+task, or `tmux`), record its real task/session id, and have the session write
+`<label>.exit` with the wrapper's exit code. Do **not** shell-background a
+command with `&` and abandon it. Poll the live task/session plus its exact exit
+file; read the exact output only after exit `0`. A non-zero exit, or a vanished
+session with no exit record, is `FAILED` even if an older output happens to be
+present. The council bridge command inside that persistent session is:
 
 ```bash
 CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   COUNCIL_SCHEMA="$PWD/.claude/workflows/qc-findings-schema.json" \
-  bash .claude/workflows/council/run.sh <family> review-<family>
+  bash .claude/workflows/council/run.sh <family> "$LABEL"
 ```
 
 Claude Code runs three externals (`codex` with `COUNCIL_MODEL=gpt-5.6-sol`,

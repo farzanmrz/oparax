@@ -1,6 +1,6 @@
 // lib/agent/draft-ground.ts
 //
-// THE grounding call: one gpt-5-nano pass that looks at the source post (including its images),
+// THE grounding call: one Qwen 3.7 Flash pass that looks at the source post (including its images),
 // translates a non-English source, judges whether it's on the reporter's beat, and writes a
 // candidate draft for the verification judge. The owner collapsed the ground→revise×2→synthesize pipeline to this
 // single call (deploy-first, 2026-07-26): the two cheap revisers (deepseek-v4-flash /
@@ -22,45 +22,19 @@ import { z } from "zod";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { DRAFT_COUNCIL_CONTRACT, DRAFT_GROUND_PROMPT } from "@/lib/sysprompts";
 import { resolveCallMeta } from "./call-meta";
-import {
-  DEEPSEEK_DRAFT_MODEL,
-  DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
-  stripMarkdown,
-} from "./deepseek-draft-config";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
 import type { CouncilCall, SourceBrief } from "./draft-council-run";
+import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS, stripMarkdown } from "./qwen-draft-config";
+import { buildSourceMediaParts, type SourceMediaPart } from "./source-media";
 
 /** Vision-capable and cheap. This call runs on EVERY delivery — including the off-beat ones it
- *  exists to reject — so it is the one drafting cost every tracked post pays, and it is
- *  deliberately the cheapest model that can actually see an image. Probe-verified
- *  (2026-07-22, this branch): a top-level `reasoning: "low"` returns a readable trace; #73 raised
- *  the level to `"medium"` through that same top-level param — the mechanism the probe verified,
- *  at a higher setting. Do NOT
- *  add `providerOptions.openai.reasoningSummary` — any reasoning key in providerOptions makes
- *  the top-level param silently ignored in full. */
-export const GROUND_MODEL = "openai/gpt-5-nano";
+ *  exists to reject — so it is the drafting cost every tracked post pays. Grounding and judging
+ *  intentionally share the same model/config while the new Qwen pipeline is exercised. */
+export const GROUND_MODEL = QWEN_DRAFT_MODEL;
 
 /** Caps how many images ride along on one grounding call. A post can carry up to 4 media items
  *  on X; this is a ceiling against a pathological payload, not a product limit. */
 const MAX_GROUND_IMAGES = 4;
-
-/** X's CDN serves `.jpg` for photos and video/GIF poster frames, `.png` for a minority. Read it
- *  off the url rather than assuming — an incorrect mediaType is rejected. Returns null on an
- *  unparsable url so one bad descriptor drops its image instead of failing the whole call
- *  (mirrors `lib/voice/extract-guide.ts`'s `imageMediaType`, same reasoning). */
-function imageMediaType(url: string): string | null {
-  let ext: string | undefined;
-  try {
-    ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
-  } catch (e) {
-    console.error(`draft-ground: skipping media with unparsable url: ${url}`, e);
-    return null;
-  }
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "gif") return "image/gif";
-  return "image/jpeg";
-}
 
 /** The grounding verdict. Field-by-field this mirrors `lib/sysprompts/draft-ground.md`, which
  *  names each one imperatively — the prompt and this schema are a matched pair and must change
@@ -107,6 +81,21 @@ export type GroundResult = {
   verdict: GroundVerdict | null;
 };
 
+function isUsableGroundVerdict(verdict: GroundVerdict, attachedImageCount: number): boolean {
+  if (
+    !verdict.language.trim() ||
+    !verdict.newsSynthesis.trim() ||
+    !verdict.onBeatReason.trim() ||
+    !verdict.firstDraft.trim()
+  ) {
+    return false;
+  }
+  const primaryLanguage = verdict.language.trim().toLowerCase().split("-")[0];
+  if (primaryLanguage !== "en" && !verdict.translation?.trim()) return false;
+  if (attachedImageCount > 0 && !verdict.mediaDescription?.trim()) return false;
+  return true;
+}
+
 function buildGroundPrompt(input: {
   brief: SourceBrief;
   beatSpec: string;
@@ -122,7 +111,7 @@ function buildGroundPrompt(input: {
     "THE REPORTER'S VOICE GUIDANCE:",
     input.voiceGuidance,
     "",
-    "DRAFTING CONTRACT:",
+    "DRAFT-TEXT CONTRACT — applies to the firstDraft field, not the surrounding structured response:",
     DRAFT_COUNCIL_CONTRACT,
     "",
     `SOURCE POST by @${input.brief.authorHandle}:`,
@@ -159,34 +148,17 @@ export async function groundSourcePost(input: {
 
   // Text first, then each image labelled with its kind — the same shape the extraction path
   // uses (lib/voice/extract-guide.ts), so a poster frame is never mistaken for a photo.
-  const content: (
-    | { type: "text"; text: string }
-    | { type: "file"; data: URL; mediaType: string }
-  )[] = [{ type: "text", text: buildGroundPrompt({ brief, beatSpec, voiceGuidance, ceiling }) }];
-
-  const usable = brief.media.slice(0, MAX_GROUND_IMAGES);
-  if (usable.length > 0) {
-    content.push({
-      type: "text",
-      text: "\nATTACHED MEDIA — the images below are this post's attachments. A video or GIF is represented by its poster frame.",
-    });
-    for (const m of usable) {
-      const mediaType = imageMediaType(m.imageUrl);
-      if (mediaType === null) continue;
-      let fileUrl: URL;
-      try {
-        fileUrl = new URL(m.imageUrl);
-      } catch (e) {
-        console.error(`draft-ground: skipping media with unparsable url: ${m.imageUrl}`, e);
-        continue;
-      }
-      content.push({ type: "text", text: `${m.kind}:` });
-      content.push({ type: "file", data: fileUrl, mediaType });
-    }
-  }
+  const { parts: mediaParts, attachedImageCount } = buildSourceMediaParts(
+    brief.media,
+    MAX_GROUND_IMAGES,
+  );
+  const content: SourceMediaPart[] = [
+    { type: "text", text: buildGroundPrompt({ brief, beatSpec, voiceGuidance, ceiling }) },
+    ...mediaParts,
+  ];
 
   // Shared success-path builder: this call's draft IS the post the reporter sees, and
-  // post_drafts.model_call_id points straight at this row — so `output` must be the PLAIN post
+  // drafts.model_call_id points straight at this row — so `output` must be the PLAIN post
   // text (the provenance UI and posting both render model_calls.output verbatim). The verdict's
   // other fields become readable prose in `reasoning`, alongside the model's own trace.
   const buildResult = async (
@@ -198,8 +170,12 @@ export async function groundSourcePost(input: {
       providerMetadata?: Record<string, unknown>;
     },
   ): Promise<GroundResult> => {
+    const primaryLanguage = result.object.language.trim().toLowerCase().split("-")[0];
     const verdict: GroundVerdict = {
       ...result.object,
+      // This is deterministic, not a model judgment: an English source has no translation.
+      // Normalizing it prevents a model's paraphrase from being stored as a factual translation.
+      translation: primaryLanguage === "en" ? null : result.object.translation?.trim() || null,
       firstDraft: stripMarkdown(result.object.firstDraft.trim()),
     };
     const verdictNotes = [
@@ -222,12 +198,18 @@ export async function groundSourcePost(input: {
       usage: result.usage,
       providerMetadata: result.providerMetadata,
     });
+    if (!isUsableGroundVerdict(verdict, attachedImageCount)) {
+      console.error(
+        `draft-ground: ${model} returned an incomplete semantic verdict; preserving the billed call and releasing the delivery for retry`,
+      );
+      return { call, verdict: null };
+    }
     return { call, verdict };
   };
 
   // Shared completed-but-unparseable path: the call BILLED, so it still gets a ledgerable row.
-  // `step` is the onStepEnd event captured BEFORE zod rejected the JSON (see `nanoStepRef`/
-  // `deepseekStepRef` below) — when present, `step.reasoning`/`step.providerMetadata` carry the
+  // `step` is the onStepEnd event captured BEFORE zod rejected the JSON (see `qwenStepRef`
+  // below) — when present, `step.reasoning`/`step.providerMetadata` carry the
   // model's real trace and gateway cost metadata, so cost resolves through the normal
   // `resolveGatewayCost` path exactly as it would on the success leg; only when `step` is null
   // (the call transported nothing at all) does cost degrade to null, same as `err.text`/`err.usage`
@@ -251,81 +233,33 @@ export async function groundSourcePost(input: {
     return { call, verdict: null };
   };
 
-  // Captures the onStepEnd event for each call BEFORE zod parses/validates the object — that
+  // Captures the onStepEnd event BEFORE zod parses/validates the object — that
   // ordering is exactly why it survives a NoObjectGeneratedError throw, mirroring
   // draft-judge.ts's `completedStepRef`. `GenerateObjectStepEndEvent` is marked @deprecated in the
   // pinned `ai` package; that's a known, accepted parity choice with draft-judge.ts — revisit both
-  // sites together on the next `ai` upgrade. Each call gets its OWN ref since they are separate
-  // completions and must not overwrite each other's step data.
-  const nanoStepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
-  const deepseekStepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
+  // sites together on the next `ai` upgrade.
+  const qwenStepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
 
   try {
     const result = await generateObject({
       model: GROUND_MODEL,
-      // Top-level `reasoning: "medium"`, NO `providerOptions.openai` key (see GROUND_MODEL above).
+      providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "medium",
+      maxOutputTokens: 8192,
       schema: groundVerdictSchema,
       system: DRAFT_GROUND_PROMPT,
       messages: [{ role: "user", content }],
       onStepEnd: (event) => {
-        nanoStepRef.value = event;
+        qwenStepRef.value = event;
       },
-      experimental_telemetry: aiTelemetry("draft_ground", "draft-ground-gpt5-nano"),
+      experimental_telemetry: aiTelemetry("draft_ground", "draft-ground-qwen"),
     });
     return await buildResult(GROUND_MODEL, result);
   } catch (err) {
     if (NoObjectGeneratedError.isInstance(err)) {
-      // gpt-5-nano completed but its output was unusable — the model is UP, so a whole-delivery
-      // retry (the caller's error path) gets nano again; no reason to burn the fallback here.
-      console.error("draft-ground: verdict failed schema validation", err);
-      return buildFailedResult(GROUND_MODEL, err, nanoStepRef.value);
+      console.error("draft-ground: Qwen verdict failed schema validation", err);
+      return buildFailedResult(GROUND_MODEL, err, qwenStepRef.value);
     }
-
-    // The nano call never completed — a transport failure, or the AI Gateway's own credits
-    // running dry. Fall back to DeepSeek: the owner's BYOK DeepSeek key is linked in the
-    // gateway, so deepseek/* calls keep billing through that key even when gateway credits are
-    // exhausted. Text-only — deepseek-v4-flash cannot see images — using the documented 4-part
-    // generateObject recipe (.claude/rules/agent.md): reasoning "none", the imperatively
-    // field-naming prompt (draft-ground.md), a high maxOutputTokens ceiling; the "retry" leg is
-    // the caller's whole-delivery retry on a null verdict.
-    console.error(
-      "draft-ground: gpt-5-nano call failed, falling back to DeepSeek (text-only)",
-      err,
-    );
-    const mediaNote =
-      usable.length > 0
-        ? `\n\n(${usable.length} image attachment(s) were on this post. You cannot analyze images — treat this as a post whose images you could not see and write mediaDescription as null.)`
-        : "";
-    const fallbackContent = [
-      {
-        type: "text" as const,
-        text: buildGroundPrompt({ brief, beatSpec, voiceGuidance, ceiling }) + mediaNote,
-      },
-    ];
-    try {
-      const result = await generateObject({
-        model: DEEPSEEK_DRAFT_MODEL,
-        providerOptions: DEEPSEEK_DRAFT_PROVIDER_OPTIONS,
-        reasoning: "none",
-        maxOutputTokens: 8192,
-        schema: groundVerdictSchema,
-        system: DRAFT_GROUND_PROMPT,
-        messages: [{ role: "user", content: fallbackContent }],
-        onStepEnd: (event) => {
-          deepseekStepRef.value = event;
-        },
-        experimental_telemetry: aiTelemetry("draft_ground", "draft-ground-deepseek-fallback"),
-      });
-      return await buildResult(DEEPSEEK_DRAFT_MODEL, result);
-    } catch (fallbackErr) {
-      if (NoObjectGeneratedError.isInstance(fallbackErr)) {
-        console.error("draft-ground: DeepSeek fallback failed schema validation", fallbackErr);
-        return buildFailedResult(DEEPSEEK_DRAFT_MODEL, fallbackErr, deepseekStepRef.value);
-      }
-      // Neither call completed — nothing billed, nothing to ledger; propagate the FALLBACK's
-      // error (the nano failure is already logged above).
-      throw fallbackErr;
-    }
+    throw err;
   }
 }

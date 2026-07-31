@@ -13,29 +13,37 @@
 # Mechanics: tmux session per label → accept trust prompt if shown → /model dance →
 # one short prompt pointing at the brief FILE and an output FILE (the model itself writes
 # the JSON — no pane scraping) → poll for the file → tolerant-parse → normalize to OUT.
-# The model picker is keyboard-driven and version-sensitive (rows/effort slider verified
-# on agy 1.1.7); if agy's menu changes, update MODEL_ROW/EFFORT_PRESSES below.
+# The model picker is keyboard-driven and version-sensitive; rows are searched and the
+# selection is VERIFIED against the status line, so a menu change fails loudly instead
+# of silently running another family (which happened 2026-07-27: Opus 4.6 ran as "agy").
 set -uo pipefail
 SECONDS=0
 PF="$1"; SCHEMA="$2"; MODEL="${3:-gemini-3.1-pro-high}"; OUT="$4"
 REPO="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 KEY="${COUNCIL_CHECK_KEY:-plan}"
 TIMEOUT_S="${COUNCIL_AGY_TIMEOUT_S:-900}"
+EXPECTED_HEAD="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || printf 'UNKNOWN')"
 
 command -v tmux >/dev/null || { echo "AGY_FAILED (no tmux — brew install tmux)" >&2; exit 1; }
 
-# --- model slug → TUI picker actions (rows below current default "Gemini 3.6 Flash") ---
+# --- model slug → the display name to VERIFY in the status line + effort presses ---
+# Row positions are NOT hardcoded any more: on 2026-07-27 the picker's roster shifted and
+# the old "2 rows down" dance silently selected "Claude Opus 4.6 (Thinking)" — a whole
+# council round ran the wrong FAMILY and nothing failed. The picker is searched row by
+# row and the status line is read back after each try; no verified match → loud failure.
 case "$MODEL" in
-  gemini-3.1-pro-high)   MODEL_ROW=2; EFFORT_PRESSES=2 ;;  # Down Down, then Right Right (low→high)
-  gemini-3.1-pro-medium) MODEL_ROW=2; EFFORT_PRESSES=1 ;;
-  gemini-3.6-flash-high) MODEL_ROW=0; EFFORT_PRESSES=2 ;;
+  gemini-3.1-pro-high)   MODEL_NAME="Gemini 3.1 Pro"; EFFORT_PRESSES=2 ;;
+  gemini-3.1-pro-medium) MODEL_NAME="Gemini 3.1 Pro"; EFFORT_PRESSES=1 ;;
+  gemini-3.6-flash-high) MODEL_NAME="Gemini 3.6 Flash"; EFFORT_PRESSES=2 ;;
   *) echo "plan-agy: unknown model slug '$MODEL'" >&2; exit 2 ;;
 esac
 
 SES="agy-$(basename "${OUT%.out.json}" | tr -c 'a-zA-Z0-9' '-' | cut -c1-40)$$"
 OUTFILE_ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "${OUT%.out.json}").tui.json"
 PANE_LOG="${OUT%.out.json}.pane.log"
-rm -f "$OUTFILE_ABS"
+# A caller must use a round/HEAD-unique label, but clear both artifacts too: a
+# restarted lane must never look complete merely because a prior run left OUT.
+rm -f "$OUT" "$OUTFILE_ABS"
 
 cleanup() { tmux kill-session -t "$SES" 2>/dev/null || true; }
 trap cleanup EXIT
@@ -46,10 +54,23 @@ sleep 12
 if tmux capture-pane -t "$SES" -p 2>/dev/null | grep -q "Do you trust"; then
   tmux send-keys -t "$SES" Enter; sleep 6
 fi
-# Model picker: /model → rows down → effort right (slider resets to low on row change) → Enter.
-tmux send-keys -t "$SES" "/model" Enter; sleep 4
-i=0; while [ "$i" -lt "$MODEL_ROW" ]; do tmux send-keys -t "$SES" Down; i=$((i+1)); done
-sleep 1; tmux send-keys -t "$SES" Enter; sleep 3          # select model (lands at low effort)
+# Model picker: try each row in turn, select, then VERIFY via the status line ("READY
+# [<model name> …]"). The slider resets to low on row change; effort is set only after
+# the model itself is confirmed. A roster we can't find the target in is a hard failure —
+# a lane silently running another family is worse than a lane reported failed.
+selected=""
+for row in 0 1 2 3 4 5 6 7; do
+  tmux send-keys -t "$SES" "/model" Enter; sleep 3
+  i=0; while [ "$i" -lt "$row" ]; do tmux send-keys -t "$SES" Down; i=$((i+1)); done
+  sleep 1; tmux send-keys -t "$SES" Enter; sleep 3        # select candidate (lands at low effort)
+  if tmux capture-pane -t "$SES" -p 2>/dev/null | grep -qi "READY \[.*${MODEL_NAME}"; then
+    selected="yes"; break
+  fi
+done
+if [ -z "$selected" ]; then
+  echo "AGY_FAILED (model picker: '$MODEL_NAME' not found in roster — menu changed again; status line: $(tmux capture-pane -t "$SES" -p 2>/dev/null | grep READY | tail -1))" >&2
+  exit 1
+fi
 if [ "$EFFORT_PRESSES" -gt 0 ]; then
   tmux send-keys -t "$SES" "/model" Enter; sleep 3        # reopen: current model preselected
   i=0; while [ "$i" -lt "$EFFORT_PRESSES" ]; do tmux send-keys -t "$SES" Right; i=$((i+1)); done
@@ -58,7 +79,7 @@ fi
 
 PF_ABS="$(cd "$(dirname "$PF")" && pwd)/$(basename "$PF")"
 SCHEMA_ABS="$(cd "$(dirname "$SCHEMA")" && pwd)/$(basename "$SCHEMA")"
-tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a review brief with its own instructions. Execute it faithfully: verify every claim against the actual repository code by reading the real files (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
+tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a council brief with its own instructions (review, design, or verification). Before analysis, run git rev-parse HEAD in $REPO and require exactly $EXPECTED_HEAD; if it differs, write no findings and report the mismatch. Execute the brief faithfully against the live working tree, never remembered or cached code. Before reporting any file:line finding, confirm the path currently exists and reread that exact current range; a deleted path or stale line invalidates the finding. Ground everything in the actual repository code (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
 
 # Poll for the model-written file, then require it stable (agy may write incrementally).
 waited=0; last=-1
@@ -91,7 +112,10 @@ except json.JSONDecodeError:
         d = json.loads(fixed)
     except json.JSONDecodeError:
         sys.exit(1)
-if not isinstance(d, dict) or key not in d or not isinstance(d[key], list):
+# The payload may be a list (critiques, findings) OR an object (board, verdict) —
+# mirror the jq `length` check the codex/grok wrappers use. A list-only assumption
+# here branded two complete, valid board runs AGY_FAILED (2026-07-27).
+if not isinstance(d, dict) or key not in d or not isinstance(d[key], (list, dict)):
     sys.exit(1)
 d.update(elapsed_s=int(elapsed), tier=tier)
 json.dump(d, open(out, "w"), indent=1)

@@ -1,10 +1,10 @@
 // lib/voice/rules.ts
 //
 // voice_rules CRUD + the pure flattening function that replaces the raw guide's role in the
-// drafting system prompt. `voice_rules` is keyed by `experiment_id` — a rule belongs to ONE
+// drafting system prompt. `voice_rules` is keyed by `agent_id` — a rule belongs to ONE
 // desk, mirroring `voice_guides`. (It was previously keyed by `reporter_handle` and shared
 // across every desk on that reporter; that sharing model is deleted.) Its RLS is an
-// EXISTS-join through `experiments` on the desk's own id, select-only. No insert/update/delete
+// EXISTS-join through `agents` on the desk's own id, select-only. No insert/update/delete
 // policy exists, so every write in this module runs on the admin (service-role) client (mirrors
 // create-desk-extraction.ts). Callers prove desk ownership via the RLS client before calling in
 // — the same ownership-then-service-role-write pattern as lib/x/actions.ts's postDraftToX —
@@ -21,7 +21,7 @@ type VoiceRuleRow = Database["public"]["Tables"]["voice_rules"]["Row"];
 
 export type VoiceRule = {
   id: string;
-  experimentId: string;
+  agentId: string;
   rule: string;
   sortOrder: number;
   enabled: boolean;
@@ -33,7 +33,7 @@ export type VoiceRule = {
 function toVoiceRule(row: VoiceRuleRow): VoiceRule {
   return {
     id: row.id,
-    experimentId: row.experiment_id,
+    agentId: row.agent_id,
     rule: row.rule,
     sortOrder: row.sort_order,
     enabled: row.enabled,
@@ -45,12 +45,12 @@ function toVoiceRule(row: VoiceRuleRow): VoiceRule {
 
 /** One desk's rules, ordered by sortOrder asc then createdAt asc as a stable tiebreak for
  *  rows sharing a sortOrder (e.g. a fresh materializeRulesFromGuide batch inserted at once). */
-export async function listVoiceRules(experimentId: string): Promise<VoiceRule[]> {
+export async function listVoiceRules(agentId: string): Promise<VoiceRule[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("voice_rules")
     .select("*")
-    .eq("experiment_id", experimentId)
+    .eq("agent_id", agentId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -59,10 +59,10 @@ export async function listVoiceRules(experimentId: string): Promise<VoiceRule[]>
 
 async function nextSortOrder(
   admin: AdminClient,
-  experimentId: string,
+  agentId: string,
   opts?: { reporterOnly?: boolean },
 ): Promise<number> {
-  const base = admin.from("voice_rules").select("sort_order").eq("experiment_id", experimentId);
+  const base = admin.from("voice_rules").select("sort_order").eq("agent_id", agentId);
   const query = opts?.reporterOnly ? base.is("provenance_model_call_id", null) : base;
   const { data, error } = await query
     .order("sort_order", { ascending: false })
@@ -73,16 +73,16 @@ async function nextSortOrder(
 }
 
 export async function createVoiceRule(input: {
-  experimentId: string;
+  agentId: string;
   rule: string;
   provenanceModelCallId?: string | null;
 }): Promise<VoiceRule> {
   const admin = createAdminClient();
-  const sortOrder = await nextSortOrder(admin, input.experimentId);
+  const sortOrder = await nextSortOrder(admin, input.agentId);
   const { data, error } = await admin
     .from("voice_rules")
     .insert({
-      experiment_id: input.experimentId,
+      agent_id: input.agentId,
       rule: input.rule,
       sort_order: sortOrder,
       provenance_model_call_id: input.provenanceModelCallId ?? null,
@@ -195,7 +195,7 @@ function splitGuideIntoSections(guideDeploy: string): string[] {
  * fresh guide has been extracted and deployed.
  */
 export async function materializeRulesFromGuide(
-  experimentId: string,
+  agentId: string,
   guideDeploy: string,
   provenanceModelCallId: string,
 ): Promise<VoiceRule[]> {
@@ -218,12 +218,12 @@ export async function materializeRulesFromGuide(
   // the reporter originally placed it after the OLD one. Fixing that requires deciding what
   // "stable relative order" means when reporter and machine rules interleave — a design
   // question flagged by QC review and deliberately deferred, not an oversight.
-  const startAt = await nextSortOrder(admin, experimentId, { reporterOnly: true });
+  const startAt = await nextSortOrder(admin, agentId, { reporterOnly: true });
 
   const { error: clearError } = await admin
     .from("voice_rules")
     .delete()
-    .eq("experiment_id", experimentId)
+    .eq("agent_id", agentId)
     .not("provenance_model_call_id", "is", null);
   if (clearError) throw clearError;
 
@@ -231,7 +231,7 @@ export async function materializeRulesFromGuide(
     .from("voice_rules")
     .insert(
       sections.map((rule, index) => ({
-        experiment_id: experimentId,
+        agent_id: agentId,
         rule,
         sort_order: startAt + index,
         provenance_model_call_id: provenanceModelCallId,

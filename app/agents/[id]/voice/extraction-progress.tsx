@@ -3,9 +3,9 @@
 // app/agents/[id]/voice/extraction-progress.tsx
 //
 // The Voice tab's "no guide yet, but extraction is already running" state: a reporter can
-// navigate here while the background extraction started from the create screen is still in
-// flight. Polls `getExtractionProgress` and renders the same `ExtractionChain` the create screen
-// does, so the pipeline is described identically in both places.
+// navigate here while the background extraction started from the create form is still in
+// flight. Polls `getExtractionProgress` and renders the same `ExtractionChain` as Feed, so the
+// pipeline is described identically in both places.
 //
 // It renders only the billable-phase steps, and that is not an omission: the pre-flight gates run
 // before a `voice_extraction_runs` row exists, so there is nothing here for a poll to recover.
@@ -17,23 +17,35 @@
 
 import { useRouter } from "next/navigation";
 import { ExtractionChain } from "@/components/extraction-chain";
+import type {
+  ExtractionReasoningByStage,
+  ExtractionTextByStage,
+  ExtractionToolActivity,
+} from "@/lib/voice/extraction-progress-reasoning";
 import { pipelineSteps } from "@/lib/voice/extraction-steps";
 import { useExtractionProgress } from "@/lib/voice/use-extraction-progress";
 
 const POLL_INTERVAL_MS = 2000;
+const COMPLETION_HOLD_MS = 1500;
 
 export function ExtractionProgress({
   deskId,
-  reporterHandle,
   initialStage,
   initialProgressNote,
-  initialReasoningPartial,
+  initialReasoningByStage,
+  initialTextByStage,
+  initialToolActivities,
+  initialCorpusPostCount,
+  initialScopeExcludedCount,
 }: {
   readonly deskId: string;
-  readonly reporterHandle: string;
   readonly initialStage: string | null;
   readonly initialProgressNote: string | null;
-  readonly initialReasoningPartial: string | null;
+  readonly initialReasoningByStage: ExtractionReasoningByStage;
+  readonly initialTextByStage: ExtractionTextByStage;
+  readonly initialToolActivities: ExtractionToolActivity[];
+  readonly initialCorpusPostCount?: number;
+  readonly initialScopeExcludedCount?: number;
 }) {
   const router = useRouter();
   const run = useExtractionProgress(deskId, {
@@ -43,11 +55,21 @@ export function ExtractionProgress({
     initial: {
       stage: initialStage,
       progressNote: initialProgressNote,
-      reasoningPartial: initialReasoningPartial,
+      reasoningByStage: initialReasoningByStage,
+      textByStage: initialTextByStage,
+      toolActivities: initialToolActivities,
       status: "running",
       errorCode: null,
+      corpusPostCount: initialCorpusPostCount,
+      scopeExcludedCount: initialScopeExcludedCount,
     },
     onResult: (result, stop) => {
+      if (result.status === "completed") {
+        stop();
+        window.setTimeout(() => router.replace(`/agents/${deskId}`), COMPLETION_HOLD_MS);
+        return;
+      }
+
       if (result.status !== "running") {
         stop();
         router.refresh();
@@ -56,12 +78,13 @@ export function ExtractionProgress({
   });
 
   return (
-    <div className="rounded-xl border border-border px-4 py-6">
+    <div className="rounded-xl border border-border p-4 sm:p-5">
       <ExtractionChain
-        isStreaming={run.stage === "extracting"}
-        reasoning={run.reasoningPartial}
+        isStreaming={run.status === "running"}
+        reasoningByStage={run.reasoningByStage}
+        textByStage={run.textByStage}
+        toolActivities={run.toolActivities}
         steps={pipelineSteps(run)}
-        title={`Building the writing guide for @${reporterHandle}`}
       />
     </div>
   );

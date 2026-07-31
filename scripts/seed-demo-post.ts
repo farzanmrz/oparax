@@ -53,44 +53,42 @@ async function main() {
   const admin = createAdminClient();
   const ownerId = await resolveOwnerId(admin, ownerEmail);
 
-  // Find the experiment. Never create it here — a missing experiment means the slice-1
+  // Find the agent. Never create it here — a missing agent means the slice-1
   // extraction script hasn't run for this reporter yet, and creating one from a demo
   // script would give the "no persistence until earned" guard a second, unaudited path.
-  const { data: experiments, error: experimentError } = await admin
-    .from("experiments")
+  const { data: agents, error: agentError } = await admin
+    .from("agents")
     .select("id, tracked_handles")
     .eq("owner_id", ownerId)
     .eq("reporter_handle", reporterHandle)
     .order("created_at", { ascending: true })
     .limit(1);
-  if (experimentError) throw experimentError;
+  if (agentError) throw agentError;
 
-  const experiment = experiments?.[0];
-  if (!experiment) {
+  const agent = agents?.[0];
+  if (!agent) {
     throw new Error(
-      `No experiments row for owner "${ownerEmail}" + reporter "@${reporterHandle}". ` +
+      `No agents row for owner "${ownerEmail}" + reporter "@${reporterHandle}". ` +
         "Run scripts/extract-voice-guide.ts first to seed it.",
     );
   }
 
   // Ensure the source author is tracked — the pipeline routes deliveries by author, so
-  // without this the post matches no experiment and nothing drafts.
+  // without this the post matches no agent and nothing drafts.
   if (
-    !experiment.tracked_handles.some(
-      (h: string) => h.toLowerCase() === sourceAuthorHandle.toLowerCase(),
-    )
+    !agent.tracked_handles.some((h: string) => h.toLowerCase() === sourceAuthorHandle.toLowerCase())
   ) {
-    const trackedHandles = [...experiment.tracked_handles, sourceAuthorHandle];
+    const trackedHandles = [...agent.tracked_handles, sourceAuthorHandle];
     const { error: updateError } = await admin
-      .from("experiments")
+      .from("agents")
       .update({ tracked_handles: trackedHandles })
-      .eq("id", experiment.id);
+      .eq("id", agent.id);
     if (updateError) throw updateError;
     console.log(
-      `Added "${sourceAuthorHandle}" to tracked_handles for experiment ${experiment.id} (now: ${trackedHandles.join(", ")}).`,
+      `Added "${sourceAuthorHandle}" to tracked_handles for agent ${agent.id} (now: ${trackedHandles.join(", ")}).`,
     );
   } else {
-    console.log(`"${sourceAuthorHandle}" is already tracked for experiment ${experiment.id}.`);
+    console.log(`"${sourceAuthorHandle}" is already tracked for agent ${agent.id}.`);
   }
 
   // Verify a voice guide exists. Never create one here — an extraction is a paid call
@@ -98,12 +96,12 @@ async function main() {
   const { data: voiceGuides, error: voiceGuideError } = await admin
     .from("voice_guides")
     .select("id")
-    .eq("experiment_id", experiment.id)
+    .eq("agent_id", agent.id)
     .limit(1);
   if (voiceGuideError) throw voiceGuideError;
   if (!voiceGuides?.length) {
     throw new Error(
-      `No voice_guides row for experiment ${experiment.id}. ` +
+      `No voice_guides row for agent ${agent.id}. ` +
         "Run scripts/extract-voice-guide.ts first to extract one.",
     );
   }
@@ -145,7 +143,7 @@ async function main() {
 
   console.log("");
   console.log(
-    "Check the Slack channel for the drafted post, and the `post_drafts` / `model_calls` / " +
+    "Check the Slack channel for the drafted post, and the `drafts` / `model_calls` / " +
       "`usage_events` rows for the sourcePostId returned above.",
   );
 }

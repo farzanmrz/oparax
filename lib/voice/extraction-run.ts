@@ -32,24 +32,28 @@ export type RunStage =
 
 /**
  * A `running` row older than this is treated as dead, not in-flight, and becomes reclaimable.
- * The real-world ceiling is the route's own `maxDuration = 300` (see `extract-guide.ts`'s
- * `EXTRACT_TIMEOUT_MS = 280_000` comment for the measured numbers behind that figure) — a
+ * The real-world ceiling is the route's own `maxDuration = 800` (see `extract-guide.ts`'s
+ * `EXTRACT_TIMEOUT_MS = 770_000` comment for the measured numbers behind that figure) — a
  * killed invocation (Vercel's hard timeout, a crash) leaves the row stuck at `running` forever
- * with no cleanup, since there is no process left to reach `finishRun`. 10 minutes is 2x the
- * route ceiling: comfortably past any real run, including one killed right at the deadline,
- * while still recovering a genuinely dead row in a bounded time rather than never. This is
+ * with no cleanup, since there is no process left to reach `finishRun`. 15 minutes is beyond the
+ * route ceiling, including a run killed right at the deadline, while still recovering a genuinely
+ * dead row in a bounded time rather than never. This is
  * reclaiming a dead row, NOT the deleted per-reporter/per-day rationing — it does not shorten
  * or ration how often a healthy desk may run; it only unsticks one that provably can't still be
  * running.
  */
-const STALE_RUN_MS = 10 * 60 * 1000;
+export const STALE_RUN_MS = 15 * 60 * 1000;
+
+export function isExtractionRunStale(updatedAt: string, now = Date.now()): boolean {
+  return now - new Date(updatedAt).getTime() > STALE_RUN_MS;
+}
 
 /**
  * Opens (or reopens) this desk's run record, marks it running, and reports whether THIS caller
  * is the one that claimed it. `true` means claim held — go spend; `false` means a run is already
  * in flight for this desk (or the claim could not be written), so the caller must not spend.
  *
- * The database decides, not the process: a plain INSERT wins against `UNIQUE(experiment_id)`
+ * The database decides, not the process: a plain INSERT wins against `UNIQUE(agent_id)`
  * when no row exists, and a 23505 conflict falls through to an UPDATE guarded by
  * `.neq("status", "running")` OR'd with `updated_at` older than `STALE_RUN_MS` — a row stuck at
  * `running` past that ceiling is reclaimable too. Both conditions are evaluated by Postgres
@@ -59,7 +63,7 @@ const STALE_RUN_MS = 10 * 60 * 1000;
  * `updated_at`, matches neither condition, and updates zero rows — so a double-click (or a
  * double-click racing a stale reclaim) still bills once. This is NOT the rationing the owner
  * deleted: nothing here is per-reporter, per-day, or a spend reservation. It bounds one desk to
- * one concurrent run, and now also bounds a dead run to a 10-minute recovery window instead of
+ * one concurrent run, and now also bounds a dead run to a 15-minute recovery window instead of
  * forever.
  *
  * Every progress field from a prior run is cleared on reopen so a stale reasoning trace or error
@@ -69,7 +73,7 @@ const STALE_RUN_MS = 10 * 60 * 1000;
  * on it — so an unexpected write failure resolves to `false` (don't spend) rather than being
  * swallowed into an optimistic `true`.
  */
-export async function startRun(experimentId: string): Promise<boolean> {
+export async function startRun(agentId: string): Promise<boolean> {
   const now = new Date().toISOString();
   const staleCutoff = new Date(Date.now() - STALE_RUN_MS).toISOString();
   const fresh = {
@@ -88,7 +92,7 @@ export async function startRun(experimentId: string): Promise<boolean> {
     const admin = createAdminClient();
     const { error: insertError } = await admin
       .from("voice_extraction_runs")
-      .insert({ experiment_id: experimentId, ...fresh });
+      .insert({ agent_id: agentId, ...fresh });
     if (!insertError) return true;
     // 23505 = unique_violation: this desk has run before, so reopen its one row instead.
     if (insertError.code !== "23505") throw insertError;
@@ -96,13 +100,13 @@ export async function startRun(experimentId: string): Promise<boolean> {
     const { data, error: updateError } = await admin
       .from("voice_extraction_runs")
       .update(fresh)
-      .eq("experiment_id", experimentId)
+      .eq("agent_id", agentId)
       .or(`status.neq.running,updated_at.lt.${staleCutoff}`)
       .select("id");
     if (updateError) throw updateError;
     return (data ?? []).length > 0;
   } catch (e) {
-    console.error(`startRun: failed for experiment ${experimentId}`, e);
+    console.error(`startRun: failed for agent ${agentId}`, e);
     return false;
   }
 }
@@ -115,7 +119,7 @@ export async function startRun(experimentId: string): Promise<boolean> {
  * work is already paid for.
  */
 export async function recordProgress(
-  experimentId: string,
+  agentId: string,
   patch: { stage?: RunStage; progressNote?: string; reasoningPartial?: string },
 ): Promise<void> {
   try {
@@ -130,10 +134,10 @@ export async function recordProgress(
           : {}),
         updated_at: new Date().toISOString(),
       })
-      .eq("experiment_id", experimentId);
+      .eq("agent_id", agentId);
     if (error) throw error;
   } catch (e) {
-    console.error(`recordProgress: failed for experiment ${experimentId}`, e);
+    console.error(`recordProgress: failed for agent ${agentId}`, e);
   }
 }
 
@@ -144,7 +148,7 @@ export async function recordProgress(
  * Same best-effort discipline as the two above.
  */
 export async function finishRun(
-  experimentId: string,
+  agentId: string,
   result: { status: "completed" | "failed"; costUsd?: number | null; errorCode?: string | null },
 ): Promise<void> {
   try {
@@ -153,15 +157,17 @@ export async function finishRun(
       .from("voice_extraction_runs")
       .update({
         status: result.status,
-        stage: result.status === "completed" ? "done" : "failed",
+        // A failed status already carries the terminal fact. Retain the last real stage so the
+        // UI can identify which semantic step failed instead of guessing from a broad error code.
+        ...(result.status === "completed" ? { stage: "done" as const } : {}),
         ...(result.costUsd !== undefined ? { cost_usd: result.costUsd } : {}),
         ...(result.errorCode !== undefined ? { error_code: result.errorCode } : {}),
         finished_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("experiment_id", experimentId);
+      .eq("agent_id", agentId);
     if (error) throw error;
   } catch (e) {
-    console.error(`finishRun: failed for experiment ${experimentId}`, e);
+    console.error(`finishRun: failed for agent ${agentId}`, e);
   }
 }

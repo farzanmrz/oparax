@@ -2,12 +2,11 @@
 //
 // The `experimental_telemetry` block every AI SDK call in this repo passes, defined ONCE.
 //
-// Why a helper rather than a literal per call site: Sentry's Vercel AI integration records
-// NOTHING unless each individual call opts in. Unlike the OpenAI/Anthropic integrations, which
-// patch the client, this one only listens to telemetry the AI SDK emits about itself — so a call
-// that forgets this object is invisible, with no warning, no empty span, and no way to notice
-// except by looking for a span that was never going to be there. Eight literals across four files
-// is eight chances to forget one; a helper is one.
+// Why a helper rather than a literal per call site: production registers no global AI SDK
+// telemetry integration, so Sentry records nothing unless each call opts in. Local development's
+// DevTools integration enables telemetry globally, but this helper still supplies the stable
+// function id and the per-stage input/output privacy policy both DevTools and Sentry honor. Eight
+// literals across four files is eight chances to drift; a helper is one.
 import * as Sentry from "@sentry/nextjs";
 import type { TelemetryOptions } from "ai";
 
@@ -31,7 +30,7 @@ export type AiStage =
  * stages carry unpublished journalism, so their content is disabled only in production.
  *
  * `functionId` groups calls in Sentry's AI dashboard — pass something stable and specific
- * (`"voice-extraction-stream"`, `"draft-council-deepseek"`), because it is the axis latency and
+ * (`"voice-extraction-stream"`, `"draft-judge-qwen"`), because it is the axis latency and
  * cost get compared along.
  *
  * There is deliberately NO custom-metadata parameter. `experimental_telemetry.metadata` was
@@ -71,7 +70,7 @@ export type SpanAttributeValue = string | number | boolean;
  * This does three jobs one `experimental_telemetry` block used to be expected to do:
  *
  *  1. **Attributes.** Since v7 dropped telemetry metadata (above), this span is the only place
- *     `oparax.experiment_id` / `oparax.handle` / `oparax.corpus_posts` can live. Those are what
+ *     `oparax.agent_id` / `oparax.handle` / `oparax.corpus_posts` can live. Those are what
  *     make a Sentry search answer "show me every extraction over 90 posts" instead of "show me
  *     every extraction".
  *  2. **A parent.** The AI SDK's spans become children of a named stage rather than floating

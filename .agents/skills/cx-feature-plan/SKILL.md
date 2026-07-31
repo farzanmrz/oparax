@@ -13,7 +13,7 @@ One document, **the plan**: spec and plan at once, hyper-specific — build runs
 as a dumb executor on a cheap model, so every judgment call is decided HERE.
 Run this chat on `gpt-5.6-sol` at high (xhigh for a heavy slice); switch with
 `/model` before starting if needed. Seed from the owner's ask or an existing
-roadmap issue number (`gh issue view N` — its body is the raw ask).
+issue number (`gh issue view N` — its body is the raw ask).
 
 No interim narration between steps; the ✋ gate is where you write in full.
 
@@ -51,6 +51,23 @@ Write the full plan yourself. Charter (identical to the Claude flow's):
 
 - **Diverge before committing:** 2–3 candidate approaches with one-line
   trade-offs; commit to one; record the rejections in the Approach section.
+- **Design freedom is tagged PER SURFACE:** every UI-touching task carries
+  `[design: reuse]` (the default, always for modifying an existing surface —
+  the component ladder binds: vendored shadcn/ai-elements → existing bespoke
+  chrome → composition → only then new, with justification) or
+  `[design: elevated]` (net-new kind of moment). For a slice's elevated set,
+  run the **direction council** per the binding shared contract in
+  `.claude/skills/feature-plan/direction-council.md` — real-render boards of
+  the repo's actual components, kit-native ideation, both viewports per page,
+  the three-switcher harness at `app/dev/directions/`, self-served on :3000,
+  one clickable URL, stop for the owner's pick, kill :3000 after approval.
+  The 200-check is the LAST tool action before the stop: once the URL returns
+  200, dispatch NO subagents and touch NO browser tooling — the owner is the
+  only reviewer of the boards (owner rule 2026-07-27, binding in both flows).
+  Codex roster: this session designs the codex board natively; grok + agy run
+  via the council bridge (there is no Claude CLI lane). Record the rollup as
+  `## Design freedom: none | reuse only | elevated: <surfaces>` next to
+  `## Weight`.
 - **Specificity contract:** every build task names its files, exact
   interfaces/signatures, and near-code for anything non-obvious — written so a
   cheap executor needs judgment only for implementation nuance, never design.
@@ -119,7 +136,7 @@ one-clause definition at first use; nothing is referenced "as discussed."
 On explicit approval:
 
 - New ask: `bash .claude/skills/feature/scripts/start.sh "<title>" <plan-file>`
-- Graduating a roadmap issue: `bash .claude/skills/feature/scripts/start.sh
+- Planning an existing issue: `bash .claude/skills/feature/scripts/start.sh
   --issue <N> <plan-file>`
 
 The script prints the issue number and cuts `ft/<issue#>` from fetched

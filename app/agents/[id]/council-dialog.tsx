@@ -9,7 +9,7 @@
 // open. The heavy body — the fetch + the per-model cards + Reasoning toggles — is mounted
 // only once the dialog has actually been opened (the `{open ? ... : null}` guard below); the
 // trigger button itself renders immediately. T4 drops
-// `<CouncilDialog sourcePostId=.. experimentId=.. />` straight into the draft-card action row.
+// `<CouncilDialog sourcePostId=.. agentId=.. />` straight into the draft-card action row.
 "use client";
 
 import { BrainIcon, InfoIcon } from "lucide-react";
@@ -51,9 +51,9 @@ const CRITERIA = [
 ] as const;
 
 // A Reasoning expander renders ONLY when a readable trace exists. Absence is deliberately
-// silent: a drafter that skipped deliberation (DeepSeek's adaptive thinking on a short brief),
-// a provider that keeps its chain-of-thought private (OpenAI policy), and the judge's
-// intentional reasoning-off config are all normal operation — and a label narrating any of
+// silent: a support call configured with reasoning off, a provider that keeps its chain-of-thought
+// private (OpenAI policy), or a readable trace omitted despite the live Qwen judge requesting high
+// reasoning are all normal provider behavior — and a label narrating any of
 // them reads as a malfunction to a reporter ("Ran without reasoning" was the owner's literal
 // "what the fuck is this"). The forensic distinction (present/withheld/none/unknown) still
 // lives in `lib/agent/reasoning-trace.ts` and the `model_calls` ledger, where debugging
@@ -102,7 +102,7 @@ function GroupView({ group }: { group: CouncilGroup }) {
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {group.members.map((member) => (
-          <MemberCard key={member.postDraftId} member={member} />
+          <MemberCard key={member.draftId} member={member} />
         ))}
       </div>
       {group.judge ? (
@@ -178,10 +178,10 @@ function CouncilOverlaySkeleton() {
 
 function CouncilOverlayBodyImpl({
   sourcePostId,
-  experimentId,
+  agentId,
 }: {
   sourcePostId: string;
-  experimentId: string;
+  agentId: string;
 }) {
   const [state, setState] = useState<
     { status: "loading" } | { status: "error" } | { status: "ready"; detail: CouncilDetail }
@@ -190,7 +190,7 @@ function CouncilOverlayBodyImpl({
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    fetchCouncilDetail(sourcePostId, experimentId)
+    fetchCouncilDetail(sourcePostId, agentId)
       .then((detail: CouncilDetail) => {
         if (!cancelled) setState({ status: "ready", detail });
       })
@@ -200,7 +200,7 @@ function CouncilOverlayBodyImpl({
     return () => {
       cancelled = true;
     };
-  }, [sourcePostId, experimentId]);
+  }, [sourcePostId, agentId]);
 
   if (state.status === "loading") return <CouncilOverlaySkeleton />;
   if (state.status === "error") {
@@ -239,10 +239,10 @@ function CouncilTrigger() {
 
 export function CouncilDialog({
   sourcePostId,
-  experimentId,
+  agentId,
 }: {
   sourcePostId: string;
-  experimentId: string;
+  agentId: string;
 }) {
   // Plain local state, not URL-synced — see the file header comment for why.
   const [open, setOpen] = useState(false);
@@ -271,9 +271,7 @@ export function CouncilDialog({
           ))}
         </div>
         <div aria-live="polite">
-          {open ? (
-            <CouncilOverlayBodyImpl experimentId={experimentId} sourcePostId={sourcePostId} />
-          ) : null}
+          {open ? <CouncilOverlayBodyImpl agentId={agentId} sourcePostId={sourcePostId} /> : null}
         </div>
       </DialogContent>
     </Dialog>

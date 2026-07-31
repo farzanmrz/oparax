@@ -9,7 +9,7 @@ import { getXLinkState } from "@/lib/x/link-state";
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
 /**
- * Create a desk (an `experiments` row) as the signed-in reporter, then kick off best-effort
+ * Create a desk (an `agents` row) as the signed-in reporter, then kick off best-effort
  * voice extraction for their handle in `after()` — the request finishes and the client
  * navigates before extraction resolves; a failure there never rolls back the desk (see
  * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
@@ -28,11 +28,11 @@ export async function createDesk(input: {
    *  check is re-run below rather than trusted from whichever client set this. */
   extractFromHandle?: string;
 }): Promise<CreateDeskResult> {
+  const name = input.name.trim();
+  if (!name) return { error: "Name this agent." };
+
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this agent should watch." };
-
-  // Optional — the switcher falls back to a beat-derived label when it's blank.
-  const name = input.name.trim() || null;
 
   // Every tracked handle is charset-validated too — not just normalized. An unvalidated handle
   // flows into the ingestion worker's globally-shared X stream rule where it could inject stream
@@ -49,6 +49,9 @@ export async function createDesk(input: {
       };
     }
     if (!trackedHandles.includes(handle)) trackedHandles.push(handle);
+  }
+  if (trackedHandles.length === 0) {
+    return { error: "Add at least one tracked X account." };
   }
 
   const supabase = await createClient();
@@ -77,7 +80,7 @@ export async function createDesk(input: {
   //
   // The override sets `reporter_handle` — it does NOT keep the agent on the owner's handle
   // while pulling someone else's corpus. `reporter_handle` is what the corpus is pulled for,
-  // and `voice_guides`/`voice_rules` are keyed by this desk's `experiment_id`, not by handle —
+  // and `voice_guides`/`voice_rules` are keyed by this desk's `agent_id`, not by handle —
   // so the other direction (extracting the owner's own voice while labeling the desk for
   // someone else) would just mislabel whose voice the desk claims to be drafting in.
   let reporterHandle = connectedHandle;
@@ -92,7 +95,7 @@ export async function createDesk(input: {
   }
 
   const { data, error } = await supabase
-    .from("experiments")
+    .from("agents")
     .insert({
       owner_id: user.id,
       name,
@@ -102,7 +105,7 @@ export async function createDesk(input: {
       // Identity is proven by the linked X account at this exact moment, not typed and
       // verified later — verification is immediate now, not a separate step. Stamped on the
       // owner-override path too, even though `voice_guides`' SELECT policy no longer conditions
-      // on this column (it checks only `e.id = voice_guides.experiment_id and e.owner_id =
+      // on this column (it checks only `e.id = voice_guides.agent_id and e.owner_id =
       // auth.uid()`) — so this is a record of how identity was proven at creation, not an RLS
       // gate. On the override path the allowlist is the verification.
       reporter_verified_at: new Date().toISOString(),
@@ -117,10 +120,10 @@ export async function createDesk(input: {
   // Extraction is NOT fired here any more. It used to run as
   // `after(() => attemptVoiceExtraction(...))`, whose return value nothing could read — so the
   // four pre-flight gates ran invisibly and a rejection reached the reporter as a spinner that
-  // never resolved. The create screen now calls `startExtraction` (app/agents/[id]/voice/
-  // actions.ts) itself: it awaits the pre-flight so it can render each gate, then that action
-  // hands the billable phase to its own `after()`, which preserves the survives-navigation
-  // property for the half that actually costs money.
+  // never resolved. After `createDesk` returns, the client calls `startExtraction`
+  // (app/agents/[id]/voice/actions.ts), awaits its free ownership/shape gate and durable run claim,
+  // then replaces to Feed. That action hands the billable phase to its own `after()`, while Feed
+  // and Voice poll the durable run row.
   //
   // The consequence is deliberate: a desk whose creator closes the tab before the pre-flight
   // returns is created WITHOUT extraction having started. That is a valid, working agent — its

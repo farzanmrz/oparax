@@ -7,7 +7,7 @@
 // `voice_extraction_runs` is deny-all, neither has a write policy).
 //
 // Everything here is keyed by the DESK. A voice guide, its rules, and its extraction run all
-// belong to one `experiments` row — there is no cross-desk sharing by reporter handle any more,
+// belong to one `agents` row — there is no cross-desk sharing by reporter handle any more,
 // so an ownership proof on the desk id is a complete ownership proof over all three.
 //
 // lib/voice/rules.ts's CRUD functions do NO ownership check (per their own doc comment) —
@@ -31,10 +31,14 @@ import {
 } from "@/lib/voice/create-desk-extraction";
 import { startRun } from "@/lib/voice/extraction-run";
 import { createVoiceRule, deleteVoiceRule, updateVoiceRule } from "@/lib/voice/rules";
+import {
+  type ExtractionProgressResult,
+  getOwnedExtractionProgress,
+} from "./get-extraction-progress";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-/** Proves the signed-in caller owns this desk, via the RLS client — the `experiments` SELECT
+/** Proves the signed-in caller owns this desk, via the RLS client — the `agents` SELECT
  *  policy is owner-scoped, so a row coming back at all IS the proof. Returns the desk's own
  *  reporter_handle, never one supplied by the caller. */
 async function ownedDesk(
@@ -47,7 +51,7 @@ async function ownedDesk(
   if (!user) return { error: "Please sign in again." };
 
   const { data } = await supabase
-    .from("experiments")
+    .from("agents")
     .select("reporter_handle")
     .eq("id", deskId)
     .maybeSingle();
@@ -63,7 +67,7 @@ export async function saveVoiceRule(deskId: string, rule: string): Promise<Actio
   if ("error" in owned) return { ok: false, error: owned.error };
 
   try {
-    await createVoiceRule({ experimentId: deskId, rule: trimmed });
+    await createVoiceRule({ agentId: deskId, rule: trimmed });
   } catch {
     return { ok: false, error: "Could not save that rule. Please try again." };
   }
@@ -72,7 +76,7 @@ export async function saveVoiceRule(deskId: string, rule: string): Promise<Actio
 }
 
 /** Proves ruleId belongs to THIS desk before returning it as "owned" — the ruleId alone doesn't
- *  carry that proof (voice_rules has no owner_id; ownership runs through experiment_id). Reads
+ *  carry that proof (voice_rules has no owner_id; ownership runs through agent_id). Reads
  *  through the admin client since voice_rules is select-only for the RLS client too. */
 async function assertOwnsRule(deskId: string, ruleId: string): Promise<boolean> {
   const owned = await ownedDesk(deskId);
@@ -82,7 +86,7 @@ async function assertOwnsRule(deskId: string, ruleId: string): Promise<boolean> 
     .from("voice_rules")
     .select("id")
     .eq("id", ruleId)
-    .eq("experiment_id", deskId)
+    .eq("agent_id", deskId)
     .maybeSingle();
   return data !== null;
 }
@@ -129,17 +133,7 @@ export async function deleteVoiceRuleAction(deskId: string, ruleId: string): Pro
  * run row exists yet (nothing has started), distinguishable from a real run's own status
  * ("running" | "completed" | "failed").
  */
-export async function getExtractionProgress(deskId: string): Promise<
-  | {
-      ok: true;
-      stage: string | null;
-      progressNote: string | null;
-      reasoningPartial: string | null;
-      status: string;
-      errorCode: string | null;
-    }
-  | { ok: false; error: string }
-> {
+export async function getExtractionProgress(deskId: string): Promise<ExtractionProgressResult> {
   // Marks THIS transaction as the progress poll so `dropProgressPollTransactions` can discard it
   // on the way out. It has to be a tag set from inside the request rather than a sampling rule:
   // this action and the extraction it reports on are both server actions on the same routes, so
@@ -147,34 +141,7 @@ export async function getExtractionProgress(deskId: string): Promise<
   // precisely so extractions are never sampled away; this is what keeps that affordable.
   Sentry.setTag(TRANSACTION_KIND_TAG, PROGRESS_POLL_KIND);
 
-  const owned = await ownedDesk(deskId);
-  if ("error" in owned) return { ok: false, error: owned.error };
-
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("voice_extraction_runs")
-    .select("stage, progress_note, reasoning_partial, status, error_code")
-    .eq("experiment_id", deskId)
-    .maybeSingle();
-
-  if (!data) {
-    return {
-      ok: true,
-      stage: null,
-      progressNote: null,
-      reasoningPartial: null,
-      status: "none",
-      errorCode: null,
-    };
-  }
-  return {
-    ok: true,
-    stage: data.stage,
-    progressNote: data.progress_note,
-    reasoningPartial: data.reasoning_partial,
-    status: data.status,
-    errorCode: data.error_code,
-  };
+  return getOwnedExtractionProgress(deskId);
 }
 
 /** `proceed` means "keep going to the next step". Gates are returned so the caller can render
@@ -208,7 +175,7 @@ const ALREADY_RUNNING = "An extraction is already running for this agent.";
  *
  * The handle-shape gate stays and runs here even though the create screen already called
  * `checkExtractionReadiness`: a server action is reachable by action id whatever component
- * imports it, and `experiments` has an owner-scoped INSERT policy with no value constraint, so a
+ * imports it, and `agents` has an owner-scoped INSERT policy with no value constraint, so a
  * desk can carry any `reporter_handle` its owner chose to write. Skipping it would send that raw
  * string into the corpus pull — an injection guard, not a UX nicety.
  *

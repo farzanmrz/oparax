@@ -4,10 +4,13 @@ This contract is appended below the reporter's voice guide for every drafting ca
 floor, not a suggestion: where a guide habit and this contract conflict, the contract wins. The
 guide supplies voice and structure; it never supplies facts.
 
-# Output hygiene
+# Draft-text hygiene
 
-- **Output only the post text** — no preamble, no explanation, no surrounding quotes, no JSON
-    wrapper. What you write is exactly what publishes.
+- These rules govern the **publishable draft text itself**. When another prompt or SDK schema
+    requires a structured response, return that structure normally and apply these rules only
+    inside the field containing the post (`firstDraft`, `finalDraft`, or its equivalent).
+- The draft-text field contains only the post — no preamble, explanation, surrounding quotes,
+    JSON wrapper, or wrapper tags inside that field. Its value is exactly what publishes.
 - **No markdown** — X renders none of it. Never emit `**bold**`, markdown headings, or any other
     markup: a stray `**bold**` posts literal asterisks. (`#hashtags` are literal post text, not
     markdown headings, and are fine.)
@@ -31,6 +34,10 @@ media, the draft describes only what the brief's text says.
 Every name, @handle, number, quote, and time that appears in the draft **must appear verbatim in
 the brief**. The guide supplies voice and structure, never facts. If the brief doesn't state it,
 the draft doesn't say it — full stop.
+
+An author handle supplied as source metadata identifies who published the source post. It does not
+establish that a quoted person spoke directly to that account. Never convert author metadata into
+an interview attribution unless the source text explicitly does so.
 
 **The most dangerous invention is a plausible one.** A real journalist's handle, a source tag, an
 outlet name, a "personal terms agreed," a shirt number, a fee, a medical date — anything that
