@@ -307,13 +307,13 @@ begin
       raise exception 'issue 98 contract lost a fresh-baseline ID or relationship';
     end if;
     execute format('select count(*) from public.%I', relation_name) into current_count;
-    if current_count <> (select count(*) from issue_98_contract_baseline where relation_name = relation_spec.relation_name) then
+    if current_count <> (select count(*) from issue_98_contract_baseline b where b.relation_name = relation_spec.relation_name) then
       raise exception 'issue 98 contract changed fresh-baseline row count for %', relation_spec.relation_name;
     end if;
   end loop;
   if exists (select 1 from pg_class where relnamespace = 'public'::regnamespace and relname ~ '(experiment|post_drafts|compat|issue_98)')
      or exists (select 1 from pg_constraint where connamespace = 'public'::regnamespace and conname ~ '(experiment|post_drafts|compat|issue_98)')
-     or exists (select 1 from pg_policy where polnamespace = 'public'::regnamespace and polname ~ '(experiment|post_drafts|compat|issue_98)')
+     or exists (select 1 from pg_policy p join pg_class c on c.oid = p.polrelid where c.relnamespace = 'public'::regnamespace and p.polname ~ '(experiment|post_drafts|compat|issue_98)')
      or exists (select 1 from pg_trigger where tgname ~ '(experiment|post_drafts|compat|issue_98)')
      or exists (select 1 from pg_proc where pronamespace = 'public'::regnamespace and proname ~ '(experiment|post_drafts|compat|issue_98)') then
     raise exception 'issue 98 contract left compatibility or stale object names';
@@ -329,7 +329,7 @@ begin
   end if;
   if (select count(*) from pg_policy where polrelid = 'public.agents'::regclass) <> 4
      or (select count(*) from pg_policy where polrelid = 'public.drafts'::regclass) <> 2
-     or exists (select 1 from pg_policy where polnamespace = 'public'::regnamespace and (polname like '%experiment%' or pg_get_expr(polqual, polrelid) like '%experiment%' or pg_get_expr(polwithcheck, polrelid) like '%experiment%')) then
+     or exists (select 1 from pg_policy p join pg_class c on c.oid = p.polrelid where c.relnamespace = 'public'::regnamespace and (p.polname like '%experiment%' or pg_get_expr(p.polqual, p.polrelid) like '%experiment%' or pg_get_expr(p.polwithcheck, p.polrelid) like '%experiment%')) then
     raise exception 'issue 98 contract policy posture is not canonical';
   end if;
 end
