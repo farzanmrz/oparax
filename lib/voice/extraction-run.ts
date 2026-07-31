@@ -42,7 +42,7 @@ export type RunStage =
  * or ration how often a healthy desk may run; it only unsticks one that provably can't still be
  * running.
  */
-export const STALE_RUN_MS = 15 * 60 * 1000;
+const STALE_RUN_MS = 15 * 60 * 1000;
 
 export function isExtractionRunStale(updatedAt: string, now = Date.now()): boolean {
   return now - new Date(updatedAt).getTime() > STALE_RUN_MS;

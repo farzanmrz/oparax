@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ComponentType, SVGProps } from "react";
 import { useState, useTransition } from "react";
 import {
   AlertDialog,
@@ -43,13 +42,6 @@ import {
 import { formatBadgeCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { deleteDesk, pauseDesk, resumeDesk } from "./actions";
-
-export type DeskTab = {
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  label: "Feed" | "Voice" | "Setup";
-  href: (id: string) => string;
-  exact: boolean;
-};
 
 export const DESK_TABS = [
   {

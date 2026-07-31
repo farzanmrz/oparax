@@ -13,6 +13,7 @@
 // matching cookie on the victim's browser and fails here before any exchange happens.
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
+import { safeReturnPath } from "@/lib/auth/return-path";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { exchangeCodeForToken } from "@/lib/slack/api";
 import { ownsDesk } from "@/lib/slack/link-state";
@@ -44,8 +45,7 @@ function decodeState(
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         values[0],
       ) ||
-      (values[1] !== null &&
-        (typeof values[1] !== "string" || !values[1].startsWith("/agents/"))) ||
+      (values[1] !== null && safeReturnPath(values[1] as string | null) === null) ||
       typeof values[2] !== "string" ||
       !/^[A-Za-z0-9_-]{43}$/.test(values[2])
     ) {
@@ -69,9 +69,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/agents", origin));
   }
 
-  const returnPath = decoded.returnTo?.startsWith("/agents/")
-    ? decoded.returnTo
-    : `/agents/${decoded.agentId}/setup`;
+  const returnPath = safeReturnPath(decoded.returnTo, `/agents/${decoded.agentId}/setup`);
 
   const redirectBack = (params: Record<string, string>) => {
     const url = new URL(returnPath, origin);

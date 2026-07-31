@@ -11,7 +11,7 @@
 //     carrying `output`, `reasoning`, and `usage` (including `reasoningWithheldByProvider`).
 //   - every touch point stamps `usage_events` — the inbound delivery, each model call,
 //     each Slack push, each email send, each verified inbound reply.
-// Ledger-first ordering throughout, copied from scripts/extract-voice-guide.ts: `model_calls`
+// Ledger-first ordering throughout, the same discipline the extraction path uses: `model_calls`
 // rows are written BEFORE the artifact rows (`drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
 import * as Sentry from "@sentry/nextjs";

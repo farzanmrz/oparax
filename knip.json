@@ -3,19 +3,20 @@
   "entry": ["scripts/*.ts"],
   "project": ["**/*.{ts,tsx,mjs}"],
   "ignore": [
-    "components/ai-elements/**",
-    "components/ui/**",
-    "components/hooks/**",
-    "ingest/**",
-    ".claude/**",
     ".agents/**",
-    ".grok/**",
+    ".claude/**",
     ".codex/**",
-    ".voice-lab/**",
-    ".githooks/**",
     ".diag/**",
     ".feature/**",
+    ".githooks/**",
+    ".grok/**",
+    ".voice-lab/**",
+    "components/ai-elements/**",
+    "components/hooks/**",
+    "components/ui/**",
     "docs/**",
+    "ingest/**",
+    "lib/supabase/database.types.ts",
     "supabase/**"
   ],
   "ignoreDependencies": [
@@ -33,5 +34,6 @@
     "tailwindcss",
     "tw-animate-css",
     "shadcn"
-  ]
+  ],
+  "ignoreExportsUsedInFile": true
 }

@@ -9,7 +9,7 @@
 // on Fable 5); Sonnet 5 is the lower-cost trial model — see EXTRACTION_MODEL.
 // SERVER-ONLY: imports lib/sysprompts (readFileSync at module scope) — never import from a
 // client component. Script-invoked this slice; not wrapped in any serverless function yet.
-import { generateText, stepCountIs, streamText, tool } from "ai";
+import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
@@ -42,12 +42,12 @@ export const EXTRACTION_MODEL = "anthropic/claude-sonnet-5";
  *  and truncate the guide. `undefined` sends no ceiling at all, which is the right default under
  *  adaptive thinking: the model sizes its own budget, so a number here can only ever be too small,
  *  never too generous. Whether omitting it makes the gateway substitute a provider default (the
- *  Anthropic API requires `max_tokens`) is being measured, not assumed — see
- *  `scripts/diagnose-extraction.ts`, which reads `finishReason` and `outputTokens` back rather
- *  than trusting the request shape. */
+ *  Anthropic API requires `max_tokens`) was measured, not assumed: a run that read
+ *  `finishReason` and `outputTokens` back off the response rather than trusting the request
+ *  shape. Re-measure the same way before changing this — the request shape does not tell you. */
 const EXTRACT_MAX_OUTPUT_TOKENS: number | undefined = undefined;
 // The measured baseline: a fully instrumented run on a 100-post corpus
-// (scripts/diagnose-extraction.ts, uncapped output) took **200.4s wall-clock** — first
+// (uncapped output) took **200.4s wall-clock** — first
 // REASONING delta at 5.8s, first TEXT delta at 60.5s, 4,016 thinking tokens, 14,372 output
 // tokens, $0.436. But per-corpus variance is real and the tail is long: a live run
 // (2026-07-26, @ReshadRahman's corpus, QC's create-agent journey) was STILL mid-reasoning at
@@ -457,78 +457,6 @@ async function reconstructFromSteps(steps: ExtractionStep[]): Promise<{
   return { text, reasoning: reasoning || null, thinkingTokens, costUsd, generationId };
 }
 
-/**
- * Extract a raw voice guide for one reporter from their corpus. Plain `generateText` — used by
- * scripts/extract-voice-guide.ts's CLI/manual path, which has no progress UI to feed. The live
- * create-desk path uses `extractVoiceGuideStreaming` below instead; both share the exact same
- * model/config, only how the result is consumed differs.
- */
-export async function extractVoiceGuide(
-  handle: string,
-  posts: CorpusPost[],
-  beat: string,
-): Promise<VoiceExtraction> {
-  const { facts, content } = buildExtractionContent(handle, posts, beat);
-  const scope = buildScopeTool(handle, posts);
-
-  const result = await generateText({
-    model: EXTRACTION_MODEL,
-    system: VOICE_EXTRACT_PROMPT,
-    messages: [{ role: "user", content }],
-    maxOutputTokens: EXTRACT_MAX_OUTPUT_TOKENS,
-    // The ONE tool this call gets — a pure local recompute, not a network reach. See
-    // buildScopeTool for why it exists and what it refuses.
-    tools: scope.tools,
-    stopWhen: stepCountIs(MAX_EXTRACTION_STEPS),
-    // `display: "summarized"` is what makes the reasoning readable. It defaults to "omitted"
-    // on this model, and "omitted" still returns a thinking block — with `text: ""`, which
-    // reads exactly like a model that cannot expose its reasoning. Probed: summarized yields
-    // real text, omitted yields none, with zero warnings either way.
-    // Keep type, effort, and display together. A display-only object is rejected by Gateway, and
-    // a top-level reasoning value can lose precedence once this provider object is present.
-    providerOptions: {
-      anthropic: { thinking: { type: "adaptive", effort: "medium", display: "summarized" } },
-    },
-    // NO `tools` key — enforced by review, invisible to the type system.
-    abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
-    experimental_telemetry: aiTelemetry("voice_extraction", "voice-extraction-oneshot"),
-  });
-
-  // `result.steps` is a plain array on `generateText`'s result (already resolved, unlike
-  // `streamText`'s lazy/promise-backed `steps` below) — see `reconstructFromSteps` for why
-  // reading it beats `result.text`/`.reasoningText`/`.providerMetadata` directly.
-  const {
-    text: guideRaw,
-    reasoning,
-    thinkingTokens,
-    costUsd,
-    generationId,
-  } = await reconstructFromSteps(result.steps);
-
-  const scopeExclusion = scope.read();
-  return {
-    guideRaw,
-    // The block the guide was actually written against — the recomputed one when the tool
-    // applied, so provenance matches the numbers the model was bound by.
-    measuredFactsBlock: scopeExclusion?.applied
-      ? measuredFacts(
-          handle,
-          posts
-            .filter((p) => !scopeExclusion.postIds.includes(p.id))
-            .map((p) => p.text ?? "")
-            .filter((t) => t.trim()),
-        )
-      : facts,
-    scopeExclusion,
-    reasoning,
-    thinkingTokens,
-    costUsd,
-    usage: result.usage,
-    generationId,
-    finishReason: result.finishReason ?? null,
-  };
-}
-
 /** One accumulated snapshot of the in-flight stream. Reasoning is separated by the SDK's real
  * model-step boundary: the first step decides scope; a post-tool step writes the guide. This is
  * deliberately not inferred from a text character or a client poll, either of which can split a
@@ -554,16 +482,20 @@ export type ExtractionRawPartObserver = (
 ) => void | Promise<void>;
 
 /**
- * Same extraction call as `extractVoiceGuide` above — byte-identical model/config — but as a
- * `streamText` call instead of `generateText`, so the create-desk path can persist live
- * progress while a single extraction call (adaptive/medium thinking, no output ceiling) runs.
+ * The extraction call. A single `streamText` pass — adaptive/medium thinking, no output
+ * ceiling — so the create-desk path can persist live progress while it runs.
+ *
+ * A non-streaming twin (`extractVoiceGuide`, plain `generateText`) existed alongside this for
+ * a CLI path that had no progress UI to feed. That script shipped its slice and was deleted,
+ * leaving the twin with no caller, so it went too: one extractor, no second copy of the
+ * model/config to keep byte-identical by review.
  * `onProgress` fires on model-step boundaries and every content-bearing reasoning, text, and
  * tool event with the accumulated-so-far snapshot;
  * consuming the stream this way is also what resolves `result.text`/`result.usage`/etc. below,
  * so no separate `consumeStream()` call is needed.
  *
  * `onRawPart` is the unfiltered witness — see `ExtractionRawPartObserver`. Production passes it
- * nothing; `scripts/diagnose-extraction.ts` passes a recorder.
+ * nothing; it exists for a recorder to attach when a stream needs reading part by part.
  */
 export async function extractVoiceGuideStreaming(
   handle: string,
@@ -581,11 +513,8 @@ export async function extractVoiceGuideStreaming(
     system: VOICE_EXTRACT_PROMPT,
     messages: [{ role: "user", content }],
     maxOutputTokens: EXTRACT_MAX_OUTPUT_TOKENS,
-    // Same tool and same ceiling as the one-shot above — the two call shapes must never differ
-    // in what the model can do, only in how the result is consumed.
     tools: scope.tools,
     stopWhen: stepCountIs(MAX_EXTRACTION_STEPS),
-    // Same reasoning as extractVoiceGuide's call above — kept byte-identical on purpose.
     providerOptions: {
       anthropic: { thinking: { type: "adaptive", effort: "medium", display: "summarized" } },
     },

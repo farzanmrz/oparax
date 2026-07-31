@@ -5,7 +5,7 @@
 export type ExtractionReasoningStage = "scope" | "extract";
 export type ExtractionReasoningByStage = Partial<Record<ExtractionReasoningStage, string>>;
 export type ExtractionTextByStage = Partial<Record<ExtractionReasoningStage, string>>;
-export type ExtractionToolActivityState =
+type ExtractionToolActivityState =
   | "input-streaming"
   | "input-available"
   | "output-available"

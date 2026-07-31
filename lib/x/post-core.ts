@@ -10,7 +10,7 @@
 // no user session available, and import this module directly — never through the Action
 // surface.
 import * as Sentry from "@sentry/nextjs";
-import { checkXPostable, resolveXTier } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveXTier, xUnpostableMessage } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createTweet, refreshTokens } from "@/lib/x/api";
 import { getXAccount, updateXTokens } from "@/lib/x/store";
@@ -95,10 +95,7 @@ export async function publishDraftToXForOwner(
   if (!postable.ok) {
     return {
       ok: false,
-      error:
-        postable.reason === "too_long"
-          ? "This draft is over X's length limit and can't be posted as-is."
-          : "This draft isn't valid for X and can't be posted as-is.",
+      error: xUnpostableMessage(postable.reason),
     };
   }
 

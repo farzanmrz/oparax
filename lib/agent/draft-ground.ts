@@ -30,7 +30,7 @@ import { buildSourceMediaParts, type SourceMediaPart } from "./source-media";
 /** Vision-capable and cheap. This call runs on EVERY delivery — including the off-beat ones it
  *  exists to reject — so it is the drafting cost every tracked post pays. Grounding and judging
  *  intentionally share the same model/config while the new Qwen pipeline is exercised. */
-export const GROUND_MODEL = QWEN_DRAFT_MODEL;
+const GROUND_MODEL = QWEN_DRAFT_MODEL;
 
 /** Caps how many images ride along on one grounding call. A post can carry up to 4 media items
  *  on X; this is a ceiling against a pathological payload, not a product limit. */
