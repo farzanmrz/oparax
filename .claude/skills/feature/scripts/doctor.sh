@@ -73,7 +73,7 @@ done
 for f in .codex/hooks/*.sh; do [ -f "$f" ] && { bash -n "$f" 2>/dev/null && ok "hook ok  $(basename "$f")" || bad "hook PARSE FAIL  $f"; }; done
 
 echo "── Grok ──"
-for f in "$HOME/.grok/config.toml" .grok/config.toml; do
+for f in "$HOME/.grok/config.toml"; do
   [ -f "$f" ] || continue
   toml_ok "$f" && ok "valid TOML  ${f/#$HOME/~}" || bad "INVALID  ${f/#$HOME/~}"
 done
