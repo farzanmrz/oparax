@@ -28,6 +28,8 @@ lanes return."
 |---|---|---|
 | Setup scout | one agent, `model: haiku`, `effort: low` | `cx_grounder` |
 | Internal review lane | `bug-finder` — **opus, pinned in the agent**; do not override | `pr_explorer` + `reviewer` |
+| Design critic (UI slices only) | one agent, `model: sonnet`, `effort: high` | the `reviewer` agent with that charter |
+| External council lanes | `codex` + `grok` + `agy` | `grok` + `agy` (no codex lane — that family IS this session) |
 | DB seeding / exploratory Supabase ops | `supabase-runner` (`model: haiku`; sonnet for open-ended) | `cx_supabase_runner` |
 
 ## 1. Setup
