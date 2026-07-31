@@ -4,7 +4,7 @@ set -u
 
 is_protected_ref() {
   case "$1" in
-    refs/heads/main | refs/heads/dev | refs/heads/beta) return 0 ;;
+    refs/heads/main | refs/heads/beta) return 0 ;;
     *) return 1 ;;
   esac
 }

@@ -156,7 +156,7 @@ Built, working, and deliberately off so the shipped flow stays small. Each is ON
 
 `AGENTS.md` is canonical — non-Claude agents read it directly; `CLAUDE.md` is just `@AGENTS.md`. Path-scoped guidance is in `.claude/rules/` (Claude Code only; the four guards other harnesses provably never see are promoted above).
 
-**Branches.** `.githooks/` is the versioned guardrail (`core.hooksPath=.githooks`). `main`, `dev` and `beta` are permanent: never delete or force-update them. The flow cuts from and lands on `beta`; `dev` is protected through a soak with no automated pushes. Vercel maps `beta` → beta.oparax.ai and `main` → oparax.ai; promote strictly `beta` → `main`. App code never lands directly on `beta`/`main` — the one carve-out is owner-directed instruction-file and doc micro-edits.
+**Branches.** `.githooks/` is the versioned guardrail (`core.hooksPath=.githooks`). **`main` and `beta` are the only permanent refs** — never delete or force-update them, and the GitHub ruleset enforces the same pair. `dev` was retired 2026-07-30 (issue #70 Phase 3) once its soak proved nothing still cut from it. Feature slices live on `ft/<issue#>` and are deleted after they ship; a repo with only `main` and `beta` is the normal resting state. Vercel maps `beta` → beta.oparax.ai and `main` → oparax.ai; promote strictly `beta` → `main`. App code never lands directly on `beta`/`main` — the one carve-out is owner-directed instruction-file and doc micro-edits.
 
 **Session continuity is global and branch-agnostic:** `/handoff` writes one checkpoint per session to `~/.claude/handoffs/<session-id>.md`; `/continue <session-id>` resumes it from anywhere. The flow itself persists nothing.
 
