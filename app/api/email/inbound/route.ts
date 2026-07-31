@@ -68,20 +68,45 @@ function stripQuotedHistory(text: string): string {
   return (cutAt === -1 ? lines : lines.slice(0, cutAt)).join("\n").trim();
 }
 
+const ENTITIES: Record<string, string> = {
+  nbsp: " ",
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  "#39": "'",
+  quot: '"',
+};
+
+// Resend hands us the whole message body, so its length is not ours to trust: the two
+// `[^>]*` scans below are O(n²) against input that never closes its tag, and this runs
+// before the 200 ack inside a maxDuration=300 function.
+const MAX_HTML = 1_000_000;
+
 // Crude tag stripper — only reached when Resend returns no plain-text body. No mail-parsing
 // dependency, per the brief.
 function stripHtmlTags(html: string): string {
-  return html
-    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, "")
+  let out = html
+    .slice(0, MAX_HTML)
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&#39;/gi, "'")
-    .replace(/&quot;/gi, '"');
+    .replace(/<\/p>/gi, "\n");
+
+  // A single pass leaves a tag behind when one was split across another (`<scr<script>ipt>`
+  // strips to `<script>`). Bounded iteration to a fixpoint, so a crafted body cannot smuggle
+  // markup through by nesting.
+  for (let i = 0; i < 3; i++) {
+    const next = out.replace(/<[^>]+>/g, "");
+    if (next === out) break;
+    out = next;
+  }
+
+  // One pass over all entities, not a chain: decoding `&amp;` first would feed its own output
+  // into the later rules, so `&amp;lt;` would double-unescape to `<` instead of the literal
+  // `&lt;` the reporter typed.
+  return out.replace(
+    /&(nbsp|amp|lt|gt|#39|quot);/gi,
+    (m, name: string) => ENTITIES[name.toLowerCase()] ?? m,
+  );
 }
 
 // The `email.received` webhook payload carries metadata only (to/subject/email_id) — Resend
@@ -93,9 +118,14 @@ async function fetchReceivedEmailBody(
 ): Promise<{ text: string | null; html: string | null } | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
-  const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
-    headers: { authorization: `Bearer ${apiKey}` },
-  });
+  // Encoded, not interpolated raw: `emailId` comes off the webhook payload, and a value like
+  // `../../domains` would walk this authenticated `Bearer` call onto a different Resend endpoint.
+  const res = await fetch(
+    `https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}`,
+    {
+      headers: { authorization: `Bearer ${apiKey}` },
+    },
+  );
   if (!res.ok) return null;
   const body = (await res.json()) as { text?: string | null; html?: string | null };
   return { text: body.text ?? null, html: body.html ?? null };
@@ -124,9 +154,16 @@ type InboundPayload = {
 // first, attacker-authored bracket win and impersonate the authorized sender. Anchoring to the
 // last bracketed group (the one right before the end of the header) picks the real angle-addr
 // instead.
+//
+// Written with string ops rather than the equivalent `/<([^>]+)>\s*$/`: that regex rescans
+// `[^>]+` from every `<` when the header carries many `<` and no `>`, which is O(n²) over a
+// value we do not length-check. `lastIndexOf` gives the same last-bracketed-group semantics
+// in one pass.
 function extractBareAddress(raw: string): string {
-  const angleMatch = /<([^>]+)>\s*$/.exec(raw);
-  return (angleMatch ? angleMatch[1] : raw).trim().toLowerCase();
+  const s = raw.trim();
+  if (!s.endsWith(">")) return s.toLowerCase();
+  const open = s.lastIndexOf("<");
+  return (open === -1 ? s : s.slice(open + 1, -1)).trim().toLowerCase();
 }
 
 export async function POST(req: Request) {
