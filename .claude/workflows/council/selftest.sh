@@ -48,6 +48,11 @@ Do not review anything. Do not add findings. Do not explain.
 EOF
 )
 
+# Per-family cheap dial. agy's "tier" IS its model slug (the CLI fuses model and
+# effort), so its cheap dial is a flash slug, not an effort word.
+cheap_model() { case "$1" in codex) echo "gpt-5.6-luna" ;; *) echo "" ;; esac; }
+cheap_tier()  { case "$1" in agy) echo "gemini-3.6-flash-high" ;; grok) echo "low" ;; codex) echo "low" ;; esac; }
+
 pass=0; fail=0
 printf '%-7s %-8s %-9s %s\n' FAMILY VERDICT ELAPSED DETAIL
 for fam in "${FAMILIES[@]}"; do
@@ -55,8 +60,14 @@ for fam in "${FAMILIES[@]}"; do
   printf '%s\n' "$BRIEF" > "$SCRATCH/$label.in.txt"
   rm -f "$SCRATCH/$label.out.json"
   start=$SECONDS
+  # CHEAPEST MODEL, LOWEST EFFORT, EVERY FAMILY. This proves the HARNESS — the
+  # wrapper's flags, the schema binding, the output path, the parse — none of
+  # which depend on model quality. Running it at review tier cost 15 minutes a
+  # pass and proved nothing extra. Override per family only to debug.
   CLAUDE_PROJECT_DIR="$REPO" COUNCIL_SCRATCH="$SCRATCH" COUNCIL_SCHEMA="$SCHEMA" \
-    COUNCIL_DEPTH=simple COUNCIL_MODEL="${COUNCIL_MODEL:-}" \
+    COUNCIL_DEPTH=simple \
+    COUNCIL_MODEL="${COUNCIL_MODEL:-$(cheap_model "$fam")}" \
+    COUNCIL_TIER="${COUNCIL_TIER:-$(cheap_tier "$fam")}" \
     bash "$HERE/run.sh" "$fam" "$label" >"$SCRATCH/$label.log" 2>&1
   rc=$?; el=$((SECONDS-start)); out="$SCRATCH/$label.out.json"
 

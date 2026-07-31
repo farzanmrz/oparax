@@ -18,17 +18,40 @@ rm -f "$OUT"
 # DEEP: let grok explore ft/68 at native depth — subagents ON (no --no-subagents), generous --max-turns,
 #       and NO --disallowed-tools (that flag named a non-existent tool anyway; read-only sandbox still
 #       blocks writes/network). SIMPLE: the old no-survey invocation (prompt forbids reads).
+# The lane's ROLE is scoped by an agent profile, not by starving its toolset:
+# .grok/agents/oparax-critic.md sets the critic system prompt, permission_mode:
+# plan (read-only), and agents_md: true. It is passed explicitly rather than
+# left to name-discovery so a rename fails loudly instead of silently falling
+# back to grok's default build agent. Missing file → run without it.
+# The flag is `--agent`, which takes "Agent name or definition file path".
+# NOT `--agent-profile`: the bundled README documents that name, the installed
+# binary (0.2.112) rejects it outright — caught by council/selftest.sh the first
+# time it ran. Pass the path, not the name, so a rename fails loudly instead of
+# silently falling back to grok's default build agent.
+PROFILE="$REPO/.grok/agents/oparax-critic.md"
+PROFILE_ARG=()
+if [ -f "$PROFILE" ]; then PROFILE_ARG=(--agent "$PROFILE"); fi
+
+# Grok still sees Claude's vercel + railway MCP servers: they arrive through the
+# PLUGIN path, which `[compat.claude] mcps = false` does not cover (that cell only
+# governs `.claude.json` entries — supabase/openpets are correctly disabled by it).
+# A read-only critic never deploys or queries infrastructure, so drop those tool
+# schemas per-invocation. `--disallowed-tools` is headless-only, which is exactly
+# where this lane runs.
+# ONE flag, comma-separated: grok rejects a repeated --disallowed-tools outright.
+NO_INFRA_LIST="mcp__vercel__*,mcp__railway__*"
+
 if [ "$DEPTH" = "deep" ]; then
-  # GROK_SUBAGENTS=1: experimental (2026-07-27) — enables grok's native subagent
-  # types (explore/plan/general-purpose) so a deep run may fan out; undocumented
-  # for headless, harmless if ignored. Set GROK_SUBAGENTS=0 to switch off.
+  # GROK_SUBAGENTS=1 enables grok's native explore/plan/general-purpose types so
+  # a deep run can fan out across subsystems; the profile tells it when to.
   GROK_SUBAGENTS="${GROK_SUBAGENTS:-1}" \
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
+       "${PROFILE_ARG[@]}" --disallowed-tools "$NO_INFRA_LIST" \
        --always-approve --effort "$EFF" -m grok-4.5 --max-turns 150 \
        --output-format json > "$raw_out" 2> "$raw_err"
 else
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
-       --disallowed-tools run_terminal_cmd --always-approve --effort "$EFF" -m grok-4.5 \
+       "${PROFILE_ARG[@]}" --disallowed-tools "$NO_INFRA_LIST,run_terminal_cmd" --always-approve --effort "$EFF" -m grok-4.5 \
        --output-format json > "$raw_out" 2> "$raw_err"
 fi
 if jq -e --arg k "$KEY" '

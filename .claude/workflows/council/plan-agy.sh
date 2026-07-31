@@ -48,6 +48,14 @@ rm -f "$OUT" "$OUTFILE_ABS"
 cleanup() { tmux kill-session -t "$SES" 2>/dev/null || true; }
 trap cleanup EXIT
 
+# The critic contract rides in the PROMPT, not in --agent. Measured 2026-07-30:
+# `--agent oparax-critic` works in `--print`, but launching the TUI with it made
+# the session hang past 11 minutes — the wrapper's model-picker dance and a
+# preselected agent do not compose. The subagents (oparax-critic, code-verifier)
+# are still installed at ~/.gemini/config/agents/ so `invoke_subagent` can reach
+# code-verifier mid-run; WORKSPACE .agents/agents/ is inert for this CLI in both
+# documented layouts, so the global dir is the only discovery path that works.
+CRITIC="$REPO/.agents/agents/oparax-critic.md"
 tmux new-session -d -s "$SES" -x 220 -y 50 -c "$REPO" 'agy' || { echo "AGY_FAILED (tmux launch)" >&2; exit 1; }
 sleep 12
 # Trust prompt appears for a not-yet-trusted workspace; "Yes, I trust" is preselected.
@@ -78,8 +86,9 @@ if [ "$EFFORT_PRESSES" -gt 0 ]; then
 fi
 
 PF_ABS="$(cd "$(dirname "$PF")" && pwd)/$(basename "$PF")"
+CRITIC_ABS="$CRITIC"
 SCHEMA_ABS="$(cd "$(dirname "$SCHEMA")" && pwd)/$(basename "$SCHEMA")"
-tmux send-keys -t "$SES" "Read the file $PF_ABS in full — it is a council brief with its own instructions (review, design, or verification). Before analysis, run git rev-parse HEAD in $REPO and require exactly $EXPECTED_HEAD; if it differs, write no findings and report the mismatch. Execute the brief faithfully against the live working tree, never remembered or cached code. Before reporting any file:line finding, confirm the path currently exists and reread that exact current range; a deleted path or stale line invalidates the finding. Ground everything in the actual repository code (use your subagents where useful — .agents/agents/ defines a read-only code-verifier). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
+tmux send-keys -t "$SES" "First read $CRITIC_ABS — it is your standing critic contract for this repo (how to judge, the evidence bar, what counts as a veto). Then read the file $PF_ABS in full — it is a council brief with its own instructions (review, design, or verification). Before analysis, run git rev-parse HEAD in $REPO and require exactly $EXPECTED_HEAD; if it differs, write no findings and report the mismatch. Execute the brief faithfully against the live working tree, never remembered or cached code. Before reporting any file:line finding, confirm the path currently exists and reread that exact current range; a deleted path or stale line invalidates the finding. Ground everything in the actual repository code (invoke_subagent code-verifier is available and read-only — use it to confirm a claim before reporting a finding against it). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
 
 # Poll for the model-written file, then require it stable (agy may write incrementally).
 waited=0; last=-1
