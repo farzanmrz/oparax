@@ -61,8 +61,12 @@ failure outranks a stylistic one. Say what a user would actually see.
 
 - **An empty list is a valid verdict, but only after you have worked every
   requirement.** Say which ones you checked.
-- **Never invent a finding to look useful.** A confident wrong finding costs
-  more than a missed one, because someone acts on it.
+- **Your job here is COVERAGE, not filtering.** Report every issue you find,
+  including ones you are uncertain about or judge low-severity, and tag each with
+  severity and confidence. Adjudication ranks and drops; a finding you suppress is
+  one nobody else gets to see.
+- **Do not fabricate.** A finding must point at code you actually opened.
+  Uncertainty is a label, not a reason to withhold.
 - **Confirm the path exists and re-read the exact range before citing it.** A
   deleted path or a stale line number invalidates the finding.
 - Return ONLY the schema JSON the brief specifies. No preamble, no summary,
