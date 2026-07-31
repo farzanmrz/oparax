@@ -177,7 +177,7 @@ function splitGuideIntoSections(guideDeploy: string): string[] {
  *
  * Splitting heuristic: one rule per `## ` (level-2) section of the deployed guide (heading +
  * its full body kept together), via `splitGuideIntoSections`. This survives every section shape
- * seen across `.voice-lab/guides/*.md` (Identity & Register, Hard Rules — Always/Never,
+ * seen across the extracted guides (Identity & Register, Hard Rules — Always/Never,
  * Formatting, Vocabulary & Phrasing, Situation Templates, Long-form Mode, Representative Posts)
  * without hardcoding any of those section names — so it keeps working if the extraction
  * prompt's section list ever changes — and it never fragments a section's bullets, nested

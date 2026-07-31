@@ -17,7 +17,7 @@
 // guide (auditable), draft from this output — that split is what `voice_guides` provenance
 // depends on, and it must not collapse just because the strip list is momentarily empty. Adding
 // a lab-only section to the extraction prompt means adding its heading here in the same commit.
-// Ported from the lab original (.voice-lab/deploy-guide.py).
+// Ported from the lab's deploy-guide.py and verified byte-identical to it at port time.
 
 /** Sections dropped at deploy. A section runs from its `## Name` heading to the next `## `.
  *  Empty by design — see the file header before adding or removing an entry. */

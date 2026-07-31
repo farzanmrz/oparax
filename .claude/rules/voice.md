@@ -5,9 +5,10 @@ paths:
 
 # The voice pipeline (`lib/voice/`)
 
-Pure, dependency-free functions ported out of the gitignored `.voice-lab/`, verified
-against their originals at port time, so production uses the lab's proven artifacts
-instead of re-deriving them. Rationale and measurements: AGENTS.md's settled decisions.
+Pure, dependency-free functions ported out of the voice lab and verified against their
+originals at port time, so production uses the lab's proven artifacts instead of
+re-deriving them. The lab itself was deleted once every port landed; its measurements
+survive in AGENTS.md's settled decisions, which is what they were for.
 
 ## `deployGuide()` — strip before a guide becomes a prompt
 

@@ -5,7 +5,8 @@
 // over the full corpus cannot. The block this renders is prepended to the extraction input and
 // the extraction prompt's `## MEASURED FACTS` section makes its numbers binding: rules must
 // agree with them, and a glyph absent from an inventory may not be taught.
-// Ported from the lab original (.voice-lab/sdk-lab/extract-fable80.mjs, prompt fable-prod-…-mfacts).
+// Ported from the lab's extract-fable80.mjs (prompt fable-prod-…-mfacts) and verified against
+// it at port time.
 
 // One emoji per match — the `v` flag keeps ZWJ sequences and flag emoji intact (👨‍⚕️, 🇬🇭 count
 // as one). Requires tsconfig `target: ES2024`+ and a `v`-capable runtime (Node ≥20, all
