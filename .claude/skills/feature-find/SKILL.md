@@ -106,20 +106,23 @@ diff → record "no UI surface — design critic skipped".
 
 ## 4. Review council — one combined charter
 
-Every reviewer does ONE deep pass over the whole diff: **correctness bugs +
-cross-file contract breaks + acceptance-criteria compliance + convention
-violations + instruction-file staleness + security (authz, injection,
-secret/token handling, trust boundaries) + concurrency/races + error-path
-handling.** When the diff's behavior composes with a vendored component
-(`components/ui`, `components/ai-elements`), read the relevant vendored code
-too — undiffed does not mean out of scope (a real bug hid in ai-elements'
-Reasoning auto-open, which no diff ever showed). Before launching an external,
-calculate `R` exactly as step 6 does and `HEAD12=$(git rev-parse --short=12
-HEAD)`. Every lane label is `review-r${R}-${HEAD12}-<family>`; write its
-charter + range + criteria + plan-frozen vetoes **+ the distilled guards** to
-the matching `.feature/<label>.in.txt`, and consume only that exact
-`<label>.out.json`. Never glob old `*.out.json` files or reuse an unqualified
-`review-<family>` label.
+Every reviewer does ONE deep pass over the whole diff, covering:
+
+- correctness bugs · cross-file contract breaks · acceptance-criteria compliance
+- convention violations · instruction-file staleness
+- security: authz, injection, secret/token handling, trust boundaries
+- concurrency and races · error-path handling
+
+**Undiffed does not mean out of scope.** Where the diff's behavior composes with
+a vendored component (`components/ui`, `components/ai-elements`), read that code
+too — a real bug hid in ai-elements' Reasoning auto-open, which no diff showed.
+
+**Labels.** Before launching an external, compute `R` exactly as step 6 does and
+`HEAD12=$(git rev-parse --short=12 HEAD)`. Every lane label is
+`review-r${R}-${HEAD12}-<family>`. Write its charter + range + criteria +
+plan-frozen vetoes **+ the distilled guards** to the matching
+`.feature/<label>.in.txt`, and consume only that exact `<label>.out.json`. Never
+glob old `*.out.json` files or reuse an unqualified `review-<family>` label.
 
 **Distilled guards are part of the brief, not a harness setting.** Read every
 `.claude/rules/*.md` whose `paths:` frontmatter matches a file in this diff and
@@ -151,17 +154,10 @@ itself) plus the `grok` and `agy` externals. A failed lane is reported FAILED,
 never as a clean pass; `AGY_EMPTY` is no-signal, not approval. All externals
 failing = single-family review, and the record must say so.
 
-**Judge a lane on POST-FIX behaviour, never on its accumulated failure count.**
-A detach of grok+agy was proposed 2026-07-30 and reversed the same day, because
-each family's failure history predated a wrapper fix that had already landed.
-agy's picker contamination (07-27 — the TUI silently selected Claude Opus 4.6
-and ran a whole round as "agy") was fixed the same day in `f6dc493`, which
-searches the picker row by row, verifies against the status line, and fails
-loudly on no match; agy then returned `ok: 10 critiques` twice on 07-28, and
-issue #79's round records "agy: passed, 3 findings". grok's `GROK_FAILED` runs
-likewise predated its stdout/stderr fix, after which it returned 7 grounded
-findings in 436s including a stale-extraction-run bug the owner had found by
-hand. Retiring either on the pre-fix record would have deleted a working lane.
+**Judge a lane on POST-FIX behaviour, never on its accumulated failure count** —
+a detach of grok+agy was proposed 2026-07-30 and reversed the same day once the
+record was read. The evidence is in `council/run.sh`'s header; don't re-derive
+it. Step 2's self-test is what you rely on instead.
 
 Tier is family-shaped: codex and grok take an EFFORT tier, but **agy's
 `COUNCIL_TIER` is its model slug** (`gemini-3.1-pro-high`), because that CLI

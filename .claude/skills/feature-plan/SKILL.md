@@ -94,34 +94,32 @@ Write the full plan yourself. Charter:
   "Works but ugly" is a spec defect, not an executor defect: QC's design
   critic judges the rendered result against exactly this intent.
 - **Design freedom is `reuse`, always.** Every UI-touching task carries
-  `[design: reuse]`, and the component ladder is binding, in order: existing
-  vendored component (shadcn/ai-elements) → existing bespoke chrome →
-  composition of existing primitives → only then a new component, with a
-  one-line justification for why the ladder failed. No new visual patterns, no
-  new spacing/radius/color decisions — the surface must read as if it was
-  always part of the app. Build executes the intent this plan freezes, and the
-  critic judges against that intent, never its own taste.
-  **States are part of the spec:** enumerate the surface's observable states
-  (pending / streaming-empty / mid-stream / done / each failure), specify
-  intent per state, and keep render paths presentational-pure (props in,
-  pixels out — no timers, no pipeline knowledge) so every state is reachable
-  deterministically. When the repo's dev state-gallery covers (or should
-  cover) the surface, adding/updating its fixtures is a BUILD task in this
-  same slice — the way a schema change carries its migration.
+  `[design: reuse]`. The component ladder is binding, in order: vendored
+  component (shadcn/ai-elements) → existing bespoke chrome → composition of
+  existing primitives → only then something new, with a one-line justification
+  for why the ladder failed. No new visual patterns, no new
+  spacing/radius/color decisions — the surface reads as if it was always part
+  of the app. Build executes the intent this plan freezes; the critic judges
+  against that intent, never its own taste.
+- **States are part of the spec.** Enumerate the surface's observable states
+  (pending / streaming-empty / mid-stream / done / each failure) and specify
+  intent per state. Keep render paths presentational-pure — props in, pixels
+  out, no timers, no pipeline knowledge — so every state is reachable
+  deterministically.
 - **Specificity contract:** every build task names its files, its exact
   interfaces/signatures, and near-code for anything non-obvious — written so a
   sonnet-low executor needs judgment only for implementation nuance (imports,
   adjacent idiom, minor type friction), never for design.
-- **Actor contract — every step names WHO performs it.** A step is either
-  `BUILD` (the executor writes code), `QC` (verified by the QC battery), or
-  `OWNER-MANUAL` (the owner does it by hand — anything in a live/production UI,
-  anything spending real money, anything on the owner's accounts). An
-  `OWNER-MANUAL` step is a handoff: the flow presents it and STOPS; no phase
-  ever performs it, drives a browser toward it, or "sets it up" beyond stating
-  what to do. This is load-bearing: on #72 a plan step reading "manual Post to X
-  in a logged-in production browser session" was absorbed by the build phase,
-  which opened a browser on production and typed login credentials itself.
-  "Manual" without a named actor gets reinterpreted; the label is the fix.
+- **Actor contract — every step names WHO performs it:** `BUILD` (the executor
+  writes code), `QC` (the battery verifies it), or `OWNER-MANUAL` (the owner
+  does it by hand — anything in a live/production UI, anything spending real
+  money, anything on the owner's accounts).
+  **An `OWNER-MANUAL` step is a handoff: the flow presents it and STOPS.** No
+  phase performs it, drives a browser toward it, or "sets it up". This is
+  load-bearing — on #72 a step reading "manual Post to X in a logged-in
+  production browser session" was absorbed by build, which opened a browser on
+  production and typed credentials. "Manual" without a named actor gets
+  reinterpreted; the label is the fix.
 - Sections (unchanged, downstream depends on them): **Definition of done**
   (the ship gate's yardstick) · **Approach** (with the rejected alternatives) ·
   **In scope / Deferred** · **Build steps** (per-task files + the skills each
@@ -143,18 +141,14 @@ its own: the grounding pack from step 3 already distilled the matching
 beats any harness-side rules import (slice-scoped instead of blanket, and it
 works identically for a family with no rules mechanism at all).
 
-**Judge a lane on POST-FIX behaviour, never on its accumulated failure count.**
-A detach of grok+agy was proposed 2026-07-30 and reversed the same day, because
-each family's failure history predated a wrapper fix that had already landed.
-agy's picker contamination — 07-27, where the TUI silently selected Claude Opus
-4.6 and ran a whole round as "agy" — was fixed the same day (`f6dc493`): the
-picker is now searched row by row, verified against the status line, and fails
-loudly on no match. After that fix agy returned `ok: 10 critiques` twice on
-07-28, and issue #79's round records "agy: passed, 3 findings". grok's
-`GROK_FAILED` runs likewise predated its stdout/stderr fix, after which it
-returned 7 grounded findings in 436s. Retiring either on the pre-fix record
-would have deleted a working lane. `agy --print` really is single-shot — that
-is *why* its wrapper drives the TUI, and the TUI is the part that works.
+**Judge a lane on POST-FIX behaviour, never on its accumulated failure count** —
+a detach of grok+agy was proposed 2026-07-30 and reversed the same day once the
+record was read. The evidence is in `council/run.sh`'s header; don't re-derive
+it. Prove the lanes instead of trusting them:
+
+```bash
+bash .claude/workflows/council/selftest.sh
+```
 
 Write each lane's prompt — plan + grounding pack + "verify claims against the
 actual code, cite paths; work requirement by requirement; an empty list is a

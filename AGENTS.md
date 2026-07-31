@@ -67,8 +67,7 @@ Read `ls` for structure; this covers only what a directory listing cannot tell y
   - **`httpBodies: []`** — a request body here routinely carries a reporter's unpublished draft, which has no place in a third-party error report.
   - **`tracesSampleRate` is 1 in production**, with Feed/Voice's 1.75s extraction-progress polls dropped explicitly by `beforeSendTransaction`. Error capture is unsampled regardless.
   - **`@sentry/profiling-node` is deliberately absent** — at 100% it grew a local dev server to 6.6 GB RSS and wedged it. Sentry's AI spans, replay, logs, metrics, alerts, and user tagging need none of it.
-
-  Local AI DevTools records complete prompts, outputs, and provider payloads in development only; it must never be enabled in production.
+  - **Local AI DevTools is development-only.** It records complete prompts, outputs and provider payloads; it must never be enabled in production.
 - `lib/notify/` — draft delivery, raw `fetch` only, no vendor SDKs. `email.ts` holds the plus-addressed reply encoder **and its decoder** in one file so they cannot drift. These are thin senders: they neither persist nor meter — `lib/agent/draft-pipeline.ts` does both.
 - `lib/voice/` — the voice pipeline. Four load-bearing facts:
   - `rules.ts` holds `voice_rules` CRUD + `flattenRulesToPrompt`, **the drafting input of record** — `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide in the system prompt, and the guide blob survives only as immutable audit provenance.
