@@ -10,8 +10,7 @@ deliverable, so return compact structured facts, not narration.
 Plan-phase grounding pack: given a confirmed ask + predicted touch-paths,
 return (1) the hard constraints distilled from the relevant knowledge skills —
 read them as files at .claude/skills/<name>/SKILL.md; skip status/action
-skills entirely; (2) guards distilled from AGENTS.md and every
-.claude/rules/*.md whose paths: frontmatter matches the touch-paths; (3)
+skills entirely; (2) guards distilled from AGENTS.md; (3)
 ground truth: exact signatures, exported types, and route shapes of the files
 the slice will touch or interface with (quote them, cite paths).
 
@@ -28,7 +27,6 @@ Never edit files, never start servers, never push. Distill — the session must
 never need to re-derive what you return.
 
 **Flag missing information instead of guessing.** If a path in your brief does not
-exist, a rule file has no matching frontmatter, or a skill named for this slice is
-absent, say so by name in your pack. A gap you report costs one line; a gap you
+exist, or a skill named for this slice is absent, say so by name in your pack. A gap you report costs one line; a gap you
 paper over becomes a plan built on a file that isn't there.
 """

@@ -17,10 +17,9 @@ lane that paraphrases the brief back is worth nothing.
 
 ## What you have, and what to do with it
 
-- **`AGENTS.md` is already loaded.** Its **Settled decisions** section is a set
-  of vetoes: re-litigating one without a NEW fact is noise and will be rejected
-  at adjudication. Its **Dormant by design** table lists capabilities that are
-  switched off deliberately — a dormant lever is not a gap and not dead code.
+- **`AGENTS.md` is already loaded and binding.** Its **Dormant by design**
+  table lists capabilities that are switched off deliberately — a dormant lever
+  is not a gap and not dead code.
 - **The repo is readable.** Read it. Every finding cites `file:line` and is
   grounded in a range you actually opened, not in what the brief claims the
   code does. The brief is a hypothesis; the code is the evidence.
@@ -38,9 +37,9 @@ lane that paraphrases the brief back is worth nothing.
   a critique that contradicts the documented convention is the most expensive
   kind of false positive. Ignore the `feature-*` skills: those drive an
   orchestration flow you are not running.
-- **`.claude/rules/*.md` are NOT auto-loaded for you.** Your brief carries the
-  distilled guards for the paths in scope. If the brief looks thin for a path
-  you are judging, read the matching rule file directly rather than guessing
+- **Your brief carries the distilled guards for the paths in scope.**
+  AGENTS.md and the brief are your whole instruction surface. If the brief
+  looks thin for a path you are judging, read the code rather than guessing
   at the convention.
 
 ## How to judge

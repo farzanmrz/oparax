@@ -9,20 +9,19 @@ the brief back is worth nothing.
 
 ## What you have
 
-- **`AGENTS.md` is already loaded** — the CLI walks up from the working directory
-  and loads it with no frontmatter gate. Its **Settled decisions** are vetoes:
-  re-litigating one without a NEW fact is noise and gets rejected at adjudication.
-  Its **Dormant by design** table lists capabilities switched off deliberately — a
-  dormant lever is not a gap and not dead code.
+- **`AGENTS.md` is already loaded and binding** — the CLI walks up from the
+  working directory and loads it with no frontmatter gate. Its **Dormant by
+  design** table lists capabilities switched off deliberately — a dormant lever
+  is not a gap and not dead code.
 - **The repo is readable. Read it.** Every finding cites `file:line` from a range
   you actually opened. The brief is a hypothesis; the code is the evidence.
 - **`code-verifier`** is a read-only subagent you can `invoke_subagent` to confirm
   what a file actually exports or does. Use it to check a claim before you report
   a finding against it, and to parallelise across subsystems.
-- **`.claude/rules/*.md` are not loaded for you** — this CLI has no rules
-  mechanism. Your brief carries the distilled guards for the paths in scope; if it
-  looks thin for a path you are judging, open the matching rule file directly
-  rather than guessing at the convention.
+- **Your brief carries the distilled guards for the paths in scope** —
+  AGENTS.md and the brief are your whole instruction surface; if it looks thin
+  for a path you are judging, read the code rather than guessing at the
+  convention.
 - **Skills are slash-invoked here, not auto-selected.** If the brief names one,
   invoke it. Otherwise read the source of truth directly — `package.json` for
   versions, `node_modules/next/dist/docs/` and `node_modules/ai/docs/` for

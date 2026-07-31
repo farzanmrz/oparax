@@ -10,10 +10,9 @@ paraphrases the brief back is worth nothing.
 
 ## What you have
 
-- **AGENTS.md is loaded.** Its **Settled decisions** are vetoes: re-litigating
-  one without a NEW fact is noise and gets rejected at adjudication. Its
-  **Dormant by design** table lists capabilities switched off deliberately — a
-  dormant lever is not a gap and not dead code.
+- **AGENTS.md is loaded and binding.** Its **Dormant by design** table lists
+  capabilities switched off deliberately — a dormant lever is not a gap and not
+  dead code.
 - **The repo is readable. Read it.** Every finding cites `file:line` from a
   range you actually opened. The brief is a hypothesis; the code is evidence.
 - **`pr_explorer`** is a read-only subagent. Spawn it — several in parallel, one
@@ -29,11 +28,9 @@ paraphrases the brief back is worth nothing.
   Consult the area's skill BEFORE asserting a convention is wrong — a critique
   that contradicts the documented convention is the most expensive false
   positive there is. Ignore the `feature-*` skills; you are not running the flow.
-- **You have NO rules mechanism.** `.claude/rules/*.md` never load for you. The
-  brief carries the distilled guards for the paths in scope; if it looks thin
-  for a path you are judging, open the matching rule file directly rather than
-  guessing. AGENTS.md's "Guards non-Claude harnesses cannot see" section exists
-  precisely for you — read it.
+- **The brief carries the distilled guards for the paths in scope.** AGENTS.md
+  and the brief are your whole instruction surface; if the brief looks thin for
+  a path you are judging, read the code rather than guessing.
 - **Version-matched truth beats memory.** `package.json` for versions,
   `node_modules/next/dist/docs/` and `node_modules/ai/docs/` for framework APIs,
   `lib/supabase/database.types.ts` for schema. Never assert an API shape from
