@@ -37,7 +37,7 @@ table, never in a second file.
 | Session dial | owner's top dial (opus/fable, high) | `gpt-5.6-sol` high — set with `/model` before starting |
 | Thinking gate (step 2) | `/first-principles-thinking` | `$first-principles-thinking` — same skill, mirrored into `.agents/skills` |
 | Grounding pack (step 3) | one agent, `model: sonnet`, `effort: low` | `cx_grounder` (pinned cheap + read-only in its TOML) |
-| Critique (step 5) | both externals: `codex` + `grok` | `grok` + `agy` externals + the native `reviewer` agent (`.codex/agents/reviewer.toml` — the oparax critic contract, spawning `pr_explorer` for evidence). The codex family's perspective IS this session, so it never launches a codex lane against itself. **Spawn `reviewer` explicitly** — Codex never delegates off a description. |
+| Critique (step 5) | all three externals: `codex` + `grok` + `agy` | `grok` + `agy` externals + the native `reviewer` agent (`.codex/agents/reviewer.toml` — the oparax critic contract, spawning `pr_explorer` for evidence). The codex family's perspective IS this session, so it never launches a codex lane against itself. **Spawn `reviewer` explicitly** — Codex never delegates off a description. |
 | Close (step 7) | same `start.sh` invocation | same `start.sh` invocation |
 
 ## 1. Preflight

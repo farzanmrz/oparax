@@ -6,3 +6,18 @@ ignoredBuiltDependencies:
   - core-js
   - msw
   - sharp
+
+# Transitive-only security pins. Each closes an advisory that no direct-dependency
+# upgrade reaches, because the parent still declares the vulnerable range:
+#   @hono/node-server  <2.0.5   path traversal in serve-static   (via @ai-sdk/devtools)
+#   linkify-it         <5.0.2   quadratic-complexity DoS         (via ansi-to-react, pinned ^3.0.3)
+#   postcss            <8.5.18  path traversal + arbitrary read  (via next, @tailwindcss/postcss)
+#   sharp              <0.35.0  inherited libvips CVEs           (via next)
+# This is the file pnpm 10 reads them from — a `pnpm.overrides` block in package.json
+# is silently IGNORED (it warns on `pnpm audit`, not on install).
+# Drop an entry once its parent's own range clears the advisory — verify with `pnpm audit`.
+overrides:
+  "@hono/node-server": "^2.0.12"
+  linkify-it: "^5.0.2"
+  postcss: "^8.5.25"
+  sharp: "^0.35.3"

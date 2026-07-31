@@ -114,7 +114,25 @@ for name,p in lanes.items():
         print(f"  \033[31m✗\033[0m critic lane unreadable: {p}"); bad=1; continue
     for pat in need:
         if not re.search(pat,t): print(f"  \033[31m✗\033[0m {name} missing contract element: {pat}"); bad=1
-# 3. dials tables must not contradict an agent's pinned model
+# 3. a skill's dials table must name every council lane its body actually launches
+for f in glob.glob('.claude/skills/*/SKILL.md'):
+    body=open(f,encoding='utf-8',errors='replace').read()
+    launched={m for m in re.findall(r'run\.sh (codex|grok|agy)\b', body)}
+    if not launched: continue
+    for line in body.splitlines():
+        if '| Critique' not in line and '| Review council' not in line: continue
+        # A dials row has TWO columns. Checking the whole line lets the Codex column
+        # mask an omission in the Claude one — that exact false negative hid a stale
+        # "both externals: codex + grok" row while the body launched three.
+        cols=[c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cols)<2: continue
+        claude_col=cols[1]
+        # Codex never launches a codex lane against itself, so exclude it from that column.
+        named={fam for fam in ('codex','grok','agy') if fam in claude_col}
+        missing=launched-named
+        if missing:
+            print(f"  \033[31m✗\033[0m {f}: Claude dials column omits {sorted(missing)} but the body launches them"); bad=1
+# 4. dials tables must not contradict an agent's pinned model
 pins={}
 for f in glob.glob('.claude/agents/*.md'):
     m=re.search(r'^---\n(.*?)\n---',open(f).read(),re.S)
