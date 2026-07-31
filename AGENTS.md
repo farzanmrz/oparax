@@ -26,7 +26,7 @@ Ordinary `package.json` scripts (`pnpm dev` serves :3000). Never run `pnpm forma
 
 ### Environment
 
-`.env.local`, fifteen keys, plus `SENTRY_AUTH_TOKEN` in its own gitignored `.env.sentry-build-plugin` (build-time source-map upload only — without it a deployed stack trace is minified and nothing else breaks). Supabase dashboard-side config: `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
+`.env.local`, sixteen keys — including `SENTRY_AUTH_TOKEN`, which the Sentry wizard puts in its own `.env.sentry-build-plugin` and which its own header says may live in an ordinary `.env` file instead. It is build-time only: without it a deployed stack trace is minified and nothing else breaks. Supabase dashboard-side config: `.claude/rules/supabase.md`. Frontend test login: `testuser@oparax.ai` / `hello123`.
 
 | Key | Consumed by |
 | --- | --- |

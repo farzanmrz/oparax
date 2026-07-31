@@ -38,7 +38,7 @@ STAMP="$(git -C "$REPO" rev-parse --git-dir 2>/dev/null || echo .git)/council-se
 fingerprint() {
   {
     cat "$HERE"/*.sh "$HERE"/../qc-findings-schema.json 2>/dev/null
-    cat "$REPO/.grok/agents/oparax-critic.md" "$REPO/.grok/config.toml" 2>/dev/null
+    cat "$REPO/.grok/agents/oparax-critic.md" 2>/dev/null
     cat "$REPO/.agents/agents/oparax-critic.md" 2>/dev/null
     cat "$REPO/.codex/agents/"*.toml 2>/dev/null
     grok --version 2>/dev/null; codex --version 2>/dev/null; agy --version 2>/dev/null
