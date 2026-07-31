@@ -148,9 +148,11 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
 ```
 
 Claude Code runs THREE externals — `codex` (`COUNCIL_MODEL=gpt-5.6-sol`),
-`grok`, and `agy` — plus the internal lane. Codex runs its native
-`reviewer`/`pr_explorer` pair (the codex family's perspective is the session
-itself) plus the `grok` and `agy` externals. A failed lane is reported FAILED,
+`grok`, and `agy` — plus the internal lane. Codex runs its native `reviewer`
+(`.codex/agents/reviewer.toml` carries the same oparax critic contract as the
+grok and agy lanes) spawning `pr_explorer` for evidence — **named explicitly,
+since Codex never delegates off a description** — plus the `grok` and `agy`
+externals. The codex family's perspective is the session itself. A failed lane is reported FAILED,
 never as a clean pass; `AGY_EMPTY` is no-signal, not approval. All externals
 failing = single-family review, and the record must say so.
 
