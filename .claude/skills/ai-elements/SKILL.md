@@ -113,7 +113,7 @@ Make sure your project is configured correctly for shadcn/ui in Tailwind 4 - thi
 
 ### I ran the AI Elements CLI but nothing was added to my project
 
-Double-check that:
+Check that:
 
 - Your current working directory is the root of your project (where `package.json` lives).
 - Your components.json file (if using shadcn-style config) is set up correctly.
