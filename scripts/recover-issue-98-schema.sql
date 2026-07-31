@@ -85,13 +85,14 @@ declare
   new_name text;
 begin
   for item in
-    select c.oid::regclass::text as relation_name, conname
+    select r.relname as relation_name, conname
     from pg_constraint c
+    join pg_class r on r.oid = c.conrelid
     where connamespace = 'public'::regnamespace
       and (conname like '%agent%' or conname like 'drafts_%')
   loop
     new_name := replace(replace(replace(item.conname, 'drafts', 'post_drafts'), 'agents', 'experiments'), 'agent', 'experiment');
-    execute format('alter table %s rename constraint %I to %I', item.relation_name, item.conname, new_name);
+    execute format('alter table public.%I rename constraint %I to %I', item.relation_name, item.conname, new_name);
   end loop;
   for item in
     select schemaname, indexname

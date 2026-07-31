@@ -262,9 +262,9 @@ $rename_columns$;
 do $rename_objects$
 declare item record; new_name text;
 begin
-  for item in select c.oid::regclass::text relation_name, conname from pg_constraint c where connamespace = 'public'::regnamespace and (conname like '%experiment%' or conname like 'experiments_%' or conname like 'post_drafts_%') loop
+  for item in select r.relname as relation_name, conname from pg_constraint c join pg_class r on r.oid = c.conrelid where connamespace = 'public'::regnamespace and (conname like '%experiment%' or conname like 'experiments_%' or conname like 'post_drafts_%') loop
     new_name := replace(replace(replace(item.conname, 'post_drafts', 'drafts'), 'experiments', 'agents'), 'experiment', 'agent');
-    execute format('alter table %s rename constraint %I to %I', item.relation_name, item.conname, new_name);
+    execute format('alter table public.%I rename constraint %I to %I', item.relation_name, item.conname, new_name);
   end loop;
   for item in select schemaname, indexname from pg_indexes where schemaname = 'public' and (indexname like '%experiment%' or indexname like 'experiments_%' or indexname like 'post_drafts_%') loop
     new_name := replace(replace(replace(item.indexname, 'post_drafts', 'drafts'), 'experiments', 'agents'), 'experiment', 'agent');
