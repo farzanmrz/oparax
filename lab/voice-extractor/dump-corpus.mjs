@@ -66,7 +66,15 @@ const lines = rows.map((p) => {
   return `[${p.x_post_id}] ${date} ${p.is_long ? "LONG " : ""}(♥${p.like_count} ↻${p.repost_count})${mediaMark}: ${p.text}`;
 });
 
-if (process.argv[2] === "bare") {
+if (process.argv[2] === "message") {
+  // Full ready-to-paste Workbench user message: reporter + beat + tagged corpus.
+  const bare = rows
+    .map((p) => `<post date="${p.posted_at.slice(0, 10)}">\n${p.text}\n</post>`)
+    .join("\n\n");
+  process.stdout.write(
+    `<reporter>@${HANDLE}</reporter>\n\n<beat>\n${BEAT}\n</beat>\n\n<corpus>\n${bare}\n</corpus>\n`,
+  );
+} else if (process.argv[2] === "bare") {
   const bare = rows
     .map((p) => `<post date="${p.posted_at.slice(0, 10)}">\n${p.text}\n</post>`)
     .join("\n\n");
