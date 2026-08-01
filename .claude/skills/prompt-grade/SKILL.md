@@ -38,7 +38,8 @@ and neither contract applies to the other's artifact.
 
 ## 1. Fetch
 
-* WebFetch both pages. Read ONLY the sections named in phase 2.
+* Fetch both pages (WebFetch in Claude Code; any URL fetch in Codex). Read
+  ONLY the sections named in phase 2.
 
 ```
 https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md
