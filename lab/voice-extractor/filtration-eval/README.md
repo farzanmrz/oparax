@@ -21,6 +21,8 @@ The 93.71% result contains no extractor output or filtration guidance. The extra
 
 - `runs/link-enriched-baseline/`: link-enriched control, 1,243/1,336 correct (93.04%).
 - `runs/full-link-enriched-bio/`: the same pipeline plus source bio, 1,252/1,336 correct (93.71%).
+- `runs/full-link-enriched-bio-high-reasoning/`: the same complete pipeline with both translation and filtration reasoning raised to high, 1,247/1,336 correct (93.34%). It fixed 14 baseline errors and regressed 19 correct baseline decisions, so medium reasoning remains the control.
+- `high-reasoning-ablation.json`: paired metrics, language breakdown, usage, and cost for that reasoning ablation.
 - `bio-link-enrichment-comparison.json`: paired bio improvements and regressions.
 - `search-trigger-study.json`: five difficult media examples run with optional and forced web search.
 - `single-search-budget-study.json`: the same five examples using a code-enforced Qwen gate, at most one Sonar grounding request, and a final Qwen verdict.

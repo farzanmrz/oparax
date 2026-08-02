@@ -33,6 +33,7 @@ const DEFAULTS = {
   attempts: 2,
   timeoutMs: 120_000,
   temperature: 0,
+  reasoning: "medium",
   handle: "ReshadRahman",
   beat: "I want to monitor all news around FC Barcelona.",
   extractorModel: "anthropic/claude-sonnet-5",
@@ -139,6 +140,7 @@ function parseArgs(argv) {
     } else if (argument === "--timeout-ms") {
       options.timeoutMs = parsePositiveInteger(argument, next());
     } else if (argument === "--temperature") options.temperature = parseTemperature(next());
+    else if (argument === "--reasoning") options.reasoning = next();
     else if (argument === "--handle") options.handle = next().replace(/^@/, "");
     else if (argument === "--beat") options.beat = next();
     else if (argument === "--extractor-model") options.extractorModel = next();
@@ -164,6 +166,7 @@ Options:
   --attempts <n>          Whole-call attempts after SDK transport retries (default: 2)
   --timeout-ms <n>        Per-call timeout (default: 120000)
   --temperature <n>       Qwen sampling temperature (default: 0)
+  --reasoning <effort>    Qwen reasoning effort (default: medium)
   --extract-only          Run the extractor and stop before Qwen
   --guidance <path>       Skip extraction and use an existing guidance file
   --no-guidance           Skip extraction; use only the reporter's raw beat as the baseline
@@ -183,6 +186,9 @@ Options:
 
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(options.run)) {
     throw new Error("--run may contain only letters, digits, dot, underscore, and hyphen");
+  }
+  if (!["minimal", "low", "medium", "high"].includes(options.reasoning)) {
+    throw new Error("--reasoning must be minimal, low, medium, or high");
   }
   if (options.noGuidance && options.guidance) {
     throw new Error("--no-guidance and --guidance cannot be used together");
@@ -481,7 +487,7 @@ async function classify(
         }),
         tools: searchTools,
         stopWhen: searchTools ? stepCountIs(2) : undefined,
-        reasoning: "medium",
+        reasoning: options.reasoning,
         temperature: options.temperature,
         maxOutputTokens: 1_024,
         maxRetries: 3,
@@ -682,6 +688,7 @@ async function main() {
     attempts: options.attempts,
     timeoutMs: options.timeoutMs,
     temperature: options.temperature,
+    reasoning: options.reasoning,
     benchmarkRows: benchmark.length,
     benchmarkSha256: hash(readFileSync(benchmarkPath)),
     suppliedGuidanceSha256: suppliedGuidance === null ? null : hash(suppliedGuidance),
@@ -719,6 +726,7 @@ async function main() {
       "extractorModel",
       "classifierModel",
       "temperature",
+      "reasoning",
       "benchmarkRows",
       "benchmarkSha256",
       "suppliedGuidanceSha256",

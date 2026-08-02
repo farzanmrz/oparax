@@ -27,6 +27,7 @@ const DEFAULTS = {
   attempts: 2,
   timeoutMs: 120_000,
   temperature: 0,
+  reasoning: "medium",
   model: "alibaba/qwen3.7-flash",
 };
 
@@ -98,6 +99,7 @@ function parseArgs(argv) {
     else if (argument === "--timeout-ms") {
       options.timeoutMs = positiveInteger(argument, next());
     } else if (argument === "--temperature") options.temperature = Number(next());
+    else if (argument === "--reasoning") options.reasoning = next();
     else if (argument === "--model") options.model = next();
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -106,6 +108,9 @@ function parseArgs(argv) {
   }
   if (!Number.isFinite(options.temperature) || options.temperature < 0 || options.temperature > 2) {
     throw new Error("--temperature must be between 0 and 2");
+  }
+  if (!["minimal", "low", "medium", "high"].includes(options.reasoning)) {
+    throw new Error("--reasoning must be minimal, low, medium, or high");
   }
   return options;
 }
@@ -129,7 +134,7 @@ async function translate(row, system, options) {
         system,
         messages: [{ role: "user", content: [{ type: "text", text: buildContent(row) }] }],
         output: Output.object({ name: "Translation", schema: translationSchema }),
-        reasoning: "medium",
+        reasoning: options.reasoning,
         temperature: options.temperature,
         maxOutputTokens: 1_024,
         maxRetries: 3,
@@ -189,6 +194,7 @@ async function main() {
     attempts: options.attempts,
     timeoutMs: options.timeoutMs,
     temperature: options.temperature,
+    reasoning: options.reasoning,
     benchmarkRows: benchmark.length,
     benchmarkSha256: hash(readFileSync(benchmarkPath)),
     prompt: "translator-prompt.md",
@@ -201,6 +207,7 @@ async function main() {
     for (const key of [
       "model",
       "temperature",
+      "reasoning",
       "benchmarkRows",
       "benchmarkSha256",
       "promptSha256",
