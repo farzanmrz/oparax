@@ -1,2 +1,10 @@
 runs/*
 !runs/.gitkeep
+translation-runs/*
+!translation-runs/shared-qwen-independent/
+!translation-runs/shared-qwen-independent/**
+*-ablation.json
+*-comparison.json
+*-study.json
+*-study-summary.json
+search-gate-full-corpus-analysis.json
