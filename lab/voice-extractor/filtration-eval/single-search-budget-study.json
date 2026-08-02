@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-08-02T07:42:13.915Z",
+  "architecture": "Qwen gate -> at most one Sonar grounded request -> Qwen final verdict",
+  "rows": 5,
+  "correct": 4,
+  "searchRequests": 5,
+  "totalCostUsd": 0.02753951,
+  "results": [
+    {
+      "postId": "1698244914826424730",
+      "sourceHandle": "barcacentre",
+      "expectedOnBeat": true,
+      "bioWithoutSearchOnBeat": false,
+      "requestedSearch": true,
+      "searchQuery": "FC Barcelona news September 2023",
+      "searchRequests": 1,
+      "grounding": "Verified facts: the source account is **@barcacentre**, which states it provides **FC Barcelona coverage** in its profile, and the post was published on **2023-09-03** with the text “What a picture this is… 🐅”. The attached image shows a football celebration in a stadium, and the tiger emoji plus Barça-focused source make an FC Barcelona connection plausible, but the image itself does **not directly identify FC Barcelona**.",
+      "gateOnBeat": false,
+      "gateReasoning": "The post is from @barcacentre, which covers FC Barcelona. However, the image shows a player in a red jersey with 'Esportes da Sorte' sponsor, which is not a Barcelona kit. This appears to be a player from another team (possibly a Brazilian team given the sponsor). The post doesn't seem directly related to FC Barcelona news. I should search to see if there's any connection to Barcelona, such as a transfer rumor or a player who might be linked to the club.",
+      "predictedOnBeat": false,
+      "reasoning": "The source account @barcacentre provides FC Barcelona coverage, but the image shows a player in a red and black kit with 'Esportes da Sorte' sponsor, which is not FC Barcelona's kit (FC Barcelona wears blue and red stripes). The web_grounding also notes that the image does not directly identify FC Barcelona. The player appears to be celebrating a goal, possibly for a Brazilian team given the sponsor. Therefore, this post is not directly about FC Barcelona news.",
+      "correct": false,
+      "costUsd": {
+        "gateQwen": 0.0000835,
+        "groundedSonar": 0.00532,
+        "finalQwen": 0.00007783,
+        "total": 0.00548133
+      }
+    },
+    {
+      "postId": "1961918335953584266",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "bioWithoutSearchOnBeat": true,
+      "requestedSearch": true,
+      "searchQuery": "Joao Neves hat trick Barcelona Toulouse 2025",
+      "searchRequests": 1,
+      "grounding": "Verified facts: João Neves scored a hat-trick for Paris Saint-Germain in a 6-3 win over Toulouse on August 30, 2025, and the post’s wording/image match that match context[1][8]. The post does **not** concern FC Barcelona; Barcelona is only an inferred distractor from the user prompt, not supported by the evidence[1][8].",
+      "gateOnBeat": true,
+      "gateReasoning": "The post is about João Neves scoring a hat trick (triple) for FC Barcelona against Toulouse. This is directly related to FC Barcelona news. I should search for more details about this match and João Neves' performance to provide comprehensive monitoring.",
+      "predictedOnBeat": false,
+      "reasoning": "The user wants to monitor news around FC Barcelona. The provided source is from @footmercato and discusses João Neves scoring a hat-trick for Paris Saint-Germain (PSG) against Toulouse. The web grounding explicitly states that the post does not concern FC Barcelona and that Barcelona is only an inferred distractor from the user prompt. Therefore, this news is not relevant to the FC Barcelona beat.",
+      "correct": true,
+      "costUsd": {
+        "gateQwen": 0.00007428,
+        "groundedSonar": 0.00545,
+        "finalQwen": 0.00007732,
+        "total": 0.0056016
+      }
+    },
+    {
+      "postId": "1895781015362425188",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "bioWithoutSearchOnBeat": true,
+      "requestedSearch": true,
+      "searchQuery": "Karim Benzema Champions League retirement 2025",
+      "searchRequests": 1,
+      "grounding": "Verified facts: the post is about Karim Benzema and his Champions League presence/retirement, with no explicit mention of FC Barcelona in the text or image. The only Barcelona-related connection is indirect inference: Benzema is a former Real Madrid player, and Barcelona is a rival club, but that does not make the post Barcelona-focused.\n\nInference: this is **not** a FC Barcelona post; it is a Benzema/Champions League tribute or retirement-related post.",
+      "gateOnBeat": true,
+      "gateReasoning": "The post is about Karim Benzema retiring from the Champions League, which is directly related to FC Barcelona as he played for them and is a major football figure. I should search for more details about this news to provide comprehensive information about FC Barcelona's connection to this story.",
+      "predictedOnBeat": false,
+      "reasoning": "The post is about Karim Benzema and his retirement/absence from the Champions League. While Benzema is a former Real Madrid player and Barcelona is a rival, the post itself is not about FC Barcelona, nor does it mention Barcelona. It is a tribute to Benzema's Champions League career. Therefore, it is not on the beat of monitoring FC Barcelona news.",
+      "correct": true,
+      "costUsd": {
+        "gateQwen": 0.0000731,
+        "groundedSonar": 0.00539,
+        "finalQwen": 0.00007406,
+        "total": 0.00553716
+      }
+    },
+    {
+      "postId": "1664042755293601792",
+      "sourceHandle": "talkfcb_",
+      "expectedOnBeat": false,
+      "bioWithoutSearchOnBeat": true,
+      "requestedSearch": true,
+      "searchQuery": "Lautaro Martinez no look penalty European final Argentina",
+      "searchRequests": 1,
+      "grounding": "Verified facts: the post refers to Lautaro Martínez taking a penalty in a European final, which matches the 2023 UEFA Champions League final between Inter Milan and Manchester City[2][9][14]. The wording does **not** mention FC Barcelona, and the image/context shown is about that final, not Barcelona[2][9][14].\n\nInference: this post is **not about FC Barcelona**; at most, it is a generic football clip/commentary involving an Argentine player, with no direct Barcelona link in the post itself.",
+      "gateOnBeat": false,
+      "gateReasoning": "The post is from @talkfcb_ about Lautaro Martinez scoring a no-look penalty in a European final. However, this appears to be about the Argentina vs Italy UEFA Nations League final (June 2021), not an FC Barcelona related event. Lautaro Martinez plays for Inter Milan, not Barcelona. The post is from May 31, 2023, but the event described (no-look penalty in European final) happened in 2021. This is not FC Barcelona news, so I need to search to verify if there's any Barcelona connection or if this is just a general football post being shared by a Barcelona fan account.",
+      "predictedOnBeat": false,
+      "reasoning": "The user wants to monitor news around FC Barcelona. The provided post is from @talkfcb_ but discusses Lautaro Martínez taking a penalty in the 2023 UEFA Champions League final between Inter Milan and Manchester City. The web grounding explicitly states that the post does not mention FC Barcelona and is not about FC Barcelona. Therefore, this post is not on beat for monitoring FC Barcelona news.",
+      "correct": true,
+      "costUsd": {
+        "gateQwen": 0.00007289,
+        "groundedSonar": 0.00534,
+        "finalQwen": 0.00005483,
+        "total": 0.00546772
+      }
+    },
+    {
+      "postId": "1599446756387061760",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "bioWithoutSearchOnBeat": false,
+      "requestedSearch": true,
+      "searchQuery": "FC Barcelona Mbappe news December 2022",
+      "searchRequests": 1,
+      "grounding": "Verified facts: the post is from Foot Mercato on 2022-12-04 and the visible image shows Kylian Mbappé in a France shirt, with “MBAPPÉ 10” on the back; the caption says only “One word to describe him...”. There is no direct evidence in the post that it concerns FC Barcelona.\n\nInference: this looks like a general Mbappé post, not a Barcelona-specific post.",
+      "gateOnBeat": true,
+      "gateReasoning": "The post is from @footmercato about Mbappe (visible in the image with France jersey #10). Given the user wants to monitor FC Barcelona news, and Mbappe was a major transfer target for Barcelona around December 2022 (this post is from Dec 4, 2022), I need to search for recent Barcelona-Mbappe news to provide relevant updates.",
+      "predictedOnBeat": false,
+      "reasoning": "The post is from Foot Mercato and features Kylian Mbappé in a France national team jersey (Qatar 2022 World Cup). The caption is 'One word to describe him...' and there is no mention or connection to FC Barcelona. The web_grounding also confirms there is no direct evidence that it concerns FC Barcelona. Therefore, this is not on-beat for monitoring FC Barcelona news.",
+      "correct": true,
+      "costUsd": {
+        "gateQwen": 0.00007826,
+        "groundedSonar": 0.0053,
+        "finalQwen": 0.00007344,
+        "total": 0.0054517
+      }
+    }
+  ]
+}

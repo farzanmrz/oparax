@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-08-02T05:05:21.021Z",
+  "requested": 1336,
+  "completed": 1336,
+  "missing": 0,
+  "modelCalls": 458,
+  "requiredTranslations": 382,
+  "requiredPresent": 382,
+  "undRows": 76,
+  "undTranslated": 4,
+  "usage": {
+    "inputTokens": 141436,
+    "outputTokens": 561395,
+    "costUsd": 0.0772244300000001,
+    "callsWithCost": 458
+  }
+}

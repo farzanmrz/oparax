@@ -1,0 +1,42 @@
+{
+  "total": 1336,
+  "shardCount": 6,
+  "assignments": [
+    {
+      "shard": "001",
+      "rows": 223,
+      "input": "language-shards/shard-001.jsonl",
+      "output": "language-labels/shard-001.jsonl"
+    },
+    {
+      "shard": "002",
+      "rows": 223,
+      "input": "language-shards/shard-002.jsonl",
+      "output": "language-labels/shard-002.jsonl"
+    },
+    {
+      "shard": "003",
+      "rows": 223,
+      "input": "language-shards/shard-003.jsonl",
+      "output": "language-labels/shard-003.jsonl"
+    },
+    {
+      "shard": "004",
+      "rows": 223,
+      "input": "language-shards/shard-004.jsonl",
+      "output": "language-labels/shard-004.jsonl"
+    },
+    {
+      "shard": "005",
+      "rows": 222,
+      "input": "language-shards/shard-005.jsonl",
+      "output": "language-labels/shard-005.jsonl"
+    },
+    {
+      "shard": "006",
+      "rows": 222,
+      "input": "language-shards/shard-006.jsonl",
+      "output": "language-labels/shard-006.jsonl"
+    }
+  ]
+}

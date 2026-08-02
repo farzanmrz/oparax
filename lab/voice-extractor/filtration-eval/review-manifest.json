@@ -1,0 +1,465 @@
+{
+  "generatedAt": "2026-08-02T01:38:36.982Z",
+  "source": "lab/voice-extractor/filtration-eval/golden-labels.jsonl",
+  "reviewContext": "lab/voice-extractor/filtration-eval/review-context.jsonl",
+  "totalRows": 1488,
+  "shardCount": 50,
+  "split": {
+    "baseRowsPerShard": 29,
+    "largerShards": 38,
+    "largerShardSize": 30,
+    "remainingShardSize": 29
+  },
+  "shards": [
+    {
+      "shard": 1,
+      "rowStart": 1,
+      "rowEnd": 30,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-001.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-001.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-001.reviewed.jsonl"
+    },
+    {
+      "shard": 2,
+      "rowStart": 31,
+      "rowEnd": 60,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-002.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-002.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-002.reviewed.jsonl"
+    },
+    {
+      "shard": 3,
+      "rowStart": 61,
+      "rowEnd": 90,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-003.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-003.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-003.reviewed.jsonl"
+    },
+    {
+      "shard": 4,
+      "rowStart": 91,
+      "rowEnd": 120,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-004.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-004.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-004.reviewed.jsonl"
+    },
+    {
+      "shard": 5,
+      "rowStart": 121,
+      "rowEnd": 150,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-005.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-005.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-005.reviewed.jsonl"
+    },
+    {
+      "shard": 6,
+      "rowStart": 151,
+      "rowEnd": 180,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-006.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-006.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-006.reviewed.jsonl"
+    },
+    {
+      "shard": 7,
+      "rowStart": 181,
+      "rowEnd": 210,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-007.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-007.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-007.reviewed.jsonl"
+    },
+    {
+      "shard": 8,
+      "rowStart": 211,
+      "rowEnd": 240,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-008.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-008.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-008.reviewed.jsonl"
+    },
+    {
+      "shard": 9,
+      "rowStart": 241,
+      "rowEnd": 270,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-009.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-009.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-009.reviewed.jsonl"
+    },
+    {
+      "shard": 10,
+      "rowStart": 271,
+      "rowEnd": 300,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-010.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-010.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-010.reviewed.jsonl"
+    },
+    {
+      "shard": 11,
+      "rowStart": 301,
+      "rowEnd": 330,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-011.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-011.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-011.reviewed.jsonl"
+    },
+    {
+      "shard": 12,
+      "rowStart": 331,
+      "rowEnd": 360,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-012.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-012.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-012.reviewed.jsonl"
+    },
+    {
+      "shard": 13,
+      "rowStart": 361,
+      "rowEnd": 390,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-013.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-013.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-013.reviewed.jsonl"
+    },
+    {
+      "shard": 14,
+      "rowStart": 391,
+      "rowEnd": 420,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-014.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-014.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-014.reviewed.jsonl"
+    },
+    {
+      "shard": 15,
+      "rowStart": 421,
+      "rowEnd": 450,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-015.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-015.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-015.reviewed.jsonl"
+    },
+    {
+      "shard": 16,
+      "rowStart": 451,
+      "rowEnd": 480,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-016.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-016.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-016.reviewed.jsonl"
+    },
+    {
+      "shard": 17,
+      "rowStart": 481,
+      "rowEnd": 510,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-017.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-017.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-017.reviewed.jsonl"
+    },
+    {
+      "shard": 18,
+      "rowStart": 511,
+      "rowEnd": 540,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-018.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-018.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-018.reviewed.jsonl"
+    },
+    {
+      "shard": 19,
+      "rowStart": 541,
+      "rowEnd": 570,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-019.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-019.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-019.reviewed.jsonl"
+    },
+    {
+      "shard": 20,
+      "rowStart": 571,
+      "rowEnd": 600,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-020.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-020.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-020.reviewed.jsonl"
+    },
+    {
+      "shard": 21,
+      "rowStart": 601,
+      "rowEnd": 630,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-021.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-021.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-021.reviewed.jsonl"
+    },
+    {
+      "shard": 22,
+      "rowStart": 631,
+      "rowEnd": 660,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-022.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-022.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-022.reviewed.jsonl"
+    },
+    {
+      "shard": 23,
+      "rowStart": 661,
+      "rowEnd": 690,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-023.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-023.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-023.reviewed.jsonl"
+    },
+    {
+      "shard": 24,
+      "rowStart": 691,
+      "rowEnd": 720,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-024.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-024.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-024.reviewed.jsonl"
+    },
+    {
+      "shard": 25,
+      "rowStart": 721,
+      "rowEnd": 750,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-025.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-025.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-025.reviewed.jsonl"
+    },
+    {
+      "shard": 26,
+      "rowStart": 751,
+      "rowEnd": 780,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-026.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-026.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-026.reviewed.jsonl"
+    },
+    {
+      "shard": 27,
+      "rowStart": 781,
+      "rowEnd": 810,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-027.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-027.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-027.reviewed.jsonl"
+    },
+    {
+      "shard": 28,
+      "rowStart": 811,
+      "rowEnd": 840,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-028.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-028.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-028.reviewed.jsonl"
+    },
+    {
+      "shard": 29,
+      "rowStart": 841,
+      "rowEnd": 870,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-029.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-029.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-029.reviewed.jsonl"
+    },
+    {
+      "shard": 30,
+      "rowStart": 871,
+      "rowEnd": 900,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-030.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-030.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-030.reviewed.jsonl"
+    },
+    {
+      "shard": 31,
+      "rowStart": 901,
+      "rowEnd": 930,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-031.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-031.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-031.reviewed.jsonl"
+    },
+    {
+      "shard": 32,
+      "rowStart": 931,
+      "rowEnd": 960,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-032.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-032.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-032.reviewed.jsonl"
+    },
+    {
+      "shard": 33,
+      "rowStart": 961,
+      "rowEnd": 990,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-033.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-033.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-033.reviewed.jsonl"
+    },
+    {
+      "shard": 34,
+      "rowStart": 991,
+      "rowEnd": 1020,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-034.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-034.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-034.reviewed.jsonl"
+    },
+    {
+      "shard": 35,
+      "rowStart": 1021,
+      "rowEnd": 1050,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-035.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-035.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-035.reviewed.jsonl"
+    },
+    {
+      "shard": 36,
+      "rowStart": 1051,
+      "rowEnd": 1080,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-036.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-036.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-036.reviewed.jsonl"
+    },
+    {
+      "shard": 37,
+      "rowStart": 1081,
+      "rowEnd": 1110,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-037.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-037.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-037.reviewed.jsonl"
+    },
+    {
+      "shard": 38,
+      "rowStart": 1111,
+      "rowEnd": 1140,
+      "expectedRows": 30,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-038.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-038.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-038.reviewed.jsonl"
+    },
+    {
+      "shard": 39,
+      "rowStart": 1141,
+      "rowEnd": 1169,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-039.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-039.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-039.reviewed.jsonl"
+    },
+    {
+      "shard": 40,
+      "rowStart": 1170,
+      "rowEnd": 1198,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-040.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-040.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-040.reviewed.jsonl"
+    },
+    {
+      "shard": 41,
+      "rowStart": 1199,
+      "rowEnd": 1227,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-041.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-041.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-041.reviewed.jsonl"
+    },
+    {
+      "shard": 42,
+      "rowStart": 1228,
+      "rowEnd": 1256,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-042.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-042.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-042.reviewed.jsonl"
+    },
+    {
+      "shard": 43,
+      "rowStart": 1257,
+      "rowEnd": 1285,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-043.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-043.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-043.reviewed.jsonl"
+    },
+    {
+      "shard": 44,
+      "rowStart": 1286,
+      "rowEnd": 1314,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-044.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-044.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-044.reviewed.jsonl"
+    },
+    {
+      "shard": 45,
+      "rowStart": 1315,
+      "rowEnd": 1343,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-045.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-045.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-045.reviewed.jsonl"
+    },
+    {
+      "shard": 46,
+      "rowStart": 1344,
+      "rowEnd": 1372,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-046.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-046.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-046.reviewed.jsonl"
+    },
+    {
+      "shard": 47,
+      "rowStart": 1373,
+      "rowEnd": 1401,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-047.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-047.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-047.reviewed.jsonl"
+    },
+    {
+      "shard": 48,
+      "rowStart": 1402,
+      "rowEnd": 1430,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-048.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-048.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-048.reviewed.jsonl"
+    },
+    {
+      "shard": 49,
+      "rowStart": 1431,
+      "rowEnd": 1459,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-049.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-049.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-049.reviewed.jsonl"
+    },
+    {
+      "shard": 50,
+      "rowStart": 1460,
+      "rowEnd": 1488,
+      "expectedRows": 29,
+      "inputPath": "lab/voice-extractor/filtration-eval/review-shards/shard-050.jsonl",
+      "codexOutputPath": "lab/voice-extractor/filtration-eval/reviews/codex-sol/shards/shard-050.reviewed.jsonl",
+      "claudeOutputPath": "lab/voice-extractor/filtration-eval/reviews/claude-opus/shards/shard-050.reviewed.jsonl"
+    }
+  ]
+}

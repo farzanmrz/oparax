@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-08-02T04:34:00.444Z",
+  "source": "reviews/comparison.jsonl rows where Luna, Codex Sol, and Claude Opus agree",
+  "total": 1336,
+  "onBeat": 812,
+  "offBeat": 524,
+  "withAttachedImages": 946,
+  "nativePhotoRows": 939,
+  "derivedVideoPosterFrames": 7,
+  "videoOnlyWithoutPosterFrame": 0,
+  "excludedLinkPreviewRows": 11,
+  "languages": {
+    "en": 878,
+    "es": 177,
+    "fr": 94,
+    "it": 23,
+    "sv": 88,
+    "und": 76
+  }
+}

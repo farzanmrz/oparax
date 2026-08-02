@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-08-02T01:33:41.699Z",
+  "total": 1488,
+  "onBeat": 899,
+  "offBeat": 589,
+  "uncertain": 165,
+  "validation": {
+    "exactCandidateIdSet": true,
+    "uniquePostIds": true,
+    "exactFourFieldSchema": true,
+    "candidateFieldsPreserved": true,
+    "booleanLabels": true,
+    "originalCandidateOrderPreserved": true
+  }
+}

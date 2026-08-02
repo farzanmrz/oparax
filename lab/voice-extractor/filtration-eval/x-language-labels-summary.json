@@ -1,0 +1,12 @@
+{
+  "total": 1336,
+  "method": "Agent-labeled local emulation of X's BCP-47 lang field; no X API lookup",
+  "counts": {
+    "en": 878,
+    "es": 177,
+    "fr": 94,
+    "it": 23,
+    "sv": 88,
+    "und": 76
+  }
+}

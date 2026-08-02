@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-08-02T01:19:45.382Z",
+  "status": "unlabeled",
+  "targetBeat": "All news around FC Barcelona",
+  "requestedHandles": [
+    "FabrizioRomano",
+    "DavidOrnstein",
+    "Glongari",
+    "talkfcb_",
+    "fcbarcelona",
+    "BarcaUniversal",
+    "BarcaTimes",
+    "fcbarcelonaes",
+    "Barca_Buzz",
+    "TotalBarca",
+    "BarcaWorld_",
+    "laligaen",
+    "MundoDeportivo",
+    "sport",
+    "managingbarca",
+    "barcacentre",
+    "Gerardanyol",
+    "siegersayss",
+    "AlbertRoge",
+    "footmercato"
+  ],
+  "totalCandidates": 1488,
+  "countsByHandle": {
+    "FabrizioRomano": 105,
+    "DavidOrnstein": 100,
+    "Glongari": 105,
+    "talkfcb_": 106,
+    "fcbarcelona": 24,
+    "BarcaUniversal": 105,
+    "BarcaTimes": 105,
+    "fcbarcelonaes": 0,
+    "Barca_Buzz": 105,
+    "TotalBarca": 104,
+    "BarcaWorld_": 0,
+    "laligaen": 104,
+    "MundoDeportivo": 105,
+    "sport": 105,
+    "managingbarca": 105,
+    "barcacentre": 105,
+    "Gerardanyol": 0,
+    "siegersayss": 0,
+    "AlbertRoge": 0,
+    "footmercato": 105
+  },
+  "countsBySurface": {
+    "x_posts_marketplace": 75,
+    "x_profiles": 1418,
+    "x_posts_status_probe": 1
+  },
+  "handlesWithoutCandidates": [
+    "fcbarcelonaes",
+    "BarcaWorld_",
+    "Gerardanyol",
+    "siegersayss",
+    "AlbertRoge"
+  ],
+  "observedInputErrors": [
+    {
+      "sourceHandle": "siegersayss",
+      "sourceSurface": "x_profiles",
+      "errorCode": "dead_page",
+      "error": "The navigation resulted in a dead page (404 status code)"
+    },
+    {
+      "sourceHandle": "AlbertRoge",
+      "sourceSurface": "x_profiles",
+      "errorCode": "dead_page",
+      "error": "The navigation resulted in a dead page (404 status code)"
+    },
+    {
+      "sourceHandle": "Gerardanyol",
+      "sourceSurface": "x_profiles",
+      "errorCode": "dead_page",
+      "error": "The navigation resulted in a dead page (404 status code)"
+    }
+  ],
+  "schema": {
+    "candidates": ["postId", "sourceHandle", "postContent", "onBeat"],
+    "labelState": "onBeat is null until golden labeling; final values must be boolean",
+    "reviewContext": "Sidecar only. It is joined to candidates by postId and is not part of the golden-label schema."
+  }
+}

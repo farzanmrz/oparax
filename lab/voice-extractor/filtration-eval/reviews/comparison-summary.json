@@ -1,0 +1,126 @@
+{
+  "generatedAt": "2026-08-02T02:04:54.372Z",
+  "total": 1488,
+  "patterns": {
+    "allAgree": 1336,
+    "codexClaudeAgainstLuna": 66,
+    "lunaClaudeAgainstCodex": 15,
+    "lunaCodexAgainstClaude": 71
+  },
+  "totalDisagreements": 152,
+  "adjudicationQueue": 215,
+  "context": {
+    "claudeContextBlocked": 30,
+    "contextThin": 52,
+    "disagreementsClaudeContextBlocked": 6,
+    "disagreementsContextThin": 3
+  },
+  "bySource": {
+    "FabrizioRomano": {
+      "total": 105,
+      "allAgree": 103,
+      "codexClaudeAgainstLuna": 1,
+      "lunaClaudeAgainstCodex": 1,
+      "lunaCodexAgainstClaude": 0
+    },
+    "DavidOrnstein": {
+      "total": 100,
+      "allAgree": 100,
+      "codexClaudeAgainstLuna": 0,
+      "lunaClaudeAgainstCodex": 0,
+      "lunaCodexAgainstClaude": 0
+    },
+    "Glongari": {
+      "total": 105,
+      "allAgree": 100,
+      "codexClaudeAgainstLuna": 2,
+      "lunaClaudeAgainstCodex": 3,
+      "lunaCodexAgainstClaude": 0
+    },
+    "talkfcb_": {
+      "total": 106,
+      "allAgree": 93,
+      "codexClaudeAgainstLuna": 4,
+      "lunaClaudeAgainstCodex": 2,
+      "lunaCodexAgainstClaude": 7
+    },
+    "fcbarcelona": {
+      "total": 24,
+      "allAgree": 24,
+      "codexClaudeAgainstLuna": 0,
+      "lunaClaudeAgainstCodex": 0,
+      "lunaCodexAgainstClaude": 0
+    },
+    "BarcaUniversal": {
+      "total": 105,
+      "allAgree": 98,
+      "codexClaudeAgainstLuna": 3,
+      "lunaClaudeAgainstCodex": 2,
+      "lunaCodexAgainstClaude": 2
+    },
+    "BarcaTimes": {
+      "total": 105,
+      "allAgree": 91,
+      "codexClaudeAgainstLuna": 3,
+      "lunaClaudeAgainstCodex": 2,
+      "lunaCodexAgainstClaude": 9
+    },
+    "Barca_Buzz": {
+      "total": 105,
+      "allAgree": 89,
+      "codexClaudeAgainstLuna": 7,
+      "lunaClaudeAgainstCodex": 3,
+      "lunaCodexAgainstClaude": 6
+    },
+    "TotalBarca": {
+      "total": 104,
+      "allAgree": 91,
+      "codexClaudeAgainstLuna": 5,
+      "lunaClaudeAgainstCodex": 1,
+      "lunaCodexAgainstClaude": 7
+    },
+    "laligaen": {
+      "total": 104,
+      "allAgree": 81,
+      "codexClaudeAgainstLuna": 13,
+      "lunaClaudeAgainstCodex": 0,
+      "lunaCodexAgainstClaude": 10
+    },
+    "MundoDeportivo": {
+      "total": 105,
+      "allAgree": 86,
+      "codexClaudeAgainstLuna": 14,
+      "lunaClaudeAgainstCodex": 0,
+      "lunaCodexAgainstClaude": 5
+    },
+    "sport": {
+      "total": 105,
+      "allAgree": 99,
+      "codexClaudeAgainstLuna": 4,
+      "lunaClaudeAgainstCodex": 0,
+      "lunaCodexAgainstClaude": 2
+    },
+    "managingbarca": {
+      "total": 105,
+      "allAgree": 83,
+      "codexClaudeAgainstLuna": 5,
+      "lunaClaudeAgainstCodex": 0,
+      "lunaCodexAgainstClaude": 17
+    },
+    "barcacentre": {
+      "total": 105,
+      "allAgree": 100,
+      "codexClaudeAgainstLuna": 1,
+      "lunaClaudeAgainstCodex": 0,
+      "lunaCodexAgainstClaude": 4
+    },
+    "footmercato": {
+      "total": 105,
+      "allAgree": 98,
+      "codexClaudeAgainstLuna": 4,
+      "lunaClaudeAgainstCodex": 1,
+      "lunaCodexAgainstClaude": 2
+    }
+  },
+  "note": "Descriptive comparison only. No row has been adjudicated and no source lane was modified."
+}

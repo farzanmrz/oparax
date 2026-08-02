@@ -1,0 +1,122 @@
+[
+  {
+    "postId": "2071734362651975823",
+    "blocker": "Text is a bare four-word question with no photos, videos, external link, or quoted post to identify which match's shootout is meant, and the x.com permalink is unfetchable."
+  },
+  {
+    "postId": "1241733734044512259",
+    "blocker": "Text is only a reaction ('Vad läste jag precis?') to an omni.se link, and WebFetch is blocked from fetching omni.se, so the underlying story could not be read."
+  },
+  {
+    "postId": "1548344319060217862",
+    "blocker": "Post is a single \"👀\" emoji with no media, link, or quoted post to resolve which club or story it teases."
+  },
+  {
+    "postId": "1480312422212775943",
+    "blocker": "Bare thumbs-up reply to another account with no quoted post, media, or link to resolve the subject."
+  },
+  {
+    "postId": "1455237554144518144",
+    "blocker": "Emoji-only post (Italian flag, hourglass, white circle) with no media, quoted post, or link to identify the club or player."
+  },
+  {
+    "postId": "1425140970161676301",
+    "blocker": "Standalone sentence 'So he's not staying' with no quoted post, media, or link naming the player."
+  },
+  {
+    "postId": "1423333087946158081",
+    "blocker": "Reaction-only reply ('TOTALLY TRUE...') with no quoted post, media, or link identifying what is being confirmed."
+  },
+  {
+    "postId": "1840685854739579151",
+    "blocker": "Bare reaction text (\"Have they kidnapped him or something?\") with no named subject, no media, no quoted post and no link to inspect."
+  },
+  {
+    "postId": "1806323165779394593",
+    "blocker": "Comment on \"La Liga referees\" with no attached media, quoted post or link identifying which incident or club it refers to."
+  },
+  {
+    "postId": "1754226251143819547",
+    "blocker": "Terse refereeing complaint pointing at a thread reply ('🔽') with no photos, quoted post, or external link to inspect."
+  },
+  {
+    "postId": "1705696229668040943",
+    "blocker": "Emoji-only post whose only content is an unexpandable t.co link with no media or quoted post in the record."
+  },
+  {
+    "postId": "1591526267026808832",
+    "blocker": "Text names Kounde and Raphinha (only shared club: Barcelona) but the attached image is a Premier League table, so it is unresolvable whether the subject is Xavi's Barca selection or a jab at Chelsea missing both signings."
+  },
+  {
+    "postId": "2083659226040160510",
+    "blocker": "Terse video-led post (\"Getting the feel of Barça\") with no downloadable media URL in the brief; decided from the official club account's own Barça reference in the text."
+  },
+  {
+    "postId": "1945544346637357344",
+    "blocker": "Text is only \"Lamine on IG:\" with a stripped t.co link and no photos/videos/externalUrl in the record, so the actual Instagram content is unrecoverable; judged on beat because the subject is Barcelona's Lamine Yamal."
+  },
+  {
+    "postId": "1920124615516438590",
+    "blocker": "Text is a bare tease (\"Things you don't see on TV\") over a video that has no photos/externalUrl field to inspect, so the call rests only on the account and the day-after-Barcelona-vs-Inter date."
+  },
+  {
+    "postId": "1689005783059439616",
+    "blocker": "Text is only \"16 years old\" with a stripped t.co media link and no photos/videos/externalUrl fields to inspect, so the subject is inferred rather than verified."
+  },
+  {
+    "postId": "1850606309617377474",
+    "blocker": "Video-only post (\"Perfect Tackle.\") with no downloadable video or image URL in the brief, so the tackler's club could not be visually confirmed."
+  },
+  {
+    "postId": "1948913594760036801",
+    "blocker": "Video-only post (\"Arriving at the hotel\") with no downloadable media URL, so the arriving squad could not be visually confirmed."
+  },
+  {
+    "postId": "1770000051450077319",
+    "blocker": "Text is a bare 'On this day last year' nostalgia line and the only context is an uninspectable t.co media link (no photos, externalUrl or quotedPost fields provided)."
+  },
+  {
+    "postId": "1652510584791875584",
+    "blocker": "Text is only an eyes emoji and the photo shows an unidentified youth player in Tottenham training kit posing with Messi, with nothing in the image or post tying it to FC Barcelona."
+  },
+  {
+    "postId": "1975937929408311791",
+    "blocker": "Text names no player and the post has no media, link, or quoted post; the injured subject can only be inferred from the October 2025 Spain call-up dispute."
+  },
+  {
+    "postId": "1964364962362438008",
+    "blocker": "Photo shows an unidentified woman and child with Mickey Mouse, with no Barcelona insignia or named subject, so the connection to the club cannot be established."
+  },
+  {
+    "postId": "1928597081486160027",
+    "blocker": "Text refers only to a Nike kit via a stripped t.co link with no photos, externalUrl, or quotedPost in the payload, so the specific kit could not be verified."
+  },
+  {
+    "postId": "1845854985772511689",
+    "blocker": "Text never names the 22-year-old subject and the post carries no media, link, or quoted post to resolve who is being praised."
+  },
+  {
+    "postId": "1836213825240011109",
+    "blocker": "Refers to an unnamed 'stat' with no attached image, link, or quoted post, so the underlying story cannot be identified."
+  },
+  {
+    "postId": "1798587359795270110",
+    "blocker": "Bare exclamation with no named subject and no media, link, or quoted post to establish what event it reacts to."
+  },
+  {
+    "postId": "1705652380417634786",
+    "blocker": "Text is only \"Scenes in Barcelona.\" and the attached t.co media is not exposed as an inspectable photo/video/external URL, so the call rests on the date (23 Sep 2023, a Barcelona home matchday) rather than the media itself."
+  },
+  {
+    "postId": "1548828877878956033",
+    "blocker": "Two-word reply (\"ahora ya sí @auronplay\") with no media, link, or quoted post to identify what it refers to."
+  },
+  {
+    "postId": "1415280743559933952",
+    "blocker": "Two-word teaser (\"Messi... 💣\") with no photos, video, link or quoted post to inspect; judged on-beat only from the July 2021 Barcelona renewal-saga timing."
+  },
+  {
+    "postId": "1916244481776750756",
+    "blocker": "Three-word reply to an account handle with no media or link; resolved only by inference (Mbappe free-kick account, night of the Copa del Rey final), so the underlying story is not directly verifiable."
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "createdAt": "2026-08-02T05:03:10.786Z",
+  "run": "shared-qwen-independent",
+  "model": "alibaba/qwen3.7-flash",
+  "concurrency": 458,
+  "attempts": 2,
+  "timeoutMs": 120000,
+  "temperature": 0,
+  "benchmarkRows": 1336,
+  "benchmarkSha256": "2f400fda8656eecee10317c8f658dac47eefe40266aa37be3e74e0bd967a2ac2",
+  "prompt": "translator-prompt.md",
+  "promptSha256": "1ed9511674cd5124ea5af39820c588f7ce76df10a27c5cebd3d4a2aeb1a8d1cd",
+  "englishPolicy": "deterministic null without a model call"
+}

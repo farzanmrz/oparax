@@ -1,0 +1,568 @@
+{
+  "generatedAt": "2026-08-02T07:34:32.891Z",
+  "baseline": "link-enriched filtration (93.04%)",
+  "context": "same link-enriched input plus source bio",
+  "optional": {
+    "rows": 5,
+    "correct": 4,
+    "searches": 4,
+    "searchFeesUsd": 0.06,
+    "inferenceCostUsd": 0.001877418
+  },
+  "forced": {
+    "rows": 5,
+    "correct": 4,
+    "searches": 5,
+    "searchFeesUsd": 0.065,
+    "inferenceCostUsd": 0.004553096
+  },
+  "results": [
+    {
+      "postId": "1698244914826424730",
+      "sourceHandle": "barcacentre",
+      "expectedOnBeat": true,
+      "baselinePrediction": false,
+      "baselineReasoning": "The source is from @barcacentre, which is a fan account, but the image shows a player in a red and black kit with 'Esportes da Sorte' sponsor, which is Chapecoense, not FC Barcelona. There is no mention or visual evidence of FC Barcelona, their players, or their matches. Therefore, it is not on beat.",
+      "mode": "optional",
+      "predictedOnBeat": true,
+      "correct": true,
+      "reasoning": "The post from @barcacentre (a dedicated FC Barcelona coverage account) features a photo of a player in Bahia FC's red jersey (sponsored by 'Esportes da Sorte' and 'Copacabana'), celebrating a goal near a corner flag. The player is Raphinha, who played for Bahia before joining FC Barcelona in summer 2023. The post was published on September 3, 2023 — shortly after Raphinha's transfer to Barcelona — and the tiger emoji (🐅) references Raphinha's nickname. This is a nostalgic/retrospective post about a current Barcelona player's time at his former club, which is directly relevant to FC Barcelona coverage. The source account itself is explicitly a Barcelona-focused outlet, and the content relates to a Barcelona player's career history.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_8bfdfc93dc2e4cd790dbd512",
+          "toolName": "web_search",
+          "input": {
+            "query": "\"Esportes da Sorte\" \"Copacabana\" football jersey Brazilian team 2023"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_5e13f0fb1cc048429479eb94",
+          "toolName": "web_search",
+          "input": {
+            "query": "barcacentre post September 2023 player celebration corner flag stadium"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_bafa48dad71b4c68a0d16837",
+          "toolName": "web_search",
+          "input": {
+            "query": "barcacentre twitter September 2023 Bahia player Barcelona connection"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_7c62cb40758b47f991f51af2",
+          "toolName": "web_search",
+          "input": {
+            "query": "\"Esportes da Sorte\" \"Copacabana\" Bahia FC player 2023 goal celebration corner flag"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_23ce0d5859264ff690b4ed31",
+          "toolName": "web_search",
+          "input": {
+            "query": "barcacentre September 3 2023 Bahia player Barcelona transfer"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_0441b634df494047a46dac4e",
+          "toolName": "web_search",
+          "input": {
+            "query": "Raphinha Bahia FC Esportes da Sorte jersey 2023"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.03,
+      "inferenceCostUsd": 0.00063397,
+      "usage": {
+        "inputTokens": 20915,
+        "inputTokenDetails": {
+          "noCacheTokens": 13235,
+          "cacheReadTokens": 7680,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 1468,
+        "outputTokenDetails": {
+          "textTokens": 450,
+          "reasoningTokens": 1018
+        },
+        "totalTokens": 22383
+      },
+      "attempt": 2,
+      "durationMs": 44874
+    },
+    {
+      "postId": "1961918335953584266",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source discusses João Neves, a player for FC Barcelona, scoring a hat-trick (triple) against Toulouse. This is directly related to FC Barcelona match events and player performance, which falls squarely within the beat of monitoring news around FC Barcelona.",
+      "mode": "optional",
+      "predictedOnBeat": true,
+      "correct": false,
+      "reasoning": "The post is about João Neves, a FC Barcelona player, scoring a hat-trick against Toulouse while wearing Barcelona's kit. The attached image clearly shows the player in Barcelona's red and blue kit, with Toulouse visible on the scoreboard. This is directly about FC Barcelona match action and a Barcelona player's performance, which falls squarely within the FC Barcelona beat.",
+      "searched": false,
+      "searchCalls": [],
+      "searchFeeUsd": 0,
+      "inferenceCostUsd": 0.00012336,
+      "usage": {
+        "inputTokens": 2591,
+        "inputTokenDetails": {
+          "noCacheTokens": 2591,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 351,
+        "outputTokenDetails": {
+          "textTokens": 88,
+          "reasoningTokens": 263
+        },
+        "totalTokens": 2942
+      },
+      "attempt": 1,
+      "durationMs": 10448
+    },
+    {
+      "postId": "1895781015362425188",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source is from @footmercato, a football transfer news account. The post discusses Karim Benzema, a former FC Barcelona player, and his absence from the Champions League. Since the beat is 'all news around FC Barcelona' and Benzema is a notable former player whose movements and status are relevant to Barcelona fans and the club's history, this is on-beat.",
+      "mode": "optional",
+      "predictedOnBeat": false,
+      "correct": true,
+      "reasoning": "The post is about Karim Benzema, a former Real Madrid player and five-time Champions League winner, not FC Barcelona. The tweet discusses Benzema's Champions League career and retirement from that competition, with an image showing him with milk and dates (likely a Ramadan reference). There is no mention of FC Barcelona, and Benzema has no connection to Barcelona — he played for Real Madrid. This story does not belong on an FC Barcelona monitoring beat.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_1def172a5ddf4f27968abe64",
+          "toolName": "web_search",
+          "input": {
+            "query": "Karim Benzema retirement Champions League 2025",
+            "max_results": 5
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.005,
+      "inferenceCostUsd": 0.000290164,
+      "usage": {
+        "inputTokens": 6990,
+        "inputTokenDetails": {
+          "noCacheTokens": 5966,
+          "cacheReadTokens": 1024,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 808,
+        "outputTokenDetails": {
+          "textTokens": 159,
+          "reasoningTokens": 649
+        },
+        "totalTokens": 7798
+      },
+      "attempt": 1,
+      "durationMs": 21191
+    },
+    {
+      "postId": "1664042755293601792",
+      "sourceHandle": "talkfcb_",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source is from @talkfcb_, a known FC Barcelona fan account. The post discusses a player taking a penalty in a European final with a 'no-look' technique, featuring an Argentinian player (likely Lamine Yamal, given the context of recent Barcelona news and the number 55 visible in the image, which is Lamine Yamal's number). This is directly related to FC Barcelona and their players in European competition.",
+      "mode": "optional",
+      "predictedOnBeat": false,
+      "correct": true,
+      "reasoning": "The source post is about Lucas Ocampos (Sevilla) taking a no-look penalty in the 2023 UEFA Europa League Final between Sevilla and Roma. This is entirely unrelated to FC Barcelona — it involves a different club (Sevilla), a different competition (Europa League), and a different player (Lucas Ocampos). Although the source account @talkfcb_ is an FC Barcelona fan account, this particular post does not contain any Barcelona-related content and falls outside the beat's coverage scope.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_dd37f856eb0f41f1b074acba",
+          "toolName": "web_search",
+          "input": {
+            "query": "no-look penalty European final 2023 Argentine player #55"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_38e4ede6f5644249b8250c42",
+          "toolName": "web_search",
+          "input": {
+            "query": "European final penalty 2023 May 31 Argentine no look penalty"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.01,
+      "inferenceCostUsd": 0.00030282,
+      "usage": {
+        "inputTokens": 6272,
+        "inputTokenDetails": {
+          "noCacheTokens": 6272,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 882,
+        "outputTokenDetails": {
+          "textTokens": 207,
+          "reasoningTokens": 675
+        },
+        "totalTokens": 7154
+      },
+      "attempt": 1,
+      "durationMs": 20905
+    },
+    {
+      "postId": "1599446756387061760",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source is from @footmercato, a prominent football transfer news account. The image features Kylian Mbappé, a player who has been a major subject of transfer speculation involving FC Barcelona. News from transfer-focused accounts about high-profile players linked to the club is directly relevant to monitoring FC Barcelona news.",
+      "mode": "optional",
+      "predictedOnBeat": false,
+      "correct": true,
+      "reasoning": "The post from @footmercato is a generic football content piece about Kylian Mbappé at the 2022 FIFA World Cup in Qatar (visible from the France #10 jersey and Qatar Airways advertising). The post text \"One word to describe him... ✍\" is a general engagement post about Mbappé's World Cup performance. While Mbappé has had transfer links to Barcelona historically, this specific post contains no mention of FC Barcelona, no transfer news, and no Barcelona-related content. It is general football/world cup content from a French football media outlet, not FC Barcelona news. Therefore it does not belong on the FC Barcelona beat.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_8a5246f210bc49708341775b",
+          "toolName": "web_search",
+          "input": {
+            "query": "footmercato \"one word to describe him\" Mbappe World Cup 2022 Barcelona"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_57d6b681d0fe4c7e804949b8",
+          "toolName": "web_search",
+          "input": {
+            "query": "footmercato \"one word to describe\" Mbappe December 2022"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_700ca1c173cb4405a9b2a848",
+          "toolName": "web_search",
+          "input": {
+            "query": "footmercato.com \"one word to describe\" mbappe 2022 site:footmercato.com OR site:twitter.com/footmercato"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.015,
+      "inferenceCostUsd": 0.000527104,
+      "usage": {
+        "inputTokens": 13587,
+        "inputTokenDetails": {
+          "noCacheTokens": 9363,
+          "cacheReadTokens": 4224,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 1699,
+        "outputTokenDetails": {
+          "textTokens": 304,
+          "reasoningTokens": 1395
+        },
+        "totalTokens": 15286
+      },
+      "attempt": 1,
+      "durationMs": 35536
+    },
+    {
+      "postId": "1698244914826424730",
+      "sourceHandle": "barcacentre",
+      "expectedOnBeat": true,
+      "baselinePrediction": false,
+      "baselineReasoning": "The source is from @barcacentre, which is a fan account, but the image shows a player in a red and black kit with 'Esportes da Sorte' sponsor, which is Chapecoense, not FC Barcelona. There is no mention or visual evidence of FC Barcelona, their players, or their matches. Therefore, it is not on beat.",
+      "mode": "forced",
+      "predictedOnBeat": true,
+      "correct": true,
+      "reasoning": "The post from @barcacentre (a Barcelona-focused account) posted on September 3, 2023, shows a Corinthians player in their red/black kit with 'Esportes da Sorte' as the sponsor. Research confirms that around this exact time (early September 2023), FC Barcelona was actively interested in signing Gabriel Moscardo, an 18-year-old Corinthians midfielder. EverythingBarca published an article on September 8, 2023 titled 'Barcelona interested in €30 million wonderkid' about Moscardo, and Portuguese outlet Flashscore.es reported that Barcelona's football director Deco had made inquiries about the player. The @barcacentre account is sharing this photo as a visual reference to a potential Barcelona transfer target. This is directly relevant to FC Barcelona news coverage.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_f963f83e15ae46e0aac51e47",
+          "toolName": "web_search",
+          "input": {
+            "query": "barcacentre \"Esportes da Sorte\" player photo September 2023 FC Barcelona"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_eca26330bd1e4526915996b5",
+          "toolName": "web_search",
+          "input": {
+            "query": "\"Esportes da Sorte\" football player 2023 transfer Barcelona"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_0b6cc1c6bb7944a4bf3a6530",
+          "toolName": "web_search",
+          "input": {
+            "query": "Corinthians player \"Esportes da Sorte\" Barcelona transfer September 2023"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_45518d8f74674634be7cda32",
+          "toolName": "web_search",
+          "input": {
+            "query": "barcacentre September 2023 Corinthians player photo Barcelona"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_87b8dd218f754fcd9b3d3db0",
+          "toolName": "web_search",
+          "input": {
+            "query": "Corinthians player signed Barcelona September 2023 transfer"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_945ecb73489443e5848f0af8",
+          "toolName": "web_search",
+          "input": {
+            "query": "Corinthians \"Esportes da Sorte\" player 2023 Barcelona connection transfer rumor"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_9f75850925fd40269f6a9560",
+          "toolName": "web_search",
+          "input": {
+            "query": "Corinthians player Barcelona transfer rumor September 2023"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_09cb51a423b648f299a21204",
+          "toolName": "web_search",
+          "input": {
+            "query": "barcacentre post September 3 2023 Corinthians player"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.04,
+      "inferenceCostUsd": 0.00342194,
+      "usage": {
+        "inputTokens": 42693,
+        "inputTokenDetails": {
+          "noCacheTokens": 21701,
+          "cacheReadTokens": 20992,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 2080,
+        "outputTokenDetails": {
+          "textTokens": 519,
+          "reasoningTokens": 1561
+        },
+        "totalTokens": 44773
+      },
+      "attempt": 1,
+      "durationMs": 54697
+    },
+    {
+      "postId": "1961918335953584266",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source discusses João Neves, a player for FC Barcelona, scoring a hat-trick (triple) against Toulouse. This is directly related to FC Barcelona match events and player performance, which falls squarely within the beat of monitoring news around FC Barcelona.",
+      "mode": "forced",
+      "predictedOnBeat": false,
+      "correct": true,
+      "reasoning": "The post is about João Neves scoring a hat trick against Toulouse, but Neves plays for Paris Saint-Germain (PSG), not FC Barcelona. The image confirms this — the player is wearing PSG's red kit, and the opponent is Toulouse in Ligue 1. This is a PSG match, not a Barcelona match. The source account @footmercato is a French football media outlet covering general Ligue 1 news, but this particular post has no connection to FC Barcelona. It does not belong on the FC Barcelona beat.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_44507f400e904916b07ced83",
+          "toolName": "web_search",
+          "input": {
+            "query": "João Neves hat trick Toulouse Barcelona August 2025",
+            "search_recency_filter": "week"
+          },
+          "providerExecuted": true
+        },
+        {
+          "type": "tool-call",
+          "toolCallId": "call_d8a51484d73942e9983a9b38",
+          "toolName": "web_search",
+          "input": {
+            "query": "João Neves 3 goals Toulouse Barcelona Ligue 1 2025",
+            "search_recency_filter": "month"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.01,
+      "inferenceCostUsd": 0.000304508,
+      "usage": {
+        "inputTokens": 9752,
+        "inputTokenDetails": {
+          "noCacheTokens": 7704,
+          "cacheReadTokens": 2048,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 470,
+        "outputTokenDetails": {
+          "textTokens": 236,
+          "reasoningTokens": 234
+        },
+        "totalTokens": 10222
+      },
+      "attempt": 1,
+      "durationMs": 24754
+    },
+    {
+      "postId": "1895781015362425188",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source is from @footmercato, a football transfer news account. The post discusses Karim Benzema, a former FC Barcelona player, and his absence from the Champions League. Since the beat is 'all news around FC Barcelona' and Benzema is a notable former player whose movements and status are relevant to Barcelona fans and the club's history, this is on-beat.",
+      "mode": "forced",
+      "predictedOnBeat": false,
+      "correct": true,
+      "reasoning": "The post from @footmercato (posted March 1, 2025) is about Karim Benzema no longer appearing on Champions League screens. Benzema left Real Madrid in 2023 and joined Saudi club Al-Ittihad, which is not in the Champions League. While Benzema previously played for Barcelona (2007-2009), this post is about his current absence from the Champions League and has no connection to FC Barcelona — no mention of Barcelona, no Barcelona-related news, and no Barcelona context. It is a general football/Champions League story about a former Barcelona player, not news around FC Barcelona itself.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_0e73f99646364dec87292e98",
+          "toolName": "web_search",
+          "input": {
+            "query": "Karim Benzema Champions League 2025 retirement Barcelona"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.005,
+      "inferenceCostUsd": 0.000282364,
+      "usage": {
+        "inputTokens": 7237,
+        "inputTokenDetails": {
+          "noCacheTokens": 6213,
+          "cacheReadTokens": 1024,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 691,
+        "outputTokenDetails": {
+          "textTokens": 195,
+          "reasoningTokens": 496
+        },
+        "totalTokens": 7928
+      },
+      "attempt": 1,
+      "durationMs": 15026
+    },
+    {
+      "postId": "1664042755293601792",
+      "sourceHandle": "talkfcb_",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source is from @talkfcb_, a known FC Barcelona fan account. The post discusses a player taking a penalty in a European final with a 'no-look' technique, featuring an Argentinian player (likely Lamine Yamal, given the context of recent Barcelona news and the number 55 visible in the image, which is Lamine Yamal's number). This is directly related to FC Barcelona and their players in European competition.",
+      "mode": "forced",
+      "predictedOnBeat": false,
+      "correct": true,
+      "reasoning": "The post is from @talkfcb_, an FC Barcelona fan account, but the content is about Lucas Ocampos (Sevilla) taking a no-look penalty in the 2023 UEFA Europa League final between Sevilla and Roma. This is entirely about Sevilla and the Europa League final, with no connection to FC Barcelona. The beat is specifically for FC Barcelona news, so this post does not belong.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_42c60aeb62824eb6b7e9fdc7",
+          "toolName": "web_search",
+          "input": {
+            "query": "no-look penalty European final 2023 Argentine player UEFA Europa League"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.005,
+      "inferenceCostUsd": 0.00024755,
+      "usage": {
+        "inputTokens": 5019,
+        "inputTokenDetails": {
+          "noCacheTokens": 5019,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 746,
+        "outputTokenDetails": {
+          "textTokens": 145,
+          "reasoningTokens": 601
+        },
+        "totalTokens": 5765
+      },
+      "attempt": 1,
+      "durationMs": 21319
+    },
+    {
+      "postId": "1599446756387061760",
+      "sourceHandle": "footmercato",
+      "expectedOnBeat": false,
+      "baselinePrediction": true,
+      "baselineReasoning": "The source is from @footmercato, a prominent football transfer news account. The image features Kylian Mbappé, a player who has been a major subject of transfer speculation involving FC Barcelona. News from transfer-focused accounts about high-profile players linked to the club is directly relevant to monitoring FC Barcelona news.",
+      "mode": "forced",
+      "predictedOnBeat": true,
+      "correct": false,
+      "reasoning": "The post from @footmercato (December 4, 2022) features Kylian Mbappé at the 2022 FIFA World Cup in Qatar. This is directly relevant to FC Barcelona coverage because, in late December 2022, Spanish outlet Mundo Deportivo reported that Barcelona was pursuing Mbappé as a major transfer target for the summer of 2023, despite their financial difficulties. Foot Mercato, a major French football media outlet, was covering the Mbappé-Barcelona transfer speculation at this time. The post is part of the broader narrative around Mbappé's future and Barcelona's interest in signing him, which falls squarely within the FC Barcelona beat.",
+      "searched": true,
+      "searchCalls": [
+        {
+          "type": "tool-call",
+          "toolCallId": "call_b73d903494d947948144520d",
+          "toolName": "web_search",
+          "input": {
+            "query": "Mbappe Barcelona December 2022 transfer news"
+          },
+          "providerExecuted": true
+        }
+      ],
+      "searchFeeUsd": 0.005,
+      "inferenceCostUsd": 0.000296734,
+      "usage": {
+        "inputTokens": 6689,
+        "inputTokenDetails": {
+          "noCacheTokens": 5665,
+          "cacheReadTokens": 1024,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 928,
+        "outputTokenDetails": {
+          "textTokens": 199,
+          "reasoningTokens": 729
+        },
+        "totalTokens": 7617
+      },
+      "attempt": 1,
+      "durationMs": 17004
+    }
+  ]
+}
