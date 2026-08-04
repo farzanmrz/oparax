@@ -42,3 +42,7 @@ npm-debug.log*
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Supabase CLI link metadata/cache
+supabase/.temp/
+.gstack/

@@ -461,6 +461,90 @@ export type Database = {
         };
         Relationships: [];
       };
+      source_configs: {
+        Row: {
+          agent_id: string;
+          change_detection: string;
+          created_at: string;
+          display_name: string | null;
+          domain: string;
+          feed_url: string | null;
+          full_text_available: string | null;
+          id: string;
+          language: string | null;
+          last_verified_at: string;
+          match_count: number | null;
+          model_call_id: string | null;
+          policy_note: string | null;
+          prefilter: Json | null;
+          retrieval: string;
+          sample_size: number | null;
+          sitemap_url: string | null;
+          status: string;
+          updated_at: string;
+          url: string;
+        };
+        Insert: {
+          agent_id: string;
+          change_detection: string;
+          created_at?: string;
+          display_name?: string | null;
+          domain: string;
+          feed_url?: string | null;
+          full_text_available?: string | null;
+          id?: string;
+          language?: string | null;
+          last_verified_at?: string;
+          match_count?: number | null;
+          model_call_id?: string | null;
+          policy_note?: string | null;
+          prefilter?: Json | null;
+          retrieval: string;
+          sample_size?: number | null;
+          sitemap_url?: string | null;
+          status?: string;
+          updated_at?: string;
+          url: string;
+        };
+        Update: {
+          agent_id?: string;
+          change_detection?: string;
+          created_at?: string;
+          display_name?: string | null;
+          domain?: string;
+          feed_url?: string | null;
+          full_text_available?: string | null;
+          id?: string;
+          language?: string | null;
+          last_verified_at?: string;
+          match_count?: number | null;
+          model_call_id?: string | null;
+          policy_note?: string | null;
+          prefilter?: Json | null;
+          retrieval?: string;
+          sample_size?: number | null;
+          sitemap_url?: string | null;
+          status?: string;
+          updated_at?: string;
+          url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "source_configs_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "source_configs_model_call_id_fkey";
+            columns: ["model_call_id"];
+            isOneToOne: false;
+            referencedRelation: "model_calls";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       stories: {
         Row: {
           created_at: string;
@@ -779,7 +863,31 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_source_config: {
+        Args: {
+          p_agent_id: string;
+          p_change_detection: string;
+          p_display_name: string | null;
+          p_domain: string;
+          p_feed_url: string | null;
+          p_full_text_available: string | null;
+          p_language: string | null;
+          p_match_count: number | null;
+          p_model_call_id: string | null;
+          p_policy_note: string | null;
+          p_prefilter: Json | null;
+          p_retrieval: string;
+          p_sample_size: number | null;
+          p_sitemap_url: string | null;
+          p_url: string;
+        };
+        Returns: string;
+      };
       delete_account: { Args: never; Returns: undefined };
+      remove_source_config: {
+        Args: { p_agent_id: string; p_url: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

@@ -42,14 +42,13 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AUTO_POST_ENABLED } from "@/lib/agent/desk-config";
-import { splitList } from "@/lib/split-list";
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
 import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import {
+  discoverAndSaveSource,
   removeWebsite,
-  saveWebsites,
   sendTestEmail,
   sendTestSlack,
   toggleAutoPost,
@@ -152,13 +151,15 @@ export function SourcesCard({
     });
   }
 
+  // One site per submit, unlike the X-handles field's batch paste: onboarding runs real
+  // discovery and a billed model call per site, so there is no equivalent of "commit a
+  // comma-separated blob" here.
   function handleAddWebsite() {
     const raw = websiteInput.trim();
     if (!raw) return;
     setWebsiteError(null);
-    const candidates = splitList(raw);
     startWebsiteTransition(async () => {
-      const result = await saveWebsites(deskId, candidates);
+      const result = await discoverAndSaveSource(deskId, raw);
       if (!result.ok) {
         setWebsiteError(result.error);
         return;
@@ -326,23 +327,30 @@ export function SourcesCard({
           ) : null}
         </div>
 
-        {/* Greyed until the Railway ingestion worker deploys (Wave 4): same markup as the
-            X-accounts subsection above, reduced opacity, every interaction disabled. The
-            server actions stay wired so un-greying is just dropping the disabled flags. */}
-        <div className="flex flex-col gap-2 opacity-50">
+        {/* Same auto-post-still-dormant treatment as the X-accounts subsection above: the
+            website field itself is live, but its auto-post switch stays greyed/"Coming soon"
+            and gated by the shared `autoPostDisabled`, same as the X row's Switch. */}
+        <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-semibold text-muted-foreground">
-                News websites ({websites.length}/{MAX_WEBSITES})
+                News websites (
+                <span className={atWebsiteLimit ? "text-destructive" : undefined}>
+                  {websites.length}/{MAX_WEBSITES}
+                </span>
+                )
               </h3>
-              <Badge variant="secondary">Coming soon</Badge>
+              {atWebsiteLimit ? (
+                <span className="text-xs text-destructive">Source limit reached</span>
+              ) : null}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 opacity-50">
               <span className="text-xs text-muted-foreground">Auto-post</span>
+              <Badge variant="secondary">Coming soon</Badge>
               <Switch
                 aria-label="Auto-post website-sourced drafts"
                 checked={autoPostSources.website}
-                disabled
+                disabled={autoPostDisabled}
                 onCheckedChange={(checked) => requestAutoPostChange("website", checked)}
                 size="sm"
               />
@@ -351,7 +359,6 @@ export function SourcesCard({
           <ChipsField
             chipLabel={(url) => url}
             chips={websites}
-            disabled
             inputDisabled={isWebsitePending || atWebsiteLimit}
             onChange={setWebsiteInput}
             onRemove={handleRemoveWebsite}
@@ -359,7 +366,9 @@ export function SourcesCard({
             placeholder={
               atWebsiteLimit
                 ? `Up to ${MAX_WEBSITES} websites`
-                : "Track a news website — example.com, press Enter"
+                : isWebsitePending
+                  ? "Discovering…"
+                  : "Track a news website — example.com, press Enter"
             }
             removeDisabled={isWebsitePending}
             removeLabel={(url) => `Stop tracking ${url}`}

@@ -17,3 +17,4 @@ export const DRAFT_REVISE_PROMPT = load("draft-revise.md");
 export const DRAFT_GROUND_PROMPT = load("draft-ground.md");
 export const DRAFT_JUDGE_PROMPT = load("draft-judge.md");
 export const STORY_CLUSTER_PROMPT = load("story-cluster.md");
+export const SOURCE_ONBOARDING_PROMPT = load("source-onboarding.md");

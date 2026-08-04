@@ -282,7 +282,7 @@ beta_base="$(git rev-parse refs/remotes/origin/beta)"
 
 # Preview the exact two commits without touching the index, working tree, or a
 # branch ref. A conflict exits before the integration worktree exists.
-if ! git merge-tree --write-tree --quiet "$beta_base" "$source_tip"; then
+if ! git merge-tree --write-tree "$beta_base" "$source_tip" >/dev/null; then
   show_conflict_report "$beta_base" "$source_tip" "$branch -> beta"
   exit 1
 fi

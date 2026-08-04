@@ -22,31 +22,66 @@ import {
   sendTestSlack as sendTestSlackAccount,
   unlinkSlack as unlinkSlackAccount,
 } from "@/lib/slack/actions";
+import { onboardSource } from "@/lib/sources/onboard-source";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_WEBSITES, parseWebsites } from "@/lib/websites";
+import { MAX_WEBSITES, normalizeSourceUrl, parseWebsites } from "@/lib/websites";
 import type { ActionResult } from "../actions";
 
-/** Trim + prepend `https://` when the entry has no scheme, then verify with `new URL(...)`.
- *  `null` means "not a well-formed website" — the caller rejects the whole batch on the
- *  first bad entry so the reporter sees exactly which token is wrong, rather than a token
- *  silently vanishing (unlike addTrackedHandles' drop-invalid-keep-valid shape — a website
- *  typo is far more likely to be "the entry I actually meant to add" than a stray comma). */
-function normalizeWebsiteUrl(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed);
-  const candidate = hasScheme ? trimmed : `https://${trimmed}`;
-  try {
-    const url = new URL(candidate);
-    // Reject any scheme but http(s) — a bare "example.com" gets https:// prepended above, but
-    // an explicit "javascript://…" / "file://…" / "ftp://…" entry matched the scheme regex
-    // above too and would otherwise pass through unrestricted into agents.websites (and
-    // from there into the scraper/ingestion worker).
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    return url.toString();
-  } catch {
-    return null;
+/** One-liner shown for each non-completed `OnboardOutcome` — the "one honest message" the
+ *  issue calls for, never a multi-step repair conversation. */
+const ONBOARD_ERROR_COPY: Record<string, string> = {
+  no_detection_mechanism:
+    "This page doesn't seem to carry your beat — paste the section you actually read, or just the site name.",
+  unreachable: "Couldn't reach that site — check the URL and try again.",
+  failed: "Couldn't set up that source — please try again.",
+};
+
+/**
+ * Discovers how to detect new articles on `rawUrl` (sitemap primary, RSS fallback), runs
+ * the one onboarding model call, verifies its proposed filter, and — only on success —
+ * persists a `source_configs` row and adds the site to `agents.websites` in one transaction
+ * (`onboardSource`'s `add_source_config` RPC call). Replaces `saveWebsites` as this card's
+ * website submit handler; `saveWebsites` itself is untouched (still used by the create-desk
+ * flow, which has no per-site onboarding UI of its own).
+ */
+export async function discoverAndSaveSource(deskId: string, rawUrl: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agents")
+    .select("owner_id, beat, websites")
+    .eq("id", deskId)
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: "Could not load the agent." };
+
+  if (parseWebsites(data.websites).length >= MAX_WEBSITES) {
+    return { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` };
   }
+
+  const url = normalizeSourceUrl(rawUrl);
+  if (url === null)
+    return { ok: false, error: `"${rawUrl.trim()}" doesn't look like a valid website.` };
+
+  // onboardSource deliberately throws on anything that isn't a schema-validation failure
+  // (a routine gateway 429/5xx, a model_calls insert error, an RPC error) — QC round 1,
+  // finding #4: an uncaught throw here escapes as an unhandled rejection and breaks the
+  // "one honest message" contract. Caught here so every failure path returns the same
+  // generic retry copy `onboardSource` itself can't distinguish from inside a throw.
+  let outcome: Awaited<ReturnType<typeof onboardSource>>;
+  try {
+    outcome = await onboardSource(deskId, data.owner_id, url, data.beat);
+  } catch (err) {
+    console.error("discoverAndSaveSource: onboardSource threw", err);
+    return { ok: false, error: ONBOARD_ERROR_COPY.failed };
+  }
+  if (outcome.status !== "completed") {
+    return { ok: false, error: ONBOARD_ERROR_COPY[outcome.status] };
+  }
+
+  // agents.websites was already updated transactionally by add_source_config inside
+  // onboardSource — this action does not touch it separately.
+  revalidatePath("/agents", "layout");
+  return { ok: true };
 }
 
 /**
@@ -62,10 +97,10 @@ export async function saveWebsites(
 ): Promise<ActionResult> {
   const candidates: string[] = [];
   for (const raw of websites) {
-    const normalized = normalizeWebsiteUrl(raw);
+    const normalized = normalizeSourceUrl(raw);
     if (normalized === null)
       return { ok: false, error: `"${raw.trim()}" doesn't look like a valid website.` };
-    candidates.push(normalized);
+    candidates.push(normalized.toString());
   }
   if (candidates.length === 0) return { ok: false, error: "Enter a website to track." };
 
@@ -98,22 +133,24 @@ export async function saveWebsites(
   return { ok: true };
 }
 
-/** Same read-modify-write shape as `removeTrackedHandle`. */
+/** Proves ownership via the RLS client, same as every other action here, then removes the
+ *  site through the `remove_source_config` RPC — which deletes the `source_configs` row and
+ *  updates `agents.websites` in one transaction (admin client; RLS already proved ownership
+ *  above, so this is not a privilege escalation). Deliberately not a separate best-effort
+ *  admin-delete: since #101's poller reads `source_configs` to decide what to poll, a failed
+ *  secondary delete could leave a "removed" source still active — this action fails and
+ *  reports an error instead of silently leaving that orphan behind. */
 export async function removeWebsite(deskId: string, url: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agents")
-    .select("websites")
-    .eq("id", deskId)
-    .maybeSingle();
+  const { data, error } = await supabase.from("agents").select("id").eq("id", deskId).maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the agent's websites." };
 
-  const next = parseWebsites(data.websites).filter((entry) => entry !== url);
-  const { error: updateError } = await supabase
-    .from("agents")
-    .update({ websites: next })
-    .eq("id", deskId);
-  if (updateError) return { ok: false, error: "Could not remove that website. Please try again." };
+  const admin = createAdminClient();
+  const { error: rpcError } = await admin.rpc("remove_source_config", {
+    p_agent_id: deskId,
+    p_url: url,
+  });
+  if (rpcError) return { ok: false, error: "Could not remove that website. Please try again." };
   revalidatePath("/agents", "layout");
   return { ok: true };
 }

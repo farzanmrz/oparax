@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     "/api/email/inbound": ["./lib/sysprompts/*.md"],
     "/agents/new": ["./lib/sysprompts/*.md"],
     "/agents/[id]/voice": ["./lib/sysprompts/*.md"],
+    "/agents/[id]/setup": ["./lib/sysprompts/*.md"],
   },
   // Security headers on every route (moved from vercel.json — Next config is
   // compiled into the same edge routing manifest on Vercel).
