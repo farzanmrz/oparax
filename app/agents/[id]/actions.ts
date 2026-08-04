@@ -203,7 +203,7 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   // Step 1 — the ownership proof (see the function comment above).
   const { data: parentDraft, error: parentError } = await supabase
     .from("drafts")
-    .select("id, source_post_id, agent_id, story_id, platform")
+    .select("id, source_post_id, agent_id, story_id, platform, synthesis, translation")
     .eq("id", parsedId.data)
     .maybeSingle();
   if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
@@ -330,6 +330,10 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
     // browser can pass any council member's id, including a losing candidate, so pointing at it
     // would record a parent this draft never superseded.
     parent_draft_id: currentWinner.id,
+    // Editing replaces the winning row, so preserve the card metadata that belongs to the
+    // winning draft. Judge review deliberately resets: the human edit invalidates it.
+    synthesis: parentDraft.synthesis,
+    translation: parentDraft.translation,
   });
   if (insertError) {
     // drafts still carries no partial unique index enforcing one is_winner=true row per
