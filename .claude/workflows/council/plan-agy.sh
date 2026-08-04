@@ -66,9 +66,18 @@ fi
 # [<model name> …]"). The slider resets to low on row change; effort is set only after
 # the model itself is confirmed. A roster we can't find the target in is a hard failure —
 # a lane silently running another family is worse than a lane reported failed.
+#
+# The picker opens with the CURRENT (sticky) model preselected, NOT at the top — so a
+# Down-only sweep can never reach rows ABOVE the current selection (2026-08-04: the
+# sticky model was Opus 4.6, Gemini 3.1 Pro sat two rows above it, and the lane failed
+# "not found in roster" while the roster was fine). Normalize to the top first: the
+# picker CLAMPS at row 0 on repeated Up presses (measured, no wraparound), so a fixed
+# Up burst makes the subsequent Down sweep position-deterministic from any start row.
 selected=""
 for row in 0 1 2 3 4 5 6 7; do
   tmux send-keys -t "$SES" "/model" Enter; sleep 3
+  i=0; while [ "$i" -lt 8 ]; do tmux send-keys -t "$SES" Up; i=$((i+1)); done
+  sleep 1
   i=0; while [ "$i" -lt "$row" ]; do tmux send-keys -t "$SES" Down; i=$((i+1)); done
   sleep 1; tmux send-keys -t "$SES" Enter; sleep 3        # select candidate (lands at low effort)
   if tmux capture-pane -t "$SES" -p 2>/dev/null | grep -qi "READY \[.*${MODEL_NAME}"; then

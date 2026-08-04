@@ -115,6 +115,15 @@ Downstream phases depend on these exact sections:
 * Build steps (per-task files + the skills each task invokes)
 * Stack & design acceptance criteria
 
+**In scope / Deferred format:** each is a BULLETED LIST, one item per bullet,
+never a dot-separated or comma-run-on inline list (run-on lists are unreadable
+at the gate, so bullets are the fix). Each bullet keeps its technical phrasing
+and appends a short plain-language gloss a non-engineer owner understands.
+
+<scope-bullet-example>
+* trigram fuzzy search: better typo-tolerant search, a later upgrade
+</scope-bullet-example>
+
 ## 5. Critique
 
 Run three external CLI lanes: `codex`, `grok`, and `agy`. Judge a lane on its
@@ -141,8 +150,16 @@ bash .claude/workflows/council/selftest.sh --if-changed
 Write each lane's prompt to `.feature/critique-<family>.in.txt` combining:
 plan + grounding pack + "verify claims against the actual code, cite paths;
 work requirement by requirement; an empty list is a valid verdict only after
-that". Launch all three in the background (`run_in_background: true`) and end
-your turn; the harness re-invokes you when they finish.
+that" + the pre-implementation framing below. Launch all three in the
+background (`run_in_background: true`) and end your turn; the harness
+re-invokes you when they finish.
+
+* **Pre-implementation framing (mandatory in every brief):** state that this
+  is a PRE-IMPLEMENTATION plan review: the tree holds the current code, none
+  of the plan is built yet, and "planned file X is absent" or "the code still
+  does the old thing" is not a finding. Lanes verify the plan's CLAIMS about
+  the current code and attack the DESIGN. Without this line a lane audits the
+  tree against the plan and returns "not implemented yet" as blockers.
 
 **Codex** (append to its `.in.txt` only: "You have repo-defined subagents:
 spawn `pr_explorer` to map and evidence the code paths each build task names,
@@ -151,6 +168,7 @@ Wait for all, then return ONLY the schema JSON."):
 
 ```bash
 CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
+  COUNCIL_MODEL=gpt-5.6-sol \
   COUNCIL_DEPTH=deep COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
   bash .claude/workflows/council/run.sh codex critique-codex
 ```
@@ -197,17 +215,33 @@ section.
 * Terms of art get a one-clause definition at first use. Anything renamed or
   reworked during drafting is stated fresh, never as "as discussed".
 
+**Presentation formatting:**
+
+* **Spec vs. presentation:** the STORED plan document (the future issue body,
+  executed by a cheap model at build) stays the hyper-specific spec with
+  near-code; the gate presentation is a reader-facing layer ON TOP of it.
+  These readability rules govern presentation, never a dumbing-down of the
+  stored spec.
+* **No prose walls:** "Today vs. after this slice" and "User narrative" use
+  short bullets or clearly labeled subsections, plain language first with the
+  technical detail kept alongside, never dropped.
+* **Scope lists:** "In scope" and "Deferred" keep the phase 4C format at the
+  gate too: one item per bullet with its plain-language gloss, never a
+  dot-separated or comma-run-on inline list.
+
 **Present the plan to the owner strictly in this order** (the owner approves
 as a user first, developer second, and should never need a clarifying
 question):
 
 * **Definition of done:** first thing on screen.
-* **Today vs. after this slice:** plain-language summary of what exists now,
-  what changes, what is brand new.
+* **Today vs. after this slice:** what exists now, what changes, what is
+  brand new, as short bullets or labeled subsections.
 * **User narrative:** a step-through of the feature working, so the owner
   sees the whole behavior before any technical detail.
 * **The full plan:** every section from phase 4.
-* **Critique adjudication.**
+* **Critique adjudication:** every accepted item and every rejected item
+  carries its technical statement plus a plain-words explanation the owner
+  reads as a user (what was wrong, or why it was rejected).
 
 ## 7. Close the gate
 
