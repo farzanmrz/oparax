@@ -30,6 +30,8 @@ export type SourceBrief = {
   xPostId: string;
   authorHandle: string;
   text: string;
+  /** X's machine-detected BCP-47 code when supplied; null for websites/older deliveries. */
+  sourceLanguage: string | null;
   /** Attached photos (full image) or video/GIF poster frames — descriptors only. Only the
    *  vision-capable grounding and judge stages read these original attachments directly;
    *  correction-only revision calls remain text-only. */

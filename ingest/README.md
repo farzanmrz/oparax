@@ -41,7 +41,8 @@ This is a standalone Node/TypeScript package under `ingest/**`:
   call — deletes every rule this worker owns, tagged `oparax-group-*`, then re-adds the
   freshly built groups; "rebuilt", not diffed, per the plan text).
 - `stream.ts` — `connectStream` holds the one persistent connection
-  (`expansions=author_id&user.fields=username&tweet.fields=created_at`), parses
+  (`expansions=author_id,attachments.media_keys` plus
+  `tweet.fields=created_at,note_tweet,lang`), parses
   newline-delimited JSON, maps each tweet to the exact `/api/ingest` body shape, and runs a
   liveness watchdog (see below).
 - `deliver.ts` — `postDelivery` POSTs one delivery, classifying the response exactly per the

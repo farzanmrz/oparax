@@ -1,0 +1,122 @@
+{
+  "handle": "BarcaTimes",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 50,
+  "usage": {
+    "inputTokens": 72908,
+    "outputTokens": 4199,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 43,
+      "offBeat": 7,
+      "unclear": 0
+    },
+    "skew": "almost_all_on_beat",
+    "priorLine": "@BarcaTimes is a high-volume Barcelona insider/transfer-news account whose posts are overwhelmingly on-beat, covering transfer rumors, player and technical-staff quotes, training footage, and youth prospects, with only occasional lifestyle/IG or engagement-bait posts drifting off-topic.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Breaking transfer-market bulletins with 🚨🎖️ tags citing named journalists (targets, offers, renewals).",
+        "exampleIndexes": [
+          1,
+          44
+        ],
+        "examplesEnglish": [
+          "🚨🗣️ @victor_nahe: \"The club's idea is to offer Ferran a renewal in September, after the transfer window closes. As of today, there are no formal offers from PSG.\" #fcblive",
+          "🚨🎖️| BREAKING: Barça are actively searching for a new striker and are increasingly preparing for the possibility of Ferran's departure. [@MatteMoretto] #fcblive"
+        ]
+      },
+      {
+        "pattern": "Direct player/staff interview quotes (🎙️) discussing club matters, ambitions, or teammates.",
+        "exampleIndexes": [
+          7,
+          19
+        ],
+        "examplesEnglish": [
+          "🚨🎙️| Joan: \"Message to Laporta after his heart condition? Joan, we've all seen you've been through a difficult scare. I just want to send you all my support. When I see you, I'll give you a big hug. I hope you're surrounded by people taking good care of you, and I wish you a full recovery.\" #fcblive 🫂",
+          "🚨🎙️| Xavi Espart: \"I feel Flick's confidence and I want to stay in the first team. My aim is to prove that I can stay and become a 'different' kind of full-back.\" #fcblive"
+        ]
+      },
+      {
+        "pattern": "Training/matchday photo or video posts with minimal captions showing first-team or youth players.",
+        "exampleIndexes": [
+          3,
+          13
+        ],
+        "examplesEnglish": [
+          "Today's WINNING TEAM 🌟🔥",
+          "Jesse in action 🇧🇪🔥"
+        ]
+      },
+      {
+        "pattern": "Youth academy/La Masia prospect coverage highlighting rising talents.",
+        "exampleIndexes": [
+          39,
+          48
+        ],
+        "examplesEnglish": [
+          "First touches ft. Bisiwu 🔥",
+          "🚨🎖️| Ebrima Tunkara has impressed several first-team players during preseason with his talent and versatility, being able to play both as an attacking midfielder and on either wing. Flick is pleased with his potential while working closely on his development, and fitness coach Benjamin Kugel has been particularly impressed by the 16-year-old's strength and endurance. [@bonagerman] #fcblive"
+        ]
+      },
+      {
+        "pattern": "Club logistics/official news updates (friendlies, loan confirmations, squad planning).",
+        "exampleIndexes": [
+          24,
+          29
+        ],
+        "examplesEnglish": [
+          "JUST IN: Barcelona's scheduled closed-door friendly against Preston North End on Monday has been cancelled after Preston were left with several unavailable players. Instead of playing the match, Flick will still hold a training session. The team will then head to Udine to face Udinese. #fcblive 🔵🔴",
+          "JUST IN: Jofre Torrents is set to join Ajax on a season-long loan. The Dutch club will have the option to purchase 50% of his rights for around €5M next season, with Barca also retaining a buy-back option clause close to €20M. [@Nilsola10] #fcblive 🇳🇱"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Player personal-life/Instagram content unrelated to football (family reunions, off-pitch social posts).",
+        "exampleIndexes": [
+          0,
+          37
+        ],
+        "examplesEnglish": [
+          "📲| Lamine on IG: [Instagram story with friends and Colombian flag, no football content]",
+          "Lamine and Papa Lamine finally reunite after the World Cup ❤"
+        ]
+      },
+      {
+        "pattern": "Low-content engagement bait (generic greetings or sell/keep-style polls) with no real news.",
+        "exampleIndexes": [
+          25,
+          30
+        ],
+        "examplesEnglish": [
+          "Ferran Torres — SELL or KEEP? 🤔",
+          "GOOD MORNING CULES 💙❤️"
+        ]
+      },
+      {
+        "pattern": "Ex-Barça player content in another league/sport with no current Barcelona angle.",
+        "exampleIndexes": [
+          31
+        ],
+        "examplesEnglish": [
+          "Aging like fine 🍷 [Lewandowski scoring for Chicago Fire in MLS]"
+        ]
+      },
+      {
+        "pattern": "Player downtime/vacation lifestyle photos unrelated to football activity.",
+        "exampleIndexes": [
+          33,
+          49
+        ],
+        "examplesEnglish": [
+          "Gerard Martin 🎱 [playing pool during downtime]",
+          "Cubarsí enjoying his vacation 🌟"
+        ]
+      }
+    ]
+  }
+}

@@ -85,7 +85,7 @@ export type CorpusPost = {
 };
 
 /** Ceiling on how many images one extraction sends. A reporter posting four photos on every one
- *  of 100 posts would otherwise ship 400 images into a single call — images are the expensive
+ *  of 50 posts would otherwise ship 200 images into a single call — images are the expensive
  *  part of a multimodal request, and extraction has no spend gate to catch it (owner decision,
  *  AGENTS.md). At a typical ~50 this never binds; when it does, the prompt SAYS so rather than
  *  letting the model infer that the unshown posts had no media. */

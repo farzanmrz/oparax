@@ -60,6 +60,8 @@ export type IngestDelivery =
       author_handle: string;
       text: string;
       posted_at: string; // ISO
+      /** X's machine-detected BCP-47 code, preserved verbatim. */
+      lang?: string;
       /** Attached photos (full image) or video/GIF poster frames — descriptors only, feeding
        *  the grounding stage's multimodal input (draft-ground.ts). Absent on most posts. */
       media?: { kind: string; imageUrl: string }[];
@@ -873,6 +875,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: delivery.x_post_id,
           authorHandle: delivery.author_handle,
           text: delivery.text,
+          sourceLanguage: delivery.lang ?? null,
           media: delivery.media ?? [],
         }
       : {
@@ -883,6 +886,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: "",
           authorHandle: delivery.author_handle ?? hostnameOf(delivery.url),
           text: delivery.text,
+          sourceLanguage: null,
           // Website sources carry no structured media descriptors this slice.
           media: [],
         };
@@ -988,6 +992,7 @@ export async function applyCorrection(input: {
     xPostId: sourcePost.x_post_id ?? "",
     authorHandle: sourcePost.author_handle ?? "",
     text: sourcePost.text,
+    sourceLanguage: null,
     // reviseDraft (this function's only caller) never looks at media — the emailed-correction
     // path revises existing text, it doesn't re-ground.
     media: [],

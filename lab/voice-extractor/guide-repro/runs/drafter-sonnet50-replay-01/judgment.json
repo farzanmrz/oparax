@@ -1,0 +1,432 @@
+{
+  "evaluator": "anthropic/claude-sonnet-5",
+  "thinking": "adaptive/high",
+  "rubricCloseGrades": [
+    "exact",
+    "near"
+  ],
+  "counts": {
+    "exact": 1,
+    "near": 36,
+    "partial": 10,
+    "fail": 8
+  },
+  "closeCount": 37,
+  "closeRate": 0.6727272727272727,
+  "usage": {
+    "inputTokens": 21451,
+    "inputTokenDetails": {
+      "noCacheTokens": 21451,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0
+    },
+    "outputTokens": 6916,
+    "outputTokenDetails": {
+      "textTokens": 3348,
+      "reasoningTokens": 3568
+    },
+    "totalTokens": 28367,
+    "raw": {
+      "input_tokens": 21451,
+      "output_tokens": 6916,
+      "output_tokens_details": {
+        "thinking_tokens": 3568
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    }
+  },
+  "judgments": [
+    {
+      "index": 1,
+      "grade": "near",
+      "semanticScore": 3,
+      "voiceFormatScore": 4,
+      "reason": "Same core purge/sale story but replay omits the market-shaping claim from historical."
+    },
+    {
+      "index": 2,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 3,
+      "reason": "Historical is a brief convocation note while replay adds an extensive squad list not present in historical."
+    },
+    {
+      "index": 3,
+      "grade": "exact",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same facts and format with only trivial phrasing differences."
+    },
+    {
+      "index": 4,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same core fact with minor hashtag/emoji differences."
+    },
+    {
+      "index": 5,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same facts, minor paraphrase and attribution swap."
+    },
+    {
+      "index": 6,
+      "grade": "partial",
+      "semanticScore": 4,
+      "voiceFormatScore": 2,
+      "reason": "Historical is English while replay reverts to Spanish, changing language/voice."
+    },
+    {
+      "index": 7,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Nearly identical content with minor structural tweak."
+    },
+    {
+      "index": 8,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same quotes and facts with minor rewording."
+    },
+    {
+      "index": 9,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same key facts about Suzuki talks with minor phrasing differences."
+    },
+    {
+      "index": 10,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false so no replay draft would be emitted."
+    },
+    {
+      "index": 11,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same content, mirrors source closely with same voice."
+    },
+    {
+      "index": 12,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same core claims with differing emoji/hashtag choices."
+    },
+    {
+      "index": 13,
+      "grade": "near",
+      "semanticScore": 3,
+      "voiceFormatScore": 3,
+      "reason": "Core claim matches though phrasing adds redundant clause."
+    },
+    {
+      "index": 14,
+      "grade": "near",
+      "semanticScore": 3,
+      "voiceFormatScore": 3,
+      "reason": "Core friendly-in-Morocco story kept but drops the income/presence rationale."
+    },
+    {
+      "index": 15,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same facts about arrival and training window with minor format shift."
+    },
+    {
+      "index": 16,
+      "grade": "partial",
+      "semanticScore": 4,
+      "voiceFormatScore": 2,
+      "reason": "Historical English draft replayed largely in Spanish, a language/voice change."
+    },
+    {
+      "index": 17,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 3,
+      "reason": "Replay drops the €25m fee detail present in historical."
+    },
+    {
+      "index": 18,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same nuanced debate details preserved closely."
+    },
+    {
+      "index": 19,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same two updates conveyed, slight structural difference."
+    },
+    {
+      "index": 20,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same deal facts, minor condensation."
+    },
+    {
+      "index": 21,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Stones deal facts with reordering only."
+    },
+    {
+      "index": 22,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 2,
+      "reason": "Language reverts to Spanish and drops Kings League/Milan/La Capital context."
+    },
+    {
+      "index": 23,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same tribute story condensed but core facts intact."
+    },
+    {
+      "index": 24,
+      "grade": "partial",
+      "semanticScore": 3,
+      "voiceFormatScore": 2,
+      "reason": "Historical English summary replaced by Spanish quote-based text."
+    },
+    {
+      "index": 25,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Leeds/Trafford facts, essentially unchanged."
+    },
+    {
+      "index": 26,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same AEK/Majer facts, missing attribution to Fabrizio but otherwise aligned."
+    },
+    {
+      "index": 27,
+      "grade": "partial",
+      "semanticScore": 4,
+      "voiceFormatScore": 2,
+      "reason": "Historical English draft replayed in Spanish, altering voice/language."
+    },
+    {
+      "index": 28,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Stones-to-Inter details with near identical phrasing."
+    },
+    {
+      "index": 29,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false, so no replay would occur."
+    },
+    {
+      "index": 30,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false, so no replay would occur."
+    },
+    {
+      "index": 31,
+      "grade": "partial",
+      "semanticScore": 4,
+      "voiceFormatScore": 2,
+      "reason": "Historical English text replayed largely in Spanish, changing voice/language."
+    },
+    {
+      "index": 32,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same training update, consistent English voice."
+    },
+    {
+      "index": 33,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Henderson/Welbeck facts nearly verbatim."
+    },
+    {
+      "index": 34,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Castro transfer facts with minor rewording."
+    },
+    {
+      "index": 35,
+      "grade": "near",
+      "semanticScore": 3,
+      "voiceFormatScore": 3,
+      "reason": "Same Kroupi plan-B story though drops explicit front-page framing."
+    },
+    {
+      "index": 36,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false, so no replay would occur."
+    },
+    {
+      "index": 37,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same academy players highlighted with equivalent phrasing."
+    },
+    {
+      "index": 38,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false, so no replay would occur."
+    },
+    {
+      "index": 39,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false, so no replay would occur."
+    },
+    {
+      "index": 40,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same Kroupi desire/plan-B story with minor Spanish phrase retained."
+    },
+    {
+      "index": 41,
+      "grade": "partial",
+      "semanticScore": 4,
+      "voiceFormatScore": 2,
+      "reason": "Historical English sentence replayed verbatim in Spanish, a language/voice shift."
+    },
+    {
+      "index": 42,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same training update with differing hashtags/emoji."
+    },
+    {
+      "index": 43,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false, so no replay would occur."
+    },
+    {
+      "index": 44,
+      "grade": "near",
+      "semanticScore": 3,
+      "voiceFormatScore": 4,
+      "reason": "Same board meeting story though 'Compromisarios' mistranslated as 'Shareholders'."
+    },
+    {
+      "index": 45,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false, so no replay would occur."
+    },
+    {
+      "index": 46,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Christensen quote with matching format."
+    },
+    {
+      "index": 47,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Zito quote and claim about Aziz reaching Lamine's level."
+    },
+    {
+      "index": 48,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Pitarch sighting detail preserved."
+    },
+    {
+      "index": 49,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Ferran Torres renewal strategy conveyed with minor wording differences."
+    },
+    {
+      "index": 50,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Laporta arrhythmia news with matching details."
+    },
+    {
+      "index": 51,
+      "grade": "near",
+      "semanticScore": 3,
+      "voiceFormatScore": 4,
+      "reason": "Same core Laporta story but omits recovery-period detail."
+    },
+    {
+      "index": 52,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Flick/Álvarez/Kroupi front-page story near identical."
+    },
+    {
+      "index": 53,
+      "grade": "partial",
+      "semanticScore": 4,
+      "voiceFormatScore": 2,
+      "reason": "Historical English draft replayed in Spanish, altering language/voice."
+    },
+    {
+      "index": 54,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Farré comeback story closely mirrored in English."
+    },
+    {
+      "index": 55,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Bournemouth rejection story with matching attribution and facts."
+    }
+  ]
+}

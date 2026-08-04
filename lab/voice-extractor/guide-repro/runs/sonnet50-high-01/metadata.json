@@ -1,0 +1,41 @@
+{
+  "run": "sonnet50-high-01",
+  "model": "anthropic/claude-sonnet-5",
+  "thinking": {
+    "type": "adaptive",
+    "effort": "high",
+    "display": "summarized"
+  },
+  "corpusPosts": 50,
+  "mediaFiles": 9,
+  "systemPromptSha256": "9321d5eacd6aa7bfb3689b9b5054145a8e5553150a26c0371e02f19e89ec41bb",
+  "historicalInputTextSha256": "7850ee538a77303906c08a297e9199849da5fa8a555d5bb6e1375b89219feaa5",
+  "effectiveInputTextSha256": "66468d9147e3a140c1c4c1aba548fc84d320408061d9ca2e6c3c447f528fa62b",
+  "corpusPostIdsSha256": "05831e5cc90a7bfef43fd49be4a68c2ccc03df5fd2f6b99d85ff94a79f4be3dc",
+  "measuredFacts": "MEASURED STYLE FACTS for @ReshadRahman — frequencies computed by code over all 50 corpus posts.\n- length (chars): median 154, p10 44, p90 275, max 316; 3/50 posts over 280\n- line breaks: 39/50 posts have none, 0/50 exactly one, 11/50 two or more\n- emoji: 38/50 posts contain any; full inventory: 🚨×20 🔴×12 🔵×9 ❗×9 💰×4 ⚠️×4 📞×4 ⚽×4 🇦🇷×3 🚫×3 1️⃣×3 2️⃣×3 🇫🇷×3 💥×3 ✅×2 (+25 rarer)\n- hashtags: 27/50 posts contain any; full inventory (exact casing): #Transfers×20 #FCB×7 #1×1\n- mentions (@): 23/50 posts; URLs: 15/50 posts\n- posts containing: ! 3/50 · ? 1/50 · ellipsis 3/50 · em-dash 5/50 · straight \" 0/50 · curly “” 4/50 · colon 33/50\n- ALL-CAPS words (3+ letters): 22/50 posts",
+  "historicalReferenceRawGuideSha256": "ca0848439427dd34dffafcca23f9f47d7956a6548c4d097aee1368478d078ac3",
+  "outputGuideSha256": "120bb94080e28c01363a18d116513d3509a76c8b884f4f0e7350555ff4c84a97",
+  "outputGuideChars": 20152,
+  "finishReason": "stop",
+  "scopeExclusion": {
+    "postIds": [
+      "2080760513689215216"
+    ],
+    "reason": "A gaming-screenshot reaction gif posted with no caption and no football content, unrelated to Barcelona transfer news",
+    "applied": true,
+    "note": "Excluded 1 of 50 posts. The MEASURED FACTS block below is recomputed over the remaining 49 and REPLACES the one in your input."
+  },
+  "usage": {
+    "inputTokens": 46299,
+    "outputTokens": 32775,
+    "totalTokens": 79074,
+    "reasoningTokens": 24371,
+    "cachedInputTokens": 0
+  },
+  "gateway": {
+    "generationId": "gen_01KZ2Q2FRQJY6N7MYKCYG3YGW5",
+    "costUsd": 0
+  },
+  "startedAt": "2026-08-03T02:25:30.440Z",
+  "completedAt": "2026-08-03T02:31:30.435Z"
+}

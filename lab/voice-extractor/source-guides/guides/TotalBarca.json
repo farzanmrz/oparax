@@ -1,0 +1,111 @@
+{
+  "handle": "TotalBarca",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 41,
+  "usage": {
+    "inputTokens": 63673,
+    "outputTokens": 6448,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 41,
+      "offBeat": 9,
+      "unclear": 0
+    },
+    "skew": "mixed",
+    "priorLine": "This account is a dedicated Barça news/transfer feed that posts constant club content (training photos, transfer rumors, player quotes, match reactions) but periodically drifts into unrelated football politics (FIFA/Infantino) or other clubs' transfer news with no Barcelona tie-in.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Bare training-ground photos of Barça players posted with no caption, just an image link.",
+        "exampleIndexes": [
+          1,
+          4
+        ],
+        "examplesEnglish": [
+          "[Photo only, no caption]",
+          "[Photo only, no caption]"
+        ]
+      },
+      {
+        "pattern": "Transfer rumor reports on players linked to or potentially leaving Barça, citing named journalists/outlets.",
+        "exampleIndexes": [
+          0,
+          36
+        ],
+        "examplesEnglish": [
+          "Despite concrete interest from Barça, Asllani's Transfer to Leipzig Is Imminent. Negotiations Have Reached Their Final Stages. Only an agreement on some details related to the player's salary with his representatives remains. (BILD)",
+          "Cuti Romero IS NOT waiting for Barça, he would gladly go to Inter if an agreement is reached. Barça is also not yet sure if they will sign a defender. (Fab)"
+        ]
+      },
+      {
+        "pattern": "Quotes from Barça players/staff discussing their role, ambitions, or desire to stay at the club.",
+        "exampleIndexes": [
+          14,
+          16
+        ],
+        "examplesEnglish": [
+          "Xavi Espart on versatility and future at Barça: \"I've always played as a pivot, I've been at Barça for three years as a full-back, but to play for Barça I would play in any position, the coach will decide\"",
+          "Álvaro Cortés: \"I want to stay at Barça, it's been my dream since I was a kid\" \"I've already gone through the stage with the reserves. I want to earn a spot on the 1st team\""
+        ]
+      },
+      {
+        "pattern": "Betting-market/odds graphics about Barça's title chances or player signings.",
+        "exampleIndexes": [
+          8,
+          11
+        ],
+        "examplesEnglish": [
+          "🚨 Julian Alvarez currently has a far bigger chance of staying at Atletico than he does of joining Barça according to the latest markets 😳 Something needs to HAPPEN, urgently.",
+          "🚨 Barça are official favourites to win La Liga, with a 52% chance of this happening according to the latest markets."
+        ]
+      },
+      {
+        "pattern": "Short celebratory captions marking Barça player milestones or team wins (birthdays, victories).",
+        "exampleIndexes": [
+          2,
+          19
+        ],
+        "examplesEnglish": [
+          "Winners!",
+          "Happy birthday, Héctor! 🎂"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Commentary on FIFA governance/Infantino controversy with no Barcelona connection.",
+        "exampleIndexes": [
+          29,
+          30
+        ],
+        "examplesEnglish": [
+          "What absolute scum.",
+          "Tebas calls on Infantino to step down."
+        ]
+      },
+      {
+        "pattern": "Other clubs' transfer news shared with no Barcelona angle.",
+        "exampleIndexes": [
+          9,
+          38
+        ],
+        "examplesEnglish": [
+          "Hear me out… (linking to: Galatasaray has rejected Tottenham's €60M offer for Victor Osimhen; Osimhen could leave Turkey this summer, with multiple clubs interested in the striker)",
+          "Vinicius is allegedly demanding an 80M€ signing bonus and 80% of image rights in Real Madrid renewal talks. That's crazy."
+        ]
+      },
+      {
+        "pattern": "Highlights or moments from other leagues/clubs unrelated to Barcelona.",
+        "exampleIndexes": [
+          24
+        ],
+        "examplesEnglish": [
+          "Lewy's first MLS goal is a beauty!"
+        ]
+      }
+    ]
+  }
+}

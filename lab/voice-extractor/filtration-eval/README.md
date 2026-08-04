@@ -15,7 +15,18 @@ The frozen no-extractor filtration path is:
 
 `drafter-filter-profile-prompt.md` is the frozen downstream prompt of record. `drafter-filter-prompt.md` is retained as the earlier no-profile control.
 
+`drafter-filter-markdown-prompt.md` is the rejected combined Markdown-prompt/nested-XML treatment. It is retained so the 1,248/1,336 result can be reproduced through `--prompt-mode markdown`; it does not replace the frozen control.
+
+The combined treatment was split into two full-corpus ablations:
+
+- `drafter-filter-nested-input-prompt.md` plus `--prompt-mode nested-input` keeps the XML system prompt nearly unchanged while using the nested user input. It scored 1,254/1,336 and is promising but not promoted without replication.
+- `drafter-filter-markdown-only-prompt.md` plus `--prompt-mode markdown-only` changes only the system prompt's section format while retaining its exact wording and the baseline user input. It scored 1,243/1,336 and is rejected.
+
 The 93.71% result contains no extractor output or filtration guidance. The extractor prompt under iteration remains the single separate file `extractor-prompt.md`; each iteration must inject its output into this unchanged downstream setup and compare paired labels against the same benchmark.
+
+## Extractor input
+
+Extractor treatments use the reporter's 50 newest original posts. The versioned sparse snapshot `extractor-evidence-50.jsonl` adds all original media for those posts plus deterministically resolved X-post links; no web-search tool is enabled. `run-eval.mjs` defaults the extractor corpus to 50 and accepts that snapshot through `--extractor-evidence`.
 
 ## Experiment record
 
@@ -23,7 +34,7 @@ Read [`docs/issue-99-filtration-experiments.md`](../../../docs/issue-99-filtrati
 
 ## Next iteration
 
-Start with extractor-produced filtration guidance. Do not change the downstream prompt, translation routing, source profile, link enrichment, media handling, model, parameters, or benchmark in the same experiment. A treatment is useful only if it beats 1,252/1,336 without trading a large number of correct baseline decisions for different errors.
+Keep the enriched 50-post extractor input fixed and iterate `extractor-prompt.md`. Do not change the downstream prompt, translation routing, source profile, link enrichment, media handling, model, parameters, or benchmark in the same experiment. A treatment is useful only if it beats 1,252/1,336 without trading a large number of correct baseline decisions for different errors.
 
 ## Run the frozen baseline
 

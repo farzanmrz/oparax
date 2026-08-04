@@ -1,0 +1,31 @@
+{
+  "run": "opus100-replay-01",
+  "model": "anthropic/claude-opus-5",
+  "thinking": {
+    "type": "adaptive",
+    "effort": "high",
+    "display": "summarized"
+  },
+  "corpusPosts": 100,
+  "mediaFiles": 47,
+  "systemPromptSha256": "9321d5eacd6aa7bfb3689b9b5054145a8e5553150a26c0371e02f19e89ec41bb",
+  "historicalInputTextSha256": "7850ee538a77303906c08a297e9199849da5fa8a555d5bb6e1375b89219feaa5",
+  "historicalReferenceRawGuideSha256": "ca0848439427dd34dffafcca23f9f47d7956a6548c4d097aee1368478d078ac3",
+  "outputGuideSha256": "91580328dd36861d737397b0d346255578198d7a803adac4f02add457383337f",
+  "outputGuideChars": 28908,
+  "finishReason": "stop",
+  "scopeExclusion": null,
+  "usage": {
+    "inputTokens": 74869,
+    "outputTokens": 18259,
+    "totalTokens": 93128,
+    "reasoningTokens": 5716,
+    "cachedInputTokens": 0
+  },
+  "gateway": {
+    "generationId": "gen_01KZ2MZPM6JR3ACVJ7SGH4HTHZ",
+    "costUsd": 0
+  },
+  "startedAt": "2026-08-03T01:49:32.473Z",
+  "completedAt": "2026-08-03T01:54:07.968Z"
+}

@@ -1,0 +1,79 @@
+{
+  "handle": "barcacentre",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 27,
+  "usage": {
+    "inputTokens": 40886,
+    "outputTokens": 3923,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 49,
+      "offBeat": 1,
+      "unclear": 0
+    },
+    "skew": "almost_all_on_beat",
+    "priorLine": "This account is a dedicated FC Barcelona beat feed that almost exclusively posts transfer bulletins, player/manager quotes, live match commentary, and official club graphics directly about the club, its players, and staff.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Breaking transfer-rumor bulletins marked with 🚨, citing a journalist source, about incoming or outgoing Barcelona transfers.",
+        "exampleIndexes": [
+          0,
+          16
+        ],
+        "examplesEnglish": [
+          "🚨 João Cancelo's signing for FC Barcelona is in the final stretch! The transfer should be closed in the next days for an amount of €8m - €10m. Cancelo will sign a contract for the next two seasons. [@JoanPoquiEraso] 🇵🇹",
+          "🚨 A deal for João Cancelo is finally progressing! Al-Hilal have given the green light for his exit, and hope to sell him to FC Barcelona for around €10m. [@gbsans]"
+        ]
+      },
+      {
+        "pattern": "First-person quotes from Barcelona players expressing desire to stay, admiration for teammates, or reflections on their situation at the club.",
+        "exampleIndexes": [
+          7,
+          11
+        ],
+        "examplesEnglish": [
+          "🚨 Álvaro Cortés: \"I want to stay at FC Barcelona, it's been my dream since I was a kid. Whatever the club decide about me, I will abide by it and respect it, but my desire is to stay on the first team. I've already gone through the B team stage, and I want to earn a spot on the first team.\" [via @victor_nahe] 🎙️",
+          "🚨 Jesse Bisiwu: \"Neymar Jr. is the reason I started playing football. He's my idol. From the current squad, I'd choose Raphinha. He's a very good player.\" [via @mundodeportivo]"
+        ]
+      },
+      {
+        "pattern": "Series of direct quotes from head coach Hansi Flick discussing squad, individual players, and team mentality after a match.",
+        "exampleIndexes": [
+          22,
+          26
+        ],
+        "examplesEnglish": [
+          "Flick: \"I really appreciate working with Marcus Rashford. His situation was not easy and with loans there's always some uncertainty. We will miss him, but we have to accept it. Gordon has arrived, who really wants to play at Barça and is 'on fire'.\"",
+          "Flick: \"Hamza is very humble and has a good character. He always tries to give his best and has great potential. As a striker you have to appear in those situations within the area and today he was there. That's what I ask of a nine.\""
+        ]
+      },
+      {
+        "pattern": "Live, tweet-by-tweet match commentary (goals, half-time/full-time scorelines, substitutions) for a Barcelona preseason friendly.",
+        "exampleIndexes": [
+          33,
+          36
+        ],
+        "examplesEnglish": [
+          "60' Hamza strikes again! The Egyptian scores from Bardghi's rebounded shot.",
+          "HALF TIME: Birmingham City 1-1 FC Barcelona.\n\nLots of changes expected for the 2nd half."
+        ]
+      },
+      {
+        "pattern": "Official club-sourced photos or graphics (lineups, training snapshots) credited to @FCBarcelona.",
+        "exampleIndexes": [
+          45,
+          12
+        ],
+        "examplesEnglish": [
+          "🚨 OFFICIAL: The XI! [@FCBarcelona]",
+          "📸 Future full-backs. [@FCBarcelona]"
+        ]
+      }
+    ],
+    "offBeatPatterns": []
+  }
+}

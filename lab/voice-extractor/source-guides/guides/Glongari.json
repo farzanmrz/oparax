@@ -1,0 +1,109 @@
+{
+  "handle": "Glongari",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 19,
+  "usage": {
+    "inputTokens": 32756,
+    "outputTokens": 6897,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 5,
+      "offBeat": 45,
+      "unclear": 0
+    },
+    "skew": "almost_all_off_beat",
+    "priorLine": "This is an Italian transfer-market insider (Sportitalia) whose feed is dominated by Serie A, Saudi Pro League and other European clubs' transfer gossip (Inter, Milan, Juventus, Fenerbahce, Al Ahli, etc.), with Barcelona surfacing only occasionally and usually tangentially (an ex-coach's next job, a linked defender's suitors, or a squad-retention note), so expect a low hit-rate for a dedicated Barcelona beat.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Notes Barcelona's continuing interest in / competition for a non-Barcelona defender being chased by Inter (Cuti Romero), sometimes only via the linked/resolved tweet.",
+        "exampleIndexes": [
+          28,
+          49
+        ],
+        "examplesEnglish": [
+          "🚨 Inter have closed the deal for Stones and continue to negotiate for Cuti Romero. ‼️ Agreement in principle between Inter and Tottenham for a fee close to €40M. 📞 Talks ongoing with the agent for personal terms which have not yet been found. Barcelona present in Romero's thoughts, but they need to complete an outgoing deal.",
+          "‼️ 🚨 Full confirmation on the negotiation and interest in Cuti Romero from Inter, revealed exclusively on the morning of July 1st. These are the words of Piero Ausilio: 'There is certainly interest that we are showing in the player and the club. These things take time but there is certainly interest, let's see.'"
+        ]
+      },
+      {
+        "pattern": "Direct Barcelona squad/contract news (a first-team player's situation at the club itself).",
+        "exampleIndexes": [
+          44
+        ],
+        "examplesEnglish": [
+          "🚨 Despite the many expressions of interest in Gerard Martin, Barcelona's position at the moment remains that of not giving up their central defender. Martin is appreciated by Milan and has also been linked with the Rossoneri recently, but Barça wants to keep him."
+        ]
+      },
+      {
+        "pattern": "Coverage of a former Barcelona manager's (Xavi) next job elsewhere, explicitly tagged with his Barcelona history.",
+        "exampleIndexes": [
+          2
+        ],
+        "examplesEnglish": [
+          "🚨 🇸🇦 Al Ahli is seriously trying for Xavi and has made a first offer to the former Barcelona coach. There is a list of alternatives that also includes Vitor Pereira but contacts with Xavi are progressing while awaiting to understand the coach's potential willingness."
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Inter transfer/contract rumors (Stones, Romero, Curtis Jones, Bisseck) with no Barcelona tie-in.",
+        "exampleIndexes": [
+          9,
+          30
+        ],
+        "examplesEnglish": [
+          "🚨 John Stones is Inter's. ✍️ The defender, after undergoing medical exams, is about to sign the two-year contract with his family at the club that will bind him to the nerazzurri. ✅ Exclusive confirmed",
+          "🚨 Despite the esteem from Liverpool's new coach Iraola, Curtis Jones continues to appreciate Inter's interest and is open to the possibility of moving to Milan in this transfer window. ‼️ Curtis Jones and Inter: prospect still open"
+        ]
+      },
+      {
+        "pattern": "AC Milan / Rafa Leao transfer saga involving Fenerbahce and Galatasaray.",
+        "exampleIndexes": [
+          25,
+          34
+        ],
+        "examplesEnglish": [
+          "✈️ First Milan blitz by the Fenerbahce delegate concluded. Next stop Poland for the Champions League preliminary. After that match, talks with Milan for Rafa Leao can also get underway.",
+          "🚨 🚨 Confirmed! The Fenerbahce delegation is arriving in Milan. Contacts for Rafa Leao will heat up in the coming hours and days."
+        ]
+      },
+      {
+        "pattern": "Smaller Serie A/lower-league player movement stories unrelated to Barcelona.",
+        "exampleIndexes": [
+          0,
+          20
+        ],
+        "examplesEnglish": [
+          "Excl 🚨 Frosinone closing in on Andréas Hountondji, Burnley forward",
+          "Atalanta outgoing: Vavassori to Palermo on a straight loan for €1M as anticipated by @NickBinda"
+        ]
+      },
+      {
+        "pattern": "Saudi Pro League transfer news (Al Ahli, Al Hilal, Al Shabab, etc.).",
+        "exampleIndexes": [
+          14,
+          42
+        ],
+        "examplesEnglish": [
+          "🚨 🇸🇦 Al Hilal prepares first offer to Everton for winger Iliman Ndiaye. Ndiaye would be open to the Saudi prospect, even though his club's asking price is around £75M. ‼️ Negotiation ready to start",
+          "🚨 🇸🇦 Al Shabab is close to closing the purchase of Mamadou Thierno Barry from USG."
+        ]
+      },
+      {
+        "pattern": "Self-promotional / engagement posts (workshop ads, WhatsApp group invites) unrelated to any club's news.",
+        "exampleIndexes": [
+          19,
+          29
+        ],
+        "examplesEnglish": [
+          "‼️ 🚨 The Sportitalia Workshop returns ‼️ 🚨 📧 📞 for all info and to become part of our editorial team ⬇️ workshop@sportitaliatv.com",
+          "Latest on Cuti Romero-Inter, the Stones deal closed by the nerazzurri. Latest on Fenerbahce's push for Rafa Leao 🔥 🚨 All live updates in the group: [link]"
+        ]
+      }
+    ]
+  }
+}

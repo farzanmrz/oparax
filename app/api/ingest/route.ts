@@ -32,6 +32,9 @@ const ingestBodySchema = z.discriminatedUnion("source", [
     x_post_id: z.string().min(1),
     author_handle: z.string().min(1), // normalized via lib/x/handle.ts
     text: z.string().min(1),
+    // X's machine-detected BCP-47 language code (`und` when it cannot detect one).
+    // Optional so an older forwarder deployment can still deliver during rollout.
+    lang: z.string().min(1).optional(),
     posted_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
       message: "posted_at must parse as a date",
     }),

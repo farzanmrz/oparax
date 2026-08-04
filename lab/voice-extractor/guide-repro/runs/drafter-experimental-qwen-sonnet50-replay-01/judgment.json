@@ -1,0 +1,432 @@
+{
+  "evaluator": "anthropic/claude-sonnet-5",
+  "thinking": "adaptive/high",
+  "rubricCloseGrades": [
+    "exact",
+    "near"
+  ],
+  "counts": {
+    "exact": 1,
+    "near": 22,
+    "partial": 11,
+    "fail": 21
+  },
+  "closeCount": 23,
+  "closeRate": 0.41818181818181815,
+  "usage": {
+    "inputTokens": 19462,
+    "inputTokenDetails": {
+      "noCacheTokens": 19462,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0
+    },
+    "outputTokens": 9202,
+    "outputTokenDetails": {
+      "textTokens": 3374,
+      "reasoningTokens": 5828
+    },
+    "totalTokens": 28664,
+    "raw": {
+      "input_tokens": 19462,
+      "output_tokens": 9202,
+      "output_tokens_details": {
+        "thinking_tokens": 5828
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    }
+  },
+  "judgments": [
+    {
+      "index": 1,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same purge story and JUST IN tone, minor phrasing differences."
+    },
+    {
+      "index": 2,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 1,
+      "reason": "Historical is a bare link caption while replay becomes a detailed squad-list post with new opponent info, a major mode shift."
+    },
+    {
+      "index": 3,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false so no replay would be produced."
+    },
+    {
+      "index": 4,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same core fact but replay keeps literal caption/link style instead of the JUST IN framing."
+    },
+    {
+      "index": 5,
+      "grade": "near",
+      "semanticScore": 3,
+      "voiceFormatScore": 4,
+      "reason": "Same story with an added unverified 'knee' detail, voice matches JUST IN style."
+    },
+    {
+      "index": 6,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 2,
+      "reason": "Replay drops the specific player names and detail, reducing to a generic statement."
+    },
+    {
+      "index": 7,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 8,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 3,
+      "reason": "Replay omits the central 'Belgian laws' causal claim from the historical draft."
+    },
+    {
+      "index": 9,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 10,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 11,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Nearly identical content and JUST IN voice, minor attribution difference."
+    },
+    {
+      "index": 12,
+      "grade": "partial",
+      "semanticScore": 3,
+      "voiceFormatScore": 3,
+      "reason": "Replay drops the Mastantuono signing context that frames the Yamal search narrative."
+    },
+    {
+      "index": 13,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 1,
+      "reason": "Replay shifts from a terse JUST IN note to an engagement-style breakdown with extra unverified details."
+    },
+    {
+      "index": 14,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 15,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same facts about arrival and training dates, consistent JUST IN voice."
+    },
+    {
+      "index": 16,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 17,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 18,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same split narrative on Kroupi, matching JUST IN tone."
+    },
+    {
+      "index": 19,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same two headline points about Álvarez alternatives and Bisiwu, close formatting."
+    },
+    {
+      "index": 20,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 21,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 22,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 23,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Matches the hometown welcome narrative closely."
+    },
+    {
+      "index": 24,
+      "grade": "partial",
+      "semanticScore": 3,
+      "voiceFormatScore": 2,
+      "reason": "Historical withholds the actual quote as a teaser, while replay leads with the full statement, changing the framing."
+    },
+    {
+      "index": 25,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 26,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 27,
+      "grade": "partial",
+      "semanticScore": 3,
+      "voiceFormatScore": 2,
+      "reason": "Core chant/celebration story matches but replay adds redundant framing and drops the video/JUST IN tone."
+    },
+    {
+      "index": 28,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 29,
+      "grade": "partial",
+      "semanticScore": 4,
+      "voiceFormatScore": 2,
+      "reason": "Content matches closely but the historical draft is in Spanish while the replay is in English, a language mismatch."
+    },
+    {
+      "index": 30,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Near-identical wording and same family-first narrative."
+    },
+    {
+      "index": 31,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same training update details for Fermín, Bernal, Araújo, Balde and Frenkie."
+    },
+    {
+      "index": 32,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 3,
+      "reason": "Replay incorrectly substitutes Cubarsí for Bernal, a factual error in the player list."
+    },
+    {
+      "index": 33,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 34,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 35,
+      "grade": "partial",
+      "semanticScore": 2,
+      "voiceFormatScore": 2,
+      "reason": "Replay adds unrequested debate details and drops the SPORT front-page framing central to the historical draft."
+    },
+    {
+      "index": 36,
+      "grade": "exact",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Virtually identical quote and formatting."
+    },
+    {
+      "index": 37,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 38,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 39,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 40,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Kroupi eagerness and Plan B narrative, consistent voice."
+    },
+    {
+      "index": 41,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Near-identical training update on the four players."
+    },
+    {
+      "index": 42,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same training claim, replay keeps source-style caption instead of JUST IN framing."
+    },
+    {
+      "index": 43,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same fitness prep claim with a more literal translation style."
+    },
+    {
+      "index": 44,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 45,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 46,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Christensen quote with attribution and hashtags."
+    },
+    {
+      "index": 47,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 3,
+      "reason": "Same discoverer praise narrative, paraphrased without direct quote."
+    },
+    {
+      "index": 48,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Nearly identical description of Pitarch in the stands."
+    },
+    {
+      "index": 49,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same Ferran Torres renewal strategy details."
+    },
+    {
+      "index": 50,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same arrhythmia news with equivalent breaking-news framing."
+    },
+    {
+      "index": 51,
+      "grade": "fail",
+      "semanticScore": 0,
+      "voiceFormatScore": 0,
+      "reason": "REPLAY_ON_BEAT is false."
+    },
+    {
+      "index": 52,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same front-page claim about Flick pushing for a '9'."
+    },
+    {
+      "index": 53,
+      "grade": "partial",
+      "semanticScore": 3,
+      "voiceFormatScore": 3,
+      "reason": "Replay omits the specific warning quote that anchors the historical draft's hook."
+    },
+    {
+      "index": 54,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same comeback narrative for Farré with matching details."
+    },
+    {
+      "index": 55,
+      "grade": "near",
+      "semanticScore": 4,
+      "voiceFormatScore": 4,
+      "reason": "Same rejected-offers story with matching figures and source attribution."
+    }
+  ]
+}

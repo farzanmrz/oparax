@@ -1,0 +1,79 @@
+{
+  "handle": "fcbarcelona",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 47,
+  "usage": {
+    "inputTokens": 66577,
+    "outputTokens": 920,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 50,
+      "offBeat": 0,
+      "unclear": 0
+    },
+    "skew": "almost_all_on_beat",
+    "priorLine": "This is the official FC Barcelona club account, posting almost exclusively training-ground content, matchday coverage, player interviews, and club milestones — treat nearly everything as on-beat by default.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Training-session photos/videos of first-team and academy players during preseason camp in England.",
+        "exampleIndexes": [
+          3,
+          13
+        ],
+        "examplesEnglish": [
+          "Getting into the groove 💪",
+          "The work continues. Another session awaits this afternoon. 👊"
+        ]
+      },
+      {
+        "pattern": "Behind-the-scenes recap videos of full training days, often promoting Barça Play for extended footage.",
+        "exampleIndexes": [
+          2,
+          20
+        ],
+        "examplesEnglish": [
+          "A Sunday with a double training session 💪 The full video is now available on Barça Play 🎥 👉",
+          "🏴 England, Day 6. ▶️ See what happened at today's training camp on Barça Play"
+        ]
+      },
+      {
+        "pattern": "Post-match mixed-zone interview clips with players or coach Flick reacting to preseason friendlies.",
+        "exampleIndexes": [
+          11,
+          37
+        ],
+        "examplesEnglish": [
+          "🎤 Álvaro Cortés shares his thoughts on the preseason training camp.",
+          "🎙️ Flick gives his thoughts on the first preseason game"
+        ]
+      },
+      {
+        "pattern": "New/debuting player welcome or first-impression posts (first session, first words, first goal).",
+        "exampleIndexes": [
+          31,
+          33
+        ],
+        "examplesEnglish": [
+          "🎙️ Hear Bisiwu's first words as a blaugrana.",
+          "First day. First session. Welcome to Barça, Bisiwu! 💪"
+        ]
+      },
+      {
+        "pattern": "Matchday result graphics, highlight reels, and player action shots from preseason friendlies.",
+        "exampleIndexes": [
+          46,
+          48
+        ],
+        "examplesEnglish": [
+          "Natural goalscorer's instinct.",
+          "📺 Relive the best moments from today's game! @Midea"
+        ]
+      }
+    ],
+    "offBeatPatterns": []
+  }
+}

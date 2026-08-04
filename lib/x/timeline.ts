@@ -43,9 +43,9 @@ export type XTimelinePost = {
   media: XTimelineMedia[];
 };
 
-/** 100 posts, 80 train / 20 held-out — the corpus size the extraction recipe is calibrated
- *  against (.claude/rules/voice.md). X caps a page at 100, so this is usually one page. */
-const MAX_POSTS = 100;
+/** The 50 most recent originals — enough to capture the reporter's current patterns without
+ *  letting older topics add noise to the extractor. X caps a page at 100, so this is one page. */
+const MAX_POSTS = 50;
 const PAGE_SIZE = 100;
 /** Hard wall-clock bound: two or three API calls should take ~1s, so anything near this is a
  *  hang rather than slowness. */

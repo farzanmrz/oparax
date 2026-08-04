@@ -1,0 +1,131 @@
+{
+  "handle": "MundoDeportivo",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 8,
+  "usage": {
+    "inputTokens": 21284,
+    "outputTokens": 2921,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 18,
+      "offBeat": 32,
+      "unclear": 0
+    },
+    "skew": "mixed",
+    "priorLine": "@MundoDeportivo is a general sports outlet that publishes frequent Barça-specific transfer, match and personnel stories but mixes them with a larger volume of Real Madrid, other-club, other-sport and lifestyle content, so each post must be judged individually for a Barça angle.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Barça basketball section transfer/staffing news",
+        "exampleIndexes": [
+          2,
+          4
+        ],
+        "examplesEnglish": [
+          "Kuzey Kiliç, reinforcement for Barça basketball's sporting structure",
+          "Green light for Xevi Pujol's arrival at Barça"
+        ]
+      },
+      {
+        "pattern": "First-team football transfer/negotiation news",
+        "exampleIndexes": [
+          5,
+          21
+        ],
+        "examplesEnglish": [
+          "Countdown for Cancelo's return",
+          "Ferran Torres is not for sale"
+        ]
+      },
+      {
+        "pattern": "Preseason player interview/quotes from St. George's Park",
+        "exampleIndexes": [
+          31,
+          38
+        ],
+        "examplesEnglish": [
+          "Xavi Espart: 'Because it's for Barça, I'd play in any position'",
+          "Cortés: 'My time in the reserve team has passed, I want to be in the first team'"
+        ]
+      },
+      {
+        "pattern": "Preseason match/schedule news (Barça Atlètic, friendly vs Preston)",
+        "exampleIndexes": [
+          11,
+          43
+        ],
+        "examplesEnglish": [
+          "2-1: Barça Atlètic falls in its debut but shows quality",
+          "Barça's friendly match against Preston suspended"
+        ]
+      },
+      {
+        "pattern": "Front-page roundup dominated by Barça news",
+        "exampleIndexes": [
+          9
+        ],
+        "examplesEnglish": [
+          "Front page: Barça rules out selling Ferran despite noise in France about a move to PSG; club has the World Cup final's top scorer and wants to extend his contract, which expires next year - 'NOT FOR SALE'"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Real Madrid news with no Barça angle",
+        "exampleIndexes": [
+          3,
+          20
+        ],
+        "examplesEnglish": [
+          "Sudden problem with Diomande and Real Madrid",
+          "Real Madrid: open casting call at right-back"
+        ]
+      },
+      {
+        "pattern": "Other clubs' transfer news unrelated to Barça",
+        "exampleIndexes": [
+          18,
+          46
+        ],
+        "examplesEnglish": [
+          "Chelsea, signing player by player, has already invested 400 million euros",
+          "Big money for Cucurella's replacement: Rayo Vallecano and Chelsea close to a deal for Pep Chavarría"
+        ]
+      },
+      {
+        "pattern": "Other sports coverage (basketball nationals, tennis, padel, rally, sailing)",
+        "exampleIndexes": [
+          15,
+          25
+        ],
+        "examplesEnglish": [
+          "69-74: Spain falls to France in a tight finish and misses out on bronze",
+          "Chingotto-Galán end Guerrero-Leal's dream and use it to cut into the number ones"
+        ]
+      },
+      {
+        "pattern": "Celebrity/lifestyle or consumer content unrelated to football",
+        "exampleIndexes": [
+          7,
+          36
+        ],
+        "examplesEnglish": [
+          "José Luis Puchol, 72-year-old vet: 'The reputation pitbull terriers have is horrendous, yet they are quite affectionate dogs'",
+          "#TheRecommender: My back couldn't handle a full day sitting and now it withstands 8 hours thanks to this ergonomic chair"
+        ]
+      },
+      {
+        "pattern": "App/game promo engagement content",
+        "exampleIndexes": [
+          24
+        ],
+        "examplesEnglish": [
+          "The clause-buying madness begins in Mundo Deportivo's newsroom fantasy league. And you, what are you waiting for? Download the MisterFantasyES app and start playing!"
+        ]
+      }
+    ]
+  }
+}

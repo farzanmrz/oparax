@@ -1,0 +1,118 @@
+{
+  "handle": "BarcaUniversal",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 50,
+  "usage": {
+    "inputTokens": 61072,
+    "outputTokens": 1506,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 38,
+      "offBeat": 11,
+      "unclear": 1
+    },
+    "skew": "almost_all_on_beat",
+    "priorLine": "@BarcaUniversal is an all-Barça news/transfer aggregation account whose posts are overwhelmingly on-beat, mixing transfer rumors, player quotes, and club news, but occasionally drifts into off-topic personal-life/IG content about Barça players' partners or unrelated celebrity photos.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Transfer rumor/negotiation update about a target or player linked to Barcelona, often quoting a source outlet.",
+        "exampleIndexes": [
+          3,
+          48
+        ],
+        "examplesEnglish": [
+          "🚨 Rodri likes Barcelona's project, but Real Madrid are the current favorites to sign him. In any case, Barça are willing to make a financial effort to sign him. — @Nilsola10",
+          "🚨 JUST IN: Victor Osimhen could become available during the final weeks of the transfer window, with Galatasaray and the player reportedly open to a potential departure. Barcelona have known for several weeks that Victor Osimhen could be available for around €75m. However, his enormous salary makes a potential deal extremely difficult. — @sport"
+        ]
+      },
+      {
+        "pattern": "Direct quotes from Barça first-team or youth players discussing form, teammates, or club matters in interviews.",
+        "exampleIndexes": [
+          11,
+          36
+        ],
+        "examplesEnglish": [
+          "❗️Joan García: \"I think that Julian is a fantastic player. Anyone who loves football and watches him will immediately realize that he's got great quality.\" \"However, it's not for me to decide how much Barcelona can pay. I'm convinced they'll build the best possible squad to compete for all the titles.\"",
+          "❗️ Álvaro Cortés: \"There is always a lot of outside noise during the summer, but my desire is clear: I want to be here and stay with the first team.\""
+        ]
+      },
+      {
+        "pattern": "Club/contract status update on a current Barça player (renewal, exit, playing time) citing a media outlet.",
+        "exampleIndexes": [
+          20,
+          44
+        ],
+        "examplesEnglish": [
+          "🚨 CONFIRMED: Barcelona's official position is that Ferran Torres is not for sale. The intention is to renew his contract in September. His sale would only be considered if the player asks to leave the club. — @mundodeportivo",
+          "Marc Casadó’s playing time dropped from 2,447 minutes in the 2024/25 season to just 1,397 minutes last season. Barcelona have warned him that he could play even less if he decides to stay. — @mundodeportivo"
+        ]
+      },
+      {
+        "pattern": "Historical/nostalgia post about a former Barça player or transfer on this date.",
+        "exampleIndexes": [
+          8
+        ],
+        "examplesEnglish": [
+          "❗️On this day in 2021, Barcelona presented their new signing: Emerson Royal. He was sold for a profit less than a month later."
+        ]
+      },
+      {
+        "pattern": "Front-page newspaper cover repost with Barça-relevant headline translated/quoted.",
+        "exampleIndexes": [
+          1,
+          2
+        ],
+        "examplesEnglish": [
+          "Sport: 'Plan to sign a striker'",
+          "Mundo Deportivo: 'Not for sale'"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Instagram-sourced personal/lifestyle photo of a Barça player's partner or family member with no football content.",
+        "exampleIndexes": [
+          25,
+          28
+        ],
+        "examplesEnglish": [
+          "📲 Héctor Fort's girlfriend via IG.",
+          "📲 Héctor Fort via IG."
+        ]
+      },
+      {
+        "pattern": "Celebrity/lifestyle post unrelated to Barcelona football (e.g., Kanye West photo).",
+        "exampleIndexes": [
+          7
+        ],
+        "examplesEnglish": [
+          "Lamine Yamal's mother with Kanye West. 🔥"
+        ]
+      },
+      {
+        "pattern": "Personal IG post of a Barça player relaxing/vacationing with no football angle.",
+        "exampleIndexes": [
+          22,
+          24
+        ],
+        "examplesEnglish": [
+          "📲 Gavi via IG.",
+          "📲 Gavi via IG."
+        ]
+      },
+      {
+        "pattern": "Betting-slip promotional graphic about a non-Barça match (Liverpool vs Leeds) with only tangential mention of players once linked to Barça.",
+        "exampleIndexes": [
+          14
+        ],
+        "examplesEnglish": [
+          "Both Alexander Isak and Hugo Ekitike were available last summer. Both of them fit Barça's systems but the club decided to wait for this summer to sign a top striker… And now there are not many options left.. ❌"
+        ]
+      }
+    ]
+  }
+}

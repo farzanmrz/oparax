@@ -1,0 +1,34 @@
+{
+  "run": "sonnet100-high-01",
+  "model": "anthropic/claude-sonnet-5",
+  "thinking": {
+    "type": "adaptive",
+    "effort": "high",
+    "display": "summarized"
+  },
+  "corpusPosts": 100,
+  "mediaFiles": 47,
+  "systemPromptSha256": "9321d5eacd6aa7bfb3689b9b5054145a8e5553150a26c0371e02f19e89ec41bb",
+  "historicalInputTextSha256": "7850ee538a77303906c08a297e9199849da5fa8a555d5bb6e1375b89219feaa5",
+  "effectiveInputTextSha256": "7850ee538a77303906c08a297e9199849da5fa8a555d5bb6e1375b89219feaa5",
+  "corpusPostIdsSha256": "d25218281acd86b3371fb01cc5a799a0fa31d66ba701783ff7f3c1411bd99ad9",
+  "measuredFacts": "MEASURED STYLE FACTS for @ReshadRahman — frequencies computed by code over all 100 corpus posts.\n- length (chars): median 91, p10 29, p90 266, max 578; 5/100 posts over 280\n- line breaks: 79/100 posts have none, 0/100 exactly one, 21/100 two or more\n- emoji: 62/100 posts contain any; full inventory: 🚨×25 🔴×12 ❗×11 🔵×9 ✅×7 💔×7 🇦🇷×6 🏆×6 📞×5 🥺×5 🥹×5 💰×4 ⚠️×4 ⚽×4 🇪🇸×4 (+43 rarer)\n- hashtags: 36/100 posts contain any; full inventory (exact casing): #Transfers×23 #FCB×10 #WorldCup×2 #1×1 #ESP×1\n- mentions (@): 27/100 posts; URLs: 43/100 posts\n- posts containing: ! 4/100 · ? 3/100 · ellipsis 6/100 · em-dash 5/100 · straight \" 0/100 · curly “” 8/100 · colon 66/100\n- ALL-CAPS words (3+ letters): 38/100 posts",
+  "historicalReferenceRawGuideSha256": "ca0848439427dd34dffafcca23f9f47d7956a6548c4d097aee1368478d078ac3",
+  "outputGuideSha256": "184db9213143ca50673621170b33931a0fc81d2023109f368c995f266bd9e82a",
+  "outputGuideChars": 13243,
+  "finishReason": "error",
+  "scopeExclusion": null,
+  "usage": {
+    "inputTokens": null,
+    "outputTokens": null,
+    "totalTokens": null,
+    "reasoningTokens": null,
+    "cachedInputTokens": null
+  },
+  "gateway": {
+    "generationId": null,
+    "costUsd": null
+  },
+  "startedAt": "2026-08-03T02:25:30.443Z",
+  "completedAt": "2026-08-03T02:32:02.764Z"
+}

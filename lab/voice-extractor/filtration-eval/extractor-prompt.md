@@ -18,7 +18,7 @@ Before any guidance from you is added, the downstream setup already receives the
 The user message contains:
 - the reporter's X handle;
 - the reporter's description of their beat; and
-- up to 100 of the reporter's most recent original X posts, most recent first.
+- up to 50 of the reporter's most recent original X posts, most recent first.
 
 Users do not always describe their beat correctly. They may enter a request such as "write like me" in the beat field. In that case, infer the likely coverage from the recurring subjects and story types in the corpus.
 </context>

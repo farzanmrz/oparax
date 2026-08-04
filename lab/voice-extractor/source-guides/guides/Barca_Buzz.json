@@ -1,0 +1,102 @@
+{
+  "handle": "Barca_Buzz",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 50,
+  "usage": {
+    "inputTokens": 66080,
+    "outputTokens": 4148,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 45,
+      "offBeat": 5,
+      "unclear": 0
+    },
+    "skew": "almost_all_on_beat",
+    "priorLine": "This account is a high-volume Barcelona transfer/news aggregator whose posts are almost always tightly tied to club transfers, squad news, player quotes, and historical flashbacks, with only occasional generic greeting posts or unrelated ex-player highlight clips breaking the pattern.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Sourced transfer rumor/negotiation update citing a named journalist ('Via: @...') about a Barcelona player's incoming or outgoing move.",
+        "exampleIndexes": [
+          1,
+          37
+        ],
+        "examplesEnglish": [
+          "🔄 (CANCELO): The countdown to Joao Cancelo's return to Barcelona has begun. Negotiations between all parties is progressing well and optimism is growing with hopes of finalizing it in the next days. Barcelona anticipate that the deal will be closed between €8-10m. Although some details are yet to be polished, the player's desire to return to Barça has been key in bringing the stances of the two club's close. #FCB 🇵🇹 Via (🟡): @JoanPoquiEraso [md]",
+          "🚨🚨| JUST IN: PSG are preparing direct talks with Barcelona over the signing of Ferran Torres and are ready to improve their offer. The French club already have an agreement in principle with Ferran on personal terms, meaning the transfer now depends on negotiations between the two clubs. Via(🟢): @MatteMoretto"
+        ]
+      },
+      {
+        "pattern": "Quote-card interview snippet from a La Masia/youth-team player discussing their future at Barça.",
+        "exampleIndexes": [
+          11,
+          17
+        ],
+        "examplesEnglish": [
+          "🎙️ Xavi Espart on his chances of staying with the first team: 🗣️ \"I want to believe it's possible. With humility and hard work, I want to show that I can be here.\"",
+          "🎙️Álvaro Cortés on his future. 🗣️: \"I want to stay at Barça, it's been my dream since I was a kid. Whatever the club decides about me, I will abide by it and respect it\" My desire is to stay on the 1st team. I've already gone through the stage with the reserves. I want to earn a spot on the 1st team.\" Via: @victor_nahe"
+        ]
+      },
+      {
+        "pattern": "'On this day' historical flashback about a past Barcelona moment/transfer/player.",
+        "exampleIndexes": [
+          4,
+          30
+        ],
+        "examplesEnglish": [
+          "🔙: On this day in 2017 - PSG/Neymar's lawyers pay his 222m euros release clause, sealing Brazilian's move from Barcelona.",
+          "🔙: On this day in 2013 - Barcelona secure the Gamper trophy with an 8-0 win over Santos in Neymar's Camp Nou debut"
+        ]
+      },
+      {
+        "pattern": "Preseason training/match photo of a current Barça squad player paired with a rhetorical question about their role this season.",
+        "exampleIndexes": [
+          41,
+          47
+        ],
+        "examplesEnglish": [
+          "📸 Héctor Fort is back at Barcelona after his loan spell. Can he earn a place in Hansi Flick's squad this season? 👀",
+          "📸👏 Gerard Martín keeps making the most of his opportunities. Can he cement his place in Hansi Flick's plans? 👀"
+        ]
+      },
+      {
+        "pattern": "Signing/loan announcement or presentation post for an incoming Barça player.",
+        "exampleIndexes": [
+          22,
+          35
+        ],
+        "examplesEnglish": [
+          "❗ Barça will loan Jofre Torrents to Ajax with a purchase option, but it will not be a mandatory one. Ajax would have the option to buy 50% of his rights for around €5M. Barça would include a buy-back clause that could be worth around €15M. Via (🟢): @Nilsola10",
+          "Welcome to Barcelona Bisiwu🔵🔴 Our new star in the building ✌️"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Generic 'Good Morning, Culés' greeting post with a photo but no actual news content.",
+        "exampleIndexes": [
+          3,
+          29
+        ],
+        "examplesEnglish": [
+          "Good Morning, Culés. Have a great day! 😃",
+          "Good Morning, Culés. Have a great day! 😃"
+        ]
+      },
+      {
+        "pattern": "Highlight clip of a former Barcelona player's current performance for another club (MLS), with no Barcelona angle.",
+        "exampleIndexes": [
+          27,
+          28
+        ],
+        "examplesEnglish": [
+          "Luis Suárez 👀",
+          "Lewandowski with a brace for Chicago Fire 🤜🏼🤛🏼"
+        ]
+      }
+    ]
+  }
+}

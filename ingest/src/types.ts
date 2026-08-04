@@ -11,6 +11,8 @@ export interface StreamTweetData {
    *  on the stream URL. Measured 2026-07-26: post 2081154657573883993 arrives as 293 chars in
    *  `text` and 393 in `note_tweet.text`. */
   note_tweet?: { text?: string };
+  /** X's machine-detected BCP-47 language code, or `und` when it cannot detect one. */
+  lang?: string;
   author_id?: string;
   created_at?: string;
   attachments?: { media_keys?: string[] };
@@ -19,6 +21,9 @@ export interface StreamTweetData {
 export interface StreamIncludesUser {
   id: string;
   username: string;
+  /** The source account's current X profile bio. Optional because X omits `description`
+   *  when the author has not supplied one. */
+  description?: string;
 }
 
 export interface StreamIncludesMedia {
@@ -54,6 +59,8 @@ export interface IngestDeliveryBody {
   author_handle: string;
   text: string;
   posted_at: string;
+  /** Preserved verbatim from `data.lang`; optional for compatibility during rollout. */
+  lang?: string;
   media?: IngestDeliveryMedia[];
   raw?: unknown;
 }

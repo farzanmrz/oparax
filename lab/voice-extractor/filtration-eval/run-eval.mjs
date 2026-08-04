@@ -20,8 +20,14 @@ const repoRoot = resolve(here, "../../..");
 const extractorPromptPath = resolve(here, "extractor-prompt.md");
 const promptPaths = {
   baseline: resolve(here, "drafter-filter-prompt.md"),
+  markdown: resolve(here, "drafter-filter-markdown-prompt.md"),
+  "markdown-only": resolve(here, "drafter-filter-markdown-only-prompt.md"),
+  "nested-input": resolve(here, "drafter-filter-nested-input-prompt.md"),
   profile: resolve(here, "drafter-filter-profile-prompt.md"),
 };
+const PROFILE_PROMPT_MODES = new Set(["markdown", "markdown-only", "nested-input", "profile"]);
+const NESTED_INPUT_MODES = new Set(["markdown", "nested-input"]);
+const FULL_PROFILE_INPUT_MODES = new Set(["profile", "markdown-only"]);
 const corpusPath = resolve(here, "../corpus-snapshot.jsonl");
 const benchmarkPath = resolve(here, "consensus-benchmark.jsonl");
 const runsPath = resolve(here, "runs");
@@ -36,6 +42,8 @@ const DEFAULTS = {
   reasoning: "medium",
   handle: "ReshadRahman",
   beat: "I want to monitor all news around FC Barcelona.",
+  extractorCorpusLimit: 50,
+  extractorEvidence: null,
   extractorModel: "anthropic/claude-sonnet-5",
   classifierModel: "alibaba/qwen3.7-flash",
   dryRun: false,
@@ -143,6 +151,9 @@ function parseArgs(argv) {
     else if (argument === "--reasoning") options.reasoning = next();
     else if (argument === "--handle") options.handle = next().replace(/^@/, "");
     else if (argument === "--beat") options.beat = next();
+    else if (argument === "--extractor-corpus-limit") {
+      options.extractorCorpusLimit = parsePositiveInteger(argument, next());
+    } else if (argument === "--extractor-evidence") options.extractorEvidence = resolve(next());
     else if (argument === "--extractor-model") options.extractorModel = next();
     else if (argument === "--classifier-model") options.classifierModel = next();
     else if (argument === "--guidance") options.guidance = resolve(next());
@@ -168,13 +179,17 @@ Options:
   --temperature <n>       Qwen sampling temperature (default: 0)
   --reasoning <effort>    Qwen reasoning effort (default: medium)
   --extract-only          Run the extractor and stop before Qwen
+  --extractor-corpus-limit <n>
+                          Newest corpus posts supplied to the extractor (default: 50)
+  --extractor-evidence <path>
+                          Sparse JSONL with corpus media and deterministically resolved links
   --guidance <path>       Skip extraction and use an existing guidance file
   --no-guidance           Skip extraction; use only the reporter's raw beat as the baseline
   --beat-placement <site> Put the raw beat in system or user (default: system)
-  --prompt-mode <mode>    baseline or profile (default: baseline)
+  --prompt-mode <mode>    baseline, profile, markdown, markdown-only, or nested-input
   --translations <path>  Shared translation JSONL (required)
   --link-context <path>  Cached production-feasible link context JSONL (required)
-  --source-profiles <p>  Source-account profiles JSONL; required by profile mode
+  --source-profiles <p>  Source-account profiles JSONL; required by non-baseline modes
   --search-gate          Measure search requests without executing any search
   --search-provider <p>  Let Qwen search directly: perplexity or parallel
   --extractor-model <id>  Override anthropic/claude-sonnet-5
@@ -199,16 +214,24 @@ Options:
   if (!new Set(["system", "user"]).has(options.beatPlacement)) {
     throw new Error("--beat-placement must be either system or user");
   }
-  if (!new Set(["baseline", "profile"]).has(options.promptMode)) {
-    throw new Error("--prompt-mode must be baseline or profile");
+  if (!new Set(["baseline", ...PROFILE_PROMPT_MODES]).has(options.promptMode)) {
+    throw new Error(
+      "--prompt-mode must be baseline, profile, markdown, markdown-only, or nested-input",
+    );
   }
   if (options.translations === null) throw new Error("--translations is required");
   if (options.linkContext === null) throw new Error("--link-context is required");
-  if (options.promptMode === "profile" && options.sourceProfiles === null) {
-    throw new Error("--prompt-mode profile requires --source-profiles");
+  if (PROFILE_PROMPT_MODES.has(options.promptMode) && options.sourceProfiles === null) {
+    throw new Error(`--prompt-mode ${options.promptMode} requires --source-profiles`);
   }
   if (options.promptMode === "baseline" && options.sourceProfiles !== null) {
-    throw new Error("--source-profiles is only valid with --prompt-mode profile");
+    throw new Error("--source-profiles is not valid with --prompt-mode baseline");
+  }
+  if (
+    new Set(["markdown", "markdown-only", "nested-input"]).has(options.promptMode) &&
+    options.beatPlacement !== "user"
+  ) {
+    throw new Error(`--prompt-mode ${options.promptMode} requires --beat-placement user`);
   }
   if (options.searchGate && options.promptMode !== "profile") {
     throw new Error("--search-gate requires --prompt-mode profile");
@@ -225,12 +248,19 @@ Options:
   return options;
 }
 
-function buildExtractorInput(handle, beat, corpus) {
+function buildExtractorInput(handle, beat, corpus, evidenceByPostId) {
   const lines = corpus.map((post) => {
-    const mediaMark = post.has_media
-      ? " [MEDIA: attachment recorded, but its URL is absent from this lab snapshot]"
-      : "";
-    return `[${post.x_post_id}] ${post.posted_at} ${post.is_long ? "LONG " : ""}(♥${post.like_count} ↻${post.repost_count})${mediaMark}: ${post.text}`;
+    const evidence = evidenceByPostId.get(post.x_post_id);
+    const media = evidence?.media ?? [];
+    const linkedMedia = (evidence?.links ?? []).flatMap((link) => link.media ?? []);
+    const mediaKinds = [...media, ...linkedMedia].map((item) => item.kind);
+    const mediaMark = mediaKinds.length ? ` [MEDIA: ${mediaKinds.join(", ")} — shown below]` : "";
+    const line = `[${post.x_post_id}] ${post.posted_at} ${post.is_long ? "LONG " : ""}(♥${post.like_count} ↻${post.repost_count})${mediaMark}: ${post.text}`;
+    const linkedLines = (evidence?.links ?? []).map(
+      (link) =>
+        `    ↳ linked X post [${link.postId}] by @${link.handle}: ${link.text.replaceAll("\n", " ")}`,
+    );
+    return [line, ...linkedLines].join("\n");
   });
 
   return [
@@ -243,6 +273,48 @@ function buildExtractorInput(handle, beat, corpus) {
     "",
     lines.join("\n"),
   ].join("\n");
+}
+
+function buildExtractorContent(extractorInput, corpus, evidenceByPostId) {
+  const content = [{ type: "text", text: extractorInput }];
+  const attachments = [];
+  for (const post of corpus) {
+    const evidence = evidenceByPostId.get(post.x_post_id);
+    for (const media of evidence?.media ?? []) {
+      attachments.push({ postId: post.x_post_id, relationship: "source", ...media });
+    }
+    for (const link of evidence?.links ?? []) {
+      for (const media of link.media ?? []) {
+        attachments.push({
+          postId: post.x_post_id,
+          relationship: `linked post ${link.postId}`,
+          ...media,
+        });
+      }
+    }
+  }
+  if (attachments.length === 0) return content;
+
+  content.push({
+    type: "text",
+    text:
+      "\nATTACHED MEDIA — each image below belongs to the corpus post id shown. " +
+      "Media from a linked X post is labeled separately. A video or GIF is represented by its poster frame.",
+  });
+  for (const attachment of attachments) {
+    content.push({
+      type: "text",
+      text: `[${attachment.postId}] ${attachment.relationship} ${attachment.kind}:`,
+    });
+    content.push({
+      type: "file",
+      data: attachment.imagePath
+        ? readFileSync(resolve(here, attachment.imagePath))
+        : new URL(attachment.imageUrl),
+      mediaType: imageMediaType(attachment),
+    });
+  }
+  return content;
 }
 
 function imageMediaType(media) {
@@ -325,22 +397,123 @@ function renderLinkedContent(linkContext) {
   return lines;
 }
 
-function buildClassifierContent(row, options, translationRecord, linkContext, sourceProfile) {
+function linkedElementName(type) {
+  if (type === "article") return "article";
+  if (type === "webpage") return "webpage";
+  if (type === "video") return "web_video";
+  if (type === "image") return "image_page";
+  if (type === "x_post") return "x_post";
+  throw new Error(`Unsupported linked-content type: ${type}`);
+}
+
+function mediaElementName(kind) {
+  if (new Set(["image", "photo"]).has(kind)) return "photo";
+  if (kind === "video") return "video";
+  if (kind === "animated_gif") return "animated_gif";
+  throw new Error(`Unsupported attachment kind: ${kind}`);
+}
+
+function linkedItemAttributes(link) {
+  const attributes = [`url="${xmlAttribute(link.sourceUrl)}"`];
+  if (link.title) attributes.push(`title="${xmlAttribute(link.title)}"`);
+  if (link.author) attributes.push(`author="${xmlAttribute(link.author)}"`);
+  return attributes.join(" ");
+}
+
+function pushAttachment(content, media) {
+  const element = mediaElementName(media.kind);
+  content.push({ type: "text", text: `<${element}>` });
+  content.push({
+    type: "file",
+    data: media.imagePath ? readFileSync(resolve(here, media.imagePath)) : new URL(media.imageUrl),
+    mediaType: imageMediaType(media),
+  });
+  content.push({ type: "text", text: `</${element}>` });
+}
+
+function buildNestedClassifierContent(row, options, translationRecord, linkContext, sourceProfile) {
   const translatedText = translationRecord?.translation?.trim() || null;
   const normalizedText = translatedText ?? row.postContent;
   const sourceText = linkContext?.links?.length
     ? preserveSourceUrls(row.postContent, normalizedText)
     : normalizedText;
-  const sourceProfileSection =
-    options.promptMode === "profile"
-      ? [
-          "<source_profile>",
-          `<handle>@${xmlText(sourceProfile.sourceHandle)}</handle>`,
-          `<display_name>${xmlText(sourceProfile.displayName)}</display_name>`,
-          `<biography>${xmlText(sourceProfile.biography)}</biography>`,
-          "</source_profile>",
-        ]
-      : [];
+  const content = [
+    {
+      type: "text",
+      text: [
+        `<beat>\n${xmlText(options.beat.trim() || "(not stated)")}\n</beat>`,
+        "",
+        `<post platform="x" author="@${xmlAttribute(row.sourceHandle)}">`,
+        "<author_bio>",
+        xmlText(sourceProfile.biography),
+        "</author_bio>",
+        "<content>",
+        xmlText(sourceText),
+        "</content>",
+      ].join("\n"),
+    },
+  ];
+
+  if (row.media.length > 0) {
+    content.push({ type: "text", text: "<attachments>" });
+    for (const media of row.media.slice(0, 4)) pushAttachment(content, media);
+    content.push({ type: "text", text: "</attachments>" });
+  } else if (row.hasUnattachedVideo) {
+    content.push({
+      type: "text",
+      text: '<attachments>\n<video unavailable="true" />\n</attachments>',
+    });
+  }
+
+  if (linkContext?.links?.length) {
+    content.push({ type: "text", text: "<linked_content>" });
+    let linkedMediaAttached = 0;
+    for (const link of linkContext.links) {
+      const element = linkedElementName(link.type);
+      content.push({
+        type: "text",
+        text: `<${element} ${linkedItemAttributes(link)}>\n${xmlText(link.content ?? "")}`,
+      });
+      const media = (link.media ?? []).slice(0, Math.max(0, 4 - linkedMediaAttached));
+      if (media.length > 0) {
+        content.push({ type: "text", text: "<attachments>" });
+        for (const item of media) pushAttachment(content, item);
+        content.push({ type: "text", text: "</attachments>" });
+        linkedMediaAttached += media.length;
+      }
+      content.push({ type: "text", text: `</${element}>` });
+    }
+    content.push({ type: "text", text: "</linked_content>" });
+  }
+
+  content.push({ type: "text", text: "</post>" });
+  return content;
+}
+
+function buildClassifierContent(row, options, translationRecord, linkContext, sourceProfile) {
+  if (NESTED_INPUT_MODES.has(options.promptMode)) {
+    return buildNestedClassifierContent(
+      row,
+      options,
+      translationRecord,
+      linkContext,
+      sourceProfile,
+    );
+  }
+  const translatedText = translationRecord?.translation?.trim() || null;
+  const normalizedText = translatedText ?? row.postContent;
+  const sourceText = linkContext?.links?.length
+    ? preserveSourceUrls(row.postContent, normalizedText)
+    : normalizedText;
+  const sourceProfileSection = FULL_PROFILE_INPUT_MODES.has(options.promptMode)
+    ? [
+        "<source_profile>",
+        `<handle>@${xmlText(sourceProfile.sourceHandle)}</handle>`,
+        `<display_name>${xmlText(sourceProfile.displayName)}</display_name>`,
+        `<biography>${xmlText(sourceProfile.biography)}</biography>`,
+        "</source_profile>",
+      ]
+    : [];
   const text = [
     options.beatPlacement === "user"
       ? `<beat_description>\n${options.beat.trim() || "(not stated)"}\n</beat_description>\n`
@@ -407,11 +580,11 @@ function buildClassifierContent(row, options, translationRecord, linkContext, so
   return content;
 }
 
-async function runExtractor(options, systemPrompt, extractorInput) {
+async function runExtractor(options, systemPrompt, extractorContent) {
   const result = await generateText({
     model: options.extractorModel,
     system: systemPrompt,
-    messages: [{ role: "user", content: [{ type: "text", text: extractorInput }] }],
+    messages: [{ role: "user", content: extractorContent }],
     providerOptions: {
       anthropic: { thinking: { type: "adaptive", effort: "medium", display: "summarized" } },
       gateway: {
@@ -648,9 +821,15 @@ async function main() {
   const extractorPrompt = readFileSync(extractorPromptPath, "utf8");
   const drafterPromptPath = promptPaths[options.promptMode];
   const drafterPrompt = readFileSync(drafterPromptPath, "utf8");
-  const corpus = readJsonl(corpusPath);
+  const corpus = readJsonl(corpusPath)
+    .sort((left, right) => new Date(right.posted_at) - new Date(left.posted_at))
+    .slice(0, options.extractorCorpusLimit);
   const benchmark = readJsonl(benchmarkPath).slice(0, options.limit);
   const suppliedGuidance = options.guidance ? readFileSync(options.guidance, "utf8").trim() : null;
+  const extractorEvidenceRows = options.extractorEvidence
+    ? readJsonl(options.extractorEvidence)
+    : [];
+  const extractorEvidence = new Map(extractorEvidenceRows.map((row) => [String(row.postId), row]));
   const translationRows = options.translations ? readJsonl(options.translations) : [];
   const translations = new Map(translationRows.map((row) => [row.postId, row]));
   const linkContextRows = options.linkContext ? readJsonl(options.linkContext) : [];
@@ -667,13 +846,32 @@ async function main() {
   if (missingLinkContexts.length > 0) {
     throw new Error(`Link context file is missing ${missingLinkContexts.length} benchmark rows`);
   }
-  if (options.promptMode === "profile") {
+  if (PROFILE_PROMPT_MODES.has(options.promptMode)) {
     const missingProfiles = benchmark.filter((row) => !sourceProfiles.has(row.sourceHandle));
     if (missingProfiles.length > 0) {
       throw new Error(`Source profile file is missing ${missingProfiles.length} benchmark rows`);
     }
   }
-  const extractorInput = buildExtractorInput(options.handle, options.beat, corpus);
+  const missingCorpusMedia = corpus.filter(
+    (post) => post.has_media && !(extractorEvidence.get(post.x_post_id)?.media?.length > 0),
+  );
+  if (options.extractorEvidence && missingCorpusMedia.length > 0) {
+    throw new Error(
+      `Extractor evidence is missing media for ${missingCorpusMedia.length} marked corpus posts`,
+    );
+  }
+  const extractorInput = buildExtractorInput(
+    options.handle,
+    options.beat,
+    corpus,
+    extractorEvidence,
+  );
+  const extractorContent = buildExtractorContent(extractorInput, corpus, extractorEvidence);
+  const extractorMediaAttached = extractorContent.filter((part) => part.type === "file").length;
+  const extractorLinksResolved = corpus.reduce(
+    (count, post) => count + (extractorEvidence.get(post.x_post_id)?.links?.length ?? 0),
+    0,
+  );
   const runPath = resolve(runsPath, options.run);
   mkdirSync(runPath, { recursive: true });
 
@@ -682,6 +880,11 @@ async function main() {
     run: options.run,
     reporter: options.handle,
     beat: options.beat,
+    extractorCorpusLimit: options.extractorCorpusLimit,
+    extractorCorpusRows: corpus.length,
+    extractorEvidence: options.extractorEvidence,
+    extractorEvidenceSha256:
+      options.extractorEvidence === null ? null : hash(readFileSync(options.extractorEvidence)),
     extractorModel: options.extractorModel,
     classifierModel: options.classifierModel,
     concurrency: options.concurrency,
@@ -713,7 +916,8 @@ async function main() {
     searchGate: options.searchGate,
     searchProvider: options.searchProvider,
     mediaMaxPerStory: 4,
-    extractorCorpusMediaAttached: 0,
+    extractorCorpusMediaAttached: extractorMediaAttached,
+    extractorCorpusLinksResolved: extractorLinksResolved,
     measuredStyleFactsIncluded: false,
     scopeRecomputeToolIncluded: false,
   };
@@ -723,6 +927,9 @@ async function main() {
     for (const key of [
       "reporter",
       "beat",
+      "extractorCorpusLimit",
+      "extractorCorpusRows",
+      "extractorEvidenceSha256",
       "extractorModel",
       "classifierModel",
       "temperature",
@@ -767,7 +974,7 @@ async function main() {
     console.log(
       `Running extractor (${options.extractorModel}) over ${corpus.length} corpus posts…`,
     );
-    const extraction = await runExtractor(options, extractorPrompt, extractorInput);
+    const extraction = await runExtractor(options, extractorPrompt, extractorContent);
     guidance = extraction.guidance;
     if (!guidance) throw new Error("Extractor returned empty filtration guidance");
     writeFileSync(guidancePath, `${guidance}\n`);

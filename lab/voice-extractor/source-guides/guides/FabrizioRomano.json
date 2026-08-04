@@ -1,0 +1,98 @@
+{
+  "handle": "FabrizioRomano",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 49,
+  "usage": {
+    "inputTokens": 69037,
+    "outputTokens": 3877,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 2,
+      "offBeat": 48,
+      "unclear": 0
+    },
+    "skew": "almost_all_off_beat",
+    "priorLine": "@FabrizioRomano is a general global football transfer insider who posts dozens of daily updates on deals across virtually every major club and league, so genuine Barcelona-specific content is rare and should be treated as a small signal buried in a large stream of unrelated transfer noise.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Transfer negotiation update explicitly involving Barcelona and one of its players' futures.",
+        "exampleIndexes": [
+          13
+        ],
+        "examplesEnglish": [
+          "Paris Saint-Germain had new round of talks with Ferran Torres' camp and decision will be in player's hands. Barcelona hope to keep Ferran but it's up to the player. Doors opened to negotiations with PSG only if Ferran decides to leave."
+        ]
+      },
+      {
+        "pattern": "Direct quote from a current Barcelona player discussing his role/future at the club.",
+        "exampleIndexes": [
+          18
+        ],
+        "examplesEnglish": [
+          "Xavi Espart on his future: \"I feel Flick's confidence and I want to stay in the first team\". \"My aim is to prove that I can stay and become a 'different' kind of full-back\", told @Nilsola10."
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Official 'Here we go' confirmation graphics announcing a completed transfer for a club unrelated to Barcelona.",
+        "exampleIndexes": [
+          8,
+          23
+        ],
+        "examplesEnglish": [
+          "Gio Reyna to RC Strasbourg, here we go! Deal in place for the American to join BlueCo project from Borussia Mönchengladbach. Fee worth €3m, medical booked on Monday as @CyrilOlives reports on L'Equipe. Gio has agreed to the move.",
+          "Juanlu to Bournemouth, here we go! Deal done and exclusive story confirmed. Sevilla receive €11m fixed fee plus €2m add-ons for the Spanish right back. Green light for medical as negotiations revealed last night were very advanced."
+        ]
+      },
+      {
+        "pattern": "Exclusive breaking-news style updates on ongoing negotiations/bids for players moving between non-Barcelona clubs.",
+        "exampleIndexes": [
+          0,
+          14
+        ],
+        "examplesEnglish": [
+          "Inter are expected to make final decision soon on Cuti Romero deal. No issues on agreement with Spurs on fee, Romero asks same salary he has at Tottenham. Inter to decide soon as more clubs are keen on the Argentinian; exits could be key.",
+          "EXCLUSIVE: Paris Saint-Germain send €33m package bid to Parma for Japanese GK Zion Suzuki. PSG now ahead of Juventus as official bid has been sent and Parma are ready to proceed. PSG also presented their project to Suzuki, based on Chevalier's future. Deal on."
+        ]
+      },
+      {
+        "pattern": "Player or staff interview quotes unrelated to Barcelona, often about mentality or dressing-room culture at other clubs.",
+        "exampleIndexes": [
+          30,
+          38
+        ],
+        "examplesEnglish": [
+          "Roberto de Zerbi on Mykhaylo Mudryk: \"He's my son! Misha is a cool guy, a top player, hopefully he can show what he suffered the last two seasons in this coming season, maybe not against Tottenham... but he's a lovely guy\", says via @peterrutzler.",
+          "Danny Welbeck: \"The guys know in the dressing room I am a shoulder to lay on!\". \"For sure, you can always come to me and talk to me about anything\"."
+        ]
+      },
+      {
+        "pattern": "Short emoji-only teaser posts that link out to a full exclusive story about a non-Barcelona transfer (engagement-bait style).",
+        "exampleIndexes": [
+          20,
+          46
+        ],
+        "examplesEnglish": [
+          "🔵🔜⏳ #CFC [links to: EXCL: Chelsea improve their bid for Pep Chavarría as negotiations with Rayo Vallecano are moving forward. New proposal for the Spanish left back wanted by Xabi Alonso.]",
+          "🔵🔴✅ #PSG [links to: Mika Godts has given green light to Paris Saint-Germain project! Official negotiations club to club are underway with Ajax request around €60m.]"
+        ]
+      },
+      {
+        "pattern": "Permanent signing or record-fee contract detail announcements for clubs other than Barcelona.",
+        "exampleIndexes": [
+          34,
+          39
+        ],
+        "examplesEnglish": [
+          "Final details for Randal Kolo Muani to Juventus. Permanent deal. €38m fee plus €12m add-ons. No longer a loan with obligation to buy but permanent. Contract valid until 2031, slightly over €5m net per season. Here we go since Tuesday, confirmed.",
+          "Mamadou Sangare, new Brentford club record signing for £41m fee from RC Lens. Contract until June 2031 plus option until June 2032."
+        ]
+      }
+    ]
+  }
+}

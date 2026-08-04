@@ -1,0 +1,23 @@
+<source>
+
+    <source_handle>@SOURCE_HANDLE</source_handle>
+    
+    <source_profile>
+    <biography>SOURCE_BIOGRAPHY</biography>
+    </source_profile>
+    
+    <source_post>
+    SOURCE_POST_TEXT
+    </source_post>
+
+    <linked_content>
+    <link type="article" url="SOURCE_URL">
+    <author>LINK_AUTHOR</author>
+    <title>LINK_TITLE</title>
+    <content>
+    RETRIEVED_LINK_CONTENT
+    </content>
+    </link>
+    </linked_content>
+
+</source>

@@ -1,0 +1,96 @@
+{
+  "handle": "managingbarca",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 50,
+  "usage": {
+    "inputTokens": 66561,
+    "outputTokens": 4691,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 46,
+      "offBeat": 4,
+      "unclear": 0
+    },
+    "skew": "almost_all_on_beat",
+    "priorLine": "This account is a dedicated Barcelona transfer/news aggregator that almost exclusively posts breaking transfer rumors, signings, match reports and player/manager press-conference quotes about FC Barcelona, with only occasional off-topic celebrity Instagram-style posts about players' personal lives.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Breaking/JUST IN style transfer rumor or signing update directly about Barcelona players, targets, or deals.",
+        "exampleIndexes": [
+          4,
+          33
+        ],
+        "examplesEnglish": [
+          "🚨🚨| JUST IN: João Cancelo will join Barcelona for a figure close to €10M! The deal is expected to be completed in the next few days, with the defender set to sign a two-year contract. [@sport] 🔵🔴⌛️",
+          "🚨🚨🌕| BREAKING: Barcelona are actively looking for a NEW STRIKER and are preparing for the possible DEPARTURE of Ferran Torres. [@MatteMoretto] 🔵🔴☎️"
+        ]
+      },
+      {
+        "pattern": "Direct quotes from Barcelona manager or players in press conferences/interviews.",
+        "exampleIndexes": [
+          18,
+          47
+        ],
+        "examplesEnglish": [
+          "Jesse Bisiwu: \"My favourite player in the current squad? Well of course, in my position I’d say Raphinha. He’s a very good player and someone I look up to as well, and I have already talked to him a few times since joining yesterday.\" My favourite player of all time? I’d say Neymar. He’s been my favourite player since I was very young and he’s a player I look up to. I’d say Lamine is also a very special player, obviously. I think you all know his qualities, so he’s a very good player. Whenever the coach needs me, I’ll be ready for the first team. I enjoy playing football and I’m happy with the ball at my feet. I like one-on-one situations and taking players on. Everyone knows that Barça take great care of young players and have La Masia. That’s why I accepted.",
+          "Flick: \"Did I contact Ferran? We were in contact with him during the World Cup, but now he is on his vacation, and I respect that. He has the right to enjoy his vacation. And of course, he is a player in our ranks, and he proved in many matches of the past season just how important he is to us, and this is exactly what we expect from him and want him to continue.\""
+        ]
+      },
+      {
+        "pattern": "Match result/report post covering a Barcelona pre-season or competitive fixture.",
+        "exampleIndexes": [
+          49
+        ],
+        "examplesEnglish": [
+          "FULL-TIME: BARCELONA ARE HELD TO A 2-2 DRAW BY BIRMINGHAM CITY IN THEIR PRE-SEASON OPENER! Hamza Abdelkarim stole the show with a sensational brace to rescue Barça on a positive opening night of pre-season. Plenty of encouraging signs for Hansi Flick’s side as preparations for the new campaign get underway. Thoughts on the match?"
+        ]
+      },
+      {
+        "pattern": "Short headline tweet linking to a managingbarca.com article about a Barcelona transfer target or sale.",
+        "exampleIndexes": [
+          2,
+          16
+        ],
+        "examplesEnglish": [
+          "Barcelona want €25M Girona midfielder.",
+          "€60M Valencia star in direct talks with Barcelona."
+        ]
+      },
+      {
+        "pattern": "Statistical/ranking graphic highlighting a Barcelona player's market value or achievement.",
+        "exampleIndexes": [
+          29
+        ],
+        "examplesEnglish": [
+          "At just 19 years old, Pau Cubarsí is now the MOST VALUABLE defender in world football, valued at a staggering €100M. 1) Pau Cubarsí — €100M 🇪🇸 2) William Saliba — €100M 🇫🇷 3) Nuno Mendes — €80M 🇵🇹 4) Achraf Hakimi — €80M 🇲🇦 5) Willian Pacho — €80M 🇪🇨"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Personal/lifestyle Instagram-style post about a Barcelona player's partner or private life with no football content.",
+        "exampleIndexes": [
+          5,
+          8
+        ],
+        "examplesEnglish": [
+          "🚨📲 Gavi on IG: [photo of Gavi and girlfriend at the beach]",
+          "🚨📲 Héctor Fort’s girlfriend on IG: [mirror selfie photo]"
+        ]
+      },
+      {
+        "pattern": "News about a former Barcelona figure's move to an unrelated club, with no current Barcelona angle.",
+        "exampleIndexes": [
+          28
+        ],
+        "examplesEnglish": [
+          "Xavi Hernández set to become Saudi giants' new manager."
+        ]
+      }
+    ]
+  }
+}

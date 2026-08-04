@@ -1,0 +1,100 @@
+{
+  "handle": "footmercato",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 2,
+  "usage": {
+    "inputTokens": 13882,
+    "outputTokens": 2678,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 3,
+      "offBeat": 47,
+      "unclear": 0
+    },
+    "skew": "almost_all_off_beat",
+    "priorLine": "@footmercato is a general French-market football news wire covering mercato, FIFA governance, and match results across many clubs, so Barcelona-specific items are rare exceptions rather than the norm.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Transfer/price update specifically about a Barça target or outgoing player",
+        "exampleIndexes": [
+          17,
+          46
+        ],
+        "examplesEnglish": [
+          "Barça knows the price to pay for Ounahi",
+          "Barça wants at least €55 million for Ferran Torres"
+        ]
+      },
+      {
+        "pattern": "Barcelona internal club-strategy story",
+        "exampleIndexes": [
+          34
+        ],
+        "examplesEnglish": [
+          "FC Barcelona wants to copy Real Madrid's model"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Real Madrid transfer/player-drama rumor with no Barça angle",
+        "exampleIndexes": [
+          2,
+          41
+        ],
+        "examplesEnglish": [
+          "The colossal price of Vinicius Jr's possible transfer to Arsenal",
+          "Vinicius Jr will have to explain himself to José Mourinho!"
+        ]
+      },
+      {
+        "pattern": "PSG mercato dossier update (Godts, Suzuki, Akliouche, Kolo Muani, etc.)",
+        "exampleIndexes": [
+          25,
+          49
+        ],
+        "examplesEnglish": [
+          "PSG has made a first offer of €45M for Mika Godts",
+          "PSG: medical this Sunday for Randal Kolo Muani at Juventus"
+        ]
+      },
+      {
+        "pattern": "FIFA/Infantino governance-crisis coverage",
+        "exampleIndexes": [
+          9,
+          45
+        ],
+        "examplesEnglish": [
+          "'Don't destroy the evidence': UEFA threatens Gianni Infantino with legal action!",
+          "FIFA: Gianni Infantino was aiming for an XXL salary"
+        ]
+      },
+      {
+        "pattern": "Other clubs' signing/loan/mercato news unrelated to Barça",
+        "exampleIndexes": [
+          7,
+          35
+        ],
+        "examplesEnglish": [
+          "Giovanni Reyna will sign for Strasbourg",
+          "Willem Geubbels signs for Lecce!"
+        ]
+      },
+      {
+        "pattern": "Friendly or cup match result recap for non-Barça clubs",
+        "exampleIndexes": [
+          4,
+          14
+        ],
+        "examplesEnglish": [
+          "Friendly: Liverpool suffers a heavy defeat against Leeds",
+          "AZ Alkmaar humiliates PSV in the Dutch Super Cup final"
+        ]
+      }
+    ]
+  }
+}

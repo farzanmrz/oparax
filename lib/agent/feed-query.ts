@@ -46,7 +46,8 @@ type Client = SupabaseClient<Database>;
 const STORY_PAGE_LIMIT = 50;
 
 /** The poster's display name ("Fabrizio Romano"), dug out of the stored stream payload's
- *  `includes.users[0].name`. The stream is asked for `expansions=author_id&user.fields=username`
+ *  `includes.users[0].name`. The stream is asked for
+ *  `expansions=author_id&user.fields=username,description`
  *  (ingest/src/stream.ts), so the name rides along in every X delivery but has no column of its
  *  own — this reads it back out rather than adding one for a purely presentational field. Returns
  *  null for a website source, an older row stored before this shape, or any payload that doesn't

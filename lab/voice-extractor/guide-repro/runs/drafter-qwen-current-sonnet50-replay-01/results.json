@@ -1,0 +1,1125 @@
+[
+  {
+    "index": 1,
+    "sourcePostId": "0de8954a-704a-4987-880a-4045c7d5f524",
+    "historicalDraftId": "8bf1fde0-6749-44d8-925d-e926ff90e703",
+    "historicalCreatedAt": "2026-07-27T10:07:46.009874+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Mateu Alemany is steering a major purge at Atlético, with five stars reportedly up for sale. Clauespi8 reports the development, which could shape the market as the window moves. @sport #Transfers 🇪🇸💰",
+    "authorHandle": "sport",
+    "text": "🧹Limpia importante de Mateu Alemany en el Atlético: cinco estrellas en venta\n\n✍️@Clauespi8 \nhttps://t.co/2OTLVopxWq",
+    "media": [],
+    "replayDraft": "🚨 JUST IN: Mateu Alemany is planning an important squad cleanup at Atlético with five key players marked for sale. @Clauespi8 #Transfers 🧹⚠️🔴",
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "Important squad cleanup by Mateu Alemany at Atlético: five stars up for sale.",
+      "newsSynthesis": "The source reports that Mateu Alemany is planning a significant roster overhaul at Atlético Madrid, with five key players currently marked for sale. This fits the beat's coverage of rival club transfer activity and relayed insider scoop posts.",
+      "onBeat": true,
+      "onBeatReason": "Covers transfer-market news regarding a rival club's squad overhaul, aligning with the scope clause that allows reporting on rival counterparts' internal deals and relayed insider scoops.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Mateu Alemany is planning an important squad cleanup at Atlético with five key players marked for sale. @Clauespi8 #Transfers 🧹⚠️🔴"
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "Important squad cleanup by Mateu Alemany at Atlético: five stars up for sale.",
+      "newsSynthesis": "The source reports that Mateu Alemany is planning a significant roster overhaul at Atlético Madrid, with five key players currently marked for sale. This fits the beat's coverage of rival club transfer activity and relayed insider scoop posts.",
+      "onBeat": true,
+      "onBeatReason": "Covers transfer-market news regarding a rival club's squad overhaul, aligning with the scope clause that allows reporting on rival counterparts' internal deals and relayed insider scoops.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Mateu Alemany is planning an important squad cleanup at Atlético with five key players marked for sale. @Clauespi8 #Transfers 🧹⚠️🔴"
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8163,
+        "outputTokens": 2641,
+        "totalTokens": 10804,
+        "reasoningTokens": 2431
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:04.330Z",
+      "groundCompletedAt": "2026-08-03T03:15:29.934Z",
+      "judgeStartedAt": "2026-08-03T03:15:29.934Z",
+      "completedAt": "2026-08-03T03:15:30.872Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 2,
+    "sourcePostId": "726aadd9-3208-4a3e-a2ba-5376721be874",
+    "historicalDraftId": "33e3eea1-918b-4668-be48-d7f2f607ec82",
+    "historicalCreatedAt": "2026-07-27T10:14:46.789525+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🔵🔴 Barça’s convocation for the training stage in England: https://t.co/elUeBmb3U2",
+    "authorHandle": "sport",
+    "text": "🔵🔴 Esta es la convo del Barça para el 'stage' en Inglaterra https://t.co/elUeBmb3U2",
+    "media": [
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOOhJHPXkAAjL_E.jpg"
+      }
+    ],
+    "replayDraft": "🚨 Barcelona's squad for the pre-season stage in England is here. Flick includes De Jong, Araujo, Ter Stegen + Christensen alongside a heavy youth batch: Tunkara, Kluivert, Diarra, Casado, and more. Friendlies vs Birmingham City + Preston North End. @sport #FCB 🔵🔴 https://t.co/elUeBmb3U2",
+    "replayVerdict": {
+      "mediaDescription": "A 'CONVOCATORIA' (squad list) graphic from SPORT newspaper featuring Hansi Flick smiling, listing the first-team and youth players called up for Barcelona's pre-season 'stage' in England, with logos for Barcelona, Birmingham City, and Preston North End at the bottom.",
+      "language": "es",
+      "translation": "Here is Barcelona's squad for the 'stage' in England. The list includes: GK: Ter Stegen, Szczesny, Yaakobishvili, Iker Rodriguez. DEF: Araujo, H. Fort, Balde, A. Cortes, X. Espart, Christensen, G. Martin, Jofre T, J. Pesquer. MID: De Jong, Casado, Bernal, Fermin T, Marques, B. Farias, I. Diarra, Orian Goren, Guille Fdz. FWD: Adeyenmi, Bardghji Hamza, O. Gistau, A. Fernandez, Ebrima Tunkara, Alex Gonzalez, S. Kluivert.",
+      "newsSynthesis": "Barcelona coach Hansi Flick has announced the squad for the club's pre-season training camp in England, featuring a mix of first-team players like Frenkie de Jong, Ronald Araujo, and Marc-André ter Stegen alongside numerous youth call-ups. The campaign includes friendlies against Birmingham City and Preston North End, signaling Flick's intent to integrate academy talent into the senior setup before the new season.",
+      "onBeat": true,
+      "onBeatReason": "This is first-team club news covering Hansi Flick's squad selection for pre-season, which falls squarely under FC Barcelona's internal club news and coaching decisions.",
+      "needsContext": false,
+      "firstDraft": "🚨 Barcelona's squad for the pre-season stage in England is here. Flick includes De Jong, Araujo, Ter Stegen + Christensen alongside a heavy youth batch: Tunkara, Kluivert, Diarra, Casado, and more. Friendlies vs Birmingham City + Preston North End. @sport #FCB 🔵🔴 https://t.co/elUeBmb3U2"
+    },
+    "groundVerdict": {
+      "mediaDescription": "A 'CONVOCATORIA' (squad list) graphic from SPORT newspaper featuring Hansi Flick smiling, listing the first-team and youth players called up for Barcelona's pre-season 'stage' in England, with logos for Barcelona, Birmingham City, and Preston North End at the bottom.",
+      "language": "es",
+      "translation": "Here is Barcelona's squad for the 'stage' in England. The list includes: GK: Ter Stegen, Szczesny, Yaakobishvili, Iker Rodriguez. DEF: Araujo, H. Fort, Balde, A. Cortes, X. Espart, Christensen, G. Martin, Jofre T, J. Pesquer. MID: De Jong, Casado, Bernal, Fermin T, Marques, B. Farias, I. Diarra, Orian Goren, Guille Fdz. FWD: Adeyenmi, Bardghji Hamza, O. Gistau, A. Fernandez, Ebrima Tunkara, Alex Gonzalez, S. Kluivert.",
+      "newsSynthesis": "Barcelona coach Hansi Flick has announced the squad for the club's pre-season training camp in England, featuring a mix of first-team players like Frenkie de Jong, Ronald Araujo, and Marc-André ter Stegen alongside numerous youth call-ups. The campaign includes friendlies against Birmingham City and Preston North End, signaling Flick's intent to integrate academy talent into the senior setup before the new season.",
+      "onBeat": true,
+      "onBeatReason": "This is first-team club news covering Hansi Flick's squad selection for pre-season, which falls squarely under FC Barcelona's internal club news and coaching decisions.",
+      "needsContext": false,
+      "firstDraft": "🚨 Barcelona's squad for the pre-season stage in England is here. Flick includes De Jong, Araujo, Ter Stegen + Christensen alongside a heavy youth batch: Tunkara, Kluivert, Diarra, Casado, and more. Friendlies vs Birmingham City + Preston North End. @sport #FCB 🔵🔴 https://t.co/elUeBmb3U2"
+    },
+    "judgeVerdict": {
+      "language": "es",
+      "translation": "Here is Barcelona's squad for the 'stage' in England. The list includes: GK: Ter Stegen, Szczesny, Yaakobishvili, Iker Rodriguez. DEF: Araujo, H. Fort, Balde, A. Cortes, X. Espart, Christensen, G. Martin, Jofre T, J. Pesquer. MID: De Jong, Casado, Bernal, Fermin T, Marques, B. Farias, I. Diarra, Orian Goren, Guille Fdz. FWD: Adeyenmi, Bardghji Hamza, O. Gistau, A. Fernandez, Ebrima Tunkara, Alex Gonzalez, S. Kluivert.",
+      "newsSynthesis": "Barcelona coach Hansi Flick has announced the squad for the club's pre-season training camp in England, featuring a mix of first-team players like Frenkie de Jong, Ronald Araujo, and Marc-André ter Stegen alongside numerous youth call-ups. The campaign includes friendlies against Birmingham City and Preston North End, signaling Flick's intent to integrate academy talent into the senior setup before the new season.",
+      "onBeat": true,
+      "onBeatReason": "This is first-team club news covering Hansi Flick's squad selection for pre-season, which falls squarely under FC Barcelona's internal club news and coaching decisions.",
+      "finalDraft": "🚨 Barcelona's squad for the pre-season stage in England is here. Flick includes De Jong, Araujo, Ter Stegen + Christensen alongside a heavy youth batch: Tunkara, Kluivert, Diarra, Casado, and more. Friendlies vs Birmingham City + Preston North End. @sport #FCB 🔵🔴 https://t.co/elUeBmb3U2",
+      "correctedFields": [],
+      "judgeNotes": "Draft is well-aligned with the beat and style guidelines. It correctly opens with a scoop indicator, uses the '+' compact conjunction, cites the source handle, and closes with the appropriate hashtags and club colors. No corrections needed."
+    },
+    "draftLengthFallback": "kept_judge",
+    "usage": {
+      "ground": {
+        "inputTokens": 8638,
+        "outputTokens": 957,
+        "totalTokens": 9595,
+        "reasoningTokens": 478
+      },
+      "judge": {
+        "inputTokens": 8132,
+        "outputTokens": 927,
+        "totalTokens": 9059,
+        "reasoningTokens": 463
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:04.337Z",
+      "groundCompletedAt": "2026-08-03T03:15:15.870Z",
+      "judgeStartedAt": "2026-08-03T03:15:15.870Z",
+      "completedAt": "2026-08-03T03:15:26.909Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 3,
+    "sourcePostId": "1e603126-b7da-4f4b-bd94-fe92d270fa57",
+    "historicalDraftId": "9fe7f8d8-16f5-4e5e-a456-7d38da2cb9b8",
+    "historicalCreatedAt": "2026-07-27T10:15:38.749692+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨🔴🔵 Bologna have agreed loan deal to sign Artem Dovbyk from AS Roma, here we go! Agreement until June 2027 for Dovbyk who accepted the proposal and will travel for medical on Tuesday. 🇺🇦 Santiago Castro will join AS Roma. 💛❤️ https://t.co/DV0mMA1Z5j",
+    "authorHandle": "FabrizioRomano",
+    "text": "🚨🔴🔵 Bologna have agreed loan deal to sign Artem Dovbyk from AS Roma, here we go!\n\nAgreement until June 2027 for Dovbyk who accepted the proposal and will travel for medical on Tuesday. 🇺🇦\n\nSantiago Castro will join AS Roma. 💛❤️ https://t.co/DV0mMA1Z5j",
+    "media": [
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOOhWu6XAAACgAy.jpg"
+      }
+    ],
+    "replayDraft": null,
+    "replayVerdict": {
+      "mediaDescription": "A 'Here We Go' graphic by Fabrizio Romano showing Artem Dovbyk posing in a Bologna FC kit with arms crossed, set against a stylized background of the Bologna cityscape and club crest.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Artem Dovbyk has agreed to a loan deal from AS Roma to Bologna until June 2027, with a medical scheduled for Tuesday. As part of the arrangement, Santiago Castro will move in the opposite direction to AS Roma. This is a standard transfer-market update relayed by Fabrizio Romano, not directly involving FC Barcelona.",
+      "onBeat": false,
+      "onBeatReason": "This is a transfer involving Bologna and Roma, not Barcelona or any of the rival counterparties listed in the beat scope, and it does not involve Deco, Flick, or any recurring Barça saga figures.",
+      "needsContext": false,
+      "firstDraft": "🚨🔴🔵 Bologna have agreed a loan deal to sign Artem Dovbyk from AS Roma, here we go! Agreement until June 2027 for Dovbyk who accepted the proposal and will travel for medical on Tuesday. 🇺🇦 Santiago Castro will join AS Roma. @FabrizioRomano #Transfers 🇺🇦💛❤️ https://t.co/DV0mMA1Z5j"
+    },
+    "groundVerdict": {
+      "mediaDescription": "A 'Here We Go' graphic by Fabrizio Romano showing Artem Dovbyk posing in a Bologna FC kit with arms crossed, set against a stylized background of the Bologna cityscape and club crest.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Artem Dovbyk has agreed to a loan deal from AS Roma to Bologna until June 2027, with a medical scheduled for Tuesday. As part of the arrangement, Santiago Castro will move in the opposite direction to AS Roma. This is a standard transfer-market update relayed by Fabrizio Romano, not directly involving FC Barcelona.",
+      "onBeat": false,
+      "onBeatReason": "This is a transfer involving Bologna and Roma, not Barcelona or any of the rival counterparties listed in the beat scope, and it does not involve Deco, Flick, or any recurring Barça saga figures.",
+      "needsContext": false,
+      "firstDraft": "🚨🔴🔵 Bologna have agreed a loan deal to sign Artem Dovbyk from AS Roma, here we go! Agreement until June 2027 for Dovbyk who accepted the proposal and will travel for medical on Tuesday. 🇺🇦 Santiago Castro will join AS Roma. @FabrizioRomano #Transfers 🇺🇦💛❤️ https://t.co/DV0mMA1Z5j"
+    },
+    "judgeVerdict": {
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Artem Dovbyk has agreed to a loan deal from AS Roma to Bologna until June 2027, with a medical scheduled for Tuesday. As part of the arrangement, Santiago Castro will move in the opposite direction to AS Roma. This is a standard transfer-market update relayed by Fabrizio Romano, not directly involving FC Barcelona.",
+      "onBeat": false,
+      "onBeatReason": "This is a transfer involving Bologna and Roma, not Barcelona or any of the rival counterparties listed in the beat scope, and it does not involve Deco, Flick, or any recurring Barça saga figures.",
+      "finalDraft": null,
+      "correctedFields": [
+        "finalDraft"
+      ],
+      "judgeNotes": "The source post is a transfer involving Bologna and AS Roma, which falls outside the @ReshadRahman beat scope that covers FC Barcelona transfer-market news, rival clubs as counterparties, or broad transfer-market scoops via insiders only when they sit inside the broader market (but this is a direct Bologna-Roma deal with no Barça connection). Therefore, it is off-beat and the final draft is null."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8621,
+        "outputTokens": 629,
+        "totalTokens": 9250,
+        "reasoningTokens": 314
+      },
+      "judge": {
+        "inputTokens": 7950,
+        "outputTokens": 563,
+        "totalTokens": 8513,
+        "reasoningTokens": 281
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:04.337Z",
+      "groundCompletedAt": "2026-08-03T03:15:16.219Z",
+      "judgeStartedAt": "2026-08-03T03:15:16.219Z",
+      "completedAt": "2026-08-03T03:15:27.346Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 4,
+    "sourcePostId": "f8ff306a-aaff-4afc-871d-70acfb80722e",
+    "historicalDraftId": "f1a1effa-eba5-4ca5-a6f3-8a84a770c309",
+    "historicalCreatedAt": "2026-07-27T10:36:31.910294+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Barça are on their way to St George’s Park ahead of training camp. @sport #FCB 🇪🇸🔵🔴",
+    "authorHandle": "sport",
+    "text": "✈️🏴󠁧󠁢󠁥󠁮󠁧󠁿 𝐄𝐥 𝐁𝐚𝐫𝐜̧𝐚 𝐲𝐚 𝐞𝐬𝐭𝐚́ 𝐜𝐚𝐦𝐢𝐧𝐨 𝐚 𝐒𝐭 𝐆𝐞𝐨𝐫𝐠𝐞’𝐬 𝐏𝐚𝐫𝐤 https://t.co/doVnf3qLjb",
+    "media": [
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOOmFA7XUAAJNww.jpg"
+      },
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOOmE-dWkAAXDN2.jpg"
+      },
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOOmE-dWAAAH2ne.jpg"
+      }
+    ],
+    "replayDraft": "✈️🏴󠁧󠁢󠁥󠁮󠁧󠁿 Barcelona is already on its way to St George's Park. @sport #FCB 🇪🇸🔵🔴 https://t.co/doVnf3qLjb",
+    "replayVerdict": {
+      "mediaDescription": "Photos of FC Barcelona players on a team flight, wearing maroon team polos with the club crest. One player is giving a thumbs up, another is on his phone, and pairs of players are smiling for the camera. Text overlay reads 'El Barça ya está camino a St George's Park'.",
+      "language": "es",
+      "translation": "Barcelona is already on its way to St George's Park.",
+      "newsSynthesis": "FC Barcelona has boarded a team flight heading to St George's Park, the training ground of Newcastle United. The photos show several first-team players in team kit during the travel, indicating an upcoming pre-season or international fixture against Newcastle or at their facility.",
+      "onBeat": true,
+      "onBeatReason": "This is a first-team club news update showing the squad traveling for a match/training, which falls under the covers clause for internal club news and first-team movements.",
+      "needsContext": false,
+      "firstDraft": "✈️🏴󠁧󠁢󠁥󠁮󠁧󠁿 Barcelona is already on its way to St George's Park. @sport #FCB 🇪🇸🔵🔴 https://t.co/doVnf3qLjb"
+    },
+    "groundVerdict": {
+      "mediaDescription": "Photos of FC Barcelona players on a team flight, wearing maroon team polos with the club crest. One player is giving a thumbs up, another is on his phone, and pairs of players are smiling for the camera. Text overlay reads 'El Barça ya está camino a St George's Park'.",
+      "language": "es",
+      "translation": "Barcelona is already on its way to St George's Park.",
+      "newsSynthesis": "FC Barcelona has boarded a team flight heading to St George's Park, the training ground of Newcastle United. The photos show several first-team players in team kit during the travel, indicating an upcoming pre-season or international fixture against Newcastle or at their facility.",
+      "onBeat": true,
+      "onBeatReason": "This is a first-team club news update showing the squad traveling for a match/training, which falls under the covers clause for internal club news and first-team movements.",
+      "needsContext": false,
+      "firstDraft": "✈️🏴󠁧󠁢󠁥󠁮󠁧󠁿 Barcelona is already on its way to St George’s Park. @sport #FCB 🇪🇸🔵🔴 https://t.co/doVnf3qLjb"
+    },
+    "judgeVerdict": {
+      "language": "es",
+      "translation": "Barcelona is already on its way to St George's Park.",
+      "newsSynthesis": "FC Barcelona has boarded a team flight heading to St George's Park, the training ground of Newcastle United. The photos show several first-team players in team kit during the travel, indicating an upcoming pre-season or international fixture against Newcastle or at their facility.",
+      "onBeat": true,
+      "onBeatReason": "This is a first-team club news update showing the squad traveling for a match/training, which falls under the covers clause for internal club news and first-team movements.",
+      "finalDraft": "✈️🏴󠁧󠁢󠁥󠁮󠁧󠁿 Barcelona is already on its way to St George's Park. @sport #FCB 🇪🇸🔵🔴 https://t.co/doVnf3qLjb",
+      "correctedFields": [
+        "finalDraft"
+      ],
+      "judgeNotes": "Verified translation and beat alignment. The post is a simple sighting/photo update about the team traveling, fitting the 'Sighting/photo update' mode. Draft is clean and matches corpus style."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 11039,
+        "outputTokens": 583,
+        "totalTokens": 11622,
+        "reasoningTokens": 291
+      },
+      "judge": {
+        "inputTokens": 10345,
+        "outputTokens": 537,
+        "totalTokens": 10882,
+        "reasoningTokens": 268
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:04.337Z",
+      "groundCompletedAt": "2026-08-03T03:15:16.027Z",
+      "judgeStartedAt": "2026-08-03T03:15:16.027Z",
+      "completedAt": "2026-08-03T03:15:27.595Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 5,
+    "sourcePostId": "aad68f5d-dadb-4c43-9255-32e629a4e893",
+    "historicalDraftId": "54a5b5bb-99d8-4520-872a-cd1e8a50ba68",
+    "historicalCreatedAt": "2026-07-27T11:08:17.157741+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: The reasons Ter Stegen and Frenkie De Jong are traveling to England. The goalkeeper does so as his exit to Ajax progresses, while the midfielder is awaiting news on his injury. https://t.co/RjzBLK8ETf @sport #Transfers 🇩🇪🇳🇱📞",
+    "authorHandle": "sport",
+    "text": "🧐 Las razones por las que Ter Stegen y Frenkie De Jong viajan a Inglaterra\n\n👉 El portero lo hace mientras avanza su salida al Ajax y el centrocampista está pendiente de su lesión\n\n✍️ @ferrancorreas \n\nhttps://t.co/RjzBLK8ETf",
+    "media": [],
+    "replayDraft": "❗️Ter Stegen and Frenkie de Jong are traveling to England as the goalkeeper’s exit to Ajax advances and the midfielder’s injury status remains pending. @ferrancorreas #Transfers 🇩🇪🔵🔴",
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "🧐 The reasons why Ter Stegen and Frenkie De Jong are traveling to England 👉 The goalkeeper does so as his exit to Ajax advances and the midfielder is pending his injury ✍️ @ferrancorreas",
+      "newsSynthesis": "FC Barcelona goalkeeper Marc-André ter Stegen and midfielder Frenkie de Jong are both heading to England on separate matters tied to ongoing club sagas. Ter Stegen’s intended move to Ajax is progressing, while de Jong remains in limbo over his knee injury recovery timeline. This matters on the transfer beat because it tracks two high-profile first-team players navigating medical and departure processes simultaneously outside Spain.",
+      "onBeat": true,
+      "onBeatReason": "Directly covers FC Barcelona transfer-market news and first-team updates, specifically tracking two recurring beat sagas (Ter Stegen’s Ajax exit and Frenkie de Jong’s knee issue) per the Covers clause.",
+      "needsContext": false,
+      "firstDraft": "❗️Ter Stegen and Frenkie de Jong are traveling to England as the goalkeeper’s exit to Ajax advances and the midfielder’s injury status remains pending. @ferrancorreas #Transfers 🇩🇪🔵🔴"
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "🧐 The reasons why Ter Stegen and Frenkie De Jong are traveling to England 👉 The goalkeeper does so as his exit to Ajax advances and the midfielder is pending his injury ✍️ @ferrancorreas",
+      "newsSynthesis": "FC Barcelona goalkeeper Marc-André ter Stegen and midfielder Frenkie de Jong are both heading to England on separate matters tied to ongoing club sagas. Ter Stegen’s intended move to Ajax is progressing, while de Jong remains in limbo over his knee injury recovery timeline. This matters on the transfer beat because it tracks two high-profile first-team players navigating medical and departure processes simultaneously outside Spain.",
+      "onBeat": true,
+      "onBeatReason": "Directly covers FC Barcelona transfer-market news and first-team updates, specifically tracking two recurring beat sagas (Ter Stegen’s Ajax exit and Frenkie de Jong’s knee issue) per the Covers clause.",
+      "needsContext": false,
+      "firstDraft": "❗️Ter Stegen and Frenkie de Jong are traveling to England as the goalkeeper’s exit to Ajax advances and the midfielder’s injury status remains pending. @ferrancorreas #Transfers 🇩🇪🔵🔴"
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8190,
+        "outputTokens": 3188,
+        "totalTokens": 11378,
+        "reasoningTokens": 2894
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:26.910Z",
+      "groundCompletedAt": "2026-08-03T03:15:54.799Z",
+      "judgeStartedAt": "2026-08-03T03:15:54.799Z",
+      "completedAt": "2026-08-03T03:15:56.380Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 6,
+    "sourcePostId": "87a4ffe9-e00f-4203-ab01-93658347099b",
+    "historicalDraftId": "2aa536b6-ed15-423b-bc1f-be2194220ce7",
+    "historicalCreatedAt": "2026-07-27T11:50:18.21432+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "First day in Pere Romeu’s Barça 3.0 office. All first-team players and some youth players, like Charlotta Ohlander and Julia Torres, underwent the usual physical and medical tests this Monday.",
+    "authorHandle": "sport",
+    "text": "🔛Primer día en la oficina del Barça 3.0 de Pere Romeu\n\n✅Todas las jugadoras del primer equipo y algunas futbolistas del filial como Charlotta Ohlander o Julia Torres se sometieron este lunes a las habituales pruebas físicas y médicas\n\n✍️@jcarnesempere \n\nhttps://t.co/EwavpmsCwZ",
+    "media": [],
+    "replayDraft": "🚨 JUST IN: First day at Pere Romeu’s Barça 3.0 office — all first-team players plus some B-team squad members including Charlotta Ohlander and Julia Torres underwent their usual physical and medical tests this Monday. @jcarnesempere #Transfers 🔵🔴",
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "First day at Pere Romeu’s Barça 3.0 office. All first-team players and some B-team footballers, such as Charlotta Ohlander or Julia Torres, underwent their usual physical and medical tests this Monday. Written by @jcarnesempere.",
+      "newsSynthesis": "The FC Barcelona women's first team kicked off Pere Romeu's campaign with mandatory physical and medical assessments on Monday. Several first-team starters and select academy call-ups like Charlotta Ohlander and Julia Torres completed the routine checks, officially marking the start of pre-season preparations.",
+      "onBeat": true,
+      "onBeatReason": "Routine first-team medical and return-to-training update aligns with the beat's explicit coverage of first-team club news and physical assessments.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: First day at Pere Romeu’s Barça 3.0 office — all first-team players plus some B-team squad members including Charlotta Ohlander and Julia Torres underwent their usual physical and medical tests this Monday. @jcarnesempere #Transfers 🔵🔴"
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "First day at Pere Romeu’s Barça 3.0 office. All first-team players and some B-team footballers, such as Charlotta Ohlander or Julia Torres, underwent their usual physical and medical tests this Monday. Written by @jcarnesempere.",
+      "newsSynthesis": "The FC Barcelona women's first team kicked off Pere Romeu's campaign with mandatory physical and medical assessments on Monday. Several first-team starters and select academy call-ups like Charlotta Ohlander and Julia Torres completed the routine checks, officially marking the start of pre-season preparations.",
+      "onBeat": true,
+      "onBeatReason": "Routine first-team medical and return-to-training update aligns with the beat's explicit coverage of first-team club news and physical assessments.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: First day at Pere Romeu’s Barça 3.0 office — all first-team players plus some B-team squad members including Charlotta Ohlander and Julia Torres underwent their usual physical and medical tests this Monday. @jcarnesempere #Transfers 🔵🔴"
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8200,
+        "outputTokens": 3585,
+        "totalTokens": 11785,
+        "reasoningTokens": 3320
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:27.348Z",
+      "groundCompletedAt": "2026-08-03T03:15:57.831Z",
+      "judgeStartedAt": "2026-08-03T03:15:57.831Z",
+      "completedAt": "2026-08-03T03:15:59.282Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 7,
+    "sourcePostId": "86f13c11-6976-4bd6-82a5-399f203d1b2c",
+    "historicalDraftId": "216e0c15-e53e-4c16-8707-452c0370391c",
+    "historicalCreatedAt": "2026-07-27T12:48:52.984037+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Chelsea exploring a move to sign Danny Welbeck from Brighton & Hove Albion. Terms end 2027 & #BHAFC aware of interest. Early stage but optimism on all sides deal can be done; quality + leadership appeals to Alonso / #CFC @TheAthleticFC post @kierangill_DM",
+    "authorHandle": "David_Ornstein",
+    "text": "🚨 Chelsea exploring move to sign Danny Welbeck from Brighton &amp; Hove Albion. Terms end 2027 &amp; #BHAFC aware of interest. Early stage but optimism on all sides deal can be done; quality + leadership appeals to Alonso / #CFC @TheAthleticFC post @kierangill_DM https://t.co/wVkn0vcK7h",
+    "media": [],
+    "replayDraft": null,
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Chelsea are pursuing Brighton forward Danny Welbeck amid early-stage talks, with Brighton aware of the interest and optimistic about finalizing a deal by 2027. This falls outside the designated Barcelona transfer beat, as it involves only two Premier League clubs with no mentioned link to Camp Nou or its sporting staff.",
+      "onBeat": false,
+      "onBeatReason": "The post covers a Premier League transfer rumor between Chelsea and Brighton without any reference to FC Barcelona, its management, targets, or connected agents, falling entirely outside the assigned beat scope.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Chelsea are exploring a move to sign Danny Welbeck from Brighton, with terms running until 2027. Brighton are aware of early-stage interest driven by his quality and leadership appeal to Enzo Alonso. @kierangill_DM #Transfers 🇬🇧⚪"
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Chelsea are pursuing Brighton forward Danny Welbeck amid early-stage talks, with Brighton aware of the interest and optimistic about finalizing a deal by 2027. This falls outside the designated Barcelona transfer beat, as it involves only two Premier League clubs with no mentioned link to Camp Nou or its sporting staff.",
+      "onBeat": false,
+      "onBeatReason": "The post covers a Premier League transfer rumor between Chelsea and Brighton without any reference to FC Barcelona, its management, targets, or connected agents, falling entirely outside the assigned beat scope.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Chelsea are exploring a move to sign Danny Welbeck from Brighton, with terms running until 2027. Brighton are aware of early-stage interest driven by his quality and leadership appeal to Enzo Alonso. @kierangill_DM #Transfers 🇬🇧⚪"
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8210,
+        "outputTokens": 3136,
+        "totalTokens": 11346,
+        "reasoningTokens": 2903
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:27.597Z",
+      "groundCompletedAt": "2026-08-03T03:15:57.453Z",
+      "judgeStartedAt": "2026-08-03T03:15:57.453Z",
+      "completedAt": "2026-08-03T03:15:58.938Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 8,
+    "sourcePostId": "6395c56a-9a08-4167-8d59-33c1322593ab",
+    "historicalDraftId": "5014e72d-7bc2-40ff-b79d-96c68a9201bd",
+    "historicalCreatedAt": "2026-07-27T13:15:28.710389+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "Belgian laws have pushed Bisiwu to Barça. Bruges couldn’t do anything. George Lekeens, the former Belgian player and coach, explained the exit: \"He would have been a guaranteed starter in Belgium’s First Division this year.\" https://t.co/dvUeymWP2W",
+    "authorHandle": "sport",
+    "text": "🗣️ \"Las leyes belgas han llevado a Bisiwu al Barça. El Brujas no pudo hacer nada\"\n\n🔥 El exjugador y exentrenador belga, George Lekeens, explicó el porqué de la salida del extremo: \"Iba a ser titular seguro en Primera de Bélgica este año\"\n\nhttps://t.co/dvUeymWP2W",
+    "media": [],
+    "replayDraft": "🚨 JUST IN: Former Belgian coach George Lekeens says “Belgian laws have brought” winger Bisiwu to Barcelona and that Club Brugge could do nothing about his exit. @sport #Transfers 🔵🔴",
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "\"Belgian laws have brought Bisiwu to Barça. Club Brugge could do nothing about it.\" 🔥 The former Belgian player and coach, George Lekeens, explained why the winger left: \"He was going to be a guaranteed starter in Belgium's First Division this year.\"",
+      "newsSynthesis": "Former Belgian football figure George Lekeens attributes the departure of winger Bisiwu to Barcelona to Belgian regulatory conditions, stating Club Brugge had no power to block it. He notes the player was poised to be a domestic starter this season. This sits within the transfer-market beat as it details a cross-border movement involving a known European club and provides background on a player's transition.",
+      "onBeat": true,
+      "onBeatReason": "Covers transfer-market news and departures; it details a cross-border move to Barcelona involving Club Brugge and includes commentary on the player's status, fitting the beat's scope for signed/exiting transfers and market intelligence.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Former Belgian coach George Lekeens says “Belgian laws have brought” winger Bisiwu to Barcelona and that Club Brugge could do nothing about his exit. @sport #Transfers 🔵🔴"
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "\"Belgian laws have brought Bisiwu to Barça. Club Brugge could do nothing about it.\" 🔥 The former Belgian player and coach, George Lekeens, explained why the winger left: \"He was going to be a guaranteed starter in Belgium's First Division this year.\"",
+      "newsSynthesis": "Former Belgian football figure George Lekeens attributes the departure of winger Bisiwu to Barcelona to Belgian regulatory conditions, stating Club Brugge had no power to block it. He notes the player was poised to be a domestic starter this season. This sits within the transfer-market beat as it details a cross-border movement involving a known European club and provides background on a player's transition.",
+      "onBeat": true,
+      "onBeatReason": "Covers transfer-market news and departures; it details a cross-border move to Barcelona involving Club Brugge and includes commentary on the player's status, fitting the beat's scope for signed/exiting transfers and market intelligence.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Former Belgian coach George Lekeens says “Belgian laws have brought” winger Bisiwu to Barcelona and that Club Brugge could do nothing about his exit. @sport #Transfers 🔵🔴"
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8204,
+        "outputTokens": 5100,
+        "totalTokens": 13304,
+        "reasoningTokens": 4804
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:30.876Z",
+      "groundCompletedAt": "2026-08-03T03:16:16.031Z",
+      "judgeStartedAt": "2026-08-03T03:16:16.031Z",
+      "completedAt": "2026-08-03T03:16:17.183Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 9,
+    "sourcePostId": "7f9dd46c-cc8b-4122-a04c-dae7b638b57e",
+    "historicalDraftId": "7736b1c6-3892-4987-a976-d8f619574dde",
+    "historicalCreatedAt": "2026-07-27T13:35:33.317872+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: PSG and Juventus are in talks with Parma for Zion Suzuki. PSG see Suzuki as an investment for the future but can’t guarantee a starting GK spot; Juventus want him as a starter if the Dibu Martínez deal collapses. Suzuki is keen but Parma hasn’t given a green light. https://t.co/0R0gFyJ35c @FabrizioRomano #Transfers 🇯🇵📞",
+    "authorHandle": "FabrizioRomano",
+    "text": "🚨🇯🇵 Paris Saint-Germain and Juventus are both in talks with Parma for Zion Suzuki.\n\nPSG see Suzuki as investment for future but can’t guarantee starting GK spot 🔴🔵\n\nJuventus want him as starting GK if Dibu Martínez deal collapses; Suzuki keen but no green light from Parma ⚪️⚫️ https://t.co/0R0gFyJ35c",
+    "media": [
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOPPFTdXYAAweky.jpg"
+      }
+    ],
+    "replayDraft": null,
+    "replayVerdict": {
+      "mediaDescription": "Zion Suzuki, a goalkeeper for Parma, clapping while wearing a blue goalkeeper kit with 'PROMETEO' sponsor.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Paris Saint-Germain and Juventus are both in talks with Parma regarding the signing of goalkeeper Zion Suzuki. PSG views him as a future investment but cannot guarantee him a starting spot, while Juventus are targeting him as a starter if their primary target Dibu Martínez's deal falls through. Suzuki is interested in the move, though Parma has not yet given the green light.",
+      "onBeat": false,
+      "onBeatReason": "This post covers PSG and Juventus pursuing a goalkeeper from Parma, which does not involve FC Barcelona or any of the covered transfer-market sagas or club figures.",
+      "needsContext": false,
+      "firstDraft": "🚨 PSG and Juventus are both in talks with Parma for Zion Suzuki. PSG see him as an investment for the future but can’t guarantee a starting GK spot. Juventus want him as a starter if Dibu Martínez deal collapses; Suzuki is keen but no green light from Parma yet. @FabrizioRomano #Transfers 🇯🇵🔵🔴 https://t.co/0R0gFyJ35c"
+    },
+    "groundVerdict": {
+      "mediaDescription": "Zion Suzuki, a goalkeeper for Parma, clapping while wearing a blue goalkeeper kit with 'PROMETEO' sponsor.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Paris Saint-Germain and Juventus are both in talks with Parma regarding the signing of goalkeeper Zion Suzuki. PSG views him as a future investment but cannot guarantee him a starting spot, while Juventus are targeting him as a starter if their primary target Dibu Martínez's deal falls through. Suzuki is interested in the move, though Parma has not yet given the green light.",
+      "onBeat": false,
+      "onBeatReason": "This post is about PSG and Juventus pursuing a goalkeeper from Parma, which does not involve FC Barcelona or any of the covered transfer-market sagas or club figures.",
+      "needsContext": false,
+      "firstDraft": "🚨 PSG and Juventus are both in talks with Parma for Zion Suzuki. PSG see him as an investment for the future but can’t guarantee a starting GK spot. Juventus want him as a starter if Dibu Martínez deal collapses; Suzuki is keen but no green light from Parma yet. @FabrizioRomano #Transfers 🇯🇵🔵🔴 https://t.co/0R0gFyJ35c"
+    },
+    "judgeVerdict": {
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Paris Saint-Germain and Juventus are both in talks with Parma regarding the signing of goalkeeper Zion Suzuki. PSG views him as a future investment but cannot guarantee him a starting spot, while Juventus are targeting him as a starter if their primary target Dibu Martínez's deal falls through. Suzuki is interested in the move, though Parma has not yet given the green light.",
+      "onBeat": false,
+      "onBeatReason": "This post covers PSG and Juventus pursuing a goalkeeper from Parma, which does not involve FC Barcelona or any of the covered transfer-market sagas or club figures.",
+      "finalDraft": null,
+      "correctedFields": [
+        "onBeatReason",
+        "finalDraft"
+      ],
+      "judgeNotes": "The ground verdict correctly identified this as off-beat because it involves PSG and Juventus rather than Barcelona. The final draft is null as the post is off-beat."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8590,
+        "outputTokens": 585,
+        "totalTokens": 9175,
+        "reasoningTokens": 292
+      },
+      "judge": {
+        "inputTokens": 7897,
+        "outputTokens": 453,
+        "totalTokens": 8350,
+        "reasoningTokens": 226
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:56.383Z",
+      "groundCompletedAt": "2026-08-03T03:16:07.617Z",
+      "judgeStartedAt": "2026-08-03T03:16:07.617Z",
+      "completedAt": "2026-08-03T03:16:18.859Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 10,
+    "sourcePostId": "5ce8c39b-ddff-45c9-b466-ac8250fdbe4a",
+    "historicalDraftId": "3988140a-5ac8-4340-be1e-dcdc92a9bd83",
+    "historicalCreatedAt": "2026-07-27T14:00:43.19279+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Xabi Alonso has approved Danny Welbeck as new experienced option upfront for Chelsea. #CFC in active talks to explore this possibility from Brighton. 🎥 https://t.co/cMfwuqgtU3 https://t.co/8cT69a7ZAw #Transfers 🇬🇧📞",
+    "authorHandle": "FabrizioRomano",
+    "text": "🚨🔵 Xabi Alonso has approved Danny Welbeck as new experienced option upfront for Chelsea.\n\n#CFC in active talks to explore this possibility from Brighton.\n\n🎥 https://t.co/cMfwuqgtU3 https://t.co/8cT69a7ZAw",
+    "media": [
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOPU3BAXYAAdxYJ.jpg"
+      },
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOPU3A8XsAAfYU8.jpg"
+      }
+    ],
+    "replayDraft": null,
+    "replayVerdict": {
+      "mediaDescription": "A photo of Danny Welbeck in a Brighton & Hove Albion kit celebrating, followed by a portrait photo of Xabi Alonso, manager of Bayer Leverkusen.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Xabi Alonso has reportedly approved Danny Welbeck as an experienced attacking option for Chelsea, who are in active talks to sign the Brighton striker. This is a transfer-market development involving Chelsea and Brighton, relayed via Fabrizio Romano.",
+      "onBeat": false,
+      "onBeatReason": "This post is about Chelsea and Brighton (Danny Welbeck, Xabi Alonso), which falls outside the FC Barcelona transfer-market and first-team club news scope, even though it is relayed by Fabrizio Romano.",
+      "needsContext": false,
+      "firstDraft": "🚨 Xabi Alonso has approved Danny Welbeck as a new experienced option upfront for Chelsea. #CFC in active talks to explore this possibility from Brighton. @FabrizioRomano #Transfers 󠁧󠁢󠁥󠁮󠁧󠁿⚠️"
+    },
+    "groundVerdict": {
+      "mediaDescription": "A photo of Danny Welbeck in a Brighton & Hove Albion kit celebrating, followed by a portrait photo of Xabi Alonso, manager of Bayer Leverkusen.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Xabi Alonso has reportedly approved Danny Welbeck as an experienced attacking option for Chelsea, who are in active talks to sign the Brighton striker. This is a transfer-market development involving Chelsea and Brighton, relayed via Fabrizio Romano.",
+      "onBeat": false,
+      "onBeatReason": "This post is about Chelsea and Brighton (Danny Welbeck, Xabi Alonso), which falls outside the FC Barcelona transfer-market and first-team club news scope, even though it is relayed by Fabrizio Romano.",
+      "needsContext": false,
+      "firstDraft": "🚨 Xabi Alonso has approved Danny Welbeck as a new experienced option upfront for Chelsea. #CFC in active talks to explore this possibility from Brighton. @FabrizioRomano #Transfers 󠁧󠁢󠁥󠁮󠁧󠁿⚠️"
+    },
+    "judgeVerdict": {
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Xabi Alonso has reportedly approved Danny Welbeck as an experienced attacking option for Chelsea, who are in active talks to sign the Brighton striker. This is a transfer-market development involving Chelsea and Brighton, relayed via Fabrizio Romano.",
+      "onBeat": false,
+      "onBeatReason": "This post is about Chelsea and Brighton (Danny Welbeck, Xabi Alonso), which falls outside the FC Barcelona transfer-market and first-team club news scope, even though it is relayed by Fabrizio Romano.",
+      "finalDraft": null,
+      "correctedFields": [
+        "finalDraft"
+      ],
+      "judgeNotes": "The post concerns Chelsea's pursuit of Danny Welbeck from Brighton, with Xabi Alonso mentioned. This is entirely off-beat for a Barcelona transfer account, as it involves no Barcelona figures, targets, or market activity."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 9661,
+        "outputTokens": 523,
+        "totalTokens": 10184,
+        "reasoningTokens": 264
+      },
+      "judge": {
+        "inputTokens": 8933,
+        "outputTokens": 413,
+        "totalTokens": 9346,
+        "reasoningTokens": 206
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:58.941Z",
+      "groundCompletedAt": "2026-08-03T03:16:10.039Z",
+      "judgeStartedAt": "2026-08-03T03:16:10.039Z",
+      "completedAt": "2026-08-03T03:16:21.198Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 11,
+    "sourcePostId": "b9b54bf9-fbe2-4744-b1a5-4c4ef9175f35",
+    "historicalDraftId": "36cfb71f-7d73-4655-9bc0-f0b1485f426d",
+    "historicalCreatedAt": "2026-07-27T14:04:10.866138+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Barcelona have explored Eli Junior Kroupi as an option over recent weeks in case Julián Álvarez deal doesn’t advance. Manchester City also asked for infos on Kroupi this month. Bournemouth want to keep him and insist on no plans to sell. @FabrizioRomano #Transfers 📞🇳🇱",
+    "authorHandle": "FabrizioRomano",
+    "text": "🚨🔵🔴 Barcelona have explored Eli Junior Kroupi as option over recent weeks in case Julián Álvarez deal doesn’t advance.\n\nManchester City also asked for infos on Kroupi this month.\n\nBournemouth want to keep him and insist on no plans to sell. 🍒\n\n🎥 https://t.co/cMfwuqgtU3 https://t.co/CuUMyFxlYU",
+    "media": [
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOPVqCTXgAAHVrb.jpg"
+      }
+    ],
+    "replayDraft": "🚨 Barcelona have explored Eli Junior Kroupi as an option over recent weeks in case the Julián Álvarez deal doesn’t advance. Manchester City also asked for info on him this month. Bournemouth want to keep him and insist on no plans to sell. @FabrizioRomano #Transfers 🇫🇷🔵🔴",
+    "replayVerdict": {
+      "mediaDescription": "Eli Junior Kroupi in a Bournemouth jersey, celebrating with teammates, pointing and smiling.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Barcelona have explored Bournemouth's Eli Junior Kroupi as a potential alternative to Julian Alvarez, with Manchester City also inquiring. However, Bournemouth are firm on keeping him and have no plans to sell, highlighting the ongoing complexity of Barcelona's forward search while the Alvarez saga remains unresolved.",
+      "onBeat": true,
+      "onBeatReason": "This covers FC Barcelona's transfer-market news, specifically their pursuit of alternative forward targets (Kroupi) while the Julian Alvarez deal is stalled, which is a core recurring saga on this beat.",
+      "needsContext": false,
+      "firstDraft": "🚨 Barcelona have explored Eli Junior Kroupi as an option over recent weeks in case the Julián Álvarez deal doesn’t advance. Manchester City also asked for info on him this month. Bournemouth want to keep him and insist on no plans to sell. @FabrizioRomano #Transfers 🇫🇷🔵🔴"
+    },
+    "groundVerdict": {
+      "mediaDescription": "Eli Junior Kroupi in a Bournemouth jersey, celebrating with teammates, pointing and smiling.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Barcelona have explored Bournemouth's Eli Junior Kroupi as a potential alternative to Julian Alvarez, with Manchester City also inquiring. However, Bournemouth are firm on keeping him and have no plans to sell. This highlights the ongoing complexity of Barcelona's forward search, with the Alvarez saga remaining unresolved.",
+      "onBeat": true,
+      "onBeatReason": "This covers FC Barcelona's transfer-market news, specifically their pursuit of alternative forward targets (Kroupi) while the Julian Alvarez deal is stalled, which is a core recurring saga on this beat.",
+      "needsContext": false,
+      "firstDraft": "🚨 Barcelona have explored Eli Junior Kroupi as an option over recent weeks in case the Julián Álvarez deal doesn’t advance. Manchester City also asked for info on him this month. Bournemouth want to keep him and insist on no plans to sell. @FabrizioRomano #Transfers 🇫🇷🔵🔴"
+    },
+    "judgeVerdict": {
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "Barcelona have explored Bournemouth's Eli Junior Kroupi as a potential alternative to Julian Alvarez, with Manchester City also inquiring. However, Bournemouth are firm on keeping him and have no plans to sell, highlighting the ongoing complexity of Barcelona's forward search while the Alvarez saga remains unresolved.",
+      "onBeat": true,
+      "onBeatReason": "This covers FC Barcelona's transfer-market news, specifically their pursuit of alternative forward targets (Kroupi) while the Julian Alvarez deal is stalled, which is a core recurring saga on this beat.",
+      "finalDraft": "🚨 Barcelona have explored Eli Junior Kroupi as an option over recent weeks in case the Julián Álvarez deal doesn’t advance. Manchester City also asked for info on him this month. Bournemouth want to keep him and insist on no plans to sell. @FabrizioRomano #Transfers 🇫🇷🔵🔴",
+      "correctedFields": [
+        "newsSynthesis"
+      ],
+      "judgeNotes": "The source is in English, so no translation is needed. The ground draft is already well-aligned with the voice guidelines, using the correct opening, source attribution, hashtag, and emoji closer. No corrections needed."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8627,
+        "outputTokens": 521,
+        "totalTokens": 9148,
+        "reasoningTokens": 260
+      },
+      "judge": {
+        "inputTokens": 7902,
+        "outputTokens": 561,
+        "totalTokens": 8463,
+        "reasoningTokens": 280
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:15:59.285Z",
+      "groundCompletedAt": "2026-08-03T03:16:10.376Z",
+      "judgeStartedAt": "2026-08-03T03:16:10.376Z",
+      "completedAt": "2026-08-03T03:16:20.995Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 12,
+    "sourcePostId": "6131cd79-f64c-4d78-ae1d-7dff2d3f28e5",
+    "historicalDraftId": "3400be3f-3189-47eb-b998-727512b80598",
+    "historicalCreatedAt": "2026-07-27T14:05:30.592871+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Real Madrid, desperate to find 'su' Lamine Yamal, after signing Franco Mastantuono, poised to splash €120m on Yan Diomande. @sport #Transfers 🇨🇮⚠️",
+    "authorHandle": "sport",
+    "text": "🧐 El Real Madrid, desesperado por encontrar a 'su' Lamine Yamal\n\n💸 Tras el fichaje de Franco Mastantuono, el club blanco se prepara para desembolsar 120 millones por Yan Diomande\n\nhttps://t.co/XTle3ZFG6M",
+    "media": [],
+    "replayDraft": null,
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "🧐 Real Madrid, desperate to find 'their' Lamine Yamal — 💸 After signing Franco Mastantuono, the white club prepares to pay out €120 million for Yan Diomande.",
+      "newsSynthesis": "Real Madrid is reportedly preparing to spend €120 million on defender Yan Diomande after recently acquiring Franco Mastantuono, while remaining fixated on securing Lamine Yamal. This introduces a concrete valuation for Diomande despite having no direct connection to Barcelona's transfer activities.",
+      "onBeat": false,
+      "onBeatReason": "A generic Real Madrid transfer headline without a named insider or direct connection to the FC Barcelona transfer-market scope, falling outside the specified coverage of sourced scoops.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Real Madrid is preparing to pay out €120 million for Yan Diomande after signing Franco Mastantuono, while remaining desperate to secure Lamine Yamal. #Transfers 🇫🇷⚠️"
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "🧐 Real Madrid, desperate to find 'their' Lamine Yamal — 💸 After signing Franco Mastantuono, the white club prepares to pay out €120 million for Yan Diomande.",
+      "newsSynthesis": "Real Madrid is reportedly preparing to spend €120 million on defender Yan Diomande after recently acquiring Franco Mastantuono, while remaining fixated on securing Lamine Yamal. This introduces a concrete valuation for Diomande despite having no direct connection to Barcelona's transfer activities.",
+      "onBeat": false,
+      "onBeatReason": "A generic Real Madrid transfer headline without a named insider or direct connection to the FC Barcelona transfer-market scope, falling outside the specified coverage of sourced scoops.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Real Madrid is preparing to pay out €120 million for Yan Diomande after signing Franco Mastantuono, while remaining desperate to secure Lamine Yamal. #Transfers 🇫🇷⚠️"
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8185,
+        "outputTokens": 3626,
+        "totalTokens": 11811,
+        "reasoningTokens": 3372
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:16:17.187Z",
+      "groundCompletedAt": "2026-08-03T03:16:51.831Z",
+      "judgeStartedAt": "2026-08-03T03:16:51.831Z",
+      "completedAt": "2026-08-03T03:16:54.165Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 13,
+    "sourcePostId": "f044bbc0-61db-4adb-9c36-e98f9c9cd9d1",
+    "historicalDraftId": "029aa8a5-5cc1-4baf-a4f2-ad854525f96a",
+    "historicalCreatedAt": "2026-07-27T14:19:19.889358+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: DBR8 analyzes Barça's XI as they head to England for the 'stage' with different English teams. 🇪🇸⚽️",
+    "authorHandle": "sport",
+    "text": "🔵🔴𝐄𝐥 𝐚𝐧á𝐥𝐢𝐬𝐢𝐬 𝐝𝐞 𝐥𝐚 𝐜𝐨𝐧𝐯𝐨𝐜𝐚𝐭𝐨𝐫𝐢𝐚 𝐝𝐞𝐥 𝐅𝐂 𝐁𝐚𝐫𝐜𝐞𝐥𝐨𝐧𝐚 𝐩𝐚𝐫𝐚 𝐞𝐥 '𝐬𝐭𝐚𝐠𝐞' 𝐞𝐧 𝐈𝐧𝐠𝐥𝐚𝐭𝐞𝐫𝐫𝐚\n\n🤩 @DBR8 analiza el once del Barça con el que parte hacia Inglaterra para disputar el 'stage' con diferentes equipos ingleses https://t.co/xOpKi3NtXQ",
+    "media": [
+      {
+        "kind": "video",
+        "imageUrl": "https://pbs.twimg.com/amplify_video_thumb/2081734949376327680/img/1Ho32ZGagXluVBdN.jpg"
+      }
+    ],
+    "replayDraft": "🚨 DBR8 analyzes Barça's starting XI for their pre-season 'stage' in England, where they'll face different English teams. 🏴󠁧󠁢󠁥󠁮󠁧󠁿🔵🔴 https://t.co/xOpKi3NtXQ",
+    "replayVerdict": {
+      "mediaDescription": "A split-screen video poster: top half shows a man with glasses and white earbuds speaking outdoors with the subtitle 'El equipo de Hansi' (Hansi's team); bottom half shows a FC Barcelona bus parked at the Ciutat Esportiva Joan Gamper training ground.",
+      "language": "es",
+      "translation": "FC Barcelona's analysis of the squad for the 'stage' in England. @DBR8 analyzes the starting XI of Barça as they head to England to play against different English teams.",
+      "newsSynthesis": "FC Barcelona is preparing for a pre-season training camp ('stage') in England, where they will play against various English clubs. Journalist Diego Barranco (@DBR8) has analyzed and predicted the starting lineup coach Hansi Flick will use for this trip.",
+      "onBeat": true,
+      "onBeatReason": "This covers first-team club news and pre-season squad selection for Hansi Flick's Barcelona, which falls under the covers clause for first-team club news.",
+      "needsContext": false,
+      "firstDraft": "🚨 DBR8 analyzes Barça's starting XI for their pre-season 'stage' in England, where they'll face different English teams. 🏴󠁧󠁢󠁥󠁮󠁧󠁿🔵🔴 https://t.co/xOpKi3NtXQ"
+    },
+    "groundVerdict": {
+      "mediaDescription": "A split-screen video poster: top half shows a man with glasses and white earbuds speaking outdoors with the subtitle 'El equipo de Hansi' (Hansi's team); bottom half shows a FC Barcelona bus parked at the Ciutat Esportiva Joan Gamper training ground.",
+      "language": "es",
+      "translation": "FC Barcelona's analysis of the squad for the 'stage' in England. @DBR8 analyzes the starting XI of Barça as they head to England to play against different English teams.",
+      "newsSynthesis": "Barça is preparing for a pre-season training camp ('stage') in England, playing against various English clubs. Journalist DBR8 (Diego Barranco) has analyzed and predicted the starting lineup Hansi Flick will use for this trip.",
+      "onBeat": true,
+      "onBeatReason": "This covers first-team club news and pre-season squad selection for Hansi Flick's Barcelona, which falls under the covers clause for first-team club news.",
+      "needsContext": false,
+      "firstDraft": "🚨 DBR8 analyzing Barça's starting XI for their pre-season 'stage' in England, where they'll face different English teams. 🏴󠁧󠁢󠁥󠁮󠁧󠁿🔵🔴 https://t.co/xOpKi3NtXQ"
+    },
+    "judgeVerdict": {
+      "language": "es",
+      "translation": "FC Barcelona's analysis of the squad for the 'stage' in England. @DBR8 analyzes the starting XI of Barça as they head to England to play against different English teams.",
+      "newsSynthesis": "FC Barcelona is preparing for a pre-season training camp ('stage') in England, where they will play against various English clubs. Journalist Diego Barranco (@DBR8) has analyzed and predicted the starting lineup coach Hansi Flick will use for this trip.",
+      "onBeat": true,
+      "onBeatReason": "This covers first-team club news and pre-season squad selection for Hansi Flick's Barcelona, which falls under the covers clause for first-team club news.",
+      "finalDraft": "🚨 DBR8 analyzes Barça's starting XI for their pre-season 'stage' in England, where they'll face different English teams. 🏴󠁧󠁢󠁥󠁮󠁧󠁿🔵🔴 https://t.co/xOpKi3NtXQ",
+      "correctedFields": [
+        "newsSynthesis",
+        "finalDraft"
+      ],
+      "judgeNotes": "Adjusted the headline to match the voice guidance: 'JUST IN:' is not appropriate here as this is an analysis/preview rather than a breaking scoop. Removed 'JUST IN' to fit the 'Short factual one-liner' or standard scoop format without the breaking banner, keeping it under 280 chars."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8503,
+        "outputTokens": 625,
+        "totalTokens": 9128,
+        "reasoningTokens": 312
+      },
+      "judge": {
+        "inputTokens": 7830,
+        "outputTokens": 663,
+        "totalTokens": 8493,
+        "reasoningTokens": 331
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:16:18.862Z",
+      "groundCompletedAt": "2026-08-03T03:16:30.038Z",
+      "judgeStartedAt": "2026-08-03T03:16:30.038Z",
+      "completedAt": "2026-08-03T03:16:40.668Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 14,
+    "sourcePostId": "a81bed4a-c201-4a40-a421-f68f0390bc18",
+    "historicalDraftId": "0cc79255-1ac3-4b3c-ad0b-b95ed29de68c",
+    "historicalCreatedAt": "2026-07-27T14:45:18.186493+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Barça explores the option of playing a friendly in Morocco to bolster its international presence and generate new income. @sport #Transfers 🇲🇦⚽️",
+    "authorHandle": "sport",
+    "text": "👉 El Barça explora la opción de jugar un amistoso en Marruecos\n\n⚽️ El conjunto blaugrana perfila un posible partido de preparación en el norte de África para reforzar su presencia internacional y generar nuevos ingresos\n\nhttps://t.co/kf21f4zuos",
+    "media": [],
+    "replayDraft": "Barcelona are exploring the possibility of playing a pre-season friendly in Morocco.\n\nThe club aims to use the trip to strengthen its international footprint while generating additional revenue ahead of the new season.",
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "👉 Barcelona is exploring the option of playing an exhibition match in Morocco.\n\n⚽️ The Blaugrana side is shaping up a possible pre-season game in North Africa to strengthen its international presence and generate new revenue.",
+      "newsSynthesis": "FC Barcelona are weighing options to play an upcoming pre-season friendly in Morocco. The proposed stop would serve a dual purpose: expanding the club's commercial footprint across North Africa and creating an additional revenue stream before the competitive season begins.",
+      "onBeat": true,
+      "onBeatReason": "Covers first-team club news regarding pre-season scheduling and international touring arrangements, which aligns with the beat's scope of internal club operations and squad planning.",
+      "needsContext": false,
+      "firstDraft": "Barcelona are exploring the possibility of playing a pre-season friendly in Morocco.\n\nThe club aims to use the trip to strengthen its international footprint while generating additional revenue ahead of the new season."
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "👉 Barcelona is exploring the option of playing an exhibition match in Morocco.\n\n⚽️ The Blaugrana side is shaping up a possible pre-season game in North Africa to strengthen its international presence and generate new revenue.",
+      "newsSynthesis": "FC Barcelona are weighing options to play an upcoming pre-season friendly in Morocco. The proposed stop would serve a dual purpose: expanding the club's commercial footprint across North Africa and creating an additional revenue stream before the competitive season begins.",
+      "onBeat": true,
+      "onBeatReason": "Covers first-team club news regarding pre-season scheduling and international touring arrangements, which aligns with the beat's scope of internal club operations and squad planning.",
+      "needsContext": false,
+      "firstDraft": "Barcelona are exploring the possibility of playing a pre-season friendly in Morocco.\n\nThe club aims to use the trip to strengthen its international footprint while generating additional revenue ahead of the new season."
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8184,
+        "outputTokens": 2620,
+        "totalTokens": 10804,
+        "reasoningTokens": 2390
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:16:20.997Z",
+      "groundCompletedAt": "2026-08-03T03:16:45.595Z",
+      "judgeStartedAt": "2026-08-03T03:16:45.595Z",
+      "completedAt": "2026-08-03T03:16:46.696Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 15,
+    "sourcePostId": "10860981-158b-41d3-a926-33f18bf2c0b4",
+    "historicalDraftId": "b060da91-2ccb-4450-b43e-9e8649c594f5",
+    "historicalCreatedAt": "2026-07-27T15:04:57.532491+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "Barça are already at St. George's Park: Flick's preseason in England begins. The Blaugrana squad is at the English FA's high-performance center, where they will train until August 3. @sport #FCB",
+    "authorHandle": "sport",
+    "text": "✅ l Barça ya está en St. George's Park: comienza la pretemporada de Flick en Inglaterra\n\n🔝 La expedición blaugrana ya se encuentra en el centro de alto rendimiento de la Federación Inglesa, donde trabajará hasta el 3 de agosto\n\n✍️ @ferrancorreas \n\nhttps://t.co/S7JX073jeu",
+    "media": [],
+    "replayDraft": "Barcelona has arrived at St. George's Park to begin Hansi Flick's preseason in England, working through August 3.",
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "✅ Barcelona is already at St. George's Park: Flick's preseason in England begins\n\n🔝 The Blaugrana expedition is already at the English Federation's high-performance center, where they will work until August 3\n\n✍️ @ferrancorreas",
+      "newsSynthesis": "Barcelona's squad has arrived at St. George's Park in England to begin Hansi Flick's preseason program, utilizing the national federation's high-performance center for training through August 3. This marks the official start of the club's summer preparation phase away from Spain.",
+      "onBeat": true,
+      "onBeatReason": "Covers FC Barcelona first-team club news regarding internal squad travel and preseason preparations under coach Hansi Flick.",
+      "needsContext": false,
+      "firstDraft": "Barcelona has arrived at St. George's Park to begin Hansi Flick's preseason in England, working through August 3."
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "✅ Barcelona is already at St. George's Park: Flick's preseason in England begins\n\n🔝 The Blaugrana expedition is already at the English Federation's high-performance center, where they will work until August 3\n\n✍️ @ferrancorreas",
+      "newsSynthesis": "Barcelona's squad has arrived at St. George's Park in England to begin Hansi Flick's preseason program, utilizing the national federation's high-performance center for training through August 3. This marks the official start of the club's summer preparation phase away from Spain.",
+      "onBeat": true,
+      "onBeatReason": "Covers FC Barcelona first-team club news regarding internal squad travel and preseason preparations under coach Hansi Flick.",
+      "needsContext": false,
+      "firstDraft": "Barcelona has arrived at St. George's Park to begin Hansi Flick's preseason in England, working through August 3."
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8200,
+        "outputTokens": 3071,
+        "totalTokens": 11271,
+        "reasoningTokens": 2846
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:16:21.200Z",
+      "groundCompletedAt": "2026-08-03T03:16:49.334Z",
+      "judgeStartedAt": "2026-08-03T03:16:49.334Z",
+      "completedAt": "2026-08-03T03:16:50.932Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 16,
+    "sourcePostId": "bffd2ba9-a6cd-4eec-b488-c4d4a5bbaea6",
+    "historicalDraftId": "512e2cc6-ae9b-4ffc-a693-b07bb9975d17",
+    "historicalCreatedAt": "2026-07-27T16:00:21.328255+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Six of the ten Spanish players with the highest market value play for Barça, per Transfermarkt. Lamine, Pedri, Cubarsí and Fermín occupy the first four spots. @bonagerman #Transfers",
+    "authorHandle": "sport",
+    "text": "💰 Los españoles más valiosos son del Barça\n\n👉 Según un informe de Transfermarkt, 6 de los 10 futbolistas españoles con mayor cotización de mercado juegan en el FC Barcelona, y Lamine, Pedri, Cubarsí y Fermín copan las cuatro primeras posiciones\n\n✍️ @bonagerman \n\nhttps://t.co/cW5O57gMWm",
+    "media": [],
+    "replayDraft": "🚨 JUST IN: According to a Transfermarkt report, six of the ten most valuable Spanish players are at Barcelona, with Lamine, Pedri, Cubarsí and Fermín occupying the top four positions. @bonagerman #Transfers 🇪🇸🔵🔴",
+    "replayVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "The most valuable Spanish players are from Barça. According to a Transfermarkt report, 6 of the 10 Spanish footballers with the highest market value play for FC Barcelona, and Lamine, Pedri, Cubarsí and Fermín occupy the top four positions. ✍️ @bonagerman",
+      "newsSynthesis": "A Transfermarkt report indicates that six of the ten highest-valued Spanish players currently play for Barcelona, with Lamine, Pedri, Cubarsí, and Fermín ranking in the top four spots overall. This valuation snapshot underscores the club's financial depth in its homegrown core ahead of contract renewals and potential transfer-market activity.",
+      "onBeat": true,
+      "onBeatReason": "Falls under first-team club news and player market valuation directly tied to contract renewal strategy and transfer leverage, as covered by the beat’s scope on recurring squad figures and sporting-director negotiations.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: According to a Transfermarkt report, six of the ten most valuable Spanish players are at Barcelona, with Lamine, Pedri, Cubarsí and Fermín occupying the top four positions. @bonagerman #Transfers 🇪🇸🔵🔴"
+    },
+    "groundVerdict": {
+      "mediaDescription": null,
+      "language": "es",
+      "translation": "The most valuable Spanish players are from Barça. According to a Transfermarkt report, 6 of the 10 Spanish footballers with the highest market value play for FC Barcelona, and Lamine, Pedri, Cubarsí and Fermín occupy the top four positions. ✍️ @bonagerman",
+      "newsSynthesis": "A Transfermarkt report indicates that six of the ten highest-valued Spanish players currently play for Barcelona, with Lamine, Pedri, Cubarsí, and Fermín ranking in the top four spots overall. This valuation snapshot underscores the club's financial depth in its homegrown core ahead of contract renewals and potential transfer-market activity.",
+      "onBeat": true,
+      "onBeatReason": "Falls under first-team club news and player market valuation directly tied to contract renewal strategy and transfer leverage, as covered by the beat’s scope on recurring squad figures and sporting-director negotiations.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: According to a Transfermarkt report, six of the ten most valuable Spanish players are at Barcelona, with Lamine, Pedri, Cubarsí and Fermín occupying the top four positions. @bonagerman #Transfers 🇪🇸🔵🔴"
+    },
+    "judgeVerdict": null,
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8207,
+        "outputTokens": 2879,
+        "totalTokens": 11086,
+        "reasoningTokens": 2579
+      },
+      "judge": null
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:16:40.673Z",
+      "groundCompletedAt": "2026-08-03T03:17:06.816Z",
+      "judgeStartedAt": "2026-08-03T03:17:06.816Z",
+      "completedAt": "2026-08-03T03:17:08.233Z"
+    },
+    "judgeError": "GatewayInternalServerError: <400> InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'.",
+    "error": null
+  },
+  {
+    "index": 17,
+    "sourcePostId": "4db0c998-9801-4ce2-a4cd-3ec6f2d0ca82",
+    "historicalDraftId": "e750cdb4-95f0-4e69-8e5a-7728096869a9",
+    "historicalCreatedAt": "2026-07-27T17:00:02.74725+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: AS Monaco agree deal to sign Matthis Abline from Nantes, here we go! Deal in place for €25m plus add-ons. 🇫🇷🔴⚪ https://t.co/jVVwEVOgg8 @FabrizioRomano #Transfers",
+    "authorHandle": "FabrizioRomano",
+    "text": "🚨🔴⚪️ AS Monaco agree deal to sign Matthis Abline from Nantes, here we go!\n\nDeal in place for €25m plus add-ons. 🇫🇷 https://t.co/jVVwEVOgg8",
+    "media": [
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOP94ecWcAAAmwS.jpg"
+      },
+      {
+        "kind": "photo",
+        "imageUrl": "https://pbs.twimg.com/media/HOP94ecWMAAC9Yg.jpg"
+      }
+    ],
+    "replayDraft": "🚨 AS Monaco agree deal to sign Matthis Abline from Nantes, here we go! Deal in place for €25m plus add-ons. 🇫🇷 @FabrizioRomano #Transfers 💰 https://t.co/jVVwEVOgg8",
+    "replayVerdict": {
+      "mediaDescription": "A photo of two players in yellow and green Nantes kits celebrating on a pitch, followed by the AS Monaco FC logo on a red background.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "AS Monaco have agreed to sign Matthis Abline from Nantes for a fee of €25m plus add-ons. This is a standard transfer-market scoop relayed via Fabrizio Romano, covering a deal between two French clubs that does not involve FC Barcelona directly, but fits the broader transfer-market beat covered by the account.",
+      "onBeat": true,
+      "onBeatReason": "The account relays broad transfer-market scoops via credited insiders like Fabrizio Romano, even on deals not involving Barça directly, as long as they sit inside the broader transfer-market beat.",
+      "needsContext": false,
+      "firstDraft": "🚨 AS Monaco agree deal to sign Matthis Abline from Nantes, here we go! Deal in place for €25m plus add-ons. 🇫🇷 @FabrizioRomano #Transfers 💰 https://t.co/jVVwEVOgg8"
+    },
+    "groundVerdict": {
+      "mediaDescription": "A photo of two players in yellow and green Nantes kits celebrating on a pitch, followed by the AS Monaco FC logo on a red background.",
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "AS Monaco have agreed to sign Matthis Abline from Nantes for a fee of €25m plus add-ons. This is a standard transfer-market scoop relayed via Fabrizio Romano, covering a deal between two French clubs that does not involve FC Barcelona directly, but fits the broader transfer-market beat covered by the account.",
+      "onBeat": true,
+      "onBeatReason": "The account relays broad transfer-market scoops via credited insiders like Fabrizio Romano, even on deals not involving Barça directly, as long as they sit inside the broader transfer-market beat.",
+      "needsContext": false,
+      "firstDraft": "🚨 AS Monaco have agreed to sign Matthis Abline from Nantes for €25m plus add-ons. @FabrizioRomano #Transfers 🇫🇷"
+    },
+    "judgeVerdict": {
+      "language": "en",
+      "translation": null,
+      "newsSynthesis": "AS Monaco have agreed to sign Matthis Abline from Nantes for a fee of €25m plus add-ons. This is a standard transfer-market scoop relayed via Fabrizio Romano, covering a deal between two French clubs that does not involve FC Barcelona directly, but fits the broader transfer-market beat covered by the account.",
+      "onBeat": true,
+      "onBeatReason": "The account relays broad transfer-market scoops via credited insiders like Fabrizio Romano, even on deals not involving Barça directly, as long as they sit inside the broader transfer-market beat.",
+      "finalDraft": "🚨 AS Monaco agree deal to sign Matthis Abline from Nantes, here we go! Deal in place for €25m plus add-ons. 🇫🇷 @FabrizioRomano #Transfers 💰 https://t.co/jVVwEVOgg8",
+      "correctedFields": [
+        "finalDraft"
+      ],
+      "judgeNotes": "Adjusted the final draft to match the source post's exact phrasing and include the URL, as the ground truth draft omitted the URL and slightly altered the text. Added the 💰 emoji to denote the fee context per voice guidelines, and moved the handle before the hashtag closer."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 10344,
+        "outputTokens": 1182,
+        "totalTokens": 11526,
+        "reasoningTokens": 947
+      },
+      "judge": {
+        "inputTokens": 9594,
+        "outputTokens": 577,
+        "totalTokens": 10171,
+        "reasoningTokens": 284
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:16:46.699Z",
+      "groundCompletedAt": "2026-08-03T03:16:57.762Z",
+      "judgeStartedAt": "2026-08-03T03:16:57.762Z",
+      "completedAt": "2026-08-03T03:17:09.471Z"
+    },
+    "judgeError": null,
+    "error": null
+  },
+  {
+    "index": 19,
+    "sourcePostId": "f5e52fab-ba94-4bb8-9179-552633669a35",
+    "historicalDraftId": "c8d62c8e-7acf-4de3-823b-b4fa4d09b14f",
+    "historicalCreatedAt": "2026-07-27T17:28:35.985977+00:00",
+    "historicalModel": "openai/gpt-5-nano",
+    "historicalDraft": "🚨 JUST IN: Barça daily update with @monfortcarlos. Barça is already exploring alternatives to Julián Álvarez, and Jesse Bisiwu is imminent as part of the club’s transfer planning ahead of Birmingham. https://t.co/1zmbDxEMf3",
+    "authorHandle": "sport",
+    "text": "⚡️ Barça al día, con @monfortcarlos  \n\n🔵🔴Las dos grandes novedades en la expedición azulgrana rumbo a Birmingham\n\n😅El Barça ya busca alternativas a Julián Álvarez\n\n🤩Jesse Bisiwu, inminente https://t.co/1zmbDxEMf3",
+    "media": [
+      {
+        "kind": "video",
+        "imageUrl": "https://pbs.twimg.com/amplify_video_thumb/2081793674334101505/img/EhNhq4HBk2EzU09m.jpg"
+      }
+    ],
+    "replayDraft": "😅 Barça already looking for alternatives to Julian Alvarez. \n\n🤩 Jesse Bisiwu, imminent. @monfortcarlos #Transfers 🇬🇧🔵🔴",
+    "replayVerdict": {
+      "mediaDescription": "A man speaking directly to the camera, likely a video screenshot or poster frame from a social media post, with bookshelves in the background.",
+      "language": "es",
+      "translation": "⚡️ Barça up to date, with @monfortcarlos\n\n🔵🔴The two big news in the blue and red expedition heading to Birmingham\n\n😅Barça is already looking for alternatives to Julián Álvarez\n\n🤩Jesse Bisiwu, imminent",
+      "newsSynthesis": "Barcelona is reportedly looking for alternatives to Julian Alvarez, with Jesse Bisiwu considered an imminent target. The post also mentions two major updates regarding the club's trip to Birmingham, sourced from @monfortcarlos.",
+      "onBeat": true,
+      "onBeatReason": "This covers FC Barcelona's transfer-market pursuit of Jesse Bisiwu as an alternative to Julian Alvarez, which falls squarely within the covered transfer-market news and recurring Julian Alvarez saga.",
+      "needsContext": false,
+      "firstDraft": "😅 Barça already looking for alternatives to Julian Alvarez. \n\n🤩 Jesse Bisiwu, imminent. @monfortcarlos #Transfers 🇬🇧🔵🔴"
+    },
+    "groundVerdict": {
+      "mediaDescription": "A man speaking directly to the camera, likely a video screenshot or poster frame from a social media post, with bookshelves in the background.",
+      "language": "es",
+      "translation": "⚡️ Barça up to date, with @monfortcarlos\n\n🔵🔴The two big news in the blue and red expedition heading to Birmingham\n\n😅Barça is already looking for alternatives to Julián Álvarez\n\n🤩Jesse Bisiwu, imminent",
+      "newsSynthesis": "Barcelona is reportedly looking for alternatives to Julian Alvarez, with Jesse Bisiwu considered an imminent target. The post also mentions two major updates regarding the club's trip to Birmingham, sourced from @monfortcarlos.",
+      "onBeat": true,
+      "onBeatReason": "This covers FC Barcelona's transfer-market pursuit of Jesse Bisiwu as an alternative to Julian Alvarez, which falls squarely within the covered transfer-market news and recurring Julian Alvarez saga.",
+      "needsContext": false,
+      "firstDraft": "🚨 JUST IN: Barcelona is already looking for alternatives to Julian Alvarez. Jesse Bisiwu is considered imminent. @monfortcarlos #Transfers 🇦🇷🔵🔴"
+    },
+    "judgeVerdict": {
+      "language": "es",
+      "translation": "⚡️ Barça up to date, with @monfortcarlos\n\n🔵🔴The two big news in the blue and red expedition heading to Birmingham\n\n😅Barça is already looking for alternatives to Julián Álvarez\n\n🤩Jesse Bisiwu, imminent",
+      "newsSynthesis": "Barcelona is reportedly looking for alternatives to Julian Alvarez, with Jesse Bisiwu considered an imminent target. The post also mentions two major updates regarding the club's trip to Birmingham, sourced from @monfortcarlos.",
+      "onBeat": true,
+      "onBeatReason": "This covers FC Barcelona's transfer-market pursuit of Jesse Bisiwu as an alternative to Julian Alvarez, which falls squarely within the covered transfer-market news and recurring Julian Alvarez saga.",
+      "finalDraft": "😅 Barça already looking for alternatives to Julian Alvarez. \n\n🤩 Jesse Bisiwu, imminent. @monfortcarlos #Transfers 🇬🇧🔵🔴",
+      "correctedFields": [
+        "finalDraft"
+      ],
+      "judgeNotes": "The original draft combined the Alvarez alternative news and Bisiwu into one sentence, but the source post separates them as distinct updates (Alvarez alternatives + Bisiwu imminent). Adjusted the final draft to reflect the multi-point structure typical of this account, using the 😅 and 🤩 emojis from the source to match the tone, and added the UK flag for Bisiwu."
+    },
+    "draftLengthFallback": "none",
+    "usage": {
+      "ground": {
+        "inputTokens": 8337,
+        "outputTokens": 563,
+        "totalTokens": 8900,
+        "reasoningTokens": 281
+      },
+      "judge": {
+        "inputTokens": 7630,
+        "outputTokens": 679,
+        "totalTokens": 8309,
+        "reasoningTokens": 339
+      }
+    },
+    "timing": {
+      "groundStartedAt": "2026-08-03T03:16:54.169Z",
+      "groundCompletedAt": "2026-08-03T03:17:05.414Z",
+      "judgeStartedAt": "2026-08-03T03:17:05.414Z",
+      "completedAt": "2026-08-03T03:17:16.398Z"
+    },
+    "judgeError": null,
+    "error": null
+  }
+]

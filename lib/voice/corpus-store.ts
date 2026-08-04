@@ -4,7 +4,7 @@ import type { CorpusPost } from "./extract-guide";
 
 // OWNER DECISION: corpus_posts is the owner's accumulating DATA SET for a desk, not a snapshot
 // of the latest extraction. A re-extraction NEVER deletes previously stored posts — it only adds
-// posts not already present and refreshes the ones that are. X's timeline read returns the 100
+// posts not already present and refreshes the ones that are. X's timeline read returns the 50
 // most recent original posts, so consecutive extractions overlap heavily; treating each run as a
 // replacement would discard history the owner wants kept. The `unique (agent_id, x_post_id)`
 // constraint (see the corpus_posts migration) is what makes a re-extraction idempotent: an upsert
@@ -34,7 +34,7 @@ export async function accumulateCorpus(agentId: string, posts: CorpusPost[]): Pr
   // fresh reclassification for that post: whatever it was flagged as in a PRIOR run gets
   // overwritten by what THIS run's model decides, which is correct — the model re-examines every
   // post it fetches, every run. A row belonging to an EARLIER run's fetch that isn't part of this
-  // run's 100 most-recent posts is not in this payload at all, so it is untouched by both the
+  // run's 50 most-recent posts is not in this payload at all, so it is untouched by both the
   // reset and by markCorpusExclusions, and its prior exclusion classification survives exactly as
   // the accumulation model intends.
   const { error: upsertError } = await admin.from("corpus_posts").upsert(

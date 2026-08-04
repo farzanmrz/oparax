@@ -1,0 +1,133 @@
+{
+  "handle": "laligaen",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 50,
+  "usage": {
+    "inputTokens": 80142,
+    "outputTokens": 5092,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 10,
+      "offBeat": 37,
+      "unclear": 3
+    },
+    "skew": "mixed",
+    "priorLine": "This official LALIGA account posts constantly about all clubs and both Spain/other national teams, so only a modest fraction of its output—mostly Barcelona player highlights, trophy/stat milestones, and throwback kit or bonding moments—actually centers on FC Barcelona, while the bulk covers Real Madrid, Atletico, other LaLiga clubs, national-team nostalgia, and app promos.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Nostalgic Barcelona-kit or historic Barcelona moment throwback",
+        "exampleIndexes": [
+          3,
+          34
+        ],
+        "examplesEnglish": [
+          "💙❤️",
+          "\"First I went left, he did too. Then I went right, he did too. Then I went left again, and he went to buy a hot dog.\"\n\nIconic."
+        ]
+      },
+      {
+        "pattern": "Barcelona young talent's trophies/stats milestone graphic",
+        "exampleIndexes": [
+          23,
+          26
+        ],
+        "examplesEnglish": [
+          "Since his debut... only 3 seasons ago.\n\nand counting the World Cup 🏆",
+          "Dribble evolution 🤹"
+        ]
+      },
+      {
+        "pattern": "Side-by-side then-vs-now or player duo comparison in Barcelona colors",
+        "exampleIndexes": [
+          1,
+          38
+        ],
+        "examplesEnglish": [
+          "What will we see from this young talent this season? 💫",
+          "Same but different 🤩"
+        ]
+      },
+      {
+        "pattern": "Emotional Barcelona coach-player bonding moment",
+        "exampleIndexes": [
+          11,
+          49
+        ],
+        "examplesEnglish": [
+          "He knew 🦈",
+          "Trained him to become world champion 🏆"
+        ]
+      },
+      {
+        "pattern": "Barcelona player fashion/style spotlight",
+        "exampleIndexes": [
+          6
+        ],
+        "examplesEnglish": [
+          "Our most stylish player since he joined in '22"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Rival-club (mostly Real Madrid) birthday or player-highlight post",
+        "exampleIndexes": [
+          0,
+          16
+        ],
+        "examplesEnglish": [
+          "The story's just begun 📖\n\nHappy birthday, Thiago Pitarch!",
+          "Captain Valverde 🦅"
+        ]
+      },
+      {
+        "pattern": "New signing presentation for a non-Barcelona club",
+        "exampleIndexes": [
+          5,
+          15
+        ],
+        "examplesEnglish": [
+          "Built for battles ⚔️",
+          "A new duo entered the chat 👀"
+        ]
+      },
+      {
+        "pattern": "Spain national-team World Cup celebration/nostalgia not tied to a club",
+        "exampleIndexes": [
+          10,
+          45
+        ],
+        "examplesEnglish": [
+          "Did someone say world champions?",
+          "Line-ups we will remember forever 🤩"
+        ]
+      },
+      {
+        "pattern": "Career/manager retrospective for another club's figure",
+        "exampleIndexes": [
+          13,
+          28
+        ],
+        "examplesEnglish": [
+          "Waiting for his re-debut 🥵",
+          "Before he trained Les Blues he won with the whites 🤍"
+        ]
+      },
+      {
+        "pattern": "League-wide stat countdown or app/engagement promo",
+        "exampleIndexes": [
+          40,
+          19
+        ],
+        "examplesEnglish": [
+          "Can you guess our top goalscorer's tally for next season?",
+          "New season, new line-up \n\n📲DOWNLOAD THE APP TODAY."
+        ]
+      }
+    ]
+  }
+}

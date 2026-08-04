@@ -1,0 +1,113 @@
+{
+  "handle": "talkfcb_",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 27,
+  "usage": {
+    "inputTokens": 35716,
+    "outputTokens": 6850,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 30,
+      "offBeat": 19,
+      "unclear": 1
+    },
+    "skew": "mixed",
+    "priorLine": "This account (a Barça-focused video creator) posts mostly about Barça transfers, squad drama, and player news, but frequently pads its feed with World Cup highlights of non-Barça players and other clubs' stories, so expect a strong but not exclusive Barça focus.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Transfer-target updates for players linked to Barça (Alvarez, Adeyemi, Ferran, etc.)",
+        "exampleIndexes": [
+          12,
+          29
+        ],
+        "examplesEnglish": [
+          "Atletico will NOT sell Julian Alvarez! Full reaction to some big words from Atléti 🔽",
+          "JULIAN WANTS TO LEAVE ATLÉTI! He's gone public! But what happens next? 🔽"
+        ]
+      },
+      {
+        "pattern": "Internal squad/relationship drama involving current Barça players (De Jong, Fermín, new signings)",
+        "exampleIndexes": [
+          8,
+          9
+        ],
+        "examplesEnglish": [
+          "Frenkie de Jong and Hansi Flick's relationship is reportedly 'broken' - some thoughts 🔽 Plus, Adeyemi's arrival!",
+          "I feel like at some point there are surely only so many excuses you can make for Frenkie de Jong."
+        ]
+      },
+      {
+        "pattern": "Cryptic teaser posts about managerial pressure/speculation at Barça (paired with Flick/Mourinho-style imagery)",
+        "exampleIndexes": [
+          4,
+          6
+        ],
+        "examplesEnglish": [
+          "This really is getting ridiculous now...",
+          "This is all getting a little concerning..."
+        ]
+      },
+      {
+        "pattern": "Round-up threads combining Barça transfer news with World Cup context",
+        "exampleIndexes": [
+          44,
+          48
+        ],
+        "examplesEnglish": [
+          "Barça News & World Cup round-up!",
+          "BARÇA TRANSFER NEWS ROUND-UP!"
+        ]
+      },
+      {
+        "pattern": "Milestone/performance posts about current Barça players (e.g. Lamine Yamal) even while on national duty",
+        "exampleIndexes": [
+          34,
+          41
+        ],
+        "examplesEnglish": [
+          "LAMINE YAMAL SCORES AT THE WORLD CUP!",
+          "Safe to say that Spain BADLY need Lamine."
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Highlight/reaction posts about non-Barça players' World Cup moments (Messi, Ronaldo, Gordon, Neves, Barcola, etc.)",
+        "exampleIndexes": [
+          13,
+          26
+        ],
+        "examplesEnglish": [
+          "LIONEL MESSI HAS REACHED BACK-TO-BACK WORLD CUP FINALS!!",
+          "Spain eliminate Portugal! And last night was a complete embarrassment for Cristiano Ronaldo & Roberto Martinez..."
+        ]
+      },
+      {
+        "pattern": "Other clubs' transfer or squad news with no Barcelona angle",
+        "exampleIndexes": [
+          2,
+          27
+        ],
+        "examplesEnglish": [
+          "TRANSFER DISCUSSION! 🔽",
+          "PSG's options on the left-wing next season will be Kvaratskhelia AND Diomande. Oh, and Doue can also play there. Insane 🤯"
+        ]
+      },
+      {
+        "pattern": "Engagement-bait or meta posts unrelated to actual news (polls, fan replies, promo items)",
+        "exampleIndexes": [
+          11,
+          49
+        ],
+        "examplesEnglish": [
+          "IMAGINE the reaction if Barça did this 😂",
+          "World Cup fever has officially struck!"
+        ]
+      }
+    ]
+  }
+}

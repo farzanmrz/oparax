@@ -1,0 +1,153 @@
+{
+  "startTime": "2026-05-05T06:39:22.066Z",
+  "handles": {
+    "AlbertRoge": {
+      "state": "invalid",
+      "reason": "Not Found Error"
+    },
+    "BarcaTimes": {
+      "state": "ok",
+      "count": 100,
+      "newest": "2026-08-03T00:27:41.000Z",
+      "oldest": "2026-07-31T19:18:56.000Z",
+      "bio": "Your premier one-stop source for 24/7 FC Barcelona and La Masia updates. For business inquiries, email us at info@barcatimes.com or send us a message 📲",
+      "displayName": "BarçaTimes"
+    },
+    "BarcaUniversal": {
+      "state": "ok",
+      "count": 99,
+      "newest": "2026-08-03T06:02:00.000Z",
+      "oldest": "2026-08-01T09:37:38.000Z",
+      "bio": "Biggest independent FC Barcelona channel: News, opinion, stats, and match coverage.",
+      "displayName": "Barça Universal"
+    },
+    "BarcaWorld_": {
+      "state": "empty",
+      "count": 0,
+      "newest": null,
+      "oldest": null,
+      "bio": "i tweet stuff about FC Barcelona! | visca el barça! | mes que un club ! | Im a big Barça and Messi fan ! |",
+      "displayName": "The World of Barça"
+    },
+    "Barca_Buzz": {
+      "state": "ok",
+      "count": 100,
+      "newest": "2026-08-03T05:34:23.000Z",
+      "oldest": "2026-07-31T18:30:00.000Z",
+      "bio": "📣 Sharing what's Buzzing with Barça - News, Transfers, Stats, Quotes, Trivia, La Masia. DMs always open. Business Inquiries: admin@barcabuzz.com.",
+      "displayName": "Barça Buzz"
+    },
+    "FabrizioRomano": {
+      "state": "ok",
+      "count": 97,
+      "newest": "2026-08-03T06:55:00.000Z",
+      "oldest": "2026-07-31T11:21:50.000Z",
+      "bio": "Here we go! © fabrizio.romano93@gmail.com 📩",
+      "displayName": "Fabrizio Romano"
+    },
+    "Gerardanyol": {
+      "state": "invalid",
+      "reason": "Not Found Error"
+    },
+    "Glongari": {
+      "state": "ok",
+      "count": 96,
+      "newest": "2026-08-02T18:59:00.000Z",
+      "oldest": "2026-07-16T19:09:33.000Z",
+      "bio": "@tvdellosport ➡️ https://t.co/P8xpq9WXoj",
+      "displayName": "Gianluigi Longari"
+    },
+    "MundoDeportivo": {
+      "state": "ok",
+      "count": 98,
+      "newest": "2026-08-03T05:52:34.000Z",
+      "oldest": "2026-08-01T19:56:13.000Z",
+      "bio": "👋 Bienvenidos al Twitter oficial de Mundo Deportivo 📲 Desde 1906, toda la actualidad deportiva",
+      "displayName": "Mundo Deportivo"
+    },
+    "TotalBarca": {
+      "state": "ok",
+      "count": 100,
+      "newest": "2026-08-03T00:30:13.000Z",
+      "oldest": "2026-07-30T15:56:06.000Z",
+      "bio": "News and opinion about the best team on the planet.",
+      "displayName": "total Barça"
+    },
+    "barcacentre": {
+      "state": "ok",
+      "count": 96,
+      "newest": "2026-08-03T06:32:39.000Z",
+      "oldest": "2026-07-28T09:44:25.000Z",
+      "bio": "@FCBarcelona coverage provided by specialist Barça journalists & aficionados. For business: advertising@getsport.com. For in-depth news: https://t.co/tAXHzVXG0V",
+      "displayName": "barcacentre"
+    },
+    "fcbarcelona": {
+      "state": "ok",
+      "count": 97,
+      "newest": "2026-08-03T04:00:00.000Z",
+      "oldest": "2026-07-31T08:00:02.000Z",
+      "bio": "𝗕𝗔𝗧𝗘𝗖 𝗕𝗟𝗔𝗨𝗚𝗥𝗔𝗡𝗔\nOne club. One rhythm 🫀",
+      "displayName": "FC Barcelona"
+    },
+    "fcbarcelonaes": {
+      "state": "empty",
+      "count": 0,
+      "newest": null,
+      "oldest": null,
+      "bio": "tickets for fc barcelona.get Tickets from Official Distributor of Tickets FC BARCELONA TICKETS CAMP NOU",
+      "displayName": "tickets fc barcelona"
+    },
+    "footmercato": {
+      "state": "ok",
+      "count": 99,
+      "newest": "2026-08-03T06:48:16.000Z",
+      "oldest": "2026-07-31T18:59:22.000Z",
+      "bio": "⚽️ Média leader sur l’actualité du #football en France 🇫🇷",
+      "displayName": "Foot Mercato"
+    },
+    "laligaen": {
+      "state": "ok",
+      "count": 100,
+      "newest": "2026-08-03T06:00:00.000Z",
+      "oldest": "2026-07-14T06:00:00.000Z",
+      "bio": "@LALIGA in English.",
+      "displayName": "LALIGA English"
+    },
+    "managingbarca": {
+      "state": "ok",
+      "count": 100,
+      "newest": "2026-08-03T06:48:43.000Z",
+      "oldest": "2026-07-29T20:43:33.000Z",
+      "bio": "An all-round coverage of @FCBarcelona | Enquiries: contact@managingbarca.com | 18+ | https://t.co/euVFfn7nYY",
+      "displayName": "Managing Barça"
+    },
+    "siegersayss": {
+      "state": "invalid",
+      "reason": "Not Found Error"
+    },
+    "sport": {
+      "state": "ok",
+      "count": 94,
+      "newest": "2026-08-03T06:50:55.000Z",
+      "oldest": "2026-08-01T12:52:32.000Z",
+      "bio": "🗞️ Te contamos el deporte desde dentro.  Lee las noticias aquí 👇",
+      "displayName": "Diario SPORT"
+    },
+    "talkfcb_": {
+      "state": "ok",
+      "count": 89,
+      "newest": "2026-08-02T22:02:27.000Z",
+      "oldest": "2026-05-05T21:01:02.000Z",
+      "bio": "I make videos on FC Barcelona. Instagram: TalkFCB",
+      "displayName": "TalkFCB ©"
+    },
+    "David_Ornstein": {
+      "state": "ok",
+      "count": 49,
+      "newest": "2026-08-02T16:18:49.000Z",
+      "oldest": "2026-07-07T08:35:47.000Z",
+      "bio": "Football Correspondent, @TheAthleticFC",
+      "displayName": "David Ornstein"
+    }
+  }
+}

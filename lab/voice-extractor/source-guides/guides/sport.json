@@ -1,0 +1,133 @@
+{
+  "handle": "sport",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 50,
+  "nImages": 16,
+  "usage": {
+    "inputTokens": 31932,
+    "outputTokens": 5858,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 26,
+      "offBeat": 24,
+      "unclear": 0
+    },
+    "skew": "mixed",
+    "priorLine": "@sport is a general Barcelona-based sports outlet whose feed mixes heavy day-to-day FC Barcelona coverage (transfers, player interviews, women's team, friendlies) with roughly equal amounts of other-club transfer gossip, Real Madrid/FIFA politics, other sports, and lifestyle/celebrity interviews, so posts must be checked individually for a genuine Barça angle.",
+    "onBeatPatterns": [
+      {
+        "pattern": "Transfer/signing news specifically tied to Barça (incoming or outgoing players)",
+        "exampleIndexes": [
+          11,
+          41
+        ],
+        "examplesEnglish": [
+          "Joao Cancelo, imminent signing for Barça. 🤩 The blaugrana club is confident of closing the deal in a few days to sign the full-back for two years.",
+          "This is how Deco signed his big bet Bisiwu: 'You have to pay for this kid, no question about it.' 🇧🇪 The blaugrana club signs the Belgian winger for 8.5 million euros, a personal bet by sporting director Deco."
+        ]
+      },
+      {
+        "pattern": "Direct quotes/interviews with current Barça first-team players",
+        "exampleIndexes": [
+          18,
+          26
+        ],
+        "examplesEnglish": [
+          "Joan Garcia: 'Julián Álvarez is very good. Would I pay 150 million for him? Luckily, it's not up to me to either ask or answer that question.'",
+          "Álvaro Cortés and his funny anecdote with Gerard Martín: 'I have a very good relationship with Geri, but we're not talking right now because I beat him at billiards and he still hasn't paid me.'"
+        ]
+      },
+      {
+        "pattern": "Barça Femení (women's team) staff and squad coverage",
+        "exampleIndexes": [
+          6,
+          15
+        ],
+        "examplesEnglish": [
+          "Barça's women players called to step up this year. The departures of Alexia, Mapi, Ona and Salma open the door for players who must now take on greater prominence in Pere Romeu's 'new' Barça.",
+          "This is how Pere Romeu's staff looks after the reorganization of Barça women's team. We go through each of the professionals who will accompany the coach during the 2026-27 season."
+        ]
+      },
+      {
+        "pattern": "Preseason friendly logistics/news involving Barça",
+        "exampleIndexes": [
+          32,
+          35
+        ],
+        "examplesEnglish": [
+          "Preston North End - Barça cancelled. The English team didn't have enough first-team players available and proposed a friendly against a team full of under-21s, which Barça rejected.",
+          "Preston North End - Barça preseason friendly cancelled. The English side doesn't have enough first-team players available for the friendly against Hansi Flick's team."
+        ]
+      },
+      {
+        "pattern": "Opinion/analysis columns on Barça squad building or player conduct",
+        "exampleIndexes": [
+          1,
+          2
+        ],
+        "examplesEnglish": [
+          "The noise of Ibiza and Ferran's silence. 'Ferran could make a gesture towards the club that pays his salary and towards a fanbase that keeps watching his every move.'",
+          "Barça's planning without a defender despite Deco's insistence. 'The sporting director wanted to sign defenders, but Flick has preferred to bet everything on attack.'"
+        ]
+      }
+    ],
+    "offBeatPatterns": [
+      {
+        "pattern": "Other clubs' transfer market news with no Barcelona connection",
+        "exampleIndexes": [
+          4,
+          10
+        ],
+        "examplesEnglish": [
+          "Another signing for Xabi Alonso, courtesy of BlueCo. Since 2022, Chelsea has been part of the consortium led by Todd Boehly that also owns part of Strasbourg.",
+          "Mateu Alemany's craziest market move for Atlético Madrid. The mattress-makers explore the possibility of signing Jack Grealish."
+        ]
+      },
+      {
+        "pattern": "Celebrity/lifestyle interviews unrelated to club news",
+        "exampleIndexes": [
+          13,
+          16
+        ],
+        "examplesEnglish": [
+          "SPORT INTERVIEW | Who have been the role models that inspire Vanesa Lorenzo today?: 'My parents have marked me a lot. They have loved me unconditionally.'",
+          "SPORT INTERVIEW | Vanesa Lorenzo talks to the newspaper about her relationship with sport, yoga, social media, motherhood and OMA, her conscious wellness project. 'Women's sport inspires me in a special way.'"
+        ]
+      },
+      {
+        "pattern": "Real Madrid / FIFA / institutional football politics with no Barça angle",
+        "exampleIndexes": [
+          20,
+          22
+        ],
+        "examplesEnglish": [
+          "Real Madrid celebrates FIFA's backtrack and aligns with UEFA. The white club celebrates the withdrawal of FIFA's project to commercialize its competitions.",
+          "Tebas goes a step further and mocks Florentino Pérez. 'The not-so-superior being has little credibility,' Tebas wrote on 'X' after Real Madrid's statement about FIFA."
+        ]
+      },
+      {
+        "pattern": "Other sports coverage (basketball, motorsport, tennis) unrelated to Barça football",
+        "exampleIndexes": [
+          19,
+          39
+        ],
+        "examplesEnglish": [
+          "Nikola Vucevic and his frustrated arrival to the Euroleague: 'We had a gentlemen's agreement.'",
+          "Martín dominates the World Championship... and also the most bitter statistic in MotoGP. 'Martinator' is the rider who has fallen the most in this first part of the season, surpassing others like the Márquez brothers or Joan Mir."
+        ]
+      },
+      {
+        "pattern": "City-of-Barcelona lifestyle content (restaurants, culture) with only a tangential club nod",
+        "exampleIndexes": [
+          0
+        ],
+        "examplesEnglish": [
+          "Casa Petra: 'At Flick's staff table there's always ham.' We chat with Ferran Farrà, Raúl Longhi and Isabel Coll, partners at Casa Petra, one of the trendy restaurants in Barcelona with many culé nods."
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "handle": "David_Ornstein",
+  "state": "ok",
+  "provenance": "fresh-90d",
+  "nPosts": 49,
+  "nImages": 1,
+  "usage": {
+    "inputTokens": 14213,
+    "outputTokens": 2144,
+    "cost": "0"
+  },
+  "guide": {
+    "counts": {
+      "onBeat": 0,
+      "offBeat": 49,
+      "unclear": 0
+    },
+    "skew": "almost_all_off_beat",
+    "priorLine": "This account is a general football transfer/news correspondent whose posts cover a wide range of clubs and national teams, with no evident dedicated coverage of FC Barcelona specifically.",
+    "onBeatPatterns": [],
+    "offBeatPatterns": [
+      {
+        "pattern": "Breaking transfer deal/agreement exclusives involving Premier League and other European clubs (not Barcelona)",
+        "exampleIndexes": [
+          0,
+          1
+        ],
+        "examplesEnglish": [
+          "🚨 Hull City reach agreement with Colorado Rapids to sign Lucas Herrington. Deal for 18yo defender worth $17m + $6m add-ons & 15% future sale profit to #Rapids96. No issues expected on personal terms for Australia international's #HCAFC move @TheAthleticFC",
+          "🚨 EXCL: Everton reach agreement in principle with Arsenal to sign Christian Norgaard. Still needs formalising but 32yo midfielder set to join #EFC from #AFC for in region of £7m & expected to undergo medical next week ahead of proposed move @TheAthleticFC"
+        ]
+      },
+      {
+        "pattern": "Real Madrid transfer sagas (Vinicius Junior, Diomande, Rodri) with no Barcelona angle",
+        "exampleIndexes": [
+          3,
+          16
+        ],
+        "examplesEnglish": [
+          "🚨 Vinicius Junior future entering crucial stage - talks in coming days over extension at Real Madrid, free exit 2027 or join Arsenal now. #AFC all in & 26yo winger attracted by opportunity if no #RMFC renewal.",
+          "🚨 Real Madrid working on deal to sign Rodri from Manchester City. Clubs not yet in talks but #RMFC now operating on basis of midfielder joining this summer. #MCFC still hope #Spain captain stays with/without new contract."
+        ]
+      },
+      {
+        "pattern": "National team / World Cup coverage (coaches, players, officiating) unrelated to Barcelona",
+        "exampleIndexes": [
+          7,
+          36
+        ],
+        "examplesEnglish": [
+          "🚨 Mauricio Pochettino on course to agree new contract & extend reign as USA head coach through to 2030 World Cup. Barring unexpected change of heart 54yo Argentine boss set to remain in charge of #USMNT for next cycle @TheAthleticFC after @AndresCantorGOL",
+          "🚨 Harry Kane tells @TheAthleticFC too early to know if this was last World Cup with England but says Messi playing at 39 shows why he will \"never put a limit on\". 32yo captain adds representing #England \"my pride & joy; what love to do more than anything\""
+        ]
+      },
+      {
+        "pattern": "Football administrative/off-field news (referee retirement, VAR disputes) with no Barcelona connection",
+        "exampleIndexes": [
+          27,
+          45
+        ],
+        "examplesEnglish": [
+          "🚨 BREAKING: Anthony Taylor announces retirement from refereeing. Englishman officiated 831 games across 2 decades (including every domestic cup final) & bows out aged 47 after taking charge of #Portugal vs #Spain in last-16 of #FIFAWorldCup @TheAthleticFC",
+          "🚨 FA made strong representation to FIFA that VAR process incorrectly followed on Quansah red card. Cited referee viewing still image 1st when should be realtime replay. Request for mitigation not accepted. Rules state 2-game ban + no appeal @TheAthleticFC"
+        ]
+      },
+      {
+        "pattern": "Short attribution/source-credit replies unrelated to any club news",
+        "exampleIndexes": [
+          22,
+          23
+        ],
+        "examplesEnglish": [
+          "@IsaanKhan_ And originally @TheSecretScout_",
+          "Follows @IsaanKhan_ earlier this month"
+        ]
+      }
+    ]
+  }
+}
