@@ -1,285 +1,49 @@
-// app/agents/[id]/feed-item.tsx
-//
-// The Feed's story/draft card pair. Module-scope, plain Server Component (no "use client" —
-// every interactive piece it composes, `DraftPlatformSwitcher` and its dialogs, owns its own
-// client boundary). Renders as a React fragment of TWO sibling grid children so the parent's
-// `grid-cols-2` places the news card and its draft card side by side without an extra wrapper
-// div — see `page.tsx`.
-//
-// BOTH columns wear the same card anatomy on purpose (`PostCard` + the shared header
-// template from source-tweet.module.css): the story card shows the SOURCE
-// account's identity, the draft card shows the identity of the X ACCOUNT THAT WOULD PUBLISH —
-// the linked OAuth account's handle, not the desk's `reporter_handle`. Those are the same
-// person for a normal reporter; for the owner-override case (admin extracts from a reporter
-// they can't authenticate as) they deliberately differ, and the card must show where the post
-// would actually land. Falls back to `reporter_handle` when no X account is linked yet.
+"use client";
 
-import { CheckCircle2Icon } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2Icon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { FeedStory } from "@/lib/agent/feed-query";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import type { Platform } from "@/lib/agent/desk-config";
+import type { FeedItem } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
 import { DraftPlatformSwitcher } from "./draft-platform-switcher";
+import { ExpandableBody } from "./expandable-body";
 import { FeedSetupProgress } from "./feed-setup-progress";
 import { ExtraSourcesBadge } from "./feed-tooltips";
 import { PostCard } from "./post-card";
 import { RelativeTime } from "./relative-time";
-import { SourceChip, SourceTweet } from "./source-tweet";
+import { SourceChip, SourceTweetView } from "./source-view";
 import styles from "./source-tweet.module.css";
 import { XAvatar } from "./x-avatar";
 
-/**
- * NewsCard renders `sourcePosts[0]` only (the post that started the story — clustering's
- * assignment order guarantees this, see `feed-query.ts`'s `story_assignments` fetch). A
- * clustered story with more than one source post gets a small "+N" badge/tooltip instead of
- * a full multi-source layout: clustering is brand new (T2.4b) and typically still one post
- * per story in practice, so building a real multi-card layout isn't earned yet.
- */
-function NewsCard({
-  sourcePost,
-  extraSourceCount,
-  opacityClass,
-}: {
-  sourcePost: FeedStory["sourcePosts"][number];
-  extraSourceCount: number;
-  opacityClass: string | undefined;
-}) {
-  return (
-    <div className={cn("flex h-full flex-col gap-2", opacityClass)}>
-      {extraSourceCount > 0 ? (
-        <div className="flex justify-end">
-          <ExtraSourcesBadge count={extraSourceCount} />
-        </div>
-      ) : null}
-      <SourceTweet sourcePost={sourcePost} />
-    </div>
-  );
+function defaultPlatform(winners: FeedItem["winners"]): Platform { return winners.x ? "x" : Object.keys(winners)[0] as Platform; }
+function status(item: FeedItem) { const x = item.winners.x; if (!Object.keys(item.winners).length) return Date.now() - new Date(item.createdAt).getTime() <= 10 * 60 * 1000 ? "Drafting…" : "No draft"; return x?.postedAt && x.postedUrl ? "Posted" : x?.postedAt ? "Unconfirmed" : "Ready to review"; }
+
+export function FeedItemCard({ item, agentId, reporterHandle: _reporterHandle, xHandle: _xHandle, charLimit, xLinked }: { item: FeedItem; agentId: string; reporterHandle: string; xHandle: string | null; charLimit: number; xLinked: boolean }) {
+  const platforms = Object.keys(item.winners) as Platform[]; const [selected, setSelected] = useState<Platform>(() => defaultPlatform(item.winners)); const activePlatform = platforms.includes(selected) ? selected : defaultPlatform(item.winners); const active = item.winners[activePlatform] ?? null;
+  const confirmed = item.winners.x?.postedAt != null && item.winners.x?.postedUrl != null;
+  const drafting = !active && status(item) === "Drafting…";
+  return <div className={cn(confirmed && "opacity-[0.66]")}><PostCard>
+    <Collapsible>
+      <CollapsibleTrigger asChild><button className={cn(styles.header, "min-h-11 w-full text-left")} type="button">
+        {item.source.avatarUrl ? <img alt="" className={styles.avatar} src={item.source.avatarUrl} /> : item.source.authorHandle ? <XAvatar handle={item.source.authorHandle} /> : <span aria-hidden="true" className={styles.monogram}>◎</span>}
+        <span className={styles.handle}>{item.source.authorHandle ? `@${item.source.authorHandle}` : item.source.siteName}</span>{item.extraSourceCount > 0 ? <ExtraSourcesBadge count={item.extraSourceCount} /> : null}
+        {item.source.gone ? <TriangleAlertIcon aria-label="No longer on X · archived" className="size-3.5" /> : null}<span className={styles.spacer} /><Badge variant="secondary">{status(item)}</Badge>{item.source.postedAt ? <span className={styles.time}><RelativeTime iso={item.source.postedAt} prefix="Posted" /></span> : null}<SourceChip kind={item.source.kind} /><ChevronDownIcon className="size-4" />
+      </button></CollapsibleTrigger>
+      <CollapsibleContent className="pt-3"><SourceTweetView source={item.source} translation={active?.translation ?? null} /></CollapsibleContent>
+    </Collapsible>
+    <h2 className="text-base font-semibold">{item.headline}</h2>
+    {active?.synthesis ? <ExpandableBody>{active.synthesis}</ExpandableBody> : null}
+    {active ? <DraftPlatformSwitcher activePlatform={activePlatform} agentId={agentId} charLimit={charLimit} onPlatformChange={setSelected} sourcePostId={item.source.id} winners={item.winners} xLinked={xLinked} /> : drafting ? <div className="flex items-center gap-2" role="status"><span className="size-1.5 animate-pulse rounded-full bg-primary" /><span className="text-sm text-muted-foreground">Drafting in your voice — a few models are writing…</span></div> : <p className="text-sm text-muted-foreground">Nothing drafted from this post — there wasn&apos;t enough to write from.</p>}
+    {active ? <div className="text-xs text-muted-foreground"><RelativeTime iso={active.createdAt} prefix="Drafted" /></div> : null}
+  </PostCard></div>;
 }
 
-/** The draft card's header — same template as the source card's (avatar · bold handle ·
- *  platform chip far right), so the two columns read as one system. The avatar resolves by
- *  handle (see x-avatar.tsx) because the linked account appears in no tweet payload. */
-function DraftHeader({ handle, draftedAt }: { handle: string; draftedAt?: string }) {
-  return (
-    <div className={styles.header}>
-      <XAvatar handle={handle} />
-      <span className={styles.handle}>@{handle}</span>
-      <span className={styles.spacer} />
-      {draftedAt ? (
-        <span className={styles.time}>
-          <RelativeTime iso={draftedAt} prefix="Drafted" />
-        </span>
-      ) : null}
-      <SourceChip kind="x" />
-    </div>
-  );
-}
-
-function DraftCard({
-  story,
-  agentId,
-  publishHandle,
-  charLimit,
-  xLinked,
-  opacityClass,
-}: {
-  story: FeedStory;
-  agentId: string;
-  publishHandle: string;
-  charLimit: number;
-  xLinked: boolean;
-  opacityClass: string | undefined;
-}) {
-  const hasWinners = Object.keys(story.winners).length > 0;
-  // X's winner is the card's default view (see DraftPlatformSwitcher), so its creation time is
-  // the one the header dates; fall back to whichever platform produced a winner.
-  const draftedAt = (story.winners.x ?? Object.values(story.winners)[0])?.createdAt;
-
-  if (!hasWinners) {
-    // A winner-less story is EITHER mid-council (normal for ~a minute after delivery) or
-    // permanently failed (the council errored, the claim was released, the worker's retries
-    // exhausted). The rows are identical, so age is the only available discriminator: past
-    // ten minutes nothing is still legitimately drafting. Fresh gets a skeleton (the draft
-    // is genuinely being written right now); stale gets the honest no-draft copy. The feed
-    // auto-refresh re-renders this every ~20s, so both states resolve without a reload.
-    // Clocked off the STORY's own council start (`stories.created_at`), never off a source
-    // post's `posted_at` — a backfilled/seeded/redelivered post can carry a `posted_at` hours
-    // or days old, which would fire `stale` immediately even while the council is actively
-    // running and being paid for.
-    const stale = Date.now() - new Date(story.createdAt).getTime() > 10 * 60 * 1000;
-    return (
-      <div className={cn("flex h-full flex-col", opacityClass)}>
-        <PostCard>
-          <DraftHeader handle={publishHandle} />
-          {stale ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing drafted from this post — there wasn&apos;t enough to write from.
-            </p>
-          ) : (
-            // A status line, not a skeleton: gray bars imply a layout waiting on data, and
-            // read as broken when they persist for the ~minute a council takes. This says
-            // what is actually happening; the feed auto-refresh swaps in the draft.
-            <div className="flex items-center gap-2" role="status">
-              <span
-                aria-hidden="true"
-                className="size-1.5 shrink-0 animate-pulse rounded-full bg-primary"
-              />
-              <span className="text-sm text-muted-foreground">
-                Drafting in your voice — a few models are writing…
-              </span>
-            </div>
-          )}
-        </PostCard>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("flex h-full flex-col", opacityClass)}>
-      <PostCard>
-        <DraftHeader draftedAt={draftedAt} handle={publishHandle} />
-        <DraftPlatformSwitcher
-          charLimit={charLimit}
-          agentId={agentId}
-          story={story}
-          xLinked={xLinked}
-        />
-      </PostCard>
-    </div>
-  );
-}
-
-/** One story's news-card/draft-card pair — TWO sibling grid children, not a wrapped pair, so the
- *  caller's `grid-cols-2` places them side by side across the whole page's grid flow (see
- *  `page.tsx`). Posted stories render both cards at reduced opacity per the design (§4). */
-export function FeedItemCard({
-  story,
-  agentId,
-  reporterHandle,
-  xHandle,
-  charLimit,
-  xLinked,
-}: {
-  story: FeedStory;
-  agentId: string;
-  reporterHandle: string;
-  xHandle: string | null;
-  charLimit: number;
-  xLinked: boolean;
-}) {
-  const sourcePost = story.sourcePosts[0];
-  // Only X ever carries a real posted_at (the only platform with a posting mechanism this
-  // slice) — a story dims only once its X winner is CONFIRMED (postedAt AND postedUrl both
-  // set), regardless of whether LinkedIn/Bluesky winners exist alongside it. An AMBIGUOUS
-  // winner (postedAt set, postedUrl null) does not dim — it still needs the reporter&apos;s
-  // attention, so it must not read as &quot;done&quot;.
-  const opacityClass =
-    story.winners.x?.postedAt != null && story.winners.x?.postedUrl != null
-      ? "opacity-[0.66]"
-      : undefined;
-
-  if (!sourcePost) return null; // defensive: a winner whose source_posts row went missing
-
-  return (
-    <>
-      <NewsCard
-        extraSourceCount={story.sourcePosts.length - 1}
-        opacityClass={opacityClass}
-        sourcePost={sourcePost}
-      />
-      <DraftCard
-        charLimit={charLimit}
-        agentId={agentId}
-        opacityClass={opacityClass}
-        publishHandle={xHandle ?? reporterHandle}
-        story={story}
-        xLinked={xLinked}
-      />
-    </>
-  );
-}
-
-/**
- * The Feed&apos;s designed empty state — the pre-worker Feed WILL be sparse (no drafting worker
- * exists yet to populate it), so this copy is deliberate, not a placeholder.
- */
-export type FeedReadiness =
-  | { kind: "paused" }
-  | { kind: "no_sources" }
-  | { kind: "extraction_running"; initial: ExtractionProgressState }
-  | { kind: "extraction_failed"; initial: ExtractionProgressState }
-  | { kind: "extraction_missing" }
-  | { kind: "ready" };
-
-type FeedReadinessContent = {
-  title: string;
-  body: string;
-  actionLabel?: string;
-  actionHref?: string;
-};
-
-type StaticFeedReadiness = Exclude<
-  FeedReadiness["kind"],
-  "extraction_running" | "extraction_failed"
->;
-
-const FEED_EMPTY_STATE_COPY: Record<StaticFeedReadiness, FeedReadinessContent> = {
-  ready: {
-    title: "Your voice is ready",
-    body: "You can review it in Voice. New stories and drafts will appear here as soon as your agent finds something on-beat.",
-  },
-  paused: {
-    title: "Your agent is paused",
-    body: "It won't create new drafts until you resume it from the agent controls.",
-  },
-  no_sources: {
-    title: "Add a source to get drafts",
-    body: "Your agent needs at least one tracked X account before it can watch for on-beat posts.",
-    actionLabel: "Add sources",
-    actionHref: "/setup",
-  },
-  extraction_missing: {
-    title: "Finish setting up your agent",
-    body: "Your agent still needs to learn your voice before it can create drafts.",
-    actionLabel: "Go to Voice",
-    actionHref: "/voice",
-  },
-};
-
-export function FeedEmptyState({
-  deskId,
-  readiness,
-}: {
-  deskId: string;
-  readonly readiness: FeedReadiness;
-}) {
-  if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed") {
-    return <FeedSetupProgress deskId={deskId} initial={readiness.initial} />;
-  }
-
-  const content = FEED_EMPTY_STATE_COPY[readiness.kind];
-
-  if (readiness.kind === "ready") {
-    return (
-      <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status">
-        <CheckCircle2Icon aria-hidden="true" />
-        <AlertTitle>{content.title}</AlertTitle>
-        <AlertDescription className="text-foreground/90">{content.body}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  return (
-    <div className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-14 text-center">
-      <h3 className="text-sm font-semibold">{content.title}</h3>
-      <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">{content.body}</p>
-      {content.actionHref ? (
-        <Button asChild className="min-h-11" size="sm">
-          <Link href={`/agents/${deskId}${content.actionHref}`}>{content.actionLabel}</Link>
-        </Button>
-      ) : null}
-    </div>
-  );
-}
+export type FeedReadiness = { kind: "paused" } | { kind: "no_sources" } | { kind: "extraction_running"; initial: ExtractionProgressState } | { kind: "extraction_failed"; initial: ExtractionProgressState } | { kind: "extraction_missing" } | { kind: "ready" };
+const EMPTY: Record<Exclude<FeedReadiness["kind"], "extraction_running" | "extraction_failed">, { title: string; body: string; actionLabel?: string; actionHref?: string }> = { ready: { title: "Your voice is ready", body: "You can review it in Voice. New stories and drafts will appear here as soon as your agent finds something on-beat." }, paused: { title: "Your agent is paused", body: "It won't create new drafts until you resume it from the agent controls." }, no_sources: { title: "Add a source to get drafts", body: "Your agent needs at least one tracked X account before it can watch for on-beat posts.", actionLabel: "Add sources", actionHref: "/setup" }, extraction_missing: { title: "Finish setting up your agent", body: "Your agent still needs to learn your voice before it can create drafts.", actionLabel: "Go to Voice", actionHref: "/voice" } };
+export function FeedEmptyState({ deskId, readiness }: { deskId: string; readonly readiness: FeedReadiness }) { if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed") return <FeedSetupProgress deskId={deskId} initial={readiness.initial} />; const content = EMPTY[readiness.kind]; if (readiness.kind === "ready") return <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status"><CheckCircle2Icon aria-hidden="true" /><AlertTitle>{content.title}</AlertTitle><AlertDescription className="text-foreground/90">{content.body}</AlertDescription></Alert>; return <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-14 text-center"><h3 className="text-sm font-semibold">{content.title}</h3><p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">{content.body}</p>{content.actionHref ? <Button asChild className="min-h-11" size="sm"><Link href={`/agents/${deskId}${content.actionHref}`}>{content.actionLabel}</Link></Button> : null}</div>; }

@@ -10,8 +10,10 @@
 import { useState } from "react";
 import styles from "./source-tweet.module.css";
 
-export function XAvatar({ handle }: { handle: string }) {
+export function XAvatar({ handle }: { handle: string | null }) {
   const [failed, setFailed] = useState(false);
+
+  if (!handle) return <span aria-hidden="true" className={styles.monogram}>?</span>;
 
   if (failed) {
     return (

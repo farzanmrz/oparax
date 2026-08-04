@@ -11,11 +11,10 @@
 // task-25-report.md for this call).
 "use client";
 
-import { useState } from "react";
 import twitterText from "twitter-text";
 import { Badge } from "@/components/ui/badge";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform } from "@/lib/agent/desk-config";
-import type { FeedStory } from "@/lib/agent/feed-query";
+import type { FeedDraft } from "@/lib/agent/feed-query";
 import { cn } from "@/lib/utils";
 import { CouncilDialog } from "./council-dialog";
 import { DraftEditDialog } from "./draft-edit-dialog";
@@ -31,14 +30,6 @@ const PLATFORM_LABELS: Record<Platform, string> = {
 
 /** X first when present (it's the only platform with a posting mechanism this slice, so it's
  *  the most useful default view); otherwise whichever platform actually has a winner. */
-function defaultPlatform(winners: FeedStory["winners"]): Platform {
-  if (winners.x) return "x";
-  const [first] = Object.keys(winners) as Platform[];
-  // Safe: this component only ever renders when `winners` has at least one entry (DraftCard's
-  // own "no winners yet" branch handles the empty case) — see feed-item.tsx.
-  return first as Platform;
-}
-
 /** X keeps `twitter-text`'s weighted-length logic unchanged (a URL counts as a fixed weight
  *  regardless of its real length, X's own rule). LinkedIn/Bluesky have no such weighting — a
  *  plain code-point count against each platform's own flat ceiling
@@ -71,25 +62,26 @@ function CharCounter({
 }
 
 export function DraftPlatformSwitcher({
-  story,
+  winners,
+  activePlatform,
+  onPlatformChange,
+  sourcePostId,
   agentId,
   charLimit,
   xLinked,
 }: {
-  story: FeedStory;
+  winners: Partial<Record<Platform, FeedDraft>>;
+  activePlatform: Platform;
+  onPlatformChange: (platform: Platform) => void;
+  sourcePostId: string;
   agentId: string;
   /** The desk's X character ceiling — 280, or 25,000 when the reporter's own corpus proves a
    *  premium account (an over-280 post exists). Inferred in page.tsx, never asked for. */
   charLimit: number;
   xLinked: boolean;
 }) {
-  const platforms = Object.keys(story.winners) as Platform[];
-  const [selected, setSelected] = useState<Platform>(() => defaultPlatform(story.winners));
-  // Guards against a platform disappearing out from under a stale selection on revalidate
-  // (e.g. this task's own edit action never removes a platform, but defensive regardless).
-  const activePlatform = platforms.includes(selected) ? selected : defaultPlatform(story.winners);
-  const winner = story.winners[activePlatform];
-  const sourcePost = story.sourcePosts[0];
+  const platforms = Object.keys(winners) as Platform[];
+  const winner = winners[activePlatform] ?? winners.x ?? Object.values(winners)[0];
 
   if (!winner) return null; // unreachable: DraftCard only mounts this once winners is non-empty
 
@@ -121,7 +113,7 @@ export function DraftPlatformSwitcher({
             >
               <button
                 aria-pressed={platform === activePlatform}
-                onClick={() => setSelected(platform)}
+                onClick={() => onPlatformChange(platform)}
                 type="button"
               >
                 {PLATFORM_LABELS[platform]}
@@ -148,7 +140,7 @@ export function DraftPlatformSwitcher({
           {/* The model-count/cost badge is gone from the card — that breakdown lives in the
               council dialog behind the info button, where someone actually asking for it
               looks. */}
-          {sourcePost ? <CouncilDialog agentId={agentId} sourcePostId={sourcePost.id} /> : null}
+          <CouncilDialog agentId={agentId} sourcePostId={sourcePostId} />
         </div>
         {activePlatform !== "x" ? (
           <div className="flex items-center gap-2">
@@ -195,6 +187,13 @@ export function DraftPlatformSwitcher({
           </div>
         )}
       </div>
+      {winner.judgeNotes !== null || winner.correctedFields.length > 0 ? (
+        <details className="text-sm text-muted-foreground">
+          <summary className="cursor-pointer">Judge notes</summary>
+          {winner.judgeNotes ? <p className="mt-1">{winner.judgeNotes}</p> : null}
+          <div className="mt-1 flex flex-wrap gap-1">{winner.correctedFields.map((field) => <Badge key={field} variant="secondary">{field}</Badge>)}</div>
+        </details>
+      ) : null}
     </>
   );
 }
