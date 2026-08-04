@@ -1243,7 +1243,7 @@
     {
       "handle": "@AlexThomp",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Alex Thompson",
       "first_name": "Alex",
       "message": "Hey Alex, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1252,7 +1252,7 @@
     {
       "handle": "@kyledcheney",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Kyle Cheney",
       "first_name": "Kyle",
       "message": "Hey Kyle, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1268,7 +1268,7 @@
     {
       "handle": "@meridithmcgraw",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Meridith McGraw",
       "first_name": "Meridith",
       "message": "Hey Meridith, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
@@ -1277,7 +1277,7 @@
     {
       "handle": "@MyahWard",
       "vertical": "politics",
-      "state": "x_av",
+      "state": "x_done",
       "display_name": "Myah Ward",
       "first_name": "Myah",
       "message": "Hey Myah, I'm building something for reporters whose whole value is being first. Quick question: how do you currently make sure you don't miss a break when you step away? Genuinely just learning before I build more.",
