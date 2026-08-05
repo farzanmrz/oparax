@@ -43,9 +43,10 @@ lsof -i :3000 -sTCP:LISTEN -t
   `_next/mcp` endpoint only reports from a connected browser, so headless QC
   always found it vacuous (and one session opened a browser to fix that,
   2026-08-04). Runtime errors are Sentry's job. NEVER open the in-app Browser
-  pane, agent-browser, or any browser here; the owner explicitly asking for
-  browser verification in-session is the only unlock, and rendered-behavior
-  claims belong in the manual-check set.
+  pane, agent-browser, or any browser here; rendered behavior is
+  `/feature-browse`'s job (owner-triggered) or the owner's manual-check set.
+  When the round has a `browsed` comment, cite it in section 2 and list only
+  its HUMAN-ONLY remainder in section 6 instead of re-listing covered items.
 
 ### C. Teardown
 

@@ -41,6 +41,7 @@ model: inherit
 |---|---|---|---|
 | feature-find | smart (adjudication) | fable/opus high | `gpt-5.6-sol` high |
 | feature-fix | normal | sonnet | `gpt-5.6-terra` |
+| feature-browse (optional, owner-triggered) | normal | sonnet | `gpt-5.6-terra` |
 | feature-docs | normal | sonnet | `gpt-5.6-terra` |
 | feature-verify | smart (the owner-facing ✋) | fable/opus high | `gpt-5.6-sol` high |
 
@@ -116,9 +117,11 @@ bash .claude/workflows/council/selftest.sh --if-changed
 * **No browsers, ever, unless the owner asks:** no step of QC opens the
   in-app Browser pane, agent-browser, or any browser on its own judgment; a
   check that would need a browser to be meaningful is reported unproven,
-  never backfilled by browsing. The owner explicitly requesting browser
-  verification in-session is the only unlock (and the settings ask-gate on
-  the Browser tools enforces this).
+  never backfilled by browsing. The sanctioned path is `/feature-browse`,
+  the optional owner-triggered step: the relay's handoffs may OFFER it
+  (after fix, before verify) but never run it. The owner invoking it is the
+  only unlock (and the settings ask-gate on the Browser tools enforces
+  this).
 * **Cleanup is not a QC step:** run `/simplify` off the critical path.
 * **Escalation:** a dependency MAJOR upgrade, framework migration, or
   schema/data migration surfacing here: STOP and present options; never
