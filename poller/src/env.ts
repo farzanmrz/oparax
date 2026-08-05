@@ -9,6 +9,7 @@ export interface PollerEnv {
   userAgent: string;
   brightdataApiKey: string | null;
   brightdataZone: string | null;
+  brightdataSerpZone: string | null;
   tickIntervalMs: number;
   staleThresholdMs: number;
   alarmCooldownMs: number;
@@ -59,6 +60,12 @@ export function loadEnv(): PollerEnv {
     userAgent: required("OPARAX_POLLER_USER_AGENT"),
     brightdataApiKey: optional("BRIGHTDATA_API_KEY"),
     brightdataZone: optional("BRIGHTDATA_ZONE"),
+    // A separate zone from brightdataZone — Bright Data's SERP API and Web Unlocker are
+    // different products, each provisioned as its own zone under the same account/API key.
+    // Powers Tier 2b (#107): the SERP-search fallback tried after Tier 1 (direct) and Tier 2
+    // (Unlocker) both fail. Unset means Tier 2b is skipped, same degrade-cleanly pattern as
+    // brightdataZone above.
+    brightdataSerpZone: optional("BRIGHTDATA_SERP_ZONE"),
     tickIntervalMs: optionalNumber("POLLER_TICK_INTERVAL_MS", 45_000),
     staleThresholdMs: optionalNumber("POLLER_STALE_THRESHOLD_MS", 5 * 24 * 60 * 60 * 1000),
     alarmCooldownMs: optionalNumber("POLLER_ALARM_COOLDOWN_MS", 60 * 60 * 1000),

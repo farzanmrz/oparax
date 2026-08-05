@@ -1,6 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
-import { isSafeDiscoveredUrl } from "./discovery-safety";
+import { isSafeDiscoveredUrl, isSafePublicUrl } from "./discovery-safety";
 import type { PollerEnv } from "./env";
 import { describeError } from "./errors";
 import { fetchWithTimeout } from "./http";
@@ -99,13 +99,13 @@ function teaserOnlyText(item: FeedItem): string {
   return item.bodyFromFeed ? stripHtml(item.bodyFromFeed) : (item.title ?? item.url);
 }
 
-async function fetchDirect(item: FeedItem, userAgent: string): Promise<string> {
-  const res = await fetchWithTimeout("Article", item.url, item.url, {
+async function fetchDirect(url: string, userAgent: string): Promise<string> {
+  const res = await fetchWithTimeout("Article", url, url, {
     method: "GET",
     headers: { "user-agent": userAgent },
   });
-  if (!res.ok) throw new Error(`Article ${item.url} ${res.status}`);
-  return extractArticleBody(await res.text(), item.url);
+  if (!res.ok) throw new Error(`Article ${url} ${res.status}`);
+  return extractArticleBody(await res.text(), url);
 }
 
 /** Web Unlocker API contract verified against Bright Data's current docs (2026-08):
@@ -166,6 +166,110 @@ async function fetchViaUnlockerOrTeaser(
   }
 }
 
+const MAX_SERP_CANDIDATES = 5;
+
+interface SerpOrganicResult {
+  link?: string;
+  url?: string;
+}
+
+/** Fetches a SERP-discovered URL — unlike fetchDirect's caller (Tier 1, always the source's
+ *  own already-vetted domain), this URL is untrusted third-party content picked from search
+ *  results, so it gets two guards fetchDirect doesn't need: redirects are refused outright
+ *  (isSafePublicUrl only validated the URL we asked for, not wherever a 3xx might forward to
+ *  — following it would bypass the check entirely) and an oversized declared body is rejected
+ *  before it's read into memory (this single-instance worker has no MAX_HTML_LENGTH-style
+ *  guard on a stream, only on already-buffered text). */
+async function fetchUntrustedCandidate(url: string, userAgent: string): Promise<string> {
+  const res = await fetchWithTimeout("SerpCandidate", url, url, {
+    method: "GET",
+    headers: { "user-agent": userAgent },
+    redirect: "manual",
+  });
+  if (res.status >= 300 && res.status < 400) {
+    throw new Error(`SerpCandidate ${url} redirected (${res.status}), refusing to follow`);
+  }
+  if (!res.ok) throw new Error(`SerpCandidate ${url} ${res.status}`);
+  const contentLength = Number(res.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_HTML_LENGTH) {
+    throw new Error(`SerpCandidate ${url} declared body too large (${contentLength} bytes)`);
+  }
+  return extractArticleBody(await res.text(), url);
+}
+
+/** Tier 2b (#107): only reached after Tier 1 and Tier 2 (Unlocker) have both failed to produce
+ *  usable text. Searches Bright Data's SERP API for the article's own title, takes the first
+ *  result that's a safe, different-hostname URL, and retries a plain direct fetch against it —
+ *  the same mechanism Tier 1 uses, just against an alternate source. Returns null (never
+ *  throws) when unconfigured, the search itself fails, no safe candidate is found, or the one
+ *  candidate tried doesn't come back with enough text — the caller falls through to the
+ *  existing teaser fallback in every one of those cases. */
+async function fetchViaSerpFallback(
+  item: FeedItem,
+  expectedHostname: string,
+  env: PollerEnv,
+): Promise<{ text: string; usedFallback: boolean } | null> {
+  if (!env.brightdataApiKey || !env.brightdataSerpZone) return null;
+  // No reliable search query without a title — a URL-only query is too unreliable to trust
+  // for a deterministic, non-model-judged match. Whitespace-only is the same case: it would
+  // still reach Bright Data as a billed, useless query.
+  const title = item.title?.trim();
+  if (!title) return null;
+
+  const searchUrl = new URL("https://www.google.com/search");
+  searchUrl.searchParams.set("q", title);
+
+  let organic: SerpOrganicResult[];
+  try {
+    const res = await fetchWithTimeout("Serp", item.url, BRIGHTDATA_REQUEST_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${env.brightdataApiKey}`,
+      },
+      body: JSON.stringify({
+        zone: env.brightdataSerpZone,
+        url: searchUrl.toString(),
+        format: "raw",
+        data_format: "parsed_light",
+      }),
+    });
+    if (!res.ok) throw new Error(`Serp ${item.url} ${res.status}`);
+    const parsed = await res.json();
+    organic = Array.isArray(parsed?.organic) ? parsed.organic : [];
+  } catch (e) {
+    logger.warn("fetch-body: serp search failed", { url: item.url, error: describeError(e) });
+    return null;
+  }
+
+  const expected = expectedHostname.toLowerCase();
+  for (const result of organic.slice(0, MAX_SERP_CANDIDATES)) {
+    const candidate = result.link ?? result.url;
+    if (!candidate || !isSafePublicUrl(candidate)) continue;
+    const candidateHost = new URL(candidate).hostname.toLowerCase();
+    // Suffix-aware, same shape as isSafeDiscoveredUrl — an exact-match-only check let
+    // www./amp. variants of the very source that just failed re-qualify as a "different" host.
+    const sameAsSource =
+      candidateHost === expected ||
+      candidateHost.endsWith(`.${expected}`) ||
+      expected.endsWith(`.${candidateHost}`);
+    if (sameAsSource) continue;
+
+    try {
+      const text = await fetchUntrustedCandidate(candidate, env.userAgent);
+      if (text.length >= MIN_BODY_LENGTH) return { text, usedFallback: false };
+    } catch (e) {
+      logger.warn("fetch-body: serp candidate fetch failed", {
+        url: candidate,
+        error: describeError(e),
+      });
+    }
+    break; // only the first qualifying candidate is ever tried — see #107's plan Approach.
+  }
+
+  return null;
+}
+
 /** Fetches an item's article body. Adaptive by default (#105) — no site-specific decision is
  *  made in advance; a plain honest fetch is tried first, and Bright Data's Web Unlocker only
  *  gets used when that fetch actually fails or comes back suspiciously short (a soft block —
@@ -193,7 +297,10 @@ export async function fetchArticleBody(
     return { text: teaserOnlyText(item), usedFallback: false };
   }
   if (retrieval === "unlocker") {
-    return fetchViaUnlockerOrTeaser(item, env);
+    const result = await fetchViaUnlockerOrTeaser(item, env);
+    if (!result.usedFallback) return result;
+    const serpResult = await fetchViaSerpFallback(item, expectedHostname, env);
+    return serpResult ?? result;
   }
 
   // Default: adaptive chain (retrieval is null, or a legacy "direct"/"browser" value — both
@@ -202,7 +309,7 @@ export async function fetchArticleBody(
   // body still beats a bare-title teaser if every later tier also comes up empty.
   let shortDirectText: string | null = null;
   try {
-    const text = await fetchDirect(item, env.userAgent);
+    const text = await fetchDirect(item.url, env.userAgent);
     if (text.length >= MIN_BODY_LENGTH) return { text, usedFallback: false };
     logger.warn("fetch-body: direct fetch returned suspiciously short content, escalating", {
       url: item.url,
@@ -220,11 +327,19 @@ export async function fetchArticleBody(
   if (env.brightdataApiKey && env.brightdataZone) {
     const result = await fetchViaUnlockerOrTeaser(item, env);
     if (!result.usedFallback) return result;
-    return shortDirectText ? { text: shortDirectText, usedFallback: true } : result;
+    // A short-but-real Unlocker body (not an error/unconfigured teaser -- those are the
+    // same length as teaserOnlyText(item) either way) still beats a bare headline, same as
+    // Tier 1's own short-text rule below. Keep whichever candidate is longer.
+    if (result.text.length > (shortDirectText?.length ?? 0)) shortDirectText = result.text;
   }
 
-  // Tier 3 — no Unlocker configured, nothing left but the teaser (unless a short-but-real
-  // direct-fetch body is still on hand — that beats a bare headline).
+  // Tier 2b (#107) — always tried on any Tier 1+2 failure, unconditionally: a SERP search for
+  // the same story elsewhere. Applies whether or not Unlocker was even configured above.
+  const serpResult = await fetchViaSerpFallback(item, expectedHostname, env);
+  if (serpResult) return serpResult;
+
+  // Tier 3 — nothing left but the teaser (unless a short-but-real direct-fetch body is still
+  // on hand — that beats a bare headline).
   return shortDirectText
     ? { text: shortDirectText, usedFallback: true }
     : { text: teaserOnlyText(item), usedFallback: true };

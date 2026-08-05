@@ -32,19 +32,23 @@ package:
 - `logger.ts` / `errors.ts` / `backoff.ts` / `slack.ts` — copied verbatim from `ingest/src/`
   (structured JSON logging, catch-value serialization, half-jitter exponential backoff, raw
   Slack webhook POST).
-- `discovery-safety.ts` — `isPrivateHostname` / `isSafeDiscoveredUrl`, duplicated from #100's
-  `lib/sources/discovery.ts`. Every URL pulled out of a sitemap/feed is untrusted third-party
-  content and gets checked before being fetched.
+- `discovery-safety.ts` — `isPrivateHostname` / `isSafeDiscoveredUrl` (same-site required),
+  duplicated from #100's `lib/sources/discovery.ts`, plus `isSafePublicUrl` (#107, no
+  same-site requirement — for SERP-discovered candidates, which are expected to be a
+  different host). Every URL pulled out of a sitemap/feed/SERP result is untrusted
+  third-party content and gets checked before being fetched.
 - `sitemap.ts` / `feed.ts` — trimmed re-implementations of #100's sitemap/feed parsing,
   returning only `{ url, itemKey, title, publishedAt, bodyFromFeed }` per item, with
   conditional-GET support (ETag + Last-Modified) so an unchanged feed short-circuits on a
   `304` without re-parsing.
 - `fetch-body.ts` — `fetchArticleBody` is adaptive by default (#105): direct fetch first, then
   Bright Data Web Unlocker if that fails or comes back suspiciously short and
-  `BRIGHTDATA_API_KEY`/`BRIGHTDATA_ZONE` are set, then a feed/sitemap-derived teaser as the
-  last resort. `source_configs.retrieval` is now an optional operator override (`"feed"` /
-  `"none"` / `"unlocker"`) that skips straight to that tier — null (the default) runs the
-  adaptive chain.
+  `BRIGHTDATA_API_KEY`/`BRIGHTDATA_ZONE` are set, then (#107) a Bright Data SERP search for
+  the same story elsewhere if `BRIGHTDATA_SERP_ZONE` is also set — tried unconditionally on
+  any Tier 1+2 failure, no paywall/blocker classification — then a feed/sitemap-derived
+  teaser as the last resort. `source_configs.retrieval` is an optional operator override
+  (`"feed"` / `"none"` / `"unlocker"`) that skips straight to that tier — null (the default)
+  runs the full adaptive chain, SERP fallback included.
 - `db.ts` — the poller's own service-role Supabase client; reads `active` `source_configs`
   rows, calls the `record_seen_item` RPC (atomic check-and-mark dedup).
 - `deliver.ts` / `types.ts` — `postDelivery` (adapted from `ingest/src/deliver.ts`'s
@@ -91,6 +95,7 @@ only). Set them in Railway's variable UI/CLI, never in `railway.json`.
 | `OPARAX_POLLER_USER_AGENT` | yes | e.g. `OparaxBot/0.1 (+https://oparax.ai/bot)` — a real, honest UA + contact URL, never a browser string. No default: a fabricated contact URL is worse than a required var. |
 | `BRIGHTDATA_API_KEY` | no | The adaptive chain's real Tier 2 fallback — used automatically whenever a direct fetch fails or looks blocked, for every source, not just ones with an explicit `retrieval` override. Unset means Tier 2 is skipped and a failed direct fetch falls straight to the teaser. |
 | `BRIGHTDATA_ZONE` | no | The Bright Data Web Unlocker zone name to request through. Required alongside `BRIGHTDATA_API_KEY` for Tier 2 to actually run. |
+| `BRIGHTDATA_SERP_ZONE` | no | The Bright Data SERP API zone name — a separate zone from `BRIGHTDATA_ZONE` (different product, same account/API key). Required alongside `BRIGHTDATA_API_KEY` for Tier 2b (#107) to actually run; unset means Tier 2b is skipped. |
 | `POLLER_TICK_INTERVAL_MS` | no (default `45000`) | 30-60s window per the issue's amendment. |
 | `POLLER_STALE_THRESHOLD_MS` | no (default `432000000` = 5 days) | No new matches for this long alarms Slack. |
 | `POLLER_ALARM_COOLDOWN_MS` | no (default `3600000` = 1h) | Debounce for the staleness alarm. |
