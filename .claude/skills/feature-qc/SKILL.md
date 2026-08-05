@@ -80,7 +80,7 @@ Doc sync, subtractive first, default no change.
 
 ## 4. feature-verify
 
-Re-prove (gates + the runtime sweep). The verification ✋, written to the
+Re-prove (gates + boot smoke). The verification ✋, written to the
 owner-legibility contract.
 
 ## Hard rules (bind the whole chain)
@@ -110,9 +110,10 @@ bash .claude/workflows/council/selftest.sh --if-changed
   is what makes hop-anywhere and post-hoc audit possible.
 * **No browsers, ever, unless the owner asks:** no step of QC opens the
   in-app Browser pane, agent-browser, or any browser on its own judgment; a
-  vacuous runtime sweep is reported vacuous, not backfilled by browsing. The
-  owner explicitly requesting browser verification in-session is the only
-  unlock (and the settings ask-gate on the Browser tools enforces this).
+  check that would need a browser to be meaningful is reported unproven,
+  never backfilled by browsing. The owner explicitly requesting browser
+  verification in-session is the only unlock (and the settings ask-gate on
+  the Browser tools enforces this).
 * **Cleanup is not a QC step:** run `/simplify` off the critical path.
 * **Escalation:** a dependency MAJOR upgrade, framework migration, or
   schema/data migration surfacing here: STOP and present options; never

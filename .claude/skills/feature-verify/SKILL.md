@@ -1,8 +1,8 @@
 ---
 name: feature-verify
 description: >-
-  QC step 4 of 4, hop-anywhere: re-prove the branch after fixes (gates, boot,
-  runtime sweep) and present the verification gate: the full owner-facing
+  QC step 4 of 4, hop-anywhere: re-prove the branch after fixes (gates, boot
+  smoke) and present the verification gate: the full owner-facing
   report written so no clarifying question is ever needed. Use
   standalone (/feature-verify) in any session/app after /feature-fix, or let
   /feature-qc chain it. Harness-neutral. Ends at the verification ✋.
@@ -31,7 +31,7 @@ bash .claude/skills/feature/scripts/qc-gates.sh
 
 `GATES: RED` = STOP.
 
-### B. Boot + runtime sweep
+### B. Boot smoke
 
 Reuse a running :3000 server or start one; check first:
 
@@ -39,15 +39,13 @@ Reuse a running :3000 server or start one; check first:
 lsof -i :3000 -sTCP:LISTEN -t
 ```
 
-Then collect runtime errors once from the `_next/mcp` endpoint.
-
-* **Endpoint-only, NEVER a browser:** the sweep is the POST above and nothing
-  else. When it answers "no browser sessions connected", report the sweep as
-  NOT CONNECTED (a valid, honest result) and move on. Do not open the in-app
-  Browser pane, agent-browser, or any browser to "make the sweep return real
-  data" (2026-08-04: a verify session did exactly that unprompted). Browser
-  verification happens ONLY when the owner explicitly asks for it in that
-  session; rendered-behavior claims belong in the manual-check set.
+* **Boot is the whole check.** There is no runtime-error sweep: the
+  `_next/mcp` endpoint only reports from a connected browser, so headless QC
+  always found it vacuous (and one session opened a browser to fix that,
+  2026-08-04). Runtime errors are Sentry's job. NEVER open the in-app Browser
+  pane, agent-browser, or any browser here; the owner explicitly asking for
+  browser verification in-session is the only unlock, and rendered-behavior
+  claims belong in the manual-check set.
 
 ### C. Teardown
 

@@ -61,12 +61,11 @@ lsof -i :3000 -sTCP:LISTEN -t
 * **No server:** start `pnpm dev` in the background, record the real PID,
   wait for `✓ Ready`.
 * **Boot failure:** STOP.
-
-### C. Runtime sweep
-
-Sweep runtime errors once from `http://localhost:3000/_next/mcp`
-(`get_errors` tools/call POST) and carry anything it returns into phase 5's
-adjudication. Leave the dev server up: later phases reuse it.
+* **Leave the dev server up:** later phases reuse it.
+* **No runtime-error sweep:** the `_next/mcp` endpoint only reports from a
+  connected browser, so headless QC always found it vacuous (and one session
+  opened a browser to fix that, 2026-08-04). Runtime errors are Sentry's job;
+  rendered behavior is the owner's manual-check set.
 
 ## 2. Deterministic gates + the council self-test
 
