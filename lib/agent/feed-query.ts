@@ -1,6 +1,5 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Tweet } from "react-tweet/api";
 import { fetchTweet } from "react-tweet/api";
 import { PLATFORMS, type Platform } from "@/lib/agent/desk-config";
 import {
@@ -31,9 +30,7 @@ type SourcePost = {
   text: string;
   posted_at: string | null;
   x_post_id: string | null;
-  raw: unknown;
   source: string;
-  title: string | null;
   url: string | null;
 };
 type AssignmentRow = { story_id: string; source_post_id: string };
@@ -42,20 +39,15 @@ type WinnerRow = {
   story_id: string | null;
   platform: string;
   posted_at: string | null;
+  posting_claimed_at: string | null;
   posted_url: string | null;
   created_at: string;
   model_call_id: string;
   synthesis: string | null;
-  translation: string | null;
-  judge_review: unknown;
 };
 
 function escapeLike(value: string) {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/%/g, "\\%")
-    .replace(/_/g, "\\_")
-    .replace(/\*/g, "\\*");
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 function chunks<T>(values: T[]): T[][] {
   return Array.from({ length: Math.ceil(values.length / FEED_ID_CHUNK) }, (_, i) =>
@@ -99,21 +91,10 @@ function compareStories(a: StoryRow, b: StoryRow) {
   return b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
 }
 function cursorFor(row: StoryRow): FeedCursor {
-  return { createdAt: row.created_at, id: row.id };
+  return { createdAt: new Date(row.created_at).toISOString(), id: row.id };
 }
 function cursorClause(cursor: FeedCursor) {
   return `created_at.lt."${cursor.createdAt}",and(created_at.eq."${cursor.createdAt}",id.lt.${cursor.id})`;
-}
-function authorName(raw: unknown) {
-  if (!raw || typeof raw !== "object") return null;
-  const users = (raw as { includes?: { users?: unknown[] } }).includes?.users;
-  const name = Array.isArray(users) ? (users[0] as { name?: unknown } | undefined)?.name : null;
-  return typeof name === "string" && name.length ? name : null;
-}
-function rawLang(raw: unknown) {
-  const lang =
-    raw && typeof raw === "object" ? (raw as { data?: { lang?: unknown } }).data?.lang : null;
-  return typeof lang === "string" ? lang : null;
 }
 function hostname(url: string | null) {
   try {
@@ -123,16 +104,44 @@ function hostname(url: string | null) {
   }
 }
 
-type TweetLookup = { tweet: Tweet | undefined; confirmedGone: boolean };
+type TweetLookup = { state: "available" | "gone" | "unavailable" };
+type TweetCacheEntry = TweetLookup & { expiresAt: number };
+const TWEET_CACHE_MAX = 2_000;
+const TWEET_CACHE_TTL = 24 * 60 * 60 * 1_000;
+const TWEET_RETRY_TTL = 60 * 1_000;
+const tweetCache = new Map<string, TweetCacheEntry>();
+const pendingTweets = new Map<string, Promise<TweetLookup>>();
 
-/** Fetch-level cache only: unstable_cache makes Turbopack downgrade this server render. */
+function cacheTweet(id: string, lookup: TweetLookup) {
+  const oldest = tweetCache.keys().next().value;
+  if (tweetCache.size >= TWEET_CACHE_MAX && oldest) tweetCache.delete(oldest);
+  tweetCache.set(id, {
+    ...lookup,
+    expiresAt: Date.now() + (lookup.state === "unavailable" ? TWEET_RETRY_TTL : TWEET_CACHE_TTL),
+  });
+}
+
+/** Process-local cache also covers server actions, where Next's fetch cache is intentionally inert. */
 async function getCachedTweet(id: string): Promise<TweetLookup> {
+  const cached = tweetCache.get(id);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+  const pending = pendingTweets.get(id);
+  if (pending) return pending;
+  const lookup = (async () => {
+    try {
+      const result = await fetchTweet(id);
+      return { state: result.tombstone || result.notFound ? "gone" : "available" } as const;
+    } catch {
+      return { state: "unavailable" } as const;
+    }
+  })();
+  pendingTweets.set(id, lookup);
   try {
-    const result = await fetchTweet(id, { next: { revalidate: 60 * 60 * 24 } } as RequestInit);
-    return { tweet: result.data, confirmedGone: Boolean(result.tombstone || result.notFound) };
-  } catch {
-    // Transport failure (e.g. 429/5xx TwitterApiError): not a confirmed tombstone/notFound.
-    return { tweet: undefined, confirmedGone: false };
+    const result = await lookup;
+    cacheTweet(id, result);
+    return result;
+  } finally {
+    pendingTweets.delete(id);
   }
 }
 
@@ -197,13 +206,25 @@ async function includeIds(supabase: Client, agentId: string, filters: FeedFilter
   if (filters.q) {
     const pattern = `%${escapeLike(filters.q)}%`;
     const [stories, syntheses, draftRows, authors] = await Promise.all([
-      supabase.from("stories").select("id").eq("agent_id", agentId).ilike("summary", pattern),
-      supabase
-        .from("drafts")
-        .select("story_id")
-        .eq("agent_id", agentId)
-        .eq("is_winner", true)
-        .ilike("synthesis", pattern),
+      pagedRows<{ id: string }>(agentId, (from, to) =>
+        supabase
+          .from("stories")
+          .select("id")
+          .eq("agent_id", agentId)
+          .ilike("summary", pattern)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
+        supabase
+          .from("drafts")
+          .select("story_id")
+          .eq("agent_id", agentId)
+          .eq("is_winner", true)
+          .ilike("synthesis", pattern)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
       pagedRows<{ story_id: string | null; model_call_id: string | null }>(agentId, (from, to) =>
         supabase
           .from("drafts")
@@ -215,10 +236,9 @@ async function includeIds(supabase: Client, agentId: string, filters: FeedFilter
       ),
       assignmentMatches(supabase, agentId, pattern),
     ]);
-    if (stories.error || syntheses.error) throw stories.error ?? syntheses.error;
     const qIds = new Set<string>([
-      ...(stories.data ?? []).map((r) => r.id),
-      ...(syntheses.data ?? []).map((r) => r.story_id).filter((id): id is string => Boolean(id)),
+      ...stories.map((r) => r.id),
+      ...syntheses.map((r) => r.story_id).filter((id): id is string => Boolean(id)),
       ...authors,
     ]);
     const pairs = draftRows.filter((r) => r.story_id && r.model_call_id) as {
@@ -303,7 +323,7 @@ async function hydrate(
     supabase
       .from("drafts")
       .select(
-        "id, story_id, platform, posted_at, posted_url, created_at, model_call_id, synthesis, translation, judge_review",
+        "id, story_id, platform, posted_at, posting_claimed_at, posted_url, model_call_id, synthesis",
       )
       .eq("agent_id", agentId)
       .in("story_id", storyIds)
@@ -314,13 +334,10 @@ async function hydrate(
     throw assignmentResult.error ?? winnerResult.error;
   const assignments = (assignmentResult.data ?? []) as unknown as AssignmentRow[];
   const winnerRows = (winnerResult.data ?? []) as WinnerRow[];
-  const modelCalls = new Map<string, { model: string; output: string | null }>();
+  const modelCalls = new Map<string, { output: string | null }>();
   for (const part of chunks(winnerRows.map((row) => row.model_call_id))) {
     if (!part.length) continue;
-    const { data, error } = await supabase
-      .from("model_calls")
-      .select("id, model, output")
-      .in("id", part);
+    const { data, error } = await supabase.from("model_calls").select("id, output").in("id", part);
     if (error) throw error;
     for (const call of data ?? []) modelCalls.set(call.id, call);
   }
@@ -329,7 +346,7 @@ async function hydrate(
     if (!part.length) continue;
     const { data, error } = await supabase
       .from("source_posts")
-      .select("id, author_handle, text, posted_at, x_post_id, raw, source, title, url")
+      .select("id, author_handle, text, posted_at, x_post_id, source, url")
       .in("id", part);
     if (error) throw error;
     for (const post of data ?? []) sourcePosts.set(post.id, post);
@@ -342,25 +359,15 @@ async function hydrate(
   const winners = new Map<string, FeedItem["winners"]>();
   for (const row of winnerRows) {
     if (!row.story_id || !isPlatform(row.platform)) continue;
-    const review =
-      row.judge_review && typeof row.judge_review === "object"
-        ? (row.judge_review as { judgeNotes?: unknown; correctedFields?: unknown })
-        : {};
     winners.set(row.story_id, {
       ...(winners.get(row.story_id) ?? {}),
       [row.platform]: {
         draftId: row.id,
         text: modelCalls.get(row.model_call_id)?.output ?? "",
-        model: modelCalls.get(row.model_call_id)?.model ?? "unknown",
-        createdAt: row.created_at,
         postedAt: row.posted_at,
+        postingClaimedAt: row.posting_claimed_at,
         postedUrl: row.posted_url,
         synthesis: row.synthesis,
-        translation: row.translation,
-        judgeNotes: typeof review.judgeNotes === "string" ? review.judgeNotes : null,
-        correctedFields: Array.isArray(review.correctedFields)
-          ? review.correctedFields.filter((field): field is string => typeof field === "string")
-          : [],
       },
     });
   }
@@ -376,41 +383,23 @@ async function hydrate(
   );
   return primary.map(({ story, source }, index) => {
     const lookup = tweets[index];
-    const tweet = lookup?.tweet;
     const kind = source.source === "x" ? "x" : source.text ? "article" : "headline";
-    const media = tweet?.mediaDetails?.slice(0, 4) ?? [];
     const sourceView: FeedSourceView = {
       kind,
-      id: source.id,
       authorHandle: source.author_handle,
-      authorName: authorName(source.raw),
       siteName: kind === "x" ? null : hostname(source.url),
-      title: source.title,
       url:
         kind === "x" && source.x_post_id && source.author_handle
           ? `https://x.com/${source.author_handle}/status/${source.x_post_id}`
           : source.url,
       postedAt: source.posted_at,
-      text: source.text,
-      lang: tweet?.lang ?? rawLang(source.raw),
-      gone: lookup?.confirmedGone ?? false,
-      avatarUrl: tweet?.user.profile_image_url_https?.startsWith("data:")
-        ? null
-        : (tweet?.user.profile_image_url_https ?? null),
-      mediaUrls: tweet?.entities?.media?.map((entry) => entry.url) ?? [],
-      mediaThumbs: media.map((entry) => ({
-        thumbUrl: `${entry.media_url_https}?name=small`,
-        kind: entry.type === "photo" ? ("photo" as const) : ("video" as const),
-      })),
-      urlEntities: tweet?.entities?.urls ?? [],
+      gone: lookup?.state === "gone",
     };
     return {
       storyId: story.id,
       createdAt: story.created_at,
       headline: story.summary,
-      summary: story.summary,
       source: sourceView,
-      extraSourceCount: (sources.get(story.id)?.length ?? 1) - 1,
       winners: winners.get(story.id) ?? {},
     };
   });

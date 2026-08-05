@@ -1,8 +1,7 @@
 // app/agents/[id]/council-dialog.tsx
 //
 // Self-contained "Why this draft" overlay: `CouncilDialog` renders its own trigger
-// icon-button AND owns its open state — plain local `useState`, mirroring
-// `draft-edit-dialog.tsx`'s pattern. This dialog used to mirror its open state to
+// icon-button AND owns its open state — plain local `useState`. This dialog used to mirror its open state to
 // `?why=<sourcePostId>` for deep-linkability, but the page is fully dynamic, so every
 // open/close forced a full server round trip (re-running the feed query) before the dialog
 // visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an instant

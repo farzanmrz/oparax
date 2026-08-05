@@ -103,11 +103,10 @@ export function FeedList({
       mounted.current = true;
       return;
     }
-    const mine = epoch.current;
+    const mine = ++epoch.current;
     const reconcile = async () => {
       const target = state.items.length;
       if (target <= initialItems.length) {
-        epoch.current++;
         setState({ items: initialItems, nextCursor: initialCursor });
         return;
       }
@@ -126,20 +125,20 @@ export function FeedList({
         if (!cursor) break;
       }
       if (mine !== epoch.current) return;
-      epoch.current++;
       const fetchedIds = new Set(fetched.map((item) => item.storyId));
-      setState((previous) => ({
-        items: [
+      setState((previous) => {
+        const items = [
           ...fetched,
           ...previous.items.filter(
             (item) => cursor && older(item, cursor) && !fetchedIds.has(item.storyId),
           ),
-        ],
-        nextCursor:
-          cursor && previous.items.some((item) => older(item, cursor))
-            ? previous.nextCursor
-            : cursor,
-      }));
+        ].slice(0, target);
+        const last = items.at(-1);
+        return {
+          items,
+          nextCursor: cursor && last ? { createdAt: last.createdAt, id: last.storyId } : null,
+        };
+      });
     };
     void reconcile();
   }, [fetchedAt]);
@@ -163,11 +162,16 @@ export function FeedList({
       </div>
     );
   return (
-    <div className="flex flex-col gap-4 [700px]:gap-6">
+    <div className="flex flex-col gap-4 min-[700px]:gap-6">
       {state.items.map((item) => (
         <FeedItemCard charLimit={charLimit} item={item} key={item.storyId} xLinked={xLinked} />
       ))}
       <div ref={sentinel} />
+      {!state.items.length && state.nextCursor && !loading ? (
+        <Button className="min-h-11 self-start" onClick={() => void loadMore()} variant="ghost">
+          Load stories
+        </Button>
+      ) : null}
       {loading ? (
         <div className="flex justify-center py-3">
           <Spinner />

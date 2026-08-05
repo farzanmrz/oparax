@@ -6,7 +6,7 @@ export default function FeedLoading() {
 
   return (
     <div className="flex min-h-0 flex-1 py-4">
-      <div className="mx-auto w-full max-w-3xl space-y-4 p-1" role="status">
+      <div className="mx-auto w-full max-w-[1040px] space-y-4 p-1" role="status">
         {skeletonRows.map((row) => (
           <article
             className="relative rounded-lg border border-border bg-card p-[clamp(15px,2.1cqw,22px)] pb-[clamp(15px,1.9cqw,20px)] pt-[clamp(31px,3.4cqw,38px)] shadow-[0_12px_32px_rgba(0,0,0,0.35)]"

@@ -209,6 +209,7 @@ export type Database = {
           parent_draft_id: string | null;
           platform: string;
           posted_at: string | null;
+          posting_claimed_at: string | null;
           posted_tweet_id: string | null;
           posted_url: string | null;
           source_post_id: string;
@@ -228,6 +229,7 @@ export type Database = {
           parent_draft_id?: string | null;
           platform?: string;
           posted_at?: string | null;
+          posting_claimed_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
           source_post_id: string;
@@ -247,6 +249,7 @@ export type Database = {
           parent_draft_id?: string | null;
           platform?: string;
           posted_at?: string | null;
+          posting_claimed_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
           source_post_id?: string;

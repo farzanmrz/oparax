@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ export function PostToXControl({
   xLinked: boolean;
 }): JSX.Element {
   const pathname = usePathname();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -45,6 +46,7 @@ export function PostToXControl({
     startTransition(async () => {
       const result = await publishDraftToX(draftId);
       if (result.ok) {
+        router.refresh();
         toast.success("Posted to X", {
           action: {
             label: "View post",
@@ -61,7 +63,7 @@ export function PostToXControl({
     <div className="flex flex-col items-end gap-1">
       <Button
         className="h-[30px] rounded-[2px] px-[15px]"
-        disabled={isPending || overLimit}
+        disabled={isPending || !parsed.valid || overLimit}
         onClick={handleConfirm}
       >
         {isPending ? "Posting…" : "Post"}

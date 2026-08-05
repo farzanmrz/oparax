@@ -1,9 +1,8 @@
 // lib/agent/feed-shared.ts
 //
 // Client-safe half of the feed types/constants/helpers: no react-tweet/api, no Supabase
-// queries, nothing that shouldn't ship to the browser. `feed-query.ts` (the server-only query
-// module) imports and re-exports these so existing server callers keep working unchanged;
-// client components (`feed-list.tsx`, `feed-filters.tsx`, ...) should import from here directly.
+// queries, nothing that shouldn't ship to the browser. Client components (`feed-list.tsx`,
+// `feed-filters.tsx`, ...) import from here directly.
 import type { Platform } from "@/lib/agent/desk-config";
 
 export const FEED_PAGE_SIZE = 25;
@@ -25,39 +24,24 @@ export type FeedCursor = { createdAt: string; id: string };
 export type FeedDraft = {
   draftId: string;
   text: string;
-  model: string;
-  createdAt: string;
   postedAt: string | null;
+  postingClaimedAt: string | null;
   postedUrl: string | null;
   synthesis: string | null;
-  translation: string | null;
-  judgeNotes: string | null;
-  correctedFields: string[];
 };
 export type FeedSourceView = {
   kind: "x" | "article" | "headline";
-  id: string;
   authorHandle: string | null;
-  authorName: string | null;
   siteName: string | null;
-  title: string | null;
   url: string | null;
   postedAt: string | null;
-  text: string;
-  lang: string | null;
   gone: boolean;
-  avatarUrl: string | null;
-  mediaUrls: string[];
-  mediaThumbs: { thumbUrl: string; kind: "photo" | "video" }[];
-  urlEntities: { url: string; expanded_url: string; display_url: string }[];
 };
 export type FeedItem = {
   storyId: string;
   createdAt: string;
   headline: string;
-  summary: string;
   source: FeedSourceView;
-  extraSourceCount: number;
   winners: Partial<Record<Platform, FeedDraft>>;
 };
 export type FeedPage = { items: FeedItem[]; nextCursor: FeedCursor | null };
@@ -69,7 +53,6 @@ const canonicalIso = (value: string | undefined): string | null => {
   const date = new Date(value);
   return !Number.isNaN(date.getTime()) && date.toISOString() === value ? value : null;
 };
-const isParsableIso = (value: string) => !Number.isNaN(new Date(value).getTime());
 
 export function parseFeedFilters(
   sp: Record<string, string | string[] | undefined>,
@@ -94,5 +77,5 @@ export function hasActiveFilters(filters: FeedFilterState) {
   );
 }
 export function isFeedCursor(value: FeedCursor | null | undefined): value is FeedCursor {
-  return Boolean(value && isParsableIso(value.createdAt) && UUID.test(value.id));
+  return Boolean(value && canonicalIso(value.createdAt) === value.createdAt && UUID.test(value.id));
 }

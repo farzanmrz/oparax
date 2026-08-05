@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckIcon, HistoryIcon, PencilIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import twitterText from "twitter-text";
@@ -29,42 +30,53 @@ function CharCounter({ text, xLimit }: { text: string; xLimit: number }) {
   );
 }
 
-function fitTextArea(element: HTMLTextAreaElement | null) {
-  if (!element) return;
-  element.style.height = "auto";
-  element.style.height = `${element.scrollHeight}px`;
-}
-
 export function DraftBox({
   draft,
   charLimit,
+  sourceLabel,
   xLinked,
 }: {
   draft: FeedDraft;
   charLimit: number;
+  sourceLabel: string;
   xLinked: boolean;
 }) {
+  const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const renderedDraftId = useRef(draft.draftId);
   const [text, setText] = useState(draft.text);
+  const [baseline, setBaseline] = useState(draft.text);
   const [focused, setFocused] = useState(false);
   const [openHistory, setOpenHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [awaitingRefresh, setAwaitingRefresh] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const confirmed = Boolean(draft.postedAt && draft.postedUrl);
   const ambiguous = Boolean(draft.postedAt && !draft.postedUrl);
-  const dirty = text.trim() !== draft.text.trim();
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: winner-row identity is the reset key by design.
-  useEffect(() => {
-    setText(draft.text);
-    setFocused(false);
-    setError(null);
-  }, [draft.draftId]);
+  const posting = Boolean(draft.postingClaimedAt);
+  const dirty = text.trim() !== baseline.trim();
+  const parsed = twitterText.parseTweet(text);
+  const canSave = Boolean(text.trim()) && parsed.valid && parsed.weightedLength <= charLimit;
 
   useEffect(() => {
-    fitTextArea(textareaRef.current);
-  });
+    if (renderedDraftId.current === draft.draftId) return;
+    renderedDraftId.current = draft.draftId;
+
+    if (awaitingRefresh || !dirty) {
+      setText(draft.text);
+      setBaseline(draft.text);
+      setFocused(false);
+      setError(null);
+      setAwaitingRefresh(false);
+      return;
+    }
+
+    // A feed refresh can bring a newer winner while this editor has local work. Keep the
+    // work visible rather than overwriting it, but make the new server baseline explicit.
+    setBaseline(draft.text);
+    setError("A newer draft is available. Your unsaved changes are still here.");
+  }, [awaitingRefresh, dirty, draft.draftId, draft.text]);
 
   const handleFocus = () => setFocused(true);
 
@@ -87,6 +99,10 @@ export function DraftBox({
       const result = await editDraft(draft.draftId, trimmed);
       if (result.ok) {
         toast.success("Draft updated");
+        // A successful save creates a new winner row. Until this refresh supplies that id and
+        // baseline, do not offer another save or a post action for the stale winner.
+        setAwaitingRefresh(true);
+        router.refresh();
         return;
       }
       setError(result.error);
@@ -104,7 +120,7 @@ export function DraftBox({
       <textarea
         aria-label="Draft text"
         className={
-          "font-sans w-full resize-none overflow-hidden border-none bg-transparent p-0 text-[clamp(14.5px,1.68cqw,17px)] leading-[1.5] text-foreground outline-none caret-primary selection:bg-primary/30"
+          "field-sizing-content font-sans w-full resize-none overflow-hidden border-none bg-transparent p-0 text-[clamp(14.5px,1.68cqw,17px)] leading-[1.5] text-foreground outline-none caret-primary selection:bg-primary/30"
         }
         onBlur={handleBlur}
         onChange={(event) => setText(event.target.value)}
@@ -115,15 +131,16 @@ export function DraftBox({
           setText(draft.text);
           if (textareaRef.current) textareaRef.current.blur();
         }}
-        readOnly={confirmed}
+        readOnly={posting || (confirmed && !dirty)}
         ref={textareaRef}
+        rows={1}
         spellCheck={false}
         value={text}
       />
       <div className="mt-[clamp(11px,1.3cqw,14px)] h-px bg-border" />
       <div className="flex items-center justify-between gap-2.5 pt-1">
         <div className="flex items-center gap-2">
-          {confirmed ? null : (
+          {confirmed || posting ? null : (
             <Button
               className="h-[44px] min-h-11 px-0 text-muted-foreground hover:text-foreground"
               onClick={focusEditor}
@@ -148,7 +165,11 @@ export function DraftBox({
         </div>
         <div className="flex items-center gap-2.5">
           <CharCounter text={text} xLimit={charLimit} />
-          {confirmed ? (
+          {posting ? (
+            <span className="flex h-[30px] items-center rounded-[2px] border border-muted-foreground/35 bg-muted px-3 text-sm text-muted-foreground">
+              Posting…
+            </span>
+          ) : confirmed && !dirty ? (
             <a
               className="animate-in fade-in slide-in-from-bottom-1 duration-200 flex h-[30px] items-center gap-1.5 rounded-[2px] border border-primary/35 bg-primary/12 px-3 text-sm text-accent-foreground"
               href={draft.postedUrl ?? "#"}
@@ -158,6 +179,14 @@ export function DraftBox({
               <CheckIcon aria-hidden="true" className="size-3.5" />
               Posted
             </a>
+          ) : dirty ? (
+            <Button
+              className="h-[30px] rounded-[2px] px-[15px]"
+              disabled={posting || isPending || awaitingRefresh || !canSave}
+              onClick={handleSave}
+            >
+              {isPending || awaitingRefresh ? "Saving…" : "Save"}
+            </Button>
           ) : ambiguous ? (
             <span
               className="flex h-[30px] items-center gap-1.5 rounded-[2px] border border-warning/35 bg-warning/12 px-3 text-sm text-warning"
@@ -190,14 +219,6 @@ export function DraftBox({
               </svg>
               Unconfirmed
             </span>
-          ) : dirty ? (
-            <Button
-              className="h-[30px] rounded-[2px] px-[15px]"
-              disabled={isPending || !text.trim()}
-              onClick={handleSave}
-            >
-              {isPending ? "Saving…" : "Save"}
-            </Button>
           ) : (
             <PostToXControl
               charLimit={charLimit}
@@ -213,6 +234,7 @@ export function DraftBox({
         canRevert={canRevert}
         onOpenChange={setOpenHistory}
         open={openHistory}
+        sourceLabel={sourceLabel}
         winningDraftId={draft.draftId}
       />
     </section>

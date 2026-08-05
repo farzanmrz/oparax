@@ -218,8 +218,8 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   // (already-live) story as unposted with an enabled Post button — one click from a
   // near-duplicate tweet. Scoped by source_post_id + agent_id + platform, the same triple
   // applyCorrection's dethrone step in draft-pipeline.ts uses.
-  // postedAt alone is the ambiguous state, not proof of a live post (mirrors
-  // draft-platform-switcher.tsx's three-way signal) — only a confirmed post (postedAt &&
+  // postedAt alone is the ambiguous state, not proof of a live post (mirrors the feed card's
+  // three-way signal) — only a confirmed post (postedAt &&
   // postedUrl) blocks editing. Editing an ambiguous draft is the reporter's actual recovery
   // path: it mints a fresh, unposted winner they can then post cleanly. Accepted tradeoff: if
   // the original ambiguous post genuinely went through, resubmitting and posting the new
@@ -227,7 +227,7 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   // check their account first; this function does not and cannot verify that for them.
   const { data: currentWinner, error: currentWinnerError } = await supabase
     .from("drafts")
-    .select("id, posted_at, posted_url, synthesis, translation")
+    .select("id, posted_at, posted_url, posting_claimed_at, synthesis, translation")
     .eq("source_post_id", parentDraft.source_post_id)
     .eq("agent_id", parentDraft.agent_id)
     .eq("platform", parentDraft.platform)
@@ -238,6 +238,9 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   }
   if (currentWinner?.posted_at && currentWinner?.posted_url) {
     return { ok: false, error: "This draft was already posted to X and can't be edited." };
+  }
+  if (currentWinner?.posting_claimed_at) {
+    return { ok: false, error: "This draft is currently being posted to X. Please wait a moment." };
   }
 
   // Server-side validity gate for X, mirroring post-core.ts's postDraftToXForOwner exactly
@@ -284,6 +287,7 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
     .eq("id", currentWinner.id)
     .eq("is_winner", true)
     .is("posted_url", null)
+    .is("posting_claimed_at", null)
     .select("id");
   if (dethroneError) return { ok: false, error: "Could not save your edit. Please try again." };
   if (!dethroned || dethroned.length === 0) {

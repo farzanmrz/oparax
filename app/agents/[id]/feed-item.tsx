@@ -10,6 +10,14 @@ import { DraftBox } from "./draft-box";
 import { FeedSetupProgress } from "./feed-setup-progress";
 import { RelativeTime } from "./relative-time";
 
+function getSourceLabel(source: FeedItem["source"]) {
+  return source.kind === "x"
+    ? source.authorHandle
+      ? `@${source.authorHandle}`
+      : "source"
+    : (source.siteName ?? "source");
+}
+
 function SourceNotch({ source, createdAt }: { source: FeedItem["source"]; createdAt: string }) {
   const isX = source.kind === "x";
   const target = source.url && !source.gone ? source.url : null;
@@ -26,39 +34,34 @@ function SourceNotch({ source, createdAt }: { source: FeedItem["source"]; create
   ) : (
     <GlobeIcon aria-hidden="true" className="size-[12px]" />
   );
-  const label = isX
-    ? source.authorHandle
-      ? `@${source.authorHandle}`
-      : "source"
-    : (source.siteName ?? "source");
+  const label = getSourceLabel(source);
 
   const segment = (
     <>
-      <span className={cn("flex items-center gap-[7px] px-2.5 py-1", sourceFill)}>
+      <span
+        className={cn(
+          "flex shrink-0 items-center gap-[7px] whitespace-nowrap px-2.5 py-1",
+          sourceFill,
+        )}
+      >
         {icon}
         <span className="text-[12px] font-medium leading-none">{label}</span>
         {target ? <ArrowUpRightIcon aria-hidden="true" className="size-[9px] opacity-50" /> : null}
       </span>
-      <span className={cn("text-[11px] px-2.5 py-1", timeFill)}>
+      <span className={cn("shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px]", timeFill)}>
         <RelativeTime iso={source.postedAt ?? createdAt} />
       </span>
     </>
   );
 
   const classes =
-    "flex items-stretch overflow-hidden rounded-b-[5px] transition hover:brightness-125";
+    "flex max-w-[min(60cqw,24rem)] items-stretch overflow-hidden rounded-b-[5px] transition hover:brightness-125";
 
   return (
     <div className="absolute top-0 left-[clamp(13px,1.9cqw,20px)] flex items-center">
       {target ? (
         <a
-          className={cn(
-            classes,
-            "no-underline",
-            "hover:no-underline",
-            "text-inherit",
-            "max-w-[min(60cqw,24rem)]",
-          )}
+          className={cn(classes, "no-underline", "hover:no-underline", "text-inherit")}
           href={target}
           rel="noreferrer"
           target="_blank"
@@ -104,7 +107,12 @@ export function FeedItemCard({
           {winner.synthesis}
         </p>
       ) : null}
-      <DraftBox charLimit={charLimit} draft={winner} xLinked={xLinked} />
+      <DraftBox
+        charLimit={charLimit}
+        draft={winner}
+        sourceLabel={getSourceLabel(item.source)}
+        xLinked={xLinked}
+      />
     </article>
   );
 }

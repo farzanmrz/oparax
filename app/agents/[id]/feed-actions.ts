@@ -17,6 +17,7 @@ export async function fetchOwnedFeedPage(
   limit: number,
 ) {
   if (cursor && !isFeedCursor(cursor)) return { ok: false as const, error: "Invalid feed cursor." };
+  if (!Number.isFinite(limit)) return { ok: false as const, error: "Invalid feed limit." };
   const supabase = await createClient();
   const {
     data: { user },

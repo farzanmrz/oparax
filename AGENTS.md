@@ -35,7 +35,8 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 | `stories`, `story_assignments` | clustered stories and their per-desk claim | EXISTS-join, select-only |
 | `drafts` | a drafted post + its post-outcome stamps | EXISTS-join (**insert policy too**) |
 | `usage_events` | metering for every billable touch point | owner-scoped, select-only |
-| `source_posts`, `model_calls` | ingested posts; one row per model call | deny-all |
+| `source_posts` | ingested posts | deny-all |
+| `model_calls` | one row per model call | owner-scoped, select-only |
 | `corpus_posts` | per-desk extracted corpus, including off-beat exclusions | deny-all |
 | `beat_conflicts` | ground-versus-judge disagreements awaiting resolution | EXISTS-join, select-only |
 | `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | OAuth tokens, inferred tier, delivery receipts | deny-all |
