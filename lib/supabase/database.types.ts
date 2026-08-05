@@ -959,6 +959,10 @@ export type Database = {
         Returns: string;
       };
       delete_account: { Args: never; Returns: undefined };
+      reclaim_extraction_run: {
+        Args: { p_agent_id: string; p_stale_cutoff: string };
+        Returns: boolean;
+      };
       record_seen_item: {
         Args: {
           p_bump_last_matched: boolean;
