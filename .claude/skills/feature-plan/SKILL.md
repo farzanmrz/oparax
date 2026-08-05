@@ -30,6 +30,7 @@ belongs in this table, never in a second file.
 | Session dial | owner's top dial (opus/fable, high) | `gpt-5.6-sol` high (set with `/model` before starting) |
 | Thinking gate (phase 2) | `/first-principles-thinking` | `$first-principles-thinking` |
 | Grounding pack (phase 3) | one agent, `model: sonnet`, `effort: low` | `cx_grounder` (pinned cheap, read-only in its TOML) |
+| Exploration fan-out | native (batch independent Agent calls in one response) | spawn PARALLEL `cx_grounder` instances, named explicitly, when grounding spans 3+ independent files/areas (≤6 threads); Codex never fans out unprompted |
 | Critique (phase 5) | externals: `codex` + `grok` + `agy` | `grok` + `agy` externals + the native `reviewer` agent. Spawn `reviewer` explicitly (Codex never delegates off a description). Never launch a codex lane: that family's perspective IS this session. |
 | Close (phase 7) | same `start.sh` invocation | same `start.sh` invocation |
 
@@ -252,8 +253,14 @@ Upon explicit owner approval, run the close script:
   <plan-file>` (the plan becomes that issue's body; no duplicate issue is
   ever created)
 
-The script prints the issue number and cuts `ft/<issue#>` from fetched
-`origin/beta`. **Then STOP, always, under `/feature` too.** The issue body is
+The script prints the issue number and lands on `ft/<issue#>`. It is
+adoption-aware: an existing local/remote `ft/N` is adopted (fast-forwarded
+onto beta only when it has no unique commits), a current `ft/N-*` branch is
+renamed to `ft/N` local+remote, a fresh cut from `origin/beta` is the
+fallback, the clean-tree requirement applies only when it must switch or
+create, and prose is unwrapped before posting (GitHub renders issue newlines
+as hard breaks). Never work around the script; its resolution IS the
+contract. **Then STOP, always, under `/feature` too.** The issue body is
 now the complete spec, which is what makes the app-jump clean. End the session
 with this exact message format:
 

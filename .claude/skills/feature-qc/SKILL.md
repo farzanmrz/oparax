@@ -1,27 +1,47 @@
 ---
 name: feature-qc
 description: >-
-  Phase 3 of the feature flow, standalone: the full QC battery over the current
-  feature branch, run as one session: chains feature-find, feature-fix,
-  feature-docs, feature-verify with no stops between. Use when the user says
-  /feature-qc, "run QC", or wants the branch proven in one sitting. To hop
-  between apps/sessions mid-QC, run the four steps individually instead.
-  Harness-neutral: runs in Claude Code or Codex.
+  Phase 3 of the feature flow, standalone: the QC battery over the current
+  feature branch as a GATED RELAY: run the next pending step (find, fix, docs,
+  verify), then stop with a handoff naming the following step and its model
+  dial. Use when the user says /feature-qc or "run QC". Say "/feature-qc chain"
+  to run all four in one sitting with no stops. Harness-neutral: runs in Claude
+  Code or Codex.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Skill
 model: inherit
 ---
 
-# The QC battery: one session, four steps, one gate
+# The QC battery: four steps, gated relay by default
 
 * **Hop-anywhere contract:** QC is four separable steps, each a skill of its
   own, so the owner can run any step in any session or app (Claude Code or
   Codex). Every step starts from durable state only (the branch, the issue,
   its `QC round` comments) and ends by writing durable state back.
-* **Under /feature-qc:** invoke the four steps in order in THIS session with
-  no stops between. The chain's only gate is the verification ✋ in phase 4.
+* **Under /feature-qc (default = gated relay):** detect the next pending step
+  from the issue's `QC round` markers, run ONLY that step, then STOP with a
+  handoff. The handoff states: what completed, the durable state written, the
+  exact next command (`/feature-find` etc., `$`-form for Codex), and the
+  recommended dial for the next step from the step-dial table below. The
+  owner runs each step in a fresh session on the matching dial.
+* **Under /feature-qc chain (explicit opt-in):** invoke the four steps in
+  order in THIS session with no stops between. The chain's only gate is the
+  verification ✋ in phase 4.
 * **Sub-skill authority:** each sub-skill's own text governs its step;
   nothing here overrides them, and each carries its own per-harness dials
   table naming the subagents it dispatches.
+
+## Step dials (what the handoff recommends)
+
+| Step | Tier | Claude Code | Codex |
+|---|---|---|---|
+| feature-find | smart (adjudication) | fable/opus high | `gpt-5.6-sol` high |
+| feature-fix | normal | sonnet | `gpt-5.6-terra` |
+| feature-docs | normal | sonnet | `gpt-5.6-terra` |
+| feature-verify | smart (the owner-facing ✋) | fable/opus high | `gpt-5.6-sol` high |
+
+* **The relay is what protects recall:** `bug-finder` inherits the session
+  model, so running find on a cheap dial silently weakens the last automated
+  net before beta. The handoff's dial line is load-bearing, not advisory.
 
 ## Dials (per harness)
 
@@ -37,10 +57,12 @@ second file.
 | Subagents | `bug-finder`, `fixer`, `supabase-runner` | `cx_grounder`, `cx_fixer`, `cx_supabase_runner` |
 | Concurrency cap | ≤10 agents per fan-out | ≤6 threads (the global `[agents]` cap) |
 
-* **Pick the smart dial AT INVOCATION:** a chain offers no reliable moment
-  for a mid-run flip. The cheap-start-then-flip pattern applies only to
+* **Chain mode only, pick the smart dial AT INVOCATION:** a chain offers no
+  reliable moment for a mid-run flip, so `/feature-qc chain` runs entirely on
+  the smart dial. The cheap-start-then-flip pattern applies only to
   `feature-find` run standalone, where "council lanes launched" is the cue. A
-  chain started on a cheap dial must say so in its first milestone line.
+  chain started on a cheap dial must say so in its first milestone line. The
+  relay needs none of this: each step starts on the right dial by handoff.
 
 ## 1. feature-find
 
@@ -49,8 +71,8 @@ ft issue.
 
 ## 2. feature-fix
 
-Apply the round (one fixer per finding, gates re-run, residual lint). Fixes
-recorded on the issue.
+Apply the round (one fixer per disjoint file group of findings, gates re-run,
+residual lint). Fixes recorded on the issue.
 
 ## 3. feature-docs
 

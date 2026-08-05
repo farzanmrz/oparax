@@ -23,6 +23,12 @@ effort: medium
   One branch, no scope creep beyond what they said.
 * **Communication rule:** the `Flow` output style governs. Zero prose during
   execution; the only permitted text is an escalation.
+* **Grounding fan-out (Codex only):** before writing code, ground the issue
+  body's named files with PARALLEL read-only `cx_grounder` instances, named
+  explicitly, whenever they span 3+ independent files/areas (≤6 threads);
+  Codex never fans out unprompted and sequential-reads otherwise.
+  IMPLEMENTATION stays inline and sequential in both harnesses (the rule
+  below); fan-out is for reading, never writing.
 
 ## 1. Preflight
 

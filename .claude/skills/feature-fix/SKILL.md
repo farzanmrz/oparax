@@ -16,8 +16,8 @@ model: inherit
 
 | Work | Claude Code | Codex |
 |---|---|---|
-| Ordinary fix | `fixer`, `model: sonnet` | `cx_fixer` |
-| Risk-path fix (auth, money, posting, schema/migration, new trust boundary) | `fixer` on `model: opus` | spawn `cx_fixer` on `gpt-5.6-sol` high |
+| Ordinary fix group | `fixer`, `model: sonnet` | `cx_fixer` |
+| Risk-path fix group (auth, money, posting, schema/migration, new trust boundary) | `fixer` on `model: opus` | spawn `cx_fixer` on `gpt-5.6-sol` high |
 | Residual lint | `feature-lint` (fixes inline) | `cx_fixer` per file group |
 
 ## 1. Brief
@@ -40,10 +40,16 @@ gh issue view <N> --comments
 
 ### A. Dispatch
 
-* **Applying is not adjudicating: dispatch it.** One fixer per accepted
-  finding; the finding's text (technical + plain-terms lines) IS the brief.
-* **Parallelism:** disjoint files run in parallel; overlapping files run
-  serially.
+* **Applying is not adjudicating: dispatch it.** One fixer per DISJOINT FILE
+  GROUP: bundle every accepted finding that touches the same files into one
+  brief (the findings' text, technical + plain-terms lines, IS the brief).
+  Per-finding fixers re-read the same files N times and serialize behind each
+  other on overlaps, so the group is the dispatch unit.
+* **Grouping:** union findings whose touched-file sets overlap (transitively)
+  into one group. A group containing any risk-path finding runs on the
+  risk-path dial for the whole group.
+* **Parallelism:** groups are disjoint by construction: dispatch them ALL in
+  parallel; there is no serial case.
 * **Fixer contract:** minimal correct fix, match surrounding idiom,
   `tsc --noEmit` clean on touched files, STOP and report if the brief turns
   out to need a design decision.
