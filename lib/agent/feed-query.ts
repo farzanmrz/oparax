@@ -17,25 +17,6 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type Client = SupabaseClient<Database>;
 
-// Re-exported so existing server callers (`feed-actions.ts`, `page.tsx`) that import these
-// from this module keep working; client components should import feed-shared.ts directly.
-export {
-  FEED_PAGE_SIZE,
-  FEED_REFRESH_CHUNK,
-  FEED_REFRESH_MAX_CHUNKS,
-  type FeedCursor,
-  type FeedDraft,
-  type FeedFilterState,
-  type FeedItem,
-  type FeedPage,
-  type FeedSourceView,
-  type FeedStatusFilter,
-  feedFilterKey,
-  hasActiveFilters,
-  isFeedCursor,
-  parseFeedFilters,
-} from "@/lib/agent/feed-shared";
-
 export const FEED_ID_CHUNK = 150;
 // Genuine ceiling on ids accumulated across .range() pages (see pagedRows below), not a
 // per-request row count — hosted Supabase's db-max-rows default (1000) is what forced the
@@ -426,7 +407,7 @@ async function hydrate(
     return {
       storyId: story.id,
       createdAt: story.created_at,
-      headline: source.title ?? story.summary,
+      headline: story.summary,
       summary: story.summary,
       source: sourceView,
       extraSourceCount: (sources.get(story.id)?.length ?? 1) - 1,
@@ -444,33 +425,64 @@ export async function fetchFeedPage(
   const cursor = isFeedCursor(opts.cursor) ? opts.cursor : null;
   const include = await includeIds(supabase, agentId, opts.filters);
   if (include?.size === 0) return { items: [], nextCursor: null };
-  const confirmed = opts.filters.status === "all" ? null : await confirmedIds(supabase, agentId);
-  if (opts.filters.status === "posted" && confirmed) {
-    const ids = new Set([...(include ?? []), ...(!include ? confirmed : [])]);
-    if (include) for (const id of ids) if (!confirmed.has(id)) ids.delete(id);
-    const page = await rawPage(supabase, agentId, opts.filters, cursor, limit, ids);
-    return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
-  }
-  if (opts.filters.status === "pending" && confirmed) {
-    const rows: StoryRow[] = [];
-    let walk = cursor;
+  const needConfirmed = opts.filters.status === "posted" || opts.filters.status === "pending";
+  const confirmed = needConfirmed ? await confirmedIds(supabase, agentId) : null;
+  const needWinners = opts.filters.status === "all" || opts.filters.status === "pending";
+  const winners = needWinners ? await winnerIds(supabase, agentId) : null;
+
+  async function walkPage(
+    keep: (row: StoryRow) => boolean,
+  ): Promise<{ rows: StoryRow[]; nextCursor: FeedCursor | null }> {
+    let cursorValue: FeedCursor | null = cursor;
     let nextCursor: FeedCursor | null = cursor;
+    const rows: StoryRow[] = [];
+
     for (let iteration = 0; iteration < 4 && rows.length < limit; iteration++) {
-      const page = await rawPage(supabase, agentId, opts.filters, walk, 50, include);
-      const kept = page.rows.filter((row) => !confirmed.has(row.id)).slice(0, limit - rows.length);
+      const page = await rawPage(
+        supabase,
+        agentId,
+        opts.filters,
+        cursorValue,
+        Math.max(50, limit),
+        include,
+      );
+      const kept = page.rows.filter(keep).slice(0, limit - rows.length);
       rows.push(...kept);
-      const lastKept = rows.at(-1);
-      if (lastKept && rows.length >= limit) {
-        nextCursor = cursorFor(lastKept);
+
+      if (rows.length >= limit && rows.at(-1)) {
+        const last = rows.at(-1);
+        if (last) nextCursor = cursorFor(last);
         break;
       }
+
       nextCursor = page.nextCursor;
       if (!page.nextCursor) break;
-      walk = page.nextCursor;
+
+      cursorValue = page.nextCursor;
     }
-    return { items: await hydrate(supabase, agentId, rows), nextCursor };
+
+    return { rows, nextCursor };
   }
-  const page = await rawPage(supabase, agentId, opts.filters, cursor, limit, include);
+
+  if (opts.filters.status === "all") {
+    if (!winners) return { items: [], nextCursor: null };
+    const page = await walkPage((row) => winners.has(row.id));
+    return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
+  }
+
+  if (opts.filters.status === "pending") {
+    if (!confirmed || !winners) return { items: [], nextCursor: null };
+    const page = await walkPage((row) => winners.has(row.id) && !confirmed.has(row.id));
+    return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
+  }
+
+  if (opts.filters.status === "posted") {
+    if (!confirmed) return { items: [], nextCursor: null };
+    const page = await walkPage((row) => confirmed.has(row.id));
+    return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
+  }
+
+  const page = await walkPage(() => true);
   return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
 }
 

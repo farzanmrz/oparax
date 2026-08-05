@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { FeedFilterState } from "@/lib/agent/feed-query";
+import type { FeedFilterState } from "@/lib/agent/feed-shared";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();

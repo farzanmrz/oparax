@@ -16,8 +16,12 @@
     "components/ui/**",
     "docs/**",
     "ingest/**",
+    "lab/voice-extractor/dump-corpus.mjs",
     "lib/supabase/database.types.ts",
-    "supabase/**"
+    "supabase/**",
+    "app/agents/[id]/council-actions.ts",
+    "app/agents/[id]/council-dialog.tsx",
+    "lib/agent/council-query.ts"
   ],
   "ignoreDependencies": [
     "@rive-app/react-webgl2",

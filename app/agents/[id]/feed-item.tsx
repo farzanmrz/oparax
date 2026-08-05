@@ -1,137 +1,111 @@
-"use client";
-
-import { CheckCircle2Icon, ChevronDownIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowUpRightIcon, CheckCircle2Icon, GlobeIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { Platform } from "@/lib/agent/desk-config";
-import type { FeedItem } from "@/lib/agent/feed-query";
+import type { FeedItem } from "@/lib/agent/feed-shared";
 import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
-import { DraftPlatformSwitcher } from "./draft-platform-switcher";
-import { ExpandableBody } from "./expandable-body";
+import { DraftBox } from "./draft-box";
 import { FeedSetupProgress } from "./feed-setup-progress";
-import { ExtraSourcesBadge } from "./feed-tooltips";
-import { PostCard } from "./post-card";
 import { RelativeTime } from "./relative-time";
-import styles from "./source-tweet.module.css";
-import { SourceChip, SourceTweetView } from "./source-view";
-import { XAvatar } from "./x-avatar";
 
-function defaultPlatform(winners: FeedItem["winners"]): Platform {
-  return winners.x ? "x" : (Object.keys(winners)[0] as Platform);
-}
-// `now === null` is the pre-mount fallback: server render and first client paint both skip the
-// age check and agree on "No draft", so hydration never mismatches. `now` is filled in from
-// `useEffect` in FeedItemCard once mounted, after which the real Drafting…/No draft split applies.
-function status(item: FeedItem, now: number | null) {
-  const x = item.winners.x;
-  if (!Object.keys(item.winners).length)
-    return now !== null && now - new Date(item.createdAt).getTime() <= 10 * 60 * 1000
-      ? "Drafting…"
-      : "No draft";
-  return x?.postedAt && x.postedUrl ? "Posted" : x?.postedAt ? "Unconfirmed" : "Ready to review";
+function SourceNotch({ source, createdAt }: { source: FeedItem["source"]; createdAt: string }) {
+  const isX = source.kind === "x";
+  const target = source.url && !source.gone ? source.url : null;
+  const sourceFill = isX
+    ? "bg-[oklch(0.17_0.004_260)] text-foreground"
+    : "bg-[oklch(0.44_0.05_55)] text-[#faf6ee]";
+  const timeFill = isX
+    ? "bg-[oklch(0.23_0.004_260)] text-[rgba(242,239,232,0.6)]"
+    : "bg-[oklch(0.505_0.05_55)] text-[rgba(250,246,238,0.72)]";
+  const icon = isX ? (
+    <svg aria-hidden="true" fill="currentColor" height="11" viewBox="0 0 24 24" width="11">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
+    </svg>
+  ) : (
+    <GlobeIcon aria-hidden="true" className="size-[12px]" />
+  );
+  const label = isX
+    ? source.authorHandle
+      ? `@${source.authorHandle}`
+      : "source"
+    : (source.siteName ?? "source");
+
+  const segment = (
+    <>
+      <span className={cn("flex items-center gap-[7px] px-2.5 py-1", sourceFill)}>
+        {icon}
+        <span className="text-[12px] font-medium leading-none">{label}</span>
+        {target ? <ArrowUpRightIcon aria-hidden="true" className="size-[9px] opacity-50" /> : null}
+      </span>
+      <span className={cn("text-[11px] px-2.5 py-1", timeFill)}>
+        <RelativeTime iso={source.postedAt ?? createdAt} />
+      </span>
+    </>
+  );
+
+  const classes =
+    "flex items-stretch overflow-hidden rounded-b-[5px] transition hover:brightness-125";
+
+  return (
+    <div className="absolute top-0 left-[clamp(13px,1.9cqw,20px)] flex items-center">
+      {target ? (
+        <a
+          className={cn(
+            classes,
+            "no-underline",
+            "hover:no-underline",
+            "text-inherit",
+            "max-w-[min(60cqw,24rem)]",
+          )}
+          href={target}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {segment}
+        </a>
+      ) : (
+        <span className={classes}>{segment}</span>
+      )}
+      {source.gone ? (
+        <span className="ml-2 flex items-center gap-1 rounded-b-[5px] bg-warning px-2.5 py-1 text-[11px] text-background">
+          <TriangleAlertIcon aria-hidden="true" className="size-[11px]" />
+          No longer on X
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 export function FeedItemCard({
   item,
-  agentId,
   charLimit,
   xLinked,
 }: {
   item: FeedItem;
-  agentId: string;
   charLimit: number;
   xLinked: boolean;
 }) {
-  const platforms = Object.keys(item.winners) as Platform[];
-  const [selected, setSelected] = useState<Platform>(() => defaultPlatform(item.winners));
-  const activePlatform = platforms.includes(selected) ? selected : defaultPlatform(item.winners);
-  const active = item.winners[activePlatform] ?? null;
-  const confirmed = item.winners.x?.postedAt != null && item.winners.x?.postedUrl != null;
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => setNow(Date.now()), []);
-  const drafting = !active && status(item, now) === "Drafting…";
+  const winner = item.winners.x ?? Object.values(item.winners)[0];
+  if (!winner) return null;
+  const cardClass = item.source.gone
+    ? "@container relative rounded-lg border border-dashed border-warning/60 bg-card p-[clamp(15px,2.1cqw,22px)] pb-[clamp(15px,1.9cqw,20px)] pt-[clamp(31px,3.4cqw,38px)] shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
+    : "@container relative rounded-lg border border-border bg-card p-[clamp(15px,2.1cqw,22px)] pb-[clamp(15px,1.9cqw,20px)] pt-[clamp(31px,3.4cqw,38px)] shadow-[0_12px_32px_rgba(0,0,0,0.35)]";
+
   return (
-    <div className={cn(confirmed && "opacity-[0.66]")}>
-      <PostCard>
-        <Collapsible>
-          <CollapsibleTrigger asChild>
-            <button className={cn(styles.header, "min-h-11 w-full text-left")} type="button">
-              {item.source.avatarUrl ? (
-                // biome-ignore lint/performance/noImgElement: a 20px avatar straight from X's CDN — next/image would only proxy it
-                <img alt="" className={styles.avatar} src={item.source.avatarUrl} />
-              ) : item.source.authorHandle ? (
-                <XAvatar handle={item.source.authorHandle} />
-              ) : (
-                <span aria-hidden="true" className={styles.monogram}>
-                  ◎
-                </span>
-              )}
-              <span className={styles.handle}>
-                {item.source.authorHandle ? `@${item.source.authorHandle}` : item.source.siteName}
-              </span>
-              {item.extraSourceCount > 0 ? (
-                <ExtraSourcesBadge count={item.extraSourceCount} />
-              ) : null}
-              {item.source.gone ? (
-                <TriangleAlertIcon
-                  aria-label="No longer on X · archived"
-                  className="size-3.5 text-warning"
-                />
-              ) : null}
-              <span className={styles.spacer} />
-              <Badge variant="secondary">{status(item, now)}</Badge>
-              {item.source.postedAt ? (
-                <span className={styles.time}>
-                  <RelativeTime iso={item.source.postedAt} prefix="Posted" />
-                </span>
-              ) : null}
-              <SourceChip kind={item.source.kind} />
-              <ChevronDownIcon className="size-4 shrink-0" />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3">
-            <SourceTweetView source={item.source} translation={active?.translation ?? null} />
-          </CollapsibleContent>
-        </Collapsible>
-        <h2 className="text-base font-semibold">{item.headline}</h2>
-        {active?.synthesis ? <ExpandableBody>{active.synthesis}</ExpandableBody> : null}
-        {active ? (
-          <DraftPlatformSwitcher
-            activePlatform={activePlatform}
-            agentId={agentId}
-            charLimit={charLimit}
-            onPlatformChange={setSelected}
-            sourcePostId={item.source.id}
-            winners={item.winners}
-            xLinked={xLinked}
-          />
-        ) : drafting ? (
-          <div className="flex items-center gap-2" role="status">
-            <span
-              aria-hidden="true"
-              className="size-1.5 shrink-0 animate-pulse rounded-full bg-primary"
-            />
-            <span className="text-sm text-muted-foreground">
-              Drafting in your voice — a few models are writing…
-            </span>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Nothing drafted from this post — there wasn&apos;t enough to write from.
-          </p>
-        )}
-        {active ? (
-          <div className="text-xs text-muted-foreground">
-            <RelativeTime iso={active.createdAt} prefix="Drafted" />
-          </div>
-        ) : null}
-      </PostCard>
-    </div>
+    <article className={cardClass} style={{ containerType: "inline-size" }}>
+      <SourceNotch createdAt={item.createdAt} source={item.source} />
+      <h2 className="text-[clamp(16px,1.9cqw,21px)] font-semibold leading-[1.28] tracking-[-0.015em] text-foreground text-pretty">
+        {item.headline}
+      </h2>
+      {winner.synthesis ? (
+        <p className="mt-[clamp(11px,1.3cqw,14px)] border-t border-border pt-[clamp(11px,1.3cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
+          {winner.synthesis}
+        </p>
+      ) : null}
+      <DraftBox charLimit={charLimit} draft={winner} xLinked={xLinked} />
+    </article>
   );
 }
 
@@ -142,6 +116,7 @@ export type FeedReadiness =
   | { kind: "extraction_failed"; initial: ExtractionProgressState }
   | { kind: "extraction_missing" }
   | { kind: "ready" };
+
 const EMPTY: Record<
   Exclude<FeedReadiness["kind"], "extraction_running" | "extraction_failed">,
   { title: string; body: string; actionLabel?: string; actionHref?: string }
@@ -167,6 +142,7 @@ const EMPTY: Record<
     actionHref: "/voice",
   },
 };
+
 export function FeedEmptyState({
   deskId,
   readiness,

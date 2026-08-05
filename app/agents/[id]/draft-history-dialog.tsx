@@ -1,109 +1,86 @@
-// app/agents/[id]/draft-history-dialog.tsx
-//
-// Self-contained "Draft history" overlay: `DraftHistoryDialog` renders its own trigger
-// icon-button AND owns its open state — plain local `useState`, mirroring
-// `draft-edit-dialog.tsx`'s pattern. This dialog used to mirror its open state to
-// `?history=<winningDraftId>` for deep-linkability, but the page is fully dynamic, so
-// every open/close forced a full server round trip (re-running the feed query) before the
-// dialog visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an
-// instant open. The heavy body — the fetch + the version timeline + the corrections thread —
-// is mounted only once the dialog is actually opened (the `{open ? ... : null}` guard below);
-// the trigger renders immediately. T4 drops `<DraftHistoryDialog winningDraftId=.. />`
-// straight into the draft-card action row.
 "use client";
 
-import { HistoryIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Message, MessageContent } from "@/components/ai-elements/message";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { Correction, DraftHistoryDetail, HistoryVersion } from "@/lib/agent/council-query";
+import type { DraftHistoryDetail, HistoryVersion } from "@/lib/agent/council-query";
+import { editDraft } from "./actions";
 import { fetchDraftHistory } from "./council-actions";
 import { relativeLabel } from "./relative-time";
 
-function truncate(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
-}
-
-function VersionRow({ version }: { version: HistoryVersion }) {
+function VersionRow({
+  version,
+  onRevert,
+  disabled,
+  pending,
+}: {
+  version: HistoryVersion;
+  onRevert: () => void;
+  disabled: boolean;
+  pending: boolean;
+}) {
   return (
-    <div className="space-y-1.5 rounded-lg border p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-muted-foreground">
-          v{version.depth} ·{" "}
-          {version.depth === 0
-            ? "first draft"
-            : `generated ${relativeLabel(version.createdAt).label}`}
-        </span>
-        {version.isCurrent ? <Badge variant="secondary">Current</Badge> : null}
+    <article className="relative rounded-[7px] border border-border bg-secondary px-4 pt-7 pb-2">
+      <span className="absolute top-0 left-3.5 rounded-b-[5px] bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
+        {relativeLabel(version.createdAt).label}
+      </span>
+      <p className="whitespace-pre-wrap text-[15.5px] leading-[1.5]">{version.text}</p>
+      <div className="mt-3 h-px bg-border" />
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <span className="font-mono text-xs">{version.text.length}</span>
+        <Button
+          className="h-[30px] rounded-[2px] bg-warning px-[15px] text-background hover:bg-warning/90"
+          disabled={disabled || pending}
+          onClick={onRevert}
+          size="sm"
+        >
+          Revert
+        </Button>
       </div>
-      {version.appliedFeedback ? (
-        <p className="text-xs text-muted-foreground">
-          Applied your correction: &ldquo;{truncate(version.appliedFeedback, 96)}&rdquo;
-        </p>
-      ) : null}
-      <div className="whitespace-pre-wrap rounded-md bg-muted/60 p-2 text-sm">{version.text}</div>
-    </div>
-  );
-}
-
-function CorrectionsThread({ corrections }: { corrections: Correction[] }) {
-  if (corrections.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No corrections on this one. Reply to the delivery in Slack or email to correct a draft —
-        your reply is applied and saved as a new version.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {corrections.map((correction) => (
-        <div className="space-y-2" key={`${correction.reply}-${correction.applied}`}>
-          <Message from="user">
-            <MessageContent>
-              <p className="text-xs font-medium text-muted-foreground">Reply</p>
-              <p>{correction.reply}</p>
-            </MessageContent>
-          </Message>
-          <Message from="assistant">
-            <MessageContent>
-              <p className="text-xs font-medium text-muted-foreground">Oparax · Applied</p>
-              <p className="whitespace-pre-wrap">{correction.applied}</p>
-            </MessageContent>
-          </Message>
-        </div>
-      ))}
-    </div>
+    </article>
   );
 }
 
 function DraftHistorySkeleton() {
   return (
     <div className="space-y-3">
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-28 w-full" />
+      <Skeleton className="h-28 w-full" />
+      <Skeleton className="h-28 w-full" />
     </div>
   );
 }
 
-function DraftHistoryBodyImpl({ winningDraftId }: { winningDraftId: string }) {
+export function DraftHistoryDialog({
+  open,
+  onOpenChange,
+  winningDraftId,
+  canRevert,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  winningDraftId: string;
+  canRevert: boolean;
+}) {
   const [state, setState] = useState<
     { status: "loading" } | { status: "error" } | { status: "ready"; detail: DraftHistoryDetail }
   >({ status: "loading" });
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     let cancelled = false;
+    if (!open) return;
+
     setState({ status: "loading" });
     fetchDraftHistory(winningDraftId)
       .then((detail) => {
@@ -112,72 +89,98 @@ function DraftHistoryBodyImpl({ winningDraftId }: { winningDraftId: string }) {
       .catch(() => {
         if (!cancelled) setState({ status: "error" });
       });
+
     return () => {
       cancelled = true;
     };
-  }, [winningDraftId]);
+  }, [open, winningDraftId]);
 
-  if (state.status === "loading") return <DraftHistorySkeleton />;
-  if (state.status === "error") {
+  if (!open) {
+    return null;
+  }
+
+  if (state.status === "loading") {
     return (
-      <p className="text-sm text-destructive">Couldn't load this draft's history. Try again.</p>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Version history</DialogTitle>
+            <DialogDescription>Loading earlier versions…</DialogDescription>
+          </DialogHeader>
+          <DraftHistorySkeleton />
+        </DialogContent>
+      </Dialog>
     );
   }
-  if (state.detail.kind === "not_found") {
-    return <p className="text-sm text-muted-foreground">No history on record for this draft.</p>;
+
+  if (state.status === "error") {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Version history</DialogTitle>
+            <DialogDescription>
+              {"Couldn't load this draft's history. Try again."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogClose asChild>
+            <Button size="sm">Close</Button>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="font-mono text-xs text-muted-foreground">X draft · newest first</p>
-        {state.detail.versions.map((version) => (
-          <VersionRow key={version.draftId} version={version} />
-        ))}
-      </div>
-      <div className="space-y-2 border-t pt-4">
-        <p className="text-sm font-medium">Corrections you sent</p>
-        <CorrectionsThread corrections={state.detail.corrections} />
-      </div>
-    </div>
-  );
-}
+  if (state.detail.kind === "not_found") {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Version history</DialogTitle>
+            <DialogDescription>No history on record for this draft.</DialogDescription>
+          </DialogHeader>
+          <DialogClose asChild>
+            <Button size="sm">Close</Button>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
-function HistoryTrigger() {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button aria-label="Draft history" size="icon-sm" variant="ghost">
-              <HistoryIcon />
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Draft history</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-export function DraftHistoryDialog({ winningDraftId }: { winningDraftId: string }) {
-  // Plain local state, not URL-synced — see the file header comment for why.
-  const [open, setOpen] = useState(false);
+  const versions = state.detail.versions.slice(1);
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <HistoryTrigger />
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>Draft history</DialogTitle>
+          <DialogTitle>Version history</DialogTitle>
           <DialogDescription>
-            Every version of this draft, and the corrections behind them.
+            {state.detail.versions.length - 1} earlier version(s)
           </DialogDescription>
         </DialogHeader>
-        <div aria-live="polite">
-          {open ? <DraftHistoryBodyImpl winningDraftId={winningDraftId} /> : null}
+        <div className="space-y-3">
+          {versions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No earlier versions.</p>
+          ) : null}
+          {versions.map((version) => (
+            <VersionRow
+              disabled={!canRevert}
+              key={version.draftId}
+              onRevert={() => {
+                startTransition(async () => {
+                  const result = await editDraft(winningDraftId, version.text);
+                  if (result.ok) {
+                    toast.success("Reverted");
+                    onOpenChange(false);
+                    return;
+                  }
+                  toast.error(result.error);
+                });
+              }}
+              pending={isPending}
+              version={version}
+            />
+          ))}
         </div>
       </DialogContent>
     </Dialog>

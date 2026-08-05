@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import { getOwnedExtractionProgress } from "@/app/agents/[id]/voice/get-extraction-progress";
-import { PageHeading } from "@/components/page-heading";
 import { resolveXTier, X_CHAR_LIMITS } from "@/lib/agent/desk-config";
 import { fetchFeedCounts, fetchFeedPage } from "@/lib/agent/feed-query";
-import { feedFilterKey, parseFeedFilters } from "@/lib/agent/feed-shared";
+import { FEED_FILTERS_UI, feedFilterKey, parseFeedFilters } from "@/lib/agent/feed-shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
@@ -70,10 +69,9 @@ export default async function FeedPage({
         <FeedEmptyState deskId={id} readiness={readiness} />
       ) : (
         <>
-          <PageHeading>
-            Stories — {counts.totalStories} · {counts.readyToReview} ready to review
-          </PageHeading>
-          <FeedFilters filters={filters} trackedHandles={agent.tracked_handles ?? []} />
+          {FEED_FILTERS_UI ? (
+            <FeedFilters filters={filters} trackedHandles={agent.tracked_handles ?? []} />
+          ) : null}
           <FeedList
             agentId={id}
             charLimit={charLimit}

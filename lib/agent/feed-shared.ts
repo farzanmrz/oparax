@@ -9,6 +9,9 @@ import type { Platform } from "@/lib/agent/desk-config";
 export const FEED_PAGE_SIZE = 25;
 export const FEED_REFRESH_CHUNK = 100;
 export const FEED_REFRESH_MAX_CHUNKS = 5;
+/** Dormant by design: the feed filter bar (status/account/date/search UI). The server-side
+ * filter machinery below stays live for pagination/reconcile; flipping this re-mounts the UI. */
+export const FEED_FILTERS_UI = false;
 
 export type FeedStatusFilter = "all" | "pending" | "posted";
 export type FeedFilterState = {

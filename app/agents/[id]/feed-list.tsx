@@ -163,15 +163,9 @@ export function FeedList({
       </div>
     );
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 [700px]:gap-6">
       {state.items.map((item) => (
-        <FeedItemCard
-          agentId={agentId}
-          charLimit={charLimit}
-          item={item}
-          key={item.storyId}
-          xLinked={xLinked}
-        />
+        <FeedItemCard charLimit={charLimit} item={item} key={item.storyId} xLinked={xLinked} />
       ))}
       <div ref={sentinel} />
       {loading ? (

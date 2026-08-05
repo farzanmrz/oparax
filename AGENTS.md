@@ -53,3 +53,5 @@ Built, working, and deliberately off so the shipped flow stays small. Each is ON
 | Story clustering (many posts → one story) | `CLUSTERING_ENABLED` | `lib/agent/cluster.ts` |
 | Email draft delivery + reply-to-correct | `EMAIL_DELIVERY_ENABLED` | `lib/agent/draft-pipeline.ts` |
 | Auto-post (post without review) | `AUTO_POST_ENABLED` | `app/agents/[id]/setup/sources-card.tsx` |
+| Feed filter bar UI | `FEED_FILTERS_UI` | `lib/agent/feed-shared.ts` |
+| Council history UI on draft cards | Mount `<CouncilDialog>` in `DraftBox` (currently deferred) | `app/agents/[id]/council-dialog.tsx` |
