@@ -1,7 +1,7 @@
 ---
 name: feature-docs
 description: >-
-  QC step 3 of 4, hop-anywhere: sync the instruction files after a fix round AND
+  QC step 4 of 5, hop-anywhere: sync the instruction files after a fix round AND
   take the mandatory subtractive pass that keeps them from growing without
   bound. Use standalone (/feature-docs) after /feature-fix, or let /feature-qc
   chain it. Harness-neutral.
@@ -99,7 +99,5 @@ AGENTS.md 32205 -> 31180 B (-3.2%) | corpus 162756 -> 161500 B
   ships' guards read it.
 * **Standalone:** STOP and hand off with the exact next command AND its dial
   from feature-qc's step-dial table: `/feature-verify` (`$feature-verify` in
-  Codex) on the smart dial. If the round has no `browsed` marker, also OFFER
-  the owner-triggered `/feature-browse` (`$feature-browse`, normal dial)
-  first. A handoff naming a command without its dial is incomplete.
-  Under `/feature-qc`: continue into feature-verify.
+  Codex) on the smart dial. A handoff naming a command without its dial is
+  incomplete. Under `/feature-qc`: continue into feature-verify.

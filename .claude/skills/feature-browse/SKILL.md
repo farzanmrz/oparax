@@ -1,12 +1,13 @@
 ---
 name: feature-browse
 description: >-
-  Optional QC step, hop-anywhere and OWNER-TRIGGERED ONLY: drive the current
-  ft branch's rendered surfaces in the built-in browser against a checklist
-  derived from the issue (plan states, NOT VERIFIABLE lines, manual-check
-  set), then post a browsed report the next step reads. Use when the user
-  says /feature-browse or "run the browser review". Never runs inside
-  find/fix/docs/verify or the relay on a session's own judgment.
+  QC step 2 of 5, hop-anywhere and OWNER-TRIGGERED ONLY: after a find round,
+  drive the current ft branch's rendered surfaces in the built-in browser
+  against a checklist derived from the issue (plan states, NOT VERIFIABLE
+  lines, manual-check set), then post the browsed report feature-fix reads
+  alongside the findings. Use when the user says /feature-browse or "run the
+  browser review". Never runs inside find/fix/docs/verify or the relay on a
+  session's own judgment.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Bash(lsof *) mcp__Claude_Browser__preview_start mcp__Claude_Browser__preview_stop mcp__Claude_Browser__preview_logs mcp__Claude_Browser__navigate mcp__Claude_Browser__read_page mcp__Claude_Browser__find mcp__Claude_Browser__computer mcp__Claude_Browser__form_input mcp__Claude_Browser__read_console_messages mcp__Claude_Browser__read_network_requests mcp__Claude_Browser__resize_window mcp__Claude_Browser__javascript_tool mcp__Claude_Browser__tabs_context
 model: inherit
 ---
@@ -72,9 +73,8 @@ gh issue view <N> --comments
 ## 4. Report and stop
 
 * **Teardown:** stop the dev server only if THIS session started it.
-* **Post the report** as an issue comment, then STOP with the relay handoff
-  (failures: next is `/feature-fix` on sonnet / `$feature-fix` on
-  `gpt-5.6-terra`; clean: next is `/feature-verify` on the smart dial):
+* **Post the report** as an issue comment, then STOP with the relay
+  handoff:
 
 <browsed-comment-template>
 ## QC round <R>: browsed
@@ -93,6 +93,8 @@ Remaining HUMAN-ONLY items: ...
   the owner's plate, and the next `verified` report cites this comment
   instead of re-listing covered items.
 * **Exit handoff:** name the exact next command AND its dial from
-  feature-qc's step-dial table: fix-ready failures go to `/feature-fix`
-  (`$feature-fix` in Codex, normal dial); otherwise the next unrun step,
-  `/feature-docs` (normal dial) or `/feature-verify` (smart dial).
+  feature-qc's step-dial table: next is `/feature-fix` (`$feature-fix` in
+  Codex, normal dial), which applies this round's findings comment plus the
+  fix-ready briefs above in one pass. Only when the round has zero accepted
+  findings AND zero failures does the handoff skip to `/feature-docs`
+  (normal dial).

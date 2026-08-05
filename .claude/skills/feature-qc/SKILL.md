@@ -2,18 +2,18 @@
 name: feature-qc
 description: >-
   Phase 3 of the feature flow, standalone: the QC battery over the current
-  feature branch as a GATED RELAY: run the next pending step (find, fix, docs,
-  verify), then stop with a handoff naming the following step and its model
-  dial. Use when the user says /feature-qc or "run QC". Say "/feature-qc chain"
-  to run all four in one sitting with no stops. Harness-neutral: runs in Claude
-  Code or Codex.
+  feature branch as a GATED RELAY: run the next pending step (find, browse,
+  fix, docs, verify), then stop with a handoff naming the following step and
+  its model dial. Use when the user says /feature-qc or "run QC". Say
+  "/feature-qc chain" to run all five in one sitting with no stops.
+  Harness-neutral: runs in Claude Code or Codex.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Skill
 model: inherit
 ---
 
-# The QC battery: four steps, gated relay by default
+# The QC battery: five steps, gated relay by default
 
-* **Hop-anywhere contract:** QC is four separable steps, each a skill of its
+* **Hop-anywhere contract:** QC is five separable steps, each a skill of its
   own, so the owner can run any step in any session or app (Claude Code or
   Codex). Every step starts from durable state only (the branch, the issue,
   its `QC round` comments) and ends by writing durable state back.
@@ -23,9 +23,10 @@ model: inherit
   exact next command (`/feature-find` etc., `$`-form for Codex), and the
   recommended dial for the next step from the step-dial table below. The
   owner runs each step in a fresh session on the matching dial.
-* **Under /feature-qc chain (explicit opt-in):** invoke the four steps in
+* **Under /feature-qc chain (explicit opt-in):** invoke the five steps in
   order in THIS session with no stops between. The chain's only gate is the
-  verification ✋ in phase 4.
+  verification ✋ in phase 5. The owner's chain invocation is the browser
+  unlock for the browse step (the settings ask-gate still prompts).
 * **Sub-skill authority:** each sub-skill's own text governs its step;
   nothing here overrides them, and each carries its own per-harness dials
   table naming the subagents it dispatches.
@@ -40,8 +41,8 @@ model: inherit
 | Step | Tier | Claude Code | Codex |
 |---|---|---|---|
 | feature-find | smart (adjudication) | fable/opus high | `gpt-5.6-sol` high |
+| feature-browse | normal | sonnet | `gpt-5.6-terra` |
 | feature-fix | normal | sonnet | `gpt-5.6-terra` |
-| feature-browse (optional, owner-triggered) | normal | sonnet | `gpt-5.6-terra` |
 | feature-docs | normal | sonnet | `gpt-5.6-terra` |
 | feature-verify | smart (the owner-facing ✋) | fable/opus high | `gpt-5.6-sol` high |
 
@@ -75,16 +76,22 @@ second file.
 Gates + the cross-model review council + adjudication. Findings posted to the
 ft issue.
 
-## 2. feature-fix
+## 2. feature-browse
 
-Apply the round (one fixer per disjoint file group of findings, gates re-run,
-residual lint). Fixes recorded on the issue.
+Checklist-drive the rendered branch in the built-in browser (the round's
+`NOT VERIFIABLE` lines, plan states, manual-check set). Browsed report posted
+to the issue; failures become fix-ready briefs for step 3.
 
-## 3. feature-docs
+## 3. feature-fix
+
+Apply the round (one fixer per disjoint file group of findings + browse
+failures, gates re-run, residual lint). Fixes recorded on the issue.
+
+## 4. feature-docs
 
 Doc sync, subtractive first, default no change.
 
-## 4. feature-verify
+## 5. feature-verify
 
 Re-prove (gates + boot smoke). The verification ✋, written to the
 owner-legibility contract.
@@ -104,24 +111,23 @@ owner-legibility contract.
 bash .claude/workflows/council/selftest.sh --if-changed
 ```
 
-* **Milestone lines are required output:** one entering each of the four
-  phases, one launching any long background wait (name + expected duration).
+* **Milestone lines are required output:** one entering each of the five
+  steps, one launching any long background wait (name + expected duration).
   Nothing else between them.
 * **Open questions freeze writes:** before pausing to ask the owner anything,
   stop or await write-capable subagents. Read-only agents may drain; nothing
   edits files while a question is open.
-* **Durable record:** all four `findings` / `fixes` / `docs` / `verified`
-  markers land as issue comments even in the one-session chain. They are what
-  resume detection and both ships' completeness guards read, and that record
-  is what makes hop-anywhere and post-hoc audit possible.
-* **No browsers, ever, unless the owner asks:** no step of QC opens the
-  in-app Browser pane, agent-browser, or any browser on its own judgment; a
-  check that would need a browser to be meaningful is reported unproven,
-  never backfilled by browsing. The sanctioned path is `/feature-browse`,
-  the optional owner-triggered step: the relay's handoffs may OFFER it
-  (after fix, before verify) but never run it. The owner invoking it is the
-  only unlock (and the settings ask-gate on the Browser tools enforces
-  this).
+* **Durable record:** all five `findings` / `browsed` / `fixes` / `docs` /
+  `verified` markers land as issue comments even in the one-session chain.
+  They are what resume detection and both ships' completeness guards read,
+  and that record is what makes hop-anywhere and post-hoc audit possible.
+* **Browsers only inside /feature-browse:** no other step opens the in-app
+  Browser pane, agent-browser, or any browser on its own judgment; a check
+  that would need a browser to be meaningful is reported unproven, never
+  backfilled by browsing. Browse is a fixed step, but the relay still never
+  runs it itself: find's handoff DIRECTS the owner to `/feature-browse`, and
+  the owner invoking it (or invoking the chain) is the only unlock (the
+  settings ask-gate on the Browser tools enforces this).
 * **Cleanup is not a QC step:** run `/simplify` off the critical path.
 * **Escalation:** a dependency MAJOR upgrade, framework migration, or
   schema/data migration surfacing here: STOP and present options; never

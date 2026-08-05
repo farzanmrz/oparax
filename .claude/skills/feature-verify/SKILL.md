@@ -1,7 +1,7 @@
 ---
 name: feature-verify
 description: >-
-  QC step 4 of 4, hop-anywhere: re-prove the branch after fixes (gates, boot
+  QC step 5 of 5, hop-anywhere: re-prove the branch after fixes (gates, boot
   smoke) and present the verification gate: the full owner-facing
   report written so no clarifying question is ever needed. Use
   standalone (/feature-verify) in any session/app after /feature-fix, or let

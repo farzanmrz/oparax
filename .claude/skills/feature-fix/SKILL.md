@@ -1,11 +1,12 @@
 ---
 name: feature-fix
 description: >-
-  QC step 2 of 4, hop-anywhere: apply the latest QC findings round (or
-  owner-reported triage items) on the ft branch (one fixer per finding, gates
-  re-run, residual lint) and record what was applied on the issue. Use
-  standalone (/feature-fix) after a find round from any session/app, or let
-  /feature-qc chain it. Harness-neutral: runs in Claude Code or Codex.
+  QC step 3 of 5, hop-anywhere: apply the latest QC findings round plus its
+  browsed report's failures (or owner-reported triage items) on the ft branch
+  (one fixer per file group, gates re-run, residual lint) and record what was
+  applied on the issue. Use standalone (/feature-fix) after a find round from
+  any session/app, or let /feature-qc chain it. Harness-neutral: runs in
+  Claude Code or Codex.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
 ---
@@ -23,8 +24,11 @@ model: inherit
 ## 1. Brief
 
 * **Brief source:** the newest `## QC round <R>` findings comment on the ft
-  issue that has no matching `## QC round <R>` fixes comment yet. Read the
-  comments:
+  issue that has no matching `## QC round <R>` fixes comment yet, PLUS the
+  same round's `browsed` comment when one exists: its fix-ready failure
+  briefs join the findings in the same file-group dispatch. A missing
+  `browsed` marker is reported in the fixes comment as "browse not run this
+  round", never silently ignored. Read the comments:
 
 ```bash
 gh issue view <N> --comments
@@ -53,6 +57,12 @@ gh issue view <N> --comments
 * **Fixer contract:** minimal correct fix, match surrounding idiom,
   `tsc --noEmit` clean on touched files, STOP and report if the brief turns
   out to need a design decision.
+* **Schema changes escalate, and never land half-applied:** a fix needing a
+  migration is feature-qc's escalation case: STOP and present options first.
+  If approved, the SAME round applies it to the Supabase project (MCP
+  `apply_migration`), regenerates types, and verifies the touched query
+  shape; a committed migration file alone crashes every runtime surface
+  that reads the new column.
 * **Scope:** mid-fix new scope stays off the branch.
 
 ### B. Gates
@@ -99,8 +109,4 @@ issue:
   `/feature-verify` (`$feature-verify`) on the smart dial. A handoff naming
   a command without its dial is incomplete (the dial line is load-bearing,
   per feature-qc).
-* **Offer the browse slot:** when the round's findings carry rendered-behavior
-  fixes or `NOT VERIFIABLE` lines, the handoff also OFFERS the
-  owner-triggered `/feature-browse` (`$feature-browse`, normal dial) before
-  verify. Offer only: no QC step launches a browser on its own judgment.
 * **Under `/feature-qc`:** continue into feature-docs.

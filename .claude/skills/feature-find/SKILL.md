@@ -1,7 +1,7 @@
 ---
 name: feature-find
 description: >-
-  QC step 1 of 4, hop-anywhere: gates + the cross-model review council +
+  QC step 1 of 5, hop-anywhere: gates + the cross-model review council +
   adjudication, ending with findings posted durably to the ft issue. Use
   standalone (/feature-find) to adjudicate here and apply fixes in
   another session/app, or let /feature-qc chain it. Harness-neutral: runs in
@@ -147,8 +147,8 @@ python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux
   judgment here is made by reading the code.
 * **Rendered-appearance claims:** every one is reported
   `NOT VERIFIABLE: <reason>`, never silently skipped. Those lines flow
-  verbatim into feature-verify's manual-check set, where the owner (the only
-  party who actually renders this app) picks them up.
+  verbatim into feature-browse's checklist (step 2, owner-run); whatever
+  browse marks HUMAN-ONLY lands in feature-verify's manual-check set.
 * **No substitutes:** no screenshotting, no starting a browser, no synthetic
   fixture built solely to make a state reachable.
 
@@ -253,7 +253,10 @@ write it so nothing from this conversation is needed.
 
 **Standalone:** STOP here. Report the round number, counts, and lane
 coverage, then hand off with the exact next command AND its dial from
-feature-qc's step-dial table: `/feature-fix` (`$feature-fix` in Codex) on
-the normal dial. A handoff naming a command without its dial is incomplete
-(the dial line is load-bearing, per feature-qc).
-Under `/feature-qc`: continue into feature-fix.
+feature-qc's step-dial table: `/feature-browse` (`$feature-browse` in
+Codex) on the normal dial, which grounds this round's `NOT VERIFIABLE`
+lines before `/feature-fix` applies both records. A handoff naming a
+command without its dial is incomplete (the dial line is load-bearing, per
+feature-qc).
+Under `/feature-qc` chain: continue into feature-browse (the chain
+invocation is the browser unlock, per feature-qc).
