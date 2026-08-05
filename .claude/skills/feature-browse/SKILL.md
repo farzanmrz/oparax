@@ -22,7 +22,7 @@ approving it is expected, not an error.
 | | Claude Code | Codex |
 |---|---|---|
 | Session dial | sonnet (mechanical checklist-driving, not judgment) | `gpt-5.6-terra` |
-| Browser | the in-app Browser pane (`mcp__Claude_Browser__*`) | the harness's own browser surface if this install provides one; if it does not, STOP and report BLOCKED-harness with the instruction to run /feature-browse in Claude Code instead. Never substitute agent-browser or a hand-rolled driver. |
+| Browser | the in-app Browser pane (`mcp__Claude_Browser__*`) | the app's built-in browser (the Browser panel; owner-enabled in Settings > Browser, "control the built-in browser"). If browser control is disabled in this install, STOP and report BLOCKED-harness with the instruction to enable it or run /feature-browse in Claude Code. Never substitute agent-browser or a hand-rolled driver. |
 
 ## 1. Derive the checklist (durable state only)
 
