@@ -3,6 +3,11 @@
   "permissions": {
     "allow": [
       "Bash(set -a && . ./.env.local && set +a && curl -s \"$NEXT_PUBLIC_SUPABASE_URL*)"
+    ],
+    "ask": [
+      "mcp__Claude_Browser__preview_start",
+      "mcp__Claude_Browser__navigate",
+      "mcp__Claude_Browser__tabs_create"
     ]
   },
   "hooks": {

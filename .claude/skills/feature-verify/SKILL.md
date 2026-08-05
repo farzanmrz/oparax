@@ -41,6 +41,14 @@ lsof -i :3000 -sTCP:LISTEN -t
 
 Then collect runtime errors once from the `_next/mcp` endpoint.
 
+* **Endpoint-only, NEVER a browser:** the sweep is the POST above and nothing
+  else. When it answers "no browser sessions connected", report the sweep as
+  NOT CONNECTED (a valid, honest result) and move on. Do not open the in-app
+  Browser pane, agent-browser, or any browser to "make the sweep return real
+  data" (2026-08-04: a verify session did exactly that unprompted). Browser
+  verification happens ONLY when the owner explicitly asks for it in that
+  session; rendered-behavior claims belong in the manual-check set.
+
 ### C. Teardown
 
 Kill the dev server by its real PID only if THIS session started it; a reused
