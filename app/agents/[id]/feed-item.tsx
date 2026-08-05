@@ -91,7 +91,7 @@ export function FeedItemCard({
                 </span>
               ) : null}
               <SourceChip kind={item.source.kind} />
-              <ChevronDownIcon className="size-4" />
+              <ChevronDownIcon className="size-4 shrink-0" />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-3">

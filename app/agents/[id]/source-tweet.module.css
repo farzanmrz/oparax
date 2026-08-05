@@ -108,13 +108,17 @@
   text-transform: none;
 }
 
-/* The handle is the identity — bold, foreground, sized to hold its own beside the avatar. */
+/* The handle is the identity — bold, foreground, sized to hold its own beside the avatar.
+   `overflow: hidden` zeroes a flex item's automatic minimum size, so without an explicit
+   floor here the handle would shrink all the way to 0 under a tight row instead of just
+   ellipsizing. */
 .handle {
   font-size: 1.0625rem;
   font-weight: 700;
   color: var(--card-foreground);
   white-space: nowrap;
   flex-shrink: 1;
+  min-width: 3.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -129,6 +133,20 @@
 
 a.time:hover {
   text-decoration: underline;
+}
+
+/* Below a phone-width row, the timestamp and the full-size source chip are the metadata that
+   can afford to give ground — dropping/shrinking them here is what keeps the handle readable
+   and the expand chevron inside the trigger's box instead of past its right edge. */
+@media (max-width: 480px) {
+  .time {
+    display: none;
+  }
+
+  .chip {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
 }
 
 .spacer {
