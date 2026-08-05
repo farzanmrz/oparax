@@ -27,8 +27,9 @@ def paras(p):
         if not blk or blk.lstrip().startswith(('|', '#')):   # nor tables or headings
             continue
         if re.match(r'^\s*([-*+]|\d+\.)\s', blk):
-            # split the block at each top-level list marker
-            items = re.split(r'\n(?=\s{0,3}(?:[-*+]|\d+\.)\s)', blk)
+            # split the block at each list marker, NESTED items included — a parent
+            # bullet with five short sub-bullets is a list, not a wall of text
+            items = re.split(r'\n(?=\s{0,7}(?:[-*+]|\d+\.)\s)', blk)
             out.extend(i.strip() for i in items if i.strip())
         else:
             out.append(blk)
