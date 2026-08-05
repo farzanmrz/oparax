@@ -503,6 +503,7 @@ export type Database = {
       source_configs: {
         Row: {
           agent_id: string;
+          beat_guidance: Json | null;
           change_detection: string;
           created_at: string;
           display_name: string | null;
@@ -517,7 +518,7 @@ export type Database = {
           model_call_id: string | null;
           policy_note: string | null;
           prefilter: Json | null;
-          retrieval: string;
+          retrieval: string | null;
           sample_size: number | null;
           sitemap_url: string | null;
           status: string;
@@ -526,6 +527,7 @@ export type Database = {
         };
         Insert: {
           agent_id: string;
+          beat_guidance?: Json | null;
           change_detection: string;
           created_at?: string;
           display_name?: string | null;
@@ -540,7 +542,7 @@ export type Database = {
           model_call_id?: string | null;
           policy_note?: string | null;
           prefilter?: Json | null;
-          retrieval: string;
+          retrieval?: string | null;
           sample_size?: number | null;
           sitemap_url?: string | null;
           status?: string;
@@ -549,6 +551,7 @@ export type Database = {
         };
         Update: {
           agent_id?: string;
+          beat_guidance?: Json | null;
           change_detection?: string;
           created_at?: string;
           display_name?: string | null;
@@ -563,7 +566,7 @@ export type Database = {
           model_call_id?: string | null;
           policy_note?: string | null;
           prefilter?: Json | null;
-          retrieval?: string;
+          retrieval?: string | null;
           sample_size?: number | null;
           sitemap_url?: string | null;
           status?: string;
@@ -937,6 +940,7 @@ export type Database = {
       add_source_config: {
         Args: {
           p_agent_id: string;
+          p_beat_guidance?: Json | null;
           p_change_detection: string;
           p_display_name: string | null;
           p_domain: string;
@@ -947,7 +951,7 @@ export type Database = {
           p_model_call_id: string | null;
           p_policy_note: string | null;
           p_prefilter: Json | null;
-          p_retrieval: string;
+          p_retrieval: string | null;
           p_sample_size: number | null;
           p_sitemap_url: string | null;
           p_url: string;

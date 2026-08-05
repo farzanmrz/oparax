@@ -4,15 +4,13 @@ AI news desk for reporters: monitors their beat across X, catches stories as the
 
 ## Stack
 
-Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, replay) · pnpm + Biome.
-
-- **Versions live in `package.json`** — read it rather than trusting a number here.
+Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, replay) · pnpm + Biome. Versions: `package.json`.
 
 ## Code map
 
 `ls` gives you structure. These are the facts it cannot.
 
-- **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. `poller/` is the polling dispatcher (see `poller/README.md`); it POSTs here, same as `ingest/`'s X stream forwarder.
+- **`app/api/ingest` is the delivery interface** — the Bearer-authed entry every source post enters through. `poller/` (`poller/README.md`) and `ingest/`'s X stream forwarder both POST here.
 - **`app/api/slack/interactions`** is `after()`-deferred to beat Slack's 3s ack deadline before the slow X-post work runs.
 - **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by both `lib/x/post-core.ts`'s posting path and the desk's `editDraft`. A third writer of a `drafts` winner must call it too, never re-derive it.
 - **`lib/x/timeline.ts` is the ONE designated extraction X-read** — 100 most recent ORIGINAL posts, app-only bearer, `exclude=retweets,replies`: a reply-heavy corpus teaches `measuredFacts` a mention rate that opens every draft with an @handle.
@@ -37,7 +35,7 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 | `source_posts`, `model_calls` | ingested posts; one row/call | deny-all |
 | `corpus_posts` | per-desk extracted corpus, including off-beat exclusions | deny-all |
 | `beat_conflicts` | ground-vs-judge disagreements awaiting resolution | EXISTS-join, select-only |
-| `excluded_posts` | every off-beat drafting verdict | EXISTS-join, select-only — read needs the service-role client (joins deny-all `source_posts`) |
+| `excluded_posts` | every off-beat drafting verdict | EXISTS-join, select-only — reads need the service-role client (deny-all `source_posts` join) |
 | `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | OAuth tokens, inferred tier, receipts | deny-all |
 | `draft_claims`, `unmatched_deliveries` | atomic claim counters | deny-all |
 | `voice_extraction_runs` | extraction progress only | deny-all |
@@ -46,11 +44,11 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 
 ### Dormant by design — switched off, not missing
 
-Built, working, and off so the shipped flow stays small. One named constant each — flip it back to reactivate. Don't treat these as gaps or rebuild them.
+Built, working, and off so the shipped flow stays small — not gaps, don't rebuild. One named constant each; flip it back to reactivate.
 
 | Capability | Lever | Where |
 | --- | --- | --- |
-| LinkedIn / Bluesky drafting | `PLATFORMS` (the `Platform` type stays complete) | `lib/agent/desk-config.ts` |
+| LinkedIn / Bluesky drafting | `PLATFORMS` | `lib/agent/desk-config.ts` |
 | Story clustering (many posts → one story) | `CLUSTERING_ENABLED` | `lib/agent/cluster.ts` |
 | Email draft delivery + reply-to-correct | `EMAIL_DELIVERY_ENABLED` | `lib/agent/draft-pipeline.ts` |
 | Auto-post (post without review) | `AUTO_POST_ENABLED` | `app/agents/[id]/setup/sources-card.tsx` |

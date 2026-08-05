@@ -41,10 +41,12 @@ function NewsCard({
   sourcePost,
   extraSourceCount,
   opacityClass,
+  translation,
 }: {
   sourcePost: FeedStory["sourcePosts"][number];
   extraSourceCount: number;
   opacityClass: string | undefined;
+  translation: string | null;
 }) {
   return (
     <div className={cn("flex h-full flex-col gap-2", opacityClass)}>
@@ -53,7 +55,7 @@ function NewsCard({
           <ExtraSourcesBadge count={extraSourceCount} />
         </div>
       ) : null}
-      <SourceTweet sourcePost={sourcePost} />
+      <SourceTweet sourcePost={sourcePost} translation={translation} />
     </div>
   );
 }
@@ -179,6 +181,7 @@ export function FeedItemCard({
     story.winners.x?.postedAt != null && story.winners.x?.postedUrl != null
       ? "opacity-[0.66]"
       : undefined;
+  const translation = (story.winners.x ?? Object.values(story.winners)[0])?.translation ?? null;
 
   if (!sourcePost) return null; // defensive: a winner whose source_posts row went missing
 
@@ -188,6 +191,7 @@ export function FeedItemCard({
         extraSourceCount={story.sourcePosts.length - 1}
         opacityClass={opacityClass}
         sourcePost={sourcePost}
+        translation={translation}
       />
       <DraftCard
         charLimit={charLimit}

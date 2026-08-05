@@ -77,6 +77,7 @@ export type FeedStory = {
     text: string;
     postedAt: string | null;
     xPostId: string | null; // NULL for a website source — the id the X embed is fetched by
+    url: string | null; // the article URL for a website source — NULL for an X source
   }[];
   winners: Partial<
     Record<
@@ -90,6 +91,11 @@ export type FeedStory = {
         createdAt: string;
         postedAt: string | null;
         postedUrl: string | null;
+        /** A faithful English translation of the source post, or null when the source was
+         *  already English — computed once by grounding/judge (draft-ground.ts,
+         *  draft-judge.ts) and stored per-draft. Read here purely for display: the source
+         *  card shows this instead of the raw non-English text when present. */
+        translation: string | null;
       }
     >
   >; // keyed by platform — only platforms that actually produced a winning draft appear
@@ -107,6 +113,7 @@ type SourcePostJoin = {
   text: string;
   posted_at: string | null;
   x_post_id: string | null;
+  url: string | null;
   raw: unknown;
 };
 
@@ -122,6 +129,7 @@ type WinnerRow = {
   posted_url: string | null;
   created_at: string;
   model_call_id: string;
+  translation: string | null;
   model_calls: WinnerModelCall;
 };
 
@@ -184,7 +192,7 @@ export async function fetchFeedPage(supabase: Client, agentId: string): Promise<
       // Oldest-assigned-first within a story, so `sourcePosts[0]` (feed-item.tsx's rendered
       // "primary" source post — see its own comment) is the post that actually started the
       // story, not an arbitrary fetch order.
-      .select("story_id, source_posts(id, author_handle, text, posted_at, x_post_id, raw)")
+      .select("story_id, source_posts(id, author_handle, text, posted_at, x_post_id, url, raw)")
       .in("story_id", storyIds)
       .order("created_at", { ascending: true }),
     supabase
@@ -194,7 +202,9 @@ export async function fetchFeedPage(supabase: Client, agentId: string): Promise<
       // delivery's council crowns its own winner and nothing dethrones the last one — so the
       // winners loop below would otherwise keep whichever row PostgREST happened to return last.
       // Ascending means the NEWEST winner is applied last and wins, deterministically.
-      .select("id, story_id, platform, posted_at, posted_url, created_at, model_call_id")
+      .select(
+        "id, story_id, platform, posted_at, posted_url, created_at, model_call_id, translation",
+      )
       .eq("agent_id", agentId)
       .in("story_id", storyIds)
       .eq("is_winner", true)
@@ -241,6 +251,7 @@ export async function fetchFeedPage(supabase: Client, agentId: string): Promise<
       text: row.source_posts.text,
       postedAt: row.source_posts.posted_at,
       xPostId: row.source_posts.x_post_id,
+      url: row.source_posts.url,
     });
     sourcePostsByStoryId.set(row.story_id, list);
   }
@@ -260,6 +271,7 @@ export async function fetchFeedPage(supabase: Client, agentId: string): Promise<
       createdAt: winner.created_at,
       postedAt: winner.posted_at,
       postedUrl: winner.posted_url,
+      translation: winner.translation,
     };
     winnersByStoryId.set(winner.story_id, entry);
   }

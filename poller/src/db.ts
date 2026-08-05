@@ -9,8 +9,11 @@ export interface SourceConfigRow {
   url: string;
   domain: string;
   change_detection: string; // 'sitemap' | 'rss'
-  retrieval: string; // 'none' | 'feed' | 'direct' | 'unlocker' | 'browser'
+  // null = the poller decides adaptively, per fetch (#105's default); a non-null value is a
+  // deliberate operator override consumed by fetch-body.ts's adaptive chain.
+  retrieval: string | null; // null | 'none' | 'feed' | 'direct' | 'unlocker' | 'browser'
   prefilter: { pathPrefix?: string; reasoning?: string } | null;
+  beat_guidance: { onBeat?: string; offBeat?: string } | null;
   sitemap_url: string | null;
   feed_url: string | null;
   status: string; // 'active' | 'failed_validation' | 'stale'
@@ -26,7 +29,7 @@ export async function fetchActiveSourceConfigs(client: SupabaseClient): Promise<
   const { data, error } = await client
     .from("source_configs")
     .select(
-      "id, agent_id, url, domain, change_detection, retrieval, prefilter, sitemap_url, feed_url, status, last_matched_at, last_verified_at",
+      "id, agent_id, url, domain, change_detection, retrieval, prefilter, beat_guidance, sitemap_url, feed_url, status, last_matched_at, last_verified_at",
     )
     .eq("status", "active");
   if (error) throw error;

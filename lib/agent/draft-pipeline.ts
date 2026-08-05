@@ -148,6 +148,41 @@ function matchesTrackedWebsite(websites: Json, deliveryUrl: string): boolean {
   return websites.some((w) => typeof w === "string" && hostnameOf(w) === host);
 }
 
+/** The title-level beat guidance #100's onboarding call already produces for this desk's
+ *  source (#105) — previously computed and discarded, now persisted on `source_configs` and
+ *  threaded here into grounding, so cases a URL path filter alone can't decide (e.g.
+ *  "Barcelona the club" vs. "Barcelona the city") get the site-specific disambiguation the
+ *  onboarding model already worked out. Best-effort: a lookup failure or a source with no
+ *  guidance yet must never block or error drafting — grounding degrades to exactly today's
+ *  behavior (desk-level beat text only) on any null return. */
+async function fetchSiteGuidance(
+  admin: AdminClient,
+  agentId: string,
+  deliveryUrl: string,
+): Promise<{ onBeat: string; offBeat: string } | null> {
+  const host = hostnameOf(deliveryUrl);
+  if (!host) return null;
+  // try/catch, not just the `{ error }` check below: a transport-level failure (rejected
+  // connection, DNS, timeout) throws past the client instead of resolving to `{ error }`, and
+  // this lookup's one caller isn't itself wrapped — an uncaught throw here would fail the
+  // entire delivery for every matched desk, not just skip this best-effort lookup for one.
+  try {
+    const { data, error } = await admin
+      .from("source_configs")
+      .select("domain, beat_guidance")
+      .eq("agent_id", agentId)
+      .eq("status", "active");
+    if (error || !data) return null;
+    const matched = data.find((row) => hostnameOf(`https://${row.domain}`) === host);
+    const guidance = matched?.beat_guidance as { onBeat?: string; offBeat?: string } | null;
+    if (!guidance?.onBeat || !guidance?.offBeat) return null;
+    return { onBeat: guidance.onBeat, offBeat: guidance.offBeat };
+  } catch (err) {
+    console.error("draft-pipeline: fetchSiteGuidance lookup failed", err);
+    return null;
+  }
+}
+
 /** The ONE place a `CouncilCall` becomes a `model_calls` row. Inserted one row at a time (not
  *  batched) so the returned ids are guaranteed aligned with `calls` BY INDEX — a batched
  *  insert's returned order is not a contract PostgREST makes, and a misaligned join would
@@ -298,6 +333,7 @@ async function draftForAgent(
   sourcePostId: string,
   brief: SourceBrief,
   deliverySource: IngestDelivery["source"],
+  siteGuidance: { onBeat: string; offBeat: string } | null,
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
   // WHICH reporter's desk was drafting is most of an error report's diagnostic value, and this
   // path runs from /api/ingest's Bearer-authed delivery — no user session exists to attribute it
@@ -369,6 +405,7 @@ async function draftForAgent(
       voiceGuidance,
       platform: "x",
       accountTier,
+      siteGuidance,
     });
     const [groundCallId] = await insertModelCalls(
       admin,
@@ -921,7 +958,11 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     // worker also drops paused desks' handles from the stream on its next ~5-min rule rebuild;
     // this is the immediate guard for that lag window and for hand-seeded deliveries.
     if (agent.status !== "active") continue;
-    drafted.push(await draftForAgent(admin, agent, sourcePostId, brief, delivery.source));
+    const siteGuidance =
+      delivery.source === "website" ? await fetchSiteGuidance(admin, agent.id, delivery.url) : null;
+    drafted.push(
+      await draftForAgent(admin, agent, sourcePostId, brief, delivery.source, siteGuidance),
+    );
   }
 
   return { sourcePostId, drafted };

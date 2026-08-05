@@ -24,6 +24,7 @@ export type ExcludedPost = {
     text: string;
     postedAt: string | null;
     xPostId: string | null;
+    url: string | null;
   };
   onBeatReason: string;
   excludedAt: string;
@@ -33,7 +34,7 @@ export async function fetchExcludedPosts(client: Client, agentId: string): Promi
   const { data, error } = await client
     .from("excluded_posts")
     .select(
-      "id, on_beat_reason, excluded_at, source_posts(id, author_handle, raw, text, posted_at, x_post_id)",
+      "id, on_beat_reason, excluded_at, source_posts(id, author_handle, raw, text, posted_at, x_post_id, url)",
     )
     .eq("agent_id", agentId)
     .order("excluded_at", { ascending: false })
@@ -51,6 +52,7 @@ export async function fetchExcludedPosts(client: Client, agentId: string): Promi
         text: sourcePost.text,
         postedAt: sourcePost.posted_at,
         xPostId: sourcePost.x_post_id,
+        url: sourcePost.url,
       },
       onBeatReason: row.on_beat_reason,
       excludedAt: row.excluded_at,

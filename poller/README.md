@@ -3,8 +3,9 @@
 The Railway worker for Oparax's website-source ingestion path (issue #101). Every
 `POLLER_TICK_INTERVAL_MS` (default 45s) it reads every `active` row in `source_configs` (the
 desks' onboarded website sources from #100), checks that source's sitemap or RSS feed via
-conditional GET, finds items it has never delivered before, fetches each new item's body per
-that source's stored `retrieval` tier, and POSTs a `"website"`-shaped delivery to the app's
+conditional GET, finds items it has never delivered before, fetches each new item's body via
+the adaptive retrieval chain (#105 — see `fetch-body.ts` below), and POSTs a `"website"`-shaped
+delivery to the app's
 `POST /api/ingest`. No model call anywhere in this worker — deliberately dumb, per the issue's
 decision of record.
 
@@ -38,9 +39,12 @@ package:
   returning only `{ url, itemKey, title, publishedAt, bodyFromFeed }` per item, with
   conditional-GET support (ETag + Last-Modified) so an unchanged feed short-circuits on a
   `304` without re-parsing.
-- `fetch-body.ts` — `fetchArticleBody` dispatches on `source_configs.retrieval`: `direct`
-  (plain fetch + tag-strip), `unlocker` (Bright Data Web Unlocker, falls back to `direct`
-  behavior if `BRIGHTDATA_API_KEY` is unset), anything else (title/teaser only, no fetch).
+- `fetch-body.ts` — `fetchArticleBody` is adaptive by default (#105): direct fetch first, then
+  Bright Data Web Unlocker if that fails or comes back suspiciously short and
+  `BRIGHTDATA_API_KEY`/`BRIGHTDATA_ZONE` are set, then a feed/sitemap-derived teaser as the
+  last resort. `source_configs.retrieval` is now an optional operator override (`"feed"` /
+  `"none"` / `"unlocker"`) that skips straight to that tier — null (the default) runs the
+  adaptive chain.
 - `db.ts` — the poller's own service-role Supabase client; reads `active` `source_configs`
   rows, calls the `record_seen_item` RPC (atomic check-and-mark dedup).
 - `deliver.ts` / `types.ts` — `postDelivery` (adapted from `ingest/src/deliver.ts`'s
@@ -85,8 +89,8 @@ only). Set them in Railway's variable UI/CLI, never in `railway.json`.
 | `INGEST_SECRET` | yes | Must be byte-identical to the app's `INGEST_SECRET` (Vercel) and to `ingest/`'s own copy of the same value. |
 | `SLACK_WEBHOOK_URL` | yes | Staleness alarm + the delivery-cap alarm. |
 | `OPARAX_POLLER_USER_AGENT` | yes | e.g. `OparaxBot/0.1 (+https://oparax.ai/bot)` — a real, honest UA + contact URL, never a browser string. No default: a fabricated contact URL is worse than a required var. |
-| `BRIGHTDATA_API_KEY` | no | Only needed once a source's `retrieval` is `'unlocker'` — none are, at launch. |
-| `BRIGHTDATA_ZONE` | no | The Bright Data Web Unlocker zone name to request through. Required alongside `BRIGHTDATA_API_KEY` for the `unlocker` tier to actually work. |
+| `BRIGHTDATA_API_KEY` | no | The adaptive chain's real Tier 2 fallback — used automatically whenever a direct fetch fails or looks blocked, for every source, not just ones with an explicit `retrieval` override. Unset means Tier 2 is skipped and a failed direct fetch falls straight to the teaser. |
+| `BRIGHTDATA_ZONE` | no | The Bright Data Web Unlocker zone name to request through. Required alongside `BRIGHTDATA_API_KEY` for Tier 2 to actually run. |
 | `POLLER_TICK_INTERVAL_MS` | no (default `45000`) | 30-60s window per the issue's amendment. |
 | `POLLER_STALE_THRESHOLD_MS` | no (default `432000000` = 5 days) | No new matches for this long alarms Slack. |
 | `POLLER_ALARM_COOLDOWN_MS` | no (default `3600000` = 1h) | Debounce for the staleness alarm. |

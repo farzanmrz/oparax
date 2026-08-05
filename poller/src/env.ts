@@ -29,9 +29,9 @@ function required(name: string): string {
   return value;
 }
 
-/** Not fatal: BRIGHTDATA_API_KEY / BRIGHTDATA_ZONE have no configured source at launch (no
- *  #100 onboarding run ever sets retrieval = 'unlocker' yet), so most deployments
- *  legitimately have neither. */
+/** Not fatal: BRIGHTDATA_API_KEY / BRIGHTDATA_ZONE are the adaptive retrieval chain's Tier 2
+ *  fallback (#105) — used automatically for any source, not gated on a retrieval override —
+ *  but a direct-fetch-only deployment still degrades cleanly to the teaser without them. */
 function optional(name: string): string | null {
   const value = process.env[name];
   return value ? value : null;

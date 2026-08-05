@@ -126,11 +126,27 @@ function MediaStrip({ tweet }: { tweet: Tweet }) {
   );
 }
 
+/** A website source has no X handle to resolve a hostname against, so its identity is the
+ *  site's own hostname (e.g. "mundodeportivo.com") and its "view source" link is the actual
+ *  article URL — never a synthesized `x.com/<fallback-handle>` link, which would point at
+ *  whatever unrelated account happens to own that handle on X. */
+function websiteHostname(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
 export async function SourceTweet({
   sourcePost,
+  translation,
 }: {
   sourcePost: FeedStory["sourcePosts"][number];
+  translation?: string | null;
 }) {
+  const isWebsite = !sourcePost.xPostId;
   const fetched = sourcePost.xPostId ? await getCachedTweet(sourcePost.xPostId) : undefined;
   // The post existed on X (we have its id) but the syndication API no longer serves it —
   // deleted, protected, or the author renamed. Our stored copy is the record now.
@@ -145,18 +161,19 @@ export async function SourceTweet({
       handle: sourcePost.authorHandle ?? "source",
       name: sourcePost.authorName,
     });
-  // The BODY is our stored text, never `tweet.text`. For a long ("note") post the syndication
-  // payload stops at ~280 chars on a dangling token and sets `note_tweet: { id }` with the
-  // remainder nowhere — measured on @BarcaUniversal 2081154657573883993: 294 chars from
-  // syndication against 393 from the v2 stream's `note_tweet.text`, which is what the ingest
-  // worker now stores. Reading `tweet.text` here would silently re-truncate the post AFTER the
-  // pipeline went to the trouble of capturing it whole.
-  const body = sourcePost.text;
+  // The BODY is our stored text, never `tweet.text`, for the same truncation reason as
+  // always (see the module comment) — but prefer the grounding-computed English translation
+  // over the raw source text when one exists, so a non-English site's evidence card reads in
+  // the reporter's language instead of the original.
+  const body = translation?.trim() || sourcePost.text;
   // Everything OTHER than the text still comes from syndication, keyed by string rather than by
   // character offset: its entity indices address ITS text, which is a different string to ours.
   const mediaUrls = (tweet.entities?.media ?? []).map((m) => m.url);
   const urlEntities = tweet.entities?.urls ?? [];
-  const postUrl = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`;
+  const websiteHost = isWebsite ? websiteHostname(sourcePost.url) : null;
+  const postUrl = isWebsite
+    ? sourcePost.url
+    : `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`;
 
   const hasRealAvatar = !tweet.user.profile_image_url_https.startsWith("data:");
   const timeLabel = sourcePost.postedAt ? (
@@ -168,11 +185,17 @@ export async function SourceTweet({
       <div className={styles.header}>
         <a
           className={styles.identity}
-          href={`https://x.com/${tweet.user.screen_name}`}
+          href={
+            isWebsite ? (sourcePost.url ?? undefined) : `https://x.com/${tweet.user.screen_name}`
+          }
           rel="noopener noreferrer"
           target="_blank"
         >
-          {hasRealAvatar ? (
+          {isWebsite ? (
+            <span aria-hidden="true" className={styles.monogram}>
+              {(websiteHost ?? "?").slice(0, 1).toUpperCase()}
+            </span>
+          ) : hasRealAvatar ? (
             // biome-ignore lint/performance/noImgElement: X CDN avatar, already sized (_normal = 48px) — next/image would only proxy it
             <img alt="" className={styles.avatar} src={tweet.user.profile_image_url_https} />
           ) : (
@@ -181,14 +204,18 @@ export async function SourceTweet({
             // showing a monogram for an author whose face the reporter knows.
             <XAvatar handle={tweet.user.screen_name} />
           )}
-          <span className={styles.handle}>@{tweet.user.screen_name}</span>
+          <span className={styles.handle}>
+            {isWebsite ? (websiteHost ?? "website source") : `@${tweet.user.screen_name}`}
+          </span>
         </a>
         {/* The source link sits WITH the identity, not in a footer — a trailing footer row
             made every card taller than its content for one icon, and the card should end
             where Show more ends. */}
-        {missing ? null : (
+        {missing || !postUrl ? null : (
           <a className={styles.sourceLink} href={postUrl} rel="noopener noreferrer" target="_blank">
-            <span className="sr-only">View this post on X</span>
+            <span className="sr-only">
+              {isWebsite ? "View original article" : "View this post on X"}
+            </span>
             <svg
               aria-hidden="true"
               fill="none"
@@ -206,7 +233,7 @@ export async function SourceTweet({
         )}
         <span className={styles.spacer} />
         {missing ? <span className={styles.archived}>No longer on X · archived</span> : null}
-        {missing ? (
+        {missing || !postUrl ? (
           <span className={styles.time}>{timeLabel}</span>
         ) : (
           <a className={styles.time} href={postUrl} rel="noopener noreferrer" target="_blank">
