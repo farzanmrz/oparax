@@ -41,11 +41,15 @@ gh issue view <N> --comments
   accounts, taste/feel judgments). HUMAN-ONLY items are listed in the report
   untouched, never attempted.
 * **Always include the mechanics** even if no source names them: initial
-  render at 375x812, pagination to exhaustion (scroll until the list ends;
-  count pages; duplicates or a premature stop are findings), every filter
-  narrowing server-side, search, one full auto-refresh cycle with 2+ pages
-  loaded (scroll position, no duplicates/drops), each card state present in
-  data, dialogs open/close, console errors.
+  render, pagination to exhaustion (scroll until the list ends; count pages;
+  duplicates or a premature stop are findings), every filter narrowing
+  server-side, search, one full auto-refresh cycle with 2+ pages loaded
+  (scroll position, no duplicates/drops), each card state present in data,
+  dialogs open/close, console errors.
+* **Viewport:** the browser's normal default viewport, never resized on the
+  session's own judgment. ONLY when the owner's invocation asks for mobile
+  (e.g. "/feature-browse mobile") add a second pass of the same checklist at
+  375x812; the report then carries both viewports' verdicts.
 
 ## 2. Boot and log in
 
@@ -53,7 +57,8 @@ gh issue view <N> --comments
   start `pnpm dev` in the background and record the PID.
 * **Browser:** open the pane at `http://localhost:3000`, log in with the
   test account (`testuser@oparax.ai` / `hello123`, pre-authorized in
-  AGENTS.md), set viewport 375x812.
+  AGENTS.md). Leave the viewport at its default (mobile pass only per the
+  viewport rule in phase 1).
 
 ## 3. Drive the checklist
 

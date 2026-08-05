@@ -30,8 +30,10 @@ gh issue view <N> --comments
 ```
 
 * **Required markers:** the latest `## QC round <R>` family must include the
-  `findings`, `fixes`, `docs`, AND `verified` markers (match on the keyword;
-  separator punctuation may vary across rounds).
+  `findings`, `browsed`, `fixes`, `docs`, AND `verified` markers (match on
+  the keyword; separator punctuation may vary across rounds). Rounds older
+  than the five-step battery (no `browsed` anywhere on the issue) are judged
+  on the original four.
 * **Any marker missing:** name what's missing and STOP: the branch has
   unfinished QC (e.g. fixes applied but never re-proven), and the missing
   step runs first in whichever app the owner likes.

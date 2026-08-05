@@ -14,8 +14,8 @@ model: inherit
 
 * **Dial:** run this chat on a smart dial (Claude: opus/fable; Codex:
   gpt-5.6-sol): the phase 2 report is judgment work.
-* **Inputs:** the branch diff and the issue's QC round comments (`findings` +
-  `fixes`); nothing conversational is needed.
+* **Inputs:** the branch diff and the issue's QC round comments (`findings`,
+  `browsed`, `fixes`); nothing conversational is needed.
 * **Exploration fan-out (Codex):** when the surface sweep spans 3+
   independent files/areas, spawn PARALLEL `cx_grounder` instances, named
   explicitly (≤6 threads); Codex never fans out unprompted. Claude Code

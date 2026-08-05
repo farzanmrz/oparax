@@ -222,6 +222,10 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
 * **Failure conditions:** a failed lane is reported FAILED, never as a clean
   pass. `AGY_EMPTY` is no-signal, not approval. All externals failing =
   single-family review, and the record must say so.
+* **Retry once, fast failures only:** a lane exiting non-zero within ~2 min
+  with no output gets exactly ONE relaunch (preserve the first attempt's
+  logs first: the shared label paths overwrite). Both attempts land in the
+  round record; a second failure is final.
 * **Judge a lane on POST-FIX behaviour, never on its accumulated failure
   count:** a proposed detach of grok+agy was reversed the same day once the
   record was read; the evidence is in `council/run.sh`'s header, don't
