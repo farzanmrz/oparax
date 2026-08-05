@@ -97,5 +97,9 @@ AGENTS.md 32205 -> 31180 B (-3.2%) | corpus 162756 -> 161500 B
   The byte line is what makes the ratchet visible per slice.
 * **Post the marker even when nothing changed:** resume detection and both
   ships' guards read it.
-* **Standalone:** STOP and name the next hop (`/feature-verify`, either app).
+* **Standalone:** STOP and hand off with the exact next command AND its dial
+  from feature-qc's step-dial table: `/feature-verify` (`$feature-verify` in
+  Codex) on the smart dial. If the round has no `browsed` marker, also OFFER
+  the owner-triggered `/feature-browse` (`$feature-browse`, normal dial)
+  first. A handoff naming a command without its dial is incomplete.
   Under `/feature-qc`: continue into feature-verify.

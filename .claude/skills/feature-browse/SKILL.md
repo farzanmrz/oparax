@@ -92,3 +92,7 @@ Remaining HUMAN-ONLY items: ...
   owner's previous manual-check set; everything browser-checked here is off
   the owner's plate, and the next `verified` report cites this comment
   instead of re-listing covered items.
+* **Exit handoff:** name the exact next command AND its dial from
+  feature-qc's step-dial table: fix-ready failures go to `/feature-fix`
+  (`$feature-fix` in Codex, normal dial); otherwise the next unrun step,
+  `/feature-docs` (normal dial) or `/feature-verify` (smart dial).

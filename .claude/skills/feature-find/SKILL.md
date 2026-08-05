@@ -186,12 +186,11 @@ diff showed).
 
 * **Persistent sessions only:** launch each lane in a named persistent
   task/session (a harness-native durable task, or `tmux`), record its real
-  task/session id, and have the session write `<label>.exit` with the
-  wrapper's exit code AND redirect the bridge command's stderr to
-  `<label>.stderr.log` — a lane that dies pre-wrapper otherwise vanishes
-  without a diagnosable trace (2026-08-05: an agy roster brownout took an
-  autopsy through agy's own CLI logs because the launch dropped stderr).
-  Never shell-background a command with `&` and abandon it.
+  task/session id, have the session write `<label>.exit` with the
+  wrapper's exit code, and redirect the bridge command's stderr to
+  `<label>.stderr.log` (a lane that dies pre-wrapper otherwise leaves no
+  diagnosable trace). Never shell-background a command with `&` and
+  abandon it.
 * **Poll:** the live task/session plus its exact exit file; read the exact
   output only after exit `0`.
 * **Failure condition:** a non-zero exit, or a vanished session with no exit
@@ -253,5 +252,8 @@ This comment is the complete brief for `/feature-fix` in ANY session or app:
 write it so nothing from this conversation is needed.
 
 **Standalone:** STOP here. Report the round number, counts, and lane
-coverage, and name the next hop (`/feature-fix` here or in the other app).
+coverage, then hand off with the exact next command AND its dial from
+feature-qc's step-dial table: `/feature-fix` (`$feature-fix` in Codex) on
+the normal dial. A handoff naming a command without its dial is incomplete
+(the dial line is load-bearing, per feature-qc).
 Under `/feature-qc`: continue into feature-fix.

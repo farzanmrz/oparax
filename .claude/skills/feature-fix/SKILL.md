@@ -93,6 +93,14 @@ issue:
 
 ## 4. Exit
 
-* **Standalone:** STOP. Summarize applied/skipped and name the next hop
-  (`/feature-docs`, then `/feature-verify`, in either app).
+* **Standalone:** STOP. Summarize applied/skipped, then hand off with the
+  exact next command AND its dial from feature-qc's step-dial table: next is
+  `/feature-docs` (`$feature-docs` in Codex) on the normal dial, then
+  `/feature-verify` (`$feature-verify`) on the smart dial. A handoff naming
+  a command without its dial is incomplete (the dial line is load-bearing,
+  per feature-qc).
+* **Offer the browse slot:** when the round's findings carry rendered-behavior
+  fixes or `NOT VERIFIABLE` lines, the handoff also OFFERS the
+  owner-triggered `/feature-browse` (`$feature-browse`, normal dial) before
+  verify. Offer only: no QC step launches a browser on its own judgment.
 * **Under `/feature-qc`:** continue into feature-docs.
