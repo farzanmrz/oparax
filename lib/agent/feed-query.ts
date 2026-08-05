@@ -51,7 +51,7 @@ const STORY_PAGE_LIMIT = 50;
  *  own — this reads it back out rather than adding one for a purely presentational field. Returns
  *  null for a website source, an older row stored before this shape, or any payload that doesn't
  *  match; every caller must treat the name as optional. */
-function authorNameFromRaw(raw: unknown): string | null {
+export function authorNameFromRaw(raw: unknown): string | null {
   if (typeof raw !== "object" || raw === null) return null;
   const includes = (raw as { includes?: unknown }).includes;
   if (typeof includes !== "object" || includes === null) return null;

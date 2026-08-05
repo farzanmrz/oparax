@@ -2,12 +2,13 @@
 
 // app/agents/[id]/desk-controls.tsx
 //
-// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Setup nav, active
-// state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
-// `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME three
+// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Setup/Excluded nav,
+// active state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
+// `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME four
 // links at the SAME URLs — one URL tree, no parallel nav model.
 
 import {
+  EyeOffIcon,
   FileTextIcon,
   MicVocalIcon,
   PauseIcon,
@@ -62,13 +63,19 @@ export const DESK_TABS = [
     href: (id: string) => `/agents/${id}/setup`,
     exact: false,
   },
+  {
+    label: "Excluded",
+    icon: EyeOffIcon,
+    href: (id: string) => `/agents/${id}/excluded`,
+    exact: false,
+  },
 ] as const;
 
 export function isDeskTabActive(pathname: string, href: string, exact: boolean): boolean {
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The Feed/Voice/Setup tab nav, wide layout (`hidden md:flex` at the call site). */
+/** The Feed/Voice/Setup/Excluded tab nav, wide layout (`hidden md:flex` at the call site). */
 export function DeskTabs({
   deskId,
   needsReviewCount,
@@ -83,6 +90,7 @@ export function DeskTabs({
       {DESK_TABS.map((tab) => {
         const href = tab.href(deskId);
         const active = isDeskTabActive(pathname, href, tab.exact);
+        const badgeCount = tab.label === "Feed" && needsReviewCount > 0 ? needsReviewCount : 0;
         return (
           <Link
             className={cn(
@@ -96,12 +104,12 @@ export function DeskTabs({
             aria-current={active ? "page" : undefined}
           >
             {tab.label}
-            {tab.label === "Feed" && needsReviewCount > 0 ? (
+            {badgeCount > 0 ? (
               <Badge
                 className="h-4 min-w-4 justify-center px-1 font-mono text-[10px] tabular-nums"
                 variant="secondary"
               >
-                {formatBadgeCount(needsReviewCount)}
+                {formatBadgeCount(badgeCount)}
               </Badge>
             ) : null}
           </Link>

@@ -498,6 +498,28 @@ async function draftForAgent(
     }
 
     if (!final.onBeat) {
+      // Persist every off-beat verdict (agreement or disagreement alike) so a reporter can
+      // review what got filtered and why — beat_conflicts above only fires on disagreement.
+      // final.onBeatReason always carries the judge's reason when usableJudge — fine when the
+      // judge is the one who called it off-beat, backwards when the grounder called off-beat
+      // and the judge (overruled by the AND in final.onBeat) actually argued FOR inclusion.
+      // Persist whichever verdict is the one that actually excluded the post.
+      const exclusionReason =
+        verdict.onBeat === false
+          ? verdict.onBeatReason
+          : (judged?.onBeatReason ?? final.onBeatReason);
+      const { error: exclusionError } = await admin.from("excluded_posts").upsert(
+        {
+          agent_id: agent.id,
+          source_post_id: sourcePostId,
+          on_beat_reason: exclusionReason,
+        },
+        { onConflict: "agent_id,source_post_id", ignoreDuplicates: true },
+      );
+      if (exclusionError) {
+        console.error("draft-pipeline: excluded_posts persistence failed", exclusionError);
+      }
+
       // Off-beat: no story row, no council, no drafts row — reported, not drafted-and-hidden.
       return {
         agentId: agent.id,

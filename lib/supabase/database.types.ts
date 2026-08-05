@@ -292,6 +292,45 @@ export type Database = {
           },
         ];
       };
+      excluded_posts: {
+        Row: {
+          agent_id: string;
+          excluded_at: string;
+          id: string;
+          on_beat_reason: string;
+          source_post_id: string;
+        };
+        Insert: {
+          agent_id: string;
+          excluded_at?: string;
+          id?: string;
+          on_beat_reason: string;
+          source_post_id: string;
+        };
+        Update: {
+          agent_id?: string;
+          excluded_at?: string;
+          id?: string;
+          on_beat_reason?: string;
+          source_post_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "excluded_posts_agent_id_fkey";
+            columns: ["agent_id"];
+            isOneToOne: false;
+            referencedRelation: "agents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "excluded_posts_source_post_id_fkey";
+            columns: ["source_post_id"];
+            isOneToOne: false;
+            referencedRelation: "source_posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       model_calls: {
         Row: {
           cost_usd: number | null;

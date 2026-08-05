@@ -19,7 +19,7 @@ export type HeaderDesk = {
 /**
  * The single always-on site chrome for every /agents/* page: one sticky 56px topbar. Left: the
  * Oparax mark, the desk switcher (current desk name + live/paused dot), and — when on a desk —
- * the pause/delete controls. Center (desktop): the Feed/Voice/Setup tabs for the current desk.
+ * the pause/delete controls. Center (desktop): the Feed/Voice/Setup/Excluded tabs for the current desk.
  * Right: the account menu.
  *
  * This is a client component so it can read `usePathname` and render the desk-scoped bits
