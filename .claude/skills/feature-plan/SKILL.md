@@ -87,6 +87,13 @@ Write the full plan yourself, incorporating the following rules:
   (shadcn/ai-elements) -> existing bespoke chrome -> composition of existing
   primitives -> new, with a one-line justification for why the ladder failed.
   No new visual patterns, no new spacing/radius/color decisions.
+* **v0 interlude (when the ask includes a v0 design pass):** the plan
+  declares it as an explicit OWNER-V0 step in the build list, placed after
+  the skeleton tasks it designs against. The ladder governs the skeleton
+  only; from the merge-back on, the v0 winning design IS the design spec,
+  and the post-v0 QC round judges conformance to IT (see feature-find's
+  yardstick). Leaving the interlude implicit is the recurring failure: the
+  flow then ships or verifies around v0 instead of through it.
 * **States are part of the spec:** enumerate observable states (pending,
   streaming-empty, mid-stream, done, each failure) and specify intent per
   state. Keep render paths presentational-pure (props in, pixels out, no
@@ -105,6 +112,12 @@ Write the full plan yourself, incorporating the following rules:
       **A handoff step: the flow presents it and STOPS.** No phase performs
       it or drives a browser toward it. "Manual" without a named actor gets
       reinterpreted, so the label is the fix.
+    * `OWNER-V0`: the owner drives v0 (GitHub-synced) against the ft branch:
+      v0 cuts its own `v0/*` branch from it and merges the winning design
+      back into it. A handoff step like OWNER-MANUAL: the flow presents what
+      v0 designs against (the built contract) and STOPS. The merge-back is
+      unreviewed code, so a fresh QC round over the branch is MANDATORY after
+      it and the plan's step list says so explicitly.
 
 ### C. Required document sections
 

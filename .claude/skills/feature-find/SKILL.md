@@ -108,6 +108,13 @@ The plan's `[design: reuse]` contract; the critic NEVER judges from its own
 taste: conformance to the app, ladder respected (existing components before
 new), the surface reads as native, per-state intent met.
 
+* **Post-v0 rounds flip the yardstick:** when the round follows a declared
+  OWNER-V0 merge (the plan's step list says which), the merged v0 design IS
+  the spec. Judge conformance to the v0 output and per-state intent; new
+  visual patterns, spacing, and color from v0 are the design, not ladder
+  violations. Functional findings (states, contracts, RLS, races) are
+  unaffected.
+
 ### B. Experiential checklist
 
 Also check experiential quality (hierarchy, spacing, all states,

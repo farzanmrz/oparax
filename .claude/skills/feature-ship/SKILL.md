@@ -35,6 +35,11 @@ gh issue view <N> --comments
 * **Any marker missing:** name what's missing and STOP: the branch has
   unfinished QC (e.g. fixes applied but never re-proven), and the missing
   step runs first in whichever app the owner likes.
+* **Stale `verified` is missing `verified`:** commits on the branch newer
+  than the latest `verified` marker (a v0 design merge is the recurring
+  case) mean the proven state is not the shipping state. STOP and require a
+  fresh QC round over the new diff; the owner-override rule above still
+  applies.
 * **Owner override:** the owner may explicitly override ("ship anyway");
   record that override in the ship summary.
 * **No QC round comments at all:** the slice predates this contract or

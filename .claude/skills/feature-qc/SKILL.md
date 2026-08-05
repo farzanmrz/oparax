@@ -29,6 +29,11 @@ model: inherit
 * **Sub-skill authority:** each sub-skill's own text governs its step;
   nothing here overrides them, and each carries its own per-harness dials
   table naming the subagents it dispatches.
+* **A v0 merge starts a fresh round:** when the plan declares an OWNER-V0
+  interlude and its merge-back lands on the ft branch, that is new
+  unreviewed code: the relay's next step is feature-find over the updated
+  diff (a normal new round; the design critic flips to the v0 yardstick per
+  feature-find). Ship's staleness guard enforces this even if skipped here.
 
 ## Step dials (what the handoff recommends)
 
