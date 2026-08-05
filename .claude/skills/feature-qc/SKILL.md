@@ -23,6 +23,12 @@ model: inherit
   exact next command (`/feature-find` etc., `$`-form for Codex), and the
   recommended dial for the next step from the step-dial table below. The
   owner runs each step in a fresh session on the matching dial.
+* **Wrong dial or owner-run step = route, don't run:** when the detected
+  step's tier doesn't match this session's model, or the step is
+  feature-browse (owner-run by the hard rule), do NOT run it: report the
+  detected step and STOP with the handoff (exact command, both harness
+  forms, dial). This makes `/feature-qc` safe to invoke on ANY dial as a
+  pure router: the owner never needs to remember the sequence.
 * **Under /feature-qc chain (explicit opt-in):** invoke the five steps in
   order in THIS session with no stops between. The chain's only gate is the
   verification ✋ in phase 5. The owner's chain invocation is the browser
