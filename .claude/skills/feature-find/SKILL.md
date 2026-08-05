@@ -187,8 +187,11 @@ diff showed).
 * **Persistent sessions only:** launch each lane in a named persistent
   task/session (a harness-native durable task, or `tmux`), record its real
   task/session id, and have the session write `<label>.exit` with the
-  wrapper's exit code. Never shell-background a command with `&` and abandon
-  it.
+  wrapper's exit code AND redirect the bridge command's stderr to
+  `<label>.stderr.log` — a lane that dies pre-wrapper otherwise vanishes
+  without a diagnosable trace (2026-08-05: an agy roster brownout took an
+  autopsy through agy's own CLI logs because the launch dropped stderr).
+  Never shell-background a command with `&` and abandon it.
 * **Poll:** the live task/session plus its exact exit file; read the exact
   output only after exit `0`.
 * **Failure condition:** a non-zero exit, or a vanished session with no exit
