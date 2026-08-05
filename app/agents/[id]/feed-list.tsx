@@ -54,7 +54,7 @@ export function FeedList({
   const pathname = usePathname();
   const loadMore = async () => {
     if (loading || !state.nextCursor) return;
-    const mine = epoch.current;
+    const mine = ++epoch.current;
     setLoading(true);
     setError(null);
     try {
@@ -167,7 +167,7 @@ export function FeedList({
         <FeedItemCard charLimit={charLimit} item={item} key={item.storyId} xLinked={xLinked} />
       ))}
       <div ref={sentinel} />
-      {!state.items.length && state.nextCursor && !loading ? (
+      {state.nextCursor && !loading && !error ? (
         <Button className="min-h-11 self-start" onClick={() => void loadMore()} variant="ghost">
           Load stories
         </Button>
