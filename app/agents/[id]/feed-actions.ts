@@ -1,12 +1,12 @@
 "use server";
 
+import { fetchFeedPage } from "@/lib/agent/feed-query";
 import {
   FEED_REFRESH_CHUNK,
-  fetchFeedPage,
+  type FeedCursor,
   isFeedCursor,
   parseFeedFilters,
-  type FeedCursor,
-} from "@/lib/agent/feed-query";
+} from "@/lib/agent/feed-shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,7 +18,10 @@ export async function fetchOwnedFeedPage(
 ) {
   if (cursor && !isFeedCursor(cursor)) return { ok: false as const, error: "Invalid feed cursor." };
   const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) return { ok: false as const, error: "Please sign in again." };
   const { data: desk, error: deskError } = await supabase
     .from("agents")

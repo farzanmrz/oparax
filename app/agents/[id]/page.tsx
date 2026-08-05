@@ -2,22 +2,33 @@ import { notFound } from "next/navigation";
 import { getOwnedExtractionProgress } from "@/app/agents/[id]/voice/get-extraction-progress";
 import { PageHeading } from "@/components/page-heading";
 import { resolveXTier, X_CHAR_LIMITS } from "@/lib/agent/desk-config";
-import { feedFilterKey, fetchFeedCounts, fetchFeedPage, parseFeedFilters } from "@/lib/agent/feed-query";
+import { fetchFeedCounts, fetchFeedPage } from "@/lib/agent/feed-query";
+import { feedFilterKey, parseFeedFilters } from "@/lib/agent/feed-shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
 import { FeedAutoRefresh } from "./feed-auto-refresh";
-import { FeedEmptyState, type FeedReadiness } from "./feed-item";
 import { FeedFilters } from "./feed-filters";
+import { FeedEmptyState, type FeedReadiness } from "./feed-item";
 import { FeedList } from "./feed-list";
 
-export default async function FeedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function FeedPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
   const filters = parseFeedFilters(await searchParams);
   const supabase = await createClient();
   // Ownership is intentionally awaited before any service-role work. Layout guards protect
   // rendering, but do not prove this server component has not already started an admin read.
-  const { data: agent, error: agentError } = await supabase.from("agents").select("reporter_handle, status, tracked_handles").eq("id", id).maybeSingle();
+  const { data: agent, error: agentError } = await supabase
+    .from("agents")
+    .select("reporter_handle, status, tracked_handles")
+    .eq("id", id)
+    .maybeSingle();
   if (agentError || !agent) notFound();
   const admin = createAdminClient();
   const [page, counts, xLink, voiceGuideResult] = await Promise.all([
@@ -35,15 +46,46 @@ export default async function FeedPage({ params, searchParams }: { params: Promi
   else if (counts.totalStories === 0) {
     const extraction = await getOwnedExtractionProgress(id);
     if (!extraction.ok) throw new Error("Failed to load the agent. Please try again.");
-    if (extraction.status === "running" || extraction.status === "failed") readiness = { kind: extraction.status === "running" ? "extraction_running" : "extraction_failed", initial: { stage: extraction.stage, progressNote: extraction.progressNote, reasoningByStage: extraction.reasoningByStage, textByStage: extraction.textByStage, toolActivities: extraction.toolActivities, status: extraction.status, errorCode: extraction.errorCode, corpusPostCount: extraction.corpusPostCount, scopeExcludedCount: extraction.scopeExcludedCount } };
+    if (extraction.status === "running" || extraction.status === "failed")
+      readiness = {
+        kind: extraction.status === "running" ? "extraction_running" : "extraction_failed",
+        initial: {
+          stage: extraction.stage,
+          progressNote: extraction.progressNote,
+          reasoningByStage: extraction.reasoningByStage,
+          textByStage: extraction.textByStage,
+          toolActivities: extraction.toolActivities,
+          status: extraction.status,
+          errorCode: extraction.errorCode,
+          corpusPostCount: extraction.corpusPostCount,
+          scopeExcludedCount: extraction.scopeExcludedCount,
+        },
+      };
   }
   const charLimit = X_CHAR_LIMITS[resolveXTier(xLink.tier)];
-  return <div className="flex min-h-0 flex-1 flex-col gap-4 py-4">
-    <FeedAutoRefresh />
-    {counts.totalStories === 0 ? <FeedEmptyState deskId={id} readiness={readiness} /> : <>
-      <PageHeading>Stories — {counts.totalStories} · {counts.readyToReview} ready to review</PageHeading>
-      <FeedFilters filters={filters} trackedHandles={agent.tracked_handles ?? []} />
-      <FeedList agentId={id} charLimit={charLimit} fetchedAt={Date.now()} filterKey={feedFilterKey(filters)} filters={filters} initialCursor={page.nextCursor} initialItems={page.items} reporterHandle={agent.reporter_handle} xHandle={xLink.handle} xLinked={xLink.linked} />
-    </>}
-  </div>;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 py-4">
+      <FeedAutoRefresh />
+      {counts.totalStories === 0 ? (
+        <FeedEmptyState deskId={id} readiness={readiness} />
+      ) : (
+        <>
+          <PageHeading>
+            Stories — {counts.totalStories} · {counts.readyToReview} ready to review
+          </PageHeading>
+          <FeedFilters filters={filters} trackedHandles={agent.tracked_handles ?? []} />
+          <FeedList
+            agentId={id}
+            charLimit={charLimit}
+            fetchedAt={Date.now()}
+            filters={filters}
+            initialCursor={page.nextCursor}
+            initialItems={page.items}
+            key={feedFilterKey(filters)}
+            xLinked={xLink.linked}
+          />
+        </>
+      )}
+    </div>
+  );
 }

@@ -1053,14 +1053,19 @@ export async function applyCorrection(input: {
   // platform (X, LinkedIn, Bluesky) as of the multi-platform fan-out. This runs BEFORE the
   // insert so the new winner below isn't itself caught by this update. Pointer flip only — a
   // drafts row's content stays an immutable record of what a model produced.
-  const { error: dethroneError } = await admin
+  const { data: dethroned, error: dethroneError } = await admin
     .from("drafts")
     .update({ is_winner: false })
     .eq("source_post_id", sourcePost.id)
     .eq("agent_id", agent.id)
     .eq("platform", platform)
-    .eq("is_winner", true);
+    .eq("is_winner", true)
+    .select("synthesis, translation");
   if (dethroneError) throw dethroneError;
+  // The dethroned winner's card metadata comes back from that update so the revision below can
+  // carry it forward — same reason editDraft copies it off the row it dethrones. Read off the
+  // dethroned winner rather than `draftRow`, since a reply can target a superseded draft.
+  const dethronedWinner = dethroned?.[0] ?? null;
 
   const { data: newDraft, error: newDraftError } = await admin
     .from("drafts")
@@ -1078,6 +1083,12 @@ export async function applyCorrection(input: {
       // own stories), so the correction silently vanished from the feed.
       platform,
       story_id: storyId,
+      // QC fix, same class as the two above: a revision replaces the winning row, so it inherits
+      // the winner's card metadata. Omitting these left a corrected draft's card with no synthesis
+      // and no translation. Judge review deliberately resets (judge_verdict above) — the
+      // correction invalidates it.
+      synthesis: dethronedWinner?.synthesis ?? null,
+      translation: dethronedWinner?.translation ?? null,
     })
     .select("id")
     .single();

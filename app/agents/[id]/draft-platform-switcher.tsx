@@ -189,9 +189,15 @@ export function DraftPlatformSwitcher({
       </div>
       {winner.judgeNotes !== null || winner.correctedFields.length > 0 ? (
         <details className="text-sm text-muted-foreground">
-          <summary className="cursor-pointer">Judge notes</summary>
+          <summary className="flex min-h-11 cursor-pointer items-center">Judge notes</summary>
           {winner.judgeNotes ? <p className="mt-1">{winner.judgeNotes}</p> : null}
-          <div className="mt-1 flex flex-wrap gap-1">{winner.correctedFields.map((field) => <Badge key={field} variant="secondary">{field}</Badge>)}</div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {winner.correctedFields.map((field) => (
+              <Badge key={field} variant="secondary">
+                {field}
+              </Badge>
+            ))}
+          </div>
         </details>
       ) : null}
     </>

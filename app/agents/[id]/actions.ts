@@ -227,7 +227,7 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   // check their account first; this function does not and cannot verify that for them.
   const { data: currentWinner, error: currentWinnerError } = await supabase
     .from("drafts")
-    .select("id, posted_at, posted_url")
+    .select("id, posted_at, posted_url, synthesis, translation")
     .eq("source_post_id", parentDraft.source_post_id)
     .eq("agent_id", parentDraft.agent_id)
     .eq("platform", parentDraft.platform)
@@ -332,8 +332,8 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
     parent_draft_id: currentWinner.id,
     // Editing replaces the winning row, so preserve the card metadata that belongs to the
     // winning draft. Judge review deliberately resets: the human edit invalidates it.
-    synthesis: parentDraft.synthesis,
-    translation: parentDraft.translation,
+    synthesis: currentWinner.synthesis,
+    translation: currentWinner.translation,
   });
   if (insertError) {
     // drafts still carries no partial unique index enforcing one is_winner=true row per
