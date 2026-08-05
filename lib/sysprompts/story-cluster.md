@@ -22,7 +22,7 @@ is a distinct development is a new story, not a match.
 
 # Output
 
-Fill the structured verdict object directly, with exactly three fields:
+Your response is a JSON object matching the structured schema supplied for this call. Fill the structured verdict object directly, with exactly three fields:
 
 - `match`: `"existing"` when the new post continues one of the candidates, `"new"` when it does
     not.

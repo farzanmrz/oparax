@@ -126,11 +126,14 @@ type MatchedAgent = {
  *  a specific article on that site, so matching by hostname/origin is the right key, not an
  *  exact URL match) and as the author-handle fallback for a website post with a null
  *  `author_handle` (see the brief-context comment on `assignToStory`'s call site below).
- *  Malformed input degrades to "" rather than throwing — every caller treats "" as no-match /
- *  no-fallback. */
+ *  Strips a leading `www.` — a reporter onboards the bare domain (#100's flow) but a site's
+ *  own sitemap/feed commonly resolves every article under `www.`, and #101's live poller
+ *  testing found that mismatch silently zeroed out every draft from a real source (logged
+ *  only, never surfaced) because the match was byte-exact. Malformed input degrades to ""
+ *  rather than throwing — every caller treats "" as no-match / no-fallback. */
 function hostnameOf(url: string): string {
   try {
-    return new URL(url).hostname.toLowerCase();
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
     return "";
   }

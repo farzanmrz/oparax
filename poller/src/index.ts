@@ -1,0 +1,86 @@
+import type { AlarmState } from "./alarm";
+import { checkDeliveryCap } from "./alarm";
+import { createPollerClient } from "./db";
+import { loadEnv } from "./env";
+import { describeError } from "./errors";
+import { logger } from "./logger";
+import type { ConditionalGetCache } from "./sitemap";
+import { pollAllSources } from "./tick";
+
+async function main(): Promise<void> {
+  const env = loadEnv();
+  const client = createPollerClient(env.supabaseUrl, env.supabaseServiceRoleKey);
+
+  const caches = new Map<string, ConditionalGetCache>();
+  const staleAlarms = new Map<string, AlarmState>();
+  const capAlarmState: AlarmState = { lastAlarmAt: null };
+
+  function fatal(reason: string): never {
+    logger.fatal("fatal — exiting so Railway's restart policy can recover", { reason });
+    process.exit(1);
+  }
+
+  async function tickOnce(): Promise<void> {
+    try {
+      await pollAllSources(client, env, caches, staleAlarms);
+    } catch (e) {
+      // Only FatalIngestError propagates out of pollAllSources — every other per-source
+      // failure is already caught and logged inside it.
+      fatal(describeError(e) as string);
+    }
+  }
+
+  // Ticks never overlap: a slow tick (many sources, slow feeds) must not have the next
+  // interval firing start a second concurrent pass over the same sources.
+  let isTicking = false;
+
+  async function tickGuarded(): Promise<void> {
+    if (isTicking) {
+      logger.warn("tick: skipping — previous tick still running");
+      return;
+    }
+    isTicking = true;
+    try {
+      await tickOnce();
+    } finally {
+      isTicking = false;
+    }
+  }
+
+  await tickGuarded();
+  const tickTimer = setInterval(() => {
+    tickGuarded().catch((e) =>
+      logger.error("tick: unexpected top-level failure", {
+        error: describeError(e),
+      }),
+    );
+  }, env.tickIntervalMs);
+
+  // A separate, much slower timer than the tick loop — a rolling-24h count query every 45s
+  // would be needless load for a number that only meaningfully moves over hours.
+  const capCheckTimer = setInterval(() => {
+    checkDeliveryCap(
+      client,
+      env.observedDailyCap,
+      env.alarmCooldownMs,
+      capAlarmState,
+      env.slackWebhookUrl,
+    ).catch((e) => logger.error("cap-check: unexpected failure", { error: describeError(e) }));
+  }, env.capCheckIntervalMs);
+
+  const shutdown = (signal: string) => {
+    logger.info("shutting down", { signal });
+    clearInterval(tickTimer);
+    clearInterval(capCheckTimer);
+    process.exit(0);
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+}
+
+main().catch((e) => {
+  logger.fatal("unhandled error in main — exiting", {
+    error: e instanceof Error ? (e.stack ?? e.message) : String(e),
+  });
+  process.exit(1);
+});

@@ -1,0 +1,4 @@
+{
+  "build": { "builder": "RAILPACK" },
+  "deploy": { "startCommand": "pnpm start", "restartPolicyType": "ALWAYS", "numReplicas": 1 }
+}

@@ -472,6 +472,7 @@ export type Database = {
           full_text_available: string | null;
           id: string;
           language: string | null;
+          last_matched_at: string | null;
           last_verified_at: string;
           match_count: number | null;
           model_call_id: string | null;
@@ -494,6 +495,7 @@ export type Database = {
           full_text_available?: string | null;
           id?: string;
           language?: string | null;
+          last_matched_at?: string | null;
           last_verified_at?: string;
           match_count?: number | null;
           model_call_id?: string | null;
@@ -516,6 +518,7 @@ export type Database = {
           full_text_available?: string | null;
           id?: string;
           language?: string | null;
+          last_matched_at?: string | null;
           last_verified_at?: string;
           match_count?: number | null;
           model_call_id?: string | null;
@@ -541,6 +544,35 @@ export type Database = {
             columns: ["model_call_id"];
             isOneToOne: false;
             referencedRelation: "model_calls";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      source_seen_items: {
+        Row: {
+          first_seen_at: string;
+          id: string;
+          item_key: string;
+          source_config_id: string;
+        };
+        Insert: {
+          first_seen_at?: string;
+          id?: string;
+          item_key: string;
+          source_config_id: string;
+        };
+        Update: {
+          first_seen_at?: string;
+          id?: string;
+          item_key?: string;
+          source_config_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "source_seen_items_source_config_id_fkey";
+            columns: ["source_config_id"];
+            isOneToOne: false;
+            referencedRelation: "source_configs";
             referencedColumns: ["id"];
           },
         ];
@@ -884,6 +916,14 @@ export type Database = {
         Returns: string;
       };
       delete_account: { Args: never; Returns: undefined };
+      record_seen_item: {
+        Args: {
+          p_bump_last_matched: boolean;
+          p_item_key: string;
+          p_source_config_id: string;
+        };
+        Returns: boolean;
+      };
       remove_source_config: {
         Args: { p_agent_id: string; p_url: string };
         Returns: undefined;

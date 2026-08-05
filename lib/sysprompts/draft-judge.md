@@ -25,7 +25,7 @@ that the quoted person spoke to that account. Never turn `Author: @account` into
 @account” unless the source text itself establishes that attribution. Preserve the source's
 precision and obey the character ceiling. When the source is off-beat, `finalDraft` must be `null`.
 
-Return every field using these exact names:
+Your response is a JSON object matching the structured schema supplied for this call. Return every field using these exact names:
 
 - `language`: the source language as a BCP-47 code.
 - `translation`: a faithful English translation, or `null` when the source is already English.

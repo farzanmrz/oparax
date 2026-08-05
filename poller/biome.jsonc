@@ -1,5 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
+  // Nested (non-root) config: the repo root has a Biome root config, and `biome check .` run
+  // from the repo root errors on a second root nested inside it. `root: false` makes this a
+  // member config so the app-level lint passes; the worker still lints itself via its own
+  // `pnpm --dir poller lint`. The app root excludes `poller/**` from its own file scan.
+  "root": false,
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,20 +12,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      "**",
-      "!**/*.css",
-      "!**/node_modules/**",
-      "!.next/**",
-      "!.vercel/**",
-      "!out/**",
-      "!data/**",
-      "!ingest/**",
-      "!poller/**",
-      "!components/ui/**",
-      "!components/ai-elements/**",
-      "!.claude/**"
-    ]
+    "includes": ["**", "!node_modules", "!dist"]
   },
   "formatter": {
     "enabled": true,
@@ -36,15 +28,8 @@
   },
   "linter": {
     "enabled": true,
-    "domains": {
-      "next": "recommended",
-      "react": "recommended"
-    },
     "rules": {
-      "preset": "recommended",
-      "suspicious": {
-        "useBiomeIgnoreFolder": "off"
-      }
+      "preset": "recommended"
     }
   },
   "assist": {
