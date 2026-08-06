@@ -6,7 +6,6 @@ import {
   FEED_PAGE_SIZE,
   FEED_REFRESH_CHUNK,
   type FeedCursor,
-  type FeedFilterState,
   type FeedItem,
   type FeedPage,
   type FeedSourceView,
@@ -20,7 +19,7 @@ export const FEED_ID_CHUNK = 150;
 // Genuine ceiling on ids accumulated across .range() pages (see pagedRows below), not a
 // per-request row count — hosted Supabase's db-max-rows default (1000) is what forced the
 // paging in the first place. Beyond this many ids, older history degrades gracefully.
-export const FEED_FILTER_ID_CAP = 20000;
+export const FEED_ID_CAP = 20000;
 const FEED_ID_PAGE_SIZE = 1000;
 
 type StoryRow = { id: string; summary: string; created_at: string };
@@ -47,9 +46,6 @@ type WinnerRow = {
   news_synthesis: string | null;
 };
 
-function escapeLike(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
-}
 function chunks<T>(values: T[]): T[][] {
   return Array.from({ length: Math.ceil(values.length / FEED_ID_CHUNK) }, (_, i) =>
     values.slice(i * FEED_ID_CHUNK, (i + 1) * FEED_ID_CHUNK),
@@ -59,7 +55,7 @@ function chunks<T>(values: T[]): T[][] {
  * Pages an unbounded id-set select with .range() so results stay complete regardless of a
  * PostgREST db-max-rows cap (hosted Supabase defaults to 1000, which would otherwise clip a
  * single .select() and silently misclassify older history). Stops at a short page, or once
- * FEED_FILTER_ID_CAP ids have accumulated, whichever comes first.
+ * FEED_ID_CAP ids have accumulated, whichever comes first.
  */
 async function pagedRows<T>(
   agentId: string,
@@ -75,8 +71,8 @@ async function pagedRows<T>(
     const page = data ?? [];
     rows.push(...page);
     if (page.length < FEED_ID_PAGE_SIZE) break;
-    if (rows.length >= FEED_FILTER_ID_CAP) {
-      console.warn("feed filter id collection exceeded memory guard", {
+    if (rows.length >= FEED_ID_CAP) {
+      console.warn("feed id collection exceeded memory guard", {
         agentId,
         count: rows.length,
       });
@@ -173,125 +169,11 @@ async function winnerIds(supabase: Client, agentId: string) {
   );
   return new Set(rows.map((row) => row.story_id).filter((id): id is string => Boolean(id)));
 }
-async function assignmentMatches(
+async function rawPage(
   supabase: Client,
   agentId: string,
-  pattern: string,
-  includeSourceUrl = false,
-) {
-  const assignments = await pagedRows<{ story_id: string; source_post_id: string }>(
-    agentId,
-    (from, to) =>
-      supabase
-        .from("story_assignments")
-        .select("story_id, source_post_id")
-        .eq("agent_id", agentId)
-        .order("id", { ascending: true })
-        .range(from, to),
-  );
-  const matches = new Set<string>();
-  for (const part of chunks(assignments.map((row) => row.source_post_id))) {
-    if (!part.length) continue;
-    const results = await Promise.all([
-      supabase.from("source_posts").select("id").in("id", part).ilike("author_handle", pattern),
-      ...(includeSourceUrl
-        ? [supabase.from("source_posts").select("id").in("id", part).ilike("url", pattern)]
-        : []),
-    ]);
-    for (const result of results) if (result.error) throw result.error;
-    const sourceIds = new Set(results.flatMap((result) => result.data ?? []).map((row) => row.id));
-    for (const assignment of assignments)
-      if (sourceIds.has(assignment.source_post_id)) matches.add(assignment.story_id);
-  }
-  return matches;
-}
-async function includeIds(supabase: Client, agentId: string, filters: FeedFilterState) {
-  const sets: Set<string>[] = [];
-  if (filters.account)
-    sets.push(await assignmentMatches(supabase, agentId, escapeLike(filters.account)));
-  if (filters.q) {
-    const pattern = `%${escapeLike(filters.q)}%`;
-    const [stories, syntheses, titles, draftRows, authors] = await Promise.all([
-      pagedRows<{ id: string }>(agentId, (from, to) =>
-        supabase
-          .from("stories")
-          .select("id")
-          .eq("agent_id", agentId)
-          .ilike("summary", pattern)
-          .order("id", { ascending: true })
-          .range(from, to),
-      ),
-      pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
-        supabase
-          .from("drafts")
-          .select("story_id")
-          .eq("agent_id", agentId)
-          .eq("is_winner", true)
-          .ilike("news_synthesis", pattern)
-          .order("id", { ascending: true })
-          .range(from, to),
-      ),
-      pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
-        supabase
-          .from("drafts")
-          .select("story_id")
-          .eq("agent_id", agentId)
-          .eq("is_winner", true)
-          .ilike("news_title", pattern)
-          .order("id", { ascending: true })
-          .range(from, to),
-      ),
-      pagedRows<{ story_id: string | null; model_call_id: string | null }>(agentId, (from, to) =>
-        supabase
-          .from("drafts")
-          .select("story_id, model_call_id")
-          .eq("agent_id", agentId)
-          .eq("is_winner", true)
-          .order("id", { ascending: true })
-          .range(from, to),
-      ),
-      assignmentMatches(supabase, agentId, pattern, true),
-    ]);
-    const qIds = new Set<string>([
-      ...stories.map((r) => r.id),
-      ...syntheses.map((r) => r.story_id).filter((id): id is string => Boolean(id)),
-      ...titles.map((r) => r.story_id).filter((id): id is string => Boolean(id)),
-      ...authors,
-    ]);
-    const pairs = draftRows.filter((r) => r.story_id && r.model_call_id) as {
-      story_id: string;
-      model_call_id: string;
-    }[];
-    for (const part of chunks(pairs.map((row) => row.model_call_id))) {
-      if (!part.length) continue;
-      const { data, error } = await supabase
-        .from("model_calls")
-        .select("id")
-        .in("id", part)
-        .ilike("output", pattern);
-      if (error) throw error;
-      const matching = new Set((data ?? []).map((row) => row.id));
-      for (const pair of pairs) if (matching.has(pair.model_call_id)) qIds.add(pair.story_id);
-    }
-    sets.push(qIds);
-  }
-  if (!sets.length) return null;
-  let result = sets[0];
-  for (const set of sets.slice(1)) result = new Set([...result].filter((id) => set.has(id)));
-  if (result.size > FEED_FILTER_ID_CAP)
-    console.warn("feed filter id collection exceeded memory guard", {
-      agentId,
-      count: result.size,
-    });
-  return result;
-}
-function rootQuery(
-  supabase: Client,
-  agentId: string,
-  filters: FeedFilterState,
   cursor: FeedCursor | null,
   limit: number,
-  ids?: string[],
 ) {
   let query = supabase
     .from("stories")
@@ -300,25 +182,10 @@ function rootQuery(
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(limit);
-  if (filters.from) query = query.gte("created_at", filters.from);
-  if (filters.to) query = query.lt("created_at", filters.to);
   if (cursor) query = query.or(cursorClause(cursor));
-  return ids ? query.in("id", ids) : query;
-}
-async function rawPage(
-  supabase: Client,
-  agentId: string,
-  filters: FeedFilterState,
-  cursor: FeedCursor | null,
-  limit: number,
-  ids: Set<string> | null,
-) {
-  const requests = ids
-    ? chunks([...ids]).map((part) => rootQuery(supabase, agentId, filters, cursor, limit, part))
-    : [rootQuery(supabase, agentId, filters, cursor, limit)];
-  const pages = await Promise.all(requests);
-  for (const page of pages) if (page.error) throw page.error;
-  const rows = pages.flatMap((page) => page.data ?? []) as StoryRow[];
+  const page = await query;
+  if (page.error) throw page.error;
+  const rows = (page.data ?? []) as StoryRow[];
   const sorted = rows.sort(compareStories).slice(0, limit);
   const last = sorted.at(-1);
   return { rows: sorted, nextCursor: last && sorted.length === limit ? cursorFor(last) : null };
@@ -420,7 +287,10 @@ async function hydrate(
     return {
       storyId: story.id,
       createdAt: story.created_at,
-      newsTitle: titleByStory.get(story.id) ?? story.summary,
+      // Owner decision: no fallback to stories.summary — a null title renders the literal
+      // placeholder. The 100-post replay backfills real titles for recent history; anything
+      // older shows the placeholder.
+      newsTitle: titleByStory.get(story.id) ?? "NO TITLE",
       source: sourceView,
       winners: winners.get(story.id) ?? {},
     };
@@ -430,71 +300,36 @@ async function hydrate(
 export async function fetchFeedPage(
   supabase: Client,
   agentId: string,
-  opts: { filters: FeedFilterState; cursor?: FeedCursor | null; limit?: number },
+  opts: { cursor?: FeedCursor | null; limit?: number } = {},
 ): Promise<FeedPage> {
   const limit = Math.max(1, Math.min(opts.limit ?? FEED_PAGE_SIZE, FEED_REFRESH_CHUNK));
   const cursor = isFeedCursor(opts.cursor) ? opts.cursor : null;
-  const include = await includeIds(supabase, agentId, opts.filters);
-  if (include?.size === 0) return { items: [], nextCursor: null };
-  const needConfirmed = opts.filters.status === "posted" || opts.filters.status === "pending";
-  const confirmed = needConfirmed ? await confirmedIds(supabase, agentId) : null;
-  const needWinners = opts.filters.status === "all" || opts.filters.status === "pending";
-  const winners = needWinners ? await winnerIds(supabase, agentId) : null;
+  // A card exists only once drafting is complete (design delta §5): the feed walks stories and
+  // keeps only those with a winner draft, so undrafted/off-beat stories never render.
+  const winners = await winnerIds(supabase, agentId);
 
-  async function walkPage(
-    keep: (row: StoryRow) => boolean,
-  ): Promise<{ rows: StoryRow[]; nextCursor: FeedCursor | null }> {
-    let cursorValue: FeedCursor | null = cursor;
-    let nextCursor: FeedCursor | null = cursor;
-    const rows: StoryRow[] = [];
+  let cursorValue: FeedCursor | null = cursor;
+  let nextCursor: FeedCursor | null = cursor;
+  const rows: StoryRow[] = [];
 
-    for (let iteration = 0; iteration < 4 && rows.length < limit; iteration++) {
-      const page = await rawPage(
-        supabase,
-        agentId,
-        opts.filters,
-        cursorValue,
-        Math.max(50, limit),
-        include,
-      );
-      const kept = page.rows.filter(keep).slice(0, limit - rows.length);
-      rows.push(...kept);
+  for (let iteration = 0; iteration < 4 && rows.length < limit; iteration++) {
+    const page = await rawPage(supabase, agentId, cursorValue, Math.max(50, limit));
+    const kept = page.rows.filter((row) => winners.has(row.id)).slice(0, limit - rows.length);
+    rows.push(...kept);
 
-      if (rows.length >= limit && rows.at(-1)) {
-        const last = rows.at(-1);
-        if (last) nextCursor = cursorFor(last);
-        break;
-      }
-
-      nextCursor = page.nextCursor;
-      if (!page.nextCursor) break;
-
-      cursorValue = page.nextCursor;
+    if (rows.length >= limit && rows.at(-1)) {
+      const last = rows.at(-1);
+      if (last) nextCursor = cursorFor(last);
+      break;
     }
 
-    return { rows, nextCursor };
+    nextCursor = page.nextCursor;
+    if (!page.nextCursor) break;
+
+    cursorValue = page.nextCursor;
   }
 
-  if (opts.filters.status === "all") {
-    if (!winners) return { items: [], nextCursor: null };
-    const page = await walkPage((row) => winners.has(row.id));
-    return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
-  }
-
-  if (opts.filters.status === "pending") {
-    if (!confirmed || !winners) return { items: [], nextCursor: null };
-    const page = await walkPage((row) => winners.has(row.id) && !confirmed.has(row.id));
-    return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
-  }
-
-  if (opts.filters.status === "posted") {
-    if (!confirmed) return { items: [], nextCursor: null };
-    const page = await walkPage((row) => confirmed.has(row.id));
-    return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
-  }
-
-  const page = await walkPage(() => true);
-  return { items: await hydrate(supabase, agentId, page.rows), nextCursor: page.nextCursor };
+  return { items: await hydrate(supabase, agentId, rows), nextCursor };
 }
 
 export async function fetchFeedCounts(supabase: Client, agentId: string) {

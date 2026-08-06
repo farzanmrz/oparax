@@ -2,24 +2,15 @@ import { notFound } from "next/navigation";
 import { getOwnedExtractionProgress } from "@/app/agents/[id]/voice/get-extraction-progress";
 import { resolveXTier, X_CHAR_LIMITS } from "@/lib/agent/desk-config";
 import { fetchFeedCounts, fetchFeedPage } from "@/lib/agent/feed-query";
-import { FEED_FILTERS_UI, feedFilterKey, parseFeedFilters } from "@/lib/agent/feed-shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getXLinkState } from "@/lib/x/link-state";
 import { FeedAutoRefresh } from "./feed-auto-refresh";
-import { FeedFilters } from "./feed-filters";
 import { FeedEmptyState, type FeedReadiness } from "./feed-item";
 import { FeedList } from "./feed-list";
 
-export default async function FeedPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function FeedPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const filters = parseFeedFilters(await searchParams);
   const supabase = await createClient();
   // Ownership is intentionally awaited before any service-role work. Layout guards protect
   // rendering, but do not prove this server component has not already started an admin read.
@@ -31,7 +22,7 @@ export default async function FeedPage({
   if (agentError || !agent) notFound();
   const admin = createAdminClient();
   const [page, counts, xLink, voiceGuideResult] = await Promise.all([
-    fetchFeedPage(admin, id, { filters }),
+    fetchFeedPage(admin, id),
     fetchFeedCounts(admin, id),
     getXLinkState(),
     supabase.from("voice_guides").select("agent_id").eq("agent_id", id).limit(1).maybeSingle(),
@@ -68,21 +59,14 @@ export default async function FeedPage({
       {counts.totalStories === 0 ? (
         <FeedEmptyState deskId={id} readiness={readiness} />
       ) : (
-        <>
-          {FEED_FILTERS_UI ? (
-            <FeedFilters filters={filters} trackedHandles={agent.tracked_handles ?? []} />
-          ) : null}
-          <FeedList
-            agentId={id}
-            charLimit={charLimit}
-            fetchedAt={Date.now()}
-            filters={filters}
-            initialCursor={page.nextCursor}
-            initialItems={page.items}
-            key={feedFilterKey(filters)}
-            xLinked={xLink.linked}
-          />
-        </>
+        <FeedList
+          agentId={id}
+          charLimit={charLimit}
+          fetchedAt={Date.now()}
+          initialCursor={page.nextCursor}
+          initialItems={page.items}
+          xLinked={xLink.linked}
+        />
       )}
     </div>
   );

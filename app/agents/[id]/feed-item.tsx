@@ -102,11 +102,11 @@ export function FeedItemCard({
       <h2 className="text-[clamp(16px,1.9cqw,21px)] font-semibold leading-[1.28] tracking-[-0.015em] text-foreground text-pretty">
         {item.newsTitle}
       </h2>
-      {winner.newsSynthesis ? (
-        <p className="mt-[clamp(11px,1.3cqw,14px)] border-t border-border pt-[clamp(11px,1.3cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
-          {winner.newsSynthesis}
-        </p>
-      ) : null}
+      {/* Owner decision: no conditional omission — a null synthesis renders the literal
+          placeholder. The 100-post replay backfills real syntheses for recent history. */}
+      <p className="mt-[clamp(11px,1.3cqw,14px)] border-t border-border pt-[clamp(11px,1.3cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
+        {winner.newsSynthesis ?? "NO SYNTHESIS"}
+      </p>
       <DraftBox
         charLimit={charLimit}
         draft={winner}

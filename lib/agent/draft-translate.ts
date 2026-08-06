@@ -76,7 +76,11 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
   // (reconcileMissingCosts), not ledgered here.
   try {
     armInactivityTimer();
-    for await (const _chunk of result.textStream) {
+    // fullStream, not textStream: the reasoning phase emits no TEXT deltas for tens of seconds
+    // (probe: 29.8s max gap on a 14k-char source — a near-miss against the 45s window), but its
+    // reasoning deltas DO flow here, so thinking keeps resetting the timer and only true wire
+    // silence trips the abort.
+    for await (const _part of result.fullStream) {
       armInactivityTimer();
     }
     const raw = (await result.text).trim();

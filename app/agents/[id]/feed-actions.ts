@@ -1,21 +1,11 @@
 "use server";
 
 import { fetchFeedPage } from "@/lib/agent/feed-query";
-import {
-  FEED_REFRESH_CHUNK,
-  type FeedCursor,
-  isFeedCursor,
-  parseFeedFilters,
-} from "@/lib/agent/feed-shared";
+import { FEED_REFRESH_CHUNK, type FeedCursor, isFeedCursor } from "@/lib/agent/feed-shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-export async function fetchOwnedFeedPage(
-  deskId: string,
-  rawFilters: Record<string, string | string[] | undefined>,
-  cursor: FeedCursor | null,
-  limit: number,
-) {
+export async function fetchOwnedFeedPage(deskId: string, cursor: FeedCursor | null, limit: number) {
   if (cursor && !isFeedCursor(cursor)) return { ok: false as const, error: "Invalid feed cursor." };
   if (!Number.isFinite(limit)) return { ok: false as const, error: "Invalid feed limit." };
   const supabase = await createClient();
@@ -34,7 +24,6 @@ export async function fetchOwnedFeedPage(
 
   try {
     const page = await fetchFeedPage(createAdminClient(), desk.id, {
-      filters: parseFeedFilters(rawFilters),
       cursor,
       limit: Math.max(1, Math.min(limit, FEED_REFRESH_CHUNK)),
     });

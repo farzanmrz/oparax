@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -9,27 +8,18 @@ import {
   FEED_REFRESH_CHUNK,
   FEED_REFRESH_MAX_CHUNKS,
   type FeedCursor,
-  type FeedFilterState,
   type FeedItem,
-  hasActiveFilters,
 } from "@/lib/agent/feed-shared";
 import { fetchOwnedFeedPage } from "./feed-actions";
 import { FeedItemCard } from "./feed-item";
 
 type State = { items: FeedItem[]; nextCursor: FeedCursor | null };
-const paramsFor = (filters: FeedFilterState) =>
-  Object.fromEntries(
-    Object.entries(filters).filter(
-      ([key, value]) => value !== null && !(key === "status" && value === "all"),
-    ),
-  ) as Record<string, string>;
 const older = (item: FeedItem, cursor: FeedCursor) =>
   item.createdAt < cursor.createdAt ||
   (item.createdAt === cursor.createdAt && item.storyId < cursor.id);
 
 export function FeedList({
   agentId,
-  filters,
   initialItems,
   initialCursor,
   fetchedAt,
@@ -37,7 +27,6 @@ export function FeedList({
   xLinked,
 }: {
   agentId: string;
-  filters: FeedFilterState;
   initialItems: FeedItem[];
   initialCursor: FeedCursor | null;
   fetchedAt: number;
@@ -50,20 +39,13 @@ export function FeedList({
   const epoch = useRef(0);
   const mounted = useRef(false);
   const sentinel = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-  const pathname = usePathname();
   const loadMore = async () => {
     if (loading || !state.nextCursor) return;
     const mine = ++epoch.current;
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchOwnedFeedPage(
-        agentId,
-        paramsFor(filters),
-        state.nextCursor,
-        FEED_PAGE_SIZE,
-      );
+      const result = await fetchOwnedFeedPage(agentId, state.nextCursor, FEED_PAGE_SIZE);
       if (mine !== epoch.current) return;
       if (!result.ok) {
         setError(result.error);
@@ -113,12 +95,7 @@ export function FeedList({
       let cursor: FeedCursor | null = null;
       const fetched: FeedItem[] = [];
       for (let i = 0; i < FEED_REFRESH_MAX_CHUNKS && fetched.length < target; i++) {
-        const result = await fetchOwnedFeedPage(
-          agentId,
-          paramsFor(filters),
-          cursor,
-          FEED_REFRESH_CHUNK,
-        );
+        const result = await fetchOwnedFeedPage(agentId, cursor, FEED_REFRESH_CHUNK);
         if (mine !== epoch.current || !result.ok) return;
         fetched.push(...result.page.items);
         cursor = result.page.nextCursor;
@@ -145,20 +122,7 @@ export function FeedList({
   if (!state.items.length && !state.nextCursor)
     return (
       <div className="flex flex-col items-start gap-2 py-10 text-sm text-muted-foreground">
-        {hasActiveFilters(filters) ? (
-          <>
-            <p>Nothing matches these filters.</p>
-            <Button
-              className="min-h-11"
-              onClick={() => router.replace(pathname, { scroll: false })}
-              variant="ghost"
-            >
-              Clear filters
-            </Button>
-          </>
-        ) : (
-          <p>No stories to show.</p>
-        )}
+        <p>No stories to show.</p>
       </div>
     );
   return (

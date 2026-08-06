@@ -14,7 +14,7 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 - **`app/api/slack/interactions`** is `after()`-deferred so Slack's 3s ack deadline is met before the slow X-post work runs.
 - **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by `lib/x/post-core.ts`'s posting path, the desk's `editDraft`, and `draft-pipeline.ts` before the new drafter's winner persists. Any future writer of a `drafts` winner must call it too, never re-derive it.
 - **`lib/agent/feed-query.ts`'s `fetchFeedPage`/`fetchFeedCounts` take a service-role client and never check desk ownership** — every caller (`page.tsx`, `feed-actions.ts`) must prove `owner_id` match first.
-- **`lib/x/timeline.ts` is the ONE designated extraction X-read** — 100 most recent ORIGINAL posts, app-only bearer, `exclude=retweets,replies`, because a reply-heavy corpus teaches `measuredFacts` a mention rate that opens every draft with an @handle.
+- **`lib/x/timeline.ts` is the ONE designated extraction X-read** — the 50 most recent ORIGINAL posts (`MAX_POSTS`), app-only bearer, `exclude=retweets,replies`, because a reply-heavy corpus teaches `measuredFacts` a mention rate that opens every draft with an @handle. The corpus size also feeds `inferAccountTier`: a smaller corpus is likelier to miss the one >280-char post that proves premium.
 - **Tokens never leave `lib/x/` and `lib/slack/`.**
 - **`lib/voice/rules.ts` holds the drafting input of record:** `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide in the system prompt; the guide blob survives only as audit provenance. The translator → single-drafter delivery path passes that composition to `draft-write.ts`; it never reads the raw guide directly. `corpus-store.ts` upserts and never prunes. `extraction-run.ts`'s `startRun` is an atomic claim returning a boolean — callers must not spend when it returns false. That bounds one desk to ONE concurrent run; it is **not** rationing and must never grow into it. Progress reaches the browser by POLLING an ownership-proving server action, never Realtime.
 - **`lib/notify/` senders neither persist nor meter** — `draft-pipeline.ts` does both. `email.ts` keeps the reply encoder and its decoder in one file so they cannot drift.
@@ -52,5 +52,4 @@ Built, working, and deliberately off so the shipped flow stays small. Each row n
 | Story clustering (many posts → one story) | `CLUSTERING_ENABLED` | `lib/agent/cluster.ts` |
 | Email draft delivery + reply-to-correct | `EMAIL_DELIVERY_ENABLED` | `lib/agent/draft-pipeline.ts` |
 | Auto-post (post without review) | `AUTO_POST_ENABLED` | `app/agents/[id]/setup/sources-card.tsx` |
-| Feed filter bar UI | `FEED_FILTERS_UI` | `lib/agent/feed-shared.ts` |
 | Council history UI on draft cards | Mount `<CouncilDialog>` in `DraftBox` (currently deferred) | `app/agents/[id]/council-dialog.tsx` |
