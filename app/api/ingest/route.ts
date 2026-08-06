@@ -15,7 +15,7 @@ import { processDelivery } from "@/lib/agent/draft-pipeline";
 import { reconcileMissingCosts } from "@/lib/agent/gateway-cost";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function isAuthorized(header: string | null, secret: string): boolean {
   if (!header) return false;
@@ -90,13 +90,13 @@ export async function POST(req: Request) {
     // call sat at cost NULL forever; the first real end-to-end draft is what surfaced that. The
     // 25s pause is the lag plus margin, and it runs in `after()` — post-response, so the
     // forwarder's request is never held hostage to pricing, and inside this route's
-    // maxDuration = 300 budget. Deliveries are the only place drafting spend originates, so
+    // maxDuration budget. Deliveries are the only place drafting spend originates, so
     // repairing here (each run also sweeps prior still-null rows, since the repair is idempotent
     // over the newest 200) keeps the ledger converging without a cron.
     //
     // The 25s sleep shares this SAME maxDuration budget as the already-awaited processDelivery
     // call above — a slow delivery (e.g. two full council runs) can return with very little of
-    // the 300s left, and a blind 25s sleep would then get killed mid-reconcile with no log of the
+    // the seconds left, and a blind 25s sleep would then get killed mid-reconcile with no log of the
     // skip. So the sleep is adaptive: it shrinks to whatever's left after reserving a safety
     // margin for reconcileMissingCosts itself to run, and skips straight to reconciling (or skips
     // reconciling entirely, loudly) once the budget can't cover even that margin.
