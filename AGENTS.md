@@ -6,11 +6,9 @@ AI news desk for reporters: monitors their beat across X, catches stories as the
 
 Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, session replay) · pnpm + Biome.
 
-- **Versions live in `package.json`** — read it rather than trusting a number here.
+- **Versions:** read `package.json`.
 
 ## Code map
-
-`ls` gives you structure. These are the facts it cannot.
 
 - **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. Nothing polls; there is no scan dispatcher.
 - **`app/api/slack/interactions`** is `after()`-deferred so Slack's 3s ack deadline is met before the slow X-post work runs.
@@ -22,7 +20,7 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 - **`lib/notify/` senders neither persist nor meter** — `draft-pipeline.ts` does both. `email.ts` keeps the reply encoder and its decoder in one file so they cannot drift.
 - **`lib/sysprompts/voice-extract.md` is measured, not authored.** Never tune it by read-through.
 - **Frontend test login: `testuser@oparax.ai` / `hello123`** — a dummy account created solely for agentic testing; when the owner asks to check something in the browser, logging in with it is explicitly pre-authorized, so no credential safeguards apply.
-- **Sentry**: the four root files (`instrumentation.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) must keep those exact names — the build plugin finds them by name. Four deliberate deviations from the wizard, all load-bearing: `tunnelRoute: "/monitoring"` is **excluded from `proxy.ts`'s matcher** (catching it is the documented way to lose every client-side error report); `httpBodies: []` because a body here carries unpublished drafts; `tracesSampleRate` 1 in production with the 1.75s extraction polls dropped in `beforeSendTransaction`; and `@sentry/profiling-node` deliberately absent after it grew a dev server to 6.6 GB RSS. Local AI DevTools is development-only.
+- **Sentry**: keep the four root files (`instrumentation.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) exactly named: the build plugin detects them. Load-bearing settings: exclude `tunnelRoute: "/monitoring"` from `proxy.ts`'s matcher; `httpBodies: []` protects unpublished drafts; production `tracesSampleRate` is 1 with 1.75s extraction polls dropped in `beforeSendTransaction`; omit `@sentry/profiling-node` to prevent dev-server memory bloat. Local AI DevTools is development-only.
 
 ## Data
 
@@ -46,11 +44,11 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 
 ### Dormant by design — switched off, not missing
 
-Built, working, and deliberately off so the shipped flow stays small. Each is ONE named constant; flipping it back is the whole reactivation. Don't "fix" these as gaps, and don't rebuild them.
+Built, working, and deliberately off so the shipped flow stays small. Each row names its lever or reactivation condition. Don't "fix" these as gaps or rebuild them.
 
 | Capability | Lever | Where |
 | --- | --- | --- |
-| LinkedIn / Bluesky drafting | `PLATFORMS` (the `Platform` type stays complete) | `lib/agent/desk-config.ts` |
+| LinkedIn / Bluesky drafting | `PLATFORMS` plus per-platform pipeline drafting | `lib/agent/desk-config.ts` |
 | Story clustering (many posts → one story) | `CLUSTERING_ENABLED` | `lib/agent/cluster.ts` |
 | Email draft delivery + reply-to-correct | `EMAIL_DELIVERY_ENABLED` | `lib/agent/draft-pipeline.ts` |
 | Auto-post (post without review) | `AUTO_POST_ENABLED` | `app/agents/[id]/setup/sources-card.tsx` |

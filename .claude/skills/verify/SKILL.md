@@ -31,17 +31,11 @@ order:
 ```bash
 curl -i localhost:3000/api/ingest -X POST \
   -H "authorization: Bearer $INGEST_SECRET" -H 'content-type: application/json' \
-  -d '{"x_post_id":"<uuid-ish>","author_handle":"<a tracked handle>","text":"a test post","posted_at":"2026-07-22T12:00:00Z"}'
+  -d '{"source":"x","x_post_id":"<uuid-ish>","author_handle":"<a tracked handle>","text":"a test post","posted_at":"2026-07-22T12:00:00Z"}'
 ```
 
-* **The `200` is `processDelivery` running for real:** a council drafts, a
-  judge picks a winner, `model_calls` / `drafts` / `usage_events` rows land,
-  and a real notification sends if the env vars are set.
-* **Concurrent-duplicate check:** fire that same authorized body twice, back
-  to back. `draft_claims`'s `UNIQUE(source_post_id, agent_id)` means only the
-  first claim wins; the second returns `drafted[].skipped: "already_drafted"`.
-  Confirm in the DB that exactly ONE council's worth of `model_calls` and ONE
-  `drafts` winner exist for that `source_post_id`.
+* **The `200` is `processDelivery` running for real:** English can skip the translator; otherwise one translator call runs before one drafter call. Their `model_calls` / `usage_events` rows land, and an on-beat result creates the `drafts` winner and sends a real notification if the env vars are set.
+* **Concurrent-duplicate check:** fire that same authorized body twice, back to back. `draft_claims`'s `UNIQUE(source_post_id, agent_id)` means only the first claim wins; the second returns `drafted[].skipped: "already_drafted"`. Confirm in the DB that exactly one drafter `model_calls` row and one `drafts` winner exist for that `source_post_id`; a translation row is optional.
 
 ## 3. Browser UI
 
