@@ -101,6 +101,27 @@ async function urlExists(url: string): Promise<boolean> {
   }
 }
 
+/** Any response at all counts as reachable — even a 404 means the network layer worked.
+ *  Only a genuine transport-level error (DNS/connection failure) counts as unreachable. Found
+ *  live (2026-08-06): `sport.es` (bare apex) is unreachable outright — `fetch` throws before
+ *  any HTTP response exists — while `www.sport.es`, the exact same site, resolves fine. #109.
+ *
+ *  A 15s timeout is NOT treated as unreachable — a slow response still means something is
+ *  there. Found in QC review: `fetchWithTimeout` (lib/http-fetch.ts) rethrows a timeout as a
+ *  plain `Error` with the message `"... timed out after 15s"`, indistinguishable from a real
+ *  connection failure by `.name` alone once caught here — a slow-but-real apex site would
+ *  otherwise get misdiverted to a `www.` host that may not even exist, the opposite of what
+ *  this function exists to prevent. */
+async function isOriginReachable(origin: string): Promise<boolean> {
+  try {
+    await sourceFetch(origin, origin);
+    return true;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("timed out after")) return true;
+    return false;
+  }
+}
+
 /** Extracts `<link rel="alternate" type="application/rss+xml" href="...">` from an HTML
  *  document's `<head>`, resolved against `pageUrl`. */
 function extractRssAlternateLink(html: string, pageUrl: string): string | null {
@@ -220,13 +241,38 @@ async function discoverFromRobots(
  *  hint). Sitemap (primary): robots.txt-declared candidates are tried first when present —
  *  the authoritative source when a site bothers to declare one (#108) — then the hardcoded
  *  well-known paths as before. RSS (fallback, only tried if no sitemap found) checks the
- *  exact input URL first, then the domain root, then common feed paths. */
+ *  exact input URL first, then the domain root, then common feed paths.
+ *
+ *  Retries once against a `www.`-prefixed variant when the bare origin is unreachable
+ *  outright (#109) — gated on reachability specifically, not on "nothing found," so a site
+ *  that's reachable but genuinely has no sitemap/feed never pays for a second pass. The
+ *  `!inputUrl.hostname.startsWith("www.")` guard caps this at exactly one retry FOR ORDINARY
+ *  HOSTNAMES: the recursive call's own hostname already starts with `www.`, so it can never
+ *  re-enter this branch. isSafeDiscoveredUrl's existing apex/www cross-reference needs no
+ *  special-casing here — the recursive call re-derives origin/expectedHostname from the new
+ *  URL like any other call, so every downstream check just works against the new host. */
 export async function discoverChangeDetection(inputUrl: URL): Promise<{
   mechanism: "sitemap" | "rss" | null;
   sitemapUrl?: string;
   feedUrl?: string;
 }> {
   const origin = inputUrl.origin;
+
+  if (!inputUrl.hostname.startsWith("www.") && !(await isOriginReachable(origin))) {
+    const wwwUrl = new URL(inputUrl.toString());
+    wwwUrl.hostname = `www.${inputUrl.hostname}`;
+    // The hostname setter silently NO-OPS (never throws) for an IP-literal host — verified
+    // live: setting "www.203.0.113.5" on an IPv4-literal URL, or "www.[2001:db8::1]" on an
+    // IPv6-literal one, leaves the hostname unchanged. Without this check, an unreachable
+    // public IP-literal apex would recurse into this exact branch forever (isPrivateHostname
+    // only rejects private/loopback ranges, so a down public IP passes through to here). A
+    // "www." variant of a raw IP address isn't a meaningful concept anyway, so fall through
+    // to the rest of this function (which correctly resolves to `{ mechanism: null }`)
+    // instead of retrying.
+    if (wwwUrl.hostname !== inputUrl.hostname) {
+      return discoverChangeDetection(wwwUrl);
+    }
+  }
 
   const robotsSitemap = await discoverFromRobots(origin, inputUrl.hostname);
   if (robotsSitemap) return { mechanism: "sitemap", sitemapUrl: robotsSitemap };
