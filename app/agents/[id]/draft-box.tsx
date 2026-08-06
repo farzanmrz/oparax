@@ -9,8 +9,9 @@ import { PostToXControl } from "./post-to-x-control";
 // removed as premature — the draft box shows the winner and offers Post, nothing else.
 // Presentation: a reduced X-post preview, content only — the draft text is set exactly like
 // tweet body copy (17px-ish, regular weight, 1.5 leading) on a lighter full-bleed plate.
-// No char count in the body: budget lives in the footer's progress ring (PostToXControl),
-// which sits beside Post exactly where X's composer puts it.
+// No char count anywhere by default: winners are limit-checked by the pipeline, so the
+// budget only surfaces as a warning strip above Post when a draft nears/exceeds the limit
+// (see CharBudgetStrip in PostToXControl).
 export function DraftBox({
   draft,
   charLimit,

@@ -12,57 +12,29 @@ import { cn } from "@/lib/utils";
 import { publishDraftToX } from "@/lib/x/actions";
 
 /**
- * X-composer-style budget ring: a tiny circular progress of chars used. Quiet by default;
- * turns warning past 90% and destructive when over, at which point the remaining count
- * appears beside it (negative when over) — the only time a number shows at all.
+ * Char budget is intentionally invisible while the draft fits — the pipeline's
+ * `checkXPostable` gate already guarantees winners fit, so a permanent counter/ring is
+ * noise on a read-only draft. Only a near-limit (>90%) or over-limit draft surfaces a
+ * slim strip above Post, which doubles as the explanation for why Post is disabled.
  */
-function CharRing({ length, limit }: { length: number; limit: number }) {
-  const ratio = Math.min(length / limit, 1);
+function CharBudgetStrip({ length, limit }: { length: number; limit: number }) {
   const over = length > limit;
-  const near = !over && ratio > 0.9;
-  const r = 8;
-  const c = 2 * Math.PI * r;
-  const remaining = limit - length;
+  const near = !over && length / limit > 0.9;
+  if (!over && !near) return null;
   return (
-    <span
-      aria-label={`${length} of ${limit} characters used`}
-      className="flex items-center gap-1.5"
-      role="img"
+    <p
+      className={cn(
+        "flex h-8 w-full items-center justify-center gap-1.5 border-t text-[12px]",
+        over
+          ? "border-destructive/30 bg-destructive/10 text-destructive"
+          : "border-warning/30 bg-warning/10 text-warning",
+      )}
+      role={over ? "alert" : "status"}
     >
-      <svg aria-hidden="true" className="-rotate-90" height="20" viewBox="0 0 20 20" width="20">
-        <circle
-          className="stroke-border"
-          cx="10"
-          cy="10"
-          fill="none"
-          r={r}
-          strokeWidth="2"
-        />
-        <circle
-          className={cn(
-            over ? "stroke-destructive" : near ? "stroke-warning" : "stroke-primary",
-          )}
-          cx="10"
-          cy="10"
-          fill="none"
-          r={r}
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - ratio)}
-          strokeLinecap="round"
-          strokeWidth="2"
-        />
-      </svg>
-      {over || near ? (
-        <span
-          className={cn(
-            "font-mono text-[11px] tabular-nums leading-none",
-            over ? "text-destructive" : "text-warning",
-          )}
-        >
-          {remaining}
-        </span>
-      ) : null}
-    </span>
+      {over
+        ? `${length - limit} ${length - limit === 1 ? "character" : "characters"} over the X limit`
+        : `${limit - length} ${limit - length === 1 ? "character" : "characters"} left`}
+    </p>
   );
 }
 
@@ -132,19 +104,14 @@ export function PostToXControl({
           {error}
         </p>
       ) : null}
-      {/* Footer row: budget ring on the left cell (X-composer placement), Post fills the rest. */}
-      <div className="flex w-full items-stretch border-t">
-        <span className="flex shrink-0 items-center px-[clamp(15px,2.1cqw,22px)]">
-          <CharRing length={parsed.weightedLength} limit={charLimit} />
-        </span>
-        <Button
-          className="h-11 flex-1 rounded-none border-l"
-          disabled={isPending || !parsed.valid || overLimit}
-          onClick={handleConfirm}
-        >
-          {isPending ? "Posting…" : "Post"}
-        </Button>
-      </div>
+      <CharBudgetStrip length={parsed.weightedLength} limit={charLimit} />
+      <Button
+        className="h-11 w-full rounded-none border-t"
+        disabled={isPending || !parsed.valid || overLimit}
+        onClick={handleConfirm}
+      >
+        {isPending ? "Posting…" : "Post"}
+      </Button>
     </div>
   );
 }
