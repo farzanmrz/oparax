@@ -4,7 +4,7 @@ AI news desk for reporters: monitors their beat across X, catches stories as the
 
 ## Stack
 
-Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `@ai-sdk/react` · Tailwind + stock shadcn + vendored ai-elements · Supabase auth + owner-scoped app tables · Sentry (errors, tracing, logs, replay) · pnpm + Biome. Versions: `package.json`.
+Next.js App Router + TypeScript strict (`@/*` → repo root) · Tailwind + stock shadcn + vendored ai-elements · Supabase auth · Sentry (errors, tracing, logs, replay). Deps/versions: `package.json`.
 
 ## Code map
 
@@ -19,7 +19,7 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 - **`lib/notify/` senders neither persist nor meter** — `draft-pipeline.ts` does both. `email.ts` keeps the reply encoder and decoder in one file to prevent drift.
 - **`lib/sysprompts/voice-extract.md` is measured, not authored.** Never tune it by read-through.
 - **Frontend test login: `testuser@oparax.ai` / `hello123`** — a dummy account for agentic testing; logging in with it to check the browser is pre-authorized, no credential safeguards apply.
-- **Sentry**: the four root files (`instrumentation.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) keep those exact names. Four deviations from the wizard: `tunnelRoute: "/monitoring"` is **excluded from `proxy.ts`'s matcher** (else every client-side error report is lost); `httpBodies: []` since a body here carries unpublished drafts; `tracesSampleRate` 1 in prod, 1.75s extraction polls dropped in `beforeSendTransaction`; `@sentry/profiling-node` absent after it grew a dev server to 6.6 GB RSS. Local AI DevTools: development-only.
+- **Sentry**: the four root instrumentation/sentry files keep their exact wizard names. Deviations: `tunnelRoute: "/monitoring"` is **excluded from `proxy.ts`'s matcher** (else every client-side error report is lost); `httpBodies: []` since a body here carries unpublished drafts; `tracesSampleRate` 1 in prod, extraction polls dropped in `beforeSendTransaction`; `@sentry/profiling-node` absent (grew a dev server to 6.6 GB RSS).
 
 ## Data
 
@@ -39,7 +39,7 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 | `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | OAuth tokens, inferred tier, receipts | deny-all |
 | `draft_claims`, `unmatched_deliveries` | atomic claim counters | deny-all |
 | `voice_extraction_runs` | extraction progress only | deny-all |
-| `source_configs` | a desk's onboarded website source | deny-all |
+| `source_configs` | a desk's onboarded website source; `pending` lifecycle, polled client-side like voice extraction | deny-all |
 | `source_seen_items` | per-source dedup of poller-delivered items | deny-all |
 
 ### Dormant by design — switched off, not missing

@@ -60,12 +60,19 @@ async function fetchXml(endpoint: string, url: string): Promise<string> {
   return res.text();
 }
 
+const NO_LASTMOD_CANDIDATE_CAP = 10;
+
 /** Fetches `sitemapUrl` and parses it into leaf `<urlset>` entries, following a
- *  `<sitemap>` index to its newest-dated sub-sitemap (by `<lastmod>`, falling back to the
- *  last entry when none carry a date). Each followed `<loc>` is site-controlled content, so
- *  it passes `isSafeDiscoveredUrl` against `expectedHostname` before this server fetches it —
- *  an index entry pointing at an internal address is dropped, not followed. `maxDepth` bounds
- *  the recursion (real sitemap indexes nest at most 1-2 levels deep) so a self-referencing or
+ *  `<sitemap>` index to its newest-dated sub-sitemap (by `<lastmod>`). When no entry carries
+ *  a date, list position carries no reliable meaning — some sites shard content into the
+ *  first sub-sitemap and leave the rest as empty placeholders, others do the reverse — so
+ *  candidates are tried in order (capped) until one actually yields entries, rather than
+ *  guessing a single position and giving up on an empty pick (found live: manutd.com's index
+ *  has no `<lastmod>` anywhere; its real content is in the first sub-sitemap, the rest are
+ *  empty shards). Each followed `<loc>` is site-controlled content, so it passes
+ *  `isSafeDiscoveredUrl` against `expectedHostname` before this server fetches it — an index
+ *  entry pointing at an internal address is dropped, not followed. `maxDepth` bounds the
+ *  recursion (real sitemap indexes nest at most 1-2 levels deep) so a self-referencing or
  *  cyclic index can't recurse indefinitely; it is exhausted, not treated as an error. */
 async function fetchLeafEntries(
   sitemapUrl: string,
@@ -83,13 +90,18 @@ async function fetchLeafEntries(
   const dated = indexEntries.filter(
     (entry): entry is { loc: string; lastmod: string } => !!entry.loc && !!entry.lastmod,
   );
-  const newest =
-    dated.length > 0
-      ? dated.reduce((a, b) => (new Date(a.lastmod) >= new Date(b.lastmod) ? a : b))
-      : indexEntries[indexEntries.length - 1];
+  if (dated.length > 0) {
+    const newest = dated.reduce((a, b) => (new Date(a.lastmod) >= new Date(b.lastmod) ? a : b));
+    if (!isSafeDiscoveredUrl(newest.loc, expectedHostname)) return [];
+    return fetchLeafEntries(newest.loc, expectedHostname, maxDepth - 1);
+  }
 
-  if (!newest.loc || !isSafeDiscoveredUrl(newest.loc, expectedHostname)) return [];
-  return fetchLeafEntries(newest.loc, expectedHostname, maxDepth - 1);
+  for (const entry of indexEntries.slice(0, NO_LASTMOD_CANDIDATE_CAP)) {
+    if (!entry.loc || !isSafeDiscoveredUrl(entry.loc, expectedHostname)) continue;
+    const leaves = await fetchLeafEntries(entry.loc, expectedHostname, maxDepth - 1);
+    if (leaves.length > 0) return leaves;
+  }
+  return [];
 }
 
 /** Fetches a sample of up to `limit` recent entries from `sitemapUrl`, resolving a

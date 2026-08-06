@@ -41,7 +41,9 @@ export function ChipsField({
    *  several rows of chips without the box growing and shrinking as they're added. */
   readonly className?: string;
   readonly chipLabel: (chip: string) => string;
-  readonly chipClassName?: string;
+  /** A plain string applies to every chip; a function lets the caller vary the chip's style
+   *  per-item (#106 — pending/failed/resolved pill states on the same list). */
+  readonly chipClassName?: string | ((chip: string) => string | undefined);
   readonly chips: readonly string[];
   /** Freezes the whole field — chips, removes, and input (the "Coming soon" state). */
   readonly disabled?: boolean;
@@ -68,7 +70,11 @@ export function ChipsField({
       )}
     >
       {chips.map((chip) => (
-        <Badge className={chipClassName} key={chip} variant="secondary">
+        <Badge
+          className={typeof chipClassName === "function" ? chipClassName(chip) : chipClassName}
+          key={chip}
+          variant="secondary"
+        >
           {chipLabel(chip)}
           <button
             aria-label={removeLabel(chip)}

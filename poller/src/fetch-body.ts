@@ -22,6 +22,16 @@ const MIN_BODY_LENGTH = 200;
  *  crash the process mid-tick and take every other source's polling down with it. */
 const MAX_HTML_LENGTH = 5_000_000;
 
+/** Ceiling on the final extracted text, applied once across every tier — MAX_HTML_LENGTH
+ *  above only bounds the raw HTML read into memory, nothing bounds what comes OUT of
+ *  extraction. Found live (2026-08-06): bbc.co.uk's sitemap surfaces sport-category landing
+ *  pages (e.g. /sport/boxing) alongside real articles; those extract to 300K+ characters of
+ *  page chrome, JSON-LD, and dozens of unrelated headlines. That text feeds straight into the
+ *  grounding call's prompt uncapped — observed ballooning it past 130K input tokens, which
+ *  left the model burning its output budget on reasoning and frequently never reaching the
+ *  structured response at all. 20,000 chars is generous for any real long-form article.  */
+const MAX_BODY_LENGTH = 20_000;
+
 /** Bright Data's Web Unlocker does block-bypass/challenge-solving server-side and routinely
  *  takes longer than the shared 15s default — this tier exists specifically for hostile sites,
  *  so it gets its own longer budget instead of inheriting fetchWithTimeout's default. */
@@ -282,6 +292,22 @@ async function fetchViaSerpFallback(
  *  `expectedHostname` is the source's own hostname, checked once here so every tier is gated
  *  by the same same-site rule. */
 export async function fetchArticleBody(
+  item: FeedItem,
+  retrieval: string | null,
+  expectedHostname: string,
+  env: PollerEnv,
+): Promise<{ text: string; usedFallback: boolean }> {
+  const result = await fetchArticleBodyByTier(item, retrieval, expectedHostname, env);
+  if (result.text.length <= MAX_BODY_LENGTH) return result;
+  logger.warn("fetch-body: extracted text exceeds cap, truncating", {
+    url: item.url,
+    length: result.text.length,
+    cap: MAX_BODY_LENGTH,
+  });
+  return { text: result.text.slice(0, MAX_BODY_LENGTH), usedFallback: result.usedFallback };
+}
+
+async function fetchArticleBodyByTier(
   item: FeedItem,
   retrieval: string | null,
   expectedHostname: string,

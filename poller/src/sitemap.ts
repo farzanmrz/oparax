@@ -72,11 +72,36 @@ function nextCacheFrom(res: Response): ConditionalGetCache {
   };
 }
 
-/** Resolves a <sitemapindex>'s newest-dated <sitemap> entry (falling back to the last entry
- *  when none carry a <lastmod>), then fetches and recurses into it — bounded by `maxDepth`
- *  (real sitemap indexes nest at most 1-2 levels deep) so a self-referencing or cyclic index
- *  can't recurse indefinitely; it is exhausted, not treated as an error. Every level below
- *  the top is a plain, non-conditional fetch: only the outermost fetch needs to be
+const NO_LASTMOD_CANDIDATE_CAP = 10;
+
+async function fetchAndParseSitemap(
+  sitemapUrl: string,
+  userAgent: string,
+): Promise<{
+  indexEntries: Array<{ loc?: string; lastmod?: string }>;
+  leaves: RawSitemapUrlEntry[];
+}> {
+  const res = await fetchWithTimeout("Sitemap", sitemapUrl, sitemapUrl, {
+    method: "GET",
+    headers: { "user-agent": userAgent },
+  });
+  await assertFetchOk("Sitemap", sitemapUrl, res);
+  const parsed = parser.parse(await res.text());
+  const indexEntries = asArray<{ loc?: string; lastmod?: string }>(parsed.sitemapindex?.sitemap);
+  const leaves = indexEntries.length === 0 ? asArray<RawSitemapUrlEntry>(parsed.urlset?.url) : [];
+  return { indexEntries, leaves };
+}
+
+/** Resolves a <sitemapindex>'s newest-dated <sitemap> entry (by `<lastmod>`), then fetches
+ *  and recurses into it — bounded by `maxDepth` (real sitemap indexes nest at most 1-2
+ *  levels deep) so a self-referencing or cyclic index can't recurse indefinitely; it is
+ *  exhausted, not treated as an error. When no entry carries a date, list position carries
+ *  no reliable meaning — some sites shard content into the first sub-sitemap and leave the
+ *  rest as empty placeholders, others do the reverse — so candidates are tried in order
+ *  (capped) until one actually yields entries, rather than guessing a single position and
+ *  giving up on an empty pick (found live: manutd.com's index has no `<lastmod>` anywhere;
+ *  its real content is in the first sub-sitemap, the rest are empty shards). Every level
+ *  below the top is a plain, non-conditional fetch: only the outermost fetch needs to be
  *  conditional, since a sub-sitemap's own freshness is irrelevant if the index itself hasn't
  *  changed. */
 async function resolveLeafEntries(
@@ -90,25 +115,30 @@ async function resolveLeafEntries(
   const dated = indexEntries.filter(
     (entry): entry is { loc: string; lastmod: string } => !!entry.loc && !!entry.lastmod,
   );
-  const newest =
-    dated.length > 0
-      ? dated.reduce((a, b) => (new Date(a.lastmod) >= new Date(b.lastmod) ? a : b))
-      : indexEntries[indexEntries.length - 1];
+  if (dated.length > 0) {
+    const newest = dated.reduce((a, b) => (new Date(a.lastmod) >= new Date(b.lastmod) ? a : b));
+    if (!isSafeDiscoveredUrl(newest.loc, expectedHostname)) return [];
+    const { indexEntries: nextIndexEntries, leaves } = await fetchAndParseSitemap(
+      newest.loc,
+      userAgent,
+    );
+    if (nextIndexEntries.length === 0) return leaves;
+    return resolveLeafEntries(nextIndexEntries, expectedHostname, userAgent, maxDepth - 1);
+  }
 
-  if (!newest.loc || !isSafeDiscoveredUrl(newest.loc, expectedHostname)) return [];
-
-  const res = await fetchWithTimeout("Sitemap", newest.loc, newest.loc, {
-    method: "GET",
-    headers: { "user-agent": userAgent },
-  });
-  await assertFetchOk("Sitemap", newest.loc, res);
-  const parsed = parser.parse(await res.text());
-
-  const nextIndexEntries = asArray<{ loc?: string; lastmod?: string }>(
-    parsed.sitemapindex?.sitemap,
-  );
-  if (nextIndexEntries.length === 0) return asArray<RawSitemapUrlEntry>(parsed.urlset?.url);
-  return resolveLeafEntries(nextIndexEntries, expectedHostname, userAgent, maxDepth - 1);
+  for (const entry of indexEntries.slice(0, NO_LASTMOD_CANDIDATE_CAP)) {
+    if (!entry.loc || !isSafeDiscoveredUrl(entry.loc, expectedHostname)) continue;
+    const { indexEntries: nextIndexEntries, leaves } = await fetchAndParseSitemap(
+      entry.loc,
+      userAgent,
+    );
+    const resolved =
+      nextIndexEntries.length === 0
+        ? leaves
+        : await resolveLeafEntries(nextIndexEntries, expectedHostname, userAgent, maxDepth - 1);
+    if (resolved.length > 0) return resolved;
+  }
+  return [];
 }
 
 export async function fetchSitemapItems(

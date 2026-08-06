@@ -36,6 +36,13 @@ const GROUND_MODEL = QWEN_DRAFT_MODEL;
  *  on X; this is a ceiling against a pathological payload, not a product limit. */
 const MAX_GROUND_IMAGES = 4;
 
+/** Found live (2026-08-06): with no bound here, a stalled provider/gateway connection left one
+ *  grounding call — and the /api/ingest request holding it open — hung for ~30 minutes before
+ *  finally erroring. A single-article, medium-reasoning Qwen call normally completes in
+ *  seconds; 90s is generous headroom, not a tight budget, matching the abortSignal pattern
+ *  already used by lib/voice/extract-guide.ts's (much heavier) extraction call. */
+const GROUND_TIMEOUT_MS = 90_000;
+
 /** The grounding verdict. Field-by-field this mirrors `lib/sysprompts/draft-ground.md`, which
  *  names each one imperatively — the prompt and this schema are a matched pair and must change
  *  together. `.nullable()` on mediaDescription/translation is load-bearing: the prompt tells the
@@ -284,6 +291,7 @@ export async function groundSourcePost(input: {
         qwenStepRef.value = event;
       },
       experimental_telemetry: aiTelemetry("draft_ground", "draft-ground-qwen"),
+      abortSignal: AbortSignal.timeout(GROUND_TIMEOUT_MS),
     });
     return await buildResult(GROUND_MODEL, result);
   } catch (err) {

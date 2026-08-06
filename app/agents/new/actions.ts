@@ -1,10 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { isOverrideOwner } from "@/lib/owner-allowlist";
+import {
+  markPendingSourceFailed,
+  onboardSource,
+  reservePendingSource,
+  SONNET_ONBOARDING_MODEL,
+} from "@/lib/sources/onboard-source";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_WEBSITES, normalizeSourceUrl, parseWebsites } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
 import { getXLinkState } from "@/lib/x/link-state";
+import type { ActionResult } from "../[id]/actions";
 
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
@@ -135,4 +145,51 @@ export async function createDesk(input: {
   revalidatePath("/agents", "layout");
 
   return { id: data.id };
+}
+
+/**
+ * Creation-time website onboarding (#106) — same shape as
+ * `app/agents/[id]/setup/actions.ts`'s `startWebsiteOnboarding` (reserve synchronously so the
+ * chip renders immediately and survives the redirect to the new desk's Setup page, then hand
+ * the real, billed onboarding call to `after()`), except this path runs on Sonnet
+ * (`SONNET_ONBOARDING_MODEL`), not Qwen — the one deliberate difference between the two entry
+ * points per this issue's own scoping. Called once per website, in parallel, right after
+ * `createDesk` resolves; never blocks the create-desk form's navigation.
+ */
+export async function startWebsiteOnboardingAtCreation(
+  deskId: string,
+  rawUrl: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agents")
+    .select("owner_id, beat, websites")
+    .eq("id", deskId)
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: "Could not load the agent." };
+
+  if (parseWebsites(data.websites).length >= MAX_WEBSITES) {
+    return { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` };
+  }
+
+  const url = normalizeSourceUrl(rawUrl);
+  if (url === null)
+    return { ok: false, error: `"${rawUrl.trim()}" doesn't look like a valid website.` };
+
+  const reserved = await reservePendingSource(deskId, url);
+  if ("status" in reserved) return { ok: false, error: "Couldn't reach that site." };
+
+  const ownerId = data.owner_id;
+  const beat = data.beat;
+  const configId = reserved.configId;
+  after(async () => {
+    try {
+      await onboardSource(deskId, ownerId, url, beat, SONNET_ONBOARDING_MODEL, configId);
+    } catch (err) {
+      console.error("startWebsiteOnboardingAtCreation: onboardSource threw", err);
+      await markPendingSourceFailed(createAdminClient(), configId);
+    }
+  });
+
+  return { ok: true };
 }

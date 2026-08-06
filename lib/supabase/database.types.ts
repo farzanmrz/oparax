@@ -206,14 +206,16 @@ export type Database = {
           judge_review: Json | null;
           judge_verdict: Json | null;
           model_call_id: string;
+          news_synthesis: string | null;
+          news_title: string | null;
           parent_draft_id: string | null;
           platform: string;
           posted_at: string | null;
           posted_tweet_id: string | null;
           posted_url: string | null;
+          posting_claimed_at: string | null;
           source_post_id: string;
           story_id: string | null;
-          synthesis: string | null;
           translation: string | null;
         };
         Insert: {
@@ -225,14 +227,16 @@ export type Database = {
           judge_review?: Json | null;
           judge_verdict?: Json | null;
           model_call_id: string;
+          news_synthesis?: string | null;
+          news_title?: string | null;
           parent_draft_id?: string | null;
           platform?: string;
           posted_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
+          posting_claimed_at?: string | null;
           source_post_id: string;
           story_id?: string | null;
-          synthesis?: string | null;
           translation?: string | null;
         };
         Update: {
@@ -244,14 +248,16 @@ export type Database = {
           judge_review?: Json | null;
           judge_verdict?: Json | null;
           model_call_id?: string;
+          news_synthesis?: string | null;
+          news_title?: string | null;
           parent_draft_id?: string | null;
           platform?: string;
           posted_at?: string | null;
           posted_tweet_id?: string | null;
           posted_url?: string | null;
+          posting_claimed_at?: string | null;
           source_post_id?: string;
           story_id?: string | null;
-          synthesis?: string | null;
           translation?: string | null;
         };
         Relationships: [
@@ -974,6 +980,15 @@ export type Database = {
       remove_source_config: {
         Args: { p_agent_id: string; p_url: string };
         Returns: undefined;
+      };
+      reserve_pending_source_config: {
+        Args: {
+          p_agent_id: string;
+          p_display_name: string;
+          p_domain: string;
+          p_url: string;
+        };
+        Returns: string;
       };
     };
     Enums: {

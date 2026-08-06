@@ -17,12 +17,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { QWEN_DRAFT_MODEL } from "@/lib/agent/qwen-draft-config";
 import { sendTestEmail as sendPlainTestEmail } from "@/lib/notify/email";
 import {
   sendTestSlack as sendTestSlackAccount,
   unlinkSlack as unlinkSlackAccount,
 } from "@/lib/slack/actions";
-import { onboardSource } from "@/lib/sources/onboard-source";
+import {
+  markPendingSourceFailed,
+  onboardSource,
+  reservePendingSource,
+} from "@/lib/sources/onboard-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_WEBSITES, normalizeSourceUrl, parseWebsites } from "@/lib/websites";
@@ -38,14 +44,18 @@ const ONBOARD_ERROR_COPY: Record<string, string> = {
 };
 
 /**
- * Discovers how to detect new articles on `rawUrl` (sitemap primary, RSS fallback), runs
- * the one onboarding model call, verifies its proposed filter, and — only on success —
- * persists a `source_configs` row and adds the site to `agents.websites` in one transaction
- * (`onboardSource`'s `add_source_config` RPC call). Replaces `saveWebsites` as this card's
- * website submit handler; `saveWebsites` itself is untouched (still used by the create-desk
- * flow, which has no per-site onboarding UI of its own).
+ * Reserves a `pending` source_configs row synchronously (fast, no model call — the chip
+ * renders immediately off this), then hands the real, billed onboarding call to `after()`
+ * (#106) instead of blocking the request on it. Replaces `discoverAndSaveSource`/
+ * `saveWebsites`: `saveWebsites` is deleted outright (it never called `onboardSource` at
+ * all — see its own removal, this diff), and this is now the ONLY website-add server
+ * action, used by both the Setup page and the create-desk form (`startWebsiteOnboardingAtCreation`
+ * wraps this same shape with the Sonnet model — see app/agents/new/actions.ts).
  */
-export async function discoverAndSaveSource(deskId: string, rawUrl: string): Promise<ActionResult> {
+export async function startWebsiteOnboarding(
+  deskId: string,
+  rawUrl: string,
+): Promise<ActionResult> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("agents")
@@ -62,75 +72,60 @@ export async function discoverAndSaveSource(deskId: string, rawUrl: string): Pro
   if (url === null)
     return { ok: false, error: `"${rawUrl.trim()}" doesn't look like a valid website.` };
 
-  // onboardSource deliberately throws on anything that isn't a schema-validation failure
-  // (a routine gateway 429/5xx, a model_calls insert error, an RPC error) — QC round 1,
-  // finding #4: an uncaught throw here escapes as an unhandled rejection and breaks the
-  // "one honest message" contract. Caught here so every failure path returns the same
-  // generic retry copy `onboardSource` itself can't distinguish from inside a throw.
-  let outcome: Awaited<ReturnType<typeof onboardSource>>;
-  try {
-    outcome = await onboardSource(deskId, data.owner_id, url, data.beat);
-  } catch (err) {
-    console.error("discoverAndSaveSource: onboardSource threw", err);
-    return { ok: false, error: ONBOARD_ERROR_COPY.failed };
-  }
-  if (outcome.status !== "completed") {
-    return { ok: false, error: ONBOARD_ERROR_COPY[outcome.status] };
-  }
+  const reserved = await reservePendingSource(deskId, url);
+  if ("status" in reserved) return { ok: false, error: ONBOARD_ERROR_COPY.unreachable };
 
-  // agents.websites was already updated transactionally by add_source_config inside
-  // onboardSource — this action does not touch it separately.
+  const ownerId = data.owner_id;
+  const beat = data.beat;
+  const configId = reserved.configId;
+  after(async () => {
+    try {
+      await onboardSource(deskId, ownerId, url, beat, QWEN_DRAFT_MODEL, configId);
+    } catch (err) {
+      console.error("startWebsiteOnboarding: onboardSource threw", err);
+      await markPendingSourceFailed(createAdminClient(), configId);
+    }
+  });
+
   revalidatePath("/agents", "layout");
   return { ok: true };
 }
 
 /**
- * Save one or more websites to `agents.websites` (plain `string[]` — no metadata beyond
- * the URL is asked for this slice). Read-modify-write under RLS, same shape as
- * `addTrackedHandles`: read current `websites`, merge/dedupe the normalized candidates,
- * update, revalidate. Unlike `addTrackedHandles`, an invalid entry rejects the whole call
- * with a clear error naming it, rather than being silently dropped.
+ * Polls `source_configs` for this desk's pending/failed onboarding attempts — the browser's
+ * one channel into this deny-all-RLS table, ownership proved via the same RLS `agents` read
+ * every other action in this file already uses (a row coming back IS the proof), then read
+ * via the admin client, mirroring `getExtractionProgress`'s ownership-then-admin-read shape.
  */
-export async function saveWebsites(
+export async function getWebsiteOnboardingStatus(
   deskId: string,
-  websites: readonly string[],
-): Promise<ActionResult> {
-  const candidates: string[] = [];
-  for (const raw of websites) {
-    const normalized = normalizeSourceUrl(raw);
-    if (normalized === null)
-      return { ok: false, error: `"${raw.trim()}" doesn't look like a valid website.` };
-    candidates.push(normalized.toString());
-  }
-  if (candidates.length === 0) return { ok: false, error: "Enter a website to track." };
-
+): Promise<{ url: string; status: string; errorCode?: string }[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data: owned, error: ownError } = await supabase
     .from("agents")
-    .select("websites")
+    .select("id")
     .eq("id", deskId)
     .maybeSingle();
-  if (error || !data) return { ok: false, error: "Could not load the agent's websites." };
-
-  const existing = parseWebsites(data.websites);
-  const merged = [...existing];
-  for (const url of candidates) {
-    if (merged.length >= MAX_WEBSITES) break; // cap (client enforces too)
-    if (!merged.includes(url)) merged.push(url);
-  }
-  if (merged.length === existing.length) {
-    return existing.length >= MAX_WEBSITES
-      ? { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` }
-      : { ok: true };
+  if (ownError || !owned) {
+    console.error("getWebsiteOnboardingStatus: ownership check failed", ownError);
+    return [];
   }
 
-  const { error: updateError } = await supabase
-    .from("agents")
-    .update({ websites: merged })
-    .eq("id", deskId);
-  if (updateError) return { ok: false, error: "Could not save those websites. Please try again." };
-  revalidatePath("/agents", "layout");
-  return { ok: true };
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("source_configs")
+    .select("url, status")
+    .eq("agent_id", deskId)
+    .in("status", ["pending", "failed_validation"]);
+  if (error || !data) {
+    console.error("getWebsiteOnboardingStatus: source_configs read failed", error);
+    return [];
+  }
+  return data.map((row) => ({
+    url: row.url,
+    status: row.status,
+    errorCode: row.status === "failed_validation" ? "failed" : undefined,
+  }));
 }
 
 /** Proves ownership via the RLS client, same as every other action here, then removes the

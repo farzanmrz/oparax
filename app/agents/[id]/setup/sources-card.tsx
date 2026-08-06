@@ -21,13 +21,21 @@
 // a plain add-input — handle text, a remove button, and a per-handle "Auto-post" toggle
 // (greyed, "Coming soon" — no per-handle column exists yet). The add-input's Enter/comma/
 // blur/multi-paste commit logic mirrors create-desk-form.tsx's, sharing its split helper via
-// lib/x/handle-input.ts. The websites subsection is greyed (opacity + "Coming soon" badge,
-// everything disabled) until the Railway ingestion worker deploys in Wave 4 — its server
-// actions (`saveWebsites` etc.) stay intact for un-greying.
+// lib/x/handle-input.ts. Websites are live (#106): adding one reserves a `pending` row
+// synchronously (`startWebsiteOnboarding`), then resolves in the background to a plain chip
+// (success) or a dismissable red chip (`markPendingSourceFailed`) — polled client-side via
+// `useWebsiteOnboardingStatus`, same instant-add pattern as the creation-time form.
 
 import { CheckIcon, MailIcon, MessageSquareIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { type ClipboardEvent, type KeyboardEvent, useState, useTransition } from "react";
+import {
+  type ClipboardEvent,
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { ChipsField } from "@/components/chips-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,15 +50,16 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AUTO_POST_ENABLED } from "@/lib/agent/desk-config";
-import { MAX_WEBSITES } from "@/lib/websites";
+import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
+import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
 import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import {
-  discoverAndSaveSource,
   removeWebsite,
   sendTestEmail,
   sendTestSlack,
+  startWebsiteOnboarding,
   toggleAutoPost,
   unlinkSlack,
 } from "./actions";
@@ -89,7 +98,81 @@ export function SourcesCard({
 
   const [websiteInput, setWebsiteInput] = useState("");
   const [websiteError, setWebsiteError] = useState<string | null>(null);
-  const [isWebsitePending, startWebsiteTransition] = useTransition();
+  const [, startWebsiteTransition] = useTransition();
+  // Pending/failed state (#106) — keyed by the normalized URL string so an instant, purely
+  // local add (before any server round trip resolves) reconciles cleanly with what the poll
+  // below later reports for the exact same site.
+  const [pendingUrls, setPendingUrls] = useState<ReadonlySet<string>>(new Set());
+  const [failedUrls, setFailedUrls] = useState<ReadonlyMap<string, string>>(new Map());
+  // A site that was pending and, on a later poll, is neither pending nor failed succeeded —
+  // rendered as a plain chip immediately rather than waiting for a full page reload to pick it
+  // up from the server-rendered `websites` prop (#106 finding #1).
+  const [resolvedUrls, setResolvedUrls] = useState<ReadonlySet<string>>(new Set());
+  // Grace-period guards (#106 finding #7) so a poll already in flight when the user adds or
+  // dismisses a site can't clobber that optimistic change for the ~2s until the next poll
+  // catches up with the server.
+  const recentlyAddedRef = useRef<Map<string, number>>(new Map());
+  const recentlyDismissedRef = useRef<Map<string, number>>(new Map());
+  const RECONCILE_GRACE_MS = 2500;
+
+  // Always-on poll (#106): the hook fetches immediately on mount, so this alone covers "a site
+  // was already pending before this component existed" (e.g. reserved by the create-desk form
+  // moments before redirecting here) — no separate one-shot fetch needed, and no two-sources-
+  // of-truth race between it and the poll's own state. One 2s poll while this card is mounted
+  // is an acceptable, simple cost — not worth a stop-when-settled mechanism for this slice.
+  const polledEntries = useWebsiteOnboardingStatus(deskId, { enabled: true });
+  useEffect(() => {
+    const now = Date.now();
+    for (const [url, at] of recentlyAddedRef.current) {
+      if (now - at > RECONCILE_GRACE_MS) recentlyAddedRef.current.delete(url);
+    }
+    for (const [url, at] of recentlyDismissedRef.current) {
+      if (now - at > RECONCILE_GRACE_MS) recentlyDismissedRef.current.delete(url);
+    }
+
+    const serverPending = new Set(
+      polledEntries.filter((e) => e.status === "pending").map((e) => e.url),
+    );
+    const serverFailed = new Map(
+      polledEntries
+        .filter((e) => e.status === "failed_validation")
+        .map((e) => [e.url, e.errorCode ?? "failed"]),
+    );
+
+    setPendingUrls((prevPending) => {
+      const next = new Set(serverPending);
+      // Keep a just-added url pending even if this poll started before the reservation landed.
+      for (const url of recentlyAddedRef.current.keys()) {
+        if (prevPending.has(url) && !serverFailed.has(url)) next.add(url);
+      }
+      // Don't let a stale poll resurrect something the user just dismissed.
+      for (const url of recentlyDismissedRef.current.keys()) next.delete(url);
+
+      const resolved = [...prevPending].filter(
+        (url) => !next.has(url) && !serverFailed.has(url) && !recentlyDismissedRef.current.has(url),
+      );
+      if (resolved.length > 0) {
+        setResolvedUrls((current) => new Set([...current, ...resolved]));
+      }
+      return next;
+    });
+
+    setFailedUrls(() => {
+      const next = new Map(serverFailed);
+      for (const url of recentlyDismissedRef.current.keys()) next.delete(url);
+      return next;
+    });
+  }, [polledEntries]);
+
+  // Once the server-rendered `websites` prop catches up (a later navigation/revalidation), stop
+  // tracking the url as separately "resolved" — it's now just an ordinary entry in `websites`.
+  useEffect(() => {
+    setResolvedUrls((current) => {
+      if (current.size === 0) return current;
+      const next = new Set([...current].filter((url) => !websites.includes(url)));
+      return next.size === current.size ? current : next;
+    });
+  }, [websites]);
 
   const [confirmTarget, setConfirmTarget] = useState<AutoPostTarget | null>(null);
   const [autoPostError, setAutoPostError] = useState<string | null>(null);
@@ -153,25 +236,69 @@ export function SourcesCard({
 
   // One site per submit, unlike the X-handles field's batch paste: onboarding runs real
   // discovery and a billed model call per site, so there is no equivalent of "commit a
-  // comma-separated blob" here.
+  // comma-separated blob" here. Instant-add (#106): the chip renders the moment this fires —
+  // startWebsiteOnboarding only does a fast synchronous reservation, never the billed call
+  // itself, so the input is never blocked waiting on it.
   function handleAddWebsite() {
     const raw = websiteInput.trim();
     if (!raw) return;
+    const normalized = normalizeSourceUrl(raw);
     setWebsiteError(null);
+    setWebsiteInput("");
+    if (normalized) {
+      const url = normalized.toString();
+      recentlyAddedRef.current.set(url, Date.now());
+      setPendingUrls((current) => new Set(current).add(url));
+    }
     startWebsiteTransition(async () => {
-      const result = await discoverAndSaveSource(deskId, raw);
+      const result = await startWebsiteOnboarding(deskId, raw);
       if (!result.ok) {
         setWebsiteError(result.error);
-        return;
+        if (normalized) {
+          const url = normalized.toString();
+          recentlyAddedRef.current.delete(url);
+          setPendingUrls((current) => {
+            const next = new Set(current);
+            next.delete(url);
+            return next;
+          });
+        }
       }
-      setWebsiteInput("");
     });
   }
 
   const atWebsiteLimit = websites.length >= MAX_WEBSITES;
+  const pendingChips = [...pendingUrls].filter((url) => !websites.includes(url));
+  const failedChips = [...failedUrls.keys()].filter((url) => !websites.includes(url));
+  const resolvedChips = [...resolvedUrls].filter(
+    (url) => !websites.includes(url) && !pendingUrls.has(url) && !failedUrls.has(url),
+  );
+  const websiteChips = [...websites, ...resolvedChips, ...pendingChips, ...failedChips];
 
+  // Doubles as "cancel" for a pending chip and "dismiss" for a failed one — remove_source_config
+  // deletes whatever row is there (pending, failed_validation, or active) uniformly.
   function handleRemoveWebsite(url: string) {
     setWebsiteError(null);
+    recentlyDismissedRef.current.set(url, Date.now());
+    recentlyAddedRef.current.delete(url);
+    setResolvedUrls((current) => {
+      if (!current.has(url)) return current;
+      const next = new Set(current);
+      next.delete(url);
+      return next;
+    });
+    setPendingUrls((current) => {
+      if (!current.has(url)) return current;
+      const next = new Set(current);
+      next.delete(url);
+      return next;
+    });
+    setFailedUrls((current) => {
+      if (!current.has(url)) return current;
+      const next = new Map(current);
+      next.delete(url);
+      return next;
+    });
     startWebsiteTransition(async () => {
       const result = await removeWebsite(deskId, url);
       if (!result.ok) setWebsiteError(result.error);
@@ -356,22 +483,44 @@ export function SourcesCard({
               />
             </div>
           </div>
+          {/* Instant-add (#106): the input is never blocked on the onboarding call — a chip
+              appears the moment a site is submitted (yellow, pending) and resolves on its own
+              via polling, to either a plain chip (done) or a red chip (failed, dismiss/retype
+              to retry). Opaque colored pills only, per the owner's own instruction — no new
+              component, no spinner, no animation; the app's facelift covers this properly. */}
           <ChipsField
-            chipLabel={(url) => url}
-            chips={websites}
-            inputDisabled={isWebsitePending || atWebsiteLimit}
+            chipClassName={(url) =>
+              failedUrls.has(url)
+                ? "border-destructive/40 bg-destructive/15 text-destructive"
+                : pendingUrls.has(url)
+                  ? "border-warning/40 bg-warning/15 text-warning"
+                  : undefined
+            }
+            chipLabel={(url) =>
+              failedUrls.has(url)
+                ? `${url} — couldn't set up`
+                : pendingUrls.has(url)
+                  ? `${url} — pending`
+                  : url
+            }
+            chips={websiteChips}
+            inputDisabled={atWebsiteLimit}
             onChange={setWebsiteInput}
             onRemove={handleRemoveWebsite}
             onSubmit={handleAddWebsite}
             placeholder={
               atWebsiteLimit
                 ? `Up to ${MAX_WEBSITES} websites`
-                : isWebsitePending
-                  ? "Discovering…"
-                  : "Track a news website — example.com, press Enter"
+                : "Track a news website — example.com, press Enter"
             }
-            removeDisabled={isWebsitePending}
-            removeLabel={(url) => `Stop tracking ${url}`}
+            removeDisabled={false}
+            removeLabel={(url) =>
+              failedUrls.has(url)
+                ? `Dismiss ${url}`
+                : pendingUrls.has(url)
+                  ? `Cancel ${url}`
+                  : `Stop tracking ${url}`
+            }
             value={websiteInput}
           />
           {websiteError ? (

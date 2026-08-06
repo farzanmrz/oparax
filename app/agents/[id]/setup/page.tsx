@@ -6,6 +6,12 @@ import { parseWebsites } from "@/lib/websites";
 import { ConnectionsCard, NotificationsCard, SourcesCard } from "./sources-card";
 import { SpendCard } from "./spend-card";
 
+// Mirrors app/agents/new/page.tsx's maxDuration (see its comment for the 800 rationale): the
+// sources-card's website onboarding kicks off discovery + up to 10 sub-sitemap fetches + fetch
+// + a Sonnet/Qwen call under `after()`, still bound by this route's lifetime, so it needs the
+// same ceiling to survive a full onboarding run.
+export const maxDuration = 800;
+
 /**
  * Setup tab (T8, de-greyed by T3). Two-column grid: Sources (left) and, stacked on the
  * right, Connections / Notifications / Spend. Every control on this page is now real —

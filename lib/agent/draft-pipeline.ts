@@ -624,7 +624,7 @@ async function draftForAgent(
             : groundCallId,
         is_winner: true,
         judge_verdict: null,
-        synthesis: final.newsSynthesis,
+        news_synthesis: final.newsSynthesis,
         translation: final.translation,
         judge_review: judgeCallId
           ? {

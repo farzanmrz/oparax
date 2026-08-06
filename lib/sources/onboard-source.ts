@@ -14,7 +14,7 @@ import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
-import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
+import { QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
 import { fetchWithTimeout } from "@/lib/http-fetch";
 import { discoverChangeDetection, isPrivateHostname } from "@/lib/sources/discovery";
 import { fetchFeedSample } from "@/lib/sources/feed";
@@ -32,6 +32,18 @@ const SAMPLE_LIMIT = 100;
 // exactly the Athletic case, where filtering has to be title-based downstream instead.
 const MIN_MATCHES = 3;
 const MAX_MATCH_RATIO = 0.8;
+
+/** Found live (2026-08-06), same class of risk as lib/agent/draft-ground.ts's GROUND_TIMEOUT_MS:
+ *  with no bound here, a stalled provider/gateway connection can hang this call indefinitely.
+ *  Longer than grounding's 90s because onboarding samples up to 100 URLs and can carry a longer
+ *  prompt than grounding's single-article call. */
+const ONBOARDING_TIMEOUT_MS = 120_000;
+
+/** The Qwen path's 4096 leaves no room to spare once Sonnet's adaptive-thinking reasoning
+ *  tokens draw from the same output budget — a large sample (up to 100 URLs) could burn the
+ *  budget on reasoning and truncate before the JSON completes. Qwen has no extended-thinking
+ *  budget competing for the same tokens, so its 4096 is untouched. */
+const SONNET_ONBOARDING_MAX_OUTPUT_TOKENS = 16000;
 
 export type OnboardOutcome =
   | { status: "no_detection_mechanism" }
@@ -206,6 +218,62 @@ async function measureFullTextAvailability(
   }
 }
 
+/** Synchronous, fast, no model call: reserves a `pending` source_configs row before the real
+ *  (billed) onboardSource call runs in the background (#106) — this is what lets a chip render
+ *  immediately, and what survives navigation from the create-desk form to the desk's Setup page.
+ *  Returns the row's id, or "unreachable" for the same private-hostname reason onboardSource
+ *  itself refuses (checked here too, so a bad URL never even gets a pending row). */
+export async function reservePendingSource(
+  agentId: string,
+  inputUrl: URL,
+): Promise<{ configId: string } | { status: "unreachable" }> {
+  if (isPrivateHostname(inputUrl.hostname)) return { status: "unreachable" };
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("reserve_pending_source_config", {
+    p_agent_id: agentId,
+    p_url: inputUrl.toString(),
+    p_domain: inputUrl.hostname,
+    p_display_name: inputUrl.hostname,
+  });
+  if (error || !data) {
+    console.error("reservePendingSource: reserve_pending_source_config RPC failed", error);
+    return { status: "unreachable" };
+  }
+  return { configId: data as string };
+}
+
+export const SONNET_ONBOARDING_MODEL = "anthropic/claude-sonnet-5";
+const SONNET_ONBOARDING_PROVIDER_OPTIONS = {
+  anthropic: { thinking: { type: "adaptive", effort: "medium" } },
+};
+
+/** A pending row (from reservePendingSource) exists for every (agentId, url) onboardSource is
+ *  ever called with (#106) — both callers reserve before calling. On any non-"completed" exit,
+ *  that row needs an explicit status flip to failed_validation; add_source_config's own upsert
+ *  only fires on the completed path, so it never resolves a pending row on its own. Best-effort:
+ *  logged, never thrown — a stuck pending row is a worse UX bug than a swallowed update error,
+ *  but not one worth failing the whole onboarding attempt over. Exported: callers must also
+ *  invoke this in their OWN catch block around onboardSource — a genuinely unexpected throw
+ *  (gateway auth/network/rate-limit, anything that isn't the schema-validation path
+ *  onboardSource itself already handles) needs the same cleanup, or the pending row is stuck
+ *  forever with no failure ever surfaced.
+ *
+ *  Keyed by `configId` (the specific row `reservePendingSource` returned), not by
+ *  `(agent_id, url)` — a dismiss-then-re-add of the same URL reserves a SECOND row for that
+ *  URL, and an `(agent_id, url)` match would let a stale, still-running old attempt's failure
+ *  clobber the new attempt's in-progress row (#106 finding #4). */
+export async function markPendingSourceFailed(
+  admin: ReturnType<typeof createAdminClient>,
+  configId: string,
+): Promise<void> {
+  const { error } = await admin
+    .from("source_configs")
+    .update({ status: "failed_validation" })
+    .eq("id", configId)
+    .eq("status", "pending");
+  if (error) console.error("onboardSource: failed to mark pending row failed_validation", error);
+}
+
 /**
  * Onboards `inputUrl` as a source for `agentId`. Never throws on a business-logic failure —
  * every outcome, including "no sitemap/feed found" and "verification produced no usable
@@ -218,6 +286,8 @@ export async function onboardSource(
   ownerId: string,
   inputUrl: URL,
   beat: string,
+  model: string,
+  configId: string,
 ): Promise<OnboardOutcome> {
   // QC round 1, finding #3 (SSRF): isSafeDiscoveredUrl guards URLs discovered FROM a site
   // (a sitemap index's <loc> entries) against the site's own hostname, but that check doesn't
@@ -229,7 +299,10 @@ export async function onboardSource(
   const admin = createAdminClient();
 
   const detection = await discoverChangeDetection(inputUrl);
-  if (detection.mechanism === null) return { status: "no_detection_mechanism" };
+  if (detection.mechanism === null) {
+    await markPendingSourceFailed(admin, configId);
+    return { status: "no_detection_mechanism" };
+  }
 
   let sample: SourceSampleEntry[];
   try {
@@ -238,30 +311,40 @@ export async function onboardSource(
         ? await fetchSitemapSample(detection.sitemapUrl as string, SAMPLE_LIMIT)
         : await fetchFeedSample(detection.feedUrl as string, SAMPLE_LIMIT);
   } catch {
+    await markPendingSourceFailed(admin, configId);
     return { status: "unreachable" };
   }
-  if (sample.length === 0) return { status: "unreachable" };
+  if (sample.length === 0) {
+    await markPendingSourceFailed(admin, configId);
+    return { status: "unreachable" };
+  }
 
   const fullTextVerdict = await measureFullTextAvailability(sample);
+
+  const isSonnet = model === SONNET_ONBOARDING_MODEL;
+  const providerOptions = isSonnet
+    ? SONNET_ONBOARDING_PROVIDER_OPTIONS
+    : QWEN_DRAFT_PROVIDER_OPTIONS;
 
   const stepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
   let verdict: SourceOnboardingVerdict;
   let modelCallId: string;
   try {
     const result = await generateObject({
-      model: QWEN_DRAFT_MODEL,
-      providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
+      model,
+      providerOptions,
       reasoning: "medium",
-      maxOutputTokens: 4096,
+      maxOutputTokens: isSonnet ? SONNET_ONBOARDING_MAX_OUTPUT_TOKENS : 4096,
       schema: sourceOnboardingSchema,
       system: SOURCE_ONBOARDING_PROMPT,
       prompt: buildOnboardingPrompt({ beat, inputUrl, sample, fullTextVerdict }),
       onStepEnd: (event) => {
         stepRef.value = event;
       },
+      abortSignal: AbortSignal.timeout(ONBOARDING_TIMEOUT_MS),
     });
     modelCallId = await insertOnboardingModelCall(admin, ownerId, agentId, {
-      model: QWEN_DRAFT_MODEL,
+      model,
       output: JSON.stringify(result.object),
       reasoning: result.reasoning ?? null,
       usage: result.usage,
@@ -274,12 +357,13 @@ export async function onboardSource(
       // captured from the onStepEnd event before zod rejected the JSON, same pattern as
       // lib/agent/draft-ground.ts's qwenStepRef.
       await insertOnboardingModelCall(admin, ownerId, agentId, {
-        model: QWEN_DRAFT_MODEL,
+        model,
         output: stepRef.value?.objectText ?? err.text ?? null,
         reasoning: stepRef.value?.reasoning ?? null,
         usage: stepRef.value?.usage ?? err.usage,
         providerMetadata: stepRef.value?.providerMetadata,
       });
+      await markPendingSourceFailed(admin, configId);
       return { status: "failed", errorCode: "schema_validation_failed" };
     }
     throw err;
@@ -296,7 +380,7 @@ export async function onboardSource(
     ? { pathPrefix: verdict.pathFilter.pathPrefix, reasoning: verdict.pathFilter.reasoning }
     : null;
 
-  const { data: configId, error: rpcError } = await admin.rpc("add_source_config", {
+  const { data: completedConfigId, error: rpcError } = await admin.rpc("add_source_config", {
     p_agent_id: agentId,
     p_url: inputUrl.toString(),
     p_domain: inputUrl.hostname,
@@ -320,5 +404,5 @@ export async function onboardSource(
   });
   if (rpcError) throw rpcError;
 
-  return { status: "completed", configId: configId as string };
+  return { status: "completed", configId: completedConfigId as string };
 }

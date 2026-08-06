@@ -20,9 +20,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { mergeHandles, splitHandles } from "@/lib/x/handle-input";
-import { saveWebsites } from "../[id]/setup/actions";
 import { startExtraction } from "../[id]/voice/actions";
-import { createDesk } from "./actions";
+import { createDesk, startWebsiteOnboardingAtCreation } from "./actions";
 
 const DRAFT_KEY = "oparax:new-agent-draft";
 
@@ -212,18 +211,26 @@ export function CreateDeskForm({
 
       const deskId = result.id;
       setCreatedDeskId(deskId);
-      if (finalWebsites.length > 0) {
-        saveWebsites(deskId, finalWebsites).catch((error) => {
-          console.error("createDesk: saveWebsites failed", error);
-        });
-      }
+      // Resolve concurrently, not sequentially — N sites should not wait on each other (#106).
+      // Next.js serializes server actions through the router's action queue rather than truly
+      // running them in parallel, so every call must be awaited (via allSettled, not a bare
+      // Promise.all) to guarantee it's actually issued before the navigation below unmounts
+      // this component. Not waiting for onboarding itself to finish — that stays async, with
+      // the new desk's Setup page picking up from here via polling.
+      await Promise.allSettled(
+        finalWebsites.map((url) =>
+          startWebsiteOnboardingAtCreation(deskId, url).catch((error: unknown) => {
+            console.error("createDesk: startWebsiteOnboardingAtCreation failed", error);
+          }),
+        ),
+      );
 
       try {
         await startExtraction(deskId);
       } finally {
         // A created agent is recoverable from Feed/Voice even if the extraction start itself
         // returns a failure. Replacing prevents Back from reopening a committed form.
-        router.replace(`/agents/${deskId}`);
+        router.replace(`/agents/${deskId}/setup`);
       }
     });
   }
@@ -342,18 +349,14 @@ export function CreateDeskForm({
               />
             </div>
 
-            <div className="flex flex-col gap-1.5 opacity-50">
-              <FieldLabel
-                badge={<Badge variant="secondary">Coming soon</Badge>}
-                help="Website monitoring is not available yet. X accounts are the live source today."
-              >
+            <div className="flex flex-col gap-1.5">
+              <FieldLabel help="Websites are onboarded automatically once your desk is created — each appears as a pending chip until it's ready.">
                 Websites ({websites.length}/{MAX_WEBSITES})
               </FieldLabel>
               <ChipsField
                 chipLabel={(site) => site}
                 chips={websites}
-                disabled
-                inputDisabled
+                inputDisabled={formDisabled}
                 onBlur={commitWebsiteDraft}
                 onChange={setWebsiteDraft}
                 onKeyDown={onWebsiteKeyDown}
@@ -362,7 +365,7 @@ export function CreateDeskForm({
                 }
                 onSubmit={commitWebsiteDraft}
                 placeholder="example.com"
-                removeDisabled
+                removeDisabled={formDisabled}
                 removeLabel={(site) => `Remove ${site}`}
                 value={websiteDraft}
               />

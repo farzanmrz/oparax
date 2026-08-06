@@ -1,5 +1,5 @@
-// Trimmed re-implementation of lib/sources/feed.ts's RSS 2.0 parsing, adapted to FeedItem
-// (sitemap.ts's shape) with conditional-GET support. Duplicated, not imported, per
+// Trimmed re-implementation of lib/sources/feed.ts's RSS 2.0 / Atom parsing, adapted to
+// FeedItem (sitemap.ts's shape) with conditional-GET support. Duplicated, not imported, per
 // poller/README.md's isolation rule.
 
 import { XMLParser } from "fast-xml-parser";
@@ -53,6 +53,51 @@ function toFeedItem(raw: RawFeedItem): FeedItem | null {
   };
 }
 
+// Atom (RFC 4287): root is <feed><entry>, not RSS 2.0's <rss><channel><item> — a distinct
+// schema, not a variant. <link> is a self-closing element carrying its URL in an `href`
+// attribute (never text content); `rel="alternate"` (or no rel, the Atom default) is the one
+// this cares about.
+type RawAtomLink = { "@_href"?: string; "@_rel"?: string };
+// An element with attributes (e.g. <summary type="html">, <title type="text">) parses to
+// `{ "@_type": ..., "#text": ... }`, not a plain string — any Atom text-construct field can
+// take either shape depending on whether the source feed put an attribute on that tag.
+type AtomTextConstruct = string | { "#text"?: string };
+type RawAtomEntry = {
+  link?: RawAtomLink | RawAtomLink[];
+  id?: string;
+  title?: AtomTextConstruct;
+  updated?: string;
+  published?: string;
+  summary?: AtomTextConstruct;
+  content?: AtomTextConstruct;
+};
+
+function atomText(value: AtomTextConstruct | undefined): string | undefined {
+  return typeof value === "string" ? value : value?.["#text"];
+}
+
+function atomLinkHref(link: RawAtomEntry["link"]): string | undefined {
+  const links = asArray(link);
+  const alternate = links.find((entry) => !entry["@_rel"] || entry["@_rel"] === "alternate");
+  return (alternate ?? links[0])?.["@_href"];
+}
+
+function toAtomFeedItem(raw: RawAtomEntry): FeedItem | null {
+  const url = atomLinkHref(raw.link) ?? raw.id;
+  if (!url) return null;
+  return {
+    url,
+    itemKey: raw.id ?? url,
+    title: atomText(raw.title) ?? null,
+    publishedAt: raw.updated ?? raw.published ?? null,
+    bodyFromFeed: atomTeaser(raw) ?? null,
+  };
+}
+
+function atomTeaser(raw: RawAtomEntry): string | undefined {
+  return atomText(raw.summary) ?? atomText(raw.content);
+}
+
 function conditionalHeaders(cache: ConditionalGetCache): Record<string, string> {
   const headers: Record<string, string> = {};
   if (cache.etag) headers["if-none-match"] = cache.etag;
@@ -84,9 +129,14 @@ export async function fetchFeedItems(
   const nextCache = nextCacheFrom(res);
   const parsed = parser.parse(await res.text());
 
-  const rawItems = asArray<RawFeedItem>(parsed.rss?.channel?.item);
-  const items = rawItems
-    .map(toFeedItem)
+  // A site's declared type="..." on the discovering <link> tag isn't trustworthy on its own
+  // (managingmadrid.com labels its Atom feed application/rss+xml) — detect by root element
+  // (<rss> vs <feed>) against the body actually fetched instead.
+  const items = (
+    parsed.feed
+      ? asArray<RawAtomEntry>(parsed.feed?.entry).map(toAtomFeedItem)
+      : asArray<RawFeedItem>(parsed.rss?.channel?.item).map(toFeedItem)
+  )
     .filter((entry): entry is FeedItem => entry !== null)
     .filter((entry) => isSafeDiscoveredUrl(entry.url, expectedHostname));
 
