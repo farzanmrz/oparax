@@ -1,16 +1,41 @@
-// URL-extension media-type resolution for source attachments. The drafter owns content shaping;
-// this helper only classifies URLs and lets it skip one bad attachment without aborting a call.
+// THE one URL→media-type resolver for source attachments, shared by the drafter
+// (lib/agent/draft-write.ts) and voice extraction (lib/voice/extract-guide.ts). It was duplicated
+// once and the copies drifted — one fell through to jpeg while the other returned null — so the
+// same image was attached for extraction and silently dropped for drafting. One copy now.
+//
+// This answers ONLY "how should the API decode these bytes". Whether the attachment was a photo,
+// a video or an animated GIF is a separate axis carried by the caller's `kind` — and for video
+// and GIF the url is a still poster frame either way, so both axes are always image types here.
+//
+// Returns `null` on an unparsable url instead of throwing: one malformed url from a live X
+// response must not abort a call that has already billed. The caller drops that image and
+// continues.
+
+const IMAGE_MEDIA_TYPES = new Map([
+  ["jpg", "image/jpeg"],
+  ["jpeg", "image/jpeg"],
+  ["png", "image/png"],
+  ["webp", "image/webp"],
+  ["gif", "image/gif"],
+]);
+
 export function resolveImageMediaType(url: string): string | null {
-  let ext: string | undefined;
+  let parsed: URL;
   try {
-    ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
+    parsed = new URL(url);
   } catch (error) {
     console.error(`source-media: skipping media with unparsable url: ${url}`, error);
     return null;
   }
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "gif") return "image/gif";
-  return "image/jpeg";
+  // X serves images as `/media/<id>?format=jpg&name=large` — the format is DECLARED IN THE QUERY
+  // STRING and the path carries no extension at all, so a path-only read comes up empty on X's
+  // standard image url. Read what the url declares first, then a path extension, and only guess
+  // when neither says anything.
+  const declared = parsed.searchParams.get("format")?.toLowerCase();
+  const extension = parsed.pathname.split(".").pop()?.toLowerCase();
+  return (
+    (declared && IMAGE_MEDIA_TYPES.get(declared)) ||
+    (extension && IMAGE_MEDIA_TYPES.get(extension)) ||
+    "image/jpeg"
+  );
 }

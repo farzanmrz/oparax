@@ -13,8 +13,6 @@ import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "./qwen-draft-conf
 const translationSchema = z.object({ translation: z.string().nullable() });
 const NULL_TRANSLATION_OUTPUT = JSON.stringify({ translation: null });
 const UNDETERMINED_LANGUAGE_CODES = new Set(["und", "zxx", "qme", "qst", "qht", "qam"]);
-// Keep the complete translation comfortably beneath Qwen's 8,192-token output ceiling.
-const MAX_TRANSLATION_SOURCE_CHARS = 6_000;
 
 export type TranslateResult = {
   /** Null when the English fast path skipped the model entirely — nothing to ledger. */
@@ -46,13 +44,16 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
       providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       temperature: 0,
       reasoning: "medium",
-      maxOutputTokens: 8192,
+      // NO `maxOutputTokens`: the complete translation of an arbitrarily long article is the
+      // whole output, so any ceiling here can only ever be too small — a truncated object throws
+      // NoObjectGeneratedError, releases the claim, and re-bills the retry. Matches the measured
+      // precedent in lib/voice/extract-guide.ts.
       output: Output.object({ name: "Translation", schema: translationSchema }),
       system: DRAFT_TRANSLATE_PROMPT,
       messages: [
         {
           role: "user",
-          content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>\n<source_post>\n${input.brief.text.slice(0, MAX_TRANSLATION_SOURCE_CHARS)}\n</source_post>`,
+          content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>\n<source_post>\n${input.brief.text}\n</source_post>`,
         },
       ],
       onStepEnd: (event) => {

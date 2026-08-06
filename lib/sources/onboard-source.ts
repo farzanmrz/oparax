@@ -30,7 +30,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { SOURCE_ONBOARDING_PROMPT } from "@/lib/sysprompts";
 
-const SAMPLE_LIMIT = 100;
+/** How many entries to pull off a news website's feed or sitemap when onboarding it as a
+ *  source. Bounds a request against a THIRD PARTY's server, so it is a politeness limit, not
+ *  a model one. */
+const WEBSITE_SAMPLE_LIMIT = 50;
 // A filter matching almost nothing or almost everything is treated as no real filter —
 // exactly the Athletic case, where filtering has to be title-based downstream instead.
 const MIN_MATCHES = 3;
@@ -66,12 +69,12 @@ function buildOnboardingPrompt(input: {
   fullTextVerdict: "full" | "teaser" | "unknown";
 }): string {
   const sampleLines = input.sample
-    .slice(0, SAMPLE_LIMIT)
+    .slice(0, WEBSITE_SAMPLE_LIMIT)
     .map((entry) => {
       const parts = [entry.url];
       if (entry.title) parts.push(`title: ${entry.title}`);
       if (entry.keywords) parts.push(`keywords: ${entry.keywords}`);
-      if (entry.teaser) parts.push(`teaser: ${entry.teaser.slice(0, 200)}`);
+      if (entry.teaser) parts.push(`teaser: ${entry.teaser}`);
       return `- ${parts.join(" | ")}`;
     })
     .join("\n");
@@ -199,8 +202,8 @@ export async function onboardSource(
   try {
     sample =
       detection.mechanism === "sitemap"
-        ? await fetchSitemapSample(detection.sitemapUrl as string, SAMPLE_LIMIT)
-        : await fetchFeedSample(detection.feedUrl as string, SAMPLE_LIMIT);
+        ? await fetchSitemapSample(detection.sitemapUrl as string, WEBSITE_SAMPLE_LIMIT)
+        : await fetchFeedSample(detection.feedUrl as string, WEBSITE_SAMPLE_LIMIT);
   } catch {
     return { status: "unreachable" };
   }
@@ -216,7 +219,7 @@ export async function onboardSource(
       model: QWEN_DRAFT_MODEL,
       providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "medium",
-      maxOutputTokens: 4096,
+      // NO `maxOutputTokens` — see lib/agent/draft-translate.ts.
       schema: sourceOnboardingSchema,
       system: SOURCE_ONBOARDING_PROMPT,
       prompt: buildOnboardingPrompt({ beat, inputUrl, sample, fullTextVerdict }),

@@ -43,9 +43,12 @@ export type XTimelinePost = {
   media: XTimelineMedia[];
 };
 
-/** 100 posts, 80 train / 20 held-out — the corpus size the extraction recipe is calibrated
- *  against (.claude/rules/voice.md). X caps a page at 100, so this is usually one page. */
-const MAX_POSTS = 100;
+/** How many original posts the corpus carries. X caps a page at 100, so this is one page.
+ *  Two things read the corpus size, not just the guide: `inferAccountTier` needs to SEE a
+ *  post over 280 chars to mark the account premium, so a smaller corpus makes a premium
+ *  reporter with rare long posts more likely to be read as standard (recoverable — a later
+ *  extraction that catches one upgrades them). */
+const MAX_POSTS = 50;
 const PAGE_SIZE = 100;
 /** Hard wall-clock bound: two or three API calls should take ~1s, so anything near this is a
  *  hang rather than slowness. */

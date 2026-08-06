@@ -74,10 +74,8 @@ function buildContent(input: {
     },
   ];
   const mediaParts: DraftWriteContentPart[] = [];
-  let attachedImageCount = 0;
 
   for (const item of input.brief.media) {
-    if (attachedImageCount >= 4) break;
     const mediaTag = MEDIA_TAGS[item.kind];
     if (!mediaTag) {
       console.warn(`draft-write: skipping unsupported media kind ${item.kind}`);
@@ -94,7 +92,6 @@ function buildContent(input: {
         { type: "file", data: new URL(item.imageUrl), mediaType },
         { type: "text", text: `</${mediaTag}>` },
       );
-      attachedImageCount += 1;
     } catch (error) {
       console.warn(`draft-write: skipping media with unparsable URL ${item.imageUrl}`, error);
     }
@@ -157,7 +154,9 @@ export async function draftSourcePost(input: {
       providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       temperature: 0,
       reasoning: "medium",
-      maxOutputTokens: 8192,
+      // NO `maxOutputTokens`: the ceiling capped thinking AND the verdict together, so a long
+      // reasoning pass could truncate the object and cost a whole re-billed delivery. The draft
+      // itself is bounded by `checkXPostable`, not by a token budget.
       output: Output.object({ name: "DraftVerdict", schema: draftVerdictSchema }),
       system: `${DRAFT_WRITE_PROMPT}\n\n<draft_contract>\n${DRAFT_COUNCIL_CONTRACT}\n</draft_contract>\n\n<voice_guide>\n${input.voiceGuidance.trim()}\n</voice_guide>`,
       messages: [

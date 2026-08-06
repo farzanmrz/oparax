@@ -12,6 +12,7 @@
 import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
+import { resolveImageMediaType } from "@/lib/agent/source-media";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
@@ -251,23 +252,10 @@ function buildScopeTool(
 /** X's CDN serves `.jpg` for photos and for video/GIF poster frames, and `.png` for a minority of
  *  uploads. Read it off the url rather than assuming, since an incorrect mediaType is rejected.
  *
- *  Returns `null` on an unparsable url instead of throwing — a single malformed media url from a
- *  live X timeline response must not abort the whole extraction (which, at the point media is
- *  attached, has already billed for the corpus read). The caller drops that one image and keeps
- *  going rather than crashing the run. */
-function imageMediaType(url: string): string | null {
-  let ext: string | undefined;
-  try {
-    ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
-  } catch (e) {
-    console.error(`extract-guide: skipping media with unparsable url: ${url}`, e);
-    return null;
-  }
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "gif") return "image/gif";
-  return "image/jpeg";
-}
+ *  Media-type resolution itself lives in lib/agent/source-media.ts and is SHARED with the
+ *  drafter — this file used to carry its own copy and the two drifted, so the same image was
+ *  attached here and silently dropped there. Its null-on-unparsable contract is what keeps one
+ *  malformed url from aborting an extraction that has already billed for the corpus read. */
 
 /** Shared by both call shapes below (plain and streaming) so the prompt they send the model can
  *  never drift apart — extracted rather than duplicated inline a second time.
@@ -302,7 +290,7 @@ function buildExtractionContent(
     const reactingTo = p.reactingTo?.text.trim()
       ? [
           `<reacting_to author="@${escapeXmlAttribute(p.reactingTo.handle)}">`,
-          escapeXmlText(p.reactingTo.text.trim().slice(0, 300)),
+          escapeXmlText(p.reactingTo.text.trim()),
           "</reacting_to>",
         ].join("\n")
       : null;
@@ -350,7 +338,7 @@ function buildExtractionContent(
         // A malformed url can't be shown either way — count it against the same "dropped" note
         // rather than silently vanishing, so the model still knows this post carried media it
         // couldn't inspect instead of reading as having none.
-        if (imageMediaType(m.imageUrl) === null) {
+        if (resolveImageMediaType(m.imageUrl) === null) {
           dropped++;
           continue;
         }
@@ -370,7 +358,7 @@ function buildExtractionContent(
     for (const s of shown) {
       // Already validated when `shown` was built, but re-checked here defensively rather than
       // trusting that invariant across the two loops — a skip here is still a skip, not a crash.
-      const mediaType = imageMediaType(s.imageUrl);
+      const mediaType = resolveImageMediaType(s.imageUrl);
       let fileUrl: URL;
       try {
         fileUrl = new URL(s.imageUrl);
