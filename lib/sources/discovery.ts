@@ -49,8 +49,14 @@ const PRIVATE_IPV4_PATTERNS = [
  *  apply to the reporter's own input (it IS the site being onboarded by definition), so
  *  this is the standalone guard for that entry point. */
 export function isPrivateHostname(hostname: string): boolean {
-  // URL.hostname keeps IPv6 literals bracketed; strip so the prefix tests below apply.
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  // URL.hostname keeps IPv6 literals bracketed; strip so the prefix tests below apply. Also
+  // strip a trailing FQDN dot — found in QC review (#110): "localhost." (a valid absolute
+  // hostname per DNS) passed both the exact-match and suffix checks below unstripped, a
+  // second route to the same hole a direct "localhost." paste already had.
+  const host = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (host === "localhost" || host.endsWith(".localhost")) return true;
   if (PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(host))) return true;
   // IPv6: ::1 loopback, fc00::/7 unique-local, fe80::/10 link-local.
@@ -235,6 +241,38 @@ async function discoverFromRobots(
   return null;
 }
 
+/** Resolves `inputUrl` to whichever of it or its `www.`-toggled variant is actually
+ *  reachable, tried in that order. Generalizes #109's one-directional (bare → `www.` only)
+ *  retry to both directions: a `www.`-prefixed input whose `www.` host is dead but whose
+ *  bare apex works now also resolves correctly, not just the reverse (#110). Returns
+ *  `inputUrl` UNCHANGED when neither the toggle nor the original beats the reachability
+ *  check — including when toggling isn't meaningful at all (an IP-literal host, where the
+ *  hostname setter silently no-ops rather than throwing, verified live in #109's QC round;
+ *  or a bare `"www."` host, where stripping leaves an empty string). Callers always get a
+ *  valid URL back, never null — the rest of discovery correctly falls through to "nothing
+ *  found" on a URL that's genuinely unreachable either way. At most 2 reachability checks
+ *  total for any input, by construction — never more, no recursion. Found in QC review
+ *  (#110): #109's original guard order meant a `www.`-prefixed input paid ZERO reachability
+ *  checks (the retry only ever fired for non-`www.` hosts); this version always pays at
+ *  least 1, since the whole point is protecting `www.` inputs too — an accepted, necessary
+ *  cost of bidirectionality, not an oversight. */
+async function resolveReachableInputUrl(inputUrl: URL): Promise<URL> {
+  if (await isOriginReachable(inputUrl.origin)) return inputUrl;
+
+  const toggledHostname = inputUrl.hostname.startsWith("www.")
+    ? inputUrl.hostname.slice(4)
+    : `www.${inputUrl.hostname}`;
+  // Prepending or stripping a literal "www." can never reproduce the original string, so the
+  // only real guard here is emptiness (a bare "www." host strips to "").
+  if (!toggledHostname) return inputUrl;
+
+  const toggledUrl = new URL(inputUrl.toString());
+  toggledUrl.hostname = toggledHostname;
+  if (toggledUrl.hostname !== toggledHostname) return inputUrl;
+
+  return (await isOriginReachable(toggledUrl.origin)) ? toggledUrl : inputUrl;
+}
+
 /** Discovers the change-detection mechanism for `inputUrl` — the full URL the reporter
  *  pasted, not just its hostname, since a specific section page carries real signal (its
  *  own `<link rel="alternate">` distinct from the homepage's, and a strong prefilter
@@ -243,38 +281,17 @@ async function discoverFromRobots(
  *  well-known paths as before. RSS (fallback, only tried if no sitemap found) checks the
  *  exact input URL first, then the domain root, then common feed paths.
  *
- *  Retries once against a `www.`-prefixed variant when the bare origin is unreachable
- *  outright (#109) — gated on reachability specifically, not on "nothing found," so a site
- *  that's reachable but genuinely has no sitemap/feed never pays for a second pass. The
- *  `!inputUrl.hostname.startsWith("www.")` guard caps this at exactly one retry FOR ORDINARY
- *  HOSTNAMES: the recursive call's own hostname already starts with `www.`, so it can never
- *  re-enter this branch. isSafeDiscoveredUrl's existing apex/www cross-reference needs no
- *  special-casing here — the recursive call re-derives origin/expectedHostname from the new
- *  URL like any other call, so every downstream check just works against the new host. */
+ *  `resolveReachableInputUrl` resolves the host first (#109/#110) before any of the above
+ *  runs. */
 export async function discoverChangeDetection(inputUrl: URL): Promise<{
   mechanism: "sitemap" | "rss" | null;
   sitemapUrl?: string;
   feedUrl?: string;
 }> {
-  const origin = inputUrl.origin;
+  const resolvedUrl = await resolveReachableInputUrl(inputUrl);
+  const origin = resolvedUrl.origin;
 
-  if (!inputUrl.hostname.startsWith("www.") && !(await isOriginReachable(origin))) {
-    const wwwUrl = new URL(inputUrl.toString());
-    wwwUrl.hostname = `www.${inputUrl.hostname}`;
-    // The hostname setter silently NO-OPS (never throws) for an IP-literal host — verified
-    // live: setting "www.203.0.113.5" on an IPv4-literal URL, or "www.[2001:db8::1]" on an
-    // IPv6-literal one, leaves the hostname unchanged. Without this check, an unreachable
-    // public IP-literal apex would recurse into this exact branch forever (isPrivateHostname
-    // only rejects private/loopback ranges, so a down public IP passes through to here). A
-    // "www." variant of a raw IP address isn't a meaningful concept anyway, so fall through
-    // to the rest of this function (which correctly resolves to `{ mechanism: null }`)
-    // instead of retrying.
-    if (wwwUrl.hostname !== inputUrl.hostname) {
-      return discoverChangeDetection(wwwUrl);
-    }
-  }
-
-  const robotsSitemap = await discoverFromRobots(origin, inputUrl.hostname);
+  const robotsSitemap = await discoverFromRobots(origin, resolvedUrl.hostname);
   if (robotsSitemap) return { mechanism: "sitemap", sitemapUrl: robotsSitemap };
 
   for (const path of SITEMAP_PATHS) {
@@ -282,10 +299,10 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
     if (await urlExists(candidate)) return { mechanism: "sitemap", sitemapUrl: candidate };
   }
 
-  const exactPageFeed = await checkPageForRssLink(inputUrl.toString());
+  const exactPageFeed = await checkPageForRssLink(resolvedUrl.toString());
   if (exactPageFeed) return { mechanism: "rss", feedUrl: exactPageFeed };
 
-  if (inputUrl.toString() !== `${origin}/`) {
+  if (resolvedUrl.toString() !== `${origin}/`) {
     const rootFeed = await checkPageForRssLink(`${origin}/`);
     if (rootFeed) return { mechanism: "rss", feedUrl: rootFeed };
   }
