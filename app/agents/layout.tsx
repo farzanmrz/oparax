@@ -53,7 +53,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex h-dvh min-h-0 min-w-0 flex-col bg-background text-foreground">
       <SentryUserContext email={user.email} id={user.id} />
       <SiteHeader desks={headerDesks} username={getUsername(user)} />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* data-app-scroll-region: the site header's condense-on-scroll behavior listens to
+          this element — the app's single scroll container (the header itself never scrolls). */}
+      <div className="min-h-0 flex-1 overflow-y-auto" data-app-scroll-region>
         <div className="mx-auto flex h-full w-full max-w-[102rem] flex-col px-4 sm:px-6">
           {children}
         </div>

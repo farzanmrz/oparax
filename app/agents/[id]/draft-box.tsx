@@ -25,8 +25,11 @@ function CharCounter({ text, xLimit }: { text: string; xLimit: number }) {
 
 // Read-only by owner decision: inline editing, Save, and the version-history dialog were
 // removed as premature — the draft box shows the winner and offers Post, nothing else.
-// Layout (owner spec): char count top-right, no divider, and the post control IS the box's
-// full-width bottom footer (overflow-hidden clips it to the rounded corners).
+// Presentation: the draft is the only element in the reporter's voice, so it renders as a
+// distinct full-bleed plate (lighter surface, no inner bordered box) with a small-caps
+// "Draft · your voice" kicker that also anchors the char count. The post control is the
+// plate's full-width bottom footer — on mobile that is the card's footer; at @[48rem] the
+// plate is the card's right column and Post pins to its bottom via mt-auto.
 export function DraftBox({
   draft,
   charLimit,
@@ -41,12 +44,15 @@ export function DraftBox({
   const posting = Boolean(draft.postingClaimedAt);
 
   return (
-    <section className="mt-[clamp(13px,1.5cqw,17px)] overflow-hidden rounded-[7px] border bg-secondary">
-      <div className="px-[clamp(14px,1.6cqw,18px)] pt-[clamp(10px,1.2cqw,13px)] pb-[clamp(13px,1.5cqw,17px)]">
-        <div className="flex justify-end">
+    <section className="flex min-w-0 flex-col border-t border-border bg-muted/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] @[48rem]:border-t-0 @[48rem]:border-l">
+      <div className="flex flex-1 flex-col px-[clamp(15px,2.1cqw,22px)] pt-[clamp(13px,1.5cqw,18px)] pb-[clamp(14px,1.8cqw,20px)]">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-[10.5px] font-semibold uppercase leading-none tracking-[0.14em] text-accent-foreground/80">
+            Draft · your voice
+          </span>
           <CharCounter text={draft.draftText} xLimit={charLimit} />
         </div>
-        <p className="mt-1 whitespace-pre-wrap font-sans w-full text-[clamp(14.5px,1.68cqw,17px)] leading-[1.5] text-foreground">
+        <p className="mt-[clamp(10px,1.1cqw,13px)] w-full whitespace-pre-wrap font-sans text-[clamp(14.5px,1.68cqw,17px)] leading-[1.55] text-foreground">
           {draft.draftText}
         </p>
       </div>
