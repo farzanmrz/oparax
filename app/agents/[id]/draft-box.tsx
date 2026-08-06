@@ -44,8 +44,8 @@ export function DraftBox({
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const renderedDraftId = useRef(draft.draftId);
-  const [text, setText] = useState(draft.text);
-  const [baseline, setBaseline] = useState(draft.text);
+  const [text, setText] = useState(draft.draftText);
+  const [baseline, setBaseline] = useState(draft.draftText);
   const [focused, setFocused] = useState(false);
   const [openHistory, setOpenHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +64,8 @@ export function DraftBox({
     renderedDraftId.current = draft.draftId;
 
     if (awaitingRefresh || !dirty) {
-      setText(draft.text);
-      setBaseline(draft.text);
+      setText(draft.draftText);
+      setBaseline(draft.draftText);
       setFocused(false);
       setError(null);
       setAwaitingRefresh(false);
@@ -74,9 +74,9 @@ export function DraftBox({
 
     // A feed refresh can bring a newer winner while this editor has local work. Keep the
     // work visible rather than overwriting it, but make the new server baseline explicit.
-    setBaseline(draft.text);
+    setBaseline(draft.draftText);
     setError("A newer draft is available. Your unsaved changes are still here.");
-  }, [awaitingRefresh, dirty, draft.draftId, draft.text]);
+  }, [awaitingRefresh, dirty, draft.draftId, draft.draftText]);
 
   const handleFocus = () => setFocused(true);
 
@@ -128,7 +128,7 @@ export function DraftBox({
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           event.preventDefault();
-          setText(draft.text);
+          setText(draft.draftText);
           if (textareaRef.current) textareaRef.current.blur();
         }}
         readOnly={posting || (confirmed && !dirty)}
@@ -223,7 +223,7 @@ export function DraftBox({
             <PostToXControl
               charLimit={charLimit}
               draftId={draft.draftId}
-              draftText={draft.text}
+              draftText={draft.draftText}
               xLinked={xLinked}
             />
           )}

@@ -23,7 +23,7 @@ export class StreamTransientError extends Error {}
 // you can see the picture) must reach the grounding stage able to look at it, not just at an
 // opaque t.co link.
 const STREAM_URL =
-  "https://api.x.com/2/tweets/search/stream?expansions=author_id,attachments.media_keys&user.fields=username&tweet.fields=created_at,note_tweet&media.fields=type,url,preview_image_url";
+  "https://api.x.com/2/tweets/search/stream?expansions=author_id,attachments.media_keys&user.fields=username&tweet.fields=created_at,note_tweet,lang&media.fields=type,url,preview_image_url";
 
 /** x_post_id = the tweet id; author_handle = the author's username (resolved via
  *  expansions=author_id/includes.users, requested above); text = the COMPLETE tweet body —
@@ -67,6 +67,7 @@ export function mapTweetToDelivery(payload: StreamPayload): IngestDeliveryBody |
     author_handle: author.username,
     text: fullText,
     posted_at: tweet.created_at ?? new Date().toISOString(),
+    lang: tweet.lang ?? null,
     ...(media.length > 0 ? { media } : {}),
     raw: payload,
   };

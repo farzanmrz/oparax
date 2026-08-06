@@ -1,7 +1,7 @@
 // lib/agent/qwen-draft-config.ts
 //
-// The one Qwen 3.7 Flash config shared by grounding, the verification judge, and the cheaper
-// support paths (correction revision and dormant clustering). Qwen 3.7 Flash is
+// The one Qwen 3.7 Flash config shared by translation, drafting, and the cheaper support paths
+// (correction revision and dormant clustering). Qwen 3.7 Flash is
 // vision-capable, so callers with source media must pass the original attachments rather than a
 // text-only description produced by another model.
 export const QWEN_DRAFT_MODEL = "alibaba/qwen3.7-flash";

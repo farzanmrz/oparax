@@ -23,11 +23,11 @@ export type FeedFilterState = {
 export type FeedCursor = { createdAt: string; id: string };
 export type FeedDraft = {
   draftId: string;
-  text: string;
+  draftText: string;
   postedAt: string | null;
   postingClaimedAt: string | null;
   postedUrl: string | null;
-  synthesis: string | null;
+  newsSynthesis: string | null;
 };
 export type FeedSourceView = {
   kind: "x" | "article" | "headline";
@@ -40,7 +40,7 @@ export type FeedSourceView = {
 export type FeedItem = {
   storyId: string;
   createdAt: string;
-  headline: string;
+  newsTitle: string;
   source: FeedSourceView;
   winners: Partial<Record<Platform, FeedDraft>>;
 };

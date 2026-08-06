@@ -14,11 +14,11 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 
 - **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. Nothing polls; there is no scan dispatcher.
 - **`app/api/slack/interactions`** is `after()`-deferred so Slack's 3s ack deadline is met before the slow X-post work runs.
-- **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by both `lib/x/post-core.ts`'s posting path and the desk's `editDraft`. A third writer of a `drafts` winner must call it too, never re-derive it.
+- **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by `lib/x/post-core.ts`'s posting path, the desk's `editDraft`, and `draft-pipeline.ts` before the new drafter's winner persists. Any future writer of a `drafts` winner must call it too, never re-derive it.
 - **`lib/agent/feed-query.ts`'s `fetchFeedPage`/`fetchFeedCounts` take a service-role client and never check desk ownership** — every caller (`page.tsx`, `feed-actions.ts`) must prove `owner_id` match first.
 - **`lib/x/timeline.ts` is the ONE designated extraction X-read** — 100 most recent ORIGINAL posts, app-only bearer, `exclude=retweets,replies`, because a reply-heavy corpus teaches `measuredFacts` a mention rate that opens every draft with an @handle.
 - **Tokens never leave `lib/x/` and `lib/slack/`.**
-- **`lib/voice/rules.ts` holds the drafting input of record:** `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide in the system prompt; the guide blob survives only as audit provenance. `corpus-store.ts` upserts and never prunes. `extraction-run.ts`'s `startRun` is an atomic claim returning a boolean — callers must not spend when it returns false. That bounds one desk to ONE concurrent run; it is **not** rationing and must never grow into it. Progress reaches the browser by POLLING an ownership-proving server action, never Realtime.
+- **`lib/voice/rules.ts` holds the drafting input of record:** `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide in the system prompt; the guide blob survives only as audit provenance. The translator → single-drafter delivery path passes that composition to `draft-write.ts`; it never reads the raw guide directly. `corpus-store.ts` upserts and never prunes. `extraction-run.ts`'s `startRun` is an atomic claim returning a boolean — callers must not spend when it returns false. That bounds one desk to ONE concurrent run; it is **not** rationing and must never grow into it. Progress reaches the browser by POLLING an ownership-proving server action, never Realtime.
 - **`lib/notify/` senders neither persist nor meter** — `draft-pipeline.ts` does both. `email.ts` keeps the reply encoder and its decoder in one file so they cannot drift.
 - **`lib/sysprompts/voice-extract.md` is measured, not authored.** Never tune it by read-through.
 - **Frontend test login: `testuser@oparax.ai` / `hello123`** — a dummy account created solely for agentic testing; when the owner asks to check something in the browser, logging in with it is explicitly pre-authorized, so no credential safeguards apply.
@@ -38,7 +38,7 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 | `source_posts` | ingested posts | deny-all |
 | `model_calls` | one row per model call | owner-scoped, select-only |
 | `corpus_posts` | per-desk extracted corpus, including off-beat exclusions | deny-all |
-| `beat_conflicts` | ground-versus-judge disagreements awaiting resolution | EXISTS-join, select-only |
+| `beat_conflicts` | historical ground-versus-judge disagreements | EXISTS-join, select-only |
 | `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | OAuth tokens, inferred tier, delivery receipts | deny-all |
 | `draft_claims`, `unmatched_deliveries` | atomic claim counters | deny-all |
 | `voice_extraction_runs` | one extraction run per desk — progress only | deny-all |

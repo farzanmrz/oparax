@@ -1,17 +1,12 @@
 // lib/agent/spend-query.ts
 //
 // Setup tab's Spend rollup. Aggregates `model_calls` GROUPED BY `stage` — never
-// `usage_events.kind` — because `draft-pipeline.ts` stamps every drafting-family call AND
-// the judge call under the SAME `usage_events.kind === "drafting"` (see its
-// `deliverDraft`/`draftForAgent` `stampUsageEvent` calls); a kind-based split can't
-// tell drafting from judging apart and would silently render $0.00 for Judging.
+// `usage_events.kind` — because multiple model stages can be metered under related event
+// kinds, while their `model_calls.stage` values remain the exact spend split.
 // `model_calls.stage` is where they're actually distinct — verified against the real
-// writers: `draft-ground.ts`'s ONE grounding call stamps `"grounding"` (a real per-delivery
-// cost, not folded into "drafting", since it runs even on off-beat posts and is the only call
-// today — the owner collapsed the ground→revise×2→synthesize pipeline down to this single
-// Qwen 3.7 Flash pass, followed by `draft-judge.ts`'s live `"judge"` stage. `"drafting"` remains
-// the dormant emailed-correction path (`draft-council-run.ts`'s `reviseDraft` and repair leg),
-// while the extraction path stamps `"voice_extraction"`.
+// writers: each new delivery writes `"translation"` when needed and one `"drafting"` call;
+// historical `"grounding"` and `"judge"` rows remain visible, while the extraction path
+// stamps `"voice_extraction"`.
 // These are the entire live write surface — no remapping needed, just an explicit
 // `stage IN (...)` filter so a future stage (e.g. a `"scan"` stage, mentioned as a placeholder
 // in the `model_calls` migration's column comment but never written) can't leak into this
@@ -32,7 +27,7 @@ import type { createClient } from "@/lib/supabase/server";
 
 type RlsClient = Awaited<ReturnType<typeof createClient>>;
 
-export type SpendStage = "drafting" | "judge" | "grounding" | "voice_extraction";
+export type SpendStage = "drafting" | "translation" | "judge" | "grounding" | "voice_extraction";
 type SpendRollup = { stage: SpendStage; costUsd: number }[];
 
 export type SpendPeriod = "weekly" | "monthly" | "yearly";
@@ -50,7 +45,13 @@ export type SpendWindow = {
 };
 
 const PERIOD_DAYS: Record<SpendPeriod, number> = { weekly: 7, monthly: 30, yearly: 365 };
-const STAGES: readonly SpendStage[] = ["drafting", "judge", "grounding", "voice_extraction"];
+const STAGES: readonly SpendStage[] = [
+  "drafting",
+  "translation",
+  "judge",
+  "grounding",
+  "voice_extraction",
+];
 
 function sinceIso(period: SpendPeriod, now: Date): string {
   return new Date(now.getTime() - PERIOD_DAYS[period] * 24 * 60 * 60 * 1000).toISOString();

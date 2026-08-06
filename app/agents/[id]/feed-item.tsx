@@ -100,11 +100,11 @@ export function FeedItemCard({
     <article className={cardClass} style={{ containerType: "inline-size" }}>
       <SourceNotch createdAt={item.createdAt} source={item.source} />
       <h2 className="text-[clamp(16px,1.9cqw,21px)] font-semibold leading-[1.28] tracking-[-0.015em] text-foreground text-pretty">
-        {item.headline}
+        {item.newsTitle}
       </h2>
-      {winner.synthesis ? (
+      {winner.newsSynthesis ? (
         <p className="mt-[clamp(11px,1.3cqw,14px)] border-t border-border pt-[clamp(11px,1.3cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
-          {winner.synthesis}
+          {winner.newsSynthesis}
         </p>
       ) : null}
       <DraftBox

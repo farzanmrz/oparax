@@ -27,7 +27,7 @@ import {
   type SourceSampleEntry,
 } from "@/lib/sources/sitemap";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 import { SOURCE_ONBOARDING_PROMPT } from "@/lib/sysprompts";
 
 const SAMPLE_LIMIT = 100;
@@ -260,7 +260,7 @@ export async function onboardSource(
     ? { pathPrefix: verdict.pathFilter.pathPrefix, reasoning: verdict.pathFilter.reasoning }
     : null;
 
-  const { data: configId, error: rpcError } = await admin.rpc("add_source_config", {
+  const sourceConfigArgs = {
     p_agent_id: agentId,
     p_url: inputUrl.toString(),
     p_domain: inputUrl.hostname,
@@ -276,7 +276,13 @@ export async function onboardSource(
     p_match_count: inBand ? matchCount : null,
     p_sample_size: sample.length,
     p_model_call_id: modelCallId,
-  });
+  };
+  // The generated RPC type cannot express nullable Postgres function arguments, while this
+  // function deliberately receives null for absent feeds, sitemaps, and match counts.
+  const { data: configId, error: rpcError } = await admin.rpc(
+    "add_source_config",
+    sourceConfigArgs as unknown as Database["public"]["Functions"]["add_source_config"]["Args"],
+  );
   if (rpcError) throw rpcError;
 
   return { status: "completed", configId: configId as string };

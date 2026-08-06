@@ -13,6 +13,8 @@ export interface StreamTweetData {
   note_tweet?: { text?: string };
   author_id?: string;
   created_at?: string;
+  /** X's machine-detected BCP-47 language code. */
+  lang?: string;
   attachments?: { media_keys?: string[] };
 }
 
@@ -54,6 +56,7 @@ export interface IngestDeliveryBody {
   author_handle: string;
   text: string;
   posted_at: string;
+  lang: string | null;
   media?: IngestDeliveryMedia[];
   raw?: unknown;
 }

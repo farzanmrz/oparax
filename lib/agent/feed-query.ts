@@ -43,7 +43,8 @@ type WinnerRow = {
   posted_url: string | null;
   created_at: string;
   model_call_id: string;
-  synthesis: string | null;
+  news_title: string | null;
+  news_synthesis: string | null;
 };
 
 function escapeLike(value: string) {
@@ -205,7 +206,7 @@ async function includeIds(supabase: Client, agentId: string, filters: FeedFilter
     sets.push(await assignmentMatches(supabase, agentId, escapeLike(filters.account)));
   if (filters.q) {
     const pattern = `%${escapeLike(filters.q)}%`;
-    const [stories, syntheses, draftRows, authors] = await Promise.all([
+    const [stories, syntheses, titles, draftRows, authors] = await Promise.all([
       pagedRows<{ id: string }>(agentId, (from, to) =>
         supabase
           .from("stories")
@@ -221,7 +222,17 @@ async function includeIds(supabase: Client, agentId: string, filters: FeedFilter
           .select("story_id")
           .eq("agent_id", agentId)
           .eq("is_winner", true)
-          .ilike("synthesis", pattern)
+          .ilike("news_synthesis", pattern)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
+        supabase
+          .from("drafts")
+          .select("story_id")
+          .eq("agent_id", agentId)
+          .eq("is_winner", true)
+          .ilike("news_title", pattern)
           .order("id", { ascending: true })
           .range(from, to),
       ),
@@ -239,6 +250,7 @@ async function includeIds(supabase: Client, agentId: string, filters: FeedFilter
     const qIds = new Set<string>([
       ...stories.map((r) => r.id),
       ...syntheses.map((r) => r.story_id).filter((id): id is string => Boolean(id)),
+      ...titles.map((r) => r.story_id).filter((id): id is string => Boolean(id)),
       ...authors,
     ]);
     const pairs = draftRows.filter((r) => r.story_id && r.model_call_id) as {
@@ -323,7 +335,7 @@ async function hydrate(
     supabase
       .from("drafts")
       .select(
-        "id, story_id, platform, posted_at, posting_claimed_at, posted_url, model_call_id, synthesis",
+        "id, story_id, platform, posted_at, posting_claimed_at, posted_url, model_call_id, news_title, news_synthesis",
       )
       .eq("agent_id", agentId)
       .in("story_id", storyIds)
@@ -333,7 +345,7 @@ async function hydrate(
   if (assignmentResult.error || winnerResult.error)
     throw assignmentResult.error ?? winnerResult.error;
   const assignments = (assignmentResult.data ?? []) as unknown as AssignmentRow[];
-  const winnerRows = (winnerResult.data ?? []) as WinnerRow[];
+  const winnerRows = (winnerResult.data ?? []) as unknown as WinnerRow[];
   const modelCalls = new Map<string, { output: string | null }>();
   for (const part of chunks(winnerRows.map((row) => row.model_call_id))) {
     if (!part.length) continue;
@@ -357,17 +369,22 @@ async function hydrate(
     if (post) sources.set(assignment.story_id, [...(sources.get(assignment.story_id) ?? []), post]);
   }
   const winners = new Map<string, FeedItem["winners"]>();
+  const titleByStory = new Map<string, string | null>();
   for (const row of winnerRows) {
     if (!row.story_id || !isPlatform(row.platform)) continue;
+    const previousTitle = titleByStory.get(row.story_id);
+    if (previousTitle === undefined || row.platform === "x") {
+      titleByStory.set(row.story_id, row.news_title);
+    }
     winners.set(row.story_id, {
       ...(winners.get(row.story_id) ?? {}),
       [row.platform]: {
         draftId: row.id,
-        text: modelCalls.get(row.model_call_id)?.output ?? "",
+        draftText: modelCalls.get(row.model_call_id)?.output ?? "",
         postedAt: row.posted_at,
         postingClaimedAt: row.posting_claimed_at,
         postedUrl: row.posted_url,
-        synthesis: row.synthesis,
+        newsSynthesis: row.news_synthesis,
       },
     });
   }
@@ -398,7 +415,7 @@ async function hydrate(
     return {
       storyId: story.id,
       createdAt: story.created_at,
-      headline: story.summary,
+      newsTitle: titleByStory.get(story.id) ?? story.summary,
       source: sourceView,
       winners: winners.get(story.id) ?? {},
     };

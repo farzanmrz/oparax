@@ -1,20 +1,17 @@
 // lib/agent/draft-council-run.ts
 //
-// The drafting pipeline's shared types plus `reviseDraft` — the one still-live piece of the
-// old parallel council, kept because `applyCorrection` (the dormant emailed-correction path)
-// depends on it. The live delivery path's drafting itself is now one Qwen 3.7 Flash ground call
-// (`draft-ground.ts`) — the sequential ground → revise ×2 → synthesize pipeline that briefly
-// replaced the parallel 3-model-draft + judge architecture was itself collapsed to that single
-// call (see draft-ground.ts's header; git history has `runDraftCouncil` and
-// `draft-revise-synthesize.ts` if either is ever needed again).
+// The drafting pipeline's shared types plus `reviseDraft` — the correction-only call kept for
+// `applyCorrection`'s dormant emailed-correction path. Live deliveries now run a deterministic
+// language check, an optional translation call, and one Qwen drafting/filtration call; those
+// stages live in draft-translate.ts and draft-write.ts.
 //
 // PURE orchestration — this module does NO persistence; it returns a per-call `calls` array
 // and the caller (draft-pipeline.ts) writes one `model_calls` row per element. That is the
 // model-call contract every stage in this pipeline owes (AGENTS.md): every model call —
-// grounding, a repair, or a correction revision — appears as its own element, carrying
+// translation, drafting, a repair, or a correction revision — appears as its own element, carrying
 // `output`, `reasoning`, and an explicitly stamped `reasoningWithheldByProvider`. An element
 // missing from that array is a call whose trace is lost, which every stage's own module (this
-// one, draft-ground.ts) exists to prevent.
+// one, draft-translate.ts, draft-write.ts) exists to prevent.
 // SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
 // scope) — never importable from a client component.
 import { generateText } from "ai";
@@ -30,16 +27,19 @@ export type SourceBrief = {
   xPostId: string;
   authorHandle: string;
   text: string;
-  /** Attached photos (full image) or video/GIF poster frames — descriptors only. Only the
-   *  vision-capable grounding and judge stages read these original attachments directly;
+  /** X's machine-detected BCP-47 code when the worker supplied it; null = unknown (website
+   *  sources, correction path, old workers) → the translator stage decides. */
+  lang: string | null;
+  /** Attached photos (full image) or video/GIF poster frames — descriptors only. The
+   *  vision-capable drafter reads these original attachments directly;
    *  correction-only revision calls remain text-only. */
   media: { kind: string; imageUrl: string }[];
 };
 
 export type CouncilCall = {
-  kind: "draft" | "repair" | "judge" | "revision" | "ground" | "synthesis";
-  stage: "drafting" | "judge" | "clustering" | "grounding"; // model_calls.stage
-  role: "primary" | "revision" | "judge" | "grounding"; // model_calls.role
+  kind: "draft" | "repair" | "judge" | "revision" | "ground" | "synthesis" | "translation";
+  stage: "drafting" | "judge" | "clustering" | "grounding" | "translation"; // model_calls.stage
+  role: "primary" | "revision" | "judge" | "grounding" | "translation"; // model_calls.role
   model: string;
   output: string | null; // verbatim; for a structured verdict, the serialized object
   reasoning: string | null;
@@ -52,7 +52,7 @@ export type CouncilCall = {
 /** ONE helper that builds every `CouncilCall` — the only place `reasoningWithheldByProvider`
  *  gets stamped in THIS file, so it can never be missed on an element built by hand elsewhere.
  *  `lib/agent/call-meta.ts`'s `resolveCallMeta` is the same helper shared by `cluster.ts` and
- *  `draft-ground.ts` — this one stays a local duplicate rather than delegating, tracked as
+ *  the live translation/drafting stages — this one stays a local duplicate rather than delegating, tracked as
  *  known leftover (see `call-meta.ts`'s own header comment).
  *  "Withheld" is derived, not assumed: a null trace only means the PROVIDER held it back when
  *  the call actually spent reasoning tokens (`reasoning-trace.ts`). */

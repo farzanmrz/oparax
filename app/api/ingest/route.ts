@@ -35,6 +35,9 @@ const ingestBodySchema = z.discriminatedUnion("source", [
     posted_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
       message: "posted_at must parse as a date",
     }),
+    // Optional for app-before-worker deploy order. Missing language is unknown and the
+    // translator decides whether a translation is needed.
+    lang: z.string().min(1).max(35).nullable().optional(),
     // Attached photos (full image) or video/GIF poster frames — descriptors only, matching
     // the settled media-handling decision (no playable-variant retention). Optional: most
     // posts carry no media.

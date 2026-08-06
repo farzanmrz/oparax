@@ -22,11 +22,10 @@ import {
   PLATFORMS,
   type Platform,
   resolveXTier,
-  X_CHAR_LIMITS,
 } from "@/lib/agent/desk-config";
 import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
-import { groundSourcePost } from "@/lib/agent/draft-ground";
-import { isUsableJudgeVerdict, judgeGroundVerdict } from "@/lib/agent/draft-judge";
+import { translateSourcePost } from "@/lib/agent/draft-translate";
+import { draftSourcePost } from "@/lib/agent/draft-write";
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
@@ -34,7 +33,7 @@ import { draftingConversationId } from "@/lib/observability/ai-conversation";
 import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database, Json } from "@/lib/supabase/database.types";
+import type { Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
 import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
 import { publishDraftToXForOwner } from "@/lib/x/post-core";
@@ -60,8 +59,9 @@ export type IngestDelivery =
       author_handle: string;
       text: string;
       posted_at: string; // ISO
+      lang?: string | null;
       /** Attached photos (full image) or video/GIF poster frames — descriptors only, feeding
-       *  the grounding stage's multimodal input (draft-ground.ts). Absent on most posts. */
+       *  the drafter's multimodal input. Absent on most posts. */
       media?: { kind: string; imageUrl: string }[];
       raw?: unknown;
     }
@@ -325,7 +325,6 @@ async function draftForAgent(
   const beatSpec = extractBeatSpec(guide.guide_raw) ?? agent.beat;
   const xAccount = await getXAccount(agent.owner_id);
   const accountTier = resolveXTier(xAccount?.tier);
-  const ceiling = X_CHAR_LIMITS[accountTier];
 
   // Atomic claim (D16): draft_claims carries UNIQUE(source_post_id, agent_id), so this
   // insert IS the idempotency check — a non-atomic select-then-check here could let two
@@ -357,144 +356,46 @@ async function draftForAgent(
   // against a silently lost draft. The on-beat happy path AND the off-beat outcome both leave the
   // claim in place (dedup intact) — an off-beat verdict must not be re-billed on redelivery.
   try {
-    // THE grounding call (ledgered like every other call). One Qwen 3.7 Flash pass per delivery
-    // answers "is this on-beat, what's in the picture, what's the translation, what's the
-    // synthesis, what's the draft"; the judge verifies this result before it ships.
-    const ground = await groundSourcePost({
+    // Stage 1: deterministic English sources skip translation entirely. Any completed model call
+    // is ledgered and metered before its output can decide whether drafting continues.
+    const translated = await translateSourcePost({ brief });
+    if (translated.call) {
+      await insertModelCalls(admin, agent.owner_id, [translated.call], sourcePostId);
+      await stampUsageEvent(admin, {
+        owner_id: agent.owner_id,
+        kind: "translation",
+        units: 1,
+        cost_usd: translated.call.costUsd,
+        ref_id: sourcePostId,
+      });
+    }
+    if (!translated.usable) {
+      throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
+    }
+
+    // Stage 2: one Qwen pass makes the beat decision, generated title, synthesis, and draft.
+    const written = await draftSourcePost({
       brief,
+      translation: translated.translation,
       beatSpec,
       voiceGuidance,
       platform: "x",
       accountTier,
     });
-    const [groundCallId] = await insertModelCalls(
-      admin,
-      agent.owner_id,
-      [ground.call],
-      sourcePostId,
-    );
+    const [drafterCallId] = await insertModelCalls(admin, agent.owner_id, [written.call], sourcePostId);
     await stampUsageEvent(admin, {
       owner_id: agent.owner_id,
-      kind: "grounding",
+      kind: "drafting",
       units: 1,
-      cost_usd: ground.call.costUsd,
+      cost_usd: written.call.costUsd,
       ref_id: sourcePostId,
     });
-
-    if (!ground.verdict) {
-      // The grounding call billed but its output was unusable — an error path (see
-      // draft-ground.ts), NOT an off-beat verdict. Throw so the outer catch releases the claim
-      // and the worker's retry gets a fresh grounding attempt rather than silently dropping the
-      // post because a classifier stuttered once.
-      throw new Error(`draft-pipeline: grounding verdict unusable for source post ${sourcePostId}`);
+    if (!written.verdict) {
+      throw new Error(`draft-pipeline: draft verdict unusable for source post ${sourcePostId}`);
     }
-    const verdict = ground.verdict;
+    const verdict = written.verdict;
 
-    let judge: Awaited<ReturnType<typeof judgeGroundVerdict>> | null = null;
-    try {
-      judge = await judgeGroundVerdict({
-        brief,
-        beatSpec,
-        voiceGuidance,
-        ground: verdict,
-        ceiling,
-      });
-    } catch (judgeError) {
-      console.error(
-        "draft-pipeline: judge call failed to transport, proceeding with ground verdict",
-        judgeError,
-      );
-    }
-
-    let judgeCallId: string | null = null;
-    if (judge) {
-      [judgeCallId] = await insertModelCalls(admin, agent.owner_id, [judge.call], sourcePostId);
-      await stampUsageEvent(admin, {
-        owner_id: agent.owner_id,
-        kind: "judging",
-        units: 1,
-        cost_usd: judge.call.costUsd,
-        ref_id: sourcePostId,
-      });
-    }
-
-    const judged = judge?.verdict ?? null;
-    const usableJudge = verdict !== null && judged !== null && isUsableJudgeVerdict(judged);
-
-    // The judge is TOLD the ceiling in its prompt, but nothing verified it obeyed — an
-    // over-ceiling correction was persisted and delivered, and only the Post to X action caught
-    // it much later. This is the deterministic check (no extra model call), through the SAME
-    // shared gate the posting and edit paths call: AGENTS.md requires a third writer of a
-    // drafts winner to call `checkXPostable` rather than re-derive the length rule, and
-    // twitter-text's weighted length is not `.length` anyway. The gate is X-specific and so is
-    // this draft — groundSourcePost ran with platform "x" against X_CHAR_LIMITS — so it is the
-    // right gate for the one text `final` carries; a future non-X platform needs its own.
-    let draftLengthFallback: "none" | "substituted_ground" | "kept_judge" = "none";
-    if (usableJudge && judged.finalDraft !== null) {
-      const judgeFit = checkXPostable(judged.finalDraft, accountTier);
-      if (!judgeFit.ok) {
-        // Falling back to the grounder's draft is safe ONLY when that text was not itself the
-        // thing the judge corrected. If `language` or `translation` is in correctedFields, the
-        // judge fixed a wrong-language draft — the live Spanish-source bug — and the grounder's
-        // firstDraft is precisely that defective text, so substituting it would reintroduce the
-        // bug this slice exists to kill. Then the judge's over-limit English text ships instead:
-        // delivered, Post button disabled by the same gate, reporter trims it in place. That is
-        // today's behaviour — an acceptable floor, not a regression.
-        const judgeFixedLanguage =
-          judged.correctedFields.includes("language") ||
-          judged.correctedFields.includes("translation");
-        draftLengthFallback =
-          !judgeFixedLanguage && checkXPostable(verdict.firstDraft, accountTier).ok
-            ? "substituted_ground"
-            : "kept_judge";
-        console.error(
-          `draft-pipeline: judge draft fails the X gate (${judgeFit.reason}) for source post ${sourcePostId} — ceiling ${ceiling}, judge draft ${judged.finalDraft.length} chars, resolution ${draftLengthFallback}`,
-        );
-      }
-    }
-
-    const final =
-      verdict === null
-        ? null
-        : usableJudge
-          ? {
-              ...verdict,
-              language: judged.language,
-              translation: judged.translation,
-              newsSynthesis: judged.newsSynthesis,
-              onBeat: verdict.onBeat && judged.onBeat,
-              onBeatReason: judged.onBeatReason,
-              // Only the draft TEXT is ever in question here — every other judge field above is
-              // a judgment, not length-constrained, and is kept in all cases.
-              firstDraft:
-                draftLengthFallback === "substituted_ground"
-                  ? verdict.firstDraft
-                  : (judged.finalDraft ?? verdict.firstDraft),
-            }
-          : verdict;
-
-    if (usableJudge && judged.onBeat !== verdict.onBeat) {
-      const { error: conflictError } = await admin.from("beat_conflicts").upsert(
-        {
-          agent_id: agent.id,
-          source_post_id: sourcePostId,
-          ground_on_beat: verdict.onBeat,
-          ground_reason: verdict.onBeatReason,
-          judge_on_beat: judged.onBeat,
-          judge_reason: judged.onBeatReason,
-        },
-        { onConflict: "agent_id,source_post_id", ignoreDuplicates: true },
-      );
-      if (conflictError) {
-        console.error("draft-pipeline: beat conflict persistence failed", conflictError);
-      }
-    }
-
-    if (!final) {
-      throw new Error(`draft-pipeline: grounding verdict unusable for source post ${sourcePostId}`);
-    }
-
-    if (!final.onBeat) {
+    if (!verdict.onBeat) {
       // Off-beat: no story row, no council, no drafts row — reported, not drafted-and-hidden.
       return {
         agentId: agent.id,
@@ -502,6 +403,17 @@ async function draftForAgent(
         degraded: false,
         skipped: "off_beat",
       };
+    }
+
+    const draftText = verdict.draft;
+    if (draftText === null) {
+      throw new Error(`draft-pipeline: on-beat verdict missing draft for source post ${sourcePostId}`);
+    }
+    const fit = checkXPostable(draftText, accountTier);
+    if (!fit.ok) {
+      console.error(
+        `draft-pipeline: drafter output fails the X gate (${fit.reason}) for source post ${sourcePostId}; persisting for manual trim`,
+      );
     }
 
     // Part B: on-beat — one story per source post, directly (CLUSTERING_ENABLED stays off; the
@@ -527,18 +439,13 @@ async function draftForAgent(
       }
     }
 
-    // Grouping by story id is what lets Explore > Conversations show one story's grounding
+    // Grouping by story id is what lets Explore > Conversations show one story's drafting
     // call as a single readable thread. Set after clustering because the story id does not
     // exist before it; every AI span below inherits it from the isolation scope.
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
-    // Part C: one drafts winner row per platform. The winner points at the final model call;
-    // when the judge changed the output, a second audit row keeps the ground verdict visible
-    // to the existing council reader. judge_verdict remains null because it is the legacy council
-    // partition key, not judge metadata. Both rows go in ONE insert: drafts has no unique
-    // constraint on (source_post, agent, platform), so a winner that committed before a
-    // failing audit row would survive the claim release and let a retry write a SECOND winner —
-    // which is exactly what editDraft's `.eq("is_winner", true).maybeSingle()` lookup cannot read.
+    // Part C: one winner row per platform. Its model-call provenance is the single drafter; no
+    // verification judge or audit row follows this stage.
     const runPlatformDraft = async (
       platform: Platform,
     ): Promise<{
@@ -553,91 +460,23 @@ async function draftForAgent(
         agent_id: agent.id,
         story_id: cluster.storyId,
         platform,
-        // Provenance must identify the text that actually ships. If the deterministic X gate
-        // rejected the judge text and we substituted the grounder's draft, the ground call is the source
-        // of the delivered text even though the judge still supplied review metadata.
-        model_call_id:
-          usableJudge && draftLengthFallback !== "substituted_ground"
-            ? (judgeCallId ?? groundCallId)
-            : groundCallId,
+        model_call_id: drafterCallId,
         is_winner: true,
         judge_verdict: null,
-        synthesis: final.newsSynthesis,
-        translation: final.translation,
-        judge_review: judgeCallId
-          ? {
-              judgeModelCallId: judgeCallId,
-              groundModelCallId: groundCallId,
-              usable: usableJudge,
-              correctedFields: judged?.correctedFields ?? [],
-              judgeNotes:
-                judged?.judgeNotes ??
-                "The verification response failed schema validation; the grounder draft was used.",
-              // Which text actually shipped, and why — provenance stays honest when the length
-              // guard above rejected the judge's own draft.
-              draftLengthFallback,
-            }
-          : null,
+        news_title: verdict.newsTitle,
+        news_synthesis: verdict.newsSynthesis,
+        translation: translated.translation,
+        judge_review: null,
       };
 
-      let winningDraftId: string;
-      if (usableJudge || judgeCallId) {
-        let auditRow: Database["public"]["Tables"]["drafts"]["Insert"];
-        if (usableJudge) {
-          auditRow = {
-            source_post_id: sourcePostId,
-            agent_id: agent.id,
-            story_id: cluster.storyId,
-            platform,
-            model_call_id: groundCallId,
-            is_winner: false,
-            judge_verdict: null,
-          };
-        } else {
-          if (!judgeCallId) {
-            throw new Error(
-              `draft-pipeline: judge audit row missing its model call for source post ${sourcePostId}`,
-            );
-          }
-          auditRow = {
-            source_post_id: sourcePostId,
-            agent_id: agent.id,
-            story_id: cluster.storyId,
-            platform,
-            model_call_id: judgeCallId,
-            is_winner: false,
-            judge_verdict: {
-              status: "invalid",
-              rationale:
-                "The verification response failed schema validation; the grounder draft was used.",
-            },
-          };
-        }
-        const { data, error } = await admin
-          .from("drafts")
-          .insert([winnerRow, auditRow])
-          .select("id, is_winner");
-        if (error) throw error;
-        // One PostgREST request is one statement, so the audit row failing takes the winner with
-        // it. Read the winner off the flag rather than the row order, which is not guaranteed.
-        const winner = data.find((row) => row.is_winner);
-        if (!winner) {
-          throw new Error(
-            `draft-pipeline: winner row missing from ${platform} insert for agent ${agent.id}`,
-          );
-        }
-        winningDraftId = winner.id;
-      } else {
-        const { data, error } = await admin.from("drafts").insert(winnerRow).select("id").single();
-        if (error) throw error;
-        winningDraftId = data.id;
-      }
+      const { data, error } = await admin.from("drafts").insert(winnerRow).select("id").single();
+      if (error) throw error;
       return {
         platform,
-        winningText: final.firstDraft,
-        winningModel: usableJudge ? (judge?.call.model ?? ground.call.model) : ground.call.model,
+        winningText: draftText,
+        winningModel: written.call.model,
         degraded: false,
-        winningDraftId,
+        winningDraftId: data.id,
       };
     };
 
@@ -763,6 +602,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             author_handle: delivery.author_handle,
             text: delivery.text,
             posted_at: delivery.posted_at,
+            lang: delivery.lang ?? null,
             raw: (delivery.raw ?? null) as unknown as Json,
           }
         : {
@@ -873,6 +713,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: delivery.x_post_id,
           authorHandle: delivery.author_handle,
           text: delivery.text,
+          lang: delivery.lang ?? null,
           media: delivery.media ?? [],
         }
       : {
@@ -883,6 +724,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: "",
           authorHandle: delivery.author_handle ?? hostnameOf(delivery.url),
           text: delivery.text,
+          lang: null,
           // Website sources carry no structured media descriptors this slice.
           media: [],
         };
@@ -988,6 +830,7 @@ export async function applyCorrection(input: {
     xPostId: sourcePost.x_post_id ?? "",
     authorHandle: sourcePost.author_handle ?? "",
     text: sourcePost.text,
+    lang: null,
     // reviseDraft (this function's only caller) never looks at media — the emailed-correction
     // path revises existing text, it doesn't re-ground.
     media: [],
@@ -1060,7 +903,7 @@ export async function applyCorrection(input: {
     .eq("agent_id", agent.id)
     .eq("platform", platform)
     .eq("is_winner", true)
-    .select("synthesis, translation");
+    .select("news_title, news_synthesis, translation");
   if (dethroneError) throw dethroneError;
   // The dethroned winner's card metadata comes back from that update so the revision below can
   // carry it forward — same reason editDraft copies it off the row it dethrones. Read off the
@@ -1084,10 +927,11 @@ export async function applyCorrection(input: {
       platform,
       story_id: storyId,
       // QC fix, same class as the two above: a revision replaces the winning row, so it inherits
-      // the winner's card metadata. Omitting these left a corrected draft's card with no synthesis
-      // and no translation. Judge review deliberately resets (judge_verdict above) — the
+      // the winner's card metadata. Omitting these left a corrected draft's card without its
+      // title, synthesis, or translation. Judge review deliberately resets (judge_verdict above) — the
       // correction invalidates it.
-      synthesis: dethronedWinner?.synthesis ?? null,
+      news_title: dethronedWinner?.news_title ?? null,
+      news_synthesis: dethronedWinner?.news_synthesis ?? null,
       translation: dethronedWinner?.translation ?? null,
     })
     .select("id")

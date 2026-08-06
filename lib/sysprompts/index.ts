@@ -11,10 +11,7 @@ const load = (name: string) => readFileSync(join(process.cwd(), "lib/sysprompts"
 export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
 export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
 export const DRAFT_REVISE_PROMPT = load("draft-revise.md");
-// THE drafting call's prompt: one Qwen 3.7 Flash pass that sees the images, translates, judges
-// beat relevance, and writes the post the reporter sees (the revise/synthesize stages that
-// once followed it were deleted — see draft-ground.ts's header).
-export const DRAFT_GROUND_PROMPT = load("draft-ground.md");
-export const DRAFT_JUDGE_PROMPT = load("draft-judge.md");
+export const DRAFT_TRANSLATE_PROMPT = load("draft-translate.md");
+export const DRAFT_WRITE_PROMPT = load("draft-write.md");
 export const STORY_CLUSTER_PROMPT = load("story-cluster.md");
 export const SOURCE_ONBOARDING_PROMPT = load("source-onboarding.md");
