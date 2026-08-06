@@ -1,7 +1,7 @@
 // THE one URL→media-type resolver for source attachments, shared by the drafter
-// (lib/agent/draft-write.ts) and voice extraction (lib/voice/extract-guide.ts). It was duplicated
-// once and the copies drifted — one fell through to jpeg while the other returned null — so the
-// same image was attached for extraction and silently dropped for drafting. One copy now.
+// (lib/agent/draft-write.ts) and voice extraction (lib/voice/extract-guide.ts). Both carried their
+// own copy of this logic until the query-string read below was added to one of them; deduping is
+// what stops a future upgrade landing on one caller and not the other. One copy now.
 //
 // This answers ONLY "how should the API decode these bytes". Whether the attachment was a photo,
 // a video or an animated GIF is a separate axis carried by the caller's `kind` — and for video

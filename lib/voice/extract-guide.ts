@@ -87,10 +87,11 @@ export type CorpusPost = {
 };
 
 /** Ceiling on how many images one extraction sends. A reporter posting four photos on every one
- *  of 100 posts would otherwise ship 400 images into a single call — images are the expensive
- *  part of a multimodal request, and extraction has no spend gate to catch it (owner decision,
- *  AGENTS.md). At a typical ~50 this never binds; when it does, the prompt SAYS so rather than
- *  letting the model infer that the unshown posts had no media. */
+ *  of MAX_POSTS (50) posts would otherwise ship 200 images into a single call — images are the
+ *  expensive part of a multimodal request, and extraction has no spend gate to catch it (owner
+ *  decision, AGENTS.md). At a measured ~40% media rate that is ~20 for a 50-post corpus, so this
+ *  now rarely binds; when it does, the prompt SAYS so rather than letting the model infer that
+ *  the unshown posts had no media. */
 const MAX_CORPUS_IMAGES = 60;
 
 /** The most of a corpus the model may exclude as off-beat before the tool refuses outright.
@@ -248,14 +249,6 @@ function buildScopeTool(
 
   return { tools: { exclude_off_beat_posts: scopeTool }, read: () => captured };
 }
-
-/** X's CDN serves `.jpg` for photos and for video/GIF poster frames, and `.png` for a minority of
- *  uploads. Read it off the url rather than assuming, since an incorrect mediaType is rejected.
- *
- *  Media-type resolution itself lives in lib/agent/source-media.ts and is SHARED with the
- *  drafter — this file used to carry its own copy and the two drifted, so the same image was
- *  attached here and silently dropped there. Its null-on-unparsable contract is what keeps one
- *  malformed url from aborting an extraction that has already billed for the corpus read. */
 
 /** Shared by both call shapes below (plain and streaming) so the prompt they send the model can
  *  never drift apart — extracted rather than duplicated inline a second time.

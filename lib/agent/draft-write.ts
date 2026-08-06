@@ -10,7 +10,12 @@ import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { resolveCallMeta } from "./call-meta";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
 import type { CouncilCall, SourceBrief } from "./draft-council-run";
-import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS, stripMarkdown } from "./qwen-draft-config";
+import {
+  QWEN_DRAFT_MODEL,
+  QWEN_DRAFT_PROVIDER_OPTIONS,
+  QWEN_DRAFT_TIMEOUT_MS,
+  stripMarkdown,
+} from "./qwen-draft-config";
 import { resolveImageMediaType } from "./source-media";
 
 const draftVerdictSchema = z.object({
@@ -156,7 +161,9 @@ export async function draftSourcePost(input: {
       reasoning: "medium",
       // NO `maxOutputTokens`: the ceiling capped thinking AND the verdict together, so a long
       // reasoning pass could truncate the object and cost a whole re-billed delivery. The draft
-      // itself is bounded by `checkXPostable`, not by a token budget.
+      // itself is bounded by `checkXPostable`, not by a token budget. The abort below is what
+      // keeps an uncapped call inside the request budget — see QWEN_DRAFT_TIMEOUT_MS.
+      abortSignal: AbortSignal.timeout(QWEN_DRAFT_TIMEOUT_MS),
       output: Output.object({ name: "DraftVerdict", schema: draftVerdictSchema }),
       system: `${DRAFT_WRITE_PROMPT}\n\n<draft_contract>\n${DRAFT_COUNCIL_CONTRACT}\n</draft_contract>\n\n<voice_guide>\n${input.voiceGuidance.trim()}\n</voice_guide>`,
       messages: [

@@ -15,7 +15,11 @@ import { z } from "zod";
 import { resolveCallMeta } from "@/lib/agent/call-meta";
 // TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
-import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
+import {
+  QWEN_DRAFT_MODEL,
+  QWEN_DRAFT_PROVIDER_OPTIONS,
+  QWEN_DRAFT_TIMEOUT_MS,
+} from "@/lib/agent/qwen-draft-config";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
@@ -275,6 +279,7 @@ export async function assignToStory(input: {
       providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "none",
       temperature: 0,
+      abortSignal: AbortSignal.timeout(QWEN_DRAFT_TIMEOUT_MS),
       schema: clusterVerdictSchema,
       system: STORY_CLUSTER_PROMPT,
       prompt: buildClusterPrompt(candidates, authorHandle, text),

@@ -13,7 +13,11 @@ import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
-import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
+import {
+  QWEN_DRAFT_MODEL,
+  QWEN_DRAFT_PROVIDER_OPTIONS,
+  QWEN_DRAFT_TIMEOUT_MS,
+} from "@/lib/agent/qwen-draft-config";
 import { fetchWithTimeout } from "@/lib/http-fetch";
 import {
   checkRobotsPolicy,
@@ -219,7 +223,8 @@ export async function onboardSource(
       model: QWEN_DRAFT_MODEL,
       providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "medium",
-      // NO `maxOutputTokens` — see lib/agent/draft-translate.ts.
+      // NO `maxOutputTokens` — see lib/agent/draft-translate.ts. The abort is its other half.
+      abortSignal: AbortSignal.timeout(QWEN_DRAFT_TIMEOUT_MS),
       schema: sourceOnboardingSchema,
       system: SOURCE_ONBOARDING_PROMPT,
       prompt: buildOnboardingPrompt({ beat, inputUrl, sample, fullTextVerdict }),

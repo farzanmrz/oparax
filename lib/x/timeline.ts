@@ -49,6 +49,8 @@ export type XTimelinePost = {
  *  reporter with rare long posts more likely to be read as standard (recoverable — a later
  *  extraction that catches one upgrades them). */
 const MAX_POSTS = 50;
+/** X's own per-page ceiling. It only binds if MAX_POSTS is ever raised back above 100 — at 50 the
+ *  remaining-count operand always wins — so it stays as the guard for that, not as live math. */
 const PAGE_SIZE = 100;
 /** Hard wall-clock bound: two or three API calls should take ~1s, so anything near this is a
  *  hang rather than slowness. */

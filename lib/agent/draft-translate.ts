@@ -8,7 +8,11 @@ import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { DRAFT_TRANSLATE_PROMPT } from "@/lib/sysprompts";
 import { resolveCallMeta } from "./call-meta";
 import type { CouncilCall, SourceBrief } from "./draft-council-run";
-import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "./qwen-draft-config";
+import {
+  QWEN_DRAFT_MODEL,
+  QWEN_DRAFT_PROVIDER_OPTIONS,
+  QWEN_DRAFT_TIMEOUT_MS,
+} from "./qwen-draft-config";
 
 const translationSchema = z.object({ translation: z.string().nullable() });
 const NULL_TRANSLATION_OUTPUT = JSON.stringify({ translation: null });
@@ -47,7 +51,9 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
       // NO `maxOutputTokens`: the complete translation of an arbitrarily long article is the
       // whole output, so any ceiling here can only ever be too small — a truncated object throws
       // NoObjectGeneratedError, releases the claim, and re-bills the retry. Matches the measured
-      // precedent in lib/voice/extract-guide.ts.
+      // precedent in lib/voice/extract-guide.ts — INCLUDING its abort, which is what makes an
+      // uncapped call safe to run inside a request budget (see QWEN_DRAFT_TIMEOUT_MS).
+      abortSignal: AbortSignal.timeout(QWEN_DRAFT_TIMEOUT_MS),
       output: Output.object({ name: "Translation", schema: translationSchema }),
       system: DRAFT_TRANSLATE_PROMPT,
       messages: [
