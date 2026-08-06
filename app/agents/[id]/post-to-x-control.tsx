@@ -38,7 +38,17 @@ export function PostToXControl({
     );
   }
 
-  const parsed = twitterText.parseTweet(draftText);
+  // Mirror `checkXPostable`'s config (desk-config.ts): plain `parseTweet` validates against
+  // X's DEFAULT 280 ceiling regardless of tier, so a premium desk's 280–25,000-char draft
+  // was client-disabled here even though the server gate would post it fine.
+  type ParseTweetOptions = NonNullable<Parameters<typeof twitterText.parseTweet>[1]>;
+  const twitterTextWithConfigs = twitterText as typeof twitterText & {
+    configs: { version3: ParseTweetOptions };
+  };
+  const parsed = twitterText.parseTweet(draftText, {
+    ...twitterTextWithConfigs.configs.version3,
+    maxWeightedTweetLength: charLimit,
+  });
   const overLimit = parsed.weightedLength > charLimit;
 
   const handleConfirm = () => {
