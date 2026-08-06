@@ -30,7 +30,7 @@ export function PostToXControl({
 
   if (!xLinked) {
     return (
-      <Button asChild className="h-[30px] rounded-[2px] px-[15px]" size="sm" variant="outline">
+      <Button asChild className="h-11 w-full rounded-none border-t" variant="outline">
         {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X.
             returnTo brings the reporter back to this exact desk page after linking. */}
         <a href={`/auth/x?returnTo=${encodeURIComponent(pathname)}`}>Connect X</a>
@@ -60,19 +60,19 @@ export function PostToXControl({
   };
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex w-full flex-col">
+      {error ? (
+        <p className="px-[clamp(14px,1.6cqw,18px)] pb-2 text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
       <Button
-        className="h-[30px] rounded-[2px] px-[15px]"
+        className="h-11 w-full rounded-none"
         disabled={isPending || !parsed.valid || overLimit}
         onClick={handleConfirm}
       >
         {isPending ? "Posting…" : "Post"}
       </Button>
-      {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }
