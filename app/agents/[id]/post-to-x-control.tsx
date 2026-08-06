@@ -72,7 +72,7 @@ export function PostToXControl({
   return (
     <div className="flex w-full flex-col">
       {error ? (
-        <p className="px-[clamp(14px,1.6cqw,18px)] pb-2 text-sm text-destructive" role="alert">
+        <p className="px-[clamp(15px,2.1cqw,22px)] pb-2 text-sm text-destructive" role="alert">
           {error}
         </p>
       ) : null}
