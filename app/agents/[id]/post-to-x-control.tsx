@@ -8,7 +8,63 @@ import { toast } from "sonner";
 // twttr object), never a named `parseTweet`, so use the default and read parseTweet off it.
 import twitterText from "twitter-text";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { publishDraftToX } from "@/lib/x/actions";
+
+/**
+ * X-composer-style budget ring: a tiny circular progress of chars used. Quiet by default;
+ * turns warning past 90% and destructive when over, at which point the remaining count
+ * appears beside it (negative when over) — the only time a number shows at all.
+ */
+function CharRing({ length, limit }: { length: number; limit: number }) {
+  const ratio = Math.min(length / limit, 1);
+  const over = length > limit;
+  const near = !over && ratio > 0.9;
+  const r = 8;
+  const c = 2 * Math.PI * r;
+  const remaining = limit - length;
+  return (
+    <span
+      aria-label={`${length} of ${limit} characters used`}
+      className="flex items-center gap-1.5"
+      role="img"
+    >
+      <svg aria-hidden="true" className="-rotate-90" height="20" viewBox="0 0 20 20" width="20">
+        <circle
+          className="stroke-border"
+          cx="10"
+          cy="10"
+          fill="none"
+          r={r}
+          strokeWidth="2"
+        />
+        <circle
+          className={cn(
+            over ? "stroke-destructive" : near ? "stroke-warning" : "stroke-primary",
+          )}
+          cx="10"
+          cy="10"
+          fill="none"
+          r={r}
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - ratio)}
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+      {over || near ? (
+        <span
+          className={cn(
+            "font-mono text-[11px] tabular-nums leading-none",
+            over ? "text-destructive" : "text-warning",
+          )}
+        >
+          {remaining}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 export function PostToXControl({
   draftId,
@@ -76,13 +132,19 @@ export function PostToXControl({
           {error}
         </p>
       ) : null}
-      <Button
-        className="h-11 w-full rounded-none"
-        disabled={isPending || !parsed.valid || overLimit}
-        onClick={handleConfirm}
-      >
-        {isPending ? "Posting…" : "Post"}
-      </Button>
+      {/* Footer row: budget ring on the left cell (X-composer placement), Post fills the rest. */}
+      <div className="flex w-full items-stretch border-t">
+        <span className="flex shrink-0 items-center px-[clamp(15px,2.1cqw,22px)]">
+          <CharRing length={parsed.weightedLength} limit={charLimit} />
+        </span>
+        <Button
+          className="h-11 flex-1 rounded-none border-l"
+          disabled={isPending || !parsed.valid || overLimit}
+          onClick={handleConfirm}
+        >
+          {isPending ? "Posting…" : "Post"}
+        </Button>
+      </div>
     </div>
   );
 }

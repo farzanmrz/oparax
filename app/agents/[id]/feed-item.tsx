@@ -104,13 +104,16 @@ export function FeedItemCard({
   return (
     <article className={cardClass} style={{ containerType: "inline-size" }}>
       <SourceNotch createdAt={item.createdAt} source={item.source} />
-      <div className="px-[clamp(15px,2.1cqw,22px)] pt-[clamp(31px,3.4cqw,38px)] pb-[clamp(15px,1.8cqw,20px)]">
-        <h2 className="text-[clamp(16px,1.9cqw,21px)] font-semibold leading-[1.28] tracking-[-0.015em] text-foreground text-pretty">
+      {/* Two-level hierarchy by contrast, not dividers: the title is the brightest, largest
+          element on the card; the synthesis reads clearly quieter — smaller, dimmer, looser
+          leading, capped at a comfortable reading measure. */}
+      <div className="px-[clamp(15px,2.1cqw,22px)] pt-[clamp(32px,3.5cqw,40px)] pb-[clamp(16px,2cqw,22px)]">
+        <h2 className="text-[clamp(17px,2.1cqw,23px)] font-semibold leading-[1.25] tracking-[-0.02em] text-foreground text-pretty">
           {item.newsTitle}
         </h2>
         {/* Owner decision: no conditional omission — a null synthesis renders the literal
             placeholder. The 100-post replay backfills real syntheses for recent history. */}
-        <p className="mt-[clamp(10px,1.2cqw,13px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
+        <p className="mt-[clamp(9px,1.1cqw,12px)] max-w-[68ch] text-[clamp(13px,1.45cqw,15px)] leading-[1.65] text-muted-foreground/90 text-pretty">
           {winner.newsSynthesis ?? "NO SYNTHESIS"}
         </p>
       </div>
