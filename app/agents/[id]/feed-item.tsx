@@ -107,12 +107,7 @@ export function FeedItemCard({
       <p className="mt-[clamp(11px,1.3cqw,14px)] border-t border-border pt-[clamp(11px,1.3cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
         {winner.newsSynthesis ?? "NO SYNTHESIS"}
       </p>
-      <DraftBox
-        charLimit={charLimit}
-        draft={winner}
-        sourceLabel={getSourceLabel(item.source)}
-        xLinked={xLinked}
-      />
+      <DraftBox charLimit={charLimit} draft={winner} xLinked={xLinked} />
     </article>
   );
 }

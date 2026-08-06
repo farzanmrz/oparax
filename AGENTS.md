@@ -12,7 +12,7 @@ Next.js App Router + React + TypeScript strict (`@/*` → repo root) · `ai` + `
 
 - **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. Nothing polls; there is no scan dispatcher.
 - **`app/api/slack/interactions`** is `after()`-deferred so Slack's 3s ack deadline is met before the slow X-post work runs.
-- **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by `lib/x/post-core.ts`'s posting path, the desk's `editDraft`, and `draft-pipeline.ts` before the new drafter's winner persists. Any future writer of a `drafts` winner must call it too, never re-derive it.
+- **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by `lib/x/post-core.ts`'s posting path and `draft-pipeline.ts` before the drafter's winner persists. Any future writer of a `drafts` winner must call it too, never re-derive it.
 - **`lib/agent/feed-query.ts`'s `fetchFeedPage`/`fetchFeedCounts` take a service-role client and never check desk ownership** — every caller (`page.tsx`, `feed-actions.ts`) must prove `owner_id` match first.
 - **`lib/x/timeline.ts` is the ONE designated extraction X-read** — the 50 most recent ORIGINAL posts (`MAX_POSTS`), app-only bearer, `exclude=retweets,replies`, because a reply-heavy corpus teaches `measuredFacts` a mention rate that opens every draft with an @handle. The corpus size also feeds `inferAccountTier`: a smaller corpus is likelier to miss the one >280-char post that proves premium.
 - **Tokens never leave `lib/x/` and `lib/slack/`.**
