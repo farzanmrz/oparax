@@ -93,30 +93,22 @@ export function FeedItemCard({
   const winner = item.winners.x ?? Object.values(item.winners)[0];
   if (!winner) return null;
 
-  // Zoned card: separation comes from surface plates, not border-on-dark. The story zone
-  // (title + synthesis) sits on bg-card; the draft renders as a full-bleed lighter plate
-  // (see DraftBox). At @[48rem] the card splits two-column — story left, draft panel right
-  // with Post pinned to the panel's bottom — so desktop width actually gets used.
   const cardClass = item.source.gone
-    ? "@container relative overflow-hidden rounded-lg border border-dashed border-warning/60 bg-card shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
-    : "@container relative overflow-hidden rounded-lg border border-border bg-card shadow-[0_12px_32px_rgba(0,0,0,0.35)]";
+    ? "@container relative rounded-lg border border-dashed border-warning/60 bg-card p-[clamp(15px,2.1cqw,22px)] pb-[clamp(15px,1.9cqw,20px)] pt-[clamp(31px,3.4cqw,38px)] shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
+    : "@container relative rounded-lg border border-border bg-card p-[clamp(15px,2.1cqw,22px)] pb-[clamp(15px,1.9cqw,20px)] pt-[clamp(31px,3.4cqw,38px)] shadow-[0_12px_32px_rgba(0,0,0,0.35)]";
 
   return (
     <article className={cardClass} style={{ containerType: "inline-size" }}>
       <SourceNotch createdAt={item.createdAt} source={item.source} />
-      <div className="grid @[48rem]:grid-cols-[minmax(0,1fr)_minmax(20rem,25rem)]">
-        <div className="flex min-w-0 flex-col px-[clamp(15px,2.1cqw,24px)] pt-[clamp(33px,3.6cqw,44px)] pb-[clamp(16px,2cqw,26px)]">
-          <h2 className="text-[clamp(16px,1.9cqw,22px)] font-semibold leading-[1.28] tracking-[-0.015em] text-foreground text-pretty">
-            {item.newsTitle}
-          </h2>
-          {/* Owner decision: no conditional omission — a null synthesis renders the literal
-              placeholder. The 100-post replay backfills real syntheses for recent history. */}
-          <p className="mt-[clamp(10px,1.2cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
-            {winner.newsSynthesis ?? "NO SYNTHESIS"}
-          </p>
-        </div>
-        <DraftBox charLimit={charLimit} draft={winner} xLinked={xLinked} />
-      </div>
+      <h2 className="text-[clamp(16px,1.9cqw,21px)] font-semibold leading-[1.28] tracking-[-0.015em] text-foreground text-pretty">
+        {item.newsTitle}
+      </h2>
+      {/* Owner decision: no conditional omission — a null synthesis renders the literal
+          placeholder. The 100-post replay backfills real syntheses for recent history. */}
+      <p className="mt-[clamp(11px,1.3cqw,14px)] border-t border-border pt-[clamp(11px,1.3cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
+        {winner.newsSynthesis ?? "NO SYNTHESIS"}
+      </p>
+      <DraftBox charLimit={charLimit} draft={winner} xLinked={xLinked} />
     </article>
   );
 }
