@@ -2,9 +2,10 @@
 //
 // Onboards one website source for one desk: discovery -> sample fetch -> full-text
 // measurement -> one billed model call -> code-side prefilter verification -> atomic persist
-// (source_configs + agents.websites, via the add_source_config RPC). No robots.txt read
-// anywhere in this path (#105) — retrieval is left null (the poller decides adaptively, per
-// fetch, never declared up front here). Mirrors lib/voice/create-desk-extraction.ts's
+// (source_configs + agents.websites, via the add_source_config RPC). discoverChangeDetection
+// may read robots.txt now (#108, discovery only) — retrieval itself is still left null
+// regardless (the poller decides adaptively, per fetch, never declared up front here; #105's
+// retrieval-tier decision is untouched). Mirrors lib/voice/create-desk-extraction.ts's
 // ExtractionOutcome shape — every failure, including an internal one, comes back as a typed
 // value; never throws except on a genuine transport failure that never billed.
 //
@@ -392,7 +393,8 @@ export async function onboardSource(
     p_retrieval: null,
     p_prefilter: storedPrefilter,
     p_language: verdict.language,
-    // No robots.txt read anymore, so there is no crawl policy to note.
+    // robots.txt may be read now for sitemap discovery (#108), but never for a crawl policy —
+    // no policy is ever derived from it, so there's still nothing to note here.
     p_policy_note: null,
     p_full_text_available: fullTextVerdict,
     p_sitemap_url: detection.sitemapUrl ?? null,

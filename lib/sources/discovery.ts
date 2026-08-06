@@ -1,11 +1,12 @@
 // lib/sources/discovery.ts
 //
-// Discovers how to detect new articles on a site (sitemap primary, RSS fallback), going
-// straight to well-known paths — no robots.txt read anywhere in this module. robots.txt is
-// a politeness signal, not an access mechanism, and this codebase no longer uses it for
-// either discovery or a retrieval decision (see #105): fetching is adaptive instead, decided
-// per fetch at the poller, never declared up front here. Pure I/O module: no Supabase, no
-// React.
+// Discovers how to detect new articles on a site (sitemap primary, RSS fallback). robots.txt
+// is read for ONE purpose only — as a source of candidate sitemap URLs when a site declares
+// one there instead of (or in addition to) a conventional path (#108) — never as a retrieval
+// decision: fetching stays adaptive, decided per fetch at the poller, never declared up front
+// here (#105). robots.txt is a politeness signal, not an access mechanism, and this codebase
+// still never uses it to gate what the fetcher is willing to do. Pure I/O module: no
+// Supabase, no React.
 
 import { fetchWithTimeout } from "@/lib/http-fetch";
 
@@ -17,8 +18,17 @@ const SITEMAP_PATHS = [
 ];
 const FEED_PATHS = ["/feed", "/rss.xml", "/feed/rss"];
 
-async function sourceFetch(endpoint: string, url: string): Promise<Response> {
-  return fetchWithTimeout("Source", endpoint, url, { method: "GET" });
+/** Same bound as sitemap.ts's NO_LASTMOD_CANDIDATE_CAP — a robots.txt declaring dozens of
+ *  sitemaps (goal.com: 35 locale variants) can't turn one onboarding attempt into dozens of
+ *  fetches. */
+const ROBOTS_CANDIDATE_CAP = 10;
+
+async function sourceFetch(
+  endpoint: string,
+  url: string,
+  redirect: RequestRedirect = "follow",
+): Promise<Response> {
+  return fetchWithTimeout("Source", endpoint, url, { method: "GET", redirect });
 }
 
 /** Hostnames this server must never be talked into fetching: loopback, private-range and
@@ -124,20 +134,102 @@ async function checkPageForRssLink(pageUrl: string): Promise<string | null> {
   }
 }
 
+/** Extracts every `Sitemap:` directive from a robots.txt body, resolved against `origin`
+ *  (the directive's own value may be relative or absolute — real sites do both), deduped.
+ *  Directive matching is case-insensitive per the robots.txt convention; malformed lines are
+ *  skipped rather than failing the whole parse. */
+function parseRobotsSitemaps(robotsTxt: string, origin: string): string[] {
+  const found = new Set<string>();
+  for (const match of robotsTxt.matchAll(/^\s*sitemap:\s*(\S+)/gim)) {
+    try {
+      found.add(new URL(match[1], origin).toString());
+    } catch {
+      // malformed directive value — skip, try the rest
+    }
+  }
+  return [...found];
+}
+
+/** Soft-prioritizes candidates whose PATH names them as news/article content — tested against
+ *  `pathname`, not the whole URL: every candidate shares `origin`, so on a hostname that
+ *  itself contains "news"/"article" (e.g. foxnews.com) a whole-URL test scores every candidate
+ *  identically and silently turns the sort into a no-op. Real signal this guards
+ *  (tycsports.com's actual recent-article sitemap is `sitemap_news_48hs.xml`, not the
+ *  first-listed `discover.xml`) but not a filter: every candidate is still tried, this only
+ *  changes the order. Stable sort — original robots.txt order is preserved within each group. */
+function sortByNewsKeyword(candidates: string[]): string[] {
+  const isNewsy = (url: string) => /news|article/i.test(new URL(url).pathname);
+  return [...candidates].sort((a, b) => Number(isNewsy(b)) - Number(isNewsy(a)));
+}
+
+/** Cheap non-emptiness probe for a sitemap-shaped URL — every real `<urlset>` or
+ *  `<sitemapindex>` entry is wrapped in a `<loc>` tag, so a body with none is either a
+ *  genuinely empty sitemap or not a sitemap at all. Found live (2026-08-06): `urlExists` alone
+ *  can't tell an empty `<urlset/>` (a real, 200-OK, non-HTML response) from a populated one —
+ *  90min.com declares an empty `news-sitemap.xml` in robots.txt that would otherwise win and
+ *  permanently shadow the working hardcoded `/sitemap.xml` fallback below. Deliberately not a
+ *  full XML parse (that's `fetchSitemapSample` in sitemap.ts, run once later by the caller on
+ *  whichever URL wins) — importing it here would be circular (sitemap.ts already imports
+ *  `isSafeDiscoveredUrl` from this module). */
+async function hasSitemapEntries(url: string): Promise<boolean> {
+  try {
+    const res = await sourceFetch(url, url, "manual");
+    if (!res.ok || !isNotHtmlResponse(res)) return false;
+    return /<loc[\s>]/i.test(await res.text());
+  } catch {
+    return false;
+  }
+}
+
+/** Tries robots.txt-declared sitemap candidates in priority order, returning the first that
+ *  passes the same SSRF guard `fetchLeafEntries` applies to sitemap-index `<loc>` entries (a
+ *  robots.txt-declared URL is equally site-controlled, untrusted content — redirects are
+ *  refused outright for the same reason, never followed), then genuinely has entries. Never
+ *  throws — a missing or unreachable robots.txt just means no candidates. */
+async function discoverFromRobots(
+  origin: string,
+  expectedHostname: string,
+): Promise<string | null> {
+  let candidates: string[];
+  try {
+    const res = await sourceFetch(`${origin}/robots.txt`, `${origin}/robots.txt`);
+    if (!res.ok) return null;
+    candidates = sortByNewsKeyword(parseRobotsSitemaps(await res.text(), origin)).slice(
+      0,
+      ROBOTS_CANDIDATE_CAP,
+    );
+  } catch {
+    return null;
+  }
+
+  for (const raw of candidates) {
+    // robots.txt text controls the scheme too — upgrade a same-host http: candidate to https:
+    // before validating it, matching lib/websites.ts's normalizeSourceUrl always preferring
+    // https for reporter input. A candidate that's genuinely http-only still fails urlExists
+    // here and is simply skipped, same as any other non-existent candidate.
+    const candidate = raw.startsWith("http://") ? raw.replace(/^http:/, "https:") : raw;
+    if (!isSafeDiscoveredUrl(candidate, expectedHostname)) continue;
+    if (await hasSitemapEntries(candidate)) return candidate;
+  }
+  return null;
+}
+
 /** Discovers the change-detection mechanism for `inputUrl` — the full URL the reporter
  *  pasted, not just its hostname, since a specific section page carries real signal (its
  *  own `<link rel="alternate">` distinct from the homepage's, and a strong prefilter
- *  hint). Sitemap (primary) is checked by probing well-known paths directly — no robots.txt
- *  read, per #105 (a site that only declares its sitemap inside robots.txt and nowhere else
- *  won't be found this way; accepted trade-off for dropping robots.txt entirely). RSS
- *  (fallback, only tried if no sitemap found) checks the exact input URL first, then the
- *  domain root, then common feed paths. */
+ *  hint). Sitemap (primary): robots.txt-declared candidates are tried first when present —
+ *  the authoritative source when a site bothers to declare one (#108) — then the hardcoded
+ *  well-known paths as before. RSS (fallback, only tried if no sitemap found) checks the
+ *  exact input URL first, then the domain root, then common feed paths. */
 export async function discoverChangeDetection(inputUrl: URL): Promise<{
   mechanism: "sitemap" | "rss" | null;
   sitemapUrl?: string;
   feedUrl?: string;
 }> {
   const origin = inputUrl.origin;
+
+  const robotsSitemap = await discoverFromRobots(origin, inputUrl.hostname);
+  if (robotsSitemap) return { mechanism: "sitemap", sitemapUrl: robotsSitemap };
 
   for (const path of SITEMAP_PATHS) {
     const candidate = `${origin}${path}`;
