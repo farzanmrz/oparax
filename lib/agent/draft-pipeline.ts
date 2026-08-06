@@ -373,7 +373,7 @@ async function draftForAgent(
       throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
     }
 
-    // Stage 2: one Qwen pass makes the beat decision, generated title, synthesis, and draft.
+    // Stage 2: one Qwen pass makes the beat decision, generated news title, news synthesis, and draft.
     const written = await draftSourcePost({
       brief,
       translation: translated.translation,
@@ -502,8 +502,8 @@ async function draftForAgent(
 
     // Zero fulfilled platforms means no drafts row exists — the single-statement insert
     // above is what makes that true, a rejected platform having written neither of its rows.
-    // Propagate so the outer catch releases draft_claims and allows a retry. The grounding
-    // call's ledger row is already committed above, so no paid call is discarded by this throw.
+    // Propagate so the outer catch releases draft_claims and allows a retry. The billable stage
+    // ledger rows are already committed above, so no paid call is discarded by this throw.
     if (fulfilled.length === 0) {
       throw new Error(`draft-pipeline: all platforms failed for agent ${agent.id}`);
     }
@@ -832,7 +832,7 @@ export async function applyCorrection(input: {
     text: sourcePost.text,
     lang: null,
     // reviseDraft (this function's only caller) never looks at media — the emailed-correction
-    // path revises existing text, it doesn't re-ground.
+    // path revises existing text; it does not re-run delivery-stage drafting.
     media: [],
   };
 
@@ -928,8 +928,8 @@ export async function applyCorrection(input: {
       story_id: storyId,
       // QC fix, same class as the two above: a revision replaces the winning row, so it inherits
       // the winner's card metadata. Omitting these left a corrected draft's card without its
-      // title, synthesis, or translation. Judge review deliberately resets (judge_verdict above) — the
-      // correction invalidates it.
+      // news title, news synthesis, or translation. Judge review deliberately resets
+      // (judge_verdict above) — the correction invalidates it.
       news_title: dethronedWinner?.news_title ?? null,
       news_synthesis: dethronedWinner?.news_synthesis ?? null,
       translation: dethronedWinner?.translation ?? null,

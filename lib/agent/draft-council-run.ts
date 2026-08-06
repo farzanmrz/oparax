@@ -100,9 +100,9 @@ function buildRepairPrompt(originalPrompt: string, violations: string[], badDraf
   ].join("\n");
 }
 
-/** Deterministic self-check on a survivor's raw text — plain code between draft and judge,
- *  never a prompt instruction. Returns the violated rules, in prose, so a repair call can be
- *  fed exactly what to fix. */
+/** Deterministic self-check on a revision's raw text — plain code before an optional repair
+ *  call, never a prompt instruction. Returns the violated rules, in prose, so the repair call
+ *  can be fed exactly what to fix. */
 function checkViolations(text: string, ceiling: number): string[] {
   const violations: string[] = [];
   if (text.includes("**")) {
