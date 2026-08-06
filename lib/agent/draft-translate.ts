@@ -12,6 +12,9 @@ import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "./qwen-draft-conf
 
 const translationSchema = z.object({ translation: z.string().nullable() });
 const NULL_TRANSLATION_OUTPUT = JSON.stringify({ translation: null });
+const UNDETERMINED_LANGUAGE_CODES = new Set(["und", "zxx", "qme", "qst", "qht", "qam"]);
+// Keep the complete translation comfortably beneath Qwen's 8,192-token output ceiling.
+const MAX_TRANSLATION_SOURCE_CHARS = 6_000;
 
 export type TranslateResult = {
   /** Null when the English fast path skipped the model entirely — nothing to ledger. */
@@ -24,6 +27,10 @@ export type TranslateResult = {
 function primaryLanguage(lang: string | null): string | null {
   const primary = lang?.trim().toLowerCase().split("-")[0];
   return primary || null;
+}
+
+function isUndeterminedLanguage(lang: string | null): boolean {
+  return lang === null || UNDETERMINED_LANGUAGE_CODES.has(lang);
 }
 
 export async function translateSourcePost(input: { brief: SourceBrief }): Promise<TranslateResult> {
@@ -45,7 +52,7 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
       messages: [
         {
           role: "user",
-          content: `<source_language>${input.brief.lang ?? "und"}</source_language>\n<source_post>\n${input.brief.text}\n</source_post>`,
+          content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>\n<source_post>\n${input.brief.text.slice(0, MAX_TRANSLATION_SOURCE_CHARS)}\n</source_post>`,
         },
       ],
       onStepEnd: (event) => {
@@ -67,7 +74,7 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
     return {
       call,
       translation,
-      usable: primary === null || primary === "und" || translation !== null,
+      usable: isUndeterminedLanguage(primary) || translation !== null,
     };
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {

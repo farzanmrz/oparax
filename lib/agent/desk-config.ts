@@ -67,10 +67,10 @@ const ALL_PLATFORMS = ["x", "linkedin", "bluesky"] as const;
 export type Platform = (typeof ALL_PLATFORMS)[number];
 
 /** The platforms drafting actually FANS OUT to today — X only, matching the shipped flow
- *  (X sources → X draft → Slack → post to X). Adding a platform back to this array is the one
- *  edit that reactivates it end to end: the council fan-out, the feed's platform pills, and
- *  `isPlatform`'s filter all read from here. Order is fan-out order, not priority — every
- *  platform runs in parallel via `Promise.allSettled`. */
+ *  (X sources → X draft → Slack → post to X). Reactivating another platform also requires
+ *  per-platform pipeline drafting: the current pipeline hardcodes X-shaped single-drafter output.
+ *  The council fan-out, feed platform pills, and `isPlatform` filter all read from here. Order is
+ *  fan-out order, not priority — every platform runs in parallel via `Promise.allSettled`. */
 export const PLATFORMS = ["x"] as const satisfies readonly Platform[];
 
 /** Character ceilings for the non-X platforms. X's ceiling stays SOLELY in X_CHAR_LIMITS

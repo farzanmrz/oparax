@@ -173,7 +173,12 @@ async function winnerIds(supabase: Client, agentId: string) {
   );
   return new Set(rows.map((row) => row.story_id).filter((id): id is string => Boolean(id)));
 }
-async function assignmentMatches(supabase: Client, agentId: string, pattern: string) {
+async function assignmentMatches(
+  supabase: Client,
+  agentId: string,
+  pattern: string,
+  includeSourceUrl = false,
+) {
   const assignments = await pagedRows<{ story_id: string; source_post_id: string }>(
     agentId,
     (from, to) =>
@@ -187,14 +192,14 @@ async function assignmentMatches(supabase: Client, agentId: string, pattern: str
   const matches = new Set<string>();
   for (const part of chunks(assignments.map((row) => row.source_post_id))) {
     if (!part.length) continue;
-    const query = supabase
-      .from("source_posts")
-      .select("id")
-      .in("id", part)
-      .ilike("author_handle", pattern);
-    const { data: sources, error: sourceError } = await query;
-    if (sourceError) throw sourceError;
-    const sourceIds = new Set((sources ?? []).map((row) => row.id));
+    const results = await Promise.all([
+      supabase.from("source_posts").select("id").in("id", part).ilike("author_handle", pattern),
+      ...(includeSourceUrl
+        ? [supabase.from("source_posts").select("id").in("id", part).ilike("url", pattern)]
+        : []),
+    ]);
+    for (const result of results) if (result.error) throw result.error;
+    const sourceIds = new Set(results.flatMap((result) => result.data ?? []).map((row) => row.id));
     for (const assignment of assignments)
       if (sourceIds.has(assignment.source_post_id)) matches.add(assignment.story_id);
   }
@@ -245,7 +250,7 @@ async function includeIds(supabase: Client, agentId: string, filters: FeedFilter
           .order("id", { ascending: true })
           .range(from, to),
       ),
-      assignmentMatches(supabase, agentId, pattern),
+      assignmentMatches(supabase, agentId, pattern, true),
     ]);
     const qIds = new Set<string>([
       ...stories.map((r) => r.id),

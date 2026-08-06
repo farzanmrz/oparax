@@ -203,7 +203,9 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   // Step 1 — the ownership proof (see the function comment above).
   const { data: parentDraft, error: parentError } = await supabase
     .from("drafts")
-    .select("id, source_post_id, agent_id, story_id, platform, news_title, news_synthesis, translation")
+    .select(
+      "id, source_post_id, agent_id, story_id, platform, news_title, news_synthesis, translation",
+    )
     .eq("id", parsedId.data)
     .maybeSingle();
   if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
@@ -227,7 +229,9 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   // check their account first; this function does not and cannot verify that for them.
   const { data: currentWinner, error: currentWinnerError } = await supabase
     .from("drafts")
-    .select("id, posted_at, posted_url, posting_claimed_at, news_title, news_synthesis, translation")
+    .select(
+      "id, posted_at, posted_url, posting_claimed_at, news_title, news_synthesis, translation",
+    )
     .eq("source_post_id", parentDraft.source_post_id)
     .eq("agent_id", parentDraft.agent_id)
     .eq("platform", parentDraft.platform)

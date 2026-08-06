@@ -30,7 +30,7 @@ export type AiStage =
  * stages carry unpublished journalism, so their content is disabled only in production.
  *
  * `functionId` groups calls in Sentry's AI dashboard — pass something stable and specific
- * (`"voice-extraction-stream"`, `"draft-judge-qwen"`), because it is the axis latency and
+ * (`"voice-extraction-stream"`, `"draft-write-qwen"`), because it is the axis latency and
  * cost get compared along.
  *
  * There is deliberately NO custom-metadata parameter. `experimental_telemetry.metadata` was

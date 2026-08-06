@@ -382,7 +382,12 @@ async function draftForAgent(
       platform: "x",
       accountTier,
     });
-    const [drafterCallId] = await insertModelCalls(admin, agent.owner_id, [written.call], sourcePostId);
+    const [drafterCallId] = await insertModelCalls(
+      admin,
+      agent.owner_id,
+      [written.call],
+      sourcePostId,
+    );
     await stampUsageEvent(admin, {
       owner_id: agent.owner_id,
       kind: "drafting",
@@ -407,7 +412,9 @@ async function draftForAgent(
 
     const draftText = verdict.draft;
     if (draftText === null) {
-      throw new Error(`draft-pipeline: on-beat verdict missing draft for source post ${sourcePostId}`);
+      throw new Error(
+        `draft-pipeline: on-beat verdict missing draft for source post ${sourcePostId}`,
+      );
     }
     const fit = checkXPostable(draftText, accountTier);
     if (!fit.ok) {

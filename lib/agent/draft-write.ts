@@ -4,9 +4,9 @@
 import type { GenerateTextStepEndEvent } from "ai";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { DRAFT_COUNCIL_CONTRACT, DRAFT_WRITE_PROMPT } from "@/lib/sysprompts";
+import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { resolveCallMeta } from "./call-meta";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
 import type { CouncilCall, SourceBrief } from "./draft-council-run";
@@ -62,7 +62,7 @@ function buildContent(input: {
         "",
         `<character_ceiling>${input.ceiling}</character_ceiling>`,
         "",
-        `<post platform=\"${input.platform}\" author=\"@${escapeXmlAttribute(input.brief.authorHandle)}\">`,
+        `<post platform="${input.platform}" author="@${escapeXmlAttribute(input.brief.authorHandle)}">`,
         `<source_language>${escapeXmlText(input.brief.lang ?? "und")}</source_language>`,
         "<content>",
         escapeXmlText(input.brief.text),

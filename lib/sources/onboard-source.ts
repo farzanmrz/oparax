@@ -236,7 +236,7 @@ export async function onboardSource(
     if (NoObjectGeneratedError.isInstance(err)) {
       // The call BILLED, so it still gets a ledgerable row (AGENTS.md's model-call rule) —
       // captured from the onStepEnd event before zod rejected the JSON, same pattern as
-      // lib/agent/draft-ground.ts's qwenStepRef.
+      // `completedStepRef` in lib/agent/draft-translate.ts and lib/agent/draft-write.ts.
       await insertOnboardingModelCall(admin, ownerId, agentId, {
         model: QWEN_DRAFT_MODEL,
         output: stepRef.value?.objectText ?? err.text ?? null,

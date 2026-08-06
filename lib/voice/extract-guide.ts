@@ -199,7 +199,7 @@ function buildScopeTool(
 
   const scopeTool = tool({
     description:
-      "Exclude <post id=\"…\"> elements that fall outside the reporter's stated beat, then " +
+      'Exclude <post id="…"> elements that fall outside the reporter\'s stated beat, then ' +
       "recompute the <measured_style_facts> block over only the posts that remain. Call this " +
       "ONCE, after you have read the whole <corpus> and before you write the guide. The block " +
       "this returns REPLACES the one in your input and is the binding one. If every post is on " +
@@ -207,9 +207,7 @@ function buildScopeTool(
     inputSchema: z.object({
       offBeatPostIds: z
         .array(z.string())
-        .describe(
-          "The values of the <post id=\"…\"> attributes that fall outside the stated beat.",
-        ),
+        .describe('The values of the <post id="…"> attributes that fall outside the stated beat.'),
       reason: z
         .string()
         .describe(

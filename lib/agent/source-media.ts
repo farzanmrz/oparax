@@ -12,5 +12,5 @@ export function resolveImageMediaType(url: string): string | null {
   if (ext === "png") return "image/png";
   if (ext === "webp") return "image/webp";
   if (ext === "gif") return "image/gif";
-  return null;
+  return "image/jpeg";
 }
