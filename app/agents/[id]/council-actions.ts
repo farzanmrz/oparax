@@ -4,7 +4,7 @@
 // this file's only job is supplying the RLS-scoped server client. Both actions are plain
 // reads through `drafts` (EXISTS-joined to `agents`, so the RLS client scopes
 // ownership automatically): no admin client, no model calls, no writes. Never import
-// `draft-council-run.ts`/`lib/sysprompts` here — council-dialog.tsx/draft-history-dialog.tsx
+// `draft-council-run.ts`/`lib/sysprompts` here — council-dialog.tsx/draft-menu.tsx
 // call these two actions directly from a client component, so anything this file imports
 // is reachable from the client bundle boundary.
 "use server";

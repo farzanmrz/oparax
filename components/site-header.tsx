@@ -4,9 +4,9 @@ import { usePathname } from "next/navigation";
 import { DeskControls, DeskTabs } from "@/app/agents/[id]/desk-controls";
 import { AccountMenu } from "@/components/account-menu";
 import { DeskSwitcher } from "@/components/desk-switcher";
+import { useScrollHeaderStage } from "@/components/hooks/use-scroll-header-stage";
 import { OparaxMark } from "@/components/logo";
 import { MobileDeskTabs } from "@/components/mobile-desk-tabs";
-import { useScrollHeaderStage } from "@/components/hooks/use-scroll-header-stage";
 import { Separator } from "@/components/ui/separator";
 import type { AvatarKey } from "@/lib/user";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,7 @@ export function SiteHeader({
 }) {
   const pathname = usePathname();
   const currentDesk = desks.find((desk) => pathname.startsWith(`/agents/${desk.id}`));
-  const stage = useScrollHeaderStage();
+  const stage = useScrollHeaderStage(Boolean(currentDesk));
 
   return (
     <div

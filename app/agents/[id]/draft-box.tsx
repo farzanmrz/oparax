@@ -28,12 +28,16 @@ export function DraftBox({
   charLimit,
   edited,
   onDraftReplaced,
+  postPending,
+  onPostPendingChange,
   xLinked,
 }: {
   draft: FeedDraft;
   charLimit: number;
   edited: boolean;
   onDraftReplaced: (draftId: string, text: string) => void;
+  postPending: boolean;
+  onPostPendingChange: (pending: boolean) => void;
   xLinked: boolean;
 }) {
   const router = useRouter();
@@ -43,30 +47,33 @@ export function DraftBox({
   const [error, setError] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
   const [optimisticallyEdited, setOptimisticallyEdited] = useState(false);
+  const syncedDraftId = useRef(draft.draftId);
+
+  const dirty = text !== baseline;
 
   useEffect(() => {
+    if (syncedDraftId.current === draft.draftId || dirty || committing) return;
+    syncedDraftId.current = draft.draftId;
     setText(draft.draftText);
     setBaseline(draft.draftText);
     setError(null);
     setOptimisticallyEdited(false);
-  }, [draft.draftId, draft.draftText]);
+  }, [committing, dirty, draft]);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [text]);
+  });
 
   const confirmed = Boolean(draft.postedAt && draft.postedUrl);
   const ambiguous = Boolean(draft.postedAt && !draft.postedUrl);
   const posting = Boolean(draft.postingClaimedAt);
-  const dirty = text !== baseline;
-  const readOnly = posting || confirmed || committing;
+  const readOnly = posting || confirmed || committing || postPending;
 
   async function commitEdit() {
     if (!dirty || committing) return;
-    const previous = baseline;
     const trimmed = text.trim();
     if (trimmed === baseline.trim()) {
       setText(baseline);
@@ -76,20 +83,24 @@ export function DraftBox({
     setError(null);
     setCommitting(true);
     setOptimisticallyEdited(true);
-    const result = await editDraft(draft.draftId, trimmed);
-    if (!result.ok) {
-      setText(previous);
-      setOptimisticallyEdited(false);
-      setError(result.error);
-      setCommitting(false);
-      return;
-    }
+    try {
+      const result = await editDraft(draft.draftId, trimmed);
+      if (!result.ok) {
+        setOptimisticallyEdited(false);
+        setError(result.error);
+        return;
+      }
 
-    setText(trimmed);
-    setBaseline(trimmed);
-    setCommitting(false);
-    onDraftReplaced(result.draftId, trimmed);
-    router.refresh();
+      setText(trimmed);
+      setBaseline(trimmed);
+      onDraftReplaced(result.draftId, trimmed);
+      router.refresh();
+    } catch {
+      setOptimisticallyEdited(false);
+      setError("Couldn't save your changes. Please try again.");
+    } finally {
+      setCommitting(false);
+    }
   }
 
   return (
@@ -123,9 +134,10 @@ export function DraftBox({
           ambiguous={ambiguous}
           charLimit={charLimit}
           confirmed={confirmed}
-          disabled={dirty || committing}
+          disabled={dirty || committing || postPending}
           draftId={draft.draftId}
           draftText={text}
+          onPostPendingChange={onPostPendingChange}
           postedUrl={draft.postedUrl}
           posting={posting}
           xLinked={xLinked}
@@ -144,6 +156,7 @@ function DraftAction({
   draftId,
   draftText,
   charLimit,
+  onPostPendingChange,
   xLinked,
 }: {
   posting: boolean;
@@ -154,10 +167,11 @@ function DraftAction({
   draftId: string;
   draftText: string;
   charLimit: number;
+  onPostPendingChange: (pending: boolean) => void;
   xLinked: boolean;
 }) {
   const statusClass =
-    "flex h-10 w-full items-center justify-center gap-1.5 px-4 text-sm desk:h-[30px] desk:w-auto desk:rounded-md";
+    "flex h-10 w-full items-center justify-center gap-1.5 rounded-b-[9px] px-4 text-sm desk:h-[30px] desk:w-auto desk:rounded-md";
 
   if (posting) {
     return (
@@ -194,6 +208,7 @@ function DraftAction({
       disabled={disabled}
       draftId={draftId}
       draftText={draftText}
+      onPendingChange={onPostPendingChange}
       xLinked={xLinked}
     />
   );

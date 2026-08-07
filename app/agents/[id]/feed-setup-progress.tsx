@@ -1,8 +1,9 @@
 "use client";
 
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, MicVocalIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BandCard } from "@/components/band-card";
 import { ExtractionChain } from "@/components/extraction-chain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,11 @@ export function FeedSetupProgress({
         </AlertDescription>
       </Alert>
 
-      <div className="rounded-lg border border-border p-4 desk:p-5">
+      <BandCard
+        icon={failed ? <TriangleAlertIcon /> : <MicVocalIcon />}
+        title={failed ? "Extraction Incomplete" : "Preparing Writing Guide"}
+        variant={failed ? "danger" : "default"}
+      >
         <ExtractionChain
           isStreaming={run.status === "running"}
           reasoningByStage={run.reasoningByStage}
@@ -65,7 +70,7 @@ export function FeedSetupProgress({
             </Button>
           </div>
         ) : null}
-      </div>
+      </BandCard>
     </div>
   );
 }

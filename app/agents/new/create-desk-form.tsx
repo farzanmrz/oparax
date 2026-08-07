@@ -34,6 +34,8 @@ type PersistedDraft = {
   beat: string;
   handles: string[];
   handleDraft: string;
+  websites: string[];
+  websiteDraft: string;
 };
 
 function mergeWebsites(existing: readonly string[], incoming: readonly string[]): string[] {
@@ -62,7 +64,7 @@ function FieldLabel({
           <TooltipTrigger asChild>
             <button
               aria-label="More information"
-              className="flex size-6 items-center justify-center rounded-md text-text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex size-11 items-center justify-center rounded-md text-text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring desk:size-6"
               type="button"
             >
               <InfoIcon className="size-3.5" />
@@ -109,13 +111,19 @@ export function CreateDeskForm({
       if (Array.isArray(value.handles)) {
         setHandles(value.handles.filter((handle): handle is string => typeof handle === "string"));
       }
+      if (typeof value.websiteDraft === "string") setWebsiteDraft(value.websiteDraft);
+      if (Array.isArray(value.websites)) {
+        setWebsites(
+          value.websites.filter((website): website is string => typeof website === "string"),
+        );
+      }
     } catch {
       // A malformed session draft safely degrades to the empty form already on screen.
     }
   }, []);
 
   function persistDraft() {
-    const draft: PersistedDraft = { name, beat, handles, handleDraft };
+    const draft: PersistedDraft = { name, beat, handles, handleDraft, websites, websiteDraft };
     try {
       window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {

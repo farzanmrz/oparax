@@ -138,7 +138,7 @@ export function XAccountField({ linked, handle }: { linked: boolean; handle: str
           />
           <span className="min-w-0 flex-1 truncate text-sm">@{handle}</span>
           <Button
-            className="h-9 shrink-0"
+            className="min-h-11 shrink-0 desk:h-9 desk:min-h-0"
             disabled={isPending}
             onClick={disconnect}
             size="sm"

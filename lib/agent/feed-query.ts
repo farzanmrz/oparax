@@ -244,13 +244,16 @@ async function hydrate(
   const lineageById = new Map<string, LineageRow>();
   for (const part of chunks([...new Set(assignments.map((row) => row.source_post_id))])) {
     if (!part.length) continue;
-    const { data, error } = await supabase
-      .from("drafts")
-      .select("id, parent_draft_id, source_post_id")
-      .eq("agent_id", agentId)
-      .in("source_post_id", part);
-    if (error) throw error;
-    for (const row of data ?? []) lineageById.set(row.id, row);
+    const rows = await pagedRows<LineageRow>(agentId, (from, to) =>
+      supabase
+        .from("drafts")
+        .select("id, parent_draft_id, source_post_id")
+        .eq("agent_id", agentId)
+        .in("source_post_id", part)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+    for (const row of rows) lineageById.set(row.id, row);
   }
   function versionCount(winningDraftId: string): number {
     const visited = new Set<string>();

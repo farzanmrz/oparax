@@ -188,11 +188,15 @@
 @keyframes op-skeleton {
   0%,
   100% {
-    opacity: 0.34;
+    opacity: 0.55;
   }
   50% {
-    opacity: 0.72;
+    opacity: 1;
   }
+}
+
+.op-skeleton + .op-skeleton {
+  animation-delay: 0.2s;
 }
 
 @layer base {

@@ -81,10 +81,7 @@ export const NON_X_PLATFORM_CHAR_LIMITS: Record<Exclude<Platform, "x">, number> 
 };
 
 /** Dormant-by-design (AGENTS.md): auto-post (publish without review) is a settled off-switch,
- *  not a gap. The SHARED source of truth — `sources-card.tsx` reads it to grey the toggle
- *  client-side, `draft-pipeline.ts` reads the SAME constant to gate the server-side auto-post
- *  path, so the UI being disabled is never the only thing standing between a delivery and an
- *  unreviewed post. Flipping this back is the lever's whole reactivation on the server side —
- *  the master switch also needs a UI path to ever become true, which does not exist yet (see
- *  `auto_post_master`'s own comment in the `agents` table). */
+ *  not a gap. `draft-pipeline.ts` reads this server-side gate before it can publish an
+ *  unreviewed post. The disabled Setup switch was removed, so reactivation also requires a UI
+ *  path to set the master and per-source configuration (see `auto_post_master` in `agents`). */
 export const AUTO_POST_ENABLED = false;

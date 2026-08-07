@@ -536,9 +536,8 @@ async function draftForAgent(
       revised: false,
     });
 
-    // Part D: auto-post, after the X platform's drafts row exists. Gated on the SAME
-    // AUTO_POST_ENABLED constant the Setup UI's switch reads (lib/agent/desk-config.ts) —
-    // dormancy must not rest solely on a disabled client-side control. auto_post_sources is
+    // Part D: auto-post, after the X platform's drafts row exists. Gated on the server-side
+    // AUTO_POST_ENABLED constant (lib/agent/desk-config.ts). auto_post_sources is
     // keyed by delivery source TYPE ({ x?: boolean; website?: boolean }) — a per-source-type
     // toggle, the natural reading of "master + per-source toggles" given the only two source
     // types this slice has. No model_calls row for the post itself — posting isn't a model

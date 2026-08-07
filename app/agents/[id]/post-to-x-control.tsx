@@ -16,6 +16,7 @@ export function PostToXControl({
   draftText,
   charLimit,
   disabled = false,
+  onPendingChange,
   xLinked,
 }: {
   draftId: string;
@@ -24,6 +25,7 @@ export function PostToXControl({
    *  is premium (resolved by `resolveXTier` in page.tsx). */
   charLimit: number;
   disabled?: boolean;
+  onPendingChange: (pending: boolean) => void;
   xLinked: boolean;
 }): JSX.Element {
   const pathname = usePathname();
@@ -35,7 +37,7 @@ export function PostToXControl({
     return (
       <Button
         asChild
-        className="h-10 w-full rounded-none desk:h-[30px] desk:w-auto desk:rounded-md"
+        className="h-10 w-full rounded-t-none rounded-b-[9px] desk:h-[30px] desk:w-auto desk:rounded-md"
         variant="outline"
       >
         {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X.
@@ -60,18 +62,23 @@ export function PostToXControl({
 
   const handleConfirm = () => {
     setError(null);
+    onPendingChange(true);
     startTransition(async () => {
-      const result = await publishDraftToX(draftId);
-      if (result.ok) {
-        router.refresh();
-        toast.success("Posted to X", {
-          action: {
-            label: "View post",
-            onClick: () => window.open(result.url, "_blank", "noopener,noreferrer"),
-          },
-        });
-      } else {
-        setError(result.error);
+      try {
+        const result = await publishDraftToX(draftId);
+        if (result.ok) {
+          router.refresh();
+          toast.success("Posted to X", {
+            action: {
+              label: "View post",
+              onClick: () => window.open(result.url, "_blank", "noopener,noreferrer"),
+            },
+          });
+        } else {
+          setError(result.error);
+        }
+      } finally {
+        onPendingChange(false);
       }
     });
   };
@@ -85,7 +92,7 @@ export function PostToXControl({
       ) : null}
       <Button
         className={cn(
-          "h-10 w-full rounded-none px-4 desk:h-[30px] desk:w-auto desk:rounded-md",
+          "h-10 w-full rounded-t-none rounded-b-[9px] px-4 desk:h-[30px] desk:w-auto desk:rounded-md",
           isPending && "bg-primary/50",
         )}
         disabled={disabled || isPending || !parsed.valid || overLimit}

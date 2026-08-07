@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { SentryUserContext } from "@/components/sentry-user-context";
 import { ScrollContainerProvider, ScrollRegion } from "@/components/scroll-container";
+import { SentryUserContext } from "@/components/sentry-user-context";
 import { SiteHeader } from "@/components/site-header";
 import { createClient } from "@/lib/supabase/server";
 import { getAvatarKey, getUsername } from "@/lib/user";

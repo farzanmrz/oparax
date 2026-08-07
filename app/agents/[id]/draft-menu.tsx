@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRightIcon, BrainIcon, HistoryIcon, MoreHorizontalIcon } from "lucide-react";
+import { ArrowUpRightIcon, BrainIcon, HistoryIcon, MoreHorizontalIcon, XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -104,23 +105,26 @@ export function DraftMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[190px] rounded-[8px] bg-[var(--menu-bg)]">
           {sourceUrl && !sourceGone ? (
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem asChild className="min-h-11 desk:min-h-7">
               <a href={sourceUrl} rel="noreferrer" target="_blank">
                 <ArrowUpRightIcon />
                 View source
               </a>
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem disabled>
+            <DropdownMenuItem className="min-h-11 desk:min-h-7" disabled>
               <ArrowUpRightIcon />
               View source
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onSelect={() => setReasoningOpen(true)}>
+          <DropdownMenuItem
+            className="min-h-11 desk:min-h-7"
+            onSelect={() => setReasoningOpen(true)}
+          >
             <BrainIcon />
             Reasoning
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
+          <DropdownMenuItem className="min-h-11 desk:min-h-7" onSelect={() => setHistoryOpen(true)}>
             <HistoryIcon />
             History{versionCount > 0 ? ` (${versionCount})` : ""}
           </DropdownMenuItem>
@@ -128,7 +132,19 @@ export function DraftMenu({
       </DropdownMenu>
 
       <Sheet onOpenChange={setReasoningOpen} open={reasoningOpen}>
-        <SheetContent className="w-full gap-0 bg-[var(--menu-bg)] p-0 desk:max-w-[420px]">
+        <SheetContent
+          className="w-full gap-0 bg-[var(--menu-bg)] p-0 desk:max-w-[420px]"
+          showCloseButton={false}
+        >
+          <SheetClose asChild>
+            <button
+              aria-label="Close reasoning"
+              className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-md text-text-muted outline-none hover:bg-white/9 focus-visible:ring-2 focus-visible:ring-ring desk:size-7"
+              type="button"
+            >
+              <XIcon aria-hidden="true" className="size-4" />
+            </button>
+          </SheetClose>
           <SheetHeader className="border-b border-[var(--band-border)] px-5 py-4">
             <SheetTitle>Reasoning</SheetTitle>
             <SheetDescription>
@@ -158,7 +174,19 @@ export function DraftMenu({
       </Sheet>
 
       <Sheet onOpenChange={setHistoryOpen} open={historyOpen}>
-        <SheetContent className="w-full gap-0 bg-[var(--menu-bg)] p-0 desk:max-w-[420px]">
+        <SheetContent
+          className="w-full gap-0 bg-[var(--menu-bg)] p-0 desk:max-w-[420px]"
+          showCloseButton={false}
+        >
+          <SheetClose asChild>
+            <button
+              aria-label="Close history"
+              className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-md text-text-muted outline-none hover:bg-white/9 focus-visible:ring-2 focus-visible:ring-ring desk:size-7"
+              type="button"
+            >
+              <XIcon aria-hidden="true" className="size-4" />
+            </button>
+          </SheetClose>
           <SheetHeader className="border-b border-[var(--band-border)] px-5 py-4">
             <SheetTitle>History</SheetTitle>
             <SheetDescription>Earlier versions of this draft, newest first.</SheetDescription>
@@ -232,7 +260,7 @@ function HistoryVersions({
       </p>
       <div className="mt-4 flex justify-end">
         <Button
-          className="h-[30px] bg-warning px-4 text-background hover:bg-warning/85"
+          className="min-h-11 bg-warning px-4 text-background hover:bg-warning/85 desk:h-[30px] desk:min-h-0"
           disabled={!canRevert || isPending}
           onClick={() => onRevert(version)}
           size="sm"

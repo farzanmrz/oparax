@@ -94,7 +94,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
             initialToolActivities={progress.toolActivities}
           />
         </BandCard>
-      ) : guide ? (
+      ) : (
         <>
           {extractionFailed ? (
             <BandCard icon={<TriangleAlertIcon />} title="Extraction Incomplete" variant="danger">
@@ -107,18 +107,20 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
               </div>
             </BandCard>
           ) : null}
-          <div className="[column-gap:16px] desk:[columns:2_440px]">
-            {sections.map((section) => (
-              <div className="mb-4 break-inside-avoid" key={section.title}>
-                <BandCard icon={<FileTextIcon />} title={section.title}>
-                  <GuideMarkdown content={section.content} />
-                </BandCard>
-              </div>
-            ))}
-          </div>
+          {guide ? (
+            <div className="[column-gap:16px] desk:[columns:2_440px]">
+              {sections.map((section) => (
+                <div className="mb-4 break-inside-avoid" key={section.title}>
+                  <BandCard icon={<FileTextIcon />} title={section.title}>
+                    <GuideMarkdown content={section.content} />
+                  </BandCard>
+                </div>
+              ))}
+            </div>
+          ) : extractionFailed ? null : (
+            <EmptyState deskId={id} reporterHandle={desk.reporter_handle} />
+          )}
         </>
-      ) : (
-        <EmptyState deskId={id} reporterHandle={desk.reporter_handle} />
       )}
     </div>
   );

@@ -75,7 +75,7 @@ export function ChipsField({
           {chipLabel(chip)}
           <button
             aria-label={removeLabel(chip)}
-            className="text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none"
+            className="flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none desk:size-6"
             disabled={disabled || removeDisabled}
             onClick={() => onRemove(chip)}
             type="button"

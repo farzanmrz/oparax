@@ -69,11 +69,13 @@ function SourceStrip({
   createdAt,
   draft,
   onDraftReplaced,
+  postPending,
 }: {
   source: FeedItem["source"];
   createdAt: string;
   draft: FeedDraft;
   onDraftReplaced: (draftId: string, text: string) => void;
+  postPending: boolean;
 }) {
   const isX = source.kind === "x";
   const label = getSourceLabel(source);
@@ -81,7 +83,7 @@ function SourceStrip({
   return (
     <div
       className={cn(
-        "flex h-[var(--strip-h-mobile)] items-center gap-2 rounded-t-lg border-b border-[var(--band-border)] pr-0 pl-[18px] text-[13.5px] desk:h-[var(--strip-h-web)] desk:pr-1 desk:pl-[14px] desk:text-[12.5px]",
+        "flex h-[var(--strip-h-mobile)] items-center gap-2 rounded-t-lg border-b border-[var(--band-border)] pr-[10px] pl-[18px] text-[13.5px] desk:h-[var(--strip-h-web)] desk:pr-[9px] desk:pl-[14px] desk:text-[12.5px]",
         isX ? "bg-[image:var(--strip-x-grad)]" : "bg-[image:var(--strip-news-grad)]",
       )}
     >
@@ -109,7 +111,7 @@ function SourceStrip({
       <span className="min-w-0 flex-1" />
       {source.gone ? <SourceDeletedAlert /> : null}
       <DraftMenu
-        canRevert={!Boolean(draft.postedAt && draft.postedUrl)}
+        canRevert={!postPending && !(draft.postedAt && draft.postedUrl)}
         draftId={draft.draftId}
         onDraftReplaced={onDraftReplaced}
         sourceGone={source.gone}
@@ -132,9 +134,14 @@ export function FeedItemCard({
 }) {
   const winner = item.winners.x ?? Object.values(item.winners)[0];
   const [activeDraft, setActiveDraft] = useState<FeedDraft | null>(winner ?? null);
+  const [postPending, setPostPending] = useState(false);
 
   useEffect(() => {
-    setActiveDraft(winner ?? null);
+    setActiveDraft((current) => {
+      const next = winner ?? null;
+      if (!current || !next || current.draftId !== next.draftId) return next;
+      return current;
+    });
   }, [winner]);
 
   if (!activeDraft) return null;
@@ -158,7 +165,7 @@ export function FeedItemCard({
   return (
     <article
       className={cn(
-        "rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] shadow-[var(--card-shadow)]",
+        "overflow-hidden rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] shadow-[var(--card-shadow)]",
         item.source.gone && "border-dashed border-destructive",
       )}
     >
@@ -166,6 +173,7 @@ export function FeedItemCard({
         createdAt={item.createdAt}
         draft={activeDraft}
         onDraftReplaced={replaceDraft}
+        postPending={postPending}
         source={item.source}
       />
       <div className="px-[14px] pt-4 pb-[17px] desk:px-6 desk:pb-[19px]">
@@ -181,6 +189,8 @@ export function FeedItemCard({
         draft={activeDraft}
         edited={activeDraft.versionCount > 0}
         onDraftReplaced={replaceDraft}
+        onPostPendingChange={setPostPending}
+        postPending={postPending}
         xLinked={xLinked}
       />
     </article>
@@ -191,7 +201,7 @@ export function FeedCardSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="animate-[op-skeleton_1s_ease-in-out_infinite] overflow-hidden rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))]"
+      className="op-skeleton min-h-[586px] animate-[op-skeleton_1.5s_ease-in-out_infinite] overflow-hidden rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] desk:min-h-[382px]"
     >
       <div className="h-[var(--strip-h-mobile)] border-b border-[var(--band-border)] bg-[image:var(--strip-x-grad)] desk:h-[var(--strip-h-web)]" />
       <div className="space-y-3 px-[14px] py-5 desk:px-6">

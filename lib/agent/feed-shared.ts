@@ -38,12 +38,14 @@ export type FeedItem = {
 export type FeedPage = { items: FeedItem[]; nextCursor: FeedCursor | null };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const canonicalIso = (value: string | undefined): string | null => {
-  if (!value) return null;
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime()) && date.toISOString() === value ? value : null;
-};
+
+export function canonicalFeedCursor(value: FeedCursor): FeedCursor | null {
+  const date = new Date(value.createdAt);
+  if (Number.isNaN(date.getTime()) || !UUID.test(value.id)) return null;
+  return { createdAt: date.toISOString(), id: value.id };
+}
 
 export function isFeedCursor(value: FeedCursor | null | undefined): value is FeedCursor {
-  return Boolean(value && canonicalIso(value.createdAt) === value.createdAt && UUID.test(value.id));
+  const canonical = value && canonicalFeedCursor(value);
+  return Boolean(canonical && canonical.createdAt === value.createdAt);
 }

@@ -28,7 +28,13 @@ export function RetryExtractionButton({ deskId }: { readonly deskId: string }) {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <Button disabled={isPending} onClick={handleRetry} size="sm" variant="outline">
+      <Button
+        className="min-h-11 desk:h-7 desk:min-h-0"
+        disabled={isPending}
+        onClick={handleRetry}
+        size="sm"
+        variant="outline"
+      >
         {isPending ? "Retrying…" : "Retry extraction"}
       </Button>
       {error ? (

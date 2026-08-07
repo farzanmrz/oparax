@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  canonicalFeedCursor,
   FEED_PAGE_SIZE,
   FEED_REFRESH_CHUNK,
   FEED_REFRESH_MAX_CHUNKS,
@@ -85,36 +86,48 @@ export function FeedList({
       return;
     }
     const mine = ++epoch.current;
+    setError(null);
     const reconcile = async () => {
-      const target = state.items.length;
-      if (target <= initialItems.length) {
-        setState({ items: initialItems, nextCursor: initialCursor });
-        return;
+      try {
+        const target = state.items.length;
+        if (target <= initialItems.length) {
+          setState({ items: initialItems, nextCursor: initialCursor });
+          return;
+        }
+        let cursor: FeedCursor | null = null;
+        const fetched: FeedItem[] = [];
+        for (let i = 0; i < FEED_REFRESH_MAX_CHUNKS && fetched.length < target; i++) {
+          const result = await fetchOwnedFeedPage(agentId, cursor, FEED_REFRESH_CHUNK);
+          if (mine !== epoch.current) return;
+          if (!result.ok) {
+            setError(result.error);
+            return;
+          }
+          fetched.push(...result.page.items);
+          cursor = result.page.nextCursor;
+          if (!cursor) break;
+        }
+        if (mine !== epoch.current) return;
+        const fetchedIds = new Set(fetched.map((item) => item.storyId));
+        setState((previous) => {
+          const items = [
+            ...fetched,
+            ...previous.items.filter(
+              (item) => cursor && older(item, cursor) && !fetchedIds.has(item.storyId),
+            ),
+          ].slice(0, target);
+          const last = items.at(-1);
+          return {
+            items,
+            nextCursor:
+              cursor && last
+                ? canonicalFeedCursor({ createdAt: last.createdAt, id: last.storyId })
+                : null,
+          };
+        });
+      } catch {
+        if (mine === epoch.current) setError("Couldn't load more");
       }
-      let cursor: FeedCursor | null = null;
-      const fetched: FeedItem[] = [];
-      for (let i = 0; i < FEED_REFRESH_MAX_CHUNKS && fetched.length < target; i++) {
-        const result = await fetchOwnedFeedPage(agentId, cursor, FEED_REFRESH_CHUNK);
-        if (mine !== epoch.current || !result.ok) return;
-        fetched.push(...result.page.items);
-        cursor = result.page.nextCursor;
-        if (!cursor) break;
-      }
-      if (mine !== epoch.current) return;
-      const fetchedIds = new Set(fetched.map((item) => item.storyId));
-      setState((previous) => {
-        const items = [
-          ...fetched,
-          ...previous.items.filter(
-            (item) => cursor && older(item, cursor) && !fetchedIds.has(item.storyId),
-          ),
-        ].slice(0, target);
-        const last = items.at(-1);
-        return {
-          items,
-          nextCursor: cursor && last ? { createdAt: last.createdAt, id: last.storyId } : null,
-        };
-      });
     };
     void reconcile();
   }, [fetchedAt]);

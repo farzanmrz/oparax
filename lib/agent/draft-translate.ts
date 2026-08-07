@@ -11,6 +11,7 @@ import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "./qwen-draft-conf
 const NULL_TRANSLATION_OUTPUT = JSON.stringify({ translation: null });
 const NO_TRANSLATION_SENTINEL = "NO_TRANSLATION";
 const INACTIVITY_TIMEOUT_MS = 45_000;
+const ABSOLUTE_TIMEOUT_MS = 240_000;
 const UNDETERMINED_LANGUAGE_CODES = new Set(["und", "zxx", "qme", "qst", "qht", "qam"]);
 
 export type TranslateResult = {
@@ -38,9 +39,18 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
 
   const controller = new AbortController();
   let inactivityTimer: ReturnType<typeof setTimeout> | undefined;
+  let absoluteTimer: ReturnType<typeof setTimeout> | undefined;
+  let timeoutError: Error | undefined;
+  const abortForTimeout = (message: string) => {
+    timeoutError = new Error(message);
+    controller.abort(timeoutError);
+  };
   const armInactivityTimer = () => {
     clearTimeout(inactivityTimer);
-    inactivityTimer = setTimeout(() => controller.abort(), INACTIVITY_TIMEOUT_MS);
+    inactivityTimer = setTimeout(
+      () => abortForTimeout("Translation stream timed out waiting for activity"),
+      INACTIVITY_TIMEOUT_MS,
+    );
   };
 
   const result = streamText({
@@ -76,14 +86,27 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
   // (reconcileMissingCosts), not ledgered here.
   try {
     armInactivityTimer();
+    absoluteTimer = setTimeout(
+      () => abortForTimeout("Translation stream exceeded its 240 second deadline"),
+      ABSOLUTE_TIMEOUT_MS,
+    );
     // fullStream, not textStream: the reasoning phase emits no TEXT deltas for tens of seconds
     // (probe: 29.8s max gap on a 14k-char source — a near-miss against the 45s window), but its
     // reasoning deltas DO flow here, so thinking keeps resetting the timer and only true wire
     // silence trips the abort.
-    for await (const _part of result.fullStream) {
+    for await (const part of result.fullStream) {
       armInactivityTimer();
+      if (part.type === "error") {
+        throw part.error;
+      }
     }
-    const raw = (await result.text).trim();
+    if (timeoutError) throw timeoutError;
+    const [text, finishReason] = await Promise.all([result.text, result.finishReason]);
+    if (timeoutError) throw timeoutError;
+    if (finishReason !== "stop") {
+      throw new Error(`Translation stream ended with finish reason: ${finishReason}`);
+    }
+    const raw = text.trim();
     const translation = raw === NO_TRANSLATION_SENTINEL || raw === "" ? null : raw;
     const call = await resolveCallMeta({
       kind: "translation",
@@ -102,5 +125,6 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
     };
   } finally {
     clearTimeout(inactivityTimer);
+    clearTimeout(absoluteTimer);
   }
 }
