@@ -39,6 +39,10 @@ gh issue view <N> --comments
   push-back, no deferral unless they explicitly say an item can wait.
 * **The comment is the contract:** nothing from the find session's
   conversation is needed.
+* **Empty round:** zero accepted findings AND zero browse failures =
+  dispatch nothing; still post the round's fixes marker recording "nothing
+  to apply". The marker must exist for every round: verify and resume
+  detection read it, and its absence reads as a skipped step.
 
 ## 2. Apply
 
@@ -56,7 +60,13 @@ gh issue view <N> --comments
   parallel; there is no serial case.
 * **Fixer contract:** minimal correct fix, match surrounding idiom,
   `tsc --noEmit` clean on touched files, STOP and report if the brief turns
-  out to need a design decision.
+  out to need a design decision. A new numeric limit, threshold, cap, or
+  other product-visible constant NOT spelled out verbatim in the brief IS a
+  design decision by definition: stop, never pick a value (a fixer once
+  silently capped how much of an article the product reads).
+* **`owner-decision` findings are never dispatched:** list them in the fixes
+  comment as awaiting the owner's pick; they surface again at verify's
+  "Surfaced, not fixed" section.
 * **Schema changes escalate, and never land half-applied:** a fix needing a
   migration is feature-qc's escalation case: STOP and present options first.
   If approved, the SAME round applies it to the Supabase project (MCP

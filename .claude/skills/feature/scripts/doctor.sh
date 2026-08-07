@@ -93,7 +93,7 @@ echo "── internal consistency ──"
 # applied to one file and not its siblings. Three instances cost real trust:
 # a dials row claiming sonnet while the agent was pinned opus; a critic contract
 # updated in three harnesses and not the fourth; selftest gated in feature-find
-# and left unconditional in feature-plan. All three are mechanically detectable.
+# and left unconditional in feature-spec. All three are mechanically detectable.
 py=$(command -v python3 || echo python3)
 "$py" - <<'PYEOF' || FAIL=1
 import re,glob,sys,tomllib

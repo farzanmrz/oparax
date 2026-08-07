@@ -2,14 +2,13 @@
 name: feature-build
 description: >-
   Phase 2 of the feature flow, standalone: execute the approved plan from the
-  ft/N issue inline, as a dumb executor over a hyper-specific spec. Use when the
+  ft/N issue inline; the spec decides, build implements. Use when the
   user says /feature-build, "build the plan", "implement the tasks", or "just
   build X" mid-flight on a feature branch.
 argument-hint: "[issue# | what to build]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *)
-# inherit, not a pin: the owner dials build sessions cheap (sonnet low). The
-# plan carries the judgment; this phase carries it out. A pin would override
-# that dial.
+# inherit, not a pin: the owner sets the session dial. The plan carries the
+# judgment; this phase carries it out. A pin would override that dial.
 model: inherit
 effort: medium
 ---

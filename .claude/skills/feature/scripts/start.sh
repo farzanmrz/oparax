@@ -18,7 +18,7 @@
 # passed into this script or into ship.sh.
 #
 # ADOPTION-AWARE (2026-08-04): the owner routinely pre-cuts a branch and a stub
-# issue before /feature-plan, so create-only behavior sent every session into
+# issue before /feature-spec, so create-only behavior sent every session into
 # workaround mode. Branch resolution now goes, in order: already on ft/N →
 # adopt in place; local or remote ft/N exists → switch to it; current branch is
 # ft/N-<anything> (cut for this issue, off-convention) → rename it to ft/N

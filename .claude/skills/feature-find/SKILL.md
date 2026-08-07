@@ -1,42 +1,37 @@
 ---
 name: feature-find
 description: >-
-  QC step 1 of 5, hop-anywhere: gates + the cross-model review council +
-  adjudication, ending with findings posted durably to the ft issue. Use
-  standalone (/feature-find) to adjudicate here and apply fixes in
-  another session/app, or let /feature-qc chain it. Harness-neutral: runs in
-  Claude Code or Codex.
+  QC step 1 of 5: gates + the cross-model review council + adjudication,
+  ending with findings posted durably to the ft issue. Use standalone
+  (/feature-find) to adjudicate here and apply fixes in another session, or
+  let /feature-qc chain it. Claude Code only, session model set to the best
+  available.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
 ---
 
 # Find: discover, adjudicate, persist
 
-Runs over `origin/beta...ft/<N>`.
+Runs over `origin/beta...ft/<N>` in Claude Code, with the session model on
+the best available dial (fable/opus, high) from the start.
 
-* **Model rule:** the session model is spent on ADJUDICATION ONLY. Run this
-  chat on a smart dial (Claude: opus/fable high; Codex: gpt-5.6-sol high), or
-  start cheap and switch at the phase 4 cue. Everything else is a pinned
-  dispatch or shell.
+* **Model rule:** the session model is spent on ADJUDICATION ONLY. Everything
+  else is a pinned dispatch or shell. The internal `bug-finder` lane inherits
+  the session model, which is why this session runs on the best dial.
 * **Communication rule:** no prose between steps EXCEPT milestone lines: one
   entering each numbered phase, one launching any long wait (name + expected
   duration).
-* **Model-flip cue:** the phase 4 milestone line must say verbatim:
 
-<milestone-line>
-council lanes launched (~5-8 min): switch models now if you started cheap; adjudication uses whatever is selected when lanes return.
-</milestone-line>
+## Dispatch roster
 
-## Dials (per harness)
-
-| Stage | Claude Code | Codex |
-|---|---|---|
-| Setup scout | one agent, `model: haiku`, `effort: low` | `cx_grounder` |
-| Internal review lane | `bug-finder` (inherits the session model; run find on the smart dial per feature-qc's step-dial table) | `pr_explorer` + `reviewer` |
-| Exploration fan-out | native (batch independent Agent calls in one response) | spawn PARALLEL `cx_grounder`/`pr_explorer` instances, named explicitly, whenever evidence-mapping spans 3+ independent files/areas; never sequential-read what independent agents can read concurrently (≤6 threads) |
-| Design critic (UI slices only) | one agent, `model: sonnet`, `effort: high` | the `reviewer` agent with that charter |
-| External council lanes | `codex` + `grok` + `agy` | `grok` + `agy` (no codex lane: that family IS this session) |
-| DB seeding / exploratory Supabase ops | `supabase-runner` (sonnet, its own default) | `cx_supabase_runner` |
+| Stage | Dispatch |
+|---|---|
+| Setup scout | one agent, `model: haiku`, `effort: low` |
+| Internal review lane | `bug-finder` (inherits the session model) |
+| Exploration fan-out | batch independent Agent calls in one response |
+| Design critic (UI slices only) | one agent, `model: sonnet`, `effort: high` |
+| External council lanes | `codex` + `grok` + `agy` CLI wrappers |
+| DB seeding / exploratory Supabase ops | `supabase-runner` (sonnet, its own default) |
 
 ## 1. Setup
 
@@ -63,9 +58,8 @@ lsof -i :3000 -sTCP:LISTEN -t
 * **Boot failure:** STOP.
 * **Leave the dev server up:** later phases reuse it.
 * **No runtime-error sweep:** the `_next/mcp` endpoint only reports from a
-  connected browser, so headless QC always found it vacuous (and one session
-  opened a browser to fix that, 2026-08-04). Runtime errors are Sentry's job;
-  rendered behavior is the owner's manual-check set.
+  connected browser, so headless QC finds it vacuous. Runtime errors are
+  Sentry's job; rendered behavior is feature-browse's job.
 
 ## 2. Deterministic gates + the council self-test
 
@@ -79,8 +73,8 @@ bash .claude/workflows/council/selftest.sh --if-changed
   agent profile, a council config, or a CLI version has moved since the last
   green run (the only things that can actually break a lane). When it probes
   it drives every lane through the real wrapper, the real schema, and a brief
-  that cannot be answered without opening a file (~90s on cheap dials, in the
-  background alongside the gates).
+  that cannot be answered without opening a file (~90s, in the background
+  alongside the gates).
 * **Failure condition:** a lane that fails here is FAILED for this round: do
   not launch it in phase 4, and say so in the record. This exists because
   liveness probes kept passing while real briefs returned nothing, and a lane
@@ -98,22 +92,23 @@ bash .claude/skills/feature/scripts/qc-gates.sh
 
 ## 3. Design critic (UI-touching slices only)
 
-ONE pass (Claude: `model: sonnet`, `effort: high`; Codex: the `reviewer`
-agent with this charter). Design findings enter phase 5's adjudication like
-any lane's. No UI in the diff: record "no UI surface, design critic skipped".
+ONE pass (`model: sonnet`, `effort: high`). Design findings enter phase 5's
+adjudication like any lane's. No UI in the diff: record "no UI surface,
+design critic skipped".
 
 ### A. Yardstick
 
-The plan's `[design: reuse]` contract; the critic NEVER judges from its own
-taste: conformance to the app, ladder respected (existing components before
-new), the surface reads as native, per-state intent met.
+The plan's stated design intent; the critic NEVER judges from its own
+taste: conformance to that intent, alignment with the app's existing
+aesthetic (any new pattern is one the plan declared with rationale), the
+surface reads as native, per-state intent met.
 
 * **Post-v0 rounds flip the yardstick:** when the round follows a declared
   OWNER-V0 merge (the plan's step list says which), the merged v0 design IS
   the spec. Judge conformance to the v0 output and per-state intent; new
-  visual patterns, spacing, and color from v0 are the design, not ladder
-  violations. Functional findings (states, contracts, RLS, races) are
-  unaffected.
+  visual patterns, spacing, and color from v0 are the design, never
+  alignment findings. Functional findings (states, contracts, RLS, races)
+  are unaffected.
 
 ### B. Experiential checklist
 
@@ -204,15 +199,10 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   bash .claude/workflows/council/run.sh codex "$LABEL"
 ```
 
-### C. Lane rosters
+### C. Lane roster
 
-* **Claude Code:** THREE externals (`codex` with `COUNCIL_MODEL=gpt-5.6-sol`,
-  `grok`, `agy`) plus the internal lane.
-* **Codex:** its native `reviewer` (`.codex/agents/reviewer.toml` carries the
-  same oparax critic contract as the grok and agy lanes) spawning
-  `pr_explorer` for evidence (name it explicitly: Codex never delegates off a
-  description), plus the `grok` and `agy` externals. The codex family's
-  perspective is the session itself.
+THREE externals (`codex` with `COUNCIL_MODEL=gpt-5.6-sol`, `grok`, `agy`)
+plus the internal `bug-finder` lane.
 
 ### D. Tier and failure rules
 
@@ -227,9 +217,8 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   logs first: the shared label paths overwrite). Both attempts land in the
   round record; a second failure is final.
 * **Judge a lane on POST-FIX behaviour, never on its accumulated failure
-  count:** a proposed detach of grok+agy was reversed the same day once the
-  record was read; the evidence is in `council/run.sh`'s header, don't
-  re-derive it. Phase 2's self-test is what you rely on instead.
+  count:** the evidence is in `council/run.sh`'s header, don't re-derive it.
+  Phase 2's self-test is what you rely on instead.
 
 ## 5. Adjudicate (this session)
 
@@ -239,6 +228,12 @@ Merge, dedup by file+line, judge every finding:
 * **Lone findings:** weighed on their scenario.
 * **Plan-frozen decisions:** vetoes.
 * **Real-but-not-this-slice:** surface and drop.
+* **Open design choices never travel downward:** if a finding's remedy
+  requires choosing a user-visible behavior, limit, or constant the spec
+  does not already fix, its owner is `owner-decision`: state the options in
+  the findings comment for the owner to pick. NEVER write an either/or menu
+  for a fixer (that pattern is how a fixer once invented a 6,000-char input
+  cap on its own).
 
 ## 6. Persist: the findings record
 
@@ -248,19 +243,16 @@ QC-round comments + 1). Contents:
 * **Per ACCEPTED finding:** `file:line`, one technical sentence, then
   `Plain terms:` one sentence a non-reader of the code understands (what a
   user would see / what could go wrong), then the fix owner (`fix-here` |
-  `risk-path`).
+  `risk-path` | `owner-decision`).
 * **Dropped:** one-line reason each.
 * **Vetoed by plan.**
 
-This comment is the complete brief for `/feature-fix` in ANY session or app:
+This comment is the complete brief for `/feature-fix` in ANY session:
 write it so nothing from this conversation is needed.
 
 **Standalone:** STOP here. Report the round number, counts, and lane
-coverage, then hand off with the exact next command AND its dial from
-feature-qc's step-dial table: `/feature-browse` (`$feature-browse` in
-Codex) on the normal dial, which grounds this round's `NOT VERIFIABLE`
-lines before `/feature-fix` applies both records. A handoff naming a
-command without its dial is incomplete (the dial line is load-bearing, per
-feature-qc).
+coverage, then suggest the next step in one line: `/feature-browse`
+(owner-triggered) grounds this round's `NOT VERIFIABLE` lines before
+`/feature-fix` applies both records.
 Under `/feature-qc` chain: continue into feature-browse (the chain
 invocation is the browser unlock, per feature-qc).

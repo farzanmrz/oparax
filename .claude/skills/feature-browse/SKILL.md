@@ -97,9 +97,10 @@ Remaining HUMAN-ONLY items: ...
   owner's previous manual-check set; everything browser-checked here is off
   the owner's plate, and the next `verified` report cites this comment
   instead of re-listing covered items.
-* **Exit handoff:** name the exact next command AND its dial from
-  feature-qc's step-dial table: next is `/feature-fix` (`$feature-fix` in
-  Codex, normal dial), which applies this round's findings comment plus the
-  fix-ready briefs above in one pass. Only when the round has zero accepted
-  findings AND zero failures does the handoff skip to `/feature-docs`
-  (normal dial).
+* **Exit handoff: next is ALWAYS `/feature-fix`** (`$feature-fix` in Codex,
+  normal dial), which applies this round's findings comment plus the
+  fix-ready briefs above in one pass. Never route around fix: even a round
+  with zero browse failures usually has accepted findings waiting in the
+  findings comment, and judging "nothing to fix" is feature-fix's call, not
+  this session's (an empty round gets its fixes marker from feature-fix, so
+  verify's guard always has it).
