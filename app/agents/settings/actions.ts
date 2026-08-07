@@ -4,6 +4,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isAvatarKey } from "@/lib/user";
+
+export type SettingsActionResult = { ok: true } | { ok: false; error: string };
 
 /**
  * Result state for the username update action, consumed by useActionState.
@@ -60,6 +63,17 @@ export async function updateUsername(
   return {
     success: true,
   };
+}
+
+export async function updateAvatar(avatar: string): Promise<SettingsActionResult> {
+  if (!isAvatarKey(avatar)) return { ok: false, error: "Choose one of the available avatars." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ data: { avatar } });
+  if (error) return { ok: false, error: "Could not update your avatar. Please try again." };
+
+  revalidatePath("/agents", "layout");
+  return { ok: true };
 }
 
 /**
