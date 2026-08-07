@@ -1,10 +1,5 @@
-// The ONE page/section heading treatment for /agents/* content — the Feed's column headers,
-// Voice's "Writing guide", and any future section title share this exact line so the app stops
-// growing a fourth (fifth, sixth…) ad-hoc heading style (four distinct size/weight/color combos
-// were counted across Feed/Setup/Voice/Create before this existed). One row: the title, and an
-// optional right-aligned actions slot (e.g. Voice's Audit button). Sentence case per AGENTS.md;
-// this is a heading primitive, not a card title — shadcn's CardTitle stays what it is inside
-// cards.
+// The ONE page-heading treatment for redesigned /agents/* content. Copy uses Title Case and the
+// optional actions slot stays right-aligned on the same row.
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +14,9 @@ export function PageHeading({
 }) {
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
-      <h2 className="text-base font-semibold tracking-tight">{children}</h2>
+      <h1 className="text-[21px] font-bold tracking-[-0.015em] text-text-page-header">
+        {children}
+      </h1>
       {actions ?? null}
     </div>
   );

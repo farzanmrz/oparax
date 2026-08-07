@@ -1,26 +1,16 @@
 // app/agents/[id]/voice/actions.ts
 //
-// The Voice tab's server actions: voice-rule CRUD, the extraction start/retry, and the
-// navigation-surviving progress poll. Mirrors ../actions.ts's style — "use server", RLS/cookie
-// client for ownership proof — but reaches for the admin client wherever the underlying
-// lib/voice/* module is service-role-only by design (`voice_rules` is select-only and
-// `voice_extraction_runs` is deny-all, neither has a write policy).
+// The Voice tab's extraction start/retry actions and navigation-surviving progress poll.
+// Ownership is always proven with the RLS/cookie client before service-role-only extraction
+// helpers read or write the deny-all voice_extraction_runs table.
 //
-// Everything here is keyed by the DESK. A voice guide, its rules, and its extraction run all
-// belong to one `agents` row — there is no cross-desk sharing by reporter handle any more,
-// so an ownership proof on the desk id is a complete ownership proof over all three.
-//
-// lib/voice/rules.ts's CRUD functions do NO ownership check (per their own doc comment) —
-// every rule-mutating action below proves the caller owns the desk (and, for update/delete,
-// that the target rule actually belongs to THAT desk — a ruleId alone doesn't prove that) via
-// the RLS client before ever calling into the service-role write.
+// Everything here is keyed by the desk; there is no cross-desk sharing by reporter handle.
 "use server";
 
 import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { PROGRESS_POLL_KIND, TRANSACTION_KIND_TAG } from "@/lib/observability/sentry-shared";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
   checkHandleShape,
@@ -30,7 +20,6 @@ import {
   runExtractionSpendPhase,
 } from "@/lib/voice/create-desk-extraction";
 import { startRun } from "@/lib/voice/extraction-run";
-import { createVoiceRule, deleteVoiceRule, updateVoiceRule } from "@/lib/voice/rules";
 import {
   type ExtractionProgressResult,
   getOwnedExtractionProgress,
@@ -57,68 +46,6 @@ async function ownedDesk(
     .maybeSingle();
   if (!data) return { error: "Could not load this agent." };
   return { handle: data.reporter_handle, userId: user.id };
-}
-
-export async function saveVoiceRule(deskId: string, rule: string): Promise<ActionResult> {
-  const trimmed = rule.trim();
-  if (!trimmed) return { ok: false, error: "Enter a rule before adding it." };
-
-  const owned = await ownedDesk(deskId);
-  if ("error" in owned) return { ok: false, error: owned.error };
-
-  try {
-    await createVoiceRule({ agentId: deskId, rule: trimmed });
-  } catch {
-    return { ok: false, error: "Could not save that rule. Please try again." };
-  }
-  revalidatePath(`/agents/${deskId}`, "layout");
-  return { ok: true };
-}
-
-/** Proves ruleId belongs to THIS desk before returning it as "owned" — the ruleId alone doesn't
- *  carry that proof (voice_rules has no owner_id; ownership runs through agent_id). Reads
- *  through the admin client since voice_rules is select-only for the RLS client too. */
-async function assertOwnsRule(deskId: string, ruleId: string): Promise<boolean> {
-  const owned = await ownedDesk(deskId);
-  if ("error" in owned) return false;
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("voice_rules")
-    .select("id")
-    .eq("id", ruleId)
-    .eq("agent_id", deskId)
-    .maybeSingle();
-  return data !== null;
-}
-
-export async function updateVoiceRuleAction(
-  deskId: string,
-  ruleId: string,
-  patch: Partial<{ rule: string; enabled: boolean }>,
-): Promise<ActionResult> {
-  if (!(await assertOwnsRule(deskId, ruleId))) {
-    return { ok: false, error: "Could not load that rule." };
-  }
-  try {
-    await updateVoiceRule(ruleId, patch);
-  } catch {
-    return { ok: false, error: "Could not update that rule. Please try again." };
-  }
-  revalidatePath(`/agents/${deskId}`, "layout");
-  return { ok: true };
-}
-
-export async function deleteVoiceRuleAction(deskId: string, ruleId: string): Promise<ActionResult> {
-  if (!(await assertOwnsRule(deskId, ruleId))) {
-    return { ok: false, error: "Could not load that rule." };
-  }
-  try {
-    await deleteVoiceRule(ruleId);
-  } catch {
-    return { ok: false, error: "Could not remove that rule. Please try again." };
-  }
-  revalidatePath(`/agents/${deskId}`, "layout");
-  return { ok: true };
 }
 
 /**
