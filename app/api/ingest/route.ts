@@ -46,6 +46,7 @@ const ingestBodySchema = z.discriminatedUnion("source", [
   }),
   z.object({
     source: z.literal("website"),
+    source_config_id: z.string().uuid(),
     // deterministic external id — never a fabricated x_post_id
     external_id: z.string().min(1), // sha256(canonicalUrl + "\n" + publishedAtIso)
     url: z.string().url(),
@@ -58,6 +59,7 @@ const ingestBodySchema = z.discriminatedUnion("source", [
       .refine((v) => v === null || !Number.isNaN(Date.parse(v)), {
         message: "published_at must parse as a date",
       }),
+    lang: z.string().min(1).max(35).nullable(),
     raw: z.unknown().optional(),
   }),
 ]);

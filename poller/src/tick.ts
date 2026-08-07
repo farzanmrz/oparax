@@ -68,12 +68,14 @@ async function deliverNewItem(
   const externalId = buildExternalId(item.url, item.publishedAt);
   await postDelivery(env.ingestUrl, env.ingestSecret, {
     source: "website",
+    source_config_id: source.id,
     external_id: externalId,
     url: item.url,
     title: item.title ?? item.url,
     text,
     author_handle: null,
     published_at: item.publishedAt,
+    lang: source.language,
   });
 }
 
@@ -90,13 +92,13 @@ async function pollOneSource(
     notModified,
     nextCache,
   } = await fetchCandidateItems(source, env.userAgent, cache);
-  caches.set(source.id, nextCache);
 
   let deliveredCount = 0;
 
   // A 304 means "nothing new since last tick" — the same thing zero deliveries means, so it
   // falls through to the staleness check below rather than returning early.
   if (notModified) {
+    caches.set(source.id, nextCache);
     logger.info("tick: not modified", { domain: source.domain });
   } else {
     const candidates = applyPrefilter(rawItems, source.prefilter);
@@ -111,6 +113,7 @@ async function pollOneSource(
         await seedSeenItem(client, source.id, item.itemKey);
       }
       await markPrimed(client, source.id);
+      caches.set(source.id, nextCache);
       logger.info("tick: priming complete, 0 delivered", {
         domain: source.domain,
         seeded: candidates.length,
@@ -118,11 +121,17 @@ async function pollOneSource(
       return;
     }
 
-    const capped = byNewestFirst(candidates).slice(0, env.maxNewItemsPerSourceTick);
-    if (candidates.length > capped.length) {
+    // Check seen status before applying the per-tick cap. Otherwise the same newest seen
+    // entries consume the window on every tick and older unseen entries never reach delivery.
+    const unseen: FeedItem[] = [];
+    for (const item of byNewestFirst(candidates)) {
+      if (!(await hasSeenItem(client, source.id, item.itemKey))) unseen.push(item);
+    }
+    const capped = unseen.slice(0, env.maxNewItemsPerSourceTick);
+    if (unseen.length > capped.length) {
       logger.warn("tick: candidate list exceeds per-tick cap, remainder retried next tick", {
         domain: source.domain,
-        candidateCount: candidates.length,
+        candidateCount: unseen.length,
         cap: env.maxNewItemsPerSourceTick,
       });
     }
@@ -131,13 +140,19 @@ async function pollOneSource(
       // item.itemKey is the STABLE identity (sitemap: the <loc> URL; feed: the guid when
       // present) — dedup must not key off publishedAt, or a publisher editing an already-
       // published article redelivers it.
-      if (await hasSeenItem(client, source.id, item.itemKey)) continue;
       // Deliver FIRST, mark seen only once postDelivery returns (a 422 drop counts as
       // processed just as much as a 200 does). If delivery throws, the item stays unseen and
       // the next tick retries it — marking first would lose it permanently.
       await deliverNewItem(source, item, env);
       await markItemSeen(client, source.id, item.itemKey);
       deliveredCount++;
+    }
+
+    // Keep the prior validators while uncapped unseen entries remain. A 304 against the new
+    // validator would otherwise hide the remainder forever; already-delivered entries are
+    // harmless on the refetch because hasSeenItem filters them above.
+    if (unseen.length <= env.maxNewItemsPerSourceTick) {
+      caches.set(source.id, nextCache);
     }
   }
 

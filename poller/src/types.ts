@@ -5,12 +5,17 @@ import { createHash } from "node:crypto";
  *  route first. */
 export interface WebsiteDeliveryBody {
   source: "website";
+  /** The exact onboarded source that found this article. The ingest pipeline uses this instead
+   *  of rematching by hostname, which cannot distinguish two tracked paths on one publisher. */
+  source_config_id: string;
   external_id: string;
   url: string;
   title: string;
   text: string;
   author_handle: null; // websites have no author-handle concept (draft-pipeline.ts:807-808)
   published_at: string | null;
+  /** Onboarding-detected source language; null means unknown. */
+  lang: string | null;
   raw?: unknown;
 }
 

@@ -140,7 +140,13 @@ export function FeedItemCard({
     setActiveDraft((current) => {
       const next = winner ?? null;
       if (!current || !next || current.draftId !== next.draftId) return next;
-      return current;
+      return {
+        ...current,
+        postedAt: next.postedAt,
+        postingClaimedAt: next.postingClaimedAt,
+        postedUrl: next.postedUrl,
+        newsSynthesis: next.newsSynthesis,
+      };
     });
   }, [winner]);
 

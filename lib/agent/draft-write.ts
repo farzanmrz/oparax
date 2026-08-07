@@ -94,6 +94,9 @@ function buildContent(input: {
         "",
         `<post platform="${input.platform}" author="@${escapeXmlAttribute(input.brief.authorHandle)}">`,
         `<source_language>${escapeXmlText(input.brief.lang ?? "und")}</source_language>`,
+        ...(input.brief.title === undefined
+          ? []
+          : ["<title>", escapeXmlText(input.brief.title), "</title>"]),
         "<content>",
         escapeXmlText(input.brief.text),
         "</content>",

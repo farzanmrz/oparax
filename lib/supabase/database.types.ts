@@ -163,18 +163,24 @@ export type Database = {
       draft_claims: {
         Row: {
           agent_id: string;
+          claim_token: string;
+          completed_at: string | null;
           created_at: string;
           id: string;
           source_post_id: string;
         };
         Insert: {
           agent_id: string;
+          claim_token?: string;
+          completed_at?: string | null;
           created_at?: string;
           id?: string;
           source_post_id: string;
         };
         Update: {
           agent_id?: string;
+          claim_token?: string;
+          completed_at?: string | null;
           created_at?: string;
           id?: string;
           source_post_id?: string;
@@ -967,7 +973,30 @@ export type Database = {
         };
         Returns: string;
       };
+      claim_draft: {
+        Args: {
+          p_agent_id: string;
+          p_claim_token: string;
+          p_source_post_id: string;
+          p_stale_cutoff: string;
+        };
+        Returns: boolean;
+      };
       delete_account: { Args: never; Returns: undefined };
+      insert_claimed_winner: {
+        Args: {
+          p_agent_id: string;
+          p_claim_token: string;
+          p_model_call_id: string;
+          p_news_synthesis: string;
+          p_news_title: string;
+          p_platform: string;
+          p_source_post_id: string;
+          p_story_id: string;
+          p_translation: string;
+        };
+        Returns: string;
+      };
       reclaim_extraction_run: {
         Args: { p_agent_id: string; p_stale_cutoff: string };
         Returns: boolean;
@@ -990,6 +1019,16 @@ export type Database = {
           p_display_name: string;
           p_domain: string;
           p_url: string;
+        };
+        Returns: string;
+      };
+      upsert_claimed_exclusion: {
+        Args: {
+          p_agent_id: string;
+          p_claim_token: string;
+          p_excluded_at: string;
+          p_on_beat_reason: string;
+          p_source_post_id: string;
         };
         Returns: string;
       };

@@ -8,7 +8,8 @@
 // module: no Supabase, no React.
 
 import { XMLParser } from "fast-xml-parser";
-import { assertFetchOk, fetchWithTimeout } from "@/lib/http-fetch";
+import { assertFetchOk } from "@/lib/http-fetch";
+import { fetchSafeSource } from "@/lib/sources/discovery";
 import type { SourceSampleEntry } from "@/lib/sources/sitemap";
 
 export type { SourceSampleEntry } from "@/lib/sources/sitemap";
@@ -116,8 +117,9 @@ function toAtomSampleEntry(raw: RawAtomEntry): SourceSampleEntry | null {
 export async function fetchFeedSample(
   feedUrl: string,
   limit: number,
+  expectedHostname = new URL(feedUrl).hostname,
 ): Promise<SourceSampleEntry[]> {
-  const res = await fetchWithTimeout("Feed", feedUrl, feedUrl, { method: "GET" });
+  const res = await fetchSafeSource("Feed", feedUrl, expectedHostname);
   await assertFetchOk("Feed", feedUrl, res);
   const xml = await res.text();
   const parsed = parser.parse(xml);

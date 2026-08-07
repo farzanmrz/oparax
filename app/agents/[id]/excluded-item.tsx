@@ -40,7 +40,7 @@ export function ExcludedItemCard({ item }: { item: ExcludedPost }) {
       : null
     : sourcePost.url;
   const labelClass = cn(
-    "min-w-0 truncate font-medium",
+    "shrink-0 whitespace-nowrap font-medium desk:min-w-0 desk:shrink desk:truncate",
     isX ? "text-text-handle-x" : "text-text-handle-news",
   );
 
@@ -72,7 +72,7 @@ export function ExcludedItemCard({ item }: { item: ExcludedPost }) {
           <RelativeTime iso={sourcePost.postedAt ?? item.excludedAt} />
         </span>
       </div>
-      <p className="whitespace-pre-wrap px-[14px] pt-4 pb-[17px] text-[13.5px] leading-[1.6] text-text-body desk:px-6 desk:pb-[19px] desk:text-[14.5px]">
+      <p className="line-clamp-3 whitespace-pre-wrap px-[14px] pt-4 pb-[17px] text-[13.5px] leading-[1.6] text-text-body desk:px-6 desk:pb-[19px] desk:text-[14.5px]">
         {sourcePost.text}
       </p>
       <p className="border-t border-[var(--band-border)] bg-[var(--band-bg)] px-[14px] py-3 text-[12.5px] text-text-muted desk:px-6">
@@ -84,10 +84,20 @@ export function ExcludedItemCard({ item }: { item: ExcludedPost }) {
 
 export function ExcludedEmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border px-4 py-14 text-center">
-      <h3 className="text-sm font-semibold">Nothing Excluded Yet</h3>
-      <p className="mx-auto max-w-sm text-pretty text-sm text-muted-foreground">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] px-4 py-14 text-center">
+      <h3 className="text-sm font-semibold text-text-title">Nothing Excluded Yet</h3>
+      <p className="mx-auto max-w-sm text-pretty text-sm text-text-muted">
         Posts the model judges off this desk&apos;s beat will show up here, with the reason it gave.
+      </p>
+    </div>
+  );
+}
+
+export function ExcludedLoadError() {
+  return (
+    <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] px-4 py-14">
+      <p className="text-sm text-danger-text">
+        Couldn&apos;t load excluded posts. Try refreshing this tab.
       </p>
     </div>
   );

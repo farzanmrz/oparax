@@ -11,7 +11,7 @@ import {
 } from "@/lib/sources/onboard-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_WEBSITES, normalizeSourceUrl, parseWebsites } from "@/lib/websites";
+import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
 import { getXLinkState } from "@/lib/x/link-state";
 import type { ActionResult } from "../[id]/actions";
@@ -163,21 +163,23 @@ export async function startWebsiteOnboardingAtCreation(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("agents")
-    .select("owner_id, beat, websites")
+    .select("owner_id, beat")
     .eq("id", deskId)
     .maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the agent." };
-
-  if (parseWebsites(data.websites).length >= MAX_WEBSITES) {
-    return { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` };
-  }
 
   const url = normalizeSourceUrl(rawUrl);
   if (url === null)
     return { ok: false, error: `"${rawUrl.trim()}" doesn't look like a valid website.` };
 
   const reserved = await reservePendingSource(deskId, url);
-  if ("status" in reserved) return { ok: false, error: "Couldn't reach that site." };
+  if ("status" in reserved) {
+    if (reserved.status === "source_limit_reached") {
+      return { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` };
+    }
+    if (reserved.status === "already_tracked") return { ok: true };
+    return { ok: false, error: "Couldn't reach that site." };
+  }
 
   const ownerId = data.owner_id;
   const beat = data.beat;

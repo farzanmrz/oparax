@@ -74,7 +74,7 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
     messages: [
       {
         role: "user",
-        content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>\n<source_post>\n${input.brief.text}\n</source_post>`,
+        content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>${input.brief.title ? `\n<source_title>\n${input.brief.title}\n</source_title>` : ""}\n<source_post>\n${input.brief.text}\n</source_post>`,
       },
     ],
     experimental_telemetry: aiTelemetry("draft_translate", "draft-translate-qwen"),

@@ -16,8 +16,11 @@ import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
-import { fetchWithTimeout } from "@/lib/http-fetch";
-import { discoverChangeDetection, isPrivateHostname } from "@/lib/sources/discovery";
+import {
+  discoverChangeDetection,
+  fetchSafeSource,
+  isPrivateHostname,
+} from "@/lib/sources/discovery";
 import { fetchFeedSample } from "@/lib/sources/feed";
 import {
   countPathMatches,
@@ -204,12 +207,13 @@ async function insertOnboardingModelCall(
  *  RSS-derived summary) — never fabricate a comparison against a title/keywords field. */
 async function measureFullTextAvailability(
   sample: SourceSampleEntry[],
+  expectedHostname: string,
 ): Promise<"full" | "teaser" | "unknown"> {
   const withTeaser = sample.find((entry) => entry.teaser?.trim());
   if (!withTeaser?.teaser) return "unknown";
 
   try {
-    const res = await fetchWithTimeout("Source", withTeaser.url, withTeaser.url, { method: "GET" });
+    const res = await fetchSafeSource("Source", withTeaser.url, expectedHostname);
     if (!res.ok) return "unknown";
     const html = await res.text();
     const bodyText = html
@@ -232,7 +236,9 @@ async function measureFullTextAvailability(
 export async function reservePendingSource(
   agentId: string,
   inputUrl: URL,
-): Promise<{ configId: string } | { status: "unreachable" }> {
+): Promise<
+  { configId: string } | { status: "unreachable" | "already_tracked" | "source_limit_reached" }
+> {
   if (isPrivateHostname(inputUrl.hostname)) return { status: "unreachable" };
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("reserve_pending_source_config", {
@@ -241,10 +247,14 @@ export async function reservePendingSource(
     p_domain: inputUrl.hostname,
     p_display_name: inputUrl.hostname,
   });
-  if (error || !data) {
+  if (error?.code === "P0001" && error.message.includes("source_limit_reached")) {
+    return { status: "source_limit_reached" };
+  }
+  if (error) {
     console.error("reservePendingSource: reserve_pending_source_config RPC failed", error);
     return { status: "unreachable" };
   }
+  if (!data) return { status: "already_tracked" };
   return { configId: data as string };
 }
 
@@ -314,8 +324,16 @@ export async function onboardSource(
   try {
     sample =
       detection.mechanism === "sitemap"
-        ? await fetchSitemapSample(detection.sitemapUrl as string, WEBSITE_SAMPLE_LIMIT)
-        : await fetchFeedSample(detection.feedUrl as string, WEBSITE_SAMPLE_LIMIT);
+        ? await fetchSitemapSample(
+            detection.sitemapUrl as string,
+            WEBSITE_SAMPLE_LIMIT,
+            inputUrl.hostname,
+          )
+        : await fetchFeedSample(
+            detection.feedUrl as string,
+            WEBSITE_SAMPLE_LIMIT,
+            inputUrl.hostname,
+          );
   } catch {
     await markPendingSourceFailed(admin, configId);
     return { status: "unreachable" };
@@ -325,7 +343,7 @@ export async function onboardSource(
     return { status: "unreachable" };
   }
 
-  const fullTextVerdict = await measureFullTextAvailability(sample);
+  const fullTextVerdict = await measureFullTextAvailability(sample, inputUrl.hostname);
 
   const isSonnet = model === SONNET_ONBOARDING_MODEL;
   const providerOptions = isSonnet

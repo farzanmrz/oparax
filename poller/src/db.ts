@@ -8,6 +8,7 @@ export interface SourceConfigRow {
   agent_id: string;
   url: string;
   domain: string;
+  language: string | null;
   change_detection: string; // 'sitemap' | 'rss'
   // null = the poller decides adaptively, per fetch (#105's default); a non-null value is a
   // deliberate operator override consumed by fetch-body.ts's adaptive chain.
@@ -29,7 +30,7 @@ export async function fetchActiveSourceConfigs(client: SupabaseClient): Promise<
   const { data, error } = await client
     .from("source_configs")
     .select(
-      "id, agent_id, url, domain, change_detection, retrieval, prefilter, beat_guidance, sitemap_url, feed_url, status, last_matched_at, last_verified_at",
+      "id, agent_id, url, domain, language, change_detection, retrieval, prefilter, beat_guidance, sitemap_url, feed_url, status, last_matched_at, last_verified_at",
     )
     .eq("status", "active");
   if (error) throw error;

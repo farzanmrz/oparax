@@ -56,6 +56,8 @@ export function SourcesCard({
   const [, startWebsiteTransition] = useTransition();
   // Pending/failed state (#106) — keyed by the normalized URL string, see the header comment.
   const [pendingUrls, setPendingUrls] = useState<ReadonlySet<string>>(new Set());
+  const pendingUrlsRef = useRef(pendingUrls);
+  pendingUrlsRef.current = pendingUrls;
   const [failedUrls, setFailedUrls] = useState<ReadonlyMap<string, string>>(new Map());
   // A site that was pending and, on a later poll, is neither pending nor failed succeeded —
   // rendered as a plain chip immediately rather than waiting for a full page reload to pick it
@@ -65,15 +67,19 @@ export function SourcesCard({
   const recentlyAddedRef = useRef<Map<string, number>>(new Map());
   const recentlyDismissedRef = useRef<Map<string, number>>(new Map());
   const atHandleLimit = trackedHandles.length >= MAX_TRACKED_HANDLES;
-  const atWebsiteLimit = websites.length >= MAX_WEBSITES;
+  const websiteCount = new Set([...websites, ...resolvedUrls, ...pendingUrls]).size;
+  const atWebsiteLimit = websiteCount >= MAX_WEBSITES;
 
-  // Always-on poll (#106): the hook fetches immediately on mount, so this alone covers "a site
-  // was already pending before this component existed" (e.g. reserved by the create-desk form
-  // moments before redirecting here) — no separate one-shot fetch needed, and no two-sources-
-  // of-truth race between it and the poll's own state. One 2s poll while this card is mounted
-  // is an acceptable, simple cost — not worth a stop-when-settled mechanism for this slice.
-  const polledEntries = useWebsiteOnboardingStatus(deskId, { enabled: true });
+  // One read finds creation-time pending rows; a timer runs only while a row is pending.
+  const {
+    entries: polledEntries,
+    readError,
+    retry: retryStatus,
+  } = useWebsiteOnboardingStatus(deskId, {
+    refreshKey: pendingUrls.size,
+  });
   useEffect(() => {
+    if (readError) return;
     const now = Date.now();
     for (const [url, at] of recentlyAddedRef.current) {
       if (now - at > RECONCILE_GRACE_MS) recentlyAddedRef.current.delete(url);
@@ -88,33 +94,31 @@ export function SourcesCard({
     const serverFailed = new Map(
       polledEntries
         .filter((e) => e.status === "failed_validation")
+        .filter((e) => !recentlyAddedRef.current.has(e.url))
         .map((e) => [e.url, e.errorCode ?? "failed"]),
     );
 
-    setPendingUrls((prevPending) => {
-      const next = new Set(serverPending);
-      // Keep a just-added url pending even if this poll started before the reservation landed.
-      for (const url of recentlyAddedRef.current.keys()) {
-        if (prevPending.has(url) && !serverFailed.has(url)) next.add(url);
-      }
-      // Don't let a stale poll resurrect something the user just dismissed.
-      for (const url of recentlyDismissedRef.current.keys()) next.delete(url);
+    const prevPending = pendingUrlsRef.current;
+    const nextPending = new Set(serverPending);
+    // Keep a just-added url pending even if this poll started before the reservation landed.
+    for (const url of recentlyAddedRef.current.keys()) {
+      if (prevPending.has(url) && !serverFailed.has(url)) nextPending.add(url);
+    }
+    // Don't let a stale poll resurrect something the user just dismissed.
+    for (const url of recentlyDismissedRef.current.keys()) nextPending.delete(url);
 
-      const resolved = [...prevPending].filter(
-        (url) => !next.has(url) && !serverFailed.has(url) && !recentlyDismissedRef.current.has(url),
-      );
-      if (resolved.length > 0) {
-        setResolvedUrls((current) => new Set([...current, ...resolved]));
-      }
-      return next;
-    });
-
+    const resolved = [...prevPending].filter(
+      (url) =>
+        !nextPending.has(url) && !serverFailed.has(url) && !recentlyDismissedRef.current.has(url),
+    );
+    setPendingUrls(nextPending);
+    if (resolved.length > 0) setResolvedUrls((current) => new Set([...current, ...resolved]));
     setFailedUrls(() => {
       const next = new Map(serverFailed);
       for (const url of recentlyDismissedRef.current.keys()) next.delete(url);
       return next;
     });
-  }, [polledEntries]);
+  }, [polledEntries, readError]);
 
   // Once the server-rendered `websites` prop catches up (a later navigation/revalidation), stop
   // tracking the url as separately "resolved" — it's now just an ordinary entry in `websites`.
@@ -174,12 +178,25 @@ export function SourcesCard({
     const raw = websiteInput.trim();
     if (!raw) return;
     const normalized = normalizeSourceUrl(raw);
+    const priorFailed = normalized ? failedUrls.get(normalized.toString()) : undefined;
     setWebsiteError(null);
     setWebsiteInput("");
     if (normalized) {
       const url = normalized.toString();
       recentlyAddedRef.current.set(url, Date.now());
       setPendingUrls((current) => new Set(current).add(url));
+      setResolvedUrls((current) => {
+        if (!current.has(url)) return current;
+        const next = new Set(current);
+        next.delete(url);
+        return next;
+      });
+      setFailedUrls((current) => {
+        if (!current.has(url)) return current;
+        const next = new Map(current);
+        next.delete(url);
+        return next;
+      });
     }
     startWebsiteTransition(async () => {
       const result = await startWebsiteOnboarding(deskId, raw);
@@ -193,6 +210,7 @@ export function SourcesCard({
             next.delete(url);
             return next;
           });
+          if (priorFailed) setFailedUrls((current) => new Map(current).set(url, priorFailed));
         }
       }
     });
@@ -202,6 +220,9 @@ export function SourcesCard({
   // deletes whatever row is there (pending, failed_validation, or active) uniformly.
   function removeSite(url: string) {
     setWebsiteError(null);
+    const wasResolved = resolvedUrls.has(url);
+    const wasPending = pendingUrls.has(url);
+    const failedError = failedUrls.get(url);
     recentlyDismissedRef.current.set(url, Date.now());
     recentlyAddedRef.current.delete(url);
     setResolvedUrls((current) => {
@@ -224,7 +245,13 @@ export function SourcesCard({
     });
     startWebsiteTransition(async () => {
       const result = await removeWebsite(deskId, url);
-      if (!result.ok) setWebsiteError(result.error);
+      if (!result.ok) {
+        recentlyDismissedRef.current.delete(url);
+        if (wasResolved) setResolvedUrls((current) => new Set(current).add(url));
+        if (wasPending) setPendingUrls((current) => new Set(current).add(url));
+        if (failedError) setFailedUrls((current) => new Map(current).set(url, failedError));
+        setWebsiteError(result.error);
+      }
     });
   }
 
@@ -252,6 +279,7 @@ export function SourcesCard({
         {!atHandleLimit ? (
           <AddSourceField
             disabled={isHandlePending}
+            ariaLabel="Add X accounts"
             onBlur={() => commitHandles(handleInput)}
             onChange={setHandleInput}
             onKeyDown={onHandleKeyDown}
@@ -266,7 +294,7 @@ export function SourcesCard({
       </BandCard>
 
       <BandCard icon={<GlobeIcon />} title="Websites">
-        <SourceCount count={websites.length} limit={MAX_WEBSITES} />
+        <SourceCount count={websiteCount} limit={MAX_WEBSITES} />
         <div className="mt-4 flex flex-wrap gap-2">
           {websites.map((url) => (
             <SourceChip key={url} label={url} onRemove={() => removeSite(url)} tone="website" />
@@ -296,6 +324,7 @@ export function SourcesCard({
         {!atWebsiteLimit ? (
           <AddSourceField
             disabled={false}
+            ariaLabel="Add a website"
             onChange={setWebsiteInput}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
@@ -308,6 +337,14 @@ export function SourcesCard({
           />
         ) : null}
         {websiteError ? <FieldMessage error>{websiteError}</FieldMessage> : null}
+        {readError ? (
+          <p className="mt-3 text-sm text-destructive" role="alert">
+            Couldn&apos;t check website setup status.{" "}
+            <button className="underline" onClick={retryStatus} type="button">
+              Retry
+            </button>
+          </p>
+        ) : null}
       </BandCard>
     </div>
   );
@@ -381,6 +418,7 @@ function AddSourceField({
   value,
   placeholder,
   disabled,
+  ariaLabel,
   onChange,
   onSubmit,
   onBlur,
@@ -390,6 +428,7 @@ function AddSourceField({
   value: string;
   placeholder: string;
   disabled: boolean;
+  ariaLabel: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   onBlur?: () => void;
@@ -399,6 +438,7 @@ function AddSourceField({
   return (
     <div className="mt-4 flex min-h-11 items-center rounded-md border border-dashed border-input bg-[var(--input-bg)] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50">
       <input
+        aria-label={ariaLabel}
         className="h-11 min-w-0 flex-1 bg-transparent px-3 text-base outline-none placeholder:text-text-muted desk:h-9 desk:text-sm"
         disabled={disabled}
         onBlur={onBlur}

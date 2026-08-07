@@ -183,7 +183,7 @@ export function DeleteAccountButton() {
     <div className="flex flex-col items-start gap-2 desk:items-end">
       <div className="flex flex-wrap gap-2">
         <Button
-          className="min-h-11 whitespace-nowrap"
+          className="min-h-11 whitespace-nowrap desk:min-h-9"
           disabled={isPending}
           onClick={requestDelete}
           type="button"
@@ -193,7 +193,7 @@ export function DeleteAccountButton() {
         </Button>
         {armed && !isPending ? (
           <Button
-            className="min-h-11"
+            className="min-h-11 desk:min-h-9"
             onClick={() => setArmed(false)}
             type="button"
             variant="ghost"

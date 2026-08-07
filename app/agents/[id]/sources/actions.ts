@@ -18,7 +18,7 @@ import {
 } from "@/lib/sources/onboard-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_WEBSITES, normalizeSourceUrl, parseWebsites } from "@/lib/websites";
+import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import type { ActionResult } from "../actions";
 
 /** One-liner shown for each non-completed `OnboardOutcome` — the "one honest message" the
@@ -46,21 +46,23 @@ export async function startWebsiteOnboarding(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("agents")
-    .select("owner_id, beat, websites")
+    .select("owner_id, beat")
     .eq("id", deskId)
     .maybeSingle();
   if (error || !data) return { ok: false, error: "Could not load the agent." };
-
-  if (parseWebsites(data.websites).length >= MAX_WEBSITES) {
-    return { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` };
-  }
 
   const url = normalizeSourceUrl(rawUrl);
   if (url === null)
     return { ok: false, error: `"${rawUrl.trim()}" doesn't look like a valid website.` };
 
   const reserved = await reservePendingSource(deskId, url);
-  if ("status" in reserved) return { ok: false, error: ONBOARD_ERROR_COPY.unreachable };
+  if ("status" in reserved) {
+    if (reserved.status === "source_limit_reached") {
+      return { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` };
+    }
+    if (reserved.status === "already_tracked") return { ok: true };
+    return { ok: false, error: ONBOARD_ERROR_COPY.unreachable };
+  }
 
   const ownerId = data.owner_id;
   const beat = data.beat;
@@ -86,7 +88,9 @@ export async function startWebsiteOnboarding(
  */
 export async function getWebsiteOnboardingStatus(
   deskId: string,
-): Promise<{ url: string; status: string; errorCode?: string }[]> {
+): Promise<
+  { ok: true; entries: { url: string; status: string; errorCode?: string }[] } | { ok: false }
+> {
   const supabase = await createClient();
   const { data: owned, error: ownError } = await supabase
     .from("agents")
@@ -95,7 +99,7 @@ export async function getWebsiteOnboardingStatus(
     .maybeSingle();
   if (ownError || !owned) {
     console.error("getWebsiteOnboardingStatus: ownership check failed", ownError);
-    return [];
+    return { ok: false };
   }
 
   const admin = createAdminClient();
@@ -106,13 +110,16 @@ export async function getWebsiteOnboardingStatus(
     .in("status", ["pending", "failed_validation"]);
   if (error || !data) {
     console.error("getWebsiteOnboardingStatus: source_configs read failed", error);
-    return [];
+    return { ok: false };
   }
-  return data.map((row) => ({
-    url: row.url,
-    status: row.status,
-    errorCode: row.status === "failed_validation" ? "failed" : undefined,
-  }));
+  return {
+    ok: true,
+    entries: data.map((row) => ({
+      url: row.url,
+      status: row.status,
+      errorCode: row.status === "failed_validation" ? "failed" : undefined,
+    })),
+  };
 }
 
 /** Proves ownership via the RLS client, same as every other action here, then removes the

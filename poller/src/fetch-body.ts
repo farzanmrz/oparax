@@ -110,13 +110,35 @@ function teaserOnlyText(item: FeedItem): string {
   return item.bodyFromFeed ? stripHtml(item.bodyFromFeed) : (item.title ?? item.url);
 }
 
+async function readHtmlWithinLimit(res: Response, url: string): Promise<string> {
+  const reader = res.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let html = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) return html + decoder.decode();
+    bytes += value.byteLength;
+    if (bytes > MAX_HTML_LENGTH) {
+      await reader.cancel();
+      throw new Error(`Article ${url} body too large (${bytes} bytes)`);
+    }
+    html += decoder.decode(value, { stream: true });
+  }
+}
+
 async function fetchDirect(url: string, userAgent: string): Promise<string> {
   const res = await fetchWithTimeout("Article", url, url, {
     method: "GET",
     headers: { "user-agent": userAgent },
+    redirect: "manual",
   });
+  if (res.status >= 300 && res.status < 400) {
+    throw new Error(`Article ${url} redirected (${res.status}), refusing to follow`);
+  }
   if (!res.ok) throw new Error(`Article ${url} ${res.status}`);
-  return extractArticleBody(await res.text(), url);
+  return extractArticleBody(await readHtmlWithinLimit(res, url), url);
 }
 
 /** Web Unlocker API contract verified against Bright Data's current docs (2026-08):
@@ -144,7 +166,7 @@ async function fetchViaUnlocker(
     UNLOCKER_TIMEOUT_MS,
   );
   if (!res.ok) throw new Error(`Unlocker ${item.url} ${res.status}: ${await res.text()}`);
-  return extractArticleBody(await res.text(), item.url);
+  return extractArticleBody(await readHtmlWithinLimit(res, item.url), item.url);
 }
 
 /** Bright Data Unlocker, or the teaser if it's unconfigured or itself fails — the shared
@@ -205,7 +227,7 @@ async function fetchUntrustedCandidate(url: string, userAgent: string): Promise<
   if (contentLength > MAX_HTML_LENGTH) {
     throw new Error(`SerpCandidate ${url} declared body too large (${contentLength} bytes)`);
   }
-  return extractArticleBody(await res.text(), url);
+  return extractArticleBody(await readHtmlWithinLimit(res, url), url);
 }
 
 /** Tier 2b (#107): only reached after Tier 1 and Tier 2 (Unlocker) have both failed to produce
@@ -354,9 +376,8 @@ async function fetchArticleBodyByTier(
   if (env.brightdataApiKey && env.brightdataZone) {
     const result = await fetchViaUnlockerOrTeaser(item, env);
     if (!result.usedFallback) return result;
-    // A short-but-real Unlocker body (not an error/unconfigured teaser -- those are the
-    // same length as teaserOnlyText(item) either way) still beats a bare headline, same as
-    // Tier 1's own short-text rule below. Keep whichever candidate is longer.
+    // A short Unlocker body still beats a bare headline, same as Tier 1's own short-text rule
+    // below. Keep whichever candidate is longer.
     if (result.text.length > (shortDirectText?.length ?? 0)) shortDirectText = result.text;
   }
 

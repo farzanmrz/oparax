@@ -50,14 +50,18 @@ function FieldLabel({
   children,
   help,
   badge,
+  htmlFor,
 }: {
   children: ReactNode;
   help?: string;
   badge?: ReactNode;
+  htmlFor?: string;
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-sm font-medium text-text-label">{children}</span>
+      <label className="text-sm font-medium text-text-label" htmlFor={htmlFor}>
+        {children}
+      </label>
       {help ? (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -222,13 +226,26 @@ export function CreateDeskForm({
       // Promise.all) to guarantee it's actually issued before the navigation below unmounts
       // this component. Not waiting for onboarding itself to finish — that stays async, with
       // the new desk's Sources page picking up from here via polling.
-      await Promise.allSettled(
-        finalWebsites.map((url) =>
-          startWebsiteOnboardingAtCreation(deskId, url).catch((error: unknown) => {
+      const onboardingResults = await Promise.all(
+        finalWebsites.map(async (url) => {
+          try {
+            return { url, result: await startWebsiteOnboardingAtCreation(deskId, url) };
+          } catch (error) {
             console.error("createDesk: startWebsiteOnboardingAtCreation failed", error);
-          }),
-        ),
+            return { url, result: { ok: false, error: "Couldn't add that website." } };
+          }
+        }),
       );
+      for (const { url, result: onboarding } of onboardingResults) {
+        if (!onboarding.ok) {
+          toast.error(`Couldn't add ${url}`, {
+            action: {
+              label: "Open Sources",
+              onClick: () => router.push(`/agents/${deskId}/sources`),
+            },
+          });
+        }
+      }
 
       try {
         await startExtraction(deskId);
@@ -278,10 +295,14 @@ export function CreateDeskForm({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel help="Shown in the agent switcher and throughout the workspace.">
+              <FieldLabel
+                htmlFor="agent-name"
+                help="Shown in the agent switcher and throughout the workspace."
+              >
                 Agent Name
               </FieldLabel>
               <Input
+                id="agent-name"
                 className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
                 disabled={formDisabled}
                 onChange={(event) => setName(event.target.value)}
@@ -291,10 +312,14 @@ export function CreateDeskForm({
             </div>
 
             <div className="flex flex-1 flex-col gap-1.5">
-              <FieldLabel help="Define what counts as relevant and what this agent should ignore.">
+              <FieldLabel
+                htmlFor="agent-beat"
+                help="Define what counts as relevant and what this agent should ignore."
+              >
                 Beat
               </FieldLabel>
               <Textarea
+                id="agent-beat"
                 className="min-h-44 flex-1 resize-none rounded-md bg-[var(--input-bg)] text-base desk:text-sm"
                 disabled={formDisabled}
                 onChange={(event) => setBeat(event.target.value)}
@@ -306,6 +331,7 @@ export function CreateDeskForm({
             {canOverrideHandle && xLinkState.linked ? (
               <div className="flex flex-col gap-1.5">
                 <FieldLabel
+                  htmlFor="extract-voice-from"
                   badge={
                     <Badge className="rounded-badge" variant="secondary">
                       Owner only
@@ -316,6 +342,7 @@ export function CreateDeskForm({
                   Extract Voice From
                 </FieldLabel>
                 <Input
+                  id="extract-voice-from"
                   className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
                   disabled={isPending || createdDeskId !== null}
                   onChange={(event) => setExtractFrom(event.target.value)}
@@ -340,6 +367,7 @@ export function CreateDeskForm({
                 className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
                 hideInput={atHandleLimit}
                 inputDisabled={formDisabled || atHandleLimit}
+                inputAriaLabel="Tracked X accounts"
                 onBlur={commitHandleDraft}
                 onChange={setHandleDraft}
                 onKeyDown={onTrackedKeyDown}
@@ -366,6 +394,7 @@ export function CreateDeskForm({
                 className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
                 hideInput={atWebsiteLimit}
                 inputDisabled={formDisabled || atWebsiteLimit}
+                inputAriaLabel="Websites"
                 onBlur={commitWebsiteDraft}
                 onChange={setWebsiteDraft}
                 onKeyDown={onWebsiteKeyDown}

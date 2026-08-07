@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
 import { PageHeading } from "@/components/page-heading";
-import { fetchExcludedPosts } from "@/lib/agent/excluded-query";
+import {
+  type ExcludedPage as ExcludedPostsPage,
+  fetchExcludedPosts,
+} from "@/lib/agent/excluded-query";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { ExcludedEmptyState, ExcludedItemCard } from "../excluded-item";
+import { ExcludedEmptyState, ExcludedLoadError } from "../excluded-item";
+import { ExcludedList } from "../excluded-list";
 
 /**
  * The Excluded tab — posts the drafting pipeline judged off this desk's beat, newest first.
@@ -23,15 +27,25 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
     .maybeSingle();
   if (agentError || !agent) notFound();
   const admin = createAdminClient();
-  const items = await fetchExcludedPosts(admin, id);
+  let page: ExcludedPostsPage;
+  try {
+    page = await fetchExcludedPosts(admin, id);
+  } catch {
+    return (
+      <div className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 flex-col gap-4 py-4 desk:gap-6">
+        <PageHeading>Excluded Posts</PageHeading>
+        <ExcludedLoadError />
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 flex-col gap-4 py-4">
+    <div className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 flex-col gap-4 py-4 desk:gap-6">
       <PageHeading>Excluded Posts</PageHeading>
-      {items.length === 0 ? (
+      {page.items.length === 0 ? (
         <ExcludedEmptyState />
       ) : (
-        items.map((item) => <ExcludedItemCard item={item} key={item.id} />)
+        <ExcludedList agentId={id} initialCursor={page.nextCursor} initialItems={page.items} />
       )}
     </div>
   );

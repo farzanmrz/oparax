@@ -26,6 +26,7 @@ export function ChipsField({
   chips,
   disabled = false,
   inputDisabled,
+  inputAriaLabel,
   hideInput = false,
   onChange,
   onKeyDown,
@@ -49,6 +50,7 @@ export function ChipsField({
   /** Freezes the whole field — chips, removes, and input (the "Coming soon" state). */
   readonly disabled?: boolean;
   readonly inputDisabled: boolean;
+  readonly inputAriaLabel?: string;
   /** Keep committed chips visible while removing the add-input at the cap. */
   readonly hideInput?: boolean;
   readonly onChange: (value: string) => void;
@@ -92,6 +94,7 @@ export function ChipsField({
       ))}
       {hideInput ? null : (
         <input
+          aria-label={inputAriaLabel}
           className="h-6 min-w-40 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed desk:text-sm"
           disabled={disabled || inputDisabled}
           onBlur={onBlur}

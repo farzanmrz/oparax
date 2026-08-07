@@ -27,8 +27,10 @@ export type SourceBrief = {
   xPostId: string;
   authorHandle: string;
   text: string;
-  /** X's machine-detected BCP-47 code when the worker supplied it; null = unknown (website
-   *  sources, correction path, old workers) → the translator stage decides. */
+  /** Website headline when available. X posts have no separate title. */
+  title?: string;
+  /** BCP-47 source language supplied by X or website onboarding; null = unknown → the
+   *  translator stage decides. */
   lang: string | null;
   /** Attached photos (full image) or video/GIF poster frames — descriptors only. The
    *  vision-capable drafter reads these original attachments directly;
@@ -84,7 +86,7 @@ async function toCouncilCall(params: {
 }
 
 function formatSourceBrief(brief: SourceBrief): string {
-  return `Source post by @${brief.authorHandle}:\n${brief.text}`;
+  return `Source post by @${brief.authorHandle}:${brief.title ? `\nHeadline: ${brief.title}` : ""}\n${brief.text}`;
 }
 
 function buildRepairPrompt(originalPrompt: string, violations: string[], badDraft: string): string {

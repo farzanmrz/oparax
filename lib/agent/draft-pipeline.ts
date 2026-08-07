@@ -14,6 +14,7 @@
 // Ledger-first ordering throughout, the same discipline the extraction path uses: `model_calls`
 // rows are written BEFORE the artifact rows (`drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
+import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
 import {
@@ -67,12 +68,14 @@ export type IngestDelivery =
     }
   | {
       source: "website";
+      source_config_id: string;
       external_id: string;
       url: string;
       title: string;
       text: string;
       author_handle: string | null;
       published_at: string | null;
+      lang: string | null;
       raw?: unknown;
     };
 
@@ -96,12 +99,14 @@ export type ProcessDeliveryResult = {
  *  nothing to draft, so the delivery is recorded (source_posts) but never claims, clusters,
  *  or spends, and no story row means no feed card. Deterministic and free on purpose: this
  *  is NOT beat relevance (that's clustering's future job) — it only rejects posts whose text
- *  is structurally empty. Text is NOT low-signal if a link is present AND at least 4 characters
+ *  is structurally empty. Website headlines are part of that signal, so a useful title is not
+ *  discarded merely because body retrieval fell back to a teaser. Text is NOT low-signal if a link is present AND at least 4 characters
  *  of caption remain after stripping @/# tags and emoji, OR (independent of any link) the
  *  stripped text alone is 12+ characters. */
-function isLowSignal(text: string): boolean {
-  const hasLink = /https?:\/\/\S+/.test(text);
-  const stripped = text
+function isLowSignal(text: string, title?: string): boolean {
+  const sourceText = title ? `${title}\n${text}` : text;
+  const hasLink = /https?:\/\/\S+/.test(sourceText);
+  const stripped = sourceText
     .replace(/https?:\/\/\S+/g, "")
     .replace(/[@#][\p{L}\p{N}_]+/gu, "")
     .replace(/\p{Extended_Pictographic}|\u{FE0F}|\u{200D}|\u{20E3}/gu, "")
@@ -121,31 +126,14 @@ type MatchedAgent = {
   auto_post_sources: Json;
 };
 
-/** Best-effort hostname extraction — used both for the website-source agent match key
- *  (an agent's `websites` array holds tracked site URLs, an incoming delivery's `url` is
- *  a specific article on that site, so matching by hostname/origin is the right key, not an
- *  exact URL match) and as the author-handle fallback for a website post with a null
- *  `author_handle` (see the brief-context comment on `assignToStory`'s call site below).
- *  Strips a leading `www.` — a reporter onboards the bare domain (#100's flow) but a site's
- *  own sitemap/feed commonly resolves every article under `www.`, and #101's live poller
- *  testing found that mismatch silently zeroed out every draft from a real source (logged
- *  only, never surfaced) because the match was byte-exact. Malformed input degrades to ""
- *  rather than throwing — every caller treats "" as no-match / no-fallback. */
+/** Best-effort hostname extraction for the website author-handle fallback. Malformed input
+ *  degrades to "" rather than throwing. */
 function hostnameOf(url: string): string {
   try {
     return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
     return "";
   }
-}
-
-/** A "website" delivery is tracked via `agents.websites` (a desk's own list of tracked
- *  site URLs, saved in Wave 3), NOT via `tracked_handles`/`author_handle` — see the matching
- *  branch in `processDelivery` below. */
-function matchesTrackedWebsite(websites: Json, deliveryUrl: string): boolean {
-  const host = hostnameOf(deliveryUrl);
-  if (!host || !Array.isArray(websites)) return false;
-  return websites.some((w) => typeof w === "string" && hostnameOf(w) === host);
 }
 
 /** The title-level beat guidance #100's onboarding call already produces for this desk's
@@ -158,10 +146,8 @@ function matchesTrackedWebsite(websites: Json, deliveryUrl: string): boolean {
 async function fetchSiteGuidance(
   admin: AdminClient,
   agentId: string,
-  deliveryUrl: string,
+  sourceConfigId: string,
 ): Promise<{ onBeat: string; offBeat: string } | null> {
-  const host = hostnameOf(deliveryUrl);
-  if (!host) return null;
   // try/catch, not just the `{ error }` check below: a transport-level failure (rejected
   // connection, DNS, timeout) throws past the client instead of resolving to `{ error }`, and
   // this lookup's one caller isn't itself wrapped — an uncaught throw here would fail the
@@ -169,12 +155,12 @@ async function fetchSiteGuidance(
   try {
     const { data, error } = await admin
       .from("source_configs")
-      .select("domain, beat_guidance")
+      .select("beat_guidance")
       .eq("agent_id", agentId)
-      .eq("status", "active");
+      .eq("id", sourceConfigId)
+      .maybeSingle();
     if (error || !data) return null;
-    const matched = data.find((row) => hostnameOf(`https://${row.domain}`) === host);
-    const guidance = matched?.beat_guidance as { onBeat?: string; offBeat?: string } | null;
+    const guidance = data.beat_guidance as { onBeat?: string; offBeat?: string } | null;
     if (!guidance?.onBeat || !guidance?.offBeat) return null;
     return { onBeat: guidance.onBeat, offBeat: guidance.offBeat };
   } catch (err) {
@@ -226,7 +212,14 @@ async function stampUsageEvent(
   row: { owner_id: string; kind: string; units: number; cost_usd: number | null; ref_id: string },
 ): Promise<void> {
   const { error } = await admin.from("usage_events").insert(row);
-  if (error) throw error;
+  // stream_delivery is idempotent on (owner_id, ref_id) in the database. A lost ingest
+  // response can redeliver the same source post; that duplicate is success, while every other
+  // ledger error remains fatal.
+  const isDuplicateStreamDelivery =
+    row.kind === "stream_delivery" &&
+    error?.code === "23505" &&
+    error.details?.includes("Key (owner_id, ref_id)=");
+  if (error && !isDuplicateStreamDelivery) throw error;
 }
 
 /** Slack push + (conditionally) email, each independently error-tolerant: a channel outage
@@ -365,35 +358,34 @@ async function draftForAgent(
   const xAccount = await getXAccount(agent.owner_id);
   const accountTier = resolveXTier(xAccount?.tier);
 
-  // Atomic claim (D16): draft_claims carries UNIQUE(source_post_id, agent_id), so this
-  // insert IS the idempotency check — a non-atomic select-then-check here could let two
-  // concurrent deliveries (or a redelivery racing an in-flight draft) both pass the check and
-  // both pay for runDraftCouncil below. A 23505 unique-violation means another delivery already
-  // claimed this pair — return the same already-drafted shape the old select-then-check
-  // returned; any other error propagates as before.
-  const { error: claimError } = await admin
-    .from("draft_claims")
-    .insert({ source_post_id: sourcePostId, agent_id: agent.id })
-    .select("id");
-  if (claimError) {
-    if (claimError.code === "23505") {
-      return {
-        agentId: agent.id,
-        winningModel: "",
-        degraded: false,
-        skipped: "already_drafted",
-      };
-    }
-    throw claimError;
+  const claimToken = randomUUID();
+  // Atomic claim/reclaim: a delivery that outlives the ingest route's 800-second budget can
+  // leave a claim behind without running the catch below. The RPC inserts when absent and only
+  // reclaims a claim older than that same route budget, preserving an in-progress delivery.
+  const { data: claimed, error: claimError } = await admin.rpc("claim_draft", {
+    p_agent_id: agent.id,
+    p_source_post_id: sourcePostId,
+    p_stale_cutoff: new Date(Date.now() - 800 * 1_000).toISOString(),
+    p_claim_token: claimToken,
+  });
+  if (claimError) throw claimError;
+  if (!claimed) {
+    return {
+      agentId: agent.id,
+      winningModel: "",
+      degraded: false,
+      skipped: "already_drafted",
+    };
   }
 
   // The claim above is a "drafting started" marker, not "drafting done". Every step below is
   // paid or fallible; if any throws (a transient gateway 5xx, a DB error), the claim must be
-  // RELEASED — otherwise the worker's retry hits the 23505 above, returns already_drafted, and
-  // permanently drops a draft that the retry would have produced. Release-on-failure reopens the
-  // (source_post, agent) pair for the retry; the re-run re-bills, which is the right trade
-  // against a silently lost draft. The on-beat happy path AND the off-beat outcome both leave the
-  // claim in place (dedup intact) — an off-beat verdict must not be re-billed on redelivery.
+  // RELEASED — otherwise the worker's retry cannot re-attempt until claim_draft's stale cutoff.
+  // The attempt token prevents an old claimant from deleting a newer reclaimed claim.
+  // Release-on-failure reopens the (source_post, agent) pair immediately; the re-run re-bills,
+  // which is the right trade against a silently lost draft. The on-beat happy path AND the
+  // off-beat outcome both leave the claim in place (dedup intact) — an off-beat verdict must not
+  // be re-billed on redelivery.
   try {
     // Stage 1: deterministic English sources skip translation entirely. Any completed model call
     // is ledgered and metered before its output can decide whether drafting continues.
@@ -444,16 +436,24 @@ async function draftForAgent(
       // Persist every off-beat verdict so a reporter can review what got filtered and why
       // (the Excluded tab reads this). One verdict, one reason: the single drafter's — the
       // grounder-vs-judge arbitration beta recorded here died with those stages.
-      const { error: exclusionError } = await admin.from("excluded_posts").upsert(
+      const { data: exclusionId, error: exclusionError } = await admin.rpc(
+        "upsert_claimed_exclusion",
         {
-          agent_id: agent.id,
-          source_post_id: sourcePostId,
-          on_beat_reason: verdict.onBeatReason,
+          p_agent_id: agent.id,
+          p_claim_token: claimToken,
+          p_excluded_at: new Date().toISOString(),
+          p_on_beat_reason: verdict.onBeatReason,
+          p_source_post_id: sourcePostId,
         },
-        { onConflict: "agent_id,source_post_id", ignoreDuplicates: true },
       );
-      if (exclusionError) {
-        console.error("draft-pipeline: excluded_posts persistence failed", exclusionError);
+      if (exclusionError) throw exclusionError;
+      if (exclusionId === null) {
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: "already_drafted",
+        };
       }
 
       // Off-beat: no story row, no council, no drafts row — reported, not drafted-and-hidden.
@@ -516,29 +516,28 @@ async function draftForAgent(
       winningModel: string;
       degraded: boolean;
       winningDraftId: string;
-    }> => {
-      const winnerRow = {
-        source_post_id: sourcePostId,
-        agent_id: agent.id,
-        story_id: cluster.storyId,
-        platform,
-        model_call_id: drafterCallId,
-        is_winner: true,
-        judge_verdict: null,
-        news_title: verdict.newsTitle,
-        news_synthesis: verdict.newsSynthesis,
-        translation: translated.translation,
-        judge_review: null,
-      };
-
-      const { data, error } = await admin.from("drafts").insert(winnerRow).select("id").single();
+    } | null> => {
+      const { data, error } = await admin.rpc("insert_claimed_winner", {
+        p_agent_id: agent.id,
+        p_claim_token: claimToken,
+        p_model_call_id: drafterCallId,
+        p_news_synthesis: verdict.newsSynthesis,
+        p_news_title: verdict.newsTitle,
+        p_platform: platform,
+        p_source_post_id: sourcePostId,
+        p_story_id: cluster.storyId,
+        // The column is nullable and the translation fast path deliberately persists null;
+        // generated RPC args model PostgreSQL text as non-nullable.
+        p_translation: translated.translation as string,
+      });
       if (error) throw error;
+      if (data === null) return null;
       return {
         platform,
         winningText: draftText,
         winningModel: written.call.model,
         degraded: false,
-        winningDraftId: data.id,
+        winningDraftId: data,
       };
     };
 
@@ -553,12 +552,25 @@ async function draftForAgent(
       }
     });
 
+    const lostClaim = platformResults.some(
+      (outcome) => outcome.status === "fulfilled" && outcome.value === null,
+    );
+    if (lostClaim) {
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: "already_drafted",
+      };
+    }
+
     const fulfilled = platformResults
       .filter(
         (
           outcome,
-        ): outcome is PromiseFulfilledResult<Awaited<ReturnType<typeof runPlatformDraft>>> =>
-          outcome.status === "fulfilled",
+        ): outcome is PromiseFulfilledResult<
+          Exclude<Awaited<ReturnType<typeof runPlatformDraft>>, null>
+        > => outcome.status === "fulfilled" && outcome.value !== null,
       )
       .map((outcome) => outcome.value);
 
@@ -621,15 +633,17 @@ async function draftForAgent(
   } catch (err) {
     // Release the claim so a retry of this delivery can re-attempt (see the comment above).
     // The delete's own result must be inspected: a release that silently fails leaves the claim
-    // held forever, so the worker's retry hits 23505 (already_drafted) and this
-    // (source_post, agent) pair never produces a draft — capture it so the failure is at
+    // held until claim_draft's stale cutoff and this (source_post, agent) pair cannot produce a
+    // draft promptly — capture it so the failure is at
     // least visible, using the same tagged Sentry.captureException pattern post-core.ts uses
     // elsewhere in that file (not releaseClaim's own console-only handling).
     const { error: releaseError } = await admin
       .from("draft_claims")
       .delete()
       .eq("source_post_id", sourcePostId)
-      .eq("agent_id", agent.id);
+      .eq("agent_id", agent.id)
+      .eq("claim_token", claimToken)
+      .is("completed_at", null);
     if (releaseError) {
       Sentry.captureException(releaseError, {
         tags: { sourcePostId, agentId: agent.id, scope: "draft_claims_release" },
@@ -698,18 +712,16 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   // The low-signal gate sits AFTER the source_posts upsert (the record is kept — the post
   // really was delivered) and BEFORE matching/claiming/clustering (nothing downstream runs,
   // nothing bills, no story row is created so the feed never shows it).
-  if (isLowSignal(delivery.text)) {
+  if (isLowSignal(delivery.text, delivery.source === "website" ? delivery.title : undefined)) {
     return { sourcePostId, lowSignal: true, drafted: [] };
   }
 
   // Route by source. An "x" delivery matches tracked_handles exactly as before (PostgREST's
   // array `contains` filter matches elements exactly, so a stored handle whose casing differs
   // from the delivery's would silently never match — fetch every agent and compare
-  // lowercased in application code instead, see task-7-report.md). A "website" delivery has no
-  // author_handle concept — it's tracked via agents.websites (a desk's own list of
-  // tracked site URLs, saved in Wave 3), matched by hostname (matchesTrackedWebsite above), NOT
-  // forced through the same tracked_handles matching function since the match key genuinely
-  // differs between the two source types.
+  // lowercased in application code instead, see task-7-report.md). A website delivery carries
+  // the exact source_configs id that found it; hostname matching cannot distinguish two paths
+  // on one publisher and loses valid sitemap subdomain entries.
   // Unbounded per-delivery scan, deliberately: bounded by tenant count (a small table today, no
   // near-term latency risk), not by delivery volume. A `.eq("status", "active")` prefilter was
   // considered and rejected — it would silently change what counts as "matched" for the
@@ -723,6 +735,16 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
       "id, owner_id, reporter_handle, beat, tracked_handles, websites, status, auto_post_master, auto_post_sources",
     );
   if (agentsError) throw agentsError;
+  let websiteSourceAgentId: string | null = null;
+  if (delivery.source === "website") {
+    const { data: sourceConfig, error: sourceConfigError } = await admin
+      .from("source_configs")
+      .select("agent_id")
+      .eq("id", delivery.source_config_id)
+      .maybeSingle();
+    if (sourceConfigError) throw sourceConfigError;
+    websiteSourceAgentId = sourceConfig?.agent_id ?? null;
+  }
   const matched: MatchedAgent[] =
     delivery.source === "x"
       ? (() => {
@@ -731,7 +753,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             e.tracked_handles.some((h) => h.toLowerCase() === wantedHandle),
           );
         })()
-      : (allAgents ?? []).filter((e) => matchesTrackedWebsite(e.websites, delivery.url));
+      : (allAgents ?? []).filter((e) => e.id === websiteSourceAgentId);
 
   // D16a: usage_events.owner_id is NOT NULL, so an unmatched delivery (no agent tracks
   // this author) is invisible to usage_events and, with it, to the stream-volume alarm — there
@@ -784,8 +806,9 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           // for a field nothing consumes (documented in task-20-report.md).
           xPostId: "",
           authorHandle: delivery.author_handle ?? hostnameOf(delivery.url),
+          title: delivery.title,
           text: delivery.text,
-          lang: null,
+          lang: delivery.lang,
           // Website sources carry no structured media descriptors this slice.
           media: [],
         };
@@ -800,7 +823,9 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     // this is the immediate guard for that lag window and for hand-seeded deliveries.
     if (agent.status !== "active") continue;
     const siteGuidance =
-      delivery.source === "website" ? await fetchSiteGuidance(admin, agent.id, delivery.url) : null;
+      delivery.source === "website"
+        ? await fetchSiteGuidance(admin, agent.id, delivery.source_config_id)
+        : null;
     drafted.push(
       await draftForAgent(admin, agent, sourcePostId, brief, delivery.source, siteGuidance),
     );

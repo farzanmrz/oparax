@@ -8,11 +8,15 @@
 // anyway.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  canonicalExcludedCursor,
+  EXCLUDED_PAGE_SIZE,
+  type ExcludedCursor,
+  isExcludedCursor,
+} from "@/lib/agent/excluded-shared";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Client = SupabaseClient<Database>;
-
-const EXCLUDED_PAGE_LIMIT = 50;
 
 export type ExcludedPost = {
   id: string; // excluded_posts.id
@@ -31,18 +35,32 @@ export type ExcludedPost = {
   excludedAt: string;
 };
 
-export async function fetchExcludedPosts(client: Client, agentId: string): Promise<ExcludedPost[]> {
-  const { data, error } = await client
+export type ExcludedPage = { items: ExcludedPost[]; nextCursor: ExcludedCursor | null };
+
+function cursorClause(cursor: ExcludedCursor) {
+  return `excluded_at.lt."${cursor.excludedAt}",and(excluded_at.eq."${cursor.excludedAt}",id.lt.${cursor.id})`;
+}
+
+export async function fetchExcludedPosts(
+  client: Client,
+  agentId: string,
+  opts: { cursor?: ExcludedCursor | null; limit?: number } = {},
+): Promise<ExcludedPage> {
+  const cursor = isExcludedCursor(opts.cursor) ? opts.cursor : null;
+  const limit = Math.max(1, Math.min(opts.limit ?? EXCLUDED_PAGE_SIZE, EXCLUDED_PAGE_SIZE));
+  let query = client
     .from("excluded_posts")
     .select(
       "id, on_beat_reason, excluded_at, source_posts(id, author_handle, text, posted_at, x_post_id, source, url)",
     )
     .eq("agent_id", agentId)
     .order("excluded_at", { ascending: false })
-    .limit(EXCLUDED_PAGE_LIMIT);
+    .order("id", { ascending: false });
+  if (cursor) query = query.or(cursorClause(cursor));
+  const { data, error } = await query.limit(limit);
   if (error) throw error;
 
-  return (data ?? []).map((row) => {
+  const items = (data ?? []).map((row) => {
     const sourcePost = row.source_posts;
     return {
       id: row.id,
@@ -59,4 +77,12 @@ export async function fetchExcludedPosts(client: Client, agentId: string): Promi
       excludedAt: row.excluded_at,
     };
   });
+  const last = items.at(-1);
+  return {
+    items,
+    nextCursor:
+      last && items.length === limit
+        ? canonicalExcludedCursor({ excludedAt: last.excludedAt, id: last.id })
+        : null,
+  };
 }

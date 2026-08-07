@@ -63,9 +63,10 @@ export function DraftBox({
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+    textarea.value = text;
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  });
+  }, [text]);
 
   const confirmed = Boolean(draft.postedAt && draft.postedUrl);
   const ambiguous = Boolean(draft.postedAt && !draft.postedUrl);

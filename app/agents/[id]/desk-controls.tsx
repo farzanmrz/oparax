@@ -199,6 +199,7 @@ export function DeskControls({
           {pauseError ? <p className="text-sm text-destructive">{pauseError}</p> : null}
           <DialogFooter>
             <Button
+              className="min-h-11"
               disabled={isPending}
               onClick={handlePauseResume}
               variant={isLive ? "outline" : "default"}
@@ -235,8 +236,15 @@ export function DeskControls({
           </AlertDialogHeader>
           {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <Button disabled={isPending} onClick={handleDelete} variant="destructive">
+            <AlertDialogCancel className="min-h-11" disabled={isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              className="min-h-11"
+              disabled={isPending}
+              onClick={handleDelete}
+              variant="destructive"
+            >
               {isPending ? "Deleting…" : "Delete agent"}
             </Button>
           </AlertDialogFooter>
