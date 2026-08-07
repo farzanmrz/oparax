@@ -54,7 +54,10 @@ real code, never a summary of it.
   its content changes a design decision for this slice.
 * **Invoke every selected skill NOW, before drafting:** a skill's
   constraints shape the plan only while they are in context as the plan is
-  written. Selection without invocation is a no-op.
+  written. Selection without invocation is a no-op — and it happens
+  silently, so state the selection out loud first: one line naming each
+  skill taken and each guided-list entry skipped with a word of reason,
+  then the invocations in that same response.
 * **Guards:** AGENTS.md is already in context; hold its constraints against
   the predicted touch-paths.
 * **Rationalize:** state what is actually going to be done, stub against
@@ -77,6 +80,23 @@ WHY it settled. `Decided` is binding, `Notes` are hints.
 
 Write the full plan yourself, incorporating the following rules:
 
+### Plan council (opt-in experiment: only when the invocation says "council")
+
+Off by default; adds competing drafts, never changes the rules below.
+
+* **Launch external planners first:** write one brief per family to
+  `.feature/plan-<family>.in.txt` — the confirmed ask + phase 2 ground
+  truth and guards + the 4C section list + the specificity contract — and
+  launch codex/grok/agy in the background with
+  `COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-proposal-schema.json"`, env
+  otherwise exactly as phase 5's lanes.
+* **Draft your own plan before reading any of theirs:** reading first
+  anchors the draft, and an anchored draft is the experiment's null result.
+* **Adjudicate on return:** graft genuinely better ideas into your draft;
+  record what was adopted from whom, plus the strongest rejected idea per
+  family, in the Approach section.
+* Phase 5 then critiques the synthesized plan as normal.
+
 ### A. Design constraints
 
 * **Diverge before committing:** enumerate 2 to 3 candidate approaches
@@ -89,12 +109,15 @@ Write the full plan yourself, incorporating the following rules:
   and motion/streaming behavior in the near-code, grounded in the repo's UI
   conventions and ai-elements idioms. "Works but ugly" is a spec defect: QC's
   design critic judges the rendered result against exactly this intent.
-* **Design alignment, not lockdown:** new UI aligns with the app's existing
-  aesthetic (design tokens, spacing and type scale, shadcn/ai-elements
-  idioms) and reuses existing components where they fit naturally. A task
-  MAY introduce a new visual pattern when the slice calls for it; the design
-  intent states the new pattern and its rationale, and that stated intent is
-  what QC judges against.
+* **Design alignment, not lockdown:** root `DESIGN.md` is the codified
+  aesthetic — new UI aligns with it (tokens, spacing and type scale,
+  shadcn/ai-elements idioms) and reuses existing components where they fit
+  naturally. A task MAY introduce a new visual pattern when the slice calls
+  for it; the design intent states the new pattern and its rationale, and
+  that stated intent is what QC judges against. Genuine design EXPLORATION
+  is never done silently inside the plan: it is a declared owner handoff
+  step (the OWNER-V0 contract; same shape if the owner iterates in Claude
+  Design instead), and the merged winner becomes the design spec.
 
 * **v0 interlude (when the ask includes a v0 design pass):** the plan
   declares it as an explicit OWNER-V0 step in the build list, placed after
@@ -245,6 +268,11 @@ section.
   near-code; the gate presentation is a reader-facing layer ON TOP of it.
   These readability rules govern presentation, never a dumbing-down of the
   stored spec.
+* **The first screen is plain language ONLY:** Definition of done, Today
+  vs. after, and User narrative carry no file paths, identifiers, pixel or
+  color values — outcomes as the user experiences them, ONE line per DoD
+  item. The technical DoD lives in the full plan below; pasting it into
+  the reader layer is the recurring failure this rule exists to stop.
 * **No prose walls:** "Today vs. after this slice" and "User narrative" use
   short bullets or clearly labeled subsections, plain language first with the
   technical detail kept alongside, never dropped.
@@ -265,6 +293,11 @@ question):
 * **Critique adjudication:** every accepted item and every rejected item
   carries its technical statement plus a plain-words explanation the owner
   reads as a user (what was wrong, or why it was rejected).
+
+**Pre-present check** (fix, then present): first three sections free of
+identifiers; every section bulleted, no prose walls; In scope / Deferred
+present with their glosses; every adjudication entry carries its
+plain-words line.
 
 ## 7. Close the gate
 

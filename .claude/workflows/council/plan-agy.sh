@@ -120,11 +120,19 @@ SCHEMA_ABS="$(cd "$(dirname "$SCHEMA")" && pwd)/$(basename "$SCHEMA")"
 tmux send-keys -t "$SES" "First read $CRITIC_ABS — it is your standing critic contract for this repo (how to judge, the evidence bar, what counts as a veto). Then read the file $PF_ABS in full — it is a council brief with its own instructions (review, design, or verification). Before analysis, run git rev-parse HEAD in $REPO and require exactly $EXPECTED_HEAD; if it differs, write no findings and report the mismatch. Execute the brief faithfully against the live working tree, never remembered or cached code. Before reporting any file:line finding, confirm the path currently exists and reread that exact current range; a deleted path or stale line invalidates the finding. Ground everything in the actual repository code (invoke_subagent code-verifier is available and read-only — use it to confirm a claim before reporting a finding against it). Then write your result as ONE valid JSON object matching the schema in $SCHEMA_ABS (top-level key: $KEY) to the file $OUTFILE_ABS. In JSON strings avoid backslash escapes other than standard JSON ones (write template literals as plain text). Do not print the JSON in chat; write the file." Enter
 
 # Poll for the model-written file, then require it stable (agy may write incrementally).
+# ACCEPT $OUT AS A FALLBACK TARGET: on 2026-08-06 (QC round 5) agy compacted its own
+# conversation mid-run (386k in), lost the exact .tui.json path from the prompt, and
+# "reconstructed" the label-obvious <label>.out.json instead — a complete valid
+# 2-finding review sat on disk while the poll watched .tui.json to timeout and the
+# lane was branded FAILED. $OUT is rm'd at start (line above the fail() def), so any
+# $OUT that appears mid-run is model-written raw output, never a stale artifact.
 waited=0; last=-1
 while [ "$waited" -lt "$TIMEOUT_S" ]; do
   sleep 10; waited=$((waited+10))
-  if [ -s "$OUTFILE_ABS" ]; then
-    sz="$(wc -c < "$OUTFILE_ABS")"
+  SRC=""; [ -s "$OUTFILE_ABS" ] && SRC="$OUTFILE_ABS"
+  [ -z "$SRC" ] && [ -s "$OUT" ] && SRC="$OUT"
+  if [ -n "$SRC" ]; then
+    sz="$(wc -c < "$SRC")"
     if [ "$sz" = "$last" ] && tmux capture-pane -t "$SES" -p 2>/dev/null | grep -q "READY"; then break; fi
     last="$sz"
   fi
@@ -134,8 +142,11 @@ tmux capture-pane -t "$SES" -p > "$PANE_LOG" 2>/dev/null || true
 cleanup; trap - EXIT
 
 # Tolerant parse (Gemini emits \$ and similar non-JSON escapes inside code samples),
-# then normalize to the standard council envelope.
-if python3 - "$OUTFILE_ABS" "$OUT" "$KEY" "$SECONDS" "$MODEL" <<'PYEOF'
+# then normalize to the standard council envelope. Parse whichever file the model
+# actually wrote (.tui.json preferred; $OUT accepted per the compaction incident above —
+# the normalizer overwrites $OUT in place, which is safe: it only adds envelope keys).
+PARSE_SRC="$OUTFILE_ABS"; [ -s "$PARSE_SRC" ] || PARSE_SRC="$OUT"
+if python3 - "$PARSE_SRC" "$OUT" "$KEY" "$SECONDS" "$MODEL" <<'PYEOF'
 import json, re, sys
 src, out, key, elapsed, tier = sys.argv[1:6]
 try:

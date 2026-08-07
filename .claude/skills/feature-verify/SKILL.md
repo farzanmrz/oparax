@@ -69,11 +69,26 @@ never need to ask a clarifying question.**
 * **No "as discussed":** anything the plan/build phase renamed or reworked
   mid-flight is restated from scratch, never referenced (the owner didn't
   watch the sessions).
+* **Fresh numbering:** every list in this report numbers 1..n on its own;
+  numbering inherited from another comment never appears as a list number
+  (round 5's Fixed list jumped 19 → 22 because two findings landed in
+  Surfaced — to the owner that reads as missing content). Cite provenance
+  inline as "(finding 20)" when it matters.
+* **Weight by consequence:** a fix with no user-visible consequence (code
+  comments, doc sync, lint debt) gets one line under a single Housekeeping
+  entry, never a full narrative slot; the length budget belongs to what a
+  user could have hit.
 * **Length serves clarity:** compress by dropping what doesn't change the
   owner's next action, never by abbreviating what's kept.
 
 ### B. Sections, in order
 
+0. **The verdict screen** — everything needed to decide whether to read on,
+   in ~10 lines, plain language only (no identifiers, paths, or numbers the
+   owner didn't coin): the GREEN/RED gates line; one counts line (N fixed /
+   M dropped / K decisions owed / J manual checks); each owed decision as
+   ONE line with its options; the exact next command. The owner who reads
+   nothing else must still leave knowing the state and what they owe.
 1. **What this slice changed, as a user:** a short walk-through of the new
    behavior: "when X happens, the app now does Y; before, it did Z."
 2. **Status + coverage:** builds/boots/gates one-liner; review-lane coverage
@@ -93,7 +108,10 @@ never need to ask a clarifying question.**
    the owner can decide from this text alone.
 6. **Your manual-check set:** concrete user actions, step by step ("open the
    feed, relink a different X account, confirm the counter drops to 280"),
-   each with one clause on why it can't be proven automatically.
+   each with one clause on why it can't be proven automatically. Split it:
+   **Before ship** (the few checks that could change the ship decision)
+   first, **Anytime after** for the rest — eight undifferentiated multi-step
+   items is a wall the owner won't climb.
 
 End by offering `/code-review ultra` before ship.
 

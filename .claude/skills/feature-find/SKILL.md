@@ -41,8 +41,6 @@ Dispatch the setup scout for one compact block:
 
 * **Diff shape:** `--shortstat` / `--stat` (spot generated files).
 * **Acceptance criteria:** the issue's, via one `gh issue view`.
-* **Dead-code sweep:** `pnpm deadcode`, each hit grep-verified, cross-checked
-  against AGENTS.md "Dormant by design", chains collapsed to one root.
 
 ### B. Boot smoke (in-session)
 
@@ -98,10 +96,12 @@ design critic skipped".
 
 ### A. Yardstick
 
-The plan's stated design intent; the critic NEVER judges from its own
-taste: conformance to that intent, alignment with the app's existing
-aesthetic (any new pattern is one the plan declared with rationale), the
-surface reads as native, per-state intent met.
+The plan's stated design intent, plus root `DESIGN.md` when it exists (the
+codified aesthetic contract — alignment findings cite it, never taste); the
+critic NEVER judges from its own taste: conformance to that intent,
+alignment with the app's existing aesthetic (any new pattern is one the
+plan declared with rationale), the surface reads as native, per-state
+intent met.
 
 * **Post-v0 rounds flip the yardstick:** when the round follows a declared
   OWNER-V0 merge (the plan's step list says which), the merged v0 design IS
@@ -216,6 +216,10 @@ plus the internal `bug-finder` lane.
   with no output gets exactly ONE relaunch (preserve the first attempt's
   logs first: the shared label paths overwrite). Both attempts land in the
   round record; a second failure is final.
+* **A thin lane is weak signal, never a clean bill:** record every lane's
+  finding count. A lane returning near-zero while sibling families return
+  many corroborates nothing — adjudicate what it sent, but never present it
+  as evidence the diff is clean.
 * **Judge a lane on POST-FIX behaviour, never on its accumulated failure
   count:** the evidence is in `council/run.sh`'s header, don't re-derive it.
   Phase 2's self-test is what you rely on instead.
