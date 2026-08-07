@@ -26,6 +26,7 @@ export function ChipsField({
   chips,
   disabled = false,
   inputDisabled,
+  hideInput = false,
   onChange,
   onKeyDown,
   onPaste,
@@ -46,6 +47,8 @@ export function ChipsField({
   /** Freezes the whole field — chips, removes, and input (the "Coming soon" state). */
   readonly disabled?: boolean;
   readonly inputDisabled: boolean;
+  /** Keep committed chips visible while removing the add-input at the cap. */
+  readonly hideInput?: boolean;
   readonly onChange: (value: string) => void;
   /** Optional extra key handling. Enter is always intercepted for `onSubmit` first. */
   readonly onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -62,7 +65,7 @@ export function ChipsField({
     <div
       className={cn(
         // Mirrors components/ui/input.tsx's box treatment.
-        "flex min-h-9 w-full min-w-0 flex-wrap content-start items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+        "flex min-h-9 w-full min-w-0 flex-wrap content-start items-center gap-1.5 rounded-md border border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
         disabled && "pointer-events-none cursor-not-allowed bg-input/50 dark:bg-input/80",
         className,
       )}
@@ -81,23 +84,25 @@ export function ChipsField({
           </button>
         </Badge>
       ))}
-      <input
-        className="h-6 min-w-40 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm"
-        disabled={disabled || inputDisabled}
-        onBlur={onBlur}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onSubmit();
-            return;
-          }
-          onKeyDown?.(e);
-        }}
-        onPaste={onPaste}
-        placeholder={placeholder}
-        value={value}
-      />
+      {hideInput ? null : (
+        <input
+          className="h-6 min-w-40 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed desk:text-sm"
+          disabled={disabled || inputDisabled}
+          onBlur={onBlur}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onSubmit();
+              return;
+            }
+            onKeyDown?.(e);
+          }}
+          onPaste={onPaste}
+          placeholder={placeholder}
+          value={value}
+        />
+      )}
     </div>
   );
 }

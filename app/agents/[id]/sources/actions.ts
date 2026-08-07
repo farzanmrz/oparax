@@ -66,55 +66,6 @@ export async function discoverAndSaveSource(deskId: string, rawUrl: string): Pro
   return { ok: true };
 }
 
-/**
- * Save one or more websites to `agents.websites` (plain `string[]` — no metadata beyond
- * the URL is asked for this slice). Read-modify-write under RLS, same shape as
- * `addTrackedHandles`: read current `websites`, merge/dedupe the normalized candidates,
- * update, revalidate. Unlike `addTrackedHandles`, an invalid entry rejects the whole call
- * with a clear error naming it, rather than being silently dropped.
- */
-export async function saveWebsites(
-  deskId: string,
-  websites: readonly string[],
-): Promise<ActionResult> {
-  const candidates: string[] = [];
-  for (const raw of websites) {
-    const normalized = normalizeSourceUrl(raw);
-    if (normalized === null)
-      return { ok: false, error: `"${raw.trim()}" doesn't look like a valid website.` };
-    candidates.push(normalized.toString());
-  }
-  if (candidates.length === 0) return { ok: false, error: "Enter a website to track." };
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agents")
-    .select("websites")
-    .eq("id", deskId)
-    .maybeSingle();
-  if (error || !data) return { ok: false, error: "Could not load the agent's websites." };
-
-  const existing = parseWebsites(data.websites);
-  const merged = [...existing];
-  for (const url of candidates) {
-    if (merged.length >= MAX_WEBSITES) break; // cap (client enforces too)
-    if (!merged.includes(url)) merged.push(url);
-  }
-  if (merged.length === existing.length) {
-    return existing.length >= MAX_WEBSITES
-      ? { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` }
-      : { ok: true };
-  }
-
-  const { error: updateError } = await supabase
-    .from("agents")
-    .update({ websites: merged })
-    .eq("id", deskId);
-  if (updateError) return { ok: false, error: "Could not save those websites. Please try again." };
-  revalidatePath("/agents", "layout");
-  return { ok: true };
-}
-
 /** Proves ownership via the RLS client, same as every other action here, then removes the
  *  site through the `remove_source_config` RPC — which deletes the `source_configs` row and
  *  updates `agents.websites` in one transaction (admin client; RLS already proved ownership

@@ -1,9 +1,9 @@
 // lib/x/handle-input.ts
 //
 // Client-side split/merge helpers for a tracked-X-handle input field — pure, no React, so the
-// create-desk form (app/agents/new/create-desk-form.tsx) and the Setup card's X-accounts field
+// create-desk form (app/agents/new/create-desk-form.tsx) and the Sources card's X-accounts field
 // (app/agents/[id]/sources/sources-card.tsx) share ONE implementation instead of two copies
-// drifting apart, which is exactly how these two fields disagreed before (Setup had no client-side
+// drifting apart, which is exactly how these two fields disagreed before (Sources had no client-side
 // split/paste handling at all). Light shaping only — the server (createDesk / addTrackedHandles)
 // does the real charset validation, dedupe, and cap regardless of what a client sends.
 
@@ -24,7 +24,7 @@ export function splitHandles(raw: string): string[] {
 
 /** Merge new handles into an existing client-held list: case-insensitive dedupe, capped at
  *  MAX_TRACKED_HANDLES. Used where a list is assembled locally before the desk exists yet
- *  (create-desk form, ahead of `createDesk`); Setup's field commits straight through
+ *  (create-desk form, ahead of `createDesk`); Sources' field commits straight through
  *  `addTrackedHandles` instead, which performs this same merge server-side against the
  *  already-persisted row. */
 export function mergeHandles(existing: readonly string[], incoming: readonly string[]): string[] {
