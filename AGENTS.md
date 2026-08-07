@@ -5,6 +5,8 @@ AI news desk for reporters: monitors their beat across X, catches stories as the
 ## Code map
 
 - **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. `poller/` (`poller/README.md`, an isolated Railway worker mirroring `ingest/`'s shape) and `ingest/`'s X stream forwarder both POST here.
+- **Website deliveries keep their `source_config_id`** from poller through ingest: `draft-pipeline.ts` resolves it to exactly one desk, never rematch by hostname, so one publisher's tracked paths cannot cross-deliver.
+- **Website onboarding reserves before it spends:** both entry points call `reservePendingSource`; its locked RPC counts `active` and `pending` rows, making the five-site cap and duplicate no-bill guarantee atomic.
 - **`app/api/slack/interactions`** is `after()`-deferred so Slack's 3s ack deadline is met before the slow X-post work runs.
 - **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by `lib/x/post-core.ts`, `draft-pipeline.ts`, and `app/agents/[id]/actions.ts`'s `editDraft` before a winner persists. Any future writer of a `drafts` winner must call it too, never re-derive it.
 - **`lib/agent/feed-query.ts`'s `fetchFeedPage`/`fetchFeedCounts` and lineage read take a service-role client and never check desk ownership** — every caller (`page.tsx`, `feed-actions.ts`) must prove `owner_id` match first.
@@ -21,23 +23,19 @@ AI news desk for reporters: monitors their beat across X, catches stories as the
 
 **Columns and types: read `lib/supabase/database.types.ts`**
 
-| Table | What it holds | RLS shape |
-| --- | --- | --- |
-| `agents` | a desk (the unit a reporter owns) | owner-scoped |
-| `voice_guides`, `voice_rules` | the extracted voice, keyed by `agent_id` | EXISTS-join, select-only |
-| `stories`, `story_assignments` | clustered stories and their per-desk claim | EXISTS-join, select-only |
-| `drafts` | a drafted post + its post-outcome stamps | EXISTS-join (**insert policy too**) |
-| `usage_events` | metering for every billable touch point | owner-scoped, select-only |
-| `source_posts` | ingested posts | deny-all |
-| `model_calls` | one row per model call | owner-scoped, select-only |
-| `corpus_posts` | per-desk extracted corpus, including off-beat exclusions | deny-all |
-| `beat_conflicts` | historical ground-versus-judge disagreements (writer-less since the judge stage's removal) | EXISTS-join, select-only |
-| `excluded_posts` | every off-beat drafting verdict — the Excluded tab's feed | EXISTS-join, select-only — reads need the service-role client (deny-all `source_posts` join) |
-| `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | OAuth tokens, inferred tier, delivery receipts | deny-all |
-| `draft_claims`, `unmatched_deliveries` | atomic claim counters | deny-all |
-| `voice_extraction_runs` | extraction progress only | deny-all |
-| `source_configs` | a desk's onboarded website source; `pending` lifecycle, polled client-side like voice extraction | deny-all |
-| `source_seen_items` | per-source dedup of poller-delivered items | deny-all |
+| Table | RLS shape |
+| --- | --- |
+| `agents` | owner-scoped |
+| `voice_guides`, `voice_rules` | EXISTS-join, select-only |
+| `stories`, `story_assignments` | EXISTS-join, select-only |
+| `drafts` | EXISTS-join (**insert policy too**) |
+| `usage_events` | owner-scoped, select-only |
+| `source_posts`, `corpus_posts` | deny-all |
+| `model_calls` | owner-scoped, select-only |
+| `beat_conflicts`, `excluded_posts` | EXISTS-join, select-only |
+| `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | deny-all |
+| `draft_claims`, `unmatched_deliveries`, `voice_extraction_runs` | deny-all |
+| `source_configs`, `source_seen_items` | deny-all |
 
 ### Dormant by design — switched off, not missing
 
