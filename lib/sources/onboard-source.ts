@@ -22,6 +22,7 @@ import {
   isPrivateHostname,
 } from "@/lib/sources/discovery";
 import { fetchFeedSample } from "@/lib/sources/feed";
+import { siteGuidanceSchema } from "@/lib/sources/site-guidance";
 import {
   countPathMatches,
   fetchSitemapSample,
@@ -69,10 +70,7 @@ const sourceOnboardingSchema = z.object({
       .describe("narrowest URL path prefix that captures the beat, or null if none exists"),
     reasoning: z.string(),
   }),
-  beatGuidance: z.object({
-    onBeat: z.string().describe("what counts as on-beat for this site, title-level"),
-    offBeat: z.string().describe("what to exclude, title-level"),
-  }),
+  beatGuidance: siteGuidanceSchema,
 });
 
 type SourceOnboardingVerdict = z.infer<typeof sourceOnboardingSchema>;

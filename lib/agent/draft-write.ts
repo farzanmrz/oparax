@@ -7,6 +7,7 @@ import { z } from "zod";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { DRAFT_COUNCIL_CONTRACT, DRAFT_WRITE_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
+import { MAX_SITE_GUIDANCE_CHARS } from "../sources/site-guidance";
 import { resolveCallMeta } from "./call-meta";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
 import type { CouncilCall, SourceBrief } from "./draft-council-run";
@@ -49,11 +50,6 @@ const MEDIA_TAGS: Record<string, "photo" | "video" | "animated_gif"> = {
 
 export type DraftVerdict = z.infer<typeof draftVerdictSchema>;
 export type DraftWriteResult = { call: CouncilCall; verdict: DraftVerdict | null };
-
-/** Per-clause ceiling on the onboarding-written site guidance. It is persisted once and replayed
- *  on EVERY drafting call for that source, so an over-long clause is permanent prompt bloat —
- *  a sentence or two is all this section was ever meant to carry. */
-const MAX_SITE_GUIDANCE_CHARS = 500;
 
 function clampGuidance(clause: string): string {
   const trimmed = clause.trim();

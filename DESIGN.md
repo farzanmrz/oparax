@@ -35,7 +35,7 @@ The feed card is one 10px gradient card with three stacked zones: a source-tinte
 
 ## Semantic Color Meanings
 
-Blue means action, linking, and composing. Green means live, posted, or connected. Amber means freshness or an edited-source warning. Red means deleted-source or destructive action. These meanings are stable across all states and pages.
+Blue means action, linking, and composing. Green means live, posted, or connected. Amber means freshness, caution or an edited-draft state, and states or actions that are uncertain, unconfirmed, or in progress. Red means deleted-source or destructive action. These meanings are stable across all states and pages.
 
 ## Type Scale
 
