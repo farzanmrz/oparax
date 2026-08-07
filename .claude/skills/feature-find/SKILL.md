@@ -232,6 +232,11 @@ Merge, dedup by file+line, judge every finding:
 * **Lone findings:** weighed on their scenario.
 * **Plan-frozen decisions:** vetoes.
 * **Real-but-not-this-slice:** surface and drop.
+* **Cosmetic fidelity deltas merge:** design-critic findings whose whole
+  remedy is a style-value change (spacing/padding, radius, overflow
+  clipping, animation timing) merge into ONE `cosmetic polish` finding
+  listing every delta — round 5 shipped five separately numbered px-level
+  findings that each cost a full adjudication and report slot.
 * **Open design choices never travel downward:** if a finding's remedy
   requires choosing a user-visible behavior, limit, or constant the spec
   does not already fix, its owner is `owner-decision`: state the options in

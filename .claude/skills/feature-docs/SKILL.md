@@ -18,6 +18,10 @@ falsified, so corpus bloat compounds invisibly without the subtractive pass.
 * **Doc surfaces:** AGENTS.md + the skills, never rules files.
 * **Dispatch ONE agent** with both duties in the same brief (Claude Code:
   `model: sonnet`, `effort: high`; Codex: `cx_fixer`).
+* **The child's report is the evidence of record:** the parent confirms the
+  commit and marker exist, nothing else — it never re-runs the census, the
+  mirror check, or `git show` on the child's commit (a round-5 parent
+  re-audited all three, a third of the run's wall clock).
 * **Marker format:** new QC marker comments are titled `## QC round <R>: <suffix>`
   (`findings`, `docs`). Readers match the `## QC round <R>` prefix plus the
   suffix keyword, separator-agnostic (older rounds used an em dash).

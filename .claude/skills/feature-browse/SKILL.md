@@ -27,10 +27,14 @@ approving it is expected, not an error.
 
 ## 1. Derive the checklist (durable state only)
 
-Read the ft issue:
+Read the ft issue body (the plan's observable-states table), then ONLY the
+QC marker comments — a full `--comments` read is 30k+ tokens, truncates, and
+forces re-parsing:
 
 ```bash
-gh issue view <N> --comments
+gh issue view <N>
+gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
+  --jq '[.[] | select(.body|startswith("## QC round"))] | .[-6:] | .[].body'
 ```
 
 * **Sources, in order:** the plan's observable-states table, the latest
@@ -41,24 +45,36 @@ gh issue view <N> --comments
   accounts, taste/feel judgments). HUMAN-ONLY items are listed in the report
   untouched, never attempted.
 * **Always include the mechanics** even if no source names them: initial
-  render, pagination to exhaustion (scroll until the list ends; count pages;
-  duplicates or a premature stop are findings), every filter narrowing
-  server-side, search, one full auto-refresh cycle with 2+ pages loaded
-  (scroll position, no duplicates/drops), each card state present in data,
-  dialogs open/close, console errors.
-* **Viewport:** the browser's normal default viewport, never resized on the
-  session's own judgment. ONLY when the owner's invocation asks for mobile
-  (e.g. "/feature-browse mobile") add a second pass of the same checklist at
-  375x812; the report then carries both viewports' verdicts.
+  render, pagination up to 3 pages or the list's end — whichever first
+  (count pages; duplicates or a premature stop are findings; when the
+  previous round's browsed/findings comment already records this pagination
+  FAIL, confirm it with ONE probe and cite that comment instead of
+  re-driving to exhaustion), every filter narrowing server-side, search, one
+  full auto-refresh cycle with 2+ pages loaded (scroll position, no
+  duplicates/drops), each card state present in data, dialogs open/close,
+  console errors.
+* **Viewport: set 1280x800 explicitly at session start AND after any tab
+  recreation or server restart.** Tab defaults are not stable (measured
+  2026-08-06: a post-crash recovery tab defaulted to 415x736 and silently
+  tainted every finding after it with phantom mobile failures). Mobile-named
+  checklist lines (e.g. a 393px NOT VERIFIABLE line) run ONLY when the
+  owner's invocation says mobile ("/feature-browse mobile": a second pass of
+  the same checklist at 375x812, both viewports' verdicts in the report);
+  otherwise list them NOT RUN — never resolved by resizing on the session's
+  own judgment.
 
 ## 2. Boot and log in
 
 * **Server:** reuse a listening :3000 (`lsof -i :3000 -sTCP:LISTEN -t`) or
-  start `pnpm dev` in the background and record the PID.
+  start `pnpm dev` in the background and record the PID. A reused server is
+  not owned by this session; if the server dies mid-run, restart it once and
+  re-assert the viewport before continuing (the 2026-08-06 crash cascade —
+  server death, recovery tab, tainted findings — came from skipping the
+  re-assert).
 * **Browser:** open the pane at `http://localhost:3000`, log in with the
   test account (`testuser@oparax.ai` / `hello123`, pre-authorized in
-  AGENTS.md). Leave the viewport at its default (mobile pass only per the
-  viewport rule in phase 1).
+  AGENTS.md). Set the viewport per the phase-1 rule (1280x800, mobile pass
+  only when invoked).
 
 ## 3. Drive the checklist
 
@@ -70,6 +86,10 @@ gh issue view <N> --comments
   anything that leaves the machine, never edit files, never touch
   non-localhost origins. A checklist item that would require it is
   HUMAN-ONLY by definition.
+* **Stuck clicks (Codex):** if a Playwright click leaves the target
+  unchanged (e.g. `aria-expanded` still false) after 2 tries, switch to
+  `dom_cua.click` by node id immediately — a Radix menu once ate 6 attempts
+  and a selector deadline before the fallback landed on the first try.
 * **Per item:** record PASS / FAIL / BLOCKED with one line of evidence
   (element text, count, console line). A FAIL is written as a
   fix-ready brief: what was done, what happened, what was expected, suspect
@@ -97,10 +117,11 @@ Remaining HUMAN-ONLY items: ...
   owner's previous manual-check set; everything browser-checked here is off
   the owner's plate, and the next `verified` report cites this comment
   instead of re-listing covered items.
-* **Exit handoff: next is ALWAYS `/feature-fix`** (`$feature-fix` in Codex,
-  normal dial), which applies this round's findings comment plus the
-  fix-ready briefs above in one pass. Never route around fix: even a round
-  with zero browse failures usually has accepted findings waiting in the
-  findings comment, and judging "nothing to fix" is feature-fix's call, not
-  this session's (an empty round gets its fixes marker from feature-fix, so
-  verify's guard always has it).
+* **Exit handoff: next is the post-browse relay** — `$feature-qc chain` in
+  Codex (`/feature-qc chain` in Claude Code) on the smart dial, which runs
+  fix → docs → verify in one session from this round's markers; standalone
+  `/feature-fix` remains the hop-anywhere fallback. Never route around fix:
+  even a round with zero browse failures usually has accepted findings
+  waiting in the findings comment, and judging "nothing to fix" is
+  feature-fix's call, not this session's (an empty round gets its fixes
+  marker from feature-fix, so verify's guard always has it).

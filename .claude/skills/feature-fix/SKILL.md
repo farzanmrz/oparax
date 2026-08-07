@@ -28,10 +28,12 @@ model: inherit
   same round's `browsed` comment when one exists: its fix-ready failure
   briefs join the findings in the same file-group dispatch. A missing
   `browsed` marker is reported in the fixes comment as "browse not run this
-  round", never silently ignored. Read the comments:
+  round", never silently ignored. Read ONLY the QC marker comments (a full
+  `--comments` read is 30k+ tokens and truncates):
 
 ```bash
-gh issue view <N> --comments
+gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
+  --jq '[.[] | select(.body|startswith("## QC round"))] | .[-4:] | .[].body'
 ```
 
 * **Owner triage mode:** when the owner brought manual-test findings
@@ -106,8 +108,11 @@ qc: apply round <R> fixes
 Post the round's fixes comment (titled `## QC round <R>: fixes`) on the
 issue:
 
-* **Per finding:** `fixed` (what changed, one sentence) or `skipped` (why,
-  e.g. escalated as a design call).
+* **Per finding:** `fixed — <file:line at the checkpoint commit>` (what
+  changed, one sentence) or `skipped` (why, e.g. escalated as a design
+  call). The anchors are load-bearing: verify reads them instead of
+  re-deriving every fix's location (round 5's verify spent ~60% of its
+  tokens reconstructing anchors this comment already could have carried).
 * **Plus:** any behavior-changing lint flags from phase 2, subsection C.
 * **Audience:** this comment is what `/feature-verify` and the owner read.
 

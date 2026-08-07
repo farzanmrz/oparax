@@ -25,8 +25,11 @@ harnesses (the scripts, the gates, the gate questions) except these two rows.
 
 ## 1. QC-completeness guard (before anything else)
 
+The guard needs marker TITLES only — never pull the full thread for it:
+
 ```bash
-gh issue view <N> --comments
+gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
+  --jq '.[] | select(.body|startswith("## QC round")) | (.body|split("\n")[0])'
 ```
 
 * **Required markers:** the latest `## QC round <R>` family must include the

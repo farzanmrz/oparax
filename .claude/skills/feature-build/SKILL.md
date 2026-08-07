@@ -81,8 +81,9 @@ pnpm exec tsc --noEmit
 
 ## Hard rules
 
-* **Never push, never branch, never open PRs.** No builds or lint here: that
-  is `/feature-qc`.
+* **Never push, never branch, never open PRs.** No `pnpm build` here: that
+  is `/feature-qc`. Lint runs exactly once, as the phase-3 exit sweep, never
+  mid-task.
 * **No browser here, ever:** build never opens a browser (not
   `agent-browser`, not an MCP surface) and never dispatches a browser agent.
   Proving behavior in a rendered page is the owner's manual check.
@@ -97,6 +98,21 @@ pnpm exec tsc --noEmit
 
 ## 3. Exit: STOP when built
 
+* **Exit lint sweep (changed files only):** before reporting, run
+
+```bash
+files=$(git diff --name-only --diff-filter=ACMR origin/beta...HEAD \
+  -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs')
+[ -n "$files" ] && echo "$files" | xargs pnpm exec biome check --write --no-errors-on-unmatched
+```
+
+  then fix every remaining diagnostic inline (the writer fixes its own lint
+  while context is hot; a behavior-changing fix like a hook-dependency edit
+  gets one flag line in the build summary), re-run `pnpm exec tsc --noEmit`,
+  and commit. Handoff contract: zero Biome diagnostics on the branch's
+  changed files, so QC's residual-lint step starts empty. Never widen to
+  `biome check .`: pre-existing findings in untouched code are QC's scope
+  call, not this build's.
 * **Stop and report** when every task is done and the last checkpoint from
   phase 2 is green: tasks completed, files touched, and any deviations or
   escalations. A compact build summary, nothing more.

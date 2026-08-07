@@ -29,8 +29,11 @@ model: inherit
   detected step and STOP with the handoff (exact command, both harness
   forms, dial). This makes `/feature-qc` safe to invoke on ANY dial as a
   pure router: the owner never needs to remember the sequence.
-* **Under /feature-qc chain (explicit opt-in):** invoke the five steps in
-  order in THIS session with no stops between. The chain's only gate is the
+* **Under /feature-qc chain (explicit opt-in):** invoke the REMAINING
+  pending steps in order in THIS session with no stops between — the chain
+  starts at the next pending marker, never at step 1. The common post-browse
+  form: after a `browsed` marker lands, `$feature-qc chain` relays
+  fix → docs → verify in one sitting. The chain's only gate is the
   verification ✋ in phase 5. The owner's chain invocation is the browser
   unlock for the browse step (the settings ask-gate still prompts).
 * **Sub-skill authority:** each sub-skill's own text governs its step;

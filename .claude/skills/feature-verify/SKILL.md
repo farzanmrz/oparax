@@ -15,11 +15,16 @@ model: inherit
 * **Dial:** run this chat on a smart dial (Claude: opus/fable; Codex:
   gpt-5.6-sol): the phase 2 report is judgment work.
 * **Inputs:** the branch diff and the issue's QC round comments (`findings`,
-  `browsed`, `fixes`); nothing conversational is needed.
+  `browsed`, `fixes`); nothing conversational is needed. Read fix anchors
+  from the fixes marker and spawn grounders ONLY for anchors it lacks; the
+  diff map is `git diff --stat origin/beta...HEAD` run inline, never a
+  dispatched grounder (round 5 spent ~60% of its tokens re-deriving both
+  from scratch).
 * **Exploration fan-out (Codex):** when the surface sweep spans 3+
   independent files/areas, spawn PARALLEL `cx_grounder` instances, named
-  explicitly (≤6 threads); Codex never fans out unprompted. Claude Code
-  batches independent Agent calls natively.
+  explicitly (≤6 threads); Codex never fans out unprompted. Spawn with
+  `fork_turns: "none"` — a typed agent plus a full-history fork is always
+  rejected. Claude Code batches independent Agent calls natively.
 
 ## 1. Re-prove
 

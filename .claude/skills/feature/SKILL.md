@@ -62,7 +62,7 @@ gh issue view <N> --comments
 ```
 
 **Marker format:** each new QC marker comment is titled `## QC round <R>: <suffix>`
-(`findings`, `fixes`, `docs`, `verified`). Match markers by the
+(`findings`, `browsed`, `fixes`, `docs`, `verified`). Match markers by the
 `## QC round <R>` prefix plus the suffix keyword, separator-agnostic (older
 rounds used an em dash).
 
@@ -73,7 +73,8 @@ Decide the entry point from the FIRST missing marker, in order:
 | stub issue only (from /feature-plan), no spec/branch | nothing specced | `feature-spec` (phase 2) |
 | `ft/N` + issue, no commits beyond the branch cut | planned, not built | build (phase 3, owner picks harness) |
 | build commits, no `## QC round` comments | built | `feature-find` |
-| findings marker without matching fixes marker | adjudicated | `feature-fix` |
+| findings marker without browsed marker | adjudicated | `feature-browse` (OWNER-TRIGGERED: surface it as the pending step, never auto-run) |
+| browsed marker without matching fixes marker | browsed | `feature-fix` |
 | fixes marker without docs marker | fixed | `feature-docs` |
 | docs marker without verified marker | synced | `feature-verify` |
 | verified marker present | verified | triage/`feature-ship` (phase 5, ✋) |
