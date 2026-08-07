@@ -17,6 +17,7 @@ export type FeedDraft = {
   postingClaimedAt: string | null;
   postedUrl: string | null;
   newsSynthesis: string | null;
+  versionCount: number;
 };
 export type FeedSourceView = {
   kind: "x" | "article" | "headline";
@@ -25,6 +26,7 @@ export type FeedSourceView = {
   url: string | null;
   postedAt: string | null;
   gone: boolean;
+  fresh: boolean;
 };
 export type FeedItem = {
   storyId: string;

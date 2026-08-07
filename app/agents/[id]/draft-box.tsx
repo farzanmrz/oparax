@@ -1,21 +1,21 @@
 "use client";
 
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, ExternalLinkIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import twitterText from "twitter-text";
-
 import type { FeedDraft } from "@/lib/agent/feed-shared";
 import { cn } from "@/lib/utils";
+import { editDraft } from "./actions";
 import { PostToXControl } from "./post-to-x-control";
 
 function CharCounter({ text, xLimit }: { text: string; xLimit: number }) {
   const length = twitterText.parseTweet(text).weightedLength;
-  const overLimit = length > xLimit;
-  const nearLimit = !overLimit && length / xLimit > 0.9;
   return (
     <span
       className={cn(
-        "font-mono text-xs tabular-nums",
-        nearLimit ? "text-warning" : overLimit ? "text-destructive" : "text-muted-foreground",
+        "font-mono text-[11.5px] tabular-nums",
+        length > xLimit ? "text-destructive" : "text-text-count",
       )}
     >
       {length} chars
@@ -23,87 +23,178 @@ function CharCounter({ text, xLimit }: { text: string; xLimit: number }) {
   );
 }
 
-// Read-only by owner decision: inline editing, Save, and the version-history dialog were
-// removed as premature — the draft box shows the winner and offers Post, nothing else.
-// Layout (owner spec): char count top-right, no divider, and the post control IS the box's
-// full-width bottom footer (overflow-hidden clips it to the rounded corners).
 export function DraftBox({
   draft,
   charLimit,
+  edited,
+  onDraftReplaced,
   xLinked,
 }: {
   draft: FeedDraft;
   charLimit: number;
+  edited: boolean;
+  onDraftReplaced: (draftId: string, text: string) => void;
   xLinked: boolean;
 }) {
+  const router = useRouter();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [text, setText] = useState(draft.draftText);
+  const [baseline, setBaseline] = useState(draft.draftText);
+  const [error, setError] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
+  const [optimisticallyEdited, setOptimisticallyEdited] = useState(false);
+
+  useEffect(() => {
+    setText(draft.draftText);
+    setBaseline(draft.draftText);
+    setError(null);
+    setOptimisticallyEdited(false);
+  }, [draft.draftId, draft.draftText]);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [text]);
+
   const confirmed = Boolean(draft.postedAt && draft.postedUrl);
   const ambiguous = Boolean(draft.postedAt && !draft.postedUrl);
   const posting = Boolean(draft.postingClaimedAt);
+  const dirty = text !== baseline;
+  const readOnly = posting || confirmed || committing;
+
+  async function commitEdit() {
+    if (!dirty || committing) return;
+    const previous = baseline;
+    const trimmed = text.trim();
+    if (trimmed === baseline.trim()) {
+      setText(baseline);
+      return;
+    }
+
+    setError(null);
+    setCommitting(true);
+    setOptimisticallyEdited(true);
+    const result = await editDraft(draft.draftId, trimmed);
+    if (!result.ok) {
+      setText(previous);
+      setOptimisticallyEdited(false);
+      setError(result.error);
+      setCommitting(false);
+      return;
+    }
+
+    setText(trimmed);
+    setBaseline(trimmed);
+    setCommitting(false);
+    onDraftReplaced(result.draftId, trimmed);
+    router.refresh();
+  }
 
   return (
-    <section className="mt-[clamp(13px,1.5cqw,17px)] overflow-hidden rounded-[7px] border bg-secondary">
-      <div className="px-[clamp(14px,1.6cqw,18px)] pt-[clamp(10px,1.2cqw,13px)] pb-[clamp(13px,1.5cqw,17px)]">
-        <div className="flex justify-end">
-          <CharCounter text={draft.draftText} xLimit={charLimit} />
-        </div>
-        <p className="mt-1 whitespace-pre-wrap font-sans w-full text-[clamp(14.5px,1.68cqw,17px)] leading-[1.5] text-foreground">
-          {draft.draftText}
-        </p>
+    <section className="rounded-b-lg border-t border-[var(--draft-border-top)] bg-draft-bg">
+      <div className="px-[14px] pt-4 desk:px-6">
+        <textarea
+          aria-label="Draft text"
+          className="field-sizing-content min-h-[3rem] w-full resize-none overflow-hidden border-0 bg-transparent p-0 font-draft text-[15px] leading-[1.52] text-text-draft caret-primary outline-none selection:bg-primary/30 desk:text-[16.5px]"
+          onBlur={() => void commitEdit()}
+          onChange={(event) => setText(event.target.value)}
+          readOnly={readOnly}
+          ref={textareaRef}
+          rows={1}
+          spellCheck={false}
+          value={text}
+        />
+        {error ? (
+          <p className="mt-2 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
       </div>
-      {posting ? (
-        <span className="flex h-11 w-full items-center justify-center border-t bg-muted text-sm text-muted-foreground">
-          Posting…
-        </span>
-      ) : confirmed ? (
-        <a
-          className="animate-in fade-in duration-200 flex h-11 w-full items-center justify-center gap-1.5 border-t border-primary/35 bg-primary/12 text-sm text-accent-foreground"
-          href={draft.postedUrl ?? "#"}
-          rel="noreferrer"
-          target="_blank"
-        >
-          <CheckIcon aria-hidden="true" className="size-3.5" />
-          Posted
-        </a>
-      ) : ambiguous ? (
-        <span
-          className="flex h-11 w-full items-center justify-center gap-1.5 border-t border-warning/35 bg-warning/12 text-sm text-warning"
-          title="Couldn't confirm this reached X — check your account on X"
-        >
-          <svg
-            aria-hidden="true"
-            className="size-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M12 8v4" stroke="currentColor" strokeLinecap="round" strokeWidth="2.2" />
-            <circle cx="12" cy="16" fill="currentColor" r="0.9" />
-            <path
-              d="M5 22h14l-2-13H7L5 22z"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-            <path
-              d="M9 9h6"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-          Unconfirmed
-        </span>
-      ) : (
-        <PostToXControl
+      <div className="mt-3 flex flex-col desk:flex-row desk:items-center desk:justify-between desk:px-6 desk:pb-4">
+        <div className="flex items-center justify-end gap-2 px-[14px] pb-2 desk:justify-start desk:px-0 desk:pb-0">
+          <CharCounter text={text} xLimit={charLimit} />
+          {edited || optimisticallyEdited ? (
+            <span className="text-[11.5px] text-warning">edited</span>
+          ) : null}
+        </div>
+        <DraftAction
+          ambiguous={ambiguous}
           charLimit={charLimit}
+          confirmed={confirmed}
+          disabled={dirty || committing}
           draftId={draft.draftId}
-          draftText={draft.draftText}
+          draftText={text}
+          postedUrl={draft.postedUrl}
+          posting={posting}
           xLinked={xLinked}
         />
-      )}
+      </div>
     </section>
+  );
+}
+
+function DraftAction({
+  posting,
+  confirmed,
+  ambiguous,
+  postedUrl,
+  disabled,
+  draftId,
+  draftText,
+  charLimit,
+  xLinked,
+}: {
+  posting: boolean;
+  confirmed: boolean;
+  ambiguous: boolean;
+  postedUrl: string | null;
+  disabled: boolean;
+  draftId: string;
+  draftText: string;
+  charLimit: number;
+  xLinked: boolean;
+}) {
+  const statusClass =
+    "flex h-10 w-full items-center justify-center gap-1.5 px-4 text-sm desk:h-[30px] desk:w-auto desk:rounded-md";
+
+  if (posting) {
+    return (
+      <span className={cn(statusClass, "bg-primary/50 text-primary-foreground")}>Posting…</span>
+    );
+  }
+  if (confirmed) {
+    return (
+      <a
+        className={cn(statusClass, "bg-success/12 text-success")}
+        href={postedUrl ?? "#"}
+        rel="noreferrer"
+        target="_blank"
+      >
+        <CheckIcon aria-hidden="true" className="size-3.5" />
+        Posted · view on X
+        <ExternalLinkIcon aria-hidden="true" className="size-3" />
+      </a>
+    );
+  }
+  if (ambiguous) {
+    return (
+      <span
+        className={cn(statusClass, "bg-warning/12 text-warning")}
+        title="Couldn't confirm this reached X — check your account on X"
+      >
+        Unconfirmed
+      </span>
+    );
+  }
+  return (
+    <PostToXControl
+      charLimit={charLimit}
+      disabled={disabled}
+      draftId={draftId}
+      draftText={draftText}
+      xLinked={xLinked}
+    />
   );
 }

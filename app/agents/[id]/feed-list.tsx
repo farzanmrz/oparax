@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import {
   FEED_PAGE_SIZE,
   FEED_REFRESH_CHUNK,
@@ -11,7 +10,7 @@ import {
   type FeedItem,
 } from "@/lib/agent/feed-shared";
 import { fetchOwnedFeedPage } from "./feed-actions";
-import { FeedItemCard } from "./feed-item";
+import { FeedCardSkeleton, FeedItemCard } from "./feed-item";
 
 type State = { items: FeedItem[]; nextCursor: FeedCursor | null };
 const older = (item: FeedItem, cursor: FeedCursor) =>
@@ -74,7 +73,7 @@ export function FeedList({
       ([entry]) => {
         if (entry.isIntersecting) void loadMoreRef.current();
       },
-      { rootMargin: "600px 0px" },
+      { rootMargin: "500px 0px" },
     );
     if (sentinel.current) observer.observe(sentinel.current);
     return () => observer.disconnect();
@@ -126,20 +125,16 @@ export function FeedList({
       </div>
     );
   return (
-    <div className="flex flex-col gap-4 min-[700px]:gap-6">
+    <div className="flex flex-col gap-4 desk:gap-6">
       {state.items.map((item) => (
         <FeedItemCard charLimit={charLimit} item={item} key={item.storyId} xLinked={xLinked} />
       ))}
       <div ref={sentinel} />
-      {state.nextCursor && !loading && !error ? (
-        <Button className="min-h-11 self-start" onClick={() => void loadMore()} variant="ghost">
-          Load stories
-        </Button>
-      ) : null}
       {loading ? (
-        <div className="flex justify-center py-3">
-          <Spinner />
-        </div>
+        <>
+          <FeedCardSkeleton />
+          <FeedCardSkeleton />
+        </>
       ) : null}
       {error ? (
         <div className="flex items-center gap-2">

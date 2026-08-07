@@ -13,8 +13,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { checkXPostable, resolveXTier, xUnpostableMessage } from "@/lib/agent/desk-config";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
+import { getXLinkState } from "@/lib/x/link-state";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -22,6 +26,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
  *  20-account cap dropped (see the function comment below), which the plain `ActionResult`'s
  *  `{ ok: true }` has no room for. */
 export type AddHandlesResult = { ok: true; dropped: number } | { ok: false; error: string };
+export type EditDraftResult = { ok: true; draftId: string } | { ok: false; error: string };
 
 /** Pause a desk: Oparax stops watching the beat and stops posting on its behalf. */
 export async function pauseDesk(id: string): Promise<ActionResult> {
@@ -152,6 +157,139 @@ export async function addTrackedHandles(id: string, raw: string): Promise<AddHan
   // otherwise show a stale name/dot after a create/pause/rename.
   revalidatePath("/agents", "layout");
   return { ok: true, dropped };
+}
+
+const editDraftIdSchema = z.string().uuid();
+
+/**
+ * Replace the current winner with a human-edited winner while preserving its metadata and
+ * lineage. The owner-scoped client proves ownership and inserts the replacement; the admin
+ * client performs the compare-and-set dethrone and creates the zero-cost human-edit ledger row
+ * required by drafts.model_call_id.
+ */
+export async function editDraft(draftId: string, newText: string): Promise<EditDraftResult> {
+  const parsedId = editDraftIdSchema.safeParse(draftId);
+  if (!parsedId.success) return { ok: false, error: "Select a draft to edit." };
+  const trimmedText = newText.trim();
+  if (!trimmedText) return { ok: false, error: "Draft text can't be empty." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Please sign in again." };
+
+  const { data: parentDraft, error: parentError } = await supabase
+    .from("drafts")
+    .select(
+      "id, source_post_id, agent_id, story_id, platform, news_title, news_synthesis, translation",
+    )
+    .eq("id", parsedId.data)
+    .maybeSingle();
+  if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
+
+  const { data: currentWinner, error: currentWinnerError } = await supabase
+    .from("drafts")
+    .select(
+      "id, posted_at, posted_url, posting_claimed_at, news_title, news_synthesis, translation",
+    )
+    .eq("source_post_id", parentDraft.source_post_id)
+    .eq("agent_id", parentDraft.agent_id)
+    .eq("platform", parentDraft.platform)
+    .eq("is_winner", true)
+    .maybeSingle();
+  if (currentWinnerError) {
+    return { ok: false, error: "Could not verify this draft's status. Please try again." };
+  }
+  if (currentWinner?.posted_at && currentWinner.posted_url) {
+    return { ok: false, error: "This draft was already posted to X and can't be edited." };
+  }
+  if (currentWinner?.posting_claimed_at) {
+    return { ok: false, error: "This draft is currently being posted to X. Please wait a moment." };
+  }
+
+  if (parentDraft.platform === "x") {
+    const { tier } = await getXLinkState();
+    const postable = checkXPostable(trimmedText, resolveXTier(tier));
+    if (!postable.ok) {
+      return { ok: false, error: xUnpostableMessage(postable.reason) };
+    }
+  }
+
+  if (!currentWinner) {
+    return { ok: false, error: "This draft was just edited elsewhere — refresh and try again." };
+  }
+
+  const admin = createAdminClient();
+  const { data: dethroned, error: dethroneError } = await admin
+    .from("drafts")
+    .update({ is_winner: false })
+    .eq("id", currentWinner.id)
+    .eq("is_winner", true)
+    .is("posted_url", null)
+    .is("posting_claimed_at", null)
+    .select("id");
+  if (dethroneError) return { ok: false, error: "Could not save your edit. Please try again." };
+  if (!dethroned?.length) {
+    return { ok: false, error: "This draft was just edited elsewhere — refresh and try again." };
+  }
+
+  const { data: modelCall, error: modelCallError } = await admin
+    .from("model_calls")
+    .insert({
+      owner_id: user.id,
+      stage: "manual_edit",
+      role: "primary",
+      model: "human-edit",
+      output: trimmedText,
+      reasoning: null,
+      usage: null,
+      cost_usd: 0,
+      generation_id: null,
+      ref_kind: "source_post",
+      ref_id: parentDraft.source_post_id,
+    })
+    .select("id")
+    .single();
+  if (modelCallError || !modelCall) {
+    await admin.from("drafts").update({ is_winner: true }).eq("id", currentWinner.id);
+    return { ok: false, error: "Could not save your edit. Please try again." };
+  }
+
+  const { data: insertedDraft, error: insertError } = await supabase
+    .from("drafts")
+    .insert({
+      source_post_id: parentDraft.source_post_id,
+      agent_id: parentDraft.agent_id,
+      story_id: parentDraft.story_id,
+      platform: parentDraft.platform,
+      model_call_id: modelCall.id,
+      is_winner: true,
+      judge_verdict: null,
+      parent_draft_id: currentWinner.id,
+      news_title: currentWinner.news_title,
+      news_synthesis: currentWinner.news_synthesis,
+      translation: currentWinner.translation,
+    })
+    .select("id")
+    .single();
+  if (insertError || !insertedDraft) {
+    const { error: restoreError } = await admin
+      .from("drafts")
+      .update({ is_winner: true })
+      .eq("id", currentWinner.id);
+    if (restoreError) {
+      return {
+        ok: false,
+        error:
+          "Could not save your edit, and the previous draft's status could not be restored. Please refresh and check the feed before retrying.",
+      };
+    }
+    return { ok: false, error: "Could not save your edit. Please try again." };
+  }
+
+  revalidatePath(`/agents/${parentDraft.agent_id}`, "layout");
+  return { ok: true, draftId: insertedDraft.id };
 }
 
 /** Remove a tracked X handle — same read-modify-write shape as `addTrackedHandle`. */

@@ -1,82 +1,122 @@
-import { ArrowUpRightIcon, CheckCircle2Icon, GlobeIcon, TriangleAlertIcon } from "lucide-react";
-import Link from "next/link";
+"use client";
 
+import { CheckCircle2Icon, CircleXIcon, GlobeIcon } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { FeedItem } from "@/lib/agent/feed-shared";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import type { FeedDraft, FeedItem } from "@/lib/agent/feed-shared";
 import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
 import { DraftBox } from "./draft-box";
+import { DraftMenu } from "./draft-menu";
 import { FeedSetupProgress } from "./feed-setup-progress";
 import { RelativeTime } from "./relative-time";
 
-function getSourceLabel(source: FeedItem["source"]) {
+function getSourceLabel(source: FeedItem["source"]): string {
   return source.kind === "x"
     ? source.authorHandle
       ? `@${source.authorHandle}`
-      : "source"
-    : (source.siteName ?? "source");
+      : "X source"
+    : (source.siteName ?? "News source");
 }
 
-function SourceNotch({ source, createdAt }: { source: FeedItem["source"]; createdAt: string }) {
-  const isX = source.kind === "x";
-  const target = source.url && !source.gone ? source.url : null;
-  const sourceFill = isX
-    ? "bg-[oklch(0.17_0.004_260)] text-foreground"
-    : "bg-[oklch(0.44_0.05_55)] text-[#faf6ee]";
-  const timeFill = isX
-    ? "bg-[oklch(0.23_0.004_260)] text-[rgba(242,239,232,0.6)]"
-    : "bg-[oklch(0.505_0.05_55)] text-[rgba(250,246,238,0.72)]";
-  const icon = isX ? (
-    <svg aria-hidden="true" fill="currentColor" height="11" viewBox="0 0 24 24" width="11">
+function SourceIcon({ isX }: { isX: boolean }) {
+  return isX ? (
+    <svg aria-hidden="true" fill="currentColor" height="12" viewBox="0 0 24 24" width="12">
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
     </svg>
   ) : (
-    <GlobeIcon aria-hidden="true" className="size-[12px]" />
+    <GlobeIcon aria-hidden="true" className="size-[13px] text-[oklch(0.82_0.05_85)]" />
   );
-  const label = getSourceLabel(source);
+}
 
-  const segment = (
+function SourceDeletedAlert() {
+  return (
     <>
-      <span
-        className={cn(
-          "flex shrink-0 items-center gap-[7px] whitespace-nowrap px-2.5 py-1",
-          sourceFill,
-        )}
-      >
-        {icon}
-        <span className="text-[12px] font-medium leading-none">{label}</span>
-        {target ? <ArrowUpRightIcon aria-hidden="true" className="size-[9px] opacity-50" /> : null}
+      <span className="hidden min-w-0 shrink-[3] items-center gap-1 rounded-sm bg-destructive/12 px-2 py-1 text-[11px] text-danger-text desk:flex">
+        <CircleXIcon aria-hidden="true" className="size-3 shrink-0" />
+        <span className="truncate">source deleted</span>
       </span>
-      <span className={cn("shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px]", timeFill)}>
-        <RelativeTime iso={source.postedAt ?? createdAt} />
-      </span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            aria-label="Source deleted"
+            className="-my-1 flex size-11 shrink-0 items-center justify-center rounded-md text-danger-text outline-none focus-visible:ring-2 focus-visible:ring-ring desk:hidden"
+            type="button"
+          >
+            <CircleXIcon aria-hidden="true" className="size-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end">
+          <PopoverDescription>
+            The original post was deleted by its author — you can still review and post this draft.
+          </PopoverDescription>
+        </PopoverContent>
+      </Popover>
     </>
   );
+}
 
-  const classes =
-    "flex max-w-[min(60cqw,24rem)] items-stretch overflow-hidden rounded-b-[5px] transition hover:brightness-125";
+function SourceStrip({
+  source,
+  createdAt,
+  draft,
+  onDraftReplaced,
+}: {
+  source: FeedItem["source"];
+  createdAt: string;
+  draft: FeedDraft;
+  onDraftReplaced: (draftId: string, text: string) => void;
+}) {
+  const isX = source.kind === "x";
+  const label = getSourceLabel(source);
 
   return (
-    <div className="absolute top-0 left-[clamp(13px,1.9cqw,20px)] flex items-center">
-      {target ? (
-        <a
-          className={cn(classes, "no-underline", "hover:no-underline", "text-inherit")}
-          href={target}
-          rel="noreferrer"
-          target="_blank"
-        >
-          {segment}
-        </a>
-      ) : (
-        <span className={classes}>{segment}</span>
+    <div
+      className={cn(
+        "flex h-[var(--strip-h-mobile)] items-center gap-2 rounded-t-lg border-b border-[var(--band-border)] pr-0 pl-[18px] text-[13.5px] desk:h-[var(--strip-h-web)] desk:pr-1 desk:pl-[14px] desk:text-[12.5px]",
+        isX ? "bg-[image:var(--strip-x-grad)]" : "bg-[image:var(--strip-news-grad)]",
       )}
-      {source.gone ? (
-        <span className="ml-2 flex items-center gap-1 rounded-b-[5px] bg-warning px-2.5 py-1 text-[11px] text-background">
-          <TriangleAlertIcon aria-hidden="true" className="size-[11px]" />
-          No longer on X
-        </span>
-      ) : null}
+    >
+      <span className="shrink-0">
+        <SourceIcon isX={isX} />
+      </span>
+      <span
+        className={cn(
+          "shrink-0 whitespace-nowrap font-medium desk:min-w-0 desk:shrink desk:truncate",
+          isX ? "text-text-handle-x" : "text-text-handle-news",
+        )}
+      >
+        {label}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          source.fresh ? "animate-[op-pulse_2s_ease-in-out_infinite] bg-warning" : "bg-warn-stale",
+        )}
+      />
+      <span className="shrink-0 whitespace-nowrap text-[13px] text-text-muted desk:min-w-0 desk:shrink-[2] desk:truncate desk:text-xs">
+        <RelativeTime iso={source.postedAt ?? createdAt} />
+      </span>
+      <span className="min-w-0 flex-1" />
+      {source.gone ? <SourceDeletedAlert /> : null}
+      <DraftMenu
+        canRevert={!Boolean(draft.postedAt && draft.postedUrl)}
+        draftId={draft.draftId}
+        onDraftReplaced={onDraftReplaced}
+        sourceGone={source.gone}
+        sourceLabel={label}
+        sourceUrl={source.url}
+        versionCount={draft.versionCount}
+      />
     </div>
   );
 }
@@ -91,24 +131,79 @@ export function FeedItemCard({
   xLinked: boolean;
 }) {
   const winner = item.winners.x ?? Object.values(item.winners)[0];
-  if (!winner) return null;
-  const cardClass = item.source.gone
-    ? "@container relative rounded-lg border border-dashed border-warning/60 bg-card p-[clamp(15px,2.1cqw,22px)] pb-[clamp(15px,1.9cqw,20px)] pt-[clamp(31px,3.4cqw,38px)] shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
-    : "@container relative rounded-lg border border-border bg-card p-[clamp(15px,2.1cqw,22px)] pb-[clamp(15px,1.9cqw,20px)] pt-[clamp(31px,3.4cqw,38px)] shadow-[0_12px_32px_rgba(0,0,0,0.35)]";
+  const [activeDraft, setActiveDraft] = useState<FeedDraft | null>(winner ?? null);
+
+  useEffect(() => {
+    setActiveDraft(winner ?? null);
+  }, [winner]);
+
+  if (!activeDraft) return null;
+
+  function replaceDraft(draftId: string, text: string) {
+    setActiveDraft((current) =>
+      current
+        ? {
+            ...current,
+            draftId,
+            draftText: text,
+            postedAt: null,
+            postingClaimedAt: null,
+            postedUrl: null,
+            versionCount: current.versionCount + 1,
+          }
+        : current,
+    );
+  }
 
   return (
-    <article className={cardClass} style={{ containerType: "inline-size" }}>
-      <SourceNotch createdAt={item.createdAt} source={item.source} />
-      <h2 className="text-[clamp(16px,1.9cqw,21px)] font-semibold leading-[1.28] tracking-[-0.015em] text-foreground text-pretty">
-        {item.newsTitle}
-      </h2>
-      {/* Owner decision: no conditional omission — a null synthesis renders the literal
-          placeholder. The 100-post replay backfills real syntheses for recent history. */}
-      <p className="mt-[clamp(11px,1.3cqw,14px)] border-t border-border pt-[clamp(11px,1.3cqw,14px)] text-[clamp(13.5px,1.5cqw,15.5px)] leading-[1.6] text-muted-foreground text-pretty">
-        {winner.newsSynthesis ?? "NO SYNTHESIS"}
-      </p>
-      <DraftBox charLimit={charLimit} draft={winner} xLinked={xLinked} />
+    <article
+      className={cn(
+        "rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] shadow-[var(--card-shadow)]",
+        item.source.gone && "border-dashed border-destructive",
+      )}
+    >
+      <SourceStrip
+        createdAt={item.createdAt}
+        draft={activeDraft}
+        onDraftReplaced={replaceDraft}
+        source={item.source}
+      />
+      <div className="px-[14px] pt-4 pb-[17px] desk:px-6 desk:pb-[19px]">
+        <h2 className="text-pretty text-[17.5px] leading-[1.3] font-semibold tracking-[-0.017em] text-text-title desk:text-[20px]">
+          {item.newsTitle}
+        </h2>
+        <p className="mt-2.5 text-pretty text-[13.5px] leading-[1.6] text-text-body desk:mt-3 desk:text-[14.5px]">
+          {activeDraft.newsSynthesis ?? "NO SYNTHESIS"}
+        </p>
+      </div>
+      <DraftBox
+        charLimit={charLimit}
+        draft={activeDraft}
+        edited={activeDraft.versionCount > 0}
+        onDraftReplaced={replaceDraft}
+        xLinked={xLinked}
+      />
     </article>
+  );
+}
+
+export function FeedCardSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="animate-[op-skeleton_1s_ease-in-out_infinite] overflow-hidden rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))]"
+    >
+      <div className="h-[var(--strip-h-mobile)] border-b border-[var(--band-border)] bg-[image:var(--strip-x-grad)] desk:h-[var(--strip-h-web)]" />
+      <div className="space-y-3 px-[14px] py-5 desk:px-6">
+        <div className="h-5 w-4/5 rounded-md bg-white/10" />
+        <div className="h-4 w-full rounded-md bg-white/6" />
+        <div className="h-4 w-3/5 rounded-md bg-white/6" />
+      </div>
+      <div className="space-y-3 border-t border-[var(--draft-border-top)] bg-draft-bg px-[14px] py-4 desk:px-6">
+        <div className="h-4 w-11/12 rounded-md bg-white/10" />
+        <div className="h-4 w-3/4 rounded-md bg-white/10" />
+      </div>
+    </div>
   );
 }
 
@@ -125,21 +220,21 @@ const EMPTY: Record<
   { title: string; body: string; actionLabel?: string; actionHref?: string }
 > = {
   ready: {
-    title: "Your voice is ready",
+    title: "Your Voice Is Ready",
     body: "You can review it in Voice. New stories and drafts will appear here as soon as your agent finds something on-beat.",
   },
   paused: {
-    title: "Your agent is paused",
+    title: "Your Agent Is Paused",
     body: "It won't create new drafts until you resume it from the agent controls.",
   },
   no_sources: {
-    title: "Add a source to get drafts",
+    title: "Add a Source to Get Drafts",
     body: "Your agent needs at least one tracked X account before it can watch for on-beat posts.",
     actionLabel: "Add sources",
-    actionHref: "/setup",
+    actionHref: "/sources",
   },
   extraction_missing: {
-    title: "Finish setting up your agent",
+    title: "Finish Setting Up Your Agent",
     body: "Your agent still needs to learn your voice before it can create drafts.",
     actionLabel: "Go to Voice",
     actionHref: "/voice",
@@ -153,10 +248,11 @@ export function FeedEmptyState({
   deskId: string;
   readonly readiness: FeedReadiness;
 }) {
-  if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed")
+  if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed") {
     return <FeedSetupProgress deskId={deskId} initial={readiness.initial} />;
+  }
   const content = EMPTY[readiness.kind];
-  if (readiness.kind === "ready")
+  if (readiness.kind === "ready") {
     return (
       <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status">
         <CheckCircle2Icon aria-hidden="true" />
@@ -164,10 +260,11 @@ export function FeedEmptyState({
         <AlertDescription className="text-foreground/90">{content.body}</AlertDescription>
       </Alert>
     );
+  }
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-14 text-center">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border px-4 py-14 text-center">
       <h3 className="text-sm font-semibold">{content.title}</h3>
-      <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">{content.body}</p>
+      <p className="mx-auto max-w-sm text-pretty text-sm text-muted-foreground">{content.body}</p>
       {content.actionHref ? (
         <Button asChild className="min-h-11" size="sm">
           <Link href={`/agents/${deskId}${content.actionHref}`}>{content.actionLabel}</Link>

@@ -8,12 +8,14 @@ import { toast } from "sonner";
 // twttr object), never a named `parseTweet`, so use the default and read parseTweet off it.
 import twitterText from "twitter-text";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { publishDraftToX } from "@/lib/x/actions";
 
 export function PostToXControl({
   draftId,
   draftText,
   charLimit,
+  disabled = false,
   xLinked,
 }: {
   draftId: string;
@@ -21,6 +23,7 @@ export function PostToXControl({
   /** The desk's X ceiling — 280, or 25,000 when the posting account's stored `x_accounts.tier`
    *  is premium (resolved by `resolveXTier` in page.tsx). */
   charLimit: number;
+  disabled?: boolean;
   xLinked: boolean;
 }): JSX.Element {
   const pathname = usePathname();
@@ -30,7 +33,11 @@ export function PostToXControl({
 
   if (!xLinked) {
     return (
-      <Button asChild className="h-11 w-full rounded-none border-t" variant="outline">
+      <Button
+        asChild
+        className="h-10 w-full rounded-none desk:h-[30px] desk:w-auto desk:rounded-md"
+        variant="outline"
+      >
         {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X.
             returnTo brings the reporter back to this exact desk page after linking. */}
         <a href={`/auth/x?returnTo=${encodeURIComponent(pathname)}`}>Connect X</a>
@@ -70,15 +77,18 @@ export function PostToXControl({
   };
 
   return (
-    <div className="flex w-full flex-col">
+    <div className="flex w-full flex-col desk:w-auto">
       {error ? (
-        <p className="px-[clamp(14px,1.6cqw,18px)] pb-2 text-sm text-destructive" role="alert">
+        <p className="px-[14px] pb-2 text-sm text-destructive desk:px-0" role="alert">
           {error}
         </p>
       ) : null}
       <Button
-        className="h-11 w-full rounded-none"
-        disabled={isPending || !parsed.valid || overLimit}
+        className={cn(
+          "h-10 w-full rounded-none px-4 desk:h-[30px] desk:w-auto desk:rounded-md",
+          isPending && "bg-primary/50",
+        )}
+        disabled={disabled || isPending || !parsed.valid || overLimit}
         onClick={handleConfirm}
       >
         {isPending ? "Posting…" : "Post"}

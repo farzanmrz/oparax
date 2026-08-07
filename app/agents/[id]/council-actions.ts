@@ -11,7 +11,12 @@
 
 import type { CouncilDetail, DraftHistoryDetail } from "@/lib/agent/council-query";
 import { queryCouncilDetail, queryDraftHistory } from "@/lib/agent/council-query";
+import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
 import { createClient } from "@/lib/supabase/server";
+
+export type DraftReasoningResult =
+  | { state: "found"; reasoning: string; edited: boolean }
+  | { state: "withheld" | "none"; reasoning: null; edited: boolean };
 
 export async function fetchCouncilDetail(
   sourcePostId: string,
@@ -24,4 +29,56 @@ export async function fetchCouncilDetail(
 export async function fetchDraftHistory(winningDraftId: string): Promise<DraftHistoryDetail> {
   const supabase = await createClient();
   return queryDraftHistory(supabase, winningDraftId);
+}
+
+export async function getDraftReasoning(draftId: string): Promise<DraftReasoningResult> {
+  const supabase = await createClient();
+  const { data: base, error: baseError } = await supabase
+    .from("drafts")
+    .select("source_post_id, agent_id")
+    .eq("id", draftId)
+    .maybeSingle();
+  if (baseError) throw baseError;
+  if (!base) return { state: "none", reasoning: null, edited: false };
+
+  const { data: drafts, error: draftsError } = await supabase
+    .from("drafts")
+    .select("id, parent_draft_id, model_call_id")
+    .eq("source_post_id", base.source_post_id)
+    .eq("agent_id", base.agent_id);
+  if (draftsError) throw draftsError;
+
+  const callIds = [...new Set((drafts ?? []).map((draft) => draft.model_call_id))];
+  const { data: calls, error: callsError } = await supabase
+    .from("model_calls")
+    .select("id, model, reasoning, usage")
+    .in("id", callIds);
+  if (callsError) throw callsError;
+
+  const draftsById = new Map((drafts ?? []).map((draft) => [draft.id, draft]));
+  const callsById = new Map((calls ?? []).map((call) => [call.id, call]));
+  const visited = new Set<string>();
+  let cursor: string | null = draftId;
+  let edited = false;
+  let withheld = false;
+
+  while (cursor && !visited.has(cursor)) {
+    visited.add(cursor);
+    const draft = draftsById.get(cursor);
+    if (!draft) break;
+    const call = callsById.get(draft.model_call_id);
+    if (call?.model === "human-edit") {
+      edited = true;
+    } else if (call) {
+      if (call.reasoning?.trim()) {
+        return { state: "found", reasoning: call.reasoning, edited };
+      }
+      if (reasoningTraceState(call.reasoning, call.usage) === "withheld") withheld = true;
+    }
+    cursor = draft.parent_draft_id;
+  }
+
+  return withheld
+    ? { state: "withheld", reasoning: null, edited }
+    : { state: "none", reasoning: null, edited };
 }

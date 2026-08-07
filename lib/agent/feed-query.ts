@@ -46,6 +46,12 @@ type WinnerRow = {
   news_synthesis: string | null;
 };
 
+type LineageRow = {
+  id: string;
+  parent_draft_id: string | null;
+  source_post_id: string;
+};
+
 function chunks<T>(values: T[]): T[][] {
   return Array.from({ length: Math.ceil(values.length / FEED_ID_CHUNK) }, (_, i) =>
     values.slice(i * FEED_ID_CHUNK, (i + 1) * FEED_ID_CHUNK),
@@ -235,6 +241,30 @@ async function hydrate(
     if (error) throw error;
     for (const post of data ?? []) sourcePosts.set(post.id, post);
   }
+  const lineageById = new Map<string, LineageRow>();
+  for (const part of chunks([...new Set(assignments.map((row) => row.source_post_id))])) {
+    if (!part.length) continue;
+    const { data, error } = await supabase
+      .from("drafts")
+      .select("id, parent_draft_id, source_post_id")
+      .eq("agent_id", agentId)
+      .in("source_post_id", part);
+    if (error) throw error;
+    for (const row of data ?? []) lineageById.set(row.id, row);
+  }
+  function versionCount(winningDraftId: string): number {
+    const visited = new Set<string>();
+    let cursor: string | null = winningDraftId;
+    let count = 0;
+    while (cursor && !visited.has(cursor)) {
+      visited.add(cursor);
+      const parentDraftId: string | null = lineageById.get(cursor)?.parent_draft_id ?? null;
+      if (!parentDraftId) break;
+      count++;
+      cursor = parentDraftId;
+    }
+    return count;
+  }
   const sources = new Map<string, SourcePost[]>();
   for (const assignment of assignments) {
     const post = sourcePosts.get(assignment.source_post_id);
@@ -257,6 +287,7 @@ async function hydrate(
         postingClaimedAt: row.posting_claimed_at,
         postedUrl: row.posted_url,
         newsSynthesis: row.news_synthesis,
+        versionCount: versionCount(row.id),
       },
     });
   }
@@ -283,6 +314,7 @@ async function hydrate(
           : source.url,
       postedAt: source.posted_at,
       gone: lookup?.state === "gone",
+      fresh: Date.now() - new Date(source.posted_at ?? story.created_at).getTime() < 3_600_000,
     };
     return {
       storyId: story.id,
