@@ -33,7 +33,10 @@ export function MobileDeskTabs({
           <Link
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative z-10 col-span-1 flex min-h-11 min-w-0 items-center justify-center gap-1.5 px-3 text-sm font-medium outline-offset-2 transition",
+              // Four tabs share a 375px row, so the padding and gap are sized to fit the
+              // longest label ("Excluded") plus Feed's count badge without truncating — the
+              // same no-truncation rule DESIGN.md sets for mobile source names.
+              "relative z-10 col-span-1 flex min-h-11 min-w-0 items-center justify-center gap-1 px-1 text-[13px] font-medium outline-offset-2 transition",
               active
                 ? "bg-white/10 text-foreground before:absolute before:inset-x-2 before:-bottom-px before:h-0.5 before:bg-primary"
                 : "text-muted-foreground hover:text-foreground",
@@ -45,7 +48,7 @@ export function MobileDeskTabs({
             <span className="truncate">{tab.label}</span>
             {badgeCount > 0 ? (
               <Badge
-                className="h-4 min-w-4 justify-center px-1 font-mono text-[10px] tabular-nums"
+                className="h-4 min-w-4 shrink-0 justify-center px-0.5 font-mono text-[10px] tabular-nums"
                 variant="secondary"
               >
                 {formatBadgeCount(badgeCount)}
