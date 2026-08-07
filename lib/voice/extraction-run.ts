@@ -97,14 +97,17 @@ export async function startRun(agentId: string): Promise<boolean> {
     // 23505 = unique_violation: this desk has run before, so reopen its one row instead.
     if (insertError.code !== "23505") throw insertError;
 
-    const { data, error: updateError } = await admin
-      .from("voice_extraction_runs")
-      .update(fresh)
-      .eq("agent_id", agentId)
-      .or(`status.neq.running,updated_at.lt.${staleCutoff}`)
-      .select("id");
-    if (updateError) throw updateError;
-    return (data ?? []).length > 0;
+    // A PostgREST PATCH whose .or() filter names a column ("status") that the same request's
+    // SET body also writes throws 42703 "column does not exist" -- verified live against the
+    // real REST API, not a schema problem (a plain select on that column works fine). Moved
+    // into a plpgsql RPC instead, matching this codebase's existing pattern for atomic
+    // conditional writes (add_source_config, remove_source_config).
+    const { data: reclaimed, error: reclaimError } = await admin.rpc("reclaim_extraction_run", {
+      p_agent_id: agentId,
+      p_stale_cutoff: staleCutoff,
+    });
+    if (reclaimError) throw reclaimError;
+    return reclaimed === true;
   } catch (e) {
     console.error(`startRun: failed for agent ${agentId}`, e);
     return false;

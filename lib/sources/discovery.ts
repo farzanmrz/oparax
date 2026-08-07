@@ -1,8 +1,12 @@
 // lib/sources/discovery.ts
 //
-// Discovers how to detect new articles on a site (sitemap primary, RSS fallback) and
-// what a safe default retrieval policy is, from robots.txt + a handful of well-known
-// paths — no third-party discovery service. Pure I/O module: no Supabase, no React.
+// Discovers how to detect new articles on a site (sitemap primary, RSS fallback). robots.txt
+// is read for ONE purpose only — as a source of candidate sitemap URLs when a site declares
+// one there instead of (or in addition to) a conventional path (#108) — never as a retrieval
+// decision: fetching stays adaptive, decided per fetch at the poller, never declared up front
+// here (#105). robots.txt is a politeness signal, not an access mechanism, and this codebase
+// still never uses it to gate what the fetcher is willing to do. Pure I/O module: no
+// Supabase, no React.
 
 import { fetchWithTimeout } from "@/lib/http-fetch";
 
@@ -14,47 +18,23 @@ const SITEMAP_PATHS = [
 ];
 const FEED_PATHS = ["/feed", "/rss.xml", "/feed/rss"];
 
-// Bots that appear in a Disallow line even when `User-agent: *` allows generic crawling —
-// robots.txt can name a bot as blocked while leaving the wildcard rule open.
-const NAMED_BOTS = [
-  "ClaudeBot",
-  "anthropic-ai",
-  "GPTBot",
-  "CCBot",
-  "PerplexityBot",
-  "Google-Extended",
-];
+/** Same bound as sitemap.ts's NO_LASTMOD_CANDIDATE_CAP — a robots.txt declaring dozens of
+ *  sitemaps (goal.com: 35 locale variants) can't turn one onboarding attempt into dozens of
+ *  fetches. */
+const ROBOTS_CANDIDATE_CAP = 10;
 
-async function sourceFetch(endpoint: string, url: string): Promise<Response> {
-  return fetchWithTimeout("Source", endpoint, url, { method: "GET" });
-}
-
-/** Fetches robots.txt at `origin`, returning its raw text, or null if unreachable/missing
- *  (a missing robots.txt is not an error — it means no crawl policy is declared). */
-async function fetchRobotsTxt(origin: string): Promise<string | null> {
-  try {
-    const res = await sourceFetch("robots.txt", `${origin}/robots.txt`);
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  }
-}
-
-/** Extracts `Sitemap:` directive URLs from robots.txt content. */
-function extractSitemapDirectives(robotsTxt: string): string[] {
-  const urls: string[] = [];
-  for (const line of robotsTxt.split(/\r?\n/)) {
-    const match = line.match(/^\s*sitemap:\s*(\S+)/i);
-    if (match) urls.push(match[1]);
-  }
-  return urls;
+async function sourceFetch(
+  endpoint: string,
+  url: string,
+  redirect: RequestRedirect = "follow",
+): Promise<Response> {
+  return fetchWithTimeout("Source", endpoint, url, { method: "GET", redirect });
 }
 
 /** Hostnames this server must never be talked into fetching: loopback, private-range and
  *  link-local IP literals (169.254.169.254 is the cloud metadata endpoint). Matched as
  *  literals only — this is not a DNS-resolving SSRF guard, it is the cheap check that stops
- *  a hostile robots.txt from naming an internal address outright. */
+ *  a hostile site from naming an internal address outright. */
 const PRIVATE_IPV4_PATTERNS = [
   /^0\./,
   /^10\./,
@@ -69,20 +49,26 @@ const PRIVATE_IPV4_PATTERNS = [
  *  apply to the reporter's own input (it IS the site being onboarded by definition), so
  *  this is the standalone guard for that entry point. */
 export function isPrivateHostname(hostname: string): boolean {
-  // URL.hostname keeps IPv6 literals bracketed; strip so the prefix tests below apply.
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  // URL.hostname keeps IPv6 literals bracketed; strip so the prefix tests below apply. Also
+  // strip a trailing FQDN dot — found in QC review (#110): "localhost." (a valid absolute
+  // hostname per DNS) passed both the exact-match and suffix checks below unstripped, a
+  // second route to the same hole a direct "localhost." paste already had.
+  const host = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (host === "localhost" || host.endsWith(".localhost")) return true;
   if (PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(host))) return true;
   // IPv6: ::1 loopback, fc00::/7 unique-local, fe80::/10 link-local.
   return host === "::1" || /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host);
 }
 
-/** Guards a URL that came from site-controlled content — a robots.txt `Sitemap:` directive
- *  or a sitemap index's `<loc>` — before this server fetches it: http(s) only, same site as
- *  the host being onboarded (exact hostname, or a sub/parent domain of it, since apex and
- *  `www.` cross-reference each other constantly), and never a private/loopback/link-local
- *  literal. Without this a hostile site's robots.txt can point at an internal address and
- *  have the server fetch and parse it from inside its own network. */
+/** Guards a URL that came from site-controlled content — a sitemap index's `<loc>` — before
+ *  this server fetches it: http(s) only, same site as the host being onboarded (exact
+ *  hostname, or a sub/parent domain of it, since apex and `www.` cross-reference each other
+ *  constantly), and never a private/loopback/link-local literal. Without this a hostile
+ *  site's sitemap index can point at an internal address and have the server fetch and parse
+ *  it from inside its own network. */
 export function isSafeDiscoveredUrl(candidate: string, expectedHostname: string): boolean {
   let url: URL;
   try {
@@ -104,8 +90,8 @@ export function isSafeDiscoveredUrl(candidate: string, expectedHostname: string)
 /** True unless the response explicitly declares itself HTML. A soft-404 or SPA catch-all
  *  answers 200 with `text/html`, which would otherwise be read as a working sitemap/feed,
  *  parse to zero entries, and permanently skip the remaining fallbacks. A response with no
- *  content-type still passes — some servers omit it, and the `sitemap.xml.gz` robots.txt
- *  convention declares gzip rather than XML. */
+ *  content-type still passes — some servers omit it, and the `sitemap.xml.gz` convention
+ *  declares gzip rather than XML. */
 function isNotHtmlResponse(res: Response): boolean {
   const contentType = res.headers.get("content-type");
   if (!contentType) return true;
@@ -117,6 +103,27 @@ async function urlExists(url: string): Promise<boolean> {
     const res = await sourceFetch(url, url);
     return res.ok && isNotHtmlResponse(res);
   } catch {
+    return false;
+  }
+}
+
+/** Any response at all counts as reachable — even a 404 means the network layer worked.
+ *  Only a genuine transport-level error (DNS/connection failure) counts as unreachable. Found
+ *  live (2026-08-06): `sport.es` (bare apex) is unreachable outright — `fetch` throws before
+ *  any HTTP response exists — while `www.sport.es`, the exact same site, resolves fine. #109.
+ *
+ *  A 15s timeout is NOT treated as unreachable — a slow response still means something is
+ *  there. Found in QC review: `fetchWithTimeout` (lib/http-fetch.ts) rethrows a timeout as a
+ *  plain `Error` with the message `"... timed out after 15s"`, indistinguishable from a real
+ *  connection failure by `.name` alone once caught here — a slow-but-real apex site would
+ *  otherwise get misdiverted to a `www.` host that may not even exist, the opposite of what
+ *  this function exists to prevent. */
+async function isOriginReachable(origin: string): Promise<boolean> {
+  try {
+    await sourceFetch(origin, origin);
+    return true;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("timed out after")) return true;
     return false;
   }
 }
@@ -154,35 +161,148 @@ async function checkPageForRssLink(pageUrl: string): Promise<string | null> {
   }
 }
 
+/** Extracts every `Sitemap:` directive from a robots.txt body, resolved against `origin`
+ *  (the directive's own value may be relative or absolute — real sites do both), deduped.
+ *  Directive matching is case-insensitive per the robots.txt convention; malformed lines are
+ *  skipped rather than failing the whole parse. */
+function parseRobotsSitemaps(robotsTxt: string, origin: string): string[] {
+  const found = new Set<string>();
+  for (const match of robotsTxt.matchAll(/^\s*sitemap:\s*(\S+)/gim)) {
+    try {
+      found.add(new URL(match[1], origin).toString());
+    } catch {
+      // malformed directive value — skip, try the rest
+    }
+  }
+  return [...found];
+}
+
+/** Soft-prioritizes candidates whose PATH names them as news/article content — tested against
+ *  `pathname`, not the whole URL: every candidate shares `origin`, so on a hostname that
+ *  itself contains "news"/"article" (e.g. foxnews.com) a whole-URL test scores every candidate
+ *  identically and silently turns the sort into a no-op. Real signal this guards
+ *  (tycsports.com's actual recent-article sitemap is `sitemap_news_48hs.xml`, not the
+ *  first-listed `discover.xml`) but not a filter: every candidate is still tried, this only
+ *  changes the order. Stable sort — original robots.txt order is preserved within each group. */
+function sortByNewsKeyword(candidates: string[]): string[] {
+  const isNewsy = (url: string) => /news|article/i.test(new URL(url).pathname);
+  return [...candidates].sort((a, b) => Number(isNewsy(b)) - Number(isNewsy(a)));
+}
+
+/** Cheap non-emptiness probe for a sitemap-shaped URL — every real `<urlset>` or
+ *  `<sitemapindex>` entry is wrapped in a `<loc>` tag, so a body with none is either a
+ *  genuinely empty sitemap or not a sitemap at all. Found live (2026-08-06): `urlExists` alone
+ *  can't tell an empty `<urlset/>` (a real, 200-OK, non-HTML response) from a populated one —
+ *  90min.com declares an empty `news-sitemap.xml` in robots.txt that would otherwise win and
+ *  permanently shadow the working hardcoded `/sitemap.xml` fallback below. Deliberately not a
+ *  full XML parse (that's `fetchSitemapSample` in sitemap.ts, run once later by the caller on
+ *  whichever URL wins) — importing it here would be circular (sitemap.ts already imports
+ *  `isSafeDiscoveredUrl` from this module). */
+async function hasSitemapEntries(url: string): Promise<boolean> {
+  try {
+    const res = await sourceFetch(url, url, "manual");
+    if (!res.ok || !isNotHtmlResponse(res)) return false;
+    return /<loc[\s>]/i.test(await res.text());
+  } catch {
+    return false;
+  }
+}
+
+/** Tries robots.txt-declared sitemap candidates in priority order, returning the first that
+ *  passes the same SSRF guard `fetchLeafEntries` applies to sitemap-index `<loc>` entries (a
+ *  robots.txt-declared URL is equally site-controlled, untrusted content — redirects are
+ *  refused outright for the same reason, never followed), then genuinely has entries. Never
+ *  throws — a missing or unreachable robots.txt just means no candidates. */
+async function discoverFromRobots(
+  origin: string,
+  expectedHostname: string,
+): Promise<string | null> {
+  let candidates: string[];
+  try {
+    const res = await sourceFetch(`${origin}/robots.txt`, `${origin}/robots.txt`);
+    if (!res.ok) return null;
+    candidates = sortByNewsKeyword(parseRobotsSitemaps(await res.text(), origin)).slice(
+      0,
+      ROBOTS_CANDIDATE_CAP,
+    );
+  } catch {
+    return null;
+  }
+
+  for (const raw of candidates) {
+    // robots.txt text controls the scheme too — upgrade a same-host http: candidate to https:
+    // before validating it, matching lib/websites.ts's normalizeSourceUrl always preferring
+    // https for reporter input. A candidate that's genuinely http-only still fails urlExists
+    // here and is simply skipped, same as any other non-existent candidate.
+    const candidate = raw.startsWith("http://") ? raw.replace(/^http:/, "https:") : raw;
+    if (!isSafeDiscoveredUrl(candidate, expectedHostname)) continue;
+    if (await hasSitemapEntries(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Resolves `inputUrl` to whichever of it or its `www.`-toggled variant is actually
+ *  reachable, tried in that order. Generalizes #109's one-directional (bare → `www.` only)
+ *  retry to both directions: a `www.`-prefixed input whose `www.` host is dead but whose
+ *  bare apex works now also resolves correctly, not just the reverse (#110). Returns
+ *  `inputUrl` UNCHANGED when neither the toggle nor the original beats the reachability
+ *  check — including when toggling isn't meaningful at all (an IP-literal host, where the
+ *  hostname setter silently no-ops rather than throwing, verified live in #109's QC round;
+ *  or a bare `"www."` host, where stripping leaves an empty string). Callers always get a
+ *  valid URL back, never null — the rest of discovery correctly falls through to "nothing
+ *  found" on a URL that's genuinely unreachable either way. At most 2 reachability checks
+ *  total for any input, by construction — never more, no recursion. Found in QC review
+ *  (#110): #109's original guard order meant a `www.`-prefixed input paid ZERO reachability
+ *  checks (the retry only ever fired for non-`www.` hosts); this version always pays at
+ *  least 1, since the whole point is protecting `www.` inputs too — an accepted, necessary
+ *  cost of bidirectionality, not an oversight. */
+async function resolveReachableInputUrl(inputUrl: URL): Promise<URL> {
+  if (await isOriginReachable(inputUrl.origin)) return inputUrl;
+
+  const toggledHostname = inputUrl.hostname.startsWith("www.")
+    ? inputUrl.hostname.slice(4)
+    : `www.${inputUrl.hostname}`;
+  // Prepending or stripping a literal "www." can never reproduce the original string, so the
+  // only real guard here is emptiness (a bare "www." host strips to "").
+  if (!toggledHostname) return inputUrl;
+
+  const toggledUrl = new URL(inputUrl.toString());
+  toggledUrl.hostname = toggledHostname;
+  if (toggledUrl.hostname !== toggledHostname) return inputUrl;
+
+  return (await isOriginReachable(toggledUrl.origin)) ? toggledUrl : inputUrl;
+}
+
 /** Discovers the change-detection mechanism for `inputUrl` — the full URL the reporter
  *  pasted, not just its hostname, since a specific section page carries real signal (its
  *  own `<link rel="alternate">` distinct from the homepage's, and a strong prefilter
- *  hint). Sitemap (primary) is checked via robots.txt's `Sitemap:` directive against the
- *  origin, then common paths. RSS (fallback, only tried if no sitemap found) checks the
- *  exact input URL first, then the domain root, then common feed paths. */
+ *  hint). Sitemap (primary): robots.txt-declared candidates are tried first when present —
+ *  the authoritative source when a site bothers to declare one (#108) — then the hardcoded
+ *  well-known paths as before. RSS (fallback, only tried if no sitemap found) checks the
+ *  exact input URL first, then the domain root, then common feed paths.
+ *
+ *  `resolveReachableInputUrl` resolves the host first (#109/#110) before any of the above
+ *  runs. */
 export async function discoverChangeDetection(inputUrl: URL): Promise<{
   mechanism: "sitemap" | "rss" | null;
   sitemapUrl?: string;
   feedUrl?: string;
 }> {
-  const origin = inputUrl.origin;
+  const resolvedUrl = await resolveReachableInputUrl(inputUrl);
+  const origin = resolvedUrl.origin;
 
-  const robotsTxt = await fetchRobotsTxt(origin);
-  if (robotsTxt) {
-    for (const directive of extractSitemapDirectives(robotsTxt)) {
-      if (!isSafeDiscoveredUrl(directive, inputUrl.hostname)) continue;
-      if (await urlExists(directive)) return { mechanism: "sitemap", sitemapUrl: directive };
-    }
-  }
+  const robotsSitemap = await discoverFromRobots(origin, resolvedUrl.hostname);
+  if (robotsSitemap) return { mechanism: "sitemap", sitemapUrl: robotsSitemap };
+
   for (const path of SITEMAP_PATHS) {
     const candidate = `${origin}${path}`;
     if (await urlExists(candidate)) return { mechanism: "sitemap", sitemapUrl: candidate };
   }
 
-  const exactPageFeed = await checkPageForRssLink(inputUrl.toString());
+  const exactPageFeed = await checkPageForRssLink(resolvedUrl.toString());
   if (exactPageFeed) return { mechanism: "rss", feedUrl: exactPageFeed };
 
-  if (inputUrl.toString() !== `${origin}/`) {
+  if (resolvedUrl.toString() !== `${origin}/`) {
     const rootFeed = await checkPageForRssLink(`${origin}/`);
     if (rootFeed) return { mechanism: "rss", feedUrl: rootFeed };
   }
@@ -193,73 +313,4 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
   }
 
   return { mechanism: null };
-}
-
-/** Parses `Disallow` rules under `User-agent: *` and under any of `NAMED_BOTS`, deriving a
- *  safe default `retrieval` policy: broad disallow or a named-bot block -> `"feed"`
- *  (teaser-only access), otherwise `"direct"`. This is the two values this slice's code
- *  ever selects — see plan-100.md's "Enum headroom" note for the rest of the vocabulary. */
-export async function checkRobotsPolicy(origin: string): Promise<{
-  allowsGenericCrawl: boolean;
-  blocksNamedBots: boolean;
-  policyNote: string;
-}> {
-  const robotsTxt = await fetchRobotsTxt(origin);
-  if (!robotsTxt) {
-    return { allowsGenericCrawl: true, blocksNamedBots: false, policyNote: "no robots.txt found" };
-  }
-
-  const blocks = parseDisallowBlocks(robotsTxt);
-  const wildcardBlock = blocks.get("*");
-  const allowsGenericCrawl = !wildcardBlock?.includes("/");
-
-  const blockedBots = NAMED_BOTS.filter((bot) => {
-    const block = blocks.get(bot.toLowerCase());
-    return block !== undefined && block.length > 0;
-  });
-  const blocksNamedBots = blockedBots.length > 0;
-
-  const policyNote = !allowsGenericCrawl
-    ? "robots.txt disallows generic crawling of /"
-    : blocksNamedBots
-      ? `robots.txt blocks named bot(s): ${blockedBots.join(", ")}`
-      : "robots.txt allows generic crawling";
-
-  return { allowsGenericCrawl, blocksNamedBots, policyNote };
-}
-
-/** Groups robots.txt `Disallow` paths by their preceding `User-agent` line(s), keyed
- *  lower-case (`"*"` for the wildcard block). A `User-agent` line starts a new group;
- *  consecutive `User-agent` lines share the following `Disallow` rules (standard
- *  robots.txt grouping). */
-function parseDisallowBlocks(robotsTxt: string): Map<string, string[]> {
-  const blocks = new Map<string, string[]>();
-  let currentAgents: string[] = [];
-  let sawDisallowSinceAgent = false;
-
-  for (const rawLine of robotsTxt.split(/\r?\n/)) {
-    const line = rawLine.split("#")[0].trim();
-    if (!line) continue;
-
-    const agentMatch = line.match(/^user-agent:\s*(.+)$/i);
-    if (agentMatch) {
-      if (sawDisallowSinceAgent) currentAgents = [];
-      currentAgents.push(agentMatch[1].trim().toLowerCase());
-      sawDisallowSinceAgent = false;
-      continue;
-    }
-
-    const disallowMatch = line.match(/^disallow:\s*(.*)$/i);
-    if (disallowMatch) {
-      sawDisallowSinceAgent = true;
-      const path = disallowMatch[1].trim();
-      for (const agent of currentAgents) {
-        const existing = blocks.get(agent) ?? [];
-        if (path) existing.push(path);
-        blocks.set(agent, existing);
-      }
-    }
-  }
-
-  return blocks;
 }

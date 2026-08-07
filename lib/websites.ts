@@ -7,8 +7,9 @@
 export const MAX_WEBSITES = 5;
 
 /** Narrows `agents.websites` (jsonb) to a plain string array. Shared by every reader —
- *  sources/page.tsx's initial render and sources/actions.ts's website actions — so a
- *  future validation change (trimming, case-folding) happens in one place. */
+ *  sources/page.tsx's initial render, sources/actions.ts's website actions, and
+ *  new/actions.ts's MAX_WEBSITES check — so a future validation change (trimming,
+ *  case-folding) happens in one place. */
 export function parseWebsites(json: unknown): string[] {
   return Array.isArray(json)
     ? json.filter((entry): entry is string => typeof entry === "string")

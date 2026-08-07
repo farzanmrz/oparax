@@ -126,11 +126,14 @@ type MatchedAgent = {
  *  a specific article on that site, so matching by hostname/origin is the right key, not an
  *  exact URL match) and as the author-handle fallback for a website post with a null
  *  `author_handle` (see the brief-context comment on `assignToStory`'s call site below).
- *  Malformed input degrades to "" rather than throwing — every caller treats "" as no-match /
- *  no-fallback. */
+ *  Strips a leading `www.` — a reporter onboards the bare domain (#100's flow) but a site's
+ *  own sitemap/feed commonly resolves every article under `www.`, and #101's live poller
+ *  testing found that mismatch silently zeroed out every draft from a real source (logged
+ *  only, never surfaced) because the match was byte-exact. Malformed input degrades to ""
+ *  rather than throwing — every caller treats "" as no-match / no-fallback. */
 function hostnameOf(url: string): string {
   try {
-    return new URL(url).hostname.toLowerCase();
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
     return "";
   }
@@ -143,6 +146,41 @@ function matchesTrackedWebsite(websites: Json, deliveryUrl: string): boolean {
   const host = hostnameOf(deliveryUrl);
   if (!host || !Array.isArray(websites)) return false;
   return websites.some((w) => typeof w === "string" && hostnameOf(w) === host);
+}
+
+/** The title-level beat guidance #100's onboarding call already produces for this desk's
+ *  source (#105) — previously computed and discarded, now persisted on `source_configs` and
+ *  threaded here into the drafter's beat decision, so cases a URL path filter alone can't
+ *  decide (e.g. "Barcelona the club" vs. "Barcelona the city") get the site-specific
+ *  disambiguation the onboarding model already worked out. Best-effort: a lookup failure or
+ *  a source with no guidance yet must never block or error drafting — the beat decision
+ *  degrades to exactly today's behavior (desk-level beat text only) on any null return. */
+async function fetchSiteGuidance(
+  admin: AdminClient,
+  agentId: string,
+  deliveryUrl: string,
+): Promise<{ onBeat: string; offBeat: string } | null> {
+  const host = hostnameOf(deliveryUrl);
+  if (!host) return null;
+  // try/catch, not just the `{ error }` check below: a transport-level failure (rejected
+  // connection, DNS, timeout) throws past the client instead of resolving to `{ error }`, and
+  // this lookup's one caller isn't itself wrapped — an uncaught throw here would fail the
+  // entire delivery for every matched desk, not just skip this best-effort lookup for one.
+  try {
+    const { data, error } = await admin
+      .from("source_configs")
+      .select("domain, beat_guidance")
+      .eq("agent_id", agentId)
+      .eq("status", "active");
+    if (error || !data) return null;
+    const matched = data.find((row) => hostnameOf(`https://${row.domain}`) === host);
+    const guidance = matched?.beat_guidance as { onBeat?: string; offBeat?: string } | null;
+    if (!guidance?.onBeat || !guidance?.offBeat) return null;
+    return { onBeat: guidance.onBeat, offBeat: guidance.offBeat };
+  } catch (err) {
+    console.error("draft-pipeline: fetchSiteGuidance lookup failed", err);
+    return null;
+  }
 }
 
 /** The ONE place a `CouncilCall` becomes a `model_calls` row. Inserted one row at a time (not
@@ -295,6 +333,7 @@ async function draftForAgent(
   sourcePostId: string,
   brief: SourceBrief,
   deliverySource: IngestDelivery["source"],
+  siteGuidance: { onBeat: string; offBeat: string } | null,
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
   // WHICH reporter's desk was drafting is most of an error report's diagnostic value, and this
   // path runs from /api/ingest's Bearer-authed delivery — no user session exists to attribute it
@@ -378,6 +417,7 @@ async function draftForAgent(
       brief,
       translation: translated.translation,
       beatSpec,
+      siteGuidance,
       voiceGuidance,
       platform: "x",
       accountTier,
@@ -401,6 +441,21 @@ async function draftForAgent(
     const verdict = written.verdict;
 
     if (!verdict.onBeat) {
+      // Persist every off-beat verdict so a reporter can review what got filtered and why
+      // (the Excluded tab reads this). One verdict, one reason: the single drafter's — the
+      // grounder-vs-judge arbitration beta recorded here died with those stages.
+      const { error: exclusionError } = await admin.from("excluded_posts").upsert(
+        {
+          agent_id: agent.id,
+          source_post_id: sourcePostId,
+          on_beat_reason: verdict.onBeatReason,
+        },
+        { onConflict: "agent_id,source_post_id", ignoreDuplicates: true },
+      );
+      if (exclusionError) {
+        console.error("draft-pipeline: excluded_posts persistence failed", exclusionError);
+      }
+
       // Off-beat: no story row, no council, no drafts row — reported, not drafted-and-hidden.
       return {
         agentId: agent.id,
@@ -744,7 +799,11 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     // worker also drops paused desks' handles from the stream on its next ~5-min rule rebuild;
     // this is the immediate guard for that lag window and for hand-seeded deliveries.
     if (agent.status !== "active") continue;
-    drafted.push(await draftForAgent(admin, agent, sourcePostId, brief, delivery.source));
+    const siteGuidance =
+      delivery.source === "website" ? await fetchSiteGuidance(admin, agent.id, delivery.url) : null;
+    drafted.push(
+      await draftForAgent(admin, agent, sourcePostId, brief, delivery.source, siteGuidance),
+    );
   }
 
   return { sourcePostId, drafted };

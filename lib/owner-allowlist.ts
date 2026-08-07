@@ -30,7 +30,11 @@
 // environment.
 
 /** Owner-controlled accounts. Lowercase — `isOverrideOwner` lowercases before comparing. */
-const OVERRIDE_OWNER_EMAILS: readonly string[] = ["farzan@oparax.ai", "farzanmrz@gmail.com"];
+const OVERRIDE_OWNER_EMAILS: readonly string[] = [
+  "farzan@oparax.ai",
+  "farzanmrz@gmail.com",
+  "prabhuavula7@gmail.com",
+];
 
 /** The shared test login (AGENTS.md), admitted only outside production — see the file header. */
 const NON_PRODUCTION_OVERRIDE_OWNER_EMAILS: readonly string[] = ["testuser@oparax.ai"];

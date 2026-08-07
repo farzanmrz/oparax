@@ -50,10 +50,23 @@ const MEDIA_TAGS: Record<string, "photo" | "video" | "animated_gif"> = {
 export type DraftVerdict = z.infer<typeof draftVerdictSchema>;
 export type DraftWriteResult = { call: CouncilCall; verdict: DraftVerdict | null };
 
+/** Per-clause ceiling on the onboarding-written site guidance. It is persisted once and replayed
+ *  on EVERY drafting call for that source, so an over-long clause is permanent prompt bloat —
+ *  a sentence or two is all this section was ever meant to carry. */
+const MAX_SITE_GUIDANCE_CHARS = 500;
+
+function clampGuidance(clause: string): string {
+  const trimmed = clause.trim();
+  return trimmed.length > MAX_SITE_GUIDANCE_CHARS
+    ? `${trimmed.slice(0, MAX_SITE_GUIDANCE_CHARS)}…`
+    : trimmed;
+}
+
 function buildContent(input: {
   brief: SourceBrief;
   translation: string | null;
   beatSpec: string;
+  siteGuidance: { onBeat: string; offBeat: string } | null;
   platform: Platform;
   ceiling: number;
 }): DraftWriteContentPart[] {
@@ -64,6 +77,18 @@ function buildContent(input: {
         "<beat>",
         escapeXmlText(input.beatSpec.trim() || "(not stated)"),
         "</beat>",
+        // Site-specific beat disambiguation written by onboarding (#105) — absent for X
+        // sources and for websites onboarded before guidance existed; the prompt documents
+        // it as untrusted data. Null degrades to exactly the beat-only prompt above.
+        ...(input.siteGuidance === null
+          ? []
+          : [
+              "",
+              "<site_guidance>",
+              `On-beat: ${escapeXmlText(clampGuidance(input.siteGuidance.onBeat))}`,
+              `Off-beat: ${escapeXmlText(clampGuidance(input.siteGuidance.offBeat))}`,
+              "</site_guidance>",
+            ]),
         "",
         `<character_ceiling>${input.ceiling}</character_ceiling>`,
         "",
@@ -143,6 +168,7 @@ export async function draftSourcePost(input: {
   brief: SourceBrief;
   translation: string | null;
   beatSpec: string;
+  siteGuidance: { onBeat: string; offBeat: string } | null;
   voiceGuidance: string;
   platform: Platform;
   accountTier: "standard" | "premium";
@@ -173,6 +199,7 @@ export async function draftSourcePost(input: {
             brief: input.brief,
             translation: input.translation,
             beatSpec: input.beatSpec,
+            siteGuidance: input.siteGuidance,
             platform: input.platform,
             ceiling,
           }),

@@ -2,12 +2,20 @@
 
 // app/agents/[id]/desk-controls.tsx
 //
-// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Sources nav, active
-// state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
-// `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME three
+// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Sources/Excluded nav,
+// active state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
+// `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME four
 // links at the SAME URLs — one URL tree, no parallel nav model.
 
-import { FileTextIcon, MicVocalIcon, PauseIcon, PlayIcon, RssIcon, Trash2Icon } from "lucide-react";
+import {
+  EyeOffIcon,
+  FileTextIcon,
+  MicVocalIcon,
+  PauseIcon,
+  PlayIcon,
+  RssIcon,
+  Trash2Icon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -53,6 +61,12 @@ export const DESK_TABS = [
     label: "Sources",
     icon: RssIcon,
     href: (id: string) => `/agents/${id}/sources`,
+    exact: false,
+  },
+  {
+    label: "Excluded",
+    icon: EyeOffIcon,
+    href: (id: string) => `/agents/${id}/excluded`,
     exact: false,
   },
 ] as const;

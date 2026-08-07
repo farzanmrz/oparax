@@ -1,12 +1,21 @@
 // app/agents/[id]/sources/actions.ts
 //
 // Sources-tab server actions. Every browser write starts with an owner-scoped RLS read; source
-// configuration persistence then uses the existing transactional service-role helpers.
+// configuration persistence then uses the existing transactional service-role helpers. Website
+// adds are instant (#106): the request only reserves a `pending` row, and the billed onboarding
+// call runs in `after()` — the browser learns the outcome by polling
+// `getWebsiteOnboardingStatus`, never by awaiting the add.
 
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { onboardSource } from "@/lib/sources/onboard-source";
+import { after } from "next/server";
+import { QWEN_DRAFT_MODEL } from "@/lib/agent/qwen-draft-config";
+import {
+  markPendingSourceFailed,
+  onboardSource,
+  reservePendingSource,
+} from "@/lib/sources/onboard-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_WEBSITES, normalizeSourceUrl, parseWebsites } from "@/lib/websites";
@@ -22,12 +31,18 @@ const ONBOARD_ERROR_COPY: Record<string, string> = {
 };
 
 /**
- * Discovers how to detect new articles on `rawUrl` (sitemap primary, RSS fallback), runs
- * the one onboarding model call, verifies its proposed filter, and — only on success —
- * persists a `source_configs` row and adds the site to `agents.websites` in one transaction
- * (`onboardSource`'s `add_source_config` RPC call).
+ * Reserves a `pending` source_configs row synchronously (fast, no model call — the chip
+ * renders immediately off this), then hands the real, billed onboarding call to `after()`
+ * (#106) instead of blocking the request on it. Replaces `discoverAndSaveSource`: this is now
+ * the ONLY website-add server action on this tab; the create-desk form runs the same shape
+ * with the Sonnet model via `startWebsiteOnboardingAtCreation` (app/agents/new/actions.ts).
+ * `onboardSource` marks the pending row failed itself on every non-completed outcome — the
+ * catch below covers only the genuinely-unexpected throw path, or that row is stuck forever.
  */
-export async function discoverAndSaveSource(deskId: string, rawUrl: string): Promise<ActionResult> {
+export async function startWebsiteOnboarding(
+  deskId: string,
+  rawUrl: string,
+): Promise<ActionResult> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("agents")
@@ -44,26 +59,60 @@ export async function discoverAndSaveSource(deskId: string, rawUrl: string): Pro
   if (url === null)
     return { ok: false, error: `"${rawUrl.trim()}" doesn't look like a valid website.` };
 
-  // onboardSource deliberately throws on anything that isn't a schema-validation failure
-  // (a routine gateway 429/5xx, a model_calls insert error, an RPC error) — QC round 1,
-  // finding #4: an uncaught throw here escapes as an unhandled rejection and breaks the
-  // "one honest message" contract. Caught here so every failure path returns the same
-  // generic retry copy `onboardSource` itself can't distinguish from inside a throw.
-  let outcome: Awaited<ReturnType<typeof onboardSource>>;
-  try {
-    outcome = await onboardSource(deskId, data.owner_id, url, data.beat);
-  } catch (err) {
-    console.error("discoverAndSaveSource: onboardSource threw", err);
-    return { ok: false, error: ONBOARD_ERROR_COPY.failed };
-  }
-  if (outcome.status !== "completed") {
-    return { ok: false, error: ONBOARD_ERROR_COPY[outcome.status] };
-  }
+  const reserved = await reservePendingSource(deskId, url);
+  if ("status" in reserved) return { ok: false, error: ONBOARD_ERROR_COPY.unreachable };
 
-  // agents.websites was already updated transactionally by add_source_config inside
-  // onboardSource — this action does not touch it separately.
+  const ownerId = data.owner_id;
+  const beat = data.beat;
+  const configId = reserved.configId;
+  after(async () => {
+    try {
+      await onboardSource(deskId, ownerId, url, beat, QWEN_DRAFT_MODEL, configId);
+    } catch (err) {
+      console.error("startWebsiteOnboarding: onboardSource threw", err);
+      await markPendingSourceFailed(createAdminClient(), configId);
+    }
+  });
+
   revalidatePath("/agents", "layout");
   return { ok: true };
+}
+
+/**
+ * Polls `source_configs` for this desk's pending/failed onboarding attempts — the browser's
+ * one channel into this deny-all-RLS table, ownership proved via the same RLS `agents` read
+ * every other action in this file already uses (a row coming back IS the proof), then read
+ * via the admin client, mirroring `getExtractionProgress`'s ownership-then-admin-read shape.
+ */
+export async function getWebsiteOnboardingStatus(
+  deskId: string,
+): Promise<{ url: string; status: string; errorCode?: string }[]> {
+  const supabase = await createClient();
+  const { data: owned, error: ownError } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("id", deskId)
+    .maybeSingle();
+  if (ownError || !owned) {
+    console.error("getWebsiteOnboardingStatus: ownership check failed", ownError);
+    return [];
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("source_configs")
+    .select("url, status")
+    .eq("agent_id", deskId)
+    .in("status", ["pending", "failed_validation"]);
+  if (error || !data) {
+    console.error("getWebsiteOnboardingStatus: source_configs read failed", error);
+    return [];
+  }
+  return data.map((row) => ({
+    url: row.url,
+    status: row.status,
+    errorCode: row.status === "failed_validation" ? "failed" : undefined,
+  }));
 }
 
 /** Proves ownership via the RLS client, same as every other action here, then removes the

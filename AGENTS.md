@@ -1,16 +1,16 @@
 # Oparax
 
-AI news desk for reporters: monitors their beat across X, catches stories as they break, drafts a post in the reporter's voice, and — once trusted — posts autonomously.
+AI news desk for reporters: monitors their beat across X, catches stories as they break, drafts a post in the reporter's voice, and posts autonomously once trusted.
 
 ## Code map
 
-- **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. Nothing polls; there is no scan dispatcher.
+- **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. `poller/` (`poller/README.md`, an isolated Railway worker mirroring `ingest/`'s shape) and `ingest/`'s X stream forwarder both POST here.
 - **`app/api/slack/interactions`** is `after()`-deferred so Slack's 3s ack deadline is met before the slow X-post work runs.
 - **`lib/agent/desk-config.ts` owns `checkXPostable`**, the shared X validity gate called by `lib/x/post-core.ts`, `draft-pipeline.ts`, and `app/agents/[id]/actions.ts`'s `editDraft` before a winner persists. Any future writer of a `drafts` winner must call it too, never re-derive it.
 - **`lib/agent/feed-query.ts`'s `fetchFeedPage`/`fetchFeedCounts` and lineage read take a service-role client and never check desk ownership** — every caller (`page.tsx`, `feed-actions.ts`) must prove `owner_id` match first.
 - **`lib/x/timeline.ts` is the ONE designated extraction X-read** — the 50 most recent ORIGINAL posts (`MAX_POSTS`), app-only bearer, `exclude=retweets,replies`, because a reply-heavy corpus teaches `measuredFacts` a mention rate that opens every draft with an @handle. The corpus size also feeds `inferAccountTier`: a smaller corpus is likelier to miss the one >280-char post that proves premium.
 - **Tokens never leave `lib/x/` and `lib/slack/`.**
-- **`lib/voice/rules.ts` holds the drafting input of record:** `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide in the system prompt; the guide blob survives only as audit provenance. The translator → single-drafter delivery path passes that composition to `draft-write.ts`; it never reads the raw guide directly. `corpus-store.ts` upserts and never prunes. `extraction-run.ts`'s `startRun` is an atomic claim returning a boolean — callers must not spend when it returns false. That bounds one desk to ONE concurrent run; it is **not** rationing and must never grow into it. Progress reaches the browser by POLLING an ownership-proving server action, never Realtime.
+- **`lib/voice/rules.ts` holds the drafting input of record:** `flattenRulesToPrompt(enabledRules) + measuredFacts` replaces the raw guide in the system prompt; the guide blob survives only as audit provenance. The translator → single-drafter delivery path passes that composition to `draft-write.ts`; it never reads the raw guide directly. `corpus-store.ts` upserts and never prunes. `extraction-run.ts`'s `startRun` is an atomic claim returning a boolean (stale-run reclaim goes through the `reclaim_extraction_run` RPC — PostgREST cannot express filter-on-a-column-the-body-writes) — callers must not spend when it returns false. That bounds one desk to ONE concurrent run; it is **not** rationing and must never grow into it. Progress reaches the browser by POLLING an ownership-proving server action, never Realtime.
 - **`lib/notify/` senders neither persist nor meter** — `draft-pipeline.ts` does both. `email.ts` keeps the reply encoder and its decoder in one file so they cannot drift.
 - **`lib/sysprompts/voice-extract.md` is measured, not authored.** Never tune it by read-through.
 - **Frontend test login: `testuser@oparax.ai` / `hello123`** — a dummy account created solely for agentic testing; when the owner asks to check something in the browser, logging in with it is explicitly pre-authorized, so no credential safeguards apply.
@@ -31,11 +31,13 @@ AI news desk for reporters: monitors their beat across X, catches stories as the
 | `source_posts` | ingested posts | deny-all |
 | `model_calls` | one row per model call | owner-scoped, select-only |
 | `corpus_posts` | per-desk extracted corpus, including off-beat exclusions | deny-all |
-| `beat_conflicts` | historical ground-versus-judge disagreements | EXISTS-join, select-only |
+| `beat_conflicts` | historical ground-versus-judge disagreements (writer-less since the judge stage's removal) | EXISTS-join, select-only |
+| `excluded_posts` | every off-beat drafting verdict — the Excluded tab's feed | EXISTS-join, select-only — reads need the service-role client (deny-all `source_posts` join) |
 | `x_accounts`, `slack_accounts`, `slack_delivery_receipts` | OAuth tokens, inferred tier, delivery receipts | deny-all |
 | `draft_claims`, `unmatched_deliveries` | atomic claim counters | deny-all |
-| `voice_extraction_runs` | one extraction run per desk — progress only | deny-all |
-| `source_configs` | a desk's onboarded website source (feed/sitemap, path filter, retrieval mode) | deny-all |
+| `voice_extraction_runs` | extraction progress only | deny-all |
+| `source_configs` | a desk's onboarded website source; `pending` lifecycle, polled client-side like voice extraction | deny-all |
+| `source_seen_items` | per-source dedup of poller-delivered items | deny-all |
 
 ### Dormant by design — switched off, not missing
 

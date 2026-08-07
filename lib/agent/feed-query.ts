@@ -101,7 +101,9 @@ function cursorClause(cursor: FeedCursor) {
 }
 function hostname(url: string | null) {
   try {
-    return url ? new URL(url).hostname : null;
+    // www-stripped so site labels read "mundodeportivo.com" whichever host variant the
+    // sitemap resolved, matching draft-pipeline's hostnameOf match rule.
+    return url ? new URL(url).hostname.replace(/^www\./, "") : null;
   } catch {
     return null;
   }
