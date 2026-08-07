@@ -18,7 +18,7 @@ const MAX_DELAY_MS = 30_000;
  *  Found live (2026-08-06): before this class existed, exhausting retries just logged and
  *  returned normally, which tick.ts's caller couldn't tell apart from a real success — the
  *  item got marked seen and silently dropped forever on a persistent failure (e.g. a
- *  grounding-model schema-validation error that happens to repeat across every retry). Not a
+ *  drafting-model schema-validation error that happens to repeat across every retry). Not a
  *  FatalIngestError: this is one item failing, not a worker-wide config problem, so it must
  *  never escape past the per-source catch in tick.ts's pollAllSources. */
 export class DeliveryExhaustedError extends Error {}

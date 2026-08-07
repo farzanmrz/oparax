@@ -27,9 +27,10 @@ const MAX_HTML_LENGTH = 5_000_000;
  *  extraction. Found live (2026-08-06): bbc.co.uk's sitemap surfaces sport-category landing
  *  pages (e.g. /sport/boxing) alongside real articles; those extract to 300K+ characters of
  *  page chrome, JSON-LD, and dozens of unrelated headlines. That text feeds straight into the
- *  grounding call's prompt uncapped — observed ballooning it past 130K input tokens, which
- *  left the model burning its output budget on reasoning and frequently never reaching the
- *  structured response at all. 20,000 chars is generous for any real long-form article.  */
+ *  drafting prompt uncapped — observed ballooning it past 130K input tokens, which left the
+ *  model burning its output budget on reasoning and frequently never reaching the structured
+ *  response at all. Now the cost lands twice, since a non-English article crosses BOTH the
+ *  translator and the drafter. 20,000 chars is generous for any real long-form article.  */
 const MAX_BODY_LENGTH = 20_000;
 
 /** Bright Data's Web Unlocker does block-bypass/challenge-solving server-side and routinely

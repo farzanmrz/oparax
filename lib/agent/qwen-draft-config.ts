@@ -8,8 +8,9 @@ export const QWEN_DRAFT_MODEL = "alibaba/qwen3.7-flash";
 export const QWEN_DRAFT_PROVIDER_OPTIONS = { gateway: { sort: "cost" } };
 
 /** Stuck-call guard, NOT a latency budget — and load-bearing precisely because these calls carry
- *  no `maxOutputTokens`. It guards the three non-streaming `generateText` calls that share this
- *  config: the drafter, onboarding, and dormant clustering. It exists for the same reason
+ *  no `maxOutputTokens`. It guards the non-streaming calls that share this config: the drafter
+ *  and dormant clustering. Onboarding is uncapped for the same reason but carries its own
+ *  equivalent abort (`ONBOARDING_TIMEOUT_MS`, lib/sources/onboard-source.ts). It exists for the same reason
  *  extract-guide.ts's abort does: an abort THROWS, so `draftForAgent`'s catch runs and RELEASES
  *  the `draft_claims` row; a platform kill at `app/api/ingest/route.ts`'s `maxDuration` is not a
  *  throw, so that catch never runs, the claim is held forever, and the worker's retry hits 23505

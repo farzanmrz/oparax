@@ -37,17 +37,18 @@ const WEBSITE_SAMPLE_LIMIT = 50;
 const MIN_MATCHES = 3;
 const MAX_MATCH_RATIO = 0.8;
 
-/** Found live (2026-08-06), same class of risk the drafting stages guard with
- *  QWEN_DRAFT_TIMEOUT_MS (lib/agent/draft-write.ts):
- *  with no bound here, a stalled provider/gateway connection can hang this call indefinitely.
- *  Longer than grounding's 90s because onboarding samples up to 100 URLs and can carry a longer
- *  prompt than grounding's single-article call. */
+/** Found live (2026-08-06), the same class of risk the drafting stages guard with
+ *  QWEN_DRAFT_TIMEOUT_MS (lib/agent/draft-write.ts): with no bound here, a stalled
+ *  provider/gateway connection can hang this call indefinitely. Matched to the drafter's 120s
+ *  rather than derived independently — onboarding carries a WEBSITE_SAMPLE_LIMIT-entry prompt
+ *  against one article, so it is the same order of work. */
 const ONBOARDING_TIMEOUT_MS = 120_000;
 
-/** The Qwen path's 4096 leaves no room to spare once Sonnet's adaptive-thinking reasoning
- *  tokens draw from the same output budget — a large sample (up to 100 URLs) could burn the
- *  budget on reasoning and truncate before the JSON completes. Qwen has no extended-thinking
- *  budget competing for the same tokens, so its 4096 is untouched. */
+/** Sonnet alone is capped. Its adaptive thinking can run long enough to be worth bounding, and
+ *  16000 leaves the reasoning pass room to finish before the JSON. Qwen is deliberately left
+ *  UNCAPPED: `reasoning: "medium"` below applies to both models, and a ceiling caps thinking and
+ *  response together, so a long reasoning pass truncates the object mid-JSON — measured on this
+ *  exact model in lib/agent/draft-write.ts. The abort above is what bounds the uncapped call. */
 const SONNET_ONBOARDING_MAX_OUTPUT_TOKENS = 16000;
 
 export type OnboardOutcome =
@@ -339,7 +340,7 @@ export async function onboardSource(
       model,
       providerOptions,
       reasoning: "medium",
-      maxOutputTokens: isSonnet ? SONNET_ONBOARDING_MAX_OUTPUT_TOKENS : 4096,
+      maxOutputTokens: isSonnet ? SONNET_ONBOARDING_MAX_OUTPUT_TOKENS : undefined,
       schema: sourceOnboardingSchema,
       system: SOURCE_ONBOARDING_PROMPT,
       prompt: buildOnboardingPrompt({ beat, inputUrl, sample, fullTextVerdict }),
