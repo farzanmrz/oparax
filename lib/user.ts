@@ -1,5 +1,37 @@
 import type { User } from "@supabase/supabase-js";
 
+export const AVATAR_KEYS = [
+  "av01",
+  "av02",
+  "av03",
+  "av04",
+  "av05",
+  "av06",
+  "av07",
+  "av08",
+  "av09",
+  "av10",
+  "av11",
+  "av12",
+] as const;
+
+export type AvatarKey = (typeof AVATAR_KEYS)[number];
+
+export function isAvatarKey(value: unknown): value is AvatarKey {
+  return typeof value === "string" && (AVATAR_KEYS as readonly string[]).includes(value);
+}
+
+export function getAvatarKey(user: User | null | undefined): AvatarKey {
+  const metadataAvatar = user?.user_metadata?.avatar;
+  if (isAvatarKey(metadataAvatar)) return metadataAvatar;
+
+  let hash = 0;
+  for (const character of user?.id ?? "") {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+  return AVATAR_KEYS[hash % AVATAR_KEYS.length];
+}
+
 /**
  * Derive a username from an email's local part (the text before "@"). Used to
  * seed a new user's username at signup and as the display fallback for accounts

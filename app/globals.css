@@ -233,3 +233,13 @@
     background-color: var(--muted-foreground);
   }
 }
+
+.op-scroll-region {
+  padding-top: 56px;
+}
+
+@media (max-width: 699.98px) {
+  .op-app-shell:has([data-has-desk="true"]) .op-scroll-region {
+    padding-top: 100px;
+  }
+}

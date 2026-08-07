@@ -7,14 +7,7 @@
 // `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME three
 // links at the SAME URLs — one URL tree, no parallel nav model.
 
-import {
-  FileTextIcon,
-  MicVocalIcon,
-  PauseIcon,
-  PlayIcon,
-  SettingsIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { FileTextIcon, MicVocalIcon, PauseIcon, PlayIcon, RssIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -57,9 +50,9 @@ export const DESK_TABS = [
     exact: false,
   },
   {
-    label: "Setup",
-    icon: SettingsIcon,
-    href: (id: string) => `/agents/${id}/setup`,
+    label: "Sources",
+    icon: RssIcon,
+    href: (id: string) => `/agents/${id}/sources`,
     exact: false,
   },
 ] as const;
@@ -83,6 +76,7 @@ export function DeskTabs({
       {DESK_TABS.map((tab) => {
         const href = tab.href(deskId);
         const active = isDeskTabActive(pathname, href, tab.exact);
+        const Icon = tab.icon;
         return (
           <Link
             className={cn(
@@ -95,6 +89,7 @@ export function DeskTabs({
             key={tab.label}
             aria-current={active ? "page" : undefined}
           >
+            <Icon aria-hidden="true" className="size-4 shrink-0" />
             {tab.label}
             {tab.label === "Feed" && needsReviewCount > 0 ? (
               <Badge
@@ -154,7 +149,7 @@ export function DeskControls({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-0.5">
+    <div className="flex shrink-0 items-center">
       <Dialog
         onOpenChange={(open) => {
           setPauseOpen(open);
@@ -166,7 +161,9 @@ export function DeskControls({
           <Button
             aria-label={isLive ? "Pause this agent" : "Resume this agent"}
             className={
-              isLive ? "text-warning hover:text-warning" : "text-success hover:text-success"
+              isLive
+                ? "size-11 text-warning hover:text-warning desk:size-7"
+                : "size-11 text-success hover:text-success desk:size-7"
             }
             size="icon-sm"
             variant="ghost"
@@ -206,7 +203,7 @@ export function DeskControls({
         <AlertDialogTrigger asChild>
           <Button
             aria-label="Delete this agent"
-            className="text-destructive hover:text-destructive"
+            className="size-11 text-destructive hover:text-destructive desk:size-7"
             size="icon-sm"
             variant="ghost"
           >

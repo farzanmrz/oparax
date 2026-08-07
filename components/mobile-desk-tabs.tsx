@@ -21,7 +21,7 @@ export function MobileDeskTabs({
   return (
     <nav
       aria-label="Agent sections"
-      className="grid h-11 w-full grid-cols-3 border-b border-border md:hidden"
+      className="grid h-11 w-full grid-cols-3 border-b border-white/10 desk:hidden"
     >
       {DESK_TABS.map((tab) => {
         const href = tab.href(deskId);
