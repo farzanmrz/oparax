@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
   const clientId = process.env.SLACK_CLIENT_ID;
   if (!clientId) {
-    return NextResponse.redirect(new URL(`/agents/${agentId}/setup?slack_error=config`, origin));
+    return NextResponse.redirect(new URL(`/agents/${agentId}/sources?slack_error=config`, origin));
   }
 
   const redirectUri = `${origin}/auth/slack/callback`;

@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { mergeHandles, splitHandles } from "@/lib/x/handle-input";
-import { saveWebsites } from "../[id]/setup/actions";
+import { saveWebsites } from "../[id]/sources/actions";
 import { startExtraction } from "../[id]/voice/actions";
 import { createDesk } from "./actions";
 

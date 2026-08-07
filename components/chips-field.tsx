@@ -5,8 +5,8 @@
 // One bordered box holding already-added entries as removable chips, followed by an inline input
 // that grows to fill the remaining space — the shape a tag/handle field is expected to have.
 //
-// Extracted from app/agents/[id]/setup/sources-card.tsx so the create-agent form and the Setup
-// card share ONE treatment. They previously diverged: Setup rendered chips inside the box (right)
+// Extracted from app/agents/[id]/sources/sources-card.tsx so the create-agent form and Sources
+// card share ONE treatment. They previously diverged: Sources rendered chips inside the box (right)
 // while create-agent stacked them in a separate row above a plain <Input> (wrong — the chips read
 // as unrelated content rather than as the field's current value). A second copy is how that drift
 // happened, so both import this now.

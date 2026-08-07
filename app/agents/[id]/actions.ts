@@ -7,7 +7,7 @@
 // replaces. Every mutation revalidates the desk's own path on success so the layout and
 // its children re-render with the fresh row. The revalidate is `"layout"`-scoped, not the
 // default `"page"`: DeskControls lives in the shared desk layout (rendered on Feed, Voice,
-// and Setup alike), so a page-scoped revalidate would leave the status pill stale when the
+// and Sources alike), so a page-scoped revalidate would leave the status pill stale when the
 // user pauses/resumes from a tab other than Feed — matches settings/actions.ts's precedent.
 "use server";
 
@@ -89,7 +89,7 @@ export async function deleteDesk(id: string): Promise<ActionResult> {
 /**
  * Add a tracked X handle. Read-modify-write under RLS (no atomic array-append in
  * PostgREST): fetch the desk's current `tracked_handles`, add the normalized handle if
- * it isn't already tracked, then update. Setup (T8) is this action's first consumer;
+ * it isn't already tracked, then update. Sources is this action's owner-facing consumer;
  * it's wired here now so that task only needs to build the UI.
  *
  * The handle is charset-validated (`normalizeValidHandle`) before it can be stored — a raw

@@ -2,7 +2,7 @@
 
 // app/agents/[id]/desk-controls.tsx
 //
-// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Setup nav, active
+// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Sources nav, active
 // state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
 // `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME three
 // links at the SAME URLs — one URL tree, no parallel nav model.
@@ -61,7 +61,7 @@ export function isDeskTabActive(pathname: string, href: string, exact: boolean):
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The Feed/Voice/Setup tab nav, wide layout (`hidden md:flex` at the call site). */
+/** The Feed/Voice/Sources tab nav for wide layouts. */
 export function DeskTabs({
   deskId,
   needsReviewCount,

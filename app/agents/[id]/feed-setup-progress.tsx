@@ -46,7 +46,7 @@ export function FeedSetupProgress({
         <InfoIcon aria-hidden="true" className="text-primary" />
         <AlertDescription className="text-foreground/90">
           Agent setup will take 5–6 minutes. You can safely leave and return to this page while
-          Voice and Setup fill automatically.
+          Voice and Sources fill automatically.
         </AlertDescription>
       </Alert>
 

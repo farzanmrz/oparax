@@ -2,7 +2,7 @@
 //
 // Client-side split/merge helpers for a tracked-X-handle input field — pure, no React, so the
 // create-desk form (app/agents/new/create-desk-form.tsx) and the Setup card's X-accounts field
-// (app/agents/[id]/setup/sources-card.tsx) share ONE implementation instead of two copies
+// (app/agents/[id]/sources/sources-card.tsx) share ONE implementation instead of two copies
 // drifting apart, which is exactly how these two fields disagreed before (Setup had no client-side
 // split/paste handling at all). Light shaping only — the server (createDesk / addTrackedHandles)
 // does the real charset validation, dedupe, and cap regardless of what a client sends.
