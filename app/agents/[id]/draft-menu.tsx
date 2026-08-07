@@ -128,7 +128,7 @@ export function DraftMenu({
       </DropdownMenu>
 
       <Sheet onOpenChange={setReasoningOpen} open={reasoningOpen}>
-        <SheetContent className="w-full gap-0 bg-[var(--menu-bg)] p-0 sm:max-w-[420px]">
+        <SheetContent className="w-full gap-0 bg-[var(--menu-bg)] p-0 desk:max-w-[420px]">
           <SheetHeader className="border-b border-[var(--band-border)] px-5 py-4">
             <SheetTitle>Reasoning</SheetTitle>
             <SheetDescription>
@@ -158,7 +158,7 @@ export function DraftMenu({
       </Sheet>
 
       <Sheet onOpenChange={setHistoryOpen} open={historyOpen}>
-        <SheetContent className="w-full gap-0 bg-[var(--menu-bg)] p-0 sm:max-w-[420px]">
+        <SheetContent className="w-full gap-0 bg-[var(--menu-bg)] p-0 desk:max-w-[420px]">
           <SheetHeader className="border-b border-[var(--band-border)] px-5 py-4">
             <SheetTitle>History</SheetTitle>
             <SheetDescription>Earlier versions of this draft, newest first.</SheetDescription>

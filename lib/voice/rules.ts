@@ -1,7 +1,7 @@
 // lib/voice/rules.ts
 //
-// voice_rules CRUD + the pure flattening function that replaces the raw guide's role in the
-// drafting system prompt. `voice_rules` is keyed by `agent_id` — a rule belongs to ONE
+// voice_rules reads/materialization + the pure flattening function that replaces the raw guide's
+// role in the drafting system prompt. `voice_rules` is keyed by `agent_id` — a rule belongs to ONE
 // desk, mirroring `voice_guides`. (It was previously keyed by `reporter_handle` and shared
 // across every desk on that reporter; that sharing model is deleted.) Its RLS is an
 // EXISTS-join through `agents` on the desk's own id, select-only. No insert/update/delete
@@ -10,8 +10,7 @@
 // — the same ownership-then-service-role-write pattern as lib/x/actions.ts's postDraftToX —
 // this module does no ownership check of its own.
 //
-// Server-only: admin client only, no "use client". Unlike the extraction phase (intentionally
-// best-effort), CRUD failures here surface to their callers — throw on real DB errors.
+// Server-only: admin client only, no "use client".
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import { BEAT_SCOPE_HEADING_RE, stripBeatScope } from "./deploy-guide";
@@ -70,46 +69,6 @@ async function nextSortOrder(
     .maybeSingle();
   if (error) throw error;
   return data ? data.sort_order + 1 : 0;
-}
-
-export async function createVoiceRule(input: {
-  agentId: string;
-  rule: string;
-  provenanceModelCallId?: string | null;
-}): Promise<VoiceRule> {
-  const admin = createAdminClient();
-  const sortOrder = await nextSortOrder(admin, input.agentId);
-  const { data, error } = await admin
-    .from("voice_rules")
-    .insert({
-      agent_id: input.agentId,
-      rule: input.rule,
-      sort_order: sortOrder,
-      provenance_model_call_id: input.provenanceModelCallId ?? null,
-    })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return toVoiceRule(data);
-}
-
-export async function updateVoiceRule(
-  id: string,
-  patch: Partial<{ rule: string; enabled: boolean; sortOrder: number }>,
-): Promise<void> {
-  const admin = createAdminClient();
-  const update: Database["public"]["Tables"]["voice_rules"]["Update"] = {};
-  if (patch.rule !== undefined) update.rule = patch.rule;
-  if (patch.enabled !== undefined) update.enabled = patch.enabled;
-  if (patch.sortOrder !== undefined) update.sort_order = patch.sortOrder;
-  const { error } = await admin.from("voice_rules").update(update).eq("id", id);
-  if (error) throw error;
-}
-
-export async function deleteVoiceRule(id: string): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin.from("voice_rules").delete().eq("id", id);
-  if (error) throw error;
 }
 
 /** THE drafting input of record (plan text, T2.6): replaces the raw guide's role in the system
@@ -212,7 +171,7 @@ export async function materializeRulesFromGuide(
   // Guarantees only: no sort_order collision between the fresh machine set and existing
   // reporter-authored rows (the original bug this offset was written to fix). Does NOT
   // guarantee stable relative ordering across a re-extraction — if a reporter adds a custom
-  // rule (via createVoiceRule) after an existing machine set, its sort_order sits above every
+  // rule after an existing machine set, its sort_order sits above every
   // machine rule; a later re-extraction then offsets the new machine set past that custom
   // rule's sort_order too, pushing the custom rule ahead of the fresh machine set even though
   // the reporter originally placed it after the OLD one. Fixing that requires deciding what

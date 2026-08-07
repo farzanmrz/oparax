@@ -50,7 +50,7 @@ export function FeedSetupProgress({
         </AlertDescription>
       </Alert>
 
-      <div className="rounded-xl border border-border p-4 sm:p-5">
+      <div className="rounded-lg border border-border p-4 desk:p-5">
         <ExtractionChain
           isStreaming={run.status === "running"}
           reasoningByStage={run.reasoningByStage}

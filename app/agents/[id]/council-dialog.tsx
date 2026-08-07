@@ -28,9 +28,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CouncilDetail, CouncilGroup, CouncilMember } from "@/lib/agent/council-query";
 import type { ReasoningTraceState } from "@/lib/agent/reasoning-trace";
-import { formatCost } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { fetchCouncilDetail } from "./council-actions";
+
+function formatCost(usd: number | null | undefined): string {
+  if (usd == null || Number.isNaN(usd)) return "$0.00";
+  if (usd > 0 && usd < 1) return `$${usd.toFixed(3)}`;
+  return `$${usd.toFixed(2)}`;
+}
 
 const CRITERIA = [
   {
