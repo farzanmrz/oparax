@@ -23,12 +23,37 @@ const FEED_PATHS = ["/feed", "/rss.xml", "/feed/rss"];
  *  fetches. */
 const ROBOTS_CANDIDATE_CAP = 10;
 
-async function sourceFetch(
+export async function fetchSafeSource(
   endpoint: string,
   url: string,
-  redirect: RequestRedirect = "follow",
+  expectedHostname: string,
 ): Promise<Response> {
-  return fetchWithTimeout("Source", endpoint, url, { method: "GET", redirect });
+  let current = new URL(url);
+  // Match fetch's existing redirect ceiling while validating every destination before it is
+  // requested. A repeated URL is a redirect loop even before the ceiling is exhausted.
+  const visited = new Set<string>();
+  for (let redirects = 0; redirects < 20; redirects += 1) {
+    if (
+      !isSafeDiscoveredUrl(current.toString(), expectedHostname) ||
+      visited.has(current.toString())
+    ) {
+      throw new Error(`Source ${endpoint} redirected to an unsafe URL`);
+    }
+    visited.add(current.toString());
+    const res = await fetchWithTimeout("Source", endpoint, current.toString(), {
+      method: "GET",
+      redirect: "manual",
+    });
+    if (res.status < 300 || res.status >= 400) return res;
+    const location = res.headers.get("location");
+    if (!location) return res;
+    current = new URL(location, current);
+  }
+  throw new Error(`Source ${endpoint} exceeded the redirect limit`);
+}
+
+async function sourceFetch(endpoint: string, url: string): Promise<Response> {
+  return fetchSafeSource(endpoint, url, new URL(url).hostname);
 }
 
 /** Hostnames this server must never be talked into fetching: loopback, private-range and
@@ -38,6 +63,7 @@ async function sourceFetch(
 const PRIVATE_IPV4_PATTERNS = [
   /^0\./,
   /^10\./,
+  /^100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
   /^127\./,
   /^169\.254\./,
   /^172\.(?:1[6-9]|2\d|3[01])\./,
@@ -53,11 +79,25 @@ export function isPrivateHostname(hostname: string): boolean {
   // strip a trailing FQDN dot — found in QC review (#110): "localhost." (a valid absolute
   // hostname per DNS) passed both the exact-match and suffix checks below unstripped, a
   // second route to the same hole a direct "localhost." paste already had.
-  const host = hostname
+  let host = hostname
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
     .replace(/\.$/, "");
-  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) {
+    return true;
+  }
+  if (!host.includes(":") && !host.includes(".")) return true;
+  const dottedMapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (dottedMapped) {
+    host = dottedMapped[1];
+  } else {
+    const hexMapped = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hexMapped) {
+      const high = Number.parseInt(hexMapped[1], 16);
+      const low = Number.parseInt(hexMapped[2], 16);
+      host = `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+    }
+  }
   if (PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(host))) return true;
   // IPv6: ::1 loopback, fc00::/7 unique-local, fe80::/10 link-local.
   return host === "::1" || /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host);
@@ -200,7 +240,7 @@ function sortByNewsKeyword(candidates: string[]): string[] {
  *  `isSafeDiscoveredUrl` from this module). */
 async function hasSitemapEntries(url: string): Promise<boolean> {
   try {
-    const res = await sourceFetch(url, url, "manual");
+    const res = await sourceFetch(url, url);
     if (!res.ok || !isNotHtmlResponse(res)) return false;
     return /<loc[\s>]/i.test(await res.text());
   } catch {

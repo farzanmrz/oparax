@@ -26,7 +26,7 @@ export default function GuideMarkdown({ content }: { readonly content: string })
   // Streamdown ships its own markdown styling (headings/bold/lists/code); a plain text-sized
   // wrapper is all that's needed — same pattern as ai-elements' ReasoningContent.
   return (
-    <div className="text-sm text-foreground leading-relaxed">
+    <div className="text-sm leading-relaxed text-text-body [&_blockquote]:my-3 [&_blockquote]:whitespace-pre-wrap [&_blockquote]:rounded-r-[7px] [&_blockquote]:border-primary [&_blockquote]:border-l-[3px] [&_blockquote]:bg-white/4 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_em]:text-xs [&_em]:italic">
       <Streamdown>{postTagsToBlockquotes(content)}</Streamdown>
     </div>
   );

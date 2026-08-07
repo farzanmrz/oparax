@@ -251,8 +251,10 @@ export async function queryDraftHistory(
   // judge row is never any node's parent (`applyCorrection` only ever points a revision's
   // `parent_draft_id` at a previously-winning draft id).
   const chain: HistoryRow[] = [];
+  const visited = new Set<string>();
   let cursor: string | null = winningDraftId;
-  while (cursor) {
+  while (cursor && !visited.has(cursor)) {
+    visited.add(cursor);
     const node = byId.get(cursor);
     if (!node) break;
     chain.push(node);

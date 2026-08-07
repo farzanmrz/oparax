@@ -178,5 +178,16 @@ export async function fetchSitemapItems(
     });
   }
 
-  return { items: items.slice(0, MAX_ITEMS_PER_FETCH), notModified: false, nextCache };
+  // Sitemaps may be ordered oldest-first. Sort before truncating so the cap preserves the
+  // articles most likely to be new, rather than permanently discarding the current tail.
+  const newestFirst = [...items].sort((a, b) => {
+    const publishedMs = (item: FeedItem) => {
+      if (!item.publishedAt) return Number.NEGATIVE_INFINITY;
+      const parsed = Date.parse(item.publishedAt);
+      return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+    };
+    return publishedMs(b) - publishedMs(a);
+  });
+
+  return { items: newestFirst.slice(0, MAX_ITEMS_PER_FETCH), notModified: false, nextCache };
 }

@@ -5,8 +5,8 @@
 // One bordered box holding already-added entries as removable chips, followed by an inline input
 // that grows to fill the remaining space — the shape a tag/handle field is expected to have.
 //
-// Extracted from app/agents/[id]/setup/sources-card.tsx so the create-agent form and the Setup
-// card share ONE treatment. They previously diverged: Setup rendered chips inside the box (right)
+// Extracted from app/agents/[id]/sources/sources-card.tsx so the create-agent form and Sources
+// card share ONE treatment. They previously diverged: Sources rendered chips inside the box (right)
 // while create-agent stacked them in a separate row above a plain <Input> (wrong — the chips read
 // as unrelated content rather than as the field's current value). A second copy is how that drift
 // happened, so both import this now.
@@ -26,6 +26,8 @@ export function ChipsField({
   chips,
   disabled = false,
   inputDisabled,
+  inputAriaLabel,
+  hideInput = false,
   onChange,
   onKeyDown,
   onPaste,
@@ -48,6 +50,9 @@ export function ChipsField({
   /** Freezes the whole field — chips, removes, and input (the "Coming soon" state). */
   readonly disabled?: boolean;
   readonly inputDisabled: boolean;
+  readonly inputAriaLabel?: string;
+  /** Keep committed chips visible while removing the add-input at the cap. */
+  readonly hideInput?: boolean;
   readonly onChange: (value: string) => void;
   /** Optional extra key handling. Enter is always intercepted for `onSubmit` first. */
   readonly onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -64,7 +69,7 @@ export function ChipsField({
     <div
       className={cn(
         // Mirrors components/ui/input.tsx's box treatment.
-        "flex min-h-9 w-full min-w-0 flex-wrap content-start items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
+        "flex min-h-9 w-full min-w-0 flex-wrap content-start items-center gap-1.5 rounded-md border border-input bg-transparent px-2.5 py-1.5 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30",
         disabled && "pointer-events-none cursor-not-allowed bg-input/50 dark:bg-input/80",
         className,
       )}
@@ -78,7 +83,7 @@ export function ChipsField({
           {chipLabel(chip)}
           <button
             aria-label={removeLabel(chip)}
-            className="text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none"
+            className="flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none desk:size-6"
             disabled={disabled || removeDisabled}
             onClick={() => onRemove(chip)}
             type="button"
@@ -87,23 +92,26 @@ export function ChipsField({
           </button>
         </Badge>
       ))}
-      <input
-        className="h-6 min-w-40 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-sm"
-        disabled={disabled || inputDisabled}
-        onBlur={onBlur}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onSubmit();
-            return;
-          }
-          onKeyDown?.(e);
-        }}
-        onPaste={onPaste}
-        placeholder={placeholder}
-        value={value}
-      />
+      {hideInput ? null : (
+        <input
+          aria-label={inputAriaLabel}
+          className="h-6 min-w-40 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed desk:text-sm"
+          disabled={disabled || inputDisabled}
+          onBlur={onBlur}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onSubmit();
+              return;
+            }
+            onKeyDown?.(e);
+          }}
+          onPaste={onPaste}
+          placeholder={placeholder}
+          value={value}
+        />
+      )}
     </div>
   );
 }

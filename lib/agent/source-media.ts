@@ -1,52 +1,41 @@
-// Shared multimodal input shaping for the grounder and verification judge. Keeping this in one
-// place guarantees both models receive the same usable source attachments, labels, and media
-// types; neither model's prose description becomes the other's substitute for the original.
+// THE one URL→media-type resolver for source attachments, shared by the drafter
+// (lib/agent/draft-write.ts) and voice extraction (lib/voice/extract-guide.ts). Both carried their
+// own copy of this logic until the query-string read below was added to one of them; deduping is
+// what stops a future upgrade landing on one caller and not the other. One copy now.
+//
+// This answers ONLY "how should the API decode these bytes". Whether the attachment was a photo,
+// a video or an animated GIF is a separate axis carried by the caller's `kind` — and for video
+// and GIF the url is a still poster frame either way, so both axes are always image types here.
+//
+// Returns `null` on an unparsable url instead of throwing: one malformed url from a live X
+// response must not abort a call that has already billed. The caller drops that image and
+// continues.
 
-export type SourceMediaPart =
-  | { type: "text"; text: string }
-  | { type: "file"; data: URL; mediaType: string };
+const IMAGE_MEDIA_TYPES = new Map([
+  ["jpg", "image/jpeg"],
+  ["jpeg", "image/jpeg"],
+  ["png", "image/png"],
+  ["webp", "image/webp"],
+  ["gif", "image/gif"],
+]);
 
-function imageMediaType(url: string): string | null {
-  let ext: string | undefined;
+export function resolveImageMediaType(url: string): string | null {
+  let parsed: URL;
   try {
-    ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
+    parsed = new URL(url);
   } catch (error) {
     console.error(`source-media: skipping media with unparsable url: ${url}`, error);
     return null;
   }
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "gif") return "image/gif";
-  return "image/jpeg";
-}
-
-export function buildSourceMediaParts(
-  media: { kind: string; imageUrl: string }[],
-  maxImages = 4,
-): { parts: SourceMediaPart[]; attachedImageCount: number } {
-  const parts: SourceMediaPart[] = [];
-  let attachedImageCount = 0;
-
-  for (const item of media.slice(0, maxImages)) {
-    const mediaType = imageMediaType(item.imageUrl);
-    if (mediaType === null) continue;
-    let fileUrl: URL;
-    try {
-      fileUrl = new URL(item.imageUrl);
-    } catch (error) {
-      console.error(`source-media: skipping media with unparsable url: ${item.imageUrl}`, error);
-      continue;
-    }
-    if (attachedImageCount === 0) {
-      parts.push({
-        type: "text",
-        text: "\nATTACHED MEDIA — inspect these original source attachments directly. A video or GIF is represented by its poster frame.",
-      });
-    }
-    parts.push({ type: "text", text: `${item.kind}:` });
-    parts.push({ type: "file", data: fileUrl, mediaType });
-    attachedImageCount += 1;
-  }
-
-  return { parts, attachedImageCount };
+  // X serves images as `/media/<id>?format=jpg&name=large` — the format is DECLARED IN THE QUERY
+  // STRING and the path carries no extension at all, so a path-only read comes up empty on X's
+  // standard image url. Read what the url declares first, then a path extension, and only guess
+  // when neither says anything.
+  const declared = parsed.searchParams.get("format")?.toLowerCase();
+  const extension = parsed.pathname.split(".").pop()?.toLowerCase();
+  return (
+    (declared && IMAGE_MEDIA_TYPES.get(declared)) ||
+    (extension && IMAGE_MEDIA_TYPES.get(extension)) ||
+    "image/jpeg"
+  );
 }

@@ -1,7 +1,7 @@
 ---
 name: feature-docs
 description: >-
-  QC step 3 of 4, hop-anywhere: sync the instruction files after a fix round AND
+  QC step 4 of 5, hop-anywhere: sync the instruction files after a fix round AND
   take the mandatory subtractive pass that keeps them from growing without
   bound. Use standalone (/feature-docs) after /feature-fix, or let /feature-qc
   chain it. Harness-neutral.
@@ -18,6 +18,10 @@ falsified, so corpus bloat compounds invisibly without the subtractive pass.
 * **Doc surfaces:** AGENTS.md + the skills, never rules files.
 * **Dispatch ONE agent** with both duties in the same brief (Claude Code:
   `model: sonnet`, `effort: high`; Codex: `cx_fixer`).
+* **The child's report is the evidence of record:** the parent confirms the
+  commit and marker exist, nothing else — it never re-runs the census, the
+  mirror check, or `git show` on the child's commit (a round-5 parent
+  re-audited all three, a third of the run's wall clock).
 * **Marker format:** new QC marker comments are titled `## QC round <R>: <suffix>`
   (`findings`, `docs`). Readers match the `## QC round <R>` prefix plus the
   suffix keyword, separator-agnostic (older rounds used an em dash).
@@ -97,5 +101,7 @@ AGENTS.md 32205 -> 31180 B (-3.2%) | corpus 162756 -> 161500 B
   The byte line is what makes the ratchet visible per slice.
 * **Post the marker even when nothing changed:** resume detection and both
   ships' guards read it.
-* **Standalone:** STOP and name the next hop (`/feature-verify`, either app).
-  Under `/feature-qc`: continue into feature-verify.
+* **Standalone:** STOP and hand off with the exact next command AND its dial
+  from feature-qc's step-dial table: `/feature-verify` (`$feature-verify` in
+  Codex) on the smart dial. A handoff naming a command without its dial is
+  incomplete. Under `/feature-qc`: continue into feature-verify.

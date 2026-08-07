@@ -7,8 +7,8 @@
 // real parser handles correctly. Pure I/O module: no Supabase, no React.
 
 import { XMLParser } from "fast-xml-parser";
-import { assertFetchOk, fetchWithTimeout } from "@/lib/http-fetch";
-import { isSafeDiscoveredUrl } from "@/lib/sources/discovery";
+import { assertFetchOk } from "@/lib/http-fetch";
+import { fetchSafeSource, isSafeDiscoveredUrl } from "@/lib/sources/discovery";
 
 /** The one shared shape both sitemap.ts and feed.ts produce — `countPathMatches` and the
  *  onboarding model-call input builder consume it uniformly regardless of which discovery
@@ -54,8 +54,8 @@ function toSampleEntry(raw: RawSitemapUrlEntry): SourceSampleEntry | null {
   };
 }
 
-async function fetchXml(endpoint: string, url: string): Promise<string> {
-  const res = await fetchWithTimeout("Sitemap", endpoint, url, { method: "GET" });
+async function fetchXml(endpoint: string, url: string, expectedHostname: string): Promise<string> {
+  const res = await fetchSafeSource(endpoint, url, expectedHostname);
   await assertFetchOk("Sitemap", endpoint, res);
   return res.text();
 }
@@ -81,7 +81,7 @@ async function fetchLeafEntries(
 ): Promise<RawSitemapUrlEntry[]> {
   if (maxDepth <= 0) return [];
 
-  const xml = await fetchXml(sitemapUrl, sitemapUrl);
+  const xml = await fetchXml(sitemapUrl, sitemapUrl, expectedHostname);
   const parsed = parser.parse(xml);
 
   const indexEntries = asArray<{ loc?: string; lastmod?: string }>(parsed.sitemapindex?.sitemap);
@@ -109,8 +109,9 @@ async function fetchLeafEntries(
 export async function fetchSitemapSample(
   sitemapUrl: string,
   limit: number,
+  expectedHostname = new URL(sitemapUrl).hostname,
 ): Promise<SourceSampleEntry[]> {
-  const rawEntries = await fetchLeafEntries(sitemapUrl, new URL(sitemapUrl).hostname);
+  const rawEntries = await fetchLeafEntries(sitemapUrl, expectedHostname);
   const entries = rawEntries
     .map(toSampleEntry)
     .filter((entry): entry is SourceSampleEntry => entry !== null);

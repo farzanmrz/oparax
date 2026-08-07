@@ -1,214 +1,228 @@
-// app/agents/[id]/feed-item.tsx
-//
-// The Feed's story/draft card pair. Module-scope, plain Server Component (no "use client" —
-// every interactive piece it composes, `DraftPlatformSwitcher` and its dialogs, owns its own
-// client boundary). Renders as a React fragment of TWO sibling grid children so the parent's
-// `grid-cols-2` places the news card and its draft card side by side without an extra wrapper
-// div — see `page.tsx`.
-//
-// BOTH columns wear the same card anatomy on purpose (`PostCard` + the shared header
-// template from source-tweet.module.css): the story card shows the SOURCE
-// account's identity, the draft card shows the identity of the X ACCOUNT THAT WOULD PUBLISH —
-// the linked OAuth account's handle, not the desk's `reporter_handle`. Those are the same
-// person for a normal reporter; for the owner-override case (admin extracts from a reporter
-// they can't authenticate as) they deliberately differ, and the card must show where the post
-// would actually land. Falls back to `reporter_handle` when no X account is linked yet.
+"use client";
 
-import { CheckCircle2Icon } from "lucide-react";
+import { CheckCircle2Icon, CircleXIcon, GlobeIcon } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { FeedStory } from "@/lib/agent/feed-query";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import type { FeedDraft, FeedItem } from "@/lib/agent/feed-shared";
 import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
-import { DraftPlatformSwitcher } from "./draft-platform-switcher";
+import { DraftBox } from "./draft-box";
+import { DraftMenu } from "./draft-menu";
 import { FeedSetupProgress } from "./feed-setup-progress";
-import { ExtraSourcesBadge } from "./feed-tooltips";
-import { PostCard } from "./post-card";
 import { RelativeTime } from "./relative-time";
-import { SourceChip, SourceTweet } from "./source-tweet";
-import styles from "./source-tweet.module.css";
-import { XAvatar } from "./x-avatar";
 
-/**
- * NewsCard renders `sourcePosts[0]` only (the post that started the story — clustering's
- * assignment order guarantees this, see `feed-query.ts`'s `story_assignments` fetch). A
- * clustered story with more than one source post gets a small "+N" badge/tooltip instead of
- * a full multi-source layout: clustering is brand new (T2.4b) and typically still one post
- * per story in practice, so building a real multi-card layout isn't earned yet.
- */
-function NewsCard({
-  sourcePost,
-  extraSourceCount,
-  opacityClass,
-  translation,
-}: {
-  sourcePost: FeedStory["sourcePosts"][number];
-  extraSourceCount: number;
-  opacityClass: string | undefined;
-  translation: string | null;
-}) {
-  return (
-    <div className={cn("flex h-full flex-col gap-2", opacityClass)}>
-      {extraSourceCount > 0 ? (
-        <div className="flex justify-end">
-          <ExtraSourcesBadge count={extraSourceCount} />
-        </div>
-      ) : null}
-      <SourceTweet sourcePost={sourcePost} translation={translation} />
-    </div>
+function getSourceLabel(source: FeedItem["source"]): string {
+  return source.kind === "x"
+    ? source.authorHandle
+      ? `@${source.authorHandle}`
+      : "X source"
+    : (source.siteName ?? "News source");
+}
+
+function SourceIcon({ isX }: { isX: boolean }) {
+  return isX ? (
+    <svg aria-hidden="true" fill="currentColor" height="12" viewBox="0 0 24 24" width="12">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
+    </svg>
+  ) : (
+    <GlobeIcon aria-hidden="true" className="size-[13px] text-[oklch(0.82_0.05_85)]" />
   );
 }
 
-/** The draft card's header — same template as the source card's (avatar · bold handle ·
- *  platform chip far right), so the two columns read as one system. The avatar resolves by
- *  handle (see x-avatar.tsx) because the linked account appears in no tweet payload. */
-function DraftHeader({ handle, draftedAt }: { handle: string; draftedAt?: string }) {
-  return (
-    <div className={styles.header}>
-      <XAvatar handle={handle} />
-      <span className={styles.handle}>@{handle}</span>
-      <span className={styles.spacer} />
-      {draftedAt ? (
-        <span className={styles.time}>
-          <RelativeTime iso={draftedAt} prefix="Drafted" />
-        </span>
-      ) : null}
-      <SourceChip kind="x" />
-    </div>
-  );
-}
-
-function DraftCard({
-  story,
-  agentId,
-  publishHandle,
-  charLimit,
-  xLinked,
-  opacityClass,
-}: {
-  story: FeedStory;
-  agentId: string;
-  publishHandle: string;
-  charLimit: number;
-  xLinked: boolean;
-  opacityClass: string | undefined;
-}) {
-  const hasWinners = Object.keys(story.winners).length > 0;
-  // X's winner is the card's default view (see DraftPlatformSwitcher), so its creation time is
-  // the one the header dates; fall back to whichever platform produced a winner.
-  const draftedAt = (story.winners.x ?? Object.values(story.winners)[0])?.createdAt;
-
-  if (!hasWinners) {
-    // A winner-less story is EITHER mid-council (normal for ~a minute after delivery) or
-    // permanently failed (the council errored, the claim was released, the worker's retries
-    // exhausted). The rows are identical, so age is the only available discriminator: past
-    // ten minutes nothing is still legitimately drafting. Fresh gets a skeleton (the draft
-    // is genuinely being written right now); stale gets the honest no-draft copy. The feed
-    // auto-refresh re-renders this every ~20s, so both states resolve without a reload.
-    // Clocked off the STORY's own council start (`stories.created_at`), never off a source
-    // post's `posted_at` — a backfilled/seeded/redelivered post can carry a `posted_at` hours
-    // or days old, which would fire `stale` immediately even while the council is actively
-    // running and being paid for.
-    const stale = Date.now() - new Date(story.createdAt).getTime() > 10 * 60 * 1000;
-    return (
-      <div className={cn("flex h-full flex-col", opacityClass)}>
-        <PostCard>
-          <DraftHeader handle={publishHandle} />
-          {stale ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing drafted from this post — there wasn&apos;t enough to write from.
-            </p>
-          ) : (
-            // A status line, not a skeleton: gray bars imply a layout waiting on data, and
-            // read as broken when they persist for the ~minute a council takes. This says
-            // what is actually happening; the feed auto-refresh swaps in the draft.
-            <div className="flex items-center gap-2" role="status">
-              <span
-                aria-hidden="true"
-                className="size-1.5 shrink-0 animate-pulse rounded-full bg-primary"
-              />
-              <span className="text-sm text-muted-foreground">
-                Drafting in your voice — a few models are writing…
-              </span>
-            </div>
-          )}
-        </PostCard>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("flex h-full flex-col", opacityClass)}>
-      <PostCard>
-        <DraftHeader draftedAt={draftedAt} handle={publishHandle} />
-        <DraftPlatformSwitcher
-          charLimit={charLimit}
-          agentId={agentId}
-          story={story}
-          xLinked={xLinked}
-        />
-      </PostCard>
-    </div>
-  );
-}
-
-/** One story's news-card/draft-card pair — TWO sibling grid children, not a wrapped pair, so the
- *  caller's `grid-cols-2` places them side by side across the whole page's grid flow (see
- *  `page.tsx`). Posted stories render both cards at reduced opacity per the design (§4). */
-export function FeedItemCard({
-  story,
-  agentId,
-  reporterHandle,
-  xHandle,
-  charLimit,
-  xLinked,
-}: {
-  story: FeedStory;
-  agentId: string;
-  reporterHandle: string;
-  xHandle: string | null;
-  charLimit: number;
-  xLinked: boolean;
-}) {
-  const sourcePost = story.sourcePosts[0];
-  // Only X ever carries a real posted_at (the only platform with a posting mechanism this
-  // slice) — a story dims only once its X winner is CONFIRMED (postedAt AND postedUrl both
-  // set), regardless of whether LinkedIn/Bluesky winners exist alongside it. An AMBIGUOUS
-  // winner (postedAt set, postedUrl null) does not dim — it still needs the reporter&apos;s
-  // attention, so it must not read as &quot;done&quot;.
-  const opacityClass =
-    story.winners.x?.postedAt != null && story.winners.x?.postedUrl != null
-      ? "opacity-[0.66]"
-      : undefined;
-  const translation = (story.winners.x ?? Object.values(story.winners)[0])?.translation ?? null;
-
-  if (!sourcePost) return null; // defensive: a winner whose source_posts row went missing
-
+function SourceDeletedAlert() {
   return (
     <>
-      <NewsCard
-        extraSourceCount={story.sourcePosts.length - 1}
-        opacityClass={opacityClass}
-        sourcePost={sourcePost}
-        translation={translation}
-      />
-      <DraftCard
-        charLimit={charLimit}
-        agentId={agentId}
-        opacityClass={opacityClass}
-        publishHandle={xHandle ?? reporterHandle}
-        story={story}
-        xLinked={xLinked}
-      />
+      <span className="hidden min-w-0 shrink-[3] items-center gap-1 rounded-sm bg-destructive/12 px-2 py-1 text-[11px] text-danger-text desk:flex">
+        <CircleXIcon aria-hidden="true" className="size-3 shrink-0" />
+        <span className="truncate">source deleted</span>
+      </span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            aria-label="Source deleted"
+            className="-my-1 flex size-11 shrink-0 items-center justify-center rounded-md text-danger-text outline-none focus-visible:ring-2 focus-visible:ring-ring desk:hidden"
+            type="button"
+          >
+            <CircleXIcon aria-hidden="true" className="size-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end">
+          <PopoverDescription>
+            The original post was deleted by its author — you can still review and post this draft.
+          </PopoverDescription>
+        </PopoverContent>
+      </Popover>
     </>
   );
 }
 
-/**
- * The Feed&apos;s designed empty state — the pre-worker Feed WILL be sparse (no drafting worker
- * exists yet to populate it), so this copy is deliberate, not a placeholder.
- */
+function SourceStrip({
+  source,
+  createdAt,
+  draft,
+  onDraftReplaced,
+  postPending,
+}: {
+  source: FeedItem["source"];
+  createdAt: string;
+  draft: FeedDraft;
+  onDraftReplaced: (draftId: string, text: string) => void;
+  postPending: boolean;
+}) {
+  const isX = source.kind === "x";
+  const label = getSourceLabel(source);
+
+  return (
+    <div
+      className={cn(
+        "flex h-[var(--strip-h-mobile)] items-center gap-2 rounded-t-lg border-b border-[var(--band-border)] pr-[10px] pl-[18px] text-[13.5px] desk:h-[var(--strip-h-web)] desk:pr-[9px] desk:pl-[14px] desk:text-[12.5px]",
+        isX ? "bg-[image:var(--strip-x-grad)]" : "bg-[image:var(--strip-news-grad)]",
+      )}
+    >
+      <span className="shrink-0">
+        <SourceIcon isX={isX} />
+      </span>
+      <span
+        className={cn(
+          "shrink-0 whitespace-nowrap font-medium desk:min-w-0 desk:shrink desk:truncate",
+          isX ? "text-text-handle-x" : "text-text-handle-news",
+        )}
+      >
+        {label}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          source.fresh ? "animate-[op-pulse_2s_ease-in-out_infinite] bg-warning" : "bg-warn-stale",
+        )}
+      />
+      <span className="shrink-0 whitespace-nowrap text-[13px] text-text-muted desk:min-w-0 desk:shrink-[2] desk:truncate desk:text-xs">
+        <RelativeTime iso={source.postedAt ?? createdAt} />
+      </span>
+      <span className="min-w-0 flex-1" />
+      {source.gone ? <SourceDeletedAlert /> : null}
+      <DraftMenu
+        canRevert={!postPending && !(draft.postedAt && draft.postedUrl)}
+        draftId={draft.draftId}
+        onDraftReplaced={onDraftReplaced}
+        sourceGone={source.gone}
+        sourceLabel={label}
+        sourceUrl={source.url}
+        versionCount={draft.versionCount}
+      />
+    </div>
+  );
+}
+
+export function FeedItemCard({
+  item,
+  charLimit,
+  xLinked,
+}: {
+  item: FeedItem;
+  charLimit: number;
+  xLinked: boolean;
+}) {
+  const winner = item.winners.x ?? Object.values(item.winners)[0];
+  const [activeDraft, setActiveDraft] = useState<FeedDraft | null>(winner ?? null);
+  const [postPending, setPostPending] = useState(false);
+
+  useEffect(() => {
+    setActiveDraft((current) => {
+      const next = winner ?? null;
+      if (!current || !next || current.draftId !== next.draftId) return next;
+      return {
+        ...current,
+        postedAt: next.postedAt,
+        postingClaimedAt: next.postingClaimedAt,
+        postedUrl: next.postedUrl,
+        newsSynthesis: next.newsSynthesis,
+      };
+    });
+  }, [winner]);
+
+  if (!activeDraft) return null;
+
+  function replaceDraft(draftId: string, text: string) {
+    setActiveDraft((current) =>
+      current
+        ? {
+            ...current,
+            draftId,
+            draftText: text,
+            postedAt: null,
+            postingClaimedAt: null,
+            postedUrl: null,
+            versionCount: current.versionCount + 1,
+          }
+        : current,
+    );
+  }
+
+  return (
+    <article
+      className={cn(
+        "overflow-hidden rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] shadow-[var(--card-shadow)]",
+        item.source.gone && "border-dashed border-destructive",
+      )}
+    >
+      <SourceStrip
+        createdAt={item.createdAt}
+        draft={activeDraft}
+        onDraftReplaced={replaceDraft}
+        postPending={postPending}
+        source={item.source}
+      />
+      <div className="px-[14px] pt-4 pb-[17px] desk:px-6 desk:pb-[19px]">
+        <h2 className="text-pretty text-[17.5px] leading-[1.3] font-semibold tracking-[-0.017em] text-text-title desk:text-[20px]">
+          {item.newsTitle}
+        </h2>
+        <p className="mt-2.5 text-pretty text-[13.5px] leading-[1.6] text-text-body desk:mt-3 desk:text-[14.5px]">
+          {activeDraft.newsSynthesis ?? "NO SYNTHESIS"}
+        </p>
+      </div>
+      <DraftBox
+        charLimit={charLimit}
+        draft={activeDraft}
+        edited={activeDraft.versionCount > 0}
+        onDraftReplaced={replaceDraft}
+        onPostPendingChange={setPostPending}
+        postPending={postPending}
+        xLinked={xLinked}
+      />
+    </article>
+  );
+}
+
+export function FeedCardSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="op-skeleton min-h-[586px] animate-[op-skeleton_1.5s_ease-in-out_infinite] overflow-hidden rounded-lg border border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] desk:min-h-[382px]"
+    >
+      <div className="h-[var(--strip-h-mobile)] border-b border-[var(--band-border)] bg-[image:var(--strip-x-grad)] desk:h-[var(--strip-h-web)]" />
+      <div className="space-y-3 px-[14px] py-5 desk:px-6">
+        <div className="h-5 w-4/5 rounded-md bg-white/10" />
+        <div className="h-4 w-full rounded-md bg-white/6" />
+        <div className="h-4 w-3/5 rounded-md bg-white/6" />
+      </div>
+      <div className="space-y-3 border-t border-[var(--draft-border-top)] bg-draft-bg px-[14px] py-4 desk:px-6">
+        <div className="h-4 w-11/12 rounded-md bg-white/10" />
+        <div className="h-4 w-3/4 rounded-md bg-white/10" />
+      </div>
+    </div>
+  );
+}
+
 export type FeedReadiness =
   | { kind: "paused" }
   | { kind: "no_sources" }
@@ -217,35 +231,26 @@ export type FeedReadiness =
   | { kind: "extraction_missing" }
   | { kind: "ready" };
 
-type FeedReadinessContent = {
-  title: string;
-  body: string;
-  actionLabel?: string;
-  actionHref?: string;
-};
-
-type StaticFeedReadiness = Exclude<
-  FeedReadiness["kind"],
-  "extraction_running" | "extraction_failed"
->;
-
-const FEED_EMPTY_STATE_COPY: Record<StaticFeedReadiness, FeedReadinessContent> = {
+const EMPTY: Record<
+  Exclude<FeedReadiness["kind"], "extraction_running" | "extraction_failed">,
+  { title: string; body: string; actionLabel?: string; actionHref?: string }
+> = {
   ready: {
-    title: "Your voice is ready",
+    title: "Your Voice Is Ready",
     body: "You can review it in Voice. New stories and drafts will appear here as soon as your agent finds something on-beat.",
   },
   paused: {
-    title: "Your agent is paused",
+    title: "Your Agent Is Paused",
     body: "It won't create new drafts until you resume it from the agent controls.",
   },
   no_sources: {
-    title: "Add a source to get drafts",
+    title: "Add a Source to Get Drafts",
     body: "Your agent needs at least one tracked X account before it can watch for on-beat posts.",
     actionLabel: "Add sources",
-    actionHref: "/setup",
+    actionHref: "/sources",
   },
   extraction_missing: {
-    title: "Finish setting up your agent",
+    title: "Finish Setting Up Your Agent",
     body: "Your agent still needs to learn your voice before it can create drafts.",
     actionLabel: "Go to Voice",
     actionHref: "/voice",
@@ -262,9 +267,7 @@ export function FeedEmptyState({
   if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed") {
     return <FeedSetupProgress deskId={deskId} initial={readiness.initial} />;
   }
-
-  const content = FEED_EMPTY_STATE_COPY[readiness.kind];
-
+  const content = EMPTY[readiness.kind];
   if (readiness.kind === "ready") {
     return (
       <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status">
@@ -274,11 +277,10 @@ export function FeedEmptyState({
       </Alert>
     );
   }
-
   return (
-    <div className="col-span-full flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-14 text-center">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border px-4 py-14 text-center">
       <h3 className="text-sm font-semibold">{content.title}</h3>
-      <p className="mx-auto max-w-sm text-sm text-muted-foreground text-pretty">{content.body}</p>
+      <p className="mx-auto max-w-sm text-pretty text-sm text-muted-foreground">{content.body}</p>
       {content.actionHref ? (
         <Button asChild className="min-h-11" size="sm">
           <Link href={`/agents/${deskId}${content.actionHref}`}>{content.actionLabel}</Link>

@@ -19,7 +19,8 @@
       "!poller/**",
       "!components/ui/**",
       "!components/ai-elements/**",
-      "!.claude/**"
+      "!.claude/**",
+      "!docs/design/**"
     ]
   },
   "formatter": {

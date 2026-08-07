@@ -3,13 +3,13 @@
 // files — a "use server" module may only EXPORT async functions, but it can freely IMPORT a
 // plain constant/function like the ones here).
 
-// A reasonable cap, not a measured limit.
-export const MAX_WEBSITES = 20;
+// The handoff cap for one desk. Existing over-cap desks keep their rows but cannot add more.
+export const MAX_WEBSITES = 5;
 
 /** Narrows `agents.websites` (jsonb) to a plain string array. Shared by every reader —
- *  setup/page.tsx's initial render, setup/actions.ts's removeWebsite, new/actions.ts's
- *  MAX_WEBSITES check — so a future validation change (trimming, case-folding) happens in
- *  one place. */
+ *  sources/page.tsx's initial render, sources/actions.ts's website actions, and
+ *  new/actions.ts's MAX_WEBSITES check — so a future validation change (trimming,
+ *  case-folding) happens in one place. */
 export function parseWebsites(json: unknown): string[] {
   return Array.isArray(json)
     ? json.filter((entry): entry is string => typeof entry === "string")

@@ -33,10 +33,24 @@ fi
 
 # apply_patch shape: the patch body names its files. Accept either .tool_input
 # as a string or its common wrapper keys, then scan for the patch envelope's
-# file headers.
-patch="$(printf '%s' "$raw" | jq -r '.tool_input.patch // .tool_input.input // (.tool_input | if type == "string" then . else empty end) // empty' 2>/dev/null)"
+# file headers. ALSO accept exec-wrapped patches: Codex routes edits through
+# the unified exec tool with apply_patch inside .tool_input.cmd/.command
+# (measured 2026-08-06: every sampled edit arrived this way, so the original
+# matcher+keys never fired once — which is how import-order trivia reached
+# QC). The sed header scan below works unchanged on a heredoc-wrapped cmd
+# string because the patch's file-header lines still start at column 0.
+patch="$(printf '%s' "$raw" | jq -r '
+  .tool_input.patch
+  // .tool_input.input
+  // (.tool_input.cmd | if type == "array" then join(" ") elif type == "string" then . else empty end)
+  // (.tool_input.command | if type == "array" then join(" ") elif type == "string" then . else empty end)
+  // (.tool_input | if type == "string" then . else empty end)
+  // empty' 2>/dev/null)"
 [ -n "$patch" ] || exit 0
-printf '%s\n' "$patch" | sed -n 's/^\*\*\* \(Update\|Add\) File: //p' | while IFS= read -r p; do
+# Two expressions, not \| alternation: BSD sed (macOS) does not support \| in
+# basic regex, so the alternation form silently matched NOTHING (measured
+# 2026-08-06 — the second dead layer of this hook, after the matcher gap).
+printf '%s\n' "$patch" | sed -n -e 's/^\*\*\* Update File: //p' -e 's/^\*\*\* Add File: //p' | while IFS= read -r p; do
   [ -n "$p" ] || continue
   case "$p" in /*) fmt "$p" ;; *) fmt "$repo/$p" ;; esac
 done

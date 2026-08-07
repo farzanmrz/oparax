@@ -1,7 +1,6 @@
 name = "cx_supabase_runner"
 description = "Scoped executor for oparax Supabase operations (exploratory queries, bulk reads, seeding, migrations + type-gen + mirror files) via the Supabase MCP/plugin — returns a distilled verdict, never a table dump. Dispatch for DB work needing discovery/iteration or bulk output; verbatim small queries stay inline."
-model = "gpt-5.6-luna"
-model_reasoning_effort = "low"
+model = "gpt-5.6-terra"
 developer_instructions = """
 You execute exactly ONE Supabase brief against the oparax project
 (oparax-chirp, ref pcgvpypzfwuchyfwdlwe). Your final message is the

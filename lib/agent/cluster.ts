@@ -15,7 +15,11 @@ import { z } from "zod";
 import { resolveCallMeta } from "@/lib/agent/call-meta";
 // TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
-import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
+import {
+  QWEN_DRAFT_MODEL,
+  QWEN_DRAFT_PROVIDER_OPTIONS,
+  QWEN_DRAFT_TIMEOUT_MS,
+} from "@/lib/agent/qwen-draft-config";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
@@ -264,7 +268,8 @@ export async function assignToStory(input: {
   // `story-cluster.md`; schema failure degrades to a one-source story instead of hiding a post.
   // `match`/`storyIndex`/`summary` imperatively under its Output heading (leg 2); leg 3 is the
   // deterministic degrade in the catch block below, not a retry (a temp-0 failure isn't sampling
-  // variance, matching the judge's own reasoning); `maxOutputTokens: 2000` is leg 4.
+  // variance, matching the judge's own reasoning). Leg 4's output ceiling is deliberately absent —
+  // see lib/agent/draft-translate.ts.
   // `onStepEnd` fires before JSON parsing/schema validation in AI SDK v7, so the completed
   // provider response remains ledgerable even when Zod rejects the structured verdict.
   const completedStepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
@@ -274,7 +279,7 @@ export async function assignToStory(input: {
       providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "none",
       temperature: 0,
-      maxOutputTokens: 2000,
+      abortSignal: AbortSignal.timeout(QWEN_DRAFT_TIMEOUT_MS),
       schema: clusterVerdictSchema,
       system: STORY_CLUSTER_PROMPT,
       prompt: buildClusterPrompt(candidates, authorHandle, text),

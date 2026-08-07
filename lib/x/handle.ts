@@ -13,7 +13,7 @@
 /** X handles are `[A-Za-z0-9_]`, 1–15 chars. */
 export const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 
-/** Max tracked X accounts per desk. Enforced client-side (create-desk form + Setup card) and
+/** Max tracked X accounts per desk. Enforced client-side (create-desk form + Sources card) and
  *  re-enforced server-side (createDesk + addTrackedHandle(s)). Well under the worker's stream
  *  capacity (5 rules × 40 handles = 200 across ALL desks). */
 export const MAX_TRACKED_HANDLES = 20;

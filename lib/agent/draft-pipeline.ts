@@ -14,6 +14,7 @@
 // Ledger-first ordering throughout, the same discipline the extraction path uses: `model_calls`
 // rows are written BEFORE the artifact rows (`drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
+import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
 import {
@@ -22,11 +23,10 @@ import {
   PLATFORMS,
   type Platform,
   resolveXTier,
-  X_CHAR_LIMITS,
 } from "@/lib/agent/desk-config";
 import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
-import { groundSourcePost } from "@/lib/agent/draft-ground";
-import { isUsableJudgeVerdict, judgeGroundVerdict } from "@/lib/agent/draft-judge";
+import { translateSourcePost } from "@/lib/agent/draft-translate";
+import { draftSourcePost } from "@/lib/agent/draft-write";
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
@@ -34,7 +34,7 @@ import { draftingConversationId } from "@/lib/observability/ai-conversation";
 import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
 import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database, Json } from "@/lib/supabase/database.types";
+import type { Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
 import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
 import { publishDraftToXForOwner } from "@/lib/x/post-core";
@@ -60,19 +60,22 @@ export type IngestDelivery =
       author_handle: string;
       text: string;
       posted_at: string; // ISO
+      lang?: string | null;
       /** Attached photos (full image) or video/GIF poster frames — descriptors only, feeding
-       *  the grounding stage's multimodal input (draft-ground.ts). Absent on most posts. */
+       *  the drafter's multimodal input. Absent on most posts. */
       media?: { kind: string; imageUrl: string }[];
       raw?: unknown;
     }
   | {
       source: "website";
+      source_config_id: string;
       external_id: string;
       url: string;
       title: string;
       text: string;
       author_handle: string | null;
       published_at: string | null;
+      lang: string | null;
       raw?: unknown;
     };
 
@@ -96,12 +99,14 @@ export type ProcessDeliveryResult = {
  *  nothing to draft, so the delivery is recorded (source_posts) but never claims, clusters,
  *  or spends, and no story row means no feed card. Deterministic and free on purpose: this
  *  is NOT beat relevance (that's clustering's future job) — it only rejects posts whose text
- *  is structurally empty. Text is NOT low-signal if a link is present AND at least 4 characters
+ *  is structurally empty. Website headlines are part of that signal, so a useful title is not
+ *  discarded merely because body retrieval fell back to a teaser. Text is NOT low-signal if a link is present AND at least 4 characters
  *  of caption remain after stripping @/# tags and emoji, OR (independent of any link) the
  *  stripped text alone is 12+ characters. */
-function isLowSignal(text: string): boolean {
-  const hasLink = /https?:\/\/\S+/.test(text);
-  const stripped = text
+function isLowSignal(text: string, title?: string): boolean {
+  const sourceText = title ? `${title}\n${text}` : text;
+  const hasLink = /https?:\/\/\S+/.test(sourceText);
+  const stripped = sourceText
     .replace(/https?:\/\/\S+/g, "")
     .replace(/[@#][\p{L}\p{N}_]+/gu, "")
     .replace(/\p{Extended_Pictographic}|\u{FE0F}|\u{200D}|\u{20E3}/gu, "")
@@ -121,16 +126,8 @@ type MatchedAgent = {
   auto_post_sources: Json;
 };
 
-/** Best-effort hostname extraction — used both for the website-source agent match key
- *  (an agent's `websites` array holds tracked site URLs, an incoming delivery's `url` is
- *  a specific article on that site, so matching by hostname/origin is the right key, not an
- *  exact URL match) and as the author-handle fallback for a website post with a null
- *  `author_handle` (see the brief-context comment on `assignToStory`'s call site below).
- *  Strips a leading `www.` — a reporter onboards the bare domain (#100's flow) but a site's
- *  own sitemap/feed commonly resolves every article under `www.`, and #101's live poller
- *  testing found that mismatch silently zeroed out every draft from a real source (logged
- *  only, never surfaced) because the match was byte-exact. Malformed input degrades to ""
- *  rather than throwing — every caller treats "" as no-match / no-fallback. */
+/** Best-effort hostname extraction for the website author-handle fallback. Malformed input
+ *  degrades to "" rather than throwing. */
 function hostnameOf(url: string): string {
   try {
     return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
@@ -139,29 +136,18 @@ function hostnameOf(url: string): string {
   }
 }
 
-/** A "website" delivery is tracked via `agents.websites` (a desk's own list of tracked
- *  site URLs, saved in Wave 3), NOT via `tracked_handles`/`author_handle` — see the matching
- *  branch in `processDelivery` below. */
-function matchesTrackedWebsite(websites: Json, deliveryUrl: string): boolean {
-  const host = hostnameOf(deliveryUrl);
-  if (!host || !Array.isArray(websites)) return false;
-  return websites.some((w) => typeof w === "string" && hostnameOf(w) === host);
-}
-
 /** The title-level beat guidance #100's onboarding call already produces for this desk's
  *  source (#105) — previously computed and discarded, now persisted on `source_configs` and
- *  threaded here into grounding, so cases a URL path filter alone can't decide (e.g.
- *  "Barcelona the club" vs. "Barcelona the city") get the site-specific disambiguation the
- *  onboarding model already worked out. Best-effort: a lookup failure or a source with no
- *  guidance yet must never block or error drafting — grounding degrades to exactly today's
- *  behavior (desk-level beat text only) on any null return. */
+ *  threaded here into the drafter's beat decision, so cases a URL path filter alone can't
+ *  decide (e.g. "Barcelona the club" vs. "Barcelona the city") get the site-specific
+ *  disambiguation the onboarding model already worked out. Best-effort: a lookup failure or
+ *  a source with no guidance yet must never block or error drafting — the beat decision
+ *  degrades to exactly today's behavior (desk-level beat text only) on any null return. */
 async function fetchSiteGuidance(
   admin: AdminClient,
   agentId: string,
-  deliveryUrl: string,
+  sourceConfigId: string,
 ): Promise<{ onBeat: string; offBeat: string } | null> {
-  const host = hostnameOf(deliveryUrl);
-  if (!host) return null;
   // try/catch, not just the `{ error }` check below: a transport-level failure (rejected
   // connection, DNS, timeout) throws past the client instead of resolving to `{ error }`, and
   // this lookup's one caller isn't itself wrapped — an uncaught throw here would fail the
@@ -169,12 +155,12 @@ async function fetchSiteGuidance(
   try {
     const { data, error } = await admin
       .from("source_configs")
-      .select("domain, beat_guidance")
+      .select("beat_guidance")
       .eq("agent_id", agentId)
-      .eq("status", "active");
+      .eq("id", sourceConfigId)
+      .maybeSingle();
     if (error || !data) return null;
-    const matched = data.find((row) => hostnameOf(`https://${row.domain}`) === host);
-    const guidance = matched?.beat_guidance as { onBeat?: string; offBeat?: string } | null;
+    const guidance = data.beat_guidance as { onBeat?: string; offBeat?: string } | null;
     if (!guidance?.onBeat || !guidance?.offBeat) return null;
     return { onBeat: guidance.onBeat, offBeat: guidance.offBeat };
   } catch (err) {
@@ -226,7 +212,14 @@ async function stampUsageEvent(
   row: { owner_id: string; kind: string; units: number; cost_usd: number | null; ref_id: string },
 ): Promise<void> {
   const { error } = await admin.from("usage_events").insert(row);
-  if (error) throw error;
+  // stream_delivery is idempotent on (owner_id, ref_id) in the database. A lost ingest
+  // response can redeliver the same source post; that duplicate is success, while every other
+  // ledger error remains fatal.
+  const isDuplicateStreamDelivery =
+    row.kind === "stream_delivery" &&
+    error?.code === "23505" &&
+    error.details?.includes("Key (owner_id, ref_id)=");
+  if (error && !isDuplicateStreamDelivery) throw error;
 }
 
 /** Slack push + (conditionally) email, each independently error-tolerant: a channel outage
@@ -364,197 +357,103 @@ async function draftForAgent(
   const beatSpec = extractBeatSpec(guide.guide_raw) ?? agent.beat;
   const xAccount = await getXAccount(agent.owner_id);
   const accountTier = resolveXTier(xAccount?.tier);
-  const ceiling = X_CHAR_LIMITS[accountTier];
 
-  // Atomic claim (D16): draft_claims carries UNIQUE(source_post_id, agent_id), so this
-  // insert IS the idempotency check — a non-atomic select-then-check here could let two
-  // concurrent deliveries (or a redelivery racing an in-flight draft) both pass the check and
-  // both pay for runDraftCouncil below. A 23505 unique-violation means another delivery already
-  // claimed this pair — return the same already-drafted shape the old select-then-check
-  // returned; any other error propagates as before.
-  const { error: claimError } = await admin
-    .from("draft_claims")
-    .insert({ source_post_id: sourcePostId, agent_id: agent.id })
-    .select("id");
-  if (claimError) {
-    if (claimError.code === "23505") {
-      return {
-        agentId: agent.id,
-        winningModel: "",
-        degraded: false,
-        skipped: "already_drafted",
-      };
-    }
-    throw claimError;
+  const claimToken = randomUUID();
+  // Atomic claim/reclaim: a delivery that outlives the ingest route's 800-second budget can
+  // leave a claim behind without running the catch below. The RPC inserts when absent and only
+  // reclaims a claim older than that same route budget, preserving an in-progress delivery.
+  const { data: claimed, error: claimError } = await admin.rpc("claim_draft", {
+    p_agent_id: agent.id,
+    p_source_post_id: sourcePostId,
+    p_stale_cutoff: new Date(Date.now() - 800 * 1_000).toISOString(),
+    p_claim_token: claimToken,
+  });
+  if (claimError) throw claimError;
+  if (!claimed) {
+    return {
+      agentId: agent.id,
+      winningModel: "",
+      degraded: false,
+      skipped: "already_drafted",
+    };
   }
 
   // The claim above is a "drafting started" marker, not "drafting done". Every step below is
   // paid or fallible; if any throws (a transient gateway 5xx, a DB error), the claim must be
-  // RELEASED — otherwise the worker's retry hits the 23505 above, returns already_drafted, and
-  // permanently drops a draft that the retry would have produced. Release-on-failure reopens the
-  // (source_post, agent) pair for the retry; the re-run re-bills, which is the right trade
-  // against a silently lost draft. The on-beat happy path AND the off-beat outcome both leave the
-  // claim in place (dedup intact) — an off-beat verdict must not be re-billed on redelivery.
+  // RELEASED — otherwise the worker's retry cannot re-attempt until claim_draft's stale cutoff.
+  // The attempt token prevents an old claimant from deleting a newer reclaimed claim.
+  // Release-on-failure reopens the (source_post, agent) pair immediately; the re-run re-bills,
+  // which is the right trade against a silently lost draft. The on-beat happy path AND the
+  // off-beat outcome both leave the claim in place (dedup intact) — an off-beat verdict must not
+  // be re-billed on redelivery.
   try {
-    // THE grounding call (ledgered like every other call). One Qwen 3.7 Flash pass per delivery
-    // answers "is this on-beat, what's in the picture, what's the translation, what's the
-    // synthesis, what's the draft"; the judge verifies this result before it ships.
-    const ground = await groundSourcePost({
+    // Stage 1: deterministic English sources skip translation entirely. Any completed model call
+    // is ledgered and metered before its output can decide whether drafting continues.
+    const translated = await translateSourcePost({ brief });
+    if (translated.call) {
+      await insertModelCalls(admin, agent.owner_id, [translated.call], sourcePostId);
+      await stampUsageEvent(admin, {
+        owner_id: agent.owner_id,
+        kind: "translation",
+        units: 1,
+        cost_usd: translated.call.costUsd,
+        ref_id: sourcePostId,
+      });
+    }
+    if (!translated.usable) {
+      throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
+    }
+
+    // Stage 2: one Qwen pass makes the beat decision, generated news title, news synthesis, and draft.
+    const written = await draftSourcePost({
       brief,
+      translation: translated.translation,
       beatSpec,
+      siteGuidance,
       voiceGuidance,
       platform: "x",
       accountTier,
-      siteGuidance,
     });
-    const [groundCallId] = await insertModelCalls(
+    const [drafterCallId] = await insertModelCalls(
       admin,
       agent.owner_id,
-      [ground.call],
+      [written.call],
       sourcePostId,
     );
     await stampUsageEvent(admin, {
       owner_id: agent.owner_id,
-      kind: "grounding",
+      kind: "drafting",
       units: 1,
-      cost_usd: ground.call.costUsd,
+      cost_usd: written.call.costUsd,
       ref_id: sourcePostId,
     });
-
-    if (!ground.verdict) {
-      // The grounding call billed but its output was unusable — an error path (see
-      // draft-ground.ts), NOT an off-beat verdict. Throw so the outer catch releases the claim
-      // and the worker's retry gets a fresh grounding attempt rather than silently dropping the
-      // post because a classifier stuttered once.
-      throw new Error(`draft-pipeline: grounding verdict unusable for source post ${sourcePostId}`);
+    if (!written.verdict) {
+      throw new Error(`draft-pipeline: draft verdict unusable for source post ${sourcePostId}`);
     }
-    const verdict = ground.verdict;
+    const verdict = written.verdict;
 
-    let judge: Awaited<ReturnType<typeof judgeGroundVerdict>> | null = null;
-    try {
-      judge = await judgeGroundVerdict({
-        brief,
-        beatSpec,
-        voiceGuidance,
-        ground: verdict,
-        ceiling,
-      });
-    } catch (judgeError) {
-      console.error(
-        "draft-pipeline: judge call failed to transport, proceeding with ground verdict",
-        judgeError,
-      );
-    }
-
-    let judgeCallId: string | null = null;
-    if (judge) {
-      [judgeCallId] = await insertModelCalls(admin, agent.owner_id, [judge.call], sourcePostId);
-      await stampUsageEvent(admin, {
-        owner_id: agent.owner_id,
-        kind: "judging",
-        units: 1,
-        cost_usd: judge.call.costUsd,
-        ref_id: sourcePostId,
-      });
-    }
-
-    const judged = judge?.verdict ?? null;
-    const usableJudge = verdict !== null && judged !== null && isUsableJudgeVerdict(judged);
-
-    // The judge is TOLD the ceiling in its prompt, but nothing verified it obeyed — an
-    // over-ceiling correction was persisted and delivered, and only the Post to X action caught
-    // it much later. This is the deterministic check (no extra model call), through the SAME
-    // shared gate the posting and edit paths call: AGENTS.md requires a third writer of a
-    // drafts winner to call `checkXPostable` rather than re-derive the length rule, and
-    // twitter-text's weighted length is not `.length` anyway. The gate is X-specific and so is
-    // this draft — groundSourcePost ran with platform "x" against X_CHAR_LIMITS — so it is the
-    // right gate for the one text `final` carries; a future non-X platform needs its own.
-    let draftLengthFallback: "none" | "substituted_ground" | "kept_judge" = "none";
-    if (usableJudge && judged.finalDraft !== null) {
-      const judgeFit = checkXPostable(judged.finalDraft, accountTier);
-      if (!judgeFit.ok) {
-        // Falling back to the grounder's draft is safe ONLY when that text was not itself the
-        // thing the judge corrected. If `language` or `translation` is in correctedFields, the
-        // judge fixed a wrong-language draft — the live Spanish-source bug — and the grounder's
-        // firstDraft is precisely that defective text, so substituting it would reintroduce the
-        // bug this slice exists to kill. Then the judge's over-limit English text ships instead:
-        // delivered, Post button disabled by the same gate, reporter trims it in place. That is
-        // today's behaviour — an acceptable floor, not a regression.
-        const judgeFixedLanguage =
-          judged.correctedFields.includes("language") ||
-          judged.correctedFields.includes("translation");
-        draftLengthFallback =
-          !judgeFixedLanguage && checkXPostable(verdict.firstDraft, accountTier).ok
-            ? "substituted_ground"
-            : "kept_judge";
-        console.error(
-          `draft-pipeline: judge draft fails the X gate (${judgeFit.reason}) for source post ${sourcePostId} — ceiling ${ceiling}, judge draft ${judged.finalDraft.length} chars, resolution ${draftLengthFallback}`,
-        );
-      }
-    }
-
-    const final =
-      verdict === null
-        ? null
-        : usableJudge
-          ? {
-              ...verdict,
-              language: judged.language,
-              translation: judged.translation,
-              newsSynthesis: judged.newsSynthesis,
-              onBeat: verdict.onBeat && judged.onBeat,
-              onBeatReason: judged.onBeatReason,
-              // Only the draft TEXT is ever in question here — every other judge field above is
-              // a judgment, not length-constrained, and is kept in all cases.
-              firstDraft:
-                draftLengthFallback === "substituted_ground"
-                  ? verdict.firstDraft
-                  : (judged.finalDraft ?? verdict.firstDraft),
-            }
-          : verdict;
-
-    if (usableJudge && judged.onBeat !== verdict.onBeat) {
-      const { error: conflictError } = await admin.from("beat_conflicts").upsert(
+    if (!verdict.onBeat) {
+      // Persist every off-beat verdict so a reporter can review what got filtered and why
+      // (the Excluded tab reads this). One verdict, one reason: the single drafter's — the
+      // grounder-vs-judge arbitration beta recorded here died with those stages.
+      const { data: exclusionId, error: exclusionError } = await admin.rpc(
+        "upsert_claimed_exclusion",
         {
-          agent_id: agent.id,
-          source_post_id: sourcePostId,
-          ground_on_beat: verdict.onBeat,
-          ground_reason: verdict.onBeatReason,
-          judge_on_beat: judged.onBeat,
-          judge_reason: judged.onBeatReason,
+          p_agent_id: agent.id,
+          p_claim_token: claimToken,
+          p_excluded_at: new Date().toISOString(),
+          p_on_beat_reason: verdict.onBeatReason,
+          p_source_post_id: sourcePostId,
         },
-        { onConflict: "agent_id,source_post_id", ignoreDuplicates: true },
       );
-      if (conflictError) {
-        console.error("draft-pipeline: beat conflict persistence failed", conflictError);
-      }
-    }
-
-    if (!final) {
-      throw new Error(`draft-pipeline: grounding verdict unusable for source post ${sourcePostId}`);
-    }
-
-    if (!final.onBeat) {
-      // Persist every off-beat verdict (agreement or disagreement alike) so a reporter can
-      // review what got filtered and why — beat_conflicts above only fires on disagreement.
-      // final.onBeatReason always carries the judge's reason when usableJudge — fine when the
-      // judge is the one who called it off-beat, backwards when the grounder called off-beat
-      // and the judge (overruled by the AND in final.onBeat) actually argued FOR inclusion.
-      // Persist whichever verdict is the one that actually excluded the post.
-      const exclusionReason =
-        verdict.onBeat === false
-          ? verdict.onBeatReason
-          : (judged?.onBeatReason ?? final.onBeatReason);
-      const { error: exclusionError } = await admin.from("excluded_posts").upsert(
-        {
-          agent_id: agent.id,
-          source_post_id: sourcePostId,
-          on_beat_reason: exclusionReason,
-        },
-        { onConflict: "agent_id,source_post_id", ignoreDuplicates: true },
-      );
-      if (exclusionError) {
-        console.error("draft-pipeline: excluded_posts persistence failed", exclusionError);
+      if (exclusionError) throw exclusionError;
+      if (exclusionId === null) {
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: "already_drafted",
+        };
       }
 
       // Off-beat: no story row, no council, no drafts row — reported, not drafted-and-hidden.
@@ -564,6 +463,19 @@ async function draftForAgent(
         degraded: false,
         skipped: "off_beat",
       };
+    }
+
+    const draftText = verdict.draft;
+    if (draftText === null) {
+      throw new Error(
+        `draft-pipeline: on-beat verdict missing draft for source post ${sourcePostId}`,
+      );
+    }
+    const fit = checkXPostable(draftText, accountTier);
+    if (!fit.ok) {
+      console.error(
+        `draft-pipeline: drafter output fails the X gate (${fit.reason}) for source post ${sourcePostId}; persisting for manual trim`,
+      );
     }
 
     // Part B: on-beat — one story per source post, directly (CLUSTERING_ENABLED stays off; the
@@ -589,18 +501,13 @@ async function draftForAgent(
       }
     }
 
-    // Grouping by story id is what lets Explore > Conversations show one story's grounding
+    // Grouping by story id is what lets Explore > Conversations show one story's drafting
     // call as a single readable thread. Set after clustering because the story id does not
     // exist before it; every AI span below inherits it from the isolation scope.
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
-    // Part C: one drafts winner row per platform. The winner points at the final model call;
-    // when the judge changed the output, a second audit row keeps the ground verdict visible
-    // to the existing council reader. judge_verdict remains null because it is the legacy council
-    // partition key, not judge metadata. Both rows go in ONE insert: drafts has no unique
-    // constraint on (source_post, agent, platform), so a winner that committed before a
-    // failing audit row would survive the claim release and let a retry write a SECOND winner —
-    // which is exactly what editDraft's `.eq("is_winner", true).maybeSingle()` lookup cannot read.
+    // Part C: one winner row per platform. Its model-call provenance is the single drafter; no
+    // verification judge or audit row follows this stage.
     const runPlatformDraft = async (
       platform: Platform,
     ): Promise<{
@@ -609,97 +516,28 @@ async function draftForAgent(
       winningModel: string;
       degraded: boolean;
       winningDraftId: string;
-    }> => {
-      const winnerRow = {
-        source_post_id: sourcePostId,
-        agent_id: agent.id,
-        story_id: cluster.storyId,
-        platform,
-        // Provenance must identify the text that actually ships. If the deterministic X gate
-        // rejected the judge text and we substituted the grounder's draft, the ground call is the source
-        // of the delivered text even though the judge still supplied review metadata.
-        model_call_id:
-          usableJudge && draftLengthFallback !== "substituted_ground"
-            ? (judgeCallId ?? groundCallId)
-            : groundCallId,
-        is_winner: true,
-        judge_verdict: null,
-        news_synthesis: final.newsSynthesis,
-        translation: final.translation,
-        judge_review: judgeCallId
-          ? {
-              judgeModelCallId: judgeCallId,
-              groundModelCallId: groundCallId,
-              usable: usableJudge,
-              correctedFields: judged?.correctedFields ?? [],
-              judgeNotes:
-                judged?.judgeNotes ??
-                "The verification response failed schema validation; the grounder draft was used.",
-              // Which text actually shipped, and why — provenance stays honest when the length
-              // guard above rejected the judge's own draft.
-              draftLengthFallback,
-            }
-          : null,
-      };
-
-      let winningDraftId: string;
-      if (usableJudge || judgeCallId) {
-        let auditRow: Database["public"]["Tables"]["drafts"]["Insert"];
-        if (usableJudge) {
-          auditRow = {
-            source_post_id: sourcePostId,
-            agent_id: agent.id,
-            story_id: cluster.storyId,
-            platform,
-            model_call_id: groundCallId,
-            is_winner: false,
-            judge_verdict: null,
-          };
-        } else {
-          if (!judgeCallId) {
-            throw new Error(
-              `draft-pipeline: judge audit row missing its model call for source post ${sourcePostId}`,
-            );
-          }
-          auditRow = {
-            source_post_id: sourcePostId,
-            agent_id: agent.id,
-            story_id: cluster.storyId,
-            platform,
-            model_call_id: judgeCallId,
-            is_winner: false,
-            judge_verdict: {
-              status: "invalid",
-              rationale:
-                "The verification response failed schema validation; the grounder draft was used.",
-            },
-          };
-        }
-        const { data, error } = await admin
-          .from("drafts")
-          .insert([winnerRow, auditRow])
-          .select("id, is_winner");
-        if (error) throw error;
-        // One PostgREST request is one statement, so the audit row failing takes the winner with
-        // it. Read the winner off the flag rather than the row order, which is not guaranteed.
-        const winner = data.find((row) => row.is_winner);
-        if (!winner) {
-          throw new Error(
-            `draft-pipeline: winner row missing from ${platform} insert for agent ${agent.id}`,
-          );
-        }
-        winningDraftId = winner.id;
-      } else {
-        const { data, error } = await admin.from("drafts").insert(winnerRow).select("id").single();
-        if (error) throw error;
-        winningDraftId = data.id;
-      }
+    } | null> => {
+      const { data, error } = await admin.rpc("insert_claimed_winner", {
+        p_agent_id: agent.id,
+        p_claim_token: claimToken,
+        p_model_call_id: drafterCallId,
+        p_news_synthesis: verdict.newsSynthesis,
+        p_news_title: verdict.newsTitle,
+        p_platform: platform,
+        p_source_post_id: sourcePostId,
+        p_story_id: cluster.storyId,
+        // The column is nullable and the translation fast path deliberately persists null;
+        // generated RPC args model PostgreSQL text as non-nullable.
+        p_translation: translated.translation as string,
+      });
+      if (error) throw error;
+      if (data === null) return null;
       return {
         platform,
-        winningText: final.firstDraft,
-        winningModel: usableJudge ? (judge?.call.model ?? ground.call.model) : ground.call.model,
+        winningText: draftText,
+        winningModel: written.call.model,
         degraded: false,
-        winningDraftId,
+        winningDraftId: data,
       };
     };
 
@@ -714,19 +552,32 @@ async function draftForAgent(
       }
     });
 
+    const lostClaim = platformResults.some(
+      (outcome) => outcome.status === "fulfilled" && outcome.value === null,
+    );
+    if (lostClaim) {
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: "already_drafted",
+      };
+    }
+
     const fulfilled = platformResults
       .filter(
         (
           outcome,
-        ): outcome is PromiseFulfilledResult<Awaited<ReturnType<typeof runPlatformDraft>>> =>
-          outcome.status === "fulfilled",
+        ): outcome is PromiseFulfilledResult<
+          Exclude<Awaited<ReturnType<typeof runPlatformDraft>>, null>
+        > => outcome.status === "fulfilled" && outcome.value !== null,
       )
       .map((outcome) => outcome.value);
 
     // Zero fulfilled platforms means no drafts row exists — the single-statement insert
     // above is what makes that true, a rejected platform having written neither of its rows.
-    // Propagate so the outer catch releases draft_claims and allows a retry. The grounding
-    // call's ledger row is already committed above, so no paid call is discarded by this throw.
+    // Propagate so the outer catch releases draft_claims and allows a retry. The billable stage
+    // ledger rows are already committed above, so no paid call is discarded by this throw.
     if (fulfilled.length === 0) {
       throw new Error(`draft-pipeline: all platforms failed for agent ${agent.id}`);
     }
@@ -752,9 +603,8 @@ async function draftForAgent(
       revised: false,
     });
 
-    // Part D: auto-post, after the X platform's drafts row exists. Gated on the SAME
-    // AUTO_POST_ENABLED constant the Setup UI's switch reads (lib/agent/desk-config.ts) —
-    // dormancy must not rest solely on a disabled client-side control. auto_post_sources is
+    // Part D: auto-post, after the X platform's drafts row exists. Gated on the server-side
+    // AUTO_POST_ENABLED constant (lib/agent/desk-config.ts). auto_post_sources is
     // keyed by delivery source TYPE ({ x?: boolean; website?: boolean }) — a per-source-type
     // toggle, the natural reading of "master + per-source toggles" given the only two source
     // types this slice has. No model_calls row for the post itself — posting isn't a model
@@ -783,15 +633,17 @@ async function draftForAgent(
   } catch (err) {
     // Release the claim so a retry of this delivery can re-attempt (see the comment above).
     // The delete's own result must be inspected: a release that silently fails leaves the claim
-    // held forever, so the worker's retry hits 23505 (already_drafted) and this
-    // (source_post, agent) pair never produces a draft — capture it so the failure is at
+    // held until claim_draft's stale cutoff and this (source_post, agent) pair cannot produce a
+    // draft promptly — capture it so the failure is at
     // least visible, using the same tagged Sentry.captureException pattern post-core.ts uses
     // elsewhere in that file (not releaseClaim's own console-only handling).
     const { error: releaseError } = await admin
       .from("draft_claims")
       .delete()
       .eq("source_post_id", sourcePostId)
-      .eq("agent_id", agent.id);
+      .eq("agent_id", agent.id)
+      .eq("claim_token", claimToken)
+      .is("completed_at", null);
     if (releaseError) {
       Sentry.captureException(releaseError, {
         tags: { sourcePostId, agentId: agent.id, scope: "draft_claims_release" },
@@ -825,6 +677,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             author_handle: delivery.author_handle,
             text: delivery.text,
             posted_at: delivery.posted_at,
+            lang: delivery.lang ?? null,
             raw: (delivery.raw ?? null) as unknown as Json,
           }
         : {
@@ -859,18 +712,16 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   // The low-signal gate sits AFTER the source_posts upsert (the record is kept — the post
   // really was delivered) and BEFORE matching/claiming/clustering (nothing downstream runs,
   // nothing bills, no story row is created so the feed never shows it).
-  if (isLowSignal(delivery.text)) {
+  if (isLowSignal(delivery.text, delivery.source === "website" ? delivery.title : undefined)) {
     return { sourcePostId, lowSignal: true, drafted: [] };
   }
 
   // Route by source. An "x" delivery matches tracked_handles exactly as before (PostgREST's
   // array `contains` filter matches elements exactly, so a stored handle whose casing differs
   // from the delivery's would silently never match — fetch every agent and compare
-  // lowercased in application code instead, see task-7-report.md). A "website" delivery has no
-  // author_handle concept — it's tracked via agents.websites (a desk's own list of
-  // tracked site URLs, saved in Wave 3), matched by hostname (matchesTrackedWebsite above), NOT
-  // forced through the same tracked_handles matching function since the match key genuinely
-  // differs between the two source types.
+  // lowercased in application code instead, see task-7-report.md). A website delivery carries
+  // the exact source_configs id that found it; hostname matching cannot distinguish two paths
+  // on one publisher and loses valid sitemap subdomain entries.
   // Unbounded per-delivery scan, deliberately: bounded by tenant count (a small table today, no
   // near-term latency risk), not by delivery volume. A `.eq("status", "active")` prefilter was
   // considered and rejected — it would silently change what counts as "matched" for the
@@ -884,6 +735,16 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
       "id, owner_id, reporter_handle, beat, tracked_handles, websites, status, auto_post_master, auto_post_sources",
     );
   if (agentsError) throw agentsError;
+  let websiteSourceAgentId: string | null = null;
+  if (delivery.source === "website") {
+    const { data: sourceConfig, error: sourceConfigError } = await admin
+      .from("source_configs")
+      .select("agent_id")
+      .eq("id", delivery.source_config_id)
+      .maybeSingle();
+    if (sourceConfigError) throw sourceConfigError;
+    websiteSourceAgentId = sourceConfig?.agent_id ?? null;
+  }
   const matched: MatchedAgent[] =
     delivery.source === "x"
       ? (() => {
@@ -892,7 +753,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             e.tracked_handles.some((h) => h.toLowerCase() === wantedHandle),
           );
         })()
-      : (allAgents ?? []).filter((e) => matchesTrackedWebsite(e.websites, delivery.url));
+      : (allAgents ?? []).filter((e) => e.id === websiteSourceAgentId);
 
   // D16a: usage_events.owner_id is NOT NULL, so an unmatched delivery (no agent tracks
   // this author) is invisible to usage_events and, with it, to the stream-volume alarm — there
@@ -935,6 +796,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: delivery.x_post_id,
           authorHandle: delivery.author_handle,
           text: delivery.text,
+          lang: delivery.lang ?? null,
           media: delivery.media ?? [],
         }
       : {
@@ -944,7 +806,9 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           // for a field nothing consumes (documented in task-20-report.md).
           xPostId: "",
           authorHandle: delivery.author_handle ?? hostnameOf(delivery.url),
+          title: delivery.title,
           text: delivery.text,
+          lang: delivery.lang,
           // Website sources carry no structured media descriptors this slice.
           media: [],
         };
@@ -959,7 +823,9 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     // this is the immediate guard for that lag window and for hand-seeded deliveries.
     if (agent.status !== "active") continue;
     const siteGuidance =
-      delivery.source === "website" ? await fetchSiteGuidance(admin, agent.id, delivery.url) : null;
+      delivery.source === "website"
+        ? await fetchSiteGuidance(admin, agent.id, delivery.source_config_id)
+        : null;
     drafted.push(
       await draftForAgent(admin, agent, sourcePostId, brief, delivery.source, siteGuidance),
     );
@@ -1054,8 +920,9 @@ export async function applyCorrection(input: {
     xPostId: sourcePost.x_post_id ?? "",
     authorHandle: sourcePost.author_handle ?? "",
     text: sourcePost.text,
+    lang: null,
     // reviseDraft (this function's only caller) never looks at media — the emailed-correction
-    // path revises existing text, it doesn't re-ground.
+    // path revises existing text; it does not re-run delivery-stage drafting.
     media: [],
   };
 
@@ -1119,14 +986,19 @@ export async function applyCorrection(input: {
   // platform (X, LinkedIn, Bluesky) as of the multi-platform fan-out. This runs BEFORE the
   // insert so the new winner below isn't itself caught by this update. Pointer flip only — a
   // drafts row's content stays an immutable record of what a model produced.
-  const { error: dethroneError } = await admin
+  const { data: dethroned, error: dethroneError } = await admin
     .from("drafts")
     .update({ is_winner: false })
     .eq("source_post_id", sourcePost.id)
     .eq("agent_id", agent.id)
     .eq("platform", platform)
-    .eq("is_winner", true);
+    .eq("is_winner", true)
+    .select("news_title, news_synthesis, translation");
   if (dethroneError) throw dethroneError;
+  // The dethroned winner's card metadata comes back from that update so the revision below can
+  // carry it forward — same reason editDraft copies it off the row it dethrones. Read off the
+  // dethroned winner rather than `draftRow`, since a reply can target a superseded draft.
+  const dethronedWinner = dethroned?.[0] ?? null;
 
   const { data: newDraft, error: newDraftError } = await admin
     .from("drafts")
@@ -1144,6 +1016,13 @@ export async function applyCorrection(input: {
       // own stories), so the correction silently vanished from the feed.
       platform,
       story_id: storyId,
+      // QC fix, same class as the two above: a revision replaces the winning row, so it inherits
+      // the winner's card metadata. Omitting these left a corrected draft's card without its
+      // news title, news synthesis, or translation. Judge review deliberately resets
+      // (judge_verdict above) — the correction invalidates it.
+      news_title: dethronedWinner?.news_title ?? null,
+      news_synthesis: dethronedWinner?.news_synthesis ?? null,
+      translation: dethronedWinner?.translation ?? null,
     })
     .select("id")
     .single();

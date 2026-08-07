@@ -31,6 +31,7 @@ export function isPrivateHostname(hostname: string): boolean {
   // IPv4 address before applying the dotted-quad checks below.
   const mapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
   if (mapped) host = mapped[1];
+  if (/^::ffff:7f[0-9a-f]{2}:[0-9a-f]{1,4}$/.test(host)) return true;
   if (PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(host))) return true;
   // IPv6: ::1 loopback, fc00::/7 unique-local, fe80::/10 link-local.
   return host === "::1" || /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host);

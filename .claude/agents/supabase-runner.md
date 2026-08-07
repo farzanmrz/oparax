@@ -5,12 +5,11 @@ description: >-
   exploratory queries, bulk-output reads, seeding, migrations + type-gen +
   mirror files — returning a distilled verdict, never a table dump. Dispatch it
   whenever DB work needs discovery/iteration or returns bulk output; keep
-  verbatim single queries with small results inline. Default model haiku is
-  right for mechanical briefs; override to sonnet at dispatch when the brief
-  says "figure out the query". Grounding beats model size here: it reads the
-  generated types before authoring any SQL.
+  verbatim single queries with small results inline. Runs on sonnet by
+  default — haiku proved unreliable on decision-shaped briefs. Grounding still
+  beats model size here: it reads the generated types before authoring any SQL.
 tools: mcp__supabase__execute_sql, mcp__supabase__apply_migration, mcp__supabase__list_migrations, mcp__supabase__list_tables, mcp__supabase__generate_typescript_types, mcp__supabase__get_advisors, mcp__supabase__get_logs, mcp__supabase__search_docs, Read, Grep, Write
-model: haiku
+model: sonnet
 ---
 
 You execute exactly ONE Supabase brief against the oparax project

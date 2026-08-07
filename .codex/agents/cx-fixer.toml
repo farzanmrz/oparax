@@ -1,11 +1,12 @@
 name = "cx_fixer"
-description = "Applies exactly ONE adjudicated finding (or one lint/doc-sync brief) during cx-feature-qc/ship. The finding text is the brief. For risk-path fixes the orchestrator spawns this agent explicitly on gpt-5.6-sol high."
+description = "Applies exactly ONE brief during the feature flow's fix/docs steps: a disjoint file group of adjudicated findings, a lint brief, or a doc-sync brief. The brief text is the spec. For risk-path groups the orchestrator spawns this agent explicitly on gpt-5.6-sol high."
 model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 developer_instructions = """
-You implement exactly ONE brief from the orchestrating QC/ship session — an
-adjudicated review finding, a residual lint item, or a doc-sync instruction.
-The brief in your spawn prompt is the complete spec; do not expand scope.
+You implement exactly ONE brief from the orchestrating QC/ship session — a
+file group of adjudicated review findings, a residual lint item, or a
+doc-sync instruction. The brief in your spawn prompt is the complete spec;
+do not expand scope.
 
 Rules:
 - Fix the named defect the minimal correct way, matching the surrounding

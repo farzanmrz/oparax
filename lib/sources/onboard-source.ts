@@ -16,34 +16,43 @@ import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
-import { fetchWithTimeout } from "@/lib/http-fetch";
-import { discoverChangeDetection, isPrivateHostname } from "@/lib/sources/discovery";
+import {
+  discoverChangeDetection,
+  fetchSafeSource,
+  isPrivateHostname,
+} from "@/lib/sources/discovery";
 import { fetchFeedSample } from "@/lib/sources/feed";
+import { siteGuidanceSchema } from "@/lib/sources/site-guidance";
 import {
   countPathMatches,
   fetchSitemapSample,
   type SourceSampleEntry,
 } from "@/lib/sources/sitemap";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 import { SOURCE_ONBOARDING_PROMPT } from "@/lib/sysprompts";
 
-const SAMPLE_LIMIT = 100;
+/** How many entries to pull off a news website's feed or sitemap when onboarding it as a
+ *  source. Bounds a request against a THIRD PARTY's server, so it is a politeness limit, not
+ *  a model one. */
+const WEBSITE_SAMPLE_LIMIT = 50;
 // A filter matching almost nothing or almost everything is treated as no real filter —
 // exactly the Athletic case, where filtering has to be title-based downstream instead.
 const MIN_MATCHES = 3;
 const MAX_MATCH_RATIO = 0.8;
 
-/** Found live (2026-08-06), same class of risk as lib/agent/draft-ground.ts's GROUND_TIMEOUT_MS:
- *  with no bound here, a stalled provider/gateway connection can hang this call indefinitely.
- *  Longer than grounding's 90s because onboarding samples up to 100 URLs and can carry a longer
- *  prompt than grounding's single-article call. */
+/** Found live (2026-08-06), the same class of risk the drafting stages guard with
+ *  QWEN_DRAFT_TIMEOUT_MS (lib/agent/draft-write.ts): with no bound here, a stalled
+ *  provider/gateway connection can hang this call indefinitely. Matched to the drafter's 120s
+ *  rather than derived independently — onboarding carries a WEBSITE_SAMPLE_LIMIT-entry prompt
+ *  against one article, so it is the same order of work. */
 const ONBOARDING_TIMEOUT_MS = 120_000;
 
-/** The Qwen path's 4096 leaves no room to spare once Sonnet's adaptive-thinking reasoning
- *  tokens draw from the same output budget — a large sample (up to 100 URLs) could burn the
- *  budget on reasoning and truncate before the JSON completes. Qwen has no extended-thinking
- *  budget competing for the same tokens, so its 4096 is untouched. */
+/** Sonnet alone is capped. Its adaptive thinking can run long enough to be worth bounding, and
+ *  16000 leaves the reasoning pass room to finish before the JSON. Qwen is deliberately left
+ *  UNCAPPED: `reasoning: "medium"` below applies to both models, and a ceiling caps thinking and
+ *  response together, so a long reasoning pass truncates the object mid-JSON — measured on this
+ *  exact model in lib/agent/draft-write.ts. The abort above is what bounds the uncapped call. */
 const SONNET_ONBOARDING_MAX_OUTPUT_TOKENS = 16000;
 
 export type OnboardOutcome =
@@ -61,10 +70,7 @@ const sourceOnboardingSchema = z.object({
       .describe("narrowest URL path prefix that captures the beat, or null if none exists"),
     reasoning: z.string(),
   }),
-  beatGuidance: z.object({
-    onBeat: z.string().describe("what counts as on-beat for this site, title-level"),
-    offBeat: z.string().describe("what to exclude, title-level"),
-  }),
+  beatGuidance: siteGuidanceSchema,
 });
 
 type SourceOnboardingVerdict = z.infer<typeof sourceOnboardingSchema>;
@@ -115,12 +121,12 @@ function buildOnboardingPrompt(input: {
   fullTextVerdict: "full" | "teaser" | "unknown";
 }): string {
   const sampleLines = input.sample
-    .slice(0, SAMPLE_LIMIT)
+    .slice(0, WEBSITE_SAMPLE_LIMIT)
     .map((entry) => {
       const parts = [entry.url];
       if (entry.title) parts.push(`title: ${entry.title}`);
       if (entry.keywords) parts.push(`keywords: ${entry.keywords}`);
-      if (entry.teaser) parts.push(`teaser: ${entry.teaser.slice(0, 200)}`);
+      if (entry.teaser) parts.push(`teaser: ${entry.teaser}`);
       return `- ${parts.join(" | ")}`;
     })
     .join("\n");
@@ -199,12 +205,13 @@ async function insertOnboardingModelCall(
  *  RSS-derived summary) — never fabricate a comparison against a title/keywords field. */
 async function measureFullTextAvailability(
   sample: SourceSampleEntry[],
+  expectedHostname: string,
 ): Promise<"full" | "teaser" | "unknown"> {
   const withTeaser = sample.find((entry) => entry.teaser?.trim());
   if (!withTeaser?.teaser) return "unknown";
 
   try {
-    const res = await fetchWithTimeout("Source", withTeaser.url, withTeaser.url, { method: "GET" });
+    const res = await fetchSafeSource("Source", withTeaser.url, expectedHostname);
     if (!res.ok) return "unknown";
     const html = await res.text();
     const bodyText = html
@@ -227,7 +234,9 @@ async function measureFullTextAvailability(
 export async function reservePendingSource(
   agentId: string,
   inputUrl: URL,
-): Promise<{ configId: string } | { status: "unreachable" }> {
+): Promise<
+  { configId: string } | { status: "unreachable" | "already_tracked" | "source_limit_reached" }
+> {
   if (isPrivateHostname(inputUrl.hostname)) return { status: "unreachable" };
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("reserve_pending_source_config", {
@@ -236,10 +245,14 @@ export async function reservePendingSource(
     p_domain: inputUrl.hostname,
     p_display_name: inputUrl.hostname,
   });
-  if (error || !data) {
+  if (error?.code === "P0001" && error.message.includes("source_limit_reached")) {
+    return { status: "source_limit_reached" };
+  }
+  if (error) {
     console.error("reservePendingSource: reserve_pending_source_config RPC failed", error);
     return { status: "unreachable" };
   }
+  if (!data) return { status: "already_tracked" };
   return { configId: data as string };
 }
 
@@ -309,8 +322,16 @@ export async function onboardSource(
   try {
     sample =
       detection.mechanism === "sitemap"
-        ? await fetchSitemapSample(detection.sitemapUrl as string, SAMPLE_LIMIT)
-        : await fetchFeedSample(detection.feedUrl as string, SAMPLE_LIMIT);
+        ? await fetchSitemapSample(
+            detection.sitemapUrl as string,
+            WEBSITE_SAMPLE_LIMIT,
+            inputUrl.hostname,
+          )
+        : await fetchFeedSample(
+            detection.feedUrl as string,
+            WEBSITE_SAMPLE_LIMIT,
+            inputUrl.hostname,
+          );
   } catch {
     await markPendingSourceFailed(admin, configId);
     return { status: "unreachable" };
@@ -320,7 +341,7 @@ export async function onboardSource(
     return { status: "unreachable" };
   }
 
-  const fullTextVerdict = await measureFullTextAvailability(sample);
+  const fullTextVerdict = await measureFullTextAvailability(sample, inputUrl.hostname);
 
   const isSonnet = model === SONNET_ONBOARDING_MODEL;
   const providerOptions = isSonnet
@@ -335,7 +356,7 @@ export async function onboardSource(
       model,
       providerOptions,
       reasoning: "medium",
-      maxOutputTokens: isSonnet ? SONNET_ONBOARDING_MAX_OUTPUT_TOKENS : 4096,
+      maxOutputTokens: isSonnet ? SONNET_ONBOARDING_MAX_OUTPUT_TOKENS : undefined,
       schema: sourceOnboardingSchema,
       system: SOURCE_ONBOARDING_PROMPT,
       prompt: buildOnboardingPrompt({ beat, inputUrl, sample, fullTextVerdict }),
@@ -356,7 +377,7 @@ export async function onboardSource(
     if (NoObjectGeneratedError.isInstance(err)) {
       // The call BILLED, so it still gets a ledgerable row (AGENTS.md's model-call rule) —
       // captured from the onStepEnd event before zod rejected the JSON, same pattern as
-      // lib/agent/draft-ground.ts's qwenStepRef.
+      // `completedStepRef` in lib/agent/draft-translate.ts and lib/agent/draft-write.ts.
       await insertOnboardingModelCall(admin, ownerId, agentId, {
         model,
         output: stepRef.value?.objectText ?? err.text ?? null,
@@ -381,7 +402,7 @@ export async function onboardSource(
     ? { pathPrefix: verdict.pathFilter.pathPrefix, reasoning: verdict.pathFilter.reasoning }
     : null;
 
-  const { data: completedConfigId, error: rpcError } = await admin.rpc("add_source_config", {
+  const sourceConfigArgs = {
     p_agent_id: agentId,
     p_url: inputUrl.toString(),
     p_domain: inputUrl.hostname,
@@ -403,7 +424,15 @@ export async function onboardSource(
     p_sample_size: sample.length,
     p_model_call_id: modelCallId,
     p_beat_guidance: verdict.beatGuidance,
-  });
+  };
+  // The generated RPC type cannot express nullable Postgres function arguments, while this
+  // function deliberately receives null for absent feeds, sitemaps, and match counts. The cast
+  // must wrap the FULL literal above (p_beat_guidance included) so a dropped arg is a visible
+  // edit here, never something the cast silently absorbs.
+  const { data: completedConfigId, error: rpcError } = await admin.rpc(
+    "add_source_config",
+    sourceConfigArgs as unknown as Database["public"]["Functions"]["add_source_config"]["Args"],
+  );
   if (rpcError) throw rpcError;
 
   return { status: "completed", configId: completedConfigId as string };

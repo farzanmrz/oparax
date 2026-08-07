@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * The desk-scoped layout for `/agents/[id]/*`. Its only job now is the ownership guard: the
- * desk's chrome (name, live/paused dot, pause/delete controls, and the Feed/Voice/Setup/Excluded tabs)
+ * desk's chrome (name, live/paused dot, pause/delete controls, and the Feed/Voice/Sources/Excluded tabs)
  * all render in the single site header one segment up (`components/site-header.tsx`), which is
  * pathname-aware. So this layout resolves the id, 404s on a foreign/absent one (RLS makes those
  * indistinguishable — both a 0-row miss), and renders the page.

@@ -1,8 +1,7 @@
 // app/agents/[id]/council-dialog.tsx
 //
 // Self-contained "Why this draft" overlay: `CouncilDialog` renders its own trigger
-// icon-button AND owns its open state — plain local `useState`, mirroring
-// `draft-edit-dialog.tsx`'s pattern. This dialog used to mirror its open state to
+// icon-button AND owns its open state — plain local `useState`. This dialog used to mirror its open state to
 // `?why=<sourcePostId>` for deep-linkability, but the page is fully dynamic, so every
 // open/close forced a full server round trip (re-running the feed query) before the dialog
 // visibly opened — it felt dead. Deep-linkability is deliberately sacrificed for an instant
@@ -29,9 +28,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CouncilDetail, CouncilGroup, CouncilMember } from "@/lib/agent/council-query";
 import type { ReasoningTraceState } from "@/lib/agent/reasoning-trace";
-import { formatCost } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { fetchCouncilDetail } from "./council-actions";
+
+function formatCost(usd: number | null | undefined): string {
+  if (usd == null || Number.isNaN(usd)) return "$0.00";
+  if (usd > 0 && usd < 1) return `$${usd.toFixed(3)}`;
+  return `$${usd.toFixed(2)}`;
+}
 
 const CRITERIA = [
   {

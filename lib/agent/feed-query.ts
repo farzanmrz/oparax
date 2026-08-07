@@ -1,316 +1,383 @@
-// lib/agent/feed-query.ts
-//
-// Pure query + shaping for the Feed page's story/draft card pairs. `source_posts` carries
-// deny-all RLS (no SELECT policy at all — verified against the migration and restated in
-// AGENTS.md's code map: "deny-all — RLS on, zero policies: (x_accounts, source_posts)"), so
-// a request built on the owner-scoped cookie client would silently get ZERO source_posts
-// rows back — not an error, just an empty result that would masquerade as "no stories". The
-// caller (`page.tsx`, rendering inside `app/agents/[id]/layout.tsx`'s already-enforced
-// ownership check on this same `id`) must pass the SERVICE-ROLE client here; every query
-// below re-scopes to `agentId` explicitly anyway, exactly like the cron dispatcher's
-// and `lib/x/`'s own admin-client reads. `drafts`/`model_calls`/`stories` would also
-// work through the owner-scoped RLS client, but splitting the client per table inside one
-// function buys nothing — one client, explicit filters everywhere.
-//
-// `stories` is the query root now (Slice 5, T2.4b clustering is live — every source post that
-// reaches drafting is first assigned to a `stories` row, one row per desk-scoped news
-// development, not one row per delivery). Four batched reads, never N+1: (1) the bounded
-// `stories` page for this agent, newest first (the SAME row cap the old `drafts`-
-// rooted query had); (2) the batched `story_assignments` -> `source_posts` read for the
-// news-card side, now genuinely a LIST per story (clustering can fold multiple deliveries
-// into one story); (3) the batched winning `drafts` rows for those stories — now
-// potentially MULTIPLE per story, one per platform that produced a winner; (4) council
-// metadata for those same stories in one `.in("story_id", ids)` select; and (5) one batched
-// `model_calls` read by the collected draft foreign keys. The last read supplies winner
-// text/model/cost and council cost without relying on PostgREST relationship embeds, which
-// are not available in every deployed schema cache. It never selects `output`/`reasoning` for
-// a non-winner row, so a candidate's reasoning trace cannot leak into the list payload (only
-// the on-demand "Why this draft" dialog, T5's `council-query.ts`, is allowed to fetch that).
-//
-// Ordering: `stories` carries no `posted_at` of its own (only X's own winning draft ever gets
-// one — LinkedIn/Bluesky have no posting mechanism this slice), so "unconfirmed-first" can't be
-// expressed as a single `.order()` against the query root the way the old `drafts`-rooted
-// query could. Fetch the bounded story page newest-created-first, then re-sort once winners
-// are known: unconfirmed stories (no X winner, an X winner not yet posted, or an AMBIGUOUS X
-// winner — postedAt set but postedUrl null, meaning X may have accepted the post but the
-// outcome stamp failed) sort first, then confirmed stories (postedAt AND postedUrl both set)
-// fall back to most-recently-confirmed-first — the same feel the old
-// `.order("posted_at", {ascending:false, nullsFirst:true})` gave, just computed post-fetch.
+import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchTweet } from "react-tweet/api";
 import { PLATFORMS, type Platform } from "@/lib/agent/desk-config";
+import {
+  FEED_PAGE_SIZE,
+  FEED_REFRESH_CHUNK,
+  type FeedCursor,
+  type FeedItem,
+  type FeedPage,
+  type FeedSourceView,
+  isFeedCursor,
+} from "@/lib/agent/feed-shared";
 import type { Database } from "@/lib/supabase/database.types";
-import { sumCosts } from "./usage-cost";
 
 type Client = SupabaseClient<Database>;
 
-const STORY_PAGE_LIMIT = 50;
-
-/** The poster's display name ("Fabrizio Romano"), dug out of the stored stream payload's
- *  `includes.users[0].name`. The stream is asked for `expansions=author_id&user.fields=username`
- *  (ingest/src/stream.ts), so the name rides along in every X delivery but has no column of its
- *  own — this reads it back out rather than adding one for a purely presentational field. Returns
- *  null for a website source, an older row stored before this shape, or any payload that doesn't
- *  match; every caller must treat the name as optional. */
-export function authorNameFromRaw(raw: unknown): string | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const includes = (raw as { includes?: unknown }).includes;
-  if (typeof includes !== "object" || includes === null) return null;
-  const users = (includes as { users?: unknown }).users;
-  if (!Array.isArray(users) || users.length === 0) return null;
-  const name = (users[0] as { name?: unknown }).name;
-  return typeof name === "string" && name.length > 0 ? name : null;
-}
-
-export type FeedStory = {
-  storyId: string;
-  summary: string; // stories.summary — a short label, useful as a fallback/secondary display
-  /** `stories.created_at` — when the council for this story actually started, as opposed to
-   *  a source post's own `postedAt` (when the tracked account originally posted, which can be
-   *  hours or days old for a backfilled/seeded/redelivered post). The mid-council-vs-
-   *  permanently-failed staleness check in feed-item.tsx must clock off THIS, never off a
-   *  source post's timestamp. */
-  createdAt: string;
-  sourcePosts: {
-    id: string;
-    authorHandle: string | null; // NOW NULLABLE — a website post may have none
-    authorName: string | null; // the poster's display name, off the stored stream payload
-    text: string;
-    postedAt: string | null;
-    xPostId: string | null; // NULL for a website source — the id the X embed is fetched by
-    url: string | null; // the article URL for a website source — NULL for an X source
-  }[];
-  winners: Partial<
-    Record<
-      Platform,
-      {
-        draftId: string;
-        text: string;
-        model: string;
-        /** When the council produced this draft — the draft card's own timestamp, distinct
-         *  from the source post's publish time shown on the card beside it. */
-        createdAt: string;
-        postedAt: string | null;
-        postedUrl: string | null;
-        /** A faithful English translation of the source post, or null when the source was
-         *  already English — computed once by grounding/judge (draft-ground.ts,
-         *  draft-judge.ts) and stored per-draft. Read here purely for display: the source
-         *  card shows this instead of the raw non-English text when present. */
-        translation: string | null;
-      }
-    >
-  >; // keyed by platform — only platforms that actually produced a winning draft appear
-  council: { memberCount: number; totalCostUsd: number | null }; // keep the existing aggregate
-  // shape; aggregated across ALL platforms' calls for this story (simpler and still useful —
-  // a per-platform cost breakdown isn't required by the plan text, which only asks for pills
-  // plus a switcher, not per-pill cost — documented in task-25-report.md).
-};
+export const FEED_ID_CHUNK = 150;
+// Genuine ceiling on ids accumulated across .range() pages (see pagedRows below), not a
+// per-request row count — hosted Supabase's db-max-rows default (1000) is what forced the
+// paging in the first place. Beyond this many ids, older history degrades gracefully.
+export const FEED_ID_CAP = 20000;
+const FEED_ID_PAGE_SIZE = 1000;
 
 type StoryRow = { id: string; summary: string; created_at: string };
-
-type SourcePostJoin = {
+type SourcePost = {
   id: string;
   author_handle: string | null;
   text: string;
   posted_at: string | null;
   x_post_id: string | null;
+  source: string;
   url: string | null;
-  raw: unknown;
 };
-
-type AssignmentRow = { story_id: string; source_posts: SourcePostJoin | null };
-
-type WinnerModelCall = { model: string; output: string | null; cost_usd: number | null } | null;
-
+type AssignmentRow = { story_id: string; source_post_id: string };
 type WinnerRow = {
   id: string;
   story_id: string | null;
   platform: string;
   posted_at: string | null;
+  posting_claimed_at: string | null;
   posted_url: string | null;
   created_at: string;
   model_call_id: string;
-  translation: string | null;
-  model_calls: WinnerModelCall;
+  news_title: string | null;
+  news_synthesis: string | null;
 };
 
-type CouncilRow = {
-  story_id: string | null;
+type LineageRow = {
+  id: string;
   parent_draft_id: string | null;
-  judge_verdict: unknown;
-  model_call_id: string;
-  model_calls: { cost_usd: number | null } | null;
+  source_post_id: string;
 };
 
+function chunks<T>(values: T[]): T[][] {
+  return Array.from({ length: Math.ceil(values.length / FEED_ID_CHUNK) }, (_, i) =>
+    values.slice(i * FEED_ID_CHUNK, (i + 1) * FEED_ID_CHUNK),
+  );
+}
+/**
+ * Pages an unbounded id-set select with .range() so results stay complete regardless of a
+ * PostgREST db-max-rows cap (hosted Supabase defaults to 1000, which would otherwise clip a
+ * single .select() and silently misclassify older history). Stops at a short page, or once
+ * FEED_ID_CAP ids have accumulated, whichever comes first.
+ */
+async function pagedRows<T>(
+  agentId: string,
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += FEED_ID_PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + FEED_ID_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < FEED_ID_PAGE_SIZE) break;
+    if (rows.length >= FEED_ID_CAP) {
+      console.warn("feed id collection exceeded memory guard", {
+        agentId,
+        count: rows.length,
+      });
+      break;
+    }
+  }
+  return rows;
+}
 function isPlatform(value: string): value is Platform {
   return (PLATFORMS as readonly string[]).includes(value);
 }
-
-/** Groups council rows already scoped to one story into the chip's two numbers: the
- *  drafting candidates' count (original, never-judged rows — `parent_draft_id IS NULL` AND
- *  `judge_verdict IS NULL`) and the total spend across those candidates plus the judge row
- *  (`parent_draft_id IS NULL` AND `judge_verdict IS NOT NULL`). A revision's own cost is
- *  never folded in — mirrors T5's `council-query.ts` `buildGroup` exactly, so the feed
- *  chip's total never disagrees with the "Why this draft" dialog it opens into. Rows from
- *  every platform's council are folded into one total per story (see the `FeedStory.council`
- *  comment above). */
-function summarizeCouncil(rows: CouncilRow[]): {
-  memberCount: number;
-  totalCostUsd: number | null;
-} {
-  const originals = rows.filter((r) => r.parent_draft_id === null);
-  const candidates = originals.filter((r) => r.judge_verdict === null);
-  // ALL judge rows, not just the first — one per platform once `PLATFORMS` grows past X,
-  // so summing (not `.find`-ing) the first match is what keeps this total from silently
-  // undercounting the moment a story carries more than one platform's judge.
-  const judges = originals.filter((r) => r.judge_verdict !== null);
-  return {
-    memberCount: candidates.length,
-    totalCostUsd: sumCosts([
-      ...candidates.map((r) => r.model_calls?.cost_usd ?? null),
-      ...judges.map((r) => r.model_calls?.cost_usd ?? null),
-    ]),
-  };
+function compareStories(a: StoryRow, b: StoryRow) {
+  return b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+}
+function cursorFor(row: StoryRow): FeedCursor {
+  return { createdAt: new Date(row.created_at).toISOString(), id: row.id };
+}
+function cursorClause(cursor: FeedCursor) {
+  return `created_at.lt."${cursor.createdAt}",and(created_at.eq."${cursor.createdAt}",id.lt.${cursor.id})`;
+}
+function hostname(url: string | null) {
+  try {
+    // www-stripped so site labels read "mundodeportivo.com" whichever host variant the
+    // sitemap resolved, matching draft-pipeline's hostnameOf match rule.
+    return url ? new URL(url).hostname.replace(/^www\./, "") : null;
+  } catch {
+    return null;
+  }
 }
 
-export async function fetchFeedPage(supabase: Client, agentId: string): Promise<FeedStory[]> {
-  const { data: storyData, error: storyError } = await supabase
+type TweetLookup = { state: "available" | "gone" | "unavailable" };
+type TweetCacheEntry = TweetLookup & { expiresAt: number };
+const TWEET_CACHE_MAX = 2_000;
+const TWEET_CACHE_TTL = 24 * 60 * 60 * 1_000;
+const TWEET_RETRY_TTL = 60 * 1_000;
+const tweetCache = new Map<string, TweetCacheEntry>();
+const pendingTweets = new Map<string, Promise<TweetLookup>>();
+
+function cacheTweet(id: string, lookup: TweetLookup) {
+  const oldest = tweetCache.keys().next().value;
+  if (tweetCache.size >= TWEET_CACHE_MAX && oldest) tweetCache.delete(oldest);
+  tweetCache.set(id, {
+    ...lookup,
+    expiresAt: Date.now() + (lookup.state === "unavailable" ? TWEET_RETRY_TTL : TWEET_CACHE_TTL),
+  });
+}
+
+/** Process-local cache also covers server actions, where Next's fetch cache is intentionally inert. */
+async function getCachedTweet(id: string): Promise<TweetLookup> {
+  const cached = tweetCache.get(id);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+  const pending = pendingTweets.get(id);
+  if (pending) return pending;
+  const lookup = (async () => {
+    try {
+      const result = await fetchTweet(id);
+      return { state: result.tombstone || result.notFound ? "gone" : "available" } as const;
+    } catch {
+      return { state: "unavailable" } as const;
+    }
+  })();
+  pendingTweets.set(id, lookup);
+  try {
+    const result = await lookup;
+    cacheTweet(id, result);
+    return result;
+  } finally {
+    pendingTweets.delete(id);
+  }
+}
+
+async function confirmedIds(supabase: Client, agentId: string) {
+  const rows = await pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
+    supabase
+      .from("drafts")
+      .select("story_id")
+      .eq("agent_id", agentId)
+      .eq("is_winner", true)
+      .eq("platform", "x")
+      .not("posted_at", "is", null)
+      .not("posted_url", "is", null)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  return new Set(rows.map((row) => row.story_id).filter((id): id is string => Boolean(id)));
+}
+async function winnerIds(supabase: Client, agentId: string) {
+  const rows = await pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
+    supabase
+      .from("drafts")
+      .select("story_id")
+      .eq("agent_id", agentId)
+      .eq("is_winner", true)
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  return new Set(rows.map((row) => row.story_id).filter((id): id is string => Boolean(id)));
+}
+async function rawPage(
+  supabase: Client,
+  agentId: string,
+  cursor: FeedCursor | null,
+  limit: number,
+) {
+  let query = supabase
     .from("stories")
     .select("id, summary, created_at")
     .eq("agent_id", agentId)
     .order("created_at", { ascending: false })
-    .limit(STORY_PAGE_LIMIT);
-  if (storyError) throw storyError;
-
-  const stories = (storyData ?? []) as StoryRow[];
-  if (stories.length === 0) return [];
-
-  const storyIds = stories.map((s) => s.id);
-
-  const [assignmentsResult, winnersResult, councilResult] = await Promise.all([
+    .order("id", { ascending: false })
+    .limit(limit);
+  if (cursor) query = query.or(cursorClause(cursor));
+  const page = await query;
+  if (page.error) throw page.error;
+  const rows = (page.data ?? []) as StoryRow[];
+  const sorted = rows.sort(compareStories).slice(0, limit);
+  const last = sorted.at(-1);
+  return { rows: sorted, nextCursor: last && sorted.length === limit ? cursorFor(last) : null };
+}
+async function hydrate(
+  supabase: Client,
+  agentId: string,
+  stories: StoryRow[],
+): Promise<FeedItem[]> {
+  if (!stories.length) return [];
+  const storyIds = stories.map((story) => story.id);
+  const [assignmentResult, winnerResult] = await Promise.all([
     supabase
       .from("story_assignments")
-      // Oldest-assigned-first within a story, so `sourcePosts[0]` (feed-item.tsx's rendered
-      // "primary" source post — see its own comment) is the post that actually started the
-      // story, not an arbitrary fetch order.
-      .select("story_id, source_posts(id, author_handle, text, posted_at, x_post_id, url, raw)")
+      .select("story_id, source_post_id")
+      .eq("agent_id", agentId)
       .in("story_id", storyIds)
       .order("created_at", { ascending: true }),
     supabase
       .from("drafts")
-      // Oldest-first, for the same reason as the assignments query above: a story that clustered
-      // more than one source post carries one is_winner row per (platform, source post) — each
-      // delivery's council crowns its own winner and nothing dethrones the last one — so the
-      // winners loop below would otherwise keep whichever row PostgREST happened to return last.
-      // Ascending means the NEWEST winner is applied last and wins, deterministically.
       .select(
-        "id, story_id, platform, posted_at, posted_url, created_at, model_call_id, translation",
+        "id, story_id, platform, posted_at, posting_claimed_at, posted_url, model_call_id, news_title, news_synthesis",
       )
       .eq("agent_id", agentId)
       .in("story_id", storyIds)
       .eq("is_winner", true)
       .order("created_at", { ascending: true }),
-    supabase
-      .from("drafts")
-      .select("story_id, parent_draft_id, judge_verdict, model_call_id")
-      .eq("agent_id", agentId)
-      .in("story_id", storyIds),
   ]);
-  if (assignmentsResult.error) throw assignmentsResult.error;
-  if (winnersResult.error) throw winnersResult.error;
-  if (councilResult.error) throw councilResult.error;
-
-  const winnerRows = winnersResult.data ?? [];
-  const councilRows = councilResult.data ?? [];
-  const modelCallIds = [
-    ...new Set(
-      [...winnerRows, ...councilRows]
-        .map((row) => row.model_call_id)
-        .filter((id): id is string => id !== null),
-    ),
-  ];
-  const modelCallsById = new Map<string, WinnerModelCall>();
-  if (modelCallIds.length > 0) {
-    const { data: modelCallData, error: modelCallError } = await supabase
-      .from("model_calls")
-      .select("id, model, output, cost_usd")
-      .in("id", modelCallIds);
-    if (modelCallError) throw modelCallError;
-    for (const call of modelCallData ?? []) {
-      modelCallsById.set(call.id, call);
-    }
+  if (assignmentResult.error || winnerResult.error)
+    throw assignmentResult.error ?? winnerResult.error;
+  const assignments = (assignmentResult.data ?? []) as unknown as AssignmentRow[];
+  const winnerRows = (winnerResult.data ?? []) as unknown as WinnerRow[];
+  const modelCalls = new Map<string, { output: string | null }>();
+  for (const part of chunks(winnerRows.map((row) => row.model_call_id))) {
+    if (!part.length) continue;
+    const { data, error } = await supabase.from("model_calls").select("id, output").in("id", part);
+    if (error) throw error;
+    for (const call of data ?? []) modelCalls.set(call.id, call);
   }
-
-  const sourcePostsByStoryId = new Map<string, FeedStory["sourcePosts"]>();
-  for (const row of (assignmentsResult.data ?? []) as unknown as AssignmentRow[]) {
-    if (!row.source_posts) continue; // defensive: an assignment whose source_posts row went missing
-    const list = sourcePostsByStoryId.get(row.story_id) ?? [];
-    list.push({
-      id: row.source_posts.id,
-      authorHandle: row.source_posts.author_handle,
-      authorName: authorNameFromRaw(row.source_posts.raw),
-      text: row.source_posts.text,
-      postedAt: row.source_posts.posted_at,
-      xPostId: row.source_posts.x_post_id,
-      url: row.source_posts.url,
+  const sourcePosts = new Map<string, SourcePost>();
+  for (const part of chunks(assignments.map((row) => row.source_post_id))) {
+    if (!part.length) continue;
+    const { data, error } = await supabase
+      .from("source_posts")
+      .select("id, author_handle, text, posted_at, x_post_id, source, url")
+      .in("id", part);
+    if (error) throw error;
+    for (const post of data ?? []) sourcePosts.set(post.id, post);
+  }
+  const lineageById = new Map<string, LineageRow>();
+  for (const part of chunks([...new Set(assignments.map((row) => row.source_post_id))])) {
+    if (!part.length) continue;
+    const rows = await pagedRows<LineageRow>(agentId, (from, to) =>
+      supabase
+        .from("drafts")
+        .select("id, parent_draft_id, source_post_id")
+        .eq("agent_id", agentId)
+        .in("source_post_id", part)
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+    for (const row of rows) lineageById.set(row.id, row);
+  }
+  function versionCount(winningDraftId: string): number {
+    const visited = new Set<string>();
+    let cursor: string | null = winningDraftId;
+    let count = 0;
+    while (cursor && !visited.has(cursor)) {
+      visited.add(cursor);
+      const parentDraftId: string | null = lineageById.get(cursor)?.parent_draft_id ?? null;
+      if (!parentDraftId) break;
+      count++;
+      cursor = parentDraftId;
+    }
+    return count;
+  }
+  const sources = new Map<string, SourcePost[]>();
+  for (const assignment of assignments) {
+    const post = sourcePosts.get(assignment.source_post_id);
+    if (post) sources.set(assignment.story_id, [...(sources.get(assignment.story_id) ?? []), post]);
+  }
+  const winners = new Map<string, FeedItem["winners"]>();
+  const titleByStory = new Map<string, string | null>();
+  for (const row of winnerRows) {
+    if (!row.story_id || !isPlatform(row.platform)) continue;
+    const previousTitle = titleByStory.get(row.story_id);
+    if (previousTitle === undefined || row.platform === "x") {
+      titleByStory.set(row.story_id, row.news_title);
+    }
+    winners.set(row.story_id, {
+      ...(winners.get(row.story_id) ?? {}),
+      [row.platform]: {
+        draftId: row.id,
+        draftText: modelCalls.get(row.model_call_id)?.output ?? "",
+        postedAt: row.posted_at,
+        postingClaimedAt: row.posting_claimed_at,
+        postedUrl: row.posted_url,
+        newsSynthesis: row.news_synthesis,
+        versionCount: versionCount(row.id),
+      },
     });
-    sourcePostsByStoryId.set(row.story_id, list);
   }
-
-  const winnersByStoryId = new Map<string, FeedStory["winners"]>();
-  const winnersWithModelCalls: WinnerRow[] = winnerRows.map((row) => ({
-    ...row,
-    model_calls: modelCallsById.get(row.model_call_id) ?? null,
-  }));
-  for (const winner of winnersWithModelCalls) {
-    if (!winner.story_id || !isPlatform(winner.platform)) continue;
-    const entry = winnersByStoryId.get(winner.story_id) ?? {};
-    entry[winner.platform] = {
-      draftId: winner.id,
-      text: winner.model_calls?.output ?? "",
-      model: winner.model_calls?.model ?? "unknown",
-      createdAt: winner.created_at,
-      postedAt: winner.posted_at,
-      postedUrl: winner.posted_url,
-      translation: winner.translation,
+  const primary = stories
+    .map((story) => ({ story, source: sources.get(story.id)?.[0] }))
+    .filter((entry): entry is { story: StoryRow; source: SourcePost } => {
+      if (!entry.source)
+        console.warn("Skipping orphaned feed story", { agentId, storyId: entry.story.id });
+      return Boolean(entry.source);
+    });
+  const tweets = await Promise.all(
+    primary.map(({ source }) => (source.x_post_id ? getCachedTweet(source.x_post_id) : undefined)),
+  );
+  return primary.map(({ story, source }, index) => {
+    const lookup = tweets[index];
+    const kind = source.source === "x" ? "x" : source.text ? "article" : "headline";
+    const sourceView: FeedSourceView = {
+      kind,
+      authorHandle: source.author_handle,
+      siteName: kind === "x" ? null : hostname(source.url),
+      url:
+        kind === "x" && source.x_post_id && source.author_handle
+          ? `https://x.com/${source.author_handle}/status/${source.x_post_id}`
+          : source.url,
+      postedAt: source.posted_at,
+      gone: lookup?.state === "gone",
+      fresh: Date.now() - new Date(source.posted_at ?? story.created_at).getTime() < 3_600_000,
     };
-    winnersByStoryId.set(winner.story_id, entry);
-  }
-
-  const councilRowsByStoryId = new Map<string, CouncilRow[]>();
-  const councilRowsWithModelCalls: CouncilRow[] = councilRows.map((draft) => ({
-    ...draft,
-    model_calls: modelCallsById.get(draft.model_call_id) ?? null,
-  }));
-  for (const row of councilRowsWithModelCalls) {
-    if (!row.story_id) continue;
-    const list = councilRowsByStoryId.get(row.story_id) ?? [];
-    list.push(row);
-    councilRowsByStoryId.set(row.story_id, list);
-  }
-
-  const result = stories.map((story) => ({
-    storyId: story.id,
-    summary: story.summary,
-    createdAt: story.created_at,
-    sourcePosts: sourcePostsByStoryId.get(story.id) ?? [],
-    winners: winnersByStoryId.get(story.id) ?? {},
-    council: summarizeCouncil(councilRowsByStoryId.get(story.id) ?? []),
-  }));
-
-  // Unconfirmed-first (unposted OR ambiguous), then most-recently-confirmed-first (see the
-  // ordering comment at the top of this file). `Array#sort` is stable (guaranteed since
-  // ES2019/Node 12+), so ties keep the `stories` query's own created_at-desc order.
-  result.sort((a, b) => {
-    const aX = a.winners.x;
-    const bX = b.winners.x;
-    const aConfirmed = aX != null && aX.postedAt != null && aX.postedUrl != null;
-    const bConfirmed = bX != null && bX.postedAt != null && bX.postedUrl != null;
-    if (!aConfirmed || !bConfirmed || aX == null || bX == null) {
-      if (aConfirmed === bConfirmed) return 0;
-      return aConfirmed ? 1 : -1;
-    }
-    return new Date(bX.postedAt as string).getTime() - new Date(aX.postedAt as string).getTime();
+    return {
+      storyId: story.id,
+      createdAt: story.created_at,
+      // Owner decision: no fallback to stories.summary — a null title renders the literal
+      // placeholder. The 100-post replay backfills real titles for recent history; anything
+      // older shows the placeholder.
+      newsTitle: titleByStory.get(story.id) ?? "NO TITLE",
+      source: sourceView,
+      winners: winners.get(story.id) ?? {},
+    };
   });
+}
 
-  return result;
+export async function fetchFeedPage(
+  supabase: Client,
+  agentId: string,
+  opts: { cursor?: FeedCursor | null; limit?: number } = {},
+): Promise<FeedPage> {
+  const limit = Math.max(1, Math.min(opts.limit ?? FEED_PAGE_SIZE, FEED_REFRESH_CHUNK));
+  const cursor = isFeedCursor(opts.cursor) ? opts.cursor : null;
+  // A card exists only once drafting is complete (design delta §5): the feed walks stories and
+  // keeps only those with a winner draft, so undrafted/off-beat stories never render.
+  const winners = await winnerIds(supabase, agentId);
+
+  let cursorValue: FeedCursor | null = cursor;
+  let nextCursor: FeedCursor | null = cursor;
+  const rows: StoryRow[] = [];
+
+  for (let iteration = 0; iteration < 4 && rows.length < limit; iteration++) {
+    const page = await rawPage(supabase, agentId, cursorValue, Math.max(50, limit));
+    const kept = page.rows.filter((row) => winners.has(row.id)).slice(0, limit - rows.length);
+    rows.push(...kept);
+
+    if (rows.length >= limit && rows.at(-1)) {
+      const last = rows.at(-1);
+      if (last) nextCursor = cursorFor(last);
+      break;
+    }
+
+    nextCursor = page.nextCursor;
+    if (!page.nextCursor) break;
+
+    cursorValue = page.nextCursor;
+  }
+
+  return { items: await hydrate(supabase, agentId, rows), nextCursor };
+}
+
+export async function fetchFeedCounts(supabase: Client, agentId: string) {
+  const [{ count, error }, winners, confirmed] = await Promise.all([
+    supabase.from("stories").select("id", { count: "exact", head: true }).eq("agent_id", agentId),
+    winnerIds(supabase, agentId),
+    confirmedIds(supabase, agentId),
+  ]);
+  if (error) throw error;
+  return {
+    totalStories: count ?? 0,
+    readyToReview: [...winners].filter((id) => !confirmed.has(id)).length,
+  };
 }

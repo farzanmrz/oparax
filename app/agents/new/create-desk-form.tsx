@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2Icon, InfoIcon, Loader2Icon } from "lucide-react";
+import { GlobeIcon, InfoIcon, Loader2Icon, UserRoundIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type ClipboardEvent,
@@ -10,13 +10,16 @@ import {
   useState,
   useTransition,
 } from "react";
+import { toast } from "sonner";
+import { BandCard } from "@/components/band-card";
 import { ChipsField } from "@/components/chips-field";
+import { PageHeading } from "@/components/page-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { splitList } from "@/lib/split-list";
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
 import { mergeHandles, splitHandles } from "@/lib/x/handle-input";
@@ -30,14 +33,9 @@ type PersistedDraft = {
   beat: string;
   handles: string[];
   handleDraft: string;
+  websites: string[];
+  websiteDraft: string;
 };
-
-function splitWebsites(raw: string): string[] {
-  return raw
-    .split(/[\s,]+/)
-    .map((site) => site.trim())
-    .filter(Boolean);
-}
 
 function mergeWebsites(existing: readonly string[], incoming: readonly string[]): string[] {
   const next = [...existing];
@@ -52,20 +50,24 @@ function FieldLabel({
   children,
   help,
   badge,
+  htmlFor,
 }: {
-  readonly children: ReactNode;
-  readonly help?: string;
-  readonly badge?: ReactNode;
+  children: ReactNode;
+  help?: string;
+  badge?: ReactNode;
+  htmlFor?: string;
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="font-medium text-sm">{children}</span>
+      <label className="text-sm font-medium text-text-label" htmlFor={htmlFor}>
+        {children}
+      </label>
       {help ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               aria-label="More information"
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              className="flex size-11 items-center justify-center rounded-md text-text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring desk:size-6"
               type="button"
             >
               <InfoIcon className="size-3.5" />
@@ -79,20 +81,12 @@ function FieldLabel({
   );
 }
 
-function SectionTitle({ children }: { readonly children: ReactNode }) {
-  return (
-    <div className="border-border border-b pb-3">
-      <h2 className="font-semibold text-base">{children}</h2>
-    </div>
-  );
-}
-
 export function CreateDeskForm({
   xLinkState,
   canOverrideHandle,
 }: {
-  readonly xLinkState: { linked: boolean; handle: string | null };
-  readonly canOverrideHandle: boolean;
+  xLinkState: { linked: boolean; handle: string | null };
+  canOverrideHandle: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -120,57 +114,71 @@ export function CreateDeskForm({
       if (Array.isArray(value.handles)) {
         setHandles(value.handles.filter((handle): handle is string => typeof handle === "string"));
       }
+      if (typeof value.websiteDraft === "string") setWebsiteDraft(value.websiteDraft);
+      if (Array.isArray(value.websites)) {
+        setWebsites(
+          value.websites.filter((website): website is string => typeof website === "string"),
+        );
+      }
     } catch {
       // A malformed session draft safely degrades to the empty form already on screen.
     }
   }, []);
 
   function persistDraft() {
-    const draft: PersistedDraft = { name, beat, handles, handleDraft };
+    const draft: PersistedDraft = { name, beat, handles, handleDraft, websites, websiteDraft };
     try {
       window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
-      // OAuth must remain available when private-mode storage is unavailable.
+      // OAuth remains available when private-mode storage is unavailable.
     }
   }
 
   const hasLinkedAccount = xLinkState.linked && Boolean(xLinkState.handle);
   const formDisabled = isPending || createdDeskId !== null || !hasLinkedAccount;
-  const atLimit = handles.length >= MAX_TRACKED;
+  const atHandleLimit = handles.length >= MAX_TRACKED;
+  const atWebsiteLimit = websites.length >= MAX_WEBSITES;
 
-  function commitDraft() {
+  function commitHandleDraft() {
     const parts = splitHandles(handleDraft);
-    if (parts.length > 0) setHandles((current) => mergeHandles(current, parts));
+    if (parts.length) setHandles((current) => mergeHandles(current, parts));
     setHandleDraft("");
   }
 
   function onTrackedKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      commitDraft();
-    }
+    if (event.key !== "Enter" && event.key !== ",") return;
+    event.preventDefault();
+    commitHandleDraft();
   }
 
   function onTrackedPaste(event: ClipboardEvent<HTMLInputElement>) {
     const text = event.clipboardData.getData("text");
-    if (/[\s,]/.test(text)) {
-      event.preventDefault();
-      setHandles((current) => mergeHandles(current, splitHandles(`${handleDraft} ${text}`)));
-      setHandleDraft("");
-    }
+    const incoming = splitHandles(`${handleDraft} ${text}`);
+    if (!incoming.length) return;
+    event.preventDefault();
+    setHandles((current) => mergeHandles(current, incoming));
+    setHandleDraft("");
   }
 
   function commitWebsiteDraft() {
-    const parts = splitWebsites(websiteDraft);
-    if (parts.length > 0) setWebsites((current) => mergeWebsites(current, parts));
+    const parts = splitList(websiteDraft);
+    if (parts.length) setWebsites((current) => mergeWebsites(current, parts));
     setWebsiteDraft("");
   }
 
   function onWebsiteKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      commitWebsiteDraft();
-    }
+    if (event.key !== "Enter" && event.key !== ",") return;
+    event.preventDefault();
+    commitWebsiteDraft();
+  }
+
+  function onWebsitePaste(event: ClipboardEvent<HTMLInputElement>) {
+    const text = event.clipboardData.getData("text");
+    const incoming = splitList(`${websiteDraft} ${text}`);
+    if (!incoming.length) return;
+    event.preventDefault();
+    setWebsites((current) => mergeWebsites(current, incoming));
+    setWebsiteDraft("");
   }
 
   function handleSubmit(event: React.FormEvent) {
@@ -190,11 +198,12 @@ export function CreateDeskForm({
     }
 
     const finalHandles = mergeHandles(handles, splitHandles(handleDraft));
-    if (finalHandles.length === 0) {
+    if (!finalHandles.length) {
       setFormError("Add at least one tracked X account.");
       return;
     }
-    const finalWebsites = mergeWebsites(websites, splitWebsites(websiteDraft));
+    const finalWebsites = mergeWebsites(websites, splitList(websiteDraft));
+
     startTransition(async () => {
       const result = await createDesk({
         name,
@@ -216,21 +225,35 @@ export function CreateDeskForm({
       // running them in parallel, so every call must be awaited (via allSettled, not a bare
       // Promise.all) to guarantee it's actually issued before the navigation below unmounts
       // this component. Not waiting for onboarding itself to finish — that stays async, with
-      // the new desk's Setup page picking up from here via polling.
-      await Promise.allSettled(
-        finalWebsites.map((url) =>
-          startWebsiteOnboardingAtCreation(deskId, url).catch((error: unknown) => {
+      // the new desk's Sources page picking up from here via polling.
+      const onboardingResults = await Promise.all(
+        finalWebsites.map(async (url) => {
+          try {
+            return { url, result: await startWebsiteOnboardingAtCreation(deskId, url) };
+          } catch (error) {
             console.error("createDesk: startWebsiteOnboardingAtCreation failed", error);
-          }),
-        ),
+            return { url, result: { ok: false, error: "Couldn't add that website." } };
+          }
+        }),
       );
+      for (const { url, result: onboarding } of onboardingResults) {
+        if (!onboarding.ok) {
+          toast.error(`Couldn't add ${url}`, {
+            action: {
+              label: "Open Sources",
+              onClick: () => router.push(`/agents/${deskId}/sources`),
+            },
+          });
+        }
+      }
 
       try {
         await startExtraction(deskId);
       } finally {
         // A created agent is recoverable from Feed/Voice even if the extraction start itself
-        // returns a failure. Replacing prevents Back from reopening a committed form.
-        router.replace(`/agents/${deskId}/setup`);
+        // returns a failure. Replacing prevents Back from reopening a committed form. Sources
+        // is the landing page so creation-time onboarding's pending chips are visible.
+        router.replace(`/agents/${deskId}/sources`);
       }
     });
   }
@@ -242,27 +265,25 @@ export function CreateDeskForm({
     hasLinkedAccount &&
     !isPending &&
     !createdDeskId;
+
   return (
-    <form className="flex w-full flex-col gap-6 py-5 md:gap-7 md:py-7" onSubmit={handleSubmit}>
-      <h1 className="font-semibold text-2xl tracking-tight">Create agent</h1>
-
-      <div className="grid items-stretch gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <Card className="h-full shadow-none">
-          <CardContent className="flex h-full flex-col gap-5">
-            <SectionTitle>Identity</SectionTitle>
-
+    <form className="flex w-full flex-col gap-4 py-4 desk:gap-6 desk:py-6" onSubmit={handleSubmit}>
+      <PageHeading>Create Agent</PageHeading>
+      <div className="grid items-stretch gap-4 desk:grid-cols-2 desk:gap-6">
+        <BandCard className="h-full" icon={<UserRoundIcon />} title="Identity">
+          <div className="flex h-full flex-col gap-5">
             <div className="flex flex-col gap-1.5">
-              <FieldLabel help="Connect the X account Oparax will use to learn your voice and publish approved drafts.">
-                Your X account
+              <FieldLabel help="Connect the X account Oparax will use to publish approved drafts.">
+                Your X Account
               </FieldLabel>
               {xLinkState.linked && xLinkState.handle ? (
-                <div className="flex min-h-10 items-center gap-2 rounded-lg border border-input bg-input/20 px-3 text-sm">
-                  <CheckCircle2Icon aria-hidden="true" className="size-4 shrink-0 text-success" />
+                <div className="flex min-h-11 items-center gap-2 rounded-md border border-input bg-[var(--input-bg)] px-3 text-sm">
+                  <span aria-hidden="true" className="size-2 rounded-full bg-success" />
                   <span className="truncate font-medium">@{xLinkState.handle}</span>
-                  <span className="text-muted-foreground">Connected</span>
+                  <span className="text-text-muted">Connected</span>
                 </div>
               ) : (
-                <Button asChild className="w-fit" variant="outline">
+                <Button asChild className="min-h-11 w-fit" variant="outline">
                   <a
                     href={`/auth/x?returnTo=${encodeURIComponent("/agents/new")}`}
                     onClick={persistDraft}
@@ -274,26 +295,35 @@ export function CreateDeskForm({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel help="Shown in the agent picker and throughout the workspace.">
-                Agent name
+              <FieldLabel
+                htmlFor="agent-name"
+                help="Shown in the agent switcher and throughout the workspace."
+              >
+                Agent Name
               </FieldLabel>
               <Input
+                id="agent-name"
+                className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
                 disabled={formDisabled}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="e.g. Arsenal watch"
+                placeholder="e.g. Arsenal Watch"
                 value={name}
               />
             </div>
 
             <div className="flex flex-1 flex-col gap-1.5">
-              <FieldLabel help="Define what counts as relevant and what this agent should ignore.">
+              <FieldLabel
+                htmlFor="agent-beat"
+                help="Define what counts as relevant and what this agent should ignore."
+              >
                 Beat
               </FieldLabel>
               <Textarea
-                className="min-h-36 flex-1 resize-none"
+                id="agent-beat"
+                className="min-h-44 flex-1 resize-none rounded-md bg-[var(--input-bg)] text-base desk:text-sm"
                 disabled={formDisabled}
                 onChange={(event) => setBeat(event.target.value)}
-                placeholder="e.g. Arsenal team news, transfers and match reaction. Skip gaming and personal posts."
+                placeholder="Explain the exact news this agent should track and what it should skip — be as detailed as possible. e.g. Arsenal team news, transfers, and match reaction; skip gaming and personal posts."
                 value={beat}
               />
             </div>
@@ -301,12 +331,19 @@ export function CreateDeskForm({
             {canOverrideHandle && xLinkState.linked ? (
               <div className="flex flex-col gap-1.5">
                 <FieldLabel
-                  badge={<Badge variant="secondary">Owner only</Badge>}
-                  help="Whose voice this agent writes in. Defaults to your connected account. Posts still publish from your connected account either way."
+                  htmlFor="extract-voice-from"
+                  badge={
+                    <Badge className="rounded-badge" variant="secondary">
+                      Owner only
+                    </Badge>
+                  }
+                  help="Whose voice this agent writes in. Posts still publish from your connected account."
                 >
-                  Extract voice from
+                  Extract Voice From
                 </FieldLabel>
                 <Input
+                  id="extract-voice-from"
+                  className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
                   disabled={isPending || createdDeskId !== null}
                   onChange={(event) => setExtractFrom(event.target.value)}
                   placeholder="handle without the @"
@@ -314,73 +351,75 @@ export function CreateDeskForm({
                 />
               </div>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+        </BandCard>
 
-        <Card className="h-full shadow-none">
-          <CardContent className="flex h-full flex-col gap-5">
-            <SectionTitle>Sources</SectionTitle>
-
+        <BandCard className="h-full" icon={<GlobeIcon />} title="Sources">
+          <div className="flex h-full flex-col gap-5">
             <div className="flex flex-1 flex-col gap-1.5">
-              <FieldLabel help="The X accounts this agent watches. Paste several handles at once.">
-                Tracked X accounts ({handles.length}/{MAX_TRACKED})
+              <FieldLabel help="The X accounts this agent watches. Paste one or several handles.">
+                Tracked X Accounts ({handles.length}/{MAX_TRACKED})
               </FieldLabel>
               <ChipsField
+                chipClassName="rounded-md bg-[var(--chip-x-bg)]"
                 chipLabel={(handle) => `@${handle}`}
                 chips={handles}
-                className="min-h-36 flex-1"
-                inputDisabled={formDisabled || atLimit}
-                onBlur={commitDraft}
+                className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
+                hideInput={atHandleLimit}
+                inputDisabled={formDisabled || atHandleLimit}
+                inputAriaLabel="Tracked X accounts"
+                onBlur={commitHandleDraft}
                 onChange={setHandleDraft}
                 onKeyDown={onTrackedKeyDown}
                 onPaste={onTrackedPaste}
                 onRemove={(handle) =>
                   setHandles((current) => current.filter((value) => value !== handle))
                 }
-                onSubmit={commitDraft}
-                placeholder={
-                  atLimit
-                    ? `Up to ${MAX_TRACKED} accounts`
-                    : "Paste handles — comma-separated, @ optional"
-                }
+                onSubmit={commitHandleDraft}
+                placeholder="Paste handles — @ optional"
                 removeDisabled={formDisabled}
                 removeLabel={(handle) => `Remove @${handle}`}
                 value={handleDraft}
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-1 flex-col gap-1.5">
               <FieldLabel help="Websites are onboarded automatically once your desk is created — each appears as a pending chip until it's ready.">
                 Websites ({websites.length}/{MAX_WEBSITES})
               </FieldLabel>
               <ChipsField
+                chipClassName="rounded-md bg-[var(--chip-web-bg)]"
                 chipLabel={(site) => site}
                 chips={websites}
-                inputDisabled={formDisabled}
+                className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
+                hideInput={atWebsiteLimit}
+                inputDisabled={formDisabled || atWebsiteLimit}
+                inputAriaLabel="Websites"
                 onBlur={commitWebsiteDraft}
                 onChange={setWebsiteDraft}
                 onKeyDown={onWebsiteKeyDown}
+                onPaste={onWebsitePaste}
                 onRemove={(site) =>
                   setWebsites((current) => current.filter((value) => value !== site))
                 }
                 onSubmit={commitWebsiteDraft}
-                placeholder="example.com"
+                placeholder="Paste websites — example.com"
                 removeDisabled={formDisabled}
                 removeLabel={(site) => `Remove ${site}`}
                 value={websiteDraft}
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </BandCard>
       </div>
 
       <div className="flex w-full flex-col gap-2">
-        <Button className="w-full" disabled={!canSubmit} size="lg" type="submit">
+        <Button className="min-h-11 w-full" disabled={!canSubmit} size="lg" type="submit">
           {isPending ? <Loader2Icon className="animate-spin" /> : null}
-          {isPending ? "Creating agent…" : "Create agent"}
+          {isPending ? "Creating agent…" : "Create Agent"}
         </Button>
         {formError ? (
-          <p className="text-destructive text-sm" role="alert">
+          <p className="text-sm text-destructive" role="alert">
             {formError}
           </p>
         ) : null}

@@ -1,0 +1,36 @@
+# Branch naming is load-bearing, not cosmetic: the feature flow identifies a
+# slice ONLY by its branch name — QC diffs `origin/beta...ft/<N>` and ship keys
+# on the same ref — so an off-convention branch is invisible to the entire
+# QC/ship machinery. Allowed: main, beta, ft/<digits> (the issue number,
+# nothing appended), lab/* for experiments, and v0/* for v0's design-sync branches. A repo ruleset additionally
+# blocks off-convention branch CREATION at push time; this check is the
+# advisory layer PRs surface (make it a required check for PRs into beta in
+# Settings > Branches).
+name: branch-name
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce ft/<issue-number> convention
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          case "$BRANCH" in
+            main|beta|lab/*|v0/*) echo "ok: $BRANCH" ;;
+            ft/*)
+              if printf '%s' "$BRANCH" | grep -Eq '^ft/[0-9]+$'; then
+                echo "ok: $BRANCH"
+              else
+                echo "::error::Branch '$BRANCH' breaks the convention: feature branches must be ft/<issue-number> exactly (e.g. ft/103) — QC and ship resolve a slice by that name."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Branch '$BRANCH' breaks the convention: allowed names are main, beta, ft/<issue-number>, lab/*, v0/*."
+              exit 1
+              ;;
+          esac

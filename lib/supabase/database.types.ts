@@ -58,8 +58,8 @@ export type Database = {
       };
       beat_conflicts: {
         Row: {
-          created_at: string;
           agent_id: string;
+          created_at: string;
           ground_on_beat: boolean;
           ground_reason: string;
           id: string;
@@ -69,8 +69,8 @@ export type Database = {
           status: string;
         };
         Insert: {
-          created_at?: string;
           agent_id: string;
+          created_at?: string;
           ground_on_beat: boolean;
           ground_reason: string;
           id?: string;
@@ -80,8 +80,8 @@ export type Database = {
           status?: string;
         };
         Update: {
-          created_at?: string;
           agent_id?: string;
+          created_at?: string;
           ground_on_beat?: boolean;
           ground_reason?: string;
           id?: string;
@@ -109,10 +109,10 @@ export type Database = {
       };
       corpus_posts: {
         Row: {
+          agent_id: string;
           created_at: string;
           exclude_reason: string | null;
           excluded_off_beat: boolean;
-          agent_id: string;
           id: string;
           is_long: boolean;
           like_count: number;
@@ -123,10 +123,10 @@ export type Database = {
           x_post_id: string;
         };
         Insert: {
+          agent_id: string;
           created_at?: string;
           exclude_reason?: string | null;
           excluded_off_beat?: boolean;
-          agent_id: string;
           id?: string;
           is_long?: boolean;
           like_count?: number;
@@ -137,10 +137,10 @@ export type Database = {
           x_post_id: string;
         };
         Update: {
+          agent_id?: string;
           created_at?: string;
           exclude_reason?: string | null;
           excluded_off_beat?: boolean;
-          agent_id?: string;
           id?: string;
           is_long?: boolean;
           like_count?: number;
@@ -162,20 +162,26 @@ export type Database = {
       };
       draft_claims: {
         Row: {
-          created_at: string;
           agent_id: string;
+          claim_token: string;
+          completed_at: string | null;
+          created_at: string;
           id: string;
           source_post_id: string;
         };
         Insert: {
-          created_at?: string;
           agent_id: string;
+          claim_token?: string;
+          completed_at?: string | null;
+          created_at?: string;
           id?: string;
           source_post_id: string;
         };
         Update: {
-          created_at?: string;
           agent_id?: string;
+          claim_token?: string;
+          completed_at?: string | null;
+          created_at?: string;
           id?: string;
           source_post_id?: string;
         };
@@ -388,11 +394,11 @@ export type Database = {
       slack_accounts: {
         Row: {
           access_token: string;
+          agent_id: string;
           bot_user_id: string;
           channel_id: string;
           channel_name: string;
           created_at: string;
-          agent_id: string;
           id: string;
           scopes: string;
           team_id: string;
@@ -401,11 +407,11 @@ export type Database = {
         };
         Insert: {
           access_token: string;
+          agent_id: string;
           bot_user_id: string;
           channel_id: string;
           channel_name: string;
           created_at?: string;
-          agent_id: string;
           id?: string;
           scopes: string;
           team_id: string;
@@ -414,11 +420,11 @@ export type Database = {
         };
         Update: {
           access_token?: string;
+          agent_id?: string;
           bot_user_id?: string;
           channel_id?: string;
           channel_name?: string;
           created_at?: string;
-          agent_id?: string;
           id?: string;
           scopes?: string;
           team_id?: string;
@@ -437,20 +443,20 @@ export type Database = {
       };
       slack_delivery_receipts: {
         Row: {
-          created_at: string;
           agent_id: string;
+          created_at: string;
           id: string;
           interaction_id: string;
         };
         Insert: {
-          created_at?: string;
           agent_id: string;
+          created_at?: string;
           id?: string;
           interaction_id: string;
         };
         Update: {
-          created_at?: string;
           agent_id?: string;
+          created_at?: string;
           id?: string;
           interaction_id?: string;
         };
@@ -463,48 +469,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
-      };
-      source_posts: {
-        Row: {
-          author_handle: string | null;
-          created_at: string;
-          external_id: string | null;
-          id: string;
-          posted_at: string | null;
-          raw: Json | null;
-          source: string;
-          text: string;
-          title: string | null;
-          url: string | null;
-          x_post_id: string | null;
-        };
-        Insert: {
-          author_handle?: string | null;
-          created_at?: string;
-          external_id?: string | null;
-          id?: string;
-          posted_at?: string | null;
-          raw?: Json | null;
-          source?: string;
-          text: string;
-          title?: string | null;
-          url?: string | null;
-          x_post_id?: string | null;
-        };
-        Update: {
-          author_handle?: string | null;
-          created_at?: string;
-          external_id?: string | null;
-          id?: string;
-          posted_at?: string | null;
-          raw?: Json | null;
-          source?: string;
-          text?: string;
-          title?: string | null;
-          url?: string | null;
-          x_post_id?: string | null;
-        };
-        Relationships: [];
       };
       source_configs: {
         Row: {
@@ -596,6 +560,51 @@ export type Database = {
           },
         ];
       };
+      source_posts: {
+        Row: {
+          author_handle: string | null;
+          created_at: string;
+          external_id: string | null;
+          id: string;
+          lang: string | null;
+          posted_at: string | null;
+          raw: Json | null;
+          source: string;
+          text: string;
+          title: string | null;
+          url: string | null;
+          x_post_id: string | null;
+        };
+        Insert: {
+          author_handle?: string | null;
+          created_at?: string;
+          external_id?: string | null;
+          id?: string;
+          lang?: string | null;
+          posted_at?: string | null;
+          raw?: Json | null;
+          source?: string;
+          text: string;
+          title?: string | null;
+          url?: string | null;
+          x_post_id?: string | null;
+        };
+        Update: {
+          author_handle?: string | null;
+          created_at?: string;
+          external_id?: string | null;
+          id?: string;
+          lang?: string | null;
+          posted_at?: string | null;
+          raw?: Json | null;
+          source?: string;
+          text?: string;
+          title?: string | null;
+          url?: string | null;
+          x_post_id?: string | null;
+        };
+        Relationships: [];
+      };
       source_seen_items: {
         Row: {
           first_seen_at: string;
@@ -627,22 +636,22 @@ export type Database = {
       };
       stories: {
         Row: {
-          created_at: string;
           agent_id: string;
+          created_at: string;
           id: string;
           summary: string;
           updated_at: string;
         };
         Insert: {
-          created_at?: string;
           agent_id: string;
+          created_at?: string;
           id?: string;
           summary: string;
           updated_at?: string;
         };
         Update: {
-          created_at?: string;
           agent_id?: string;
+          created_at?: string;
           id?: string;
           summary?: string;
           updated_at?: string;
@@ -659,22 +668,22 @@ export type Database = {
       };
       story_assignments: {
         Row: {
-          created_at: string;
           agent_id: string;
+          created_at: string;
           id: string;
           source_post_id: string;
           story_id: string;
         };
         Insert: {
-          created_at?: string;
           agent_id: string;
+          created_at?: string;
           id?: string;
           source_post_id: string;
           story_id: string;
         };
         Update: {
-          created_at?: string;
           agent_id?: string;
+          created_at?: string;
           id?: string;
           source_post_id?: string;
           story_id?: string;
@@ -756,10 +765,10 @@ export type Database = {
       };
       voice_extraction_runs: {
         Row: {
+          agent_id: string;
           cost_usd: number | null;
           created_at: string;
           error_code: string | null;
-          agent_id: string;
           finished_at: string | null;
           id: string;
           progress_note: string | null;
@@ -770,10 +779,10 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          agent_id: string;
           cost_usd?: number | null;
           created_at?: string;
           error_code?: string | null;
-          agent_id: string;
           finished_at?: string | null;
           id?: string;
           progress_note?: string | null;
@@ -784,10 +793,10 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          agent_id?: string;
           cost_usd?: number | null;
           created_at?: string;
           error_code?: string | null;
-          agent_id?: string;
           finished_at?: string | null;
           id?: string;
           progress_note?: string | null;
@@ -809,9 +818,9 @@ export type Database = {
       };
       voice_guides: {
         Row: {
+          agent_id: string;
           cost_usd: number | null;
           created_at: string;
-          agent_id: string;
           guide_deploy: string;
           guide_raw: string;
           id: string;
@@ -820,9 +829,9 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          agent_id: string;
           cost_usd?: number | null;
           created_at?: string;
-          agent_id: string;
           guide_deploy: string;
           guide_raw: string;
           id?: string;
@@ -831,9 +840,9 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          agent_id?: string;
           cost_usd?: number | null;
           created_at?: string;
-          agent_id?: string;
           guide_deploy?: string;
           guide_raw?: string;
           id?: string;
@@ -853,9 +862,9 @@ export type Database = {
       };
       voice_rules: {
         Row: {
+          agent_id: string;
           created_at: string;
           enabled: boolean;
-          agent_id: string;
           id: string;
           provenance_model_call_id: string | null;
           rule: string;
@@ -863,9 +872,9 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          agent_id: string;
           created_at?: string;
           enabled?: boolean;
-          agent_id: string;
           id?: string;
           provenance_model_call_id?: string | null;
           rule: string;
@@ -873,9 +882,9 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          agent_id?: string;
           created_at?: string;
           enabled?: boolean;
-          agent_id?: string;
           id?: string;
           provenance_model_call_id?: string | null;
           rule?: string;
@@ -946,32 +955,55 @@ export type Database = {
       add_source_config: {
         Args: {
           p_agent_id: string;
-          p_beat_guidance?: Json | null;
+          p_beat_guidance?: Json;
           p_change_detection: string;
-          p_display_name: string | null;
+          p_display_name: string;
           p_domain: string;
-          p_feed_url: string | null;
-          p_full_text_available: string | null;
-          p_language: string | null;
-          p_match_count: number | null;
-          p_model_call_id: string | null;
-          p_policy_note: string | null;
-          p_prefilter: Json | null;
-          p_retrieval: string | null;
-          p_sample_size: number | null;
-          p_sitemap_url: string | null;
+          p_feed_url: string;
+          p_full_text_available: string;
+          p_language: string;
+          p_match_count: number;
+          p_model_call_id: string;
+          p_policy_note: string;
+          p_prefilter: Json;
+          p_retrieval: string;
+          p_sample_size: number;
+          p_sitemap_url: string;
           p_url: string;
         };
         Returns: string;
       };
+      claim_draft: {
+        Args: {
+          p_agent_id: string;
+          p_claim_token: string;
+          p_source_post_id: string;
+          p_stale_cutoff: string;
+        };
+        Returns: boolean;
+      };
       delete_account: { Args: never; Returns: undefined };
+      insert_claimed_winner: {
+        Args: {
+          p_agent_id: string;
+          p_claim_token: string;
+          p_model_call_id: string;
+          p_news_synthesis: string;
+          p_news_title: string;
+          p_platform: string;
+          p_source_post_id: string;
+          p_story_id: string;
+          p_translation: string;
+        };
+        Returns: string;
+      };
       reclaim_extraction_run: {
         Args: { p_agent_id: string; p_stale_cutoff: string };
         Returns: boolean;
       };
       record_seen_item: {
         Args: {
-          p_bump_last_matched: boolean;
+          p_bump_last_matched?: boolean;
           p_item_key: string;
           p_source_config_id: string;
         };
@@ -987,6 +1019,16 @@ export type Database = {
           p_display_name: string;
           p_domain: string;
           p_url: string;
+        };
+        Returns: string;
+      };
+      upsert_claimed_exclusion: {
+        Args: {
+          p_agent_id: string;
+          p_claim_token: string;
+          p_excluded_at: string;
+          p_on_beat_reason: string;
+          p_source_post_id: string;
         };
         Returns: string;
       };
