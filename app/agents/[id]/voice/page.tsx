@@ -96,9 +96,9 @@ function toGuideCards(sections: GuideSection[]): GuideCard[] {
 
 function EmptyState({ deskId, reporterHandle }: { deskId: string; reporterHandle: string }) {
   return (
-    <BandCard icon={<PenLineIcon />} title="Writing Guide">
+    <BandCard icon={<PenLineIcon />} title="Guide">
       <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-        <h3 className="text-sm font-semibold">No Writing Guide Yet for @{reporterHandle}</h3>
+        <h3 className="text-sm font-semibold">No Guide Yet for @{reporterHandle}</h3>
         <p className="max-w-sm text-pretty text-sm text-text-muted">
           Extraction runs once a corpus source is connected.
         </p>
@@ -136,7 +136,7 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="flex flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
-      <PageHeading icon={<PenLineIcon />}>Writing Guide (@{desk.reporter_handle})</PageHeading>
+      <PageHeading icon={<PenLineIcon />}>Guide (@{desk.reporter_handle})</PageHeading>
       {extractionInFlight && progress.ok ? (
         <SetupProgressCard
           deskId={id}

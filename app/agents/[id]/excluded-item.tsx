@@ -78,9 +78,9 @@ export function ExcludedItemCard({ item }: { item: ExcludedPost }) {
 export function ExcludedEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--card-border)] bg-[linear-gradient(180deg,var(--card-grad-top),var(--card-grad-bottom))] px-4 py-14 text-center">
-      <h3 className="text-sm font-semibold text-text-title">Nothing Excluded Yet</h3>
+      <h3 className="text-sm font-semibold text-text-title">Nothing Skipped Yet</h3>
       <p className="mx-auto max-w-sm text-pretty text-sm text-text-muted">
-        Posts the model judges off this desk&apos;s beat will show up here, with the reason it gave.
+        Posts the model skips for being off this desk&apos;s beat will show up here, with the reason it gave.
       </p>
     </div>
   );

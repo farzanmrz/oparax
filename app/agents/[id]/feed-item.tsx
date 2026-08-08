@@ -240,7 +240,7 @@ const EMPTY: Record<
 > = {
   ready: {
     title: "Your Voice Is Ready",
-    body: "You can review it in Voice. New stories and drafts will appear here as soon as your agent finds something on-beat.",
+    body: "You can review it in Guide. New stories and drafts will appear here as soon as your agent finds something on-beat.",
   },
   paused: {
     title: "Your Agent Is Paused",
@@ -255,7 +255,7 @@ const EMPTY: Record<
   extraction_missing: {
     title: "Finish Setting Up Your Agent",
     body: "Your agent still needs to learn your voice before it can create drafts.",
-    actionLabel: "Go to Voice",
+    actionLabel: "Go to Guide",
     actionHref: "/voice",
   },
 };

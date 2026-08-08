@@ -54,13 +54,13 @@ export const DESK_TABS = [
   // Excluded sits beside Feed because it holds the same objects the Feed does — the ones
   // filtration dropped. Voice and Sources are configuration, so they follow.
   {
-    label: "Excluded",
+    label: "Skipped",
     icon: EyeOffIcon,
     href: (id: string) => `/agents/${id}/excluded`,
     exact: false,
   },
   {
-    label: "Writing Guide",
+    label: "Guide",
     icon: PenLineIcon,
     href: (id: string) => `/agents/${id}/voice`,
     exact: false,
