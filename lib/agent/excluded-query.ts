@@ -26,7 +26,6 @@ function hostname(url: string | null) {
   }
 }
 
-
 export type ExcludedPost = {
   id: string; // excluded_posts.id
   sourcePost: {

@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
 import { DraftBox } from "./draft-box";
 import { DraftMenu } from "./draft-menu";
-import { SetupProgressCard } from "./setup-progress-card";
 import { RelativeTime } from "./relative-time";
+import { SetupProgressCard } from "./setup-progress-card";
 
 function getSourceLabel(source: FeedItem["source"]): string {
   return source.kind === "x"

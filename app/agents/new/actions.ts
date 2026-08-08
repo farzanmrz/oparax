@@ -26,12 +26,12 @@ export type CreateDeskResult = { id: string; error?: never } | { id?: never; err
 
 function describeInvalidHandles(invalid: HandleCheckFailure[]): string {
   return `${invalid
-      .map((item) =>
-        item.status === "suspended"
-          ? `@${item.handle} is suspended.`
-          : `@${item.handle} doesn't exist on X.`,
-      )
-      .join(" ")} Remove them to continue.`;
+    .map((item) =>
+      item.status === "suspended"
+        ? `@${item.handle} is suspended.`
+        : `@${item.handle} doesn't exist on X.`,
+    )
+    .join(" ")} Remove them to continue.`;
 }
 
 /**
