@@ -28,6 +28,7 @@ const LISTING_MIN_ARTICLE_RATIO = 0.2;
 const LISTING_SAMPLE_LIMIT = 50;
 const NON_ARTICLE_EXT_RE =
   /\.(svg|png|jpe?g|gif|webp|ico|css|js|json|xml|woff2?|ttf|otf|pdf|mp4|webm)$/i;
+const MAX_HTML_LENGTH = 5_000_000;
 
 /** Same bound as sitemap.ts's NO_LASTMOD_CANDIDATE_CAP — a robots.txt declaring dozens of
  *  sitemaps (goal.com: 35 locale variants) can't turn one onboarding attempt into dozens of
@@ -186,6 +187,19 @@ async function lookupBeforeDeadline(
     ])) as LookupAddress[];
   } finally {
     if (timeout) clearTimeout(timeout);
+  }
+}
+
+/** Uses the same bounded DNS lookup and public-address policy as pinned source fetches, before
+ * a public-looking hostname is allowed to reserve a pending source row. */
+export async function validatePublicHostname(hostname: string): Promise<void> {
+  const addresses = await lookupBeforeDeadline(
+    "Source",
+    hostname.replace(/^\[|\]$/g, ""),
+    Date.now() + 15_000,
+  );
+  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicIpAddress(address))) {
+    throw new Error("Source resolved to an unsafe address");
   }
 }
 
@@ -408,21 +422,73 @@ function comparableHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/^www\./, "");
 }
 
-/** Extracts same-host anchors from server-rendered HTML. This intentionally mirrors the
- *  module's regex RSS extraction instead of adding an HTML parser; nested anchor markup is
- *  tag-stripped and can occasionally produce a lossy title. */
+function extractAnchors(html: string): { href: string; text: string }[] {
+  const anchors: { href: string; text: string }[] = [];
+  let open: { href: string; contentStart: number } | null = null;
+  let cursor = 0;
+
+  while (cursor < html.length) {
+    const tagStart = html.indexOf("<", cursor);
+    if (tagStart === -1) break;
+    const tagEnd = html.indexOf(">", tagStart + 1);
+    if (tagEnd === -1) break;
+    const tagText = html.slice(tagStart, tagEnd + 1);
+    cursor = tagEnd + 1;
+    if (/^<\/a\b/i.test(tagText)) {
+      if (!open) continue;
+      anchors.push({
+        href: open.href,
+        text: html
+          .slice(open.contentStart, tagStart)
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      });
+      open = null;
+      continue;
+    }
+    if (!/^<a\b/i.test(tagText)) continue;
+    const hrefMatch = tagText.match(/\bhref\s*=\s*["']([^"']+)["']/i);
+    open = hrefMatch ? { href: hrefMatch[1], contentStart: cursor } : null;
+  }
+  return anchors;
+}
+
+async function readHtmlWithinLimit(res: Response, endpoint: string): Promise<string> {
+  const contentLength = Number(res.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_HTML_LENGTH) {
+    await res.body?.cancel();
+    throw new Error(`Source ${endpoint} declared body too large (${contentLength} bytes)`);
+  }
+  const reader = res.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let html = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) return html + decoder.decode();
+    bytes += value.byteLength;
+    if (bytes > MAX_HTML_LENGTH) {
+      await reader.cancel();
+      throw new Error(`Source ${endpoint} body too large (${bytes} bytes)`);
+    }
+    html += decoder.decode(value, { stream: true });
+  }
+}
+
+/** Extracts same-host anchors from server-rendered HTML with a forward-only tag scan. Nested
+ *  anchor markup is tag-stripped and can occasionally produce a lossy title. */
 function extractListingSample(html: string, finalUrl: string): SourceSampleEntry[] {
   const listingUrl = new URL(finalUrl);
   listingUrl.hash = "";
   listingUrl.search = "";
   const seen = new Map<string, number>();
   const sameHostDistinct: { url: string; title?: string }[] = [];
-  const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-
-  for (const match of html.matchAll(anchorPattern)) {
+  for (const anchor of extractAnchors(html)) {
     let candidate: URL;
     try {
-      candidate = new URL(match[1], finalUrl);
+      candidate = new URL(anchor.href, finalUrl);
     } catch {
       continue;
     }
@@ -435,10 +501,7 @@ function extractListingSample(html: string, finalUrl: string): SourceSampleEntry
     candidate.search = "";
     const href = candidate.toString();
     if (href === listingUrl.toString()) continue;
-    const title = match[2]
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const title = anchor.text;
     const previousIndex = seen.get(href);
     if (previousIndex === undefined) {
       seen.set(href, sameHostDistinct.length);
@@ -466,8 +529,11 @@ function extractListingSample(html: string, finalUrl: string): SourceSampleEntry
 async function checkPageForRssLink(pageUrl: string): Promise<string | null> {
   try {
     const res = await sourceFetch(pageUrl, pageUrl);
-    if (!res.ok) return null;
-    const html = await res.text();
+    if (!res.ok) {
+      await res.body?.cancel();
+      return null;
+    }
+    const html = await readHtmlWithinLimit(res, pageUrl);
     return extractRssAlternateLink(html, pageUrl);
   } catch {
     return null;
@@ -625,7 +691,10 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
     const contentType = exactPage.res.headers.get("content-type");
     const isHtml = !contentType || /^\s*(?:text|application)\/x?html\b/i.test(contentType);
     if (!exactPage.res.ok || !isHtml) await exactPage.res.body?.cancel();
-    exactPageHtml = exactPage.res.ok && isHtml ? await exactPage.res.text() : null;
+    exactPageHtml =
+      exactPage.res.ok && isHtml
+        ? await readHtmlWithinLimit(exactPage.res, resolvedUrl.toString())
+        : null;
     exactPageFinalUrl = exactPage.finalUrl;
   } catch {
     // The exact page is optional: RSS fallbacks may still be reachable.

@@ -2,7 +2,8 @@
 // not imported, per poller/README.md's isolation rule.
 
 import { isPrivateHostname, isSafeDiscoveredUrl } from "./discovery-safety";
-import { assertFetchOk, fetchWithTimeout } from "./http";
+import { readHtmlWithinLimit } from "./html";
+import { fetchWithTimeout } from "./http";
 import { logger } from "./logger";
 import type { ConditionalGetCache, FeedItem } from "./sitemap";
 
@@ -11,6 +12,38 @@ const LISTING_MIN_ARTICLE_LINKS = 5;
 const LISTING_MIN_ARTICLE_RATIO = 0.2;
 const NON_ARTICLE_EXT_RE =
   /\.(svg|png|jpe?g|gif|webp|ico|css|js|json|xml|woff2?|ttf|otf|pdf|mp4|webm)$/i;
+
+function extractAnchors(html: string): { href: string; text: string }[] {
+  const anchors: { href: string; text: string }[] = [];
+  let open: { href: string; contentStart: number } | null = null;
+  let cursor = 0;
+
+  while (cursor < html.length) {
+    const tagStart = html.indexOf("<", cursor);
+    if (tagStart === -1) break;
+    const tagEnd = html.indexOf(">", tagStart + 1);
+    if (tagEnd === -1) break;
+    const tagText = html.slice(tagStart, tagEnd + 1);
+    cursor = tagEnd + 1;
+    if (/^<\/a\b/i.test(tagText)) {
+      if (!open) continue;
+      anchors.push({
+        href: open.href,
+        text: html
+          .slice(open.contentStart, tagStart)
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      });
+      open = null;
+      continue;
+    }
+    if (!/^<a\b/i.test(tagText)) continue;
+    const hrefMatch = tagText.match(/\bhref\s*=\s*["']([^"']+)["']/i);
+    open = hrefMatch ? { href: hrefMatch[1], contentStart: cursor } : null;
+  }
+  return anchors;
+}
 
 function isArticleShapedPath(pathname: string): boolean {
   if (NON_ARTICLE_EXT_RE.test(pathname)) return false;
@@ -81,7 +114,17 @@ export async function fetchListingItems(
     await res.body?.cancel();
     return { items: [], notModified: true, nextCache: cache };
   }
-  await assertFetchOk("Listing", pageUrl, res);
+  if (!res.ok) {
+    let text: string;
+    try {
+      text = await readHtmlWithinLimit(res, pageUrl);
+    } catch (err) {
+      throw new Error(
+        `Listing ${pageUrl} ${res.status}: ${err instanceof Error ? err.message : "body read failed"}`,
+      );
+    }
+    throw new Error(`Listing ${pageUrl} ${res.status}: ${text.slice(0, 500)}`);
+  }
   const contentType = res.headers.get("content-type");
   if (contentType && !/^\s*(?:text|application)\/x?html\b/i.test(contentType)) {
     await res.body?.cancel();
@@ -94,13 +137,12 @@ export async function fetchListingItems(
   const listingHostname = comparableHostname(listingUrl.hostname);
   const seen = new Map<string, number>();
   const sameHostDistinct: FeedItem[] = [];
-  const html = await res.text();
-  const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const html = await readHtmlWithinLimit(res, pageUrl);
 
-  for (const match of html.matchAll(anchorPattern)) {
+  for (const anchor of extractAnchors(html)) {
     let candidate: URL;
     try {
-      candidate = new URL(match[1], finalUrl);
+      candidate = new URL(anchor.href, finalUrl);
     } catch {
       continue;
     }
@@ -116,10 +158,7 @@ export async function fetchListingItems(
     candidate.search = "";
     const url = candidate.toString();
     if (url === listingUrl.toString()) continue;
-    const anchorText = match[2]
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const anchorText = anchor.text;
     const item: FeedItem = {
       url,
       itemKey: url,

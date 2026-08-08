@@ -21,6 +21,7 @@ import {
   discoverChangeDetection,
   fetchSafeSource,
   isPrivateHostname,
+  validatePublicHostname,
 } from "@/lib/sources/discovery";
 import { fetchFeedSample } from "@/lib/sources/feed";
 import { siteGuidanceSchema } from "@/lib/sources/site-guidance";
@@ -260,6 +261,11 @@ export async function reservePendingSource(
   { configId: string } | { status: "unreachable" | "already_tracked" | "source_limit_reached" }
 > {
   if (isPrivateHostname(inputUrl.hostname)) return { status: "unreachable" };
+  try {
+    await validatePublicHostname(inputUrl.hostname);
+  } catch {
+    return { status: "unreachable" };
+  }
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("reserve_pending_source_config", {
     p_agent_id: agentId,
