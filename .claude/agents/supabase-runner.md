@@ -24,9 +24,11 @@ Before writing any SQL that isn't verbatim in the brief:
    generated from the live database and always current. NEVER guess a column
    or key name; the classic failure is assuming a key column (e.g.
    `x_accounts` is owner-keyed) instead of reading it.
-2. Check AGENTS.md's RLS table (the Data section) when ownership scoping
-   matters — the MCP runs at service level, so
-   YOUR queries must scope by owner explicitly where the brief implies it.
+2. Check `docs/reference/rls.md` (the generated RLS index) when ownership
+   scoping matters — the MCP runs at service level, so YOUR queries must
+   scope by owner explicitly where the brief implies it. After any migration
+   that touches a policy or table, regenerate that file (its header carries
+   the exact queries) in the same task.
 3. Regex/backslash literals (`~* '^##\s...'`) survive the MCP's JSON layer
    only when escaped carefully — on a syntax error, fix the escaping and
    retry here, in your own context.

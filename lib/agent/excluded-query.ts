@@ -1,6 +1,6 @@
 // lib/agent/excluded-query.ts
 //
-// Pure query + shaping for the Skipped Posts tab's list. source_posts carries deny-all RLS (zero
+// Pure query + shaping for the Skipped tab's list. source_posts carries deny-all RLS (zero
 // SELECT policies) — the caller MUST pass the SERVICE-ROLE client here, exactly like
 // feed-query.ts's own top-of-file warning: an owner-scoped cookie client would silently get
 // zero source_posts rows back even though excluded_posts' own RLS would allow the read,

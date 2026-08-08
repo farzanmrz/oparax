@@ -1,0 +1,14 @@
+vercel:nextjs
+web-design-guidelines
+frontend-design
+ui-ux-pro-max
+vercel:react-best-practices
+shadcn-ui
+ai-elements
+vercel:ai-sdk
+claude-api
+supabase
+supabase-postgres-best-practices
+vercel:next-cache-components
+vercel:cdn-caching
+vercel:vercel-functions

@@ -21,22 +21,20 @@ from typing import Any, Iterator
 ROOT = Path(__file__).resolve().parent
 DEFAULT_RECORDS = ROOT / "records.json"
 DEFAULT_CONFIG = ROOT / "config.json"
-ALLOWED_STATES = {"c_new", "x_av", "x_done", "x_unav", "l_done", "c_inv"}
+ALLOWED_STATES = {"c_new", "x_av", "x_done", "x_unav", "c_inv"}
 QUEUE_STATES = {
     "check": "c_new",
     "send": "x_av",
-    "lean": "x_done",
     "recheck": "x_unav",
 }
 TRANSITIONS = {
     "c_new": {"x_av", "x_unav", "c_inv"},
     "x_av": {"x_done", "x_unav", "c_inv"},
-    "x_done": {"l_done"},
+    "x_done": set(),
     # An x_unav record is already known to have failed one availability check.
     # Its recheck must either recover to x_av or become c_inv; it cannot remain
     # in the recheck queue indefinitely.
     "x_unav": {"x_av", "c_inv"},
-    "l_done": set(),
     "c_inv": set(),
 }
 HANDLE_RE = re.compile(r"^@[A-Za-z0-9_]{1,15}$")
@@ -146,16 +144,15 @@ def validate_store(store: dict[str, Any], config: dict[str, Any]) -> None:
 
         state = record["state"]
         if state == "x_av":
-            for field in ("display_name", "first_name", "message", "leanspark_contact"):
+            for field in ("display_name", "first_name", "message"):
                 if not isinstance(record.get(field), str) or not record[field].strip():
                     raise OutreachError(f"{handle} in x_av is missing {field}")
             expected = rendered_message(config, record["vertical"], record["first_name"])
             if record["message"] != expected:
                 raise OutreachError(f"Prepared message drift for {handle}")
-        if state in {"x_done", "l_done"}:
-            for field in ("display_name", "leanspark_contact"):
-                if not isinstance(record.get(field), str) or not record[field].strip():
-                    raise OutreachError(f"{handle} in {state} is missing {field}")
+        if state == "x_done":
+            if not isinstance(record.get("display_name"), str) or not record["display_name"].strip():
+                raise OutreachError(f"{handle} in x_done is missing display_name")
 
 
 def find_record(store: dict[str, Any], handle: str) -> dict[str, Any]:
@@ -172,9 +169,7 @@ def next_record(store: dict[str, Any], queue: str) -> dict[str, Any] | None:
         if record["state"] == source_state:
             if queue in {"check", "recheck"}:
                 return {"handle": record["handle"], "vertical": record["vertical"]}
-            if queue == "send":
-                return {"handle": record["handle"], "message": record["message"]}
-            return {"handle": record["handle"], "contact": record["leanspark_contact"]}
+            return {"handle": record["handle"], "message": record["message"]}
     return None
 
 
@@ -271,7 +266,6 @@ def resolve_record(
             display_name=clean_display_name,
             first_name=clean_first_name,
             message=rendered_message(config, record["vertical"], clean_first_name),
-            leanspark_contact=f"{clean_display_name} ({record['handle']})",
         )
 
     record["state"] = target_state
@@ -294,22 +288,19 @@ def status_markdown(store: dict[str, Any]) -> str:
     for record in store["records"]:
         grouped[record["vertical"]][record["state"]] += 1
 
-    headers = ["Vertical", "Total", "New", "Ready", "DMed", "Unavailable", "Invalid", "Lean pending", "Lean logged"]
+    headers = ["Vertical", "Total", "New", "Ready", "DMed", "Unavailable", "Invalid"]
     lines = ["| " + " | ".join(headers) + " |", "|" + "|".join(["---"] * len(headers)) + "|"]
 
     def row(label: str, counts: Counter[str]) -> list[str]:
         total = sum(counts.values())
-        dmed = counts["x_done"] + counts["l_done"]
         return [
             label,
             str(total),
             str(counts["c_new"]),
             str(counts["x_av"]),
-            str(dmed),
+            str(counts["x_done"]),
             str(counts["x_unav"]),
             str(counts["c_inv"]),
-            str(counts["x_done"]),
-            str(counts["l_done"]),
         ]
 
     overall: Counter[str] = Counter()
@@ -349,7 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     resolve_parser = subparsers.add_parser("resolve", help="Apply one validated state transition")
     resolve_parser.add_argument("handle")
-    resolve_parser.add_argument("state", choices=("x_av", "x_done", "x_unav", "l_done", "c_inv"))
+    resolve_parser.add_argument("state", choices=("x_av", "x_done", "x_unav", "c_inv"))
     resolve_parser.add_argument("--display-name")
     resolve_parser.add_argument("--first-name")
 

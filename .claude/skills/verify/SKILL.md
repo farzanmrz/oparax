@@ -40,7 +40,7 @@ curl -i localhost:3000/api/ingest -X POST \
 ## 3. Browser UI
 
 Log in at `/login` with the frontend test account (credentials are in
-AGENTS.md's Code map), then:
+AGENTS.md), then:
 
 * **Feed-first landing:** `/agents` redirects into a desk's Feed
   (`/agents/{id}`). Confirm the redirect happens, not just that the
