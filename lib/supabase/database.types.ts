@@ -1004,6 +1004,7 @@ export type Database = {
           p_agent_id: string;
           p_beat_guidance?: Json;
           p_change_detection: string;
+          p_config_id: string;
           p_display_name: string;
           p_domain: string;
           p_feed_url: string;

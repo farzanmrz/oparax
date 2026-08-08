@@ -283,10 +283,11 @@ const SONNET_ONBOARDING_PROVIDER_OPTIONS = {
   anthropic: { thinking: { type: "adaptive", effort: "medium" } },
 };
 
-/** A pending row (from reservePendingSource) exists for every (agentId, url) onboardSource is
- *  ever called with (#106) — both callers reserve before calling. On any non-"completed" exit,
- *  that row needs an explicit status flip to failed_validation; add_source_config's own upsert
- *  only fires on the completed path, so it never resolves a pending row on its own. Best-effort:
+/** A pending row (from reservePendingSource) exists for every public URL onboardSource is ever
+ *  called with (#106) — both callers reject private/internal URLs inline before reservation.
+ *  On any non-"completed" exit, that row needs an explicit status flip to failed_validation;
+ *  add_source_config's own activation only fires on the completed path, so it never resolves a
+ *  pending row on its own. Best-effort:
  *  logged, never thrown — a stuck pending row is a worse UX bug than a swallowed update error,
  *  but not one worth failing the whole onboarding attempt over. Exported: callers must also
  *  invoke this in their OWN catch block around onboardSource — a genuinely unexpected throw
@@ -331,16 +332,6 @@ export async function onboardSource(
   configId: string,
 ): Promise<OnboardOutcome> {
   const admin = createAdminClient();
-  // QC round 1, finding #3 (SSRF): isSafeDiscoveredUrl guards URLs discovered FROM a site
-  // (a sitemap index's <loc> entries) against the site's own hostname, but that check doesn't
-  // apply to inputUrl itself — it IS the site by definition. Reject a reporter-pasted
-  // private/loopback/link-local address (e.g. a cloud metadata endpoint) before any fetch
-  // happens.
-  if (isPrivateHostname(inputUrl.hostname)) {
-    await markPendingSourceFailed(admin, configId, "unreachable");
-    return { status: "unreachable" };
-  }
-
   if (!(await checkOriginReachable(inputUrl))) {
     await markPendingSourceFailed(admin, configId, "unreachable");
     return { status: "unreachable" };
@@ -465,6 +456,7 @@ export async function onboardSource(
   }
 
   const sourceConfigArgs = {
+    p_config_id: configId,
     p_agent_id: agentId,
     p_url: inputUrl.toString(),
     p_domain: inputUrl.hostname,
@@ -500,6 +492,7 @@ export async function onboardSource(
     sourceConfigArgs as unknown as Database["public"]["Functions"]["add_source_config"]["Args"],
   );
   if (rpcError) throw rpcError;
+  if (!completedConfigId) return { status: "failed", errorCode: "stale" };
 
   return { status: "completed", configId: completedConfigId as string };
 }
