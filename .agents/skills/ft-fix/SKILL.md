@@ -207,8 +207,11 @@ never need to ask a clarifying question.**
    in ~10 lines, plain language only (no identifiers, paths, or numbers the
    owner didn't coin): the GREEN/RED gates line; one counts line (N fixed /
    M dropped / K decisions owed / J manual checks); each owed decision as
-   ONE line with its options; the exact next command. The owner who reads
-   nothing else must still leave knowing the state and what they owe.
+   ONE line with its options; the exact next command; and, when the round's
+   browsed report lists any `Unproven DoD journeys`, that line verbatim —
+   an acceptance journey nobody proved is ship-relevant state, never a
+   footnote. The owner who reads nothing else must still leave knowing the
+   state and what they owe.
 1. **What this slice changed, as a user:** a short walk-through of the new
    behavior: "when X happens, the app now does Y; before, it did Z."
 2. **Status + coverage:** builds/boots/gates one-liner; review-lane coverage with

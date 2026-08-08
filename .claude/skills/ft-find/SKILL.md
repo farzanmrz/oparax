@@ -165,6 +165,11 @@ Every reviewer does ONE deep pass over the whole diff, covering:
 
 * correctness bugs, cross-file contract breaks, acceptance-criteria
   compliance
+* the plan's `Input space` dispositions: every class claimed handled has a
+  real code path; every graceful-failure class produces its stated copy; a
+  claimed-handled class with no code behind it is a finding of the highest
+  order (a class the plan never enumerated but a real user will produce is
+  a finding too — cite the entry point)
 * convention violations, instruction-file staleness
 * security: authz, injection, secret/token handling, trust boundaries
 * concurrency and races, error-path handling

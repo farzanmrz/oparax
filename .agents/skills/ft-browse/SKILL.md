@@ -40,9 +40,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   --jq '[.[] | select(.body|startswith("## QC round"))] | .[-6:] | .[].body'
 ```
 
-* **Sources, in order:** the plan's observable-states table, the latest
-  `verified` report's manual-check set, any `NOT VERIFIABLE:` lines from the
-  design critic, and open owner findings.
+* **Sources, in order:** the plan's `Acceptance journeys` section (every `QC-LIVE` journey is a MANDATORY checklist item, driven with its REAL input — the modal/laziest input the journey names, never a sanitized stand-in), the plan's observable-states table, the latest `verified` report's manual-check set, any `NOT VERIFIABLE:` lines from the design critic, and open owner findings.
 * **Split every item:** BROWSER-CHECKABLE (reachable by driving the UI with
   the test login) vs HUMAN-ONLY (real posting, anything on the owner's own
   accounts, taste/feel judgments). HUMAN-ONLY items are listed in the report
@@ -53,6 +51,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   paste chip behavior, trigger inline validation, assert layout at both
   viewports. Only the submit itself is HUMAN-ONLY (classifying the whole
   create-agent form HUMAN-ONLY is how its input shipped broken).
+* **HUMAN-ONLY is EARNED, never presumed.** Valid grounds: real posting, the owner's own accounts, real spend, taste/feel judgments. "Needs the external network" is NOT one by itself: server-side effects (source onboarding, polling, outbound fetches) are driven through the localhost UI and the SERVER reaches out — the browser never leaves localhost. Before classifying any journey HUMAN-ONLY for a reachability reason, PROVE the unreachability with one probe (e.g. `curl -m 15 -o /dev/null -w "%{http_code}" <url>` from this machine) and record that evidence in the report. An unproven HUMAN-ONLY classification on a DoD-tagged journey is itself a FAIL: a bot-blocked-homepage failure once shipped to production behind exactly this presumption, while the localhost-driven check that would have caught it was never attempted.
 * **Always include the mechanics** even if no source names them: initial
   render, pagination up to 3 pages or the list's end, whichever first
   (count pages; duplicates or a premature stop are findings; when the
@@ -140,10 +139,17 @@ Checked at 1280x800 and 375x812, test login, <n> items.
 | Item | Verdict | Evidence |
 | --- | --- | --- |
 
+Acceptance journeys (from the plan, driven with their real inputs):
+| Journey | Verdict | Evidence |
+| --- | --- | --- |
+
 Failures (fix-ready briefs): ...
+Unproven DoD journeys: <none | each with the recorded probe evidence for why it could not run>
 Remaining HUMAN-ONLY items: ...
 Teardown: <n> test desks deleted | FAILED: <concise error>
 </browsed-comment-template>
+
+* **`Unproven DoD journeys` is a first-class output:** ft-fix's verification report carries the line forward verbatim onto the verdict screen, so a journey nobody proved can never again dissolve into a footnote between rounds.
 
 * **The manual-check handoff:** the report's HUMAN-ONLY list REPLACES the
   owner's previous manual-check set; everything browser-checked here is off
