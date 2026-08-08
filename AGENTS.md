@@ -6,7 +6,7 @@
 - **Website deliveries keep `source_config_id`** through ingest: `draft-pipeline.ts` resolves it to one desk, never rematch by hostname, so tracked paths cannot cross-deliver.
 - **Website onboarding uses `reservePendingSource`:** its locked RPC atomically enforces the five-site cap and duplicate no-bill guarantee. `add_source_config` completes by reservation ID, preventing a stale dismissed attempt from activating a re-added row.
 - **Website discovery uses sitemap, RSS feed, or listing:** the poller's listing parser is deliberately duplicated for package isolation, stores its validated page as `listing_url`, and records failed-source reasons in `error_code`.
-- **Lexically private/internal website URLs fail before reservation:** users receive inline validation, never a persisted failed row.
+- **Website URLs whose hostname is lexically private/internal or resolves to any non-public address fail before reservation:** users receive inline validation, never a persisted failed row. Fetches still use a DNS-pinned connection to retain rebinding protection.
 - **`app/api/slack/interactions`** defers slow X-post work with `after()` to meet Slack's 3s ack deadline.
 - **`agents.reporter_tier` is corpus-proven; `resolveDeskTier` is the only desk-tier resolver** — premium when either reporter or posting-account tier is premium — for drafting, feed count, edit, and post gates. **`checkXPostable` owns X validity**; every writer of a `drafts` winner must call it, never re-derive it.
 - **Feed readers use service role without desk checks:** callers (`page.tsx`, `feed-actions.ts`) prove `owner_id`.
