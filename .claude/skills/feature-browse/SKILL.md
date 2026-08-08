@@ -44,6 +44,12 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   the test login) vs HUMAN-ONLY (real posting, anything on the owner's own
   accounts, taste/feel judgments). HUMAN-ONLY items are listed in the report
   untouched, never attempted.
+* **HUMAN-ONLY applies at the side-effect boundary, never the page:** a flow
+  whose submit is off-limits (billed model call, real posting) is still
+  driven up to that submit: type into its fields, exercise separator and
+  paste chip behavior, trigger inline validation, assert layout at both
+  viewports. Only the submit itself is HUMAN-ONLY (classifying the whole
+  create-agent form HUMAN-ONLY is how its input shipped broken).
 * **Always include the mechanics** even if no source names them: initial
   render, pagination up to 3 pages or the list's end — whichever first
   (count pages; duplicates or a premature stop are findings; when the
@@ -53,15 +59,25 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   full auto-refresh cycle with 2+ pages loaded (scroll position, no
   duplicates/drops), each card state present in data, dialogs open/close,
   console errors.
-* **Viewport: set 1280x800 explicitly at session start AND after any tab
-  recreation or server restart.** Tab defaults are not stable (measured
-  2026-08-06: a post-crash recovery tab defaulted to 415x736 and silently
-  tainted every finding after it with phantom mobile failures). Mobile-named
-  checklist lines (e.g. a 393px NOT VERIFIABLE line) run ONLY when the
-  owner's invocation says mobile ("/feature-browse mobile": a second pass of
-  the same checklist at 375x812, both viewports' verdicts in the report);
-  otherwise list them NOT RUN — never resolved by resizing on the session's
-  own judgment.
+* **Viewports: every round is TWO passes, both mandatory.** The full
+  checklist at 1280x800, then a mobile pass at 375x812 over every surface
+  the round touches: re-render each page, run the overflow probe below, and
+  re-drive any item that is interaction-shaped or involves a mobile-only
+  component (e.g. the mobile tab bar). Verdicts are recorded per viewport;
+  a desktop-only report is an incomplete round, not a smaller one.
+* **Assert the viewport explicitly at each pass start AND after any tab
+  recreation or server restart.** Tab defaults are not stable (a post-crash
+  recovery tab once defaulted to 415x736 and tainted every finding after
+  it). A mobile-pass failure is a finding like any other: viewport noise is
+  ruled out by the assertion, never by skipping the pass.
+* **Overflow probe, every checked page, both passes:**
+
+```javascript
+document.documentElement.scrollWidth > document.documentElement.clientWidth
+```
+
+  `true` is an automatic FAIL for that page: some element widens the
+  document and the whole page pans horizontally on phones.
 
 ## 2. Boot and log in
 
@@ -73,8 +89,8 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   re-assert).
 * **Browser:** open the pane at `http://localhost:3000`, log in with the
   test account (`testuser@oparax.ai` / `hello123`, pre-authorized in
-  AGENTS.md). Set the viewport per the phase-1 rule (1280x800, mobile pass
-  only when invoked).
+  AGENTS.md). Set the viewport per the phase-1 rule (1280x800 first, the
+  375x812 mobile pass after).
 
 ## 3. Drive the checklist
 
@@ -104,7 +120,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 <browsed-comment-template>
 ## QC round <R>: browsed
 
-Checked at <viewport>, test login, <n> items.
+Checked at 1280x800 and 375x812, test login, <n> items.
 
 | Item | Verdict | Evidence |
 | --- | --- | --- |
