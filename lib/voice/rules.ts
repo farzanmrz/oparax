@@ -95,7 +95,7 @@ function flattenRulesToPrompt(rules: VoiceRule[]): string {
   if (ordered.length === 0) return "";
   const lines = ordered.map((r) => `- ${r.rule.trim()}`);
   return [
-    "Voice rules — follow every rule below when drafting this reporter's post.",
+    "Guide rules — follow every rule below when drafting this reporter's post.",
     ...lines,
   ].join("\n");
 }
