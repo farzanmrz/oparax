@@ -8,21 +8,14 @@
 // normalized URL string so a purely local optimistic add reconciles cleanly with what the
 // poll later reports for the exact same site.
 
-import { GlobeIcon, PlusIcon, XIcon as RemoveIcon } from "lucide-react";
-import {
-  type ClipboardEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { GlobeIcon } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { BandCard } from "@/components/band-card";
-import { Button } from "@/components/ui/button";
+import { SiteFavicon } from "@/components/site-favicon";
+import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
 import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
-import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
+import { MAX_TRACKED_HANDLES, X_HANDLE_RE } from "@/lib/x/handle";
 import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import { removeWebsite, startWebsiteOnboarding } from "./actions";
@@ -46,7 +39,6 @@ const RECONCILE_GRACE_MS = 2500;
 export type WebsiteDetail = {
   displayName: string;
   domain: string;
-  pathPrefix: string | null;
 };
 
 export function SourcesCard({
@@ -76,6 +68,9 @@ export function SourcesCard({
   // rendered as a plain chip immediately rather than waiting for a full page reload to pick it
   // up from the server-rendered `websites` prop (#106 finding #1).
   const [resolvedUrls, setResolvedUrls] = useState<ReadonlySet<string>>(new Set());
+  const [resolvedWebsiteDetails, setResolvedWebsiteDetails] = useState<
+    Readonly<Record<string, WebsiteDetail>>
+  >({});
   // Grace-period guards (#106 finding #7) — entries expire after RECONCILE_GRACE_MS.
   const recentlyAddedRef = useRef<Map<string, number>>(new Map());
   const recentlyDismissedRef = useRef<Map<string, number>>(new Map());
@@ -110,6 +105,17 @@ export function SourcesCard({
         .filter((e) => !recentlyAddedRef.current.has(e.url))
         .map((e) => [e.url, e.errorCode ?? "failed"]),
     );
+    const nextResolvedDetails = Object.fromEntries(
+      polledEntries
+        .filter(
+          (entry): entry is typeof entry & { displayName: string } =>
+            entry.status === "active" && Boolean(entry.displayName),
+        )
+        .map((entry) => [
+          entry.url,
+          { displayName: entry.displayName, domain: new URL(entry.url).hostname },
+        ]),
+    );
 
     const prevPending = pendingUrlsRef.current;
     const nextPending = new Set(serverPending);
@@ -126,6 +132,9 @@ export function SourcesCard({
     );
     setPendingUrls(nextPending);
     if (resolved.length > 0) setResolvedUrls((current) => new Set([...current, ...resolved]));
+    if (Object.keys(nextResolvedDetails).length > 0) {
+      setResolvedWebsiteDetails((current) => ({ ...current, ...nextResolvedDetails }));
+    }
     setFailedUrls(() => {
       const next = new Map(serverFailed);
       for (const url of recentlyDismissedRef.current.keys()) next.delete(url);
@@ -141,12 +150,25 @@ export function SourcesCard({
       const next = new Set([...current].filter((url) => !websites.includes(url)));
       return next.size === current.size ? current : next;
     });
+    setResolvedWebsiteDetails((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([url]) => !websites.includes(url)),
+      );
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
   }, [websites]);
 
   function commitHandles(raw: string) {
-    if (splitHandles(raw).length === 0) return;
-    setHandleError(null);
+    const candidates = splitHandles(raw);
+    if (candidates.length === 0) return;
+    const hasInvalidHandle = candidates.some((handle) => !X_HANDLE_RE.test(handle));
+    setHandleError(
+      hasInvalidHandle
+        ? "Enter a valid X handle — letters, numbers, and underscores, up to 15."
+        : null,
+    );
     setHandleNotice(null);
+    if (hasInvalidHandle && candidates.every((handle) => !X_HANDLE_RE.test(handle))) return;
     startHandleTransition(async () => {
       const result = await addTrackedHandles(deskId, raw);
       if (!result.ok) {
@@ -158,21 +180,7 @@ export function SourcesCard({
           `${result.dropped} ${result.dropped === 1 ? "handle was" : "handles were"} not added — this agent is at its ${MAX_TRACKED_HANDLES}-account limit.`,
         );
       }
-      setHandleInput("");
     });
-  }
-
-  function onHandleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter" && event.key !== ",") return;
-    event.preventDefault();
-    commitHandles(handleInput);
-  }
-
-  function onHandlePaste(event: ClipboardEvent<HTMLInputElement>) {
-    const text = event.clipboardData.getData("text");
-    if (!/[\s,]/.test(text)) return;
-    event.preventDefault();
-    commitHandles(`${handleInput} ${text}`);
   }
 
   function removeHandle(handle: string) {
@@ -302,11 +310,11 @@ export function SourcesCard({
           <AddSourceField
             disabled={isHandlePending}
             ariaLabel="Add X accounts"
-            onBlur={() => commitHandles(handleInput)}
             onChange={setHandleInput}
-            onKeyDown={onHandleKeyDown}
-            onPaste={onHandlePaste}
-            onSubmit={() => commitHandles(handleInput)}
+            onCommitParts={(parts) => {
+              commitHandles(parts.join(" "));
+              return parts.filter((part) => !X_HANDLE_RE.test(part));
+            }}
             placeholder={isHandlePending ? "Adding…" : "Add X accounts — usernames"}
             value={handleInput}
           />
@@ -323,29 +331,39 @@ export function SourcesCard({
         <ul className="grid gap-2">
           {websites.map((url) => (
             <SourceRow
-              display={<WebsiteChipContent detail={websiteDetails[url]} url={url} />}
-              icon={<WebsiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+              icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
               key={url}
-              label={websiteLabel(url, websiteDetails[url])}
+              display={<SingleLineLabel>{websiteName(url, websiteDetails[url])}</SingleLineLabel>}
+              label={websiteName(url, websiteDetails[url])}
               onRemove={() => removeSite(url)}
               tone="website"
             />
           ))}
           {resolvedChips.map((url) => (
             <SourceRow
-              display={<WebsiteChipContent detail={websiteDetails[url]} url={url} />}
-              icon={<WebsiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+              icon={
+                <SiteFavicon
+                  domain={resolvedWebsiteDetails[url]?.domain ?? websiteDetails[url]?.domain}
+                  url={url}
+                />
+              }
               key={url}
-              label={websiteLabel(url, websiteDetails[url])}
+              display={
+                <SingleLineLabel>
+                  {websiteName(url, resolvedWebsiteDetails[url] ?? websiteDetails[url])}
+                </SingleLineLabel>
+              }
+              label={websiteName(url, resolvedWebsiteDetails[url] ?? websiteDetails[url])}
               onRemove={() => removeSite(url)}
               tone="website"
             />
           ))}
           {pendingChips.map((url) => (
             <SourceRow
-              icon={<WebsiteFavicon url={url} />}
+              icon={<SiteFavicon url={url} />}
               key={url}
-              label={formatWebsiteLabel(url)}
+              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
+              label={websiteName(url)}
               onRemove={() => removeSite(url)}
               status="pending"
               tone="website"
@@ -353,9 +371,10 @@ export function SourcesCard({
           ))}
           {failedChips.map((url) => (
             <SourceRow
-              icon={<WebsiteFavicon url={url} />}
+              icon={<SiteFavicon url={url} />}
               key={url}
-              label={formatWebsiteLabel(url)}
+              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
+              label={websiteName(url)}
               onRemove={() => removeSite(url)}
               status="failed"
               tone="website"
@@ -367,11 +386,6 @@ export function SourcesCard({
             disabled={false}
             ariaLabel="Add a website"
             onChange={setWebsiteInput}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              event.preventDefault();
-              addWebsite();
-            }}
             onSubmit={addWebsite}
             placeholder="Add a website — example.com"
             value={websiteInput}
@@ -408,207 +422,19 @@ function SourceCount({ count, limit, noun }: { count: number; limit: number; nou
   );
 }
 
-function formatWebsiteLabel(value: string): string {
+function websiteName(value: string, detail?: WebsiteDetail): string {
+  if (detail?.displayName) return detail.displayName.replace(/^www\./i, "");
   try {
-    const url = new URL(value);
-    const host = url.hostname.replace(/^www\./i, "");
-    const path = url.pathname === "/" ? "" : url.pathname;
-    return `${host}${path}${url.search}${url.hash}`;
+    return new URL(value).hostname.replace(/^www\./i, "");
   } catch {
-    return value.replace(/^https?:\/\/(?:www\.)?/i, "");
+    return value;
   }
 }
 
-/** The narrow URL the poller actually watches — domain + onboarded path prefix — in place
- *  of the raw pasted URL. No detail row → the pasted-URL rendering, exactly as before. */
-function narrowUrl(url: string, detail?: WebsiteDetail): string {
-  if (!detail) return formatWebsiteLabel(url);
-  return `${detail.domain.replace(/^www\./i, "")}${detail.pathPrefix ?? ""}`;
-}
-
-/** Plain-text chip identity for aria-labels: "Mundo Deportivo (mundodeportivo.com/futbol/…)"
- *  when the name adds information, the narrow URL alone when it's still just the hostname. */
-function websiteLabel(url: string, detail?: WebsiteDetail): string {
-  const narrow = narrowUrl(url, detail);
-  return detail && !sameAsHost(detail, narrow) ? `${detail.displayName} (${narrow})` : narrow;
-}
-
-function sameAsHost(detail: WebsiteDetail, narrow: string): boolean {
-  return detail.displayName.replace(/^www\./i, "").toLowerCase() === narrow.toLowerCase();
-}
-
-/** Two-line chip body: the publication name in bold with the narrow URL beneath it styled
- *  as a URL — muted, smaller, breaking anywhere on narrow viewports. A row whose stored
- *  name is still just the hostname skips the bold line rather than stuttering. */
-function WebsiteChipContent({ url, detail }: { url: string; detail?: WebsiteDetail }) {
-  const narrow = narrowUrl(url, detail);
-  if (!detail || sameAsHost(detail, narrow)) return <>{narrow}</>;
-  return (
-    <>
-      <span className="block font-semibold text-text-title">{detail.displayName}</span>
-      <span className="block break-all text-xs leading-snug text-text-muted">{narrow}</span>
-    </>
-  );
-}
-
-/** Same fixed 15px icon slot as the feed card's source strip (DESIGN.md): the site's
- *  /favicon.ico by convention, settling on the generic globe after one failed load. */
-function WebsiteFavicon({ url, domain }: { url: string; domain?: string }) {
-  const [failed, setFailed] = useState(false);
-  let src: string | null = domain ? `https://${domain}/favicon.ico` : null;
-  if (!src) {
-    try {
-      src = `${new URL(url).origin}/favicon.ico`;
-    } catch {
-      src = null;
-    }
-  }
-  if (!src || failed) {
-    return <GlobeIcon aria-hidden="true" className="size-[15px] text-text-muted" />;
-  }
-  return (
-    // biome-ignore lint/performance/noImgElement: a 15px third-party favicon gains nothing from next/image proxying
-    <img
-      alt=""
-      aria-hidden="true"
-      className="size-[15px] rounded-[3px]"
-      onError={() => setFailed(true)}
-      referrerPolicy="no-referrer"
-      src={src}
-    />
-  );
+function SingleLineLabel({ children }: { children: string }) {
+  return <span className="block truncate whitespace-nowrap">{children}</span>;
 }
 
 /** `status` carries website onboarding lifecycle. The close action doubles as Cancel for a
  * pending row and Dismiss for a failed row; `removeDisabled` only guards active X rows whose
  * removal transition is already in flight. */
-function SourceRow({
-  label,
-  tone,
-  icon,
-  display,
-  status = "active",
-  removeDisabled = false,
-  onRemove,
-}: {
-  /** Plain-text identity — always what the remove button's aria-label speaks. */
-  label: string;
-  tone: "x" | "website";
-  icon?: ReactNode;
-  /** Optional rich rendering (e.g. bold site name over its URL); `label` renders when absent. */
-  display?: ReactNode;
-  status?: "active" | "pending" | "failed";
-  removeDisabled?: boolean;
-  onRemove: () => void;
-}) {
-  const surface =
-    status === "pending"
-      ? "bg-warning/12"
-      : status === "failed"
-        ? "bg-destructive/12"
-        : tone === "x"
-          ? "bg-[var(--chip-x-bg)]"
-          : "bg-[var(--chip-web-bg)]";
-  const labelClass =
-    status === "pending"
-      ? "text-warning"
-      : status === "failed"
-        ? "text-danger-text"
-        : "text-text-title";
-  const action = status === "pending" ? "Cancel" : status === "failed" ? "Dismiss" : "Remove";
-  return (
-    <li
-      className={`flex min-h-11 min-w-0 items-center rounded-md border border-[var(--card-border)] py-1.5 pl-3 desk:min-h-9 ${surface}`}
-    >
-      {icon ? (
-        <span
-          className={`mr-2 flex size-[15px] shrink-0 items-center justify-center ${display ? "self-start mt-0.5" : ""}`}
-        >
-          {icon}
-        </span>
-      ) : null}
-      <span
-        className={`min-w-0 flex-1 break-words text-sm [overflow-wrap:anywhere] ${display ? "self-start" : ""} ${labelClass}`}
-      >
-        {display ?? label}
-      </span>
-      {status !== "active" ? (
-        <span
-          className={`ml-2 shrink-0 text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
-        >
-          {status === "pending" ? "Pending" : "Couldn’t set up"}
-        </span>
-      ) : null}
-      <button
-        aria-label={`${action} ${label}`}
-        className="ml-1 flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted outline-none hover:bg-destructive/12 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring desk:size-9"
-        disabled={removeDisabled}
-        onClick={onRemove}
-        type="button"
-      >
-        <RemoveIcon aria-hidden="true" className="size-4" />
-      </button>
-    </li>
-  );
-}
-
-function AddSourceField({
-  value,
-  placeholder,
-  disabled,
-  ariaLabel,
-  onChange,
-  onSubmit,
-  onBlur,
-  onKeyDown,
-  onPaste,
-}: {
-  value: string;
-  placeholder: string;
-  disabled: boolean;
-  ariaLabel: string;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  onBlur?: () => void;
-  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
-  onPaste?: (event: ClipboardEvent<HTMLInputElement>) => void;
-}) {
-  return (
-    <div className="mt-4 flex min-h-11 items-center rounded-md border border-dashed border-input bg-[var(--input-bg)] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50">
-      <input
-        aria-label={ariaLabel}
-        className="h-11 min-w-0 flex-1 bg-transparent px-3 text-base outline-none placeholder:text-text-muted desk:h-9 desk:text-sm"
-        disabled={disabled}
-        onBlur={onBlur}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={onKeyDown}
-        onPaste={onPaste}
-        placeholder={placeholder}
-        value={value}
-      />
-      <Button
-        aria-label={ariaLabel}
-        className="size-11 desk:size-9"
-        disabled={disabled || !value.trim()}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={onSubmit}
-        size="icon"
-        type="button"
-        variant="ghost"
-      >
-        <PlusIcon />
-      </Button>
-    </div>
-  );
-}
-
-function FieldMessage({ children, error = false }: { children: string; error?: boolean }) {
-  return (
-    <p
-      className={`mt-3 text-sm ${error ? "text-destructive" : "text-text-muted"}`}
-      role={error ? "alert" : "status"}
-    >
-      {children}
-    </p>
-  );
-}

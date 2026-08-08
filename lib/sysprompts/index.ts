@@ -15,3 +15,4 @@ export const DRAFT_TRANSLATE_PROMPT = load("draft-translate.md");
 export const DRAFT_WRITE_PROMPT = load("draft-write.md");
 export const STORY_CLUSTER_PROMPT = load("story-cluster.md");
 export const SOURCE_ONBOARDING_PROMPT = load("source-onboarding.md");
+export const BEAT_GATE_PROMPT = load("beat-gate.md");

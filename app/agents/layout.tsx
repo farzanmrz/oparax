@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 import { ScrollContainerProvider, ScrollRegion } from "@/components/scroll-container";
 import { SentryUserContext } from "@/components/sentry-user-context";
 import { SiteHeader } from "@/components/site-header";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getAvatarKey, getUsername } from "@/lib/user";
+import { isExtractionRunStale } from "@/lib/voice/extraction-run";
 
 /**
  * App auth guard + shell for /agents/*. Chrome is one always-rendered site header
@@ -21,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     },
     { data: desks },
     { data: reviewRows },
+    { data: guideRows, error: guideError },
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase
@@ -35,6 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // cases while excluding only confirmed rows. Counted per desk in memory below (PostgREST has
     // no GROUP BY here; volume is small — one row per unreviewed winning draft).
     supabase.from("drafts").select("agent_id").eq("is_winner", true).is("posted_url", null),
+    supabase.from("voice_guides").select("agent_id"),
   ]);
 
   if (!user) {
@@ -45,10 +49,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   for (const row of reviewRows ?? []) {
     counts.set(row.agent_id, (counts.get(row.agent_id) ?? 0) + 1);
   }
-  const headerDesks = (desks ?? []).map((desk) => ({
-    ...desk,
-    needsReviewCount: counts.get(desk.id) ?? 0,
-  }));
+  const guideIds = new Set((guideRows ?? []).map((row) => row.agent_id));
+  const idsWithoutGuide = (desks ?? [])
+    .filter((desk) => !guideIds.has(desk.id))
+    .map((desk) => desk.id);
+  const runsResult =
+    !guideError && idsWithoutGuide.length > 0
+      ? await createAdminClient()
+          .from("voice_extraction_runs")
+          .select("agent_id, status, updated_at")
+          .in("agent_id", idsWithoutGuide)
+      : { data: [], error: null };
+  const runs = new Map((runsResult.data ?? []).map((run) => [run.agent_id, run]));
+  const headerDesks = (desks ?? []).map((desk) => {
+    const run = runs.get(desk.id);
+    const controlsState =
+      guideError || runsResult.error || guideIds.has(desk.id)
+        ? ("full" as const)
+        : run?.status === "running" && !isExtractionRunStale(run.updated_at)
+          ? ("hidden" as const)
+          : ("delete-only" as const);
+    return { ...desk, needsReviewCount: counts.get(desk.id) ?? 0, controlsState };
+  });
 
   return (
     <div className="op-app-shell relative flex h-dvh min-h-0 min-w-0 flex-col bg-background text-foreground">

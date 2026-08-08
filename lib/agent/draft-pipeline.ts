@@ -702,6 +702,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           }
         : {
             source: "website",
+            source_config_id: delivery.source_config_id,
             external_id: delivery.external_id,
             url: delivery.url,
             title: delivery.title,

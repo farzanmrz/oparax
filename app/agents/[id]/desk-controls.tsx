@@ -2,7 +2,7 @@
 
 // app/agents/[id]/desk-controls.tsx
 //
-// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Writing Guide/Sources/Excluded nav,
+// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Skipped Posts/Guide/Sources nav,
 // active state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
 // `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME four
 // links at the SAME URLs — one URL tree, no parallel nav model.
@@ -51,16 +51,16 @@ export const DESK_TABS = [
     href: (id: string) => `/agents/${id}`,
     exact: true,
   },
-  // Excluded sits beside Feed because it holds the same objects the Feed does — the ones
-  // filtration dropped. Voice and Sources are configuration, so they follow.
+  // Skipped Posts sits beside Feed because it holds the same objects the Feed does — the ones
+  // filtration dropped. Guide and Sources are configuration, so they follow.
   {
-    label: "Excluded",
+    label: "Skipped Posts",
     icon: EyeOffIcon,
     href: (id: string) => `/agents/${id}/excluded`,
     exact: false,
   },
   {
-    label: "Writing Guide",
+    label: "Guide",
     icon: PenLineIcon,
     href: (id: string) => `/agents/${id}/voice`,
     exact: false,
@@ -77,7 +77,7 @@ export function isDeskTabActive(pathname: string, href: string, exact: boolean):
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The Feed/Writing Guide/Sources tab nav for wide layouts. */
+/** The Feed/Skipped Posts/Guide/Sources tab nav for wide layouts. */
 export function DeskTabs({
   deskId,
   needsReviewCount,
@@ -129,9 +129,11 @@ export function DeskTabs({
  * redirects on success, so there's no success state to render for it.
  */
 export function DeskControls({
+  controlsState,
   deskId,
   status,
 }: {
+  readonly controlsState: "hidden" | "delete-only" | "full";
   readonly deskId: string;
   readonly status: string;
 }) {
@@ -164,51 +166,55 @@ export function DeskControls({
     });
   }
 
+  if (controlsState === "hidden") return null;
+
   return (
     <div className="flex shrink-0 items-center">
-      <Dialog
-        onOpenChange={(open) => {
-          setPauseOpen(open);
-          if (!open) setPauseError(null);
-        }}
-        open={pauseOpen}
-      >
-        <DialogTrigger asChild>
-          <Button
-            aria-label={isLive ? "Pause this agent" : "Resume this agent"}
-            className={
-              isLive
-                ? "size-11 text-warning hover:text-warning desk:size-7"
-                : "size-11 text-success hover:text-success desk:size-7"
-            }
-            size="icon-sm"
-            variant="ghost"
-          >
-            {isLive ? <PauseIcon /> : <PlayIcon />}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isLive ? "Pause this agent?" : "Resume this agent?"}</DialogTitle>
-            <DialogDescription>
-              {isLive
-                ? "While paused, Oparax stops watching the beat — nothing is scanned and nothing is posted automatically."
-                : "Oparax will start watching the beat again and drafting — and posting on your behalf where your settings allow it."}
-            </DialogDescription>
-          </DialogHeader>
-          {pauseError ? <p className="text-sm text-destructive">{pauseError}</p> : null}
-          <DialogFooter>
+      {controlsState === "full" ? (
+        <Dialog
+          onOpenChange={(open) => {
+            setPauseOpen(open);
+            if (!open) setPauseError(null);
+          }}
+          open={pauseOpen}
+        >
+          <DialogTrigger asChild>
             <Button
-              className="min-h-11"
-              disabled={isPending}
-              onClick={handlePauseResume}
-              variant={isLive ? "outline" : "default"}
+              aria-label={isLive ? "Pause this agent" : "Resume this agent"}
+              className={
+                isLive
+                  ? "size-11 text-warning hover:text-warning desk:size-7"
+                  : "size-11 text-success hover:text-success desk:size-7"
+              }
+              size="icon-sm"
+              variant="ghost"
             >
-              {isPending ? "Working…" : isLive ? "Pause agent" : "Resume agent"}
+              {isLive ? <PauseIcon /> : <PlayIcon />}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{isLive ? "Pause this agent?" : "Resume this agent?"}</DialogTitle>
+              <DialogDescription>
+                {isLive
+                  ? "While paused, Oparax stops watching the beat — nothing is scanned and nothing is posted automatically."
+                  : "Oparax will start watching the beat again and drafting — and posting on your behalf where your settings allow it."}
+              </DialogDescription>
+            </DialogHeader>
+            {pauseError ? <p className="text-sm text-destructive">{pauseError}</p> : null}
+            <DialogFooter>
+              <Button
+                className="min-h-11"
+                disabled={isPending}
+                onClick={handlePauseResume}
+                variant={isLive ? "outline" : "default"}
+              >
+                {isPending ? "Working…" : isLive ? "Pause agent" : "Resume agent"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       <AlertDialog
         onOpenChange={(open) => {

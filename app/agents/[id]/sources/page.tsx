@@ -29,7 +29,7 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
   {
     const { data: configs, error: configError } = await createAdminClient()
       .from("source_configs")
-      .select("url, domain, display_name, prefilter")
+      .select("url, domain, display_name")
       .eq("agent_id", desk.id)
       .eq("status", "active");
     if (configError) console.error("SourcesPage: source_configs label read failed", configError);
@@ -37,7 +37,6 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
       details[row.url] = {
         displayName: row.display_name ?? row.domain,
         domain: row.domain,
-        pathPrefix: (row.prefilter as { pathPrefix?: string } | null)?.pathPrefix ?? null,
       };
     }
   }

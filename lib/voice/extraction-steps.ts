@@ -57,7 +57,6 @@ const STEPS = [
 
 export type RunSnapshot = {
   stage: string | null;
-  progressNote: string | null;
   status: string;
   errorCode: string | null;
   corpusPostCount?: number;

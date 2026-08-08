@@ -1,8 +1,9 @@
 "use client";
 
-import { CheckCircle2Icon, CircleXIcon, GlobeIcon } from "lucide-react";
+import { CheckCircle2Icon, CircleXIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SiteFavicon } from "@/components/site-favicon";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,8 +17,8 @@ import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
 import { DraftBox } from "./draft-box";
 import { DraftMenu } from "./draft-menu";
-import { FeedSetupProgress } from "./feed-setup-progress";
 import { RelativeTime } from "./relative-time";
+import { SetupProgressCard } from "./setup-progress-card";
 
 function getSourceLabel(source: FeedItem["source"]): string {
   return source.kind === "x"
@@ -27,10 +28,7 @@ function getSourceLabel(source: FeedItem["source"]): string {
     : (source.siteName ?? "News source");
 }
 
-function SourceIcon({ isX, faviconUrl }: { isX: boolean; faviconUrl: string | null }) {
-  // Favicons are best-effort (see FeedSourceView.faviconUrl): a site without /favicon.ico
-  // fires onError once and the card settles on the generic globe for good.
-  const [faviconFailed, setFaviconFailed] = useState(false);
+function SourceIcon({ isX, siteDomain }: { isX: boolean; siteDomain: string | null }) {
   if (isX) {
     return (
       <svg aria-hidden="true" fill="currentColor" height="15" viewBox="0 0 24 24" width="15">
@@ -38,20 +36,7 @@ function SourceIcon({ isX, faviconUrl }: { isX: boolean; faviconUrl: string | nu
       </svg>
     );
   }
-  if (!faviconUrl || faviconFailed) {
-    return <GlobeIcon aria-hidden="true" className="size-[15px] text-[oklch(0.82_0.05_85)]" />;
-  }
-  return (
-    // biome-ignore lint/performance/noImgElement: a 13px third-party favicon gains nothing from next/image proxying
-    <img
-      alt=""
-      aria-hidden="true"
-      className="size-[15px] rounded-[3px]"
-      onError={() => setFaviconFailed(true)}
-      referrerPolicy="no-referrer"
-      src={faviconUrl}
-    />
-  );
+  return <SiteFavicon domain={siteDomain} />;
 }
 
 function SourceDeletedAlert() {
@@ -107,7 +92,7 @@ function SourceStrip({
       {/* Fixed 15px source-icon slot: X logo, favicon, and globe fallback all render at
           exactly this size so the strip's leading edge never shifts between source kinds. */}
       <span className="flex size-[15px] shrink-0 items-center justify-center">
-        <SourceIcon faviconUrl={source.faviconUrl} isX={isX} />
+        <SourceIcon isX={isX} siteDomain={source.siteDomain} />
       </span>
       <span
         className={cn(
@@ -254,8 +239,8 @@ const EMPTY: Record<
   { title: string; body: string; actionLabel?: string; actionHref?: string }
 > = {
   ready: {
-    title: "Your Voice Is Ready",
-    body: "You can review it in Voice. New stories and drafts will appear here as soon as your agent finds something on-beat.",
+    title: "Your Guide Is Ready",
+    body: "You can review it in Guide. New stories and drafts will appear here as soon as your agent finds something on-beat.",
   },
   paused: {
     title: "Your Agent Is Paused",
@@ -269,8 +254,8 @@ const EMPTY: Record<
   },
   extraction_missing: {
     title: "Finish Setting Up Your Agent",
-    body: "Your agent still needs to learn your voice before it can create drafts.",
-    actionLabel: "Go to Voice",
+    body: "Your agent still needs to complete its writing guide before it can create drafts.",
+    actionLabel: "Go to Guide",
     actionHref: "/voice",
   },
 };
@@ -283,7 +268,7 @@ export function FeedEmptyState({
   readonly readiness: FeedReadiness;
 }) {
   if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed") {
-    return <FeedSetupProgress deskId={deskId} initial={readiness.initial} />;
+    return <SetupProgressCard deskId={deskId} initial={readiness.initial} />;
   }
   const content = EMPTY[readiness.kind];
   if (readiness.kind === "ready") {
