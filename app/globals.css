@@ -244,6 +244,7 @@
 
 .op-scroll-region {
   padding-top: 56px;
+  overflow-x: clip;
 }
 
 @media (max-width: 699.98px) {

@@ -8,18 +8,10 @@
 // normalized URL string so a purely local optimistic add reconciles cleanly with what the
 // poll later reports for the exact same site.
 
-import { GlobeIcon, PlusIcon, XIcon as RemoveIcon } from "lucide-react";
-import {
-  type ClipboardEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { GlobeIcon } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { BandCard } from "@/components/band-card";
-import { Button } from "@/components/ui/button";
+import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
 import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
@@ -158,21 +150,7 @@ export function SourcesCard({
           `${result.dropped} ${result.dropped === 1 ? "handle was" : "handles were"} not added — this agent is at its ${MAX_TRACKED_HANDLES}-account limit.`,
         );
       }
-      setHandleInput("");
     });
-  }
-
-  function onHandleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter" && event.key !== ",") return;
-    event.preventDefault();
-    commitHandles(handleInput);
-  }
-
-  function onHandlePaste(event: ClipboardEvent<HTMLInputElement>) {
-    const text = event.clipboardData.getData("text");
-    if (!/[\s,]/.test(text)) return;
-    event.preventDefault();
-    commitHandles(`${handleInput} ${text}`);
   }
 
   function removeHandle(handle: string) {
@@ -302,11 +280,11 @@ export function SourcesCard({
           <AddSourceField
             disabled={isHandlePending}
             ariaLabel="Add X accounts"
-            onBlur={() => commitHandles(handleInput)}
             onChange={setHandleInput}
-            onKeyDown={onHandleKeyDown}
-            onPaste={onHandlePaste}
-            onSubmit={() => commitHandles(handleInput)}
+            onCommitParts={(parts) => {
+              commitHandles(parts.join(" "));
+              return [];
+            }}
             placeholder={isHandlePending ? "Adding…" : "Add X accounts — usernames"}
             value={handleInput}
           />
@@ -367,11 +345,6 @@ export function SourcesCard({
             disabled={false}
             ariaLabel="Add a website"
             onChange={setWebsiteInput}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              event.preventDefault();
-              addWebsite();
-            }}
             onSubmit={addWebsite}
             placeholder="Add a website — example.com"
             value={websiteInput}
@@ -482,133 +455,3 @@ function WebsiteFavicon({ url, domain }: { url: string; domain?: string }) {
 /** `status` carries website onboarding lifecycle. The close action doubles as Cancel for a
  * pending row and Dismiss for a failed row; `removeDisabled` only guards active X rows whose
  * removal transition is already in flight. */
-function SourceRow({
-  label,
-  tone,
-  icon,
-  display,
-  status = "active",
-  removeDisabled = false,
-  onRemove,
-}: {
-  /** Plain-text identity — always what the remove button's aria-label speaks. */
-  label: string;
-  tone: "x" | "website";
-  icon?: ReactNode;
-  /** Optional rich rendering (e.g. bold site name over its URL); `label` renders when absent. */
-  display?: ReactNode;
-  status?: "active" | "pending" | "failed";
-  removeDisabled?: boolean;
-  onRemove: () => void;
-}) {
-  const surface =
-    status === "pending"
-      ? "bg-warning/12"
-      : status === "failed"
-        ? "bg-destructive/12"
-        : tone === "x"
-          ? "bg-[var(--chip-x-bg)]"
-          : "bg-[var(--chip-web-bg)]";
-  const labelClass =
-    status === "pending"
-      ? "text-warning"
-      : status === "failed"
-        ? "text-danger-text"
-        : "text-text-title";
-  const action = status === "pending" ? "Cancel" : status === "failed" ? "Dismiss" : "Remove";
-  return (
-    <li
-      className={`flex min-h-11 min-w-0 items-center rounded-md border border-[var(--card-border)] py-1.5 pl-3 desk:min-h-9 ${surface}`}
-    >
-      {icon ? (
-        <span
-          className={`mr-2 flex size-[15px] shrink-0 items-center justify-center ${display ? "self-start mt-0.5" : ""}`}
-        >
-          {icon}
-        </span>
-      ) : null}
-      <span
-        className={`min-w-0 flex-1 break-words text-sm [overflow-wrap:anywhere] ${display ? "self-start" : ""} ${labelClass}`}
-      >
-        {display ?? label}
-      </span>
-      {status !== "active" ? (
-        <span
-          className={`ml-2 shrink-0 text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
-        >
-          {status === "pending" ? "Pending" : "Couldn’t set up"}
-        </span>
-      ) : null}
-      <button
-        aria-label={`${action} ${label}`}
-        className="ml-1 flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted outline-none hover:bg-destructive/12 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring desk:size-9"
-        disabled={removeDisabled}
-        onClick={onRemove}
-        type="button"
-      >
-        <RemoveIcon aria-hidden="true" className="size-4" />
-      </button>
-    </li>
-  );
-}
-
-function AddSourceField({
-  value,
-  placeholder,
-  disabled,
-  ariaLabel,
-  onChange,
-  onSubmit,
-  onBlur,
-  onKeyDown,
-  onPaste,
-}: {
-  value: string;
-  placeholder: string;
-  disabled: boolean;
-  ariaLabel: string;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  onBlur?: () => void;
-  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
-  onPaste?: (event: ClipboardEvent<HTMLInputElement>) => void;
-}) {
-  return (
-    <div className="mt-4 flex min-h-11 items-center rounded-md border border-dashed border-input bg-[var(--input-bg)] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50">
-      <input
-        aria-label={ariaLabel}
-        className="h-11 min-w-0 flex-1 bg-transparent px-3 text-base outline-none placeholder:text-text-muted desk:h-9 desk:text-sm"
-        disabled={disabled}
-        onBlur={onBlur}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={onKeyDown}
-        onPaste={onPaste}
-        placeholder={placeholder}
-        value={value}
-      />
-      <Button
-        aria-label={ariaLabel}
-        className="size-11 desk:size-9"
-        disabled={disabled || !value.trim()}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={onSubmit}
-        size="icon"
-        type="button"
-        variant="ghost"
-      >
-        <PlusIcon />
-      </Button>
-    </div>
-  );
-}
-
-function FieldMessage({ children, error = false }: { children: string; error?: boolean }) {
-  return (
-    <p
-      className={`mt-3 text-sm ${error ? "text-destructive" : "text-text-muted"}`}
-      role={error ? "alert" : "status"}
-    >
-      {children}
-    </p>
-  );
-}
