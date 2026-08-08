@@ -45,8 +45,8 @@ When the example and the modal input take different paths, the stub carries BOTH
 * **One stub = one user-facing functionality** (what the owner's user
   gains), never a slice, theme, or refactor list. A chunk that converged
   into several functionalities gets one stub each.
-* **Show every stub draft in full** (exact title + exact body) and wait for
-  the owner's yes. Never create or edit silently.
+* **Show parts 1-4 of every stub draft in full** (exact title, bullets, table, journeys, Decided) and wait for the owner's yes. Never create or edit silently.
+* **The Notes dossier is NOT surfaced in chat:** it is machine-facing, so the owner sees only one summary line ("Notes: N bullets — diagnosis, probes, DB evidence, hints"). The full dossier goes straight into the created issue body, where the spec session reads it.
 
 Every stub body has EXACTLY five parts, in this order, and NEVER a prose
 paragraph:
