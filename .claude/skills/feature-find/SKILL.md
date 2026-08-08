@@ -211,16 +211,31 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
 
 ### C. Lane roster
 
-THREE externals (`codex` with `COUNCIL_MODEL=gpt-5.6-sol`, `grok`, `agy`)
-plus the internal `bug-finder` lane.
+SEVEN externals: `codex` (with `COUNCIL_MODEL=gpt-5.6-sol`), `grok`, `agy`,
+and four `cline` model lanes launched via `run.sh cline <label>` with
+`COUNCIL_MODEL` set per lane: `moonshotai/kimi-k3`, `z-ai/glm-5.2`,
+`minimax/minimax-m3`, `deepseek/deepseek-v4-flash`. Plus the internal
+`bug-finder` lane. Each cline lane gets its own `<label>.in.txt` copy of the
+shared brief (never codex's, which carries a codex-only subagent addendum).
 
 ### D. Tier and failure rules
 
 * **Tier is family-shaped:** codex and grok take an EFFORT tier, but agy's
   `COUNCIL_TIER` is its model slug (`gemini-3.1-pro-high`): that CLI fuses
-  model and effort. Don't copy one lane's tier onto another.
+  model and effort. Cline is model-shaped: `plan-cline.sh` clamps
+  `COUNCIL_TIER` to each model's real ladder (kimi-k3 high, glm-5.2 high,
+  minimax toggle, deepseek-v4-flash none), so pass `COUNCIL_TIER=high` and
+  let the wrapper clamp. Don't copy one lane's tier onto another.
+* **Cline lanes review a working tree a build may still be touching:** when a
+  find round runs while edits are in flight, set `COUNCIL_CLINE_WORKTREE=1`
+  so those lanes read a detached snapshot instead of tripping the
+  write-detection diff on someone else's concurrent edits.
 * **Failure conditions:** a failed lane is reported FAILED, never as a clean
-  pass. `AGY_EMPTY` is no-signal, not approval. All externals failing =
+  pass. `AGY_EMPTY` is no-signal, not approval. A `CLINE_FAILED` lane whose
+  `.raw.err` visibly contains a conforming payload is an ENVELOPE failure
+  (Cline cannot schema-constrain output): recover the payload by hand,
+  validate it against the schema, adjudicate the content, and still record
+  the lane as harness-failed. All externals failing =
   single-family review, and the record must say so.
 * **Retry once, fast failures only:** a lane exiting non-zero within ~2 min
   with no output gets exactly ONE relaunch (preserve the first attempt's
