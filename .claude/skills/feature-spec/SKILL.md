@@ -54,7 +54,7 @@ real code, never a summary of it.
   its content changes a design decision for this slice.
 * **Invoke every selected skill NOW, before drafting:** a skill's
   constraints shape the plan only while they are in context as the plan is
-  written. Selection without invocation is a no-op — and it happens
+  written. Selection without invocation is a no-op, and it happens
   silently, so state the selection out loud first: one line naming each
   skill taken and each guided-list entry skipped with a word of reason,
   then the invocations in that same response.
@@ -85,8 +85,8 @@ Write the full plan yourself, incorporating the following rules:
 Off by default; adds competing drafts, never changes the rules below.
 
 * **Launch external planners first:** write one brief per family to
-  `.feature/plan-<family>.in.txt` — the confirmed ask + phase 2 ground
-  truth and guards + the 4C section list + the specificity contract — and
+  `.feature/plan-<family>.in.txt`: the confirmed ask + phase 2 ground
+  truth and guards + the 4C section list + the specificity contract, then
   launch codex/grok/agy in the background with
   `COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-proposal-schema.json"`, env
   otherwise exactly as phase 5's lanes.
@@ -110,7 +110,7 @@ Off by default; adds competing drafts, never changes the rules below.
   conventions and ai-elements idioms. "Works but ugly" is a spec defect: QC's
   design critic judges the rendered result against exactly this intent.
 * **Design alignment, not lockdown:** root `DESIGN.md` is the codified
-  aesthetic — new UI aligns with it (tokens, spacing and type scale,
+  aesthetic: new UI aligns with it (tokens, spacing and type scale,
   shadcn/ai-elements idioms) and reuses existing components where they fit
   naturally. A task MAY introduce a new visual pattern when the slice calls
   for it; the design intent states the new pattern and its rationale, and
@@ -198,8 +198,8 @@ bash .claude/workflows/council/selftest.sh --if-changed
 Write each lane's prompt to `.feature/critique-<family>.in.txt` combining:
 plan + the phase 2 guards and ground truth + "verify claims against the actual code, cite paths;
 work requirement by requirement; an empty list is a valid verdict only after
-that" + the pre-implementation framing below. Launch all three in the
-background (`run_in_background: true`) and end your turn; the harness
+that" + the pre-implementation framing below. Launch Codex, Grok, and Agy in
+the background (`run_in_background: true`) and end your turn; the harness
 re-invokes you when they finish.
 
 * **Pre-implementation framing (mandatory in every brief):** state that this
@@ -307,7 +307,7 @@ section.
   stored spec.
 * **The first screen is plain language ONLY:** Definition of done, Today
   vs. after, and User narrative carry no file paths, identifiers, pixel or
-  color values — outcomes as the user experiences them, ONE line per DoD
+  color values: outcomes as the user experiences them, ONE line per DoD
   item. The technical DoD lives in the full plan below; pasting it into
   the reader layer is the recurring failure this rule exists to stop.
 * **No prose walls:** "Today vs. after this slice" and "User narrative" use
