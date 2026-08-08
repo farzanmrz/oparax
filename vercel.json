@@ -4,13 +4,8 @@
   "framework": "nextjs",
   "git": {
     "deploymentEnabled": {
-      "beta": false,
-      "chore/**": false,
-      "codex-ft*/**": false,
-      "feat/**": false,
-      "feature/**": false,
-      "fix/**": false,
-      "ft/**": false
+      "**": false,
+      "main": true
     }
   },
   "headers": [
