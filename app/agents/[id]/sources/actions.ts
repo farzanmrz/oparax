@@ -72,7 +72,7 @@ export async function startWebsiteOnboarding(
       await onboardSource(deskId, ownerId, url, beat, QWEN_DRAFT_MODEL, configId);
     } catch (err) {
       console.error("startWebsiteOnboarding: onboardSource threw", err);
-      await markPendingSourceFailed(createAdminClient(), configId);
+      await markPendingSourceFailed(createAdminClient(), configId, "unexpected_error");
     }
   });
 
@@ -107,7 +107,7 @@ export async function getWebsiteOnboardingStatus(deskId: string): Promise<
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("source_configs")
-    .select("url, status, display_name")
+    .select("url, status, display_name, error_code")
     .eq("agent_id", deskId)
     .in("status", ["active", "pending", "failed_validation"]);
   if (error || !data) {
@@ -120,7 +120,7 @@ export async function getWebsiteOnboardingStatus(deskId: string): Promise<
       url: row.url,
       status: row.status,
       displayName: row.display_name ?? undefined,
-      errorCode: row.status === "failed_validation" ? "failed" : undefined,
+      errorCode: row.status === "failed_validation" ? (row.error_code ?? "failed") : undefined,
     })),
   };
 }

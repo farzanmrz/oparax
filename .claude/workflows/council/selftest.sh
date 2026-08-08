@@ -15,7 +15,7 @@
 # file read. A lane passes only when a schema-valid payload with at least one
 # item comes back. Anything else is a loud, named failure.
 #
-# Usage:  selftest.sh [--if-changed] [family ...]      (default: codex grok agy)
+# Usage:  selftest.sh [--if-changed] [family ...]      (default: codex grok agy cline:kimi cline:minimax)
 # Exit 0 only if every tested family passed.
 #
 # --if-changed exits 0 immediately when nothing that could break a lane has moved
@@ -30,7 +30,7 @@ SCRATCH="$REPO/.feature/selftest"
 SCHEMA="$HERE/../qc-findings-schema.json"
 IF_CHANGED=0
 if [ "${1:-}" = "--if-changed" ]; then IF_CHANGED=1; shift; fi
-FAMILIES=("$@"); [ ${#FAMILIES[@]} -eq 0 ] && FAMILIES=(codex grok agy)
+FAMILIES=("$@"); [ ${#FAMILIES[@]} -eq 0 ] && FAMILIES=(codex grok agy cline:kimi cline:minimax)
 
 # The inputs that can actually break a lane. Stamp lives in .git/ — per-clone,
 # never committed, and survives ship.sh sweeping .feature/.
@@ -41,7 +41,11 @@ fingerprint() {
     cat "$REPO/.grok/agents/oparax-critic.md" 2>/dev/null
     cat "$REPO/.agents/agents/oparax-critic.md" 2>/dev/null
     cat "$REPO/.codex/agents/"*.toml 2>/dev/null
+    # cline --version was missing here while cline was already a default-tested family
+    # (#112 finding, codex lane): a CLI upgrade could break its flags or NDJSON envelope
+    # and --if-changed would still skip, treating unverified lanes as green.
     grok --version 2>/dev/null; codex --version 2>/dev/null; agy --version 2>/dev/null
+    cline --version 2>/dev/null
     printf '%s' "${FAMILIES[*]}"
   } | shasum -a 256 | cut -d" " -f1
 }
@@ -78,13 +82,14 @@ EOF
 
 # Per-family cheap dial. agy's "tier" IS its model slug (the CLI fuses model and
 # effort), so its cheap dial is a flash slug, not an effort word.
-cheap_model() { case "$1" in codex) echo "gpt-5.6-luna" ;; *) echo "" ;; esac; }
-cheap_tier()  { case "$1" in agy) echo "gemini-3.6-flash-high" ;; grok) echo "low" ;; codex) echo "low" ;; esac; }
+cheap_model() { case "$1" in codex) echo "gpt-5.6-luna" ;; cline:kimi) echo "moonshotai/kimi-k3" ;; cline:minimax) echo "minimax/minimax-m3" ;; *) echo "" ;; esac; }
+cheap_tier()  { case "$1" in agy) echo "gemini-3.6-flash-high" ;; grok|codex) echo "low" ;; cline:*) echo "high" ;; esac; }
 
 pass=0; fail=0
 printf '%-7s %-8s %-9s %s\n' FAMILY VERDICT ELAPSED DETAIL
 for fam in "${FAMILIES[@]}"; do
-  label="selftest-$fam"
+  family="${fam%%:*}"
+  label="selftest-${fam//:/-}"
   printf '%s\n' "$BRIEF" > "$SCRATCH/$label.in.txt"
   rm -f "$SCRATCH/$label.out.json"
   start=$SECONDS
@@ -96,7 +101,7 @@ for fam in "${FAMILIES[@]}"; do
     COUNCIL_DEPTH=simple \
     COUNCIL_MODEL="${COUNCIL_MODEL:-$(cheap_model "$fam")}" \
     COUNCIL_TIER="${COUNCIL_TIER:-$(cheap_tier "$fam")}" \
-    bash "$HERE/run.sh" "$fam" "$label" >"$SCRATCH/$label.log" 2>&1
+    bash "$HERE/run.sh" "$family" "$label" >"$SCRATCH/$label.log" 2>&1
   rc=$?; el=$((SECONDS-start)); out="$SCRATCH/$label.out.json"
 
   if [ $rc -ne 0 ]; then
@@ -115,6 +120,52 @@ for fam in "${FAMILIES[@]}"; do
   fi
   printf '%-7s %-8s %-9s %s\n' "$fam" FAIL "${el}s" "$detail"; fail=$((fail+1))
 done
+
+# ---- CONCURRENCY ARM: the one shape the loop above cannot reach ----------------------
+#
+# Everything above runs SEQUENTIALLY (`for fam in ...`), and a find round launches every
+# lane AT ONCE. That gap is not academic: QC round 4 (#112 finding #19) lost the kimi lane
+# to a 2423s hang at 0% CPU with zero bytes written, while its sibling minimax lane
+# completed normally in the same window — and this self-test had reported 5/5 PASS twenty
+# minutes earlier, because it had never run two cline lanes at the same time. Round 1 lost
+# the glm lane identically. Concurrent cline invocations contend on one shared hub daemon
+# (127.0.0.1:25463) and cline exposes no per-run port, so the contention cannot be designed
+# out here — but it MUST be visible before a paid round rather than after it.
+#
+# Skipped unless at least two cline lanes are actually in FAMILIES: nothing to contend.
+CLINE_FAMS=(); for f in "${FAMILIES[@]}"; do case "$f" in cline:*) CLINE_FAMS+=("$f") ;; esac; done
+if [ ${#CLINE_FAMS[@]} -ge 2 ] && [ $fail -eq 0 ]; then
+  echo
+  echo "concurrency arm: launching ${#CLINE_FAMS[@]} cline lanes AT ONCE (the shape a find round uses)"
+  cpids=(); clabels=()
+  for fam in "${CLINE_FAMS[@]}"; do
+    label="selftest-conc-${fam//:/-}"
+    printf '%s\n' "$BRIEF" > "$SCRATCH/$label.in.txt"
+    rm -f "$SCRATCH/$label.out.json"
+    CLAUDE_PROJECT_DIR="$REPO" COUNCIL_SCRATCH="$SCRATCH" COUNCIL_SCHEMA="$SCHEMA" \
+      COUNCIL_DEPTH=simple \
+      COUNCIL_MODEL="$(cheap_model "$fam")" \
+      COUNCIL_TIER="$(cheap_tier "$fam")" \
+      bash "$HERE/run.sh" cline "$label" >"$SCRATCH/$label.log" 2>&1 &
+    cpids+=($!); clabels+=("$label:$fam")
+  done
+  cstart=$SECONDS
+  for i in "${!cpids[@]}"; do
+    wait "${cpids[$i]}"; crc=$?
+    label="${clabels[$i]%%:*}"; fam="${clabels[$i]##*:}"
+    out="$SCRATCH/$label.out.json"
+    if [ $crc -ne 0 ]; then
+      cdetail="wrapper exit $crc — $(tail -n1 "$SCRATCH/$label.log" 2>/dev/null | cut -c1-90)"
+    elif ! jq -e '.findings | type == "array"' "$out" >/dev/null 2>&1; then
+      cdetail="ran concurrently but returned no schema-shaped findings array"
+    else
+      printf '%-14s %-8s %-9s %s\n' "$fam" PASS "$((SECONDS-cstart))s" "survived a concurrent launch"
+      pass=$((pass+1)); continue
+    fi
+    printf '%-14s %-8s %-9s %s\n' "$fam" FAIL "$((SECONDS-cstart))s" "$cdetail"
+    fail=$((fail+1))
+  done
+fi
 
 echo
 echo "passed $pass / $((pass+fail))   artifacts in $SCRATCH"

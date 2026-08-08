@@ -35,7 +35,7 @@ lane that paraphrases the brief back is worth nothing.
   (severity-tagged UX rules to cite, via its `search.py`). When a slice touches
   an area, consult that area's skill BEFORE asserting a convention is wrong —
   a critique that contradicts the documented convention is the most expensive
-  kind of false positive. Ignore the `feature-*` skills: those drive an
+  kind of false positive. Ignore the `ft-*` skills: those drive an
   orchestration flow you are not running.
 - **Your brief carries the distilled guards for the paths in scope.**
   AGENTS.md and the brief are your whole instruction surface. If the brief

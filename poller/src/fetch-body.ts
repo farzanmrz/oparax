@@ -3,6 +3,7 @@ import { JSDOM } from "jsdom";
 import { isSafeDiscoveredUrl, isSafePublicUrl } from "./discovery-safety";
 import type { PollerEnv } from "./env";
 import { describeError } from "./errors";
+import { MAX_HTML_LENGTH, readHtmlWithinLimit } from "./html";
 import { fetchWithTimeout } from "./http";
 import { logger } from "./logger";
 import type { FeedItem } from "./sitemap";
@@ -20,8 +21,6 @@ const MIN_BODY_LENGTH = 200;
  *  against synchronously allocating a huge DOM for an unusually large or hostile page on this
  *  single-instance worker (railway.json's numReplicas: 1), where one bad page could stall or
  *  crash the process mid-tick and take every other source's polling down with it. */
-const MAX_HTML_LENGTH = 5_000_000;
-
 /** Ceiling on the final extracted text, applied once across every tier — MAX_HTML_LENGTH
  *  above only bounds the raw HTML read into memory, nothing bounds what comes OUT of
  *  extraction. Found live (2026-08-06): bbc.co.uk's sitemap surfaces sport-category landing
@@ -108,24 +107,6 @@ function extractArticleBody(html: string, url: string): string {
 
 function teaserOnlyText(item: FeedItem): string {
   return item.bodyFromFeed ? stripHtml(item.bodyFromFeed) : (item.title ?? item.url);
-}
-
-async function readHtmlWithinLimit(res: Response, url: string): Promise<string> {
-  const reader = res.body?.getReader();
-  if (!reader) return "";
-  const decoder = new TextDecoder();
-  let bytes = 0;
-  let html = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) return html + decoder.decode();
-    bytes += value.byteLength;
-    if (bytes > MAX_HTML_LENGTH) {
-      await reader.cancel();
-      throw new Error(`Article ${url} body too large (${bytes} bytes)`);
-    }
-    html += decoder.decode(value, { stream: true });
-  }
 }
 
 async function fetchDirect(url: string, userAgent: string): Promise<string> {
@@ -225,6 +206,7 @@ async function fetchUntrustedCandidate(url: string, userAgent: string): Promise<
   if (!res.ok) throw new Error(`SerpCandidate ${url} ${res.status}`);
   const contentLength = Number(res.headers.get("content-length") ?? "0");
   if (contentLength > MAX_HTML_LENGTH) {
+    await res.body?.cancel();
     throw new Error(`SerpCandidate ${url} declared body too large (${contentLength} bytes)`);
   }
   return extractArticleBody(await readHtmlWithinLimit(res, url), url);

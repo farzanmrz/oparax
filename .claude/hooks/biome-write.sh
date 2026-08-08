@@ -4,16 +4,16 @@
 # in this repo is ever unformatted for longer than one tool call.
 #
 # Why it exists: this pass is a pure function, so it has no business being an agent
-# task. Lifting it out of feature-lint also keeps the QC diff free of formatting
+# task. Lifting it out of lint also keeps the QC diff free of formatting
 # churn — /code-review's finders read real changes only.
 #
 # The safe/unsafe line is Biome's own: `--write` applies safe fixes ONLY; unsafe
 # fixes (e.g. react/useExhaustiveDependencies) need `--unsafe`, which is never
-# passed here. Those stay with feature-lint, which risk-tiers them and flags each
+# passed here. Those stay with lint, which risk-tiers them and flags each
 # one for human review.
 #
 # Deliberately SILENT and always exit 0: a residual finding surfaced mid-build
-# would pull an agent off its task, and feature-lint catches it at QC anyway.
+# would pull an agent off its task, and lint catches it at QC anyway.
 # (PostToolUse cannot block a tool call regardless — the tool has already run.)
 set -uo pipefail
 

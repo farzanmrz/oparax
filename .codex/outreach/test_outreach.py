@@ -30,13 +30,11 @@ class OutreachStateTests(unittest.TestCase):
             "Reporter",
         )
         self.assertEqual(prepared["message"], "Hey Reporter, test message.")
-        self.assertEqual(prepared["leanspark_contact"], "Reporter Name (@Reporter)")
         self.assertEqual(outreach.next_record(store, "send")["handle"], "@Reporter")
 
         outreach.resolve_record(store, CONFIG, "@Reporter", "x_done", None, None)
-        self.assertEqual(outreach.next_record(store, "lean")["contact"], "Reporter Name (@Reporter)")
-        outreach.resolve_record(store, CONFIG, "@Reporter", "l_done", None, None)
-        self.assertIsNone(outreach.next_record(store, "lean"))
+        self.assertEqual(store["records"][0]["state"], "x_done")
+        self.assertIsNone(outreach.next_record(store, "send"))
         outreach.validate_store(store, CONFIG)
 
     def test_unavailable_can_be_rechecked(self):
@@ -66,7 +64,7 @@ class OutreachStateTests(unittest.TestCase):
             outreach.resolve_record(store, CONFIG, "@Reporter", "x_unav", None, None)
         self.assertEqual(store["records"][0]["state"], "x_unav")
 
-    def test_failed_send_requires_no_state_transition(self):
+    def test_invalid_transition_leaves_state_unchanged(self):
         store = {
             "version": 1,
             "records": [
@@ -77,13 +75,12 @@ class OutreachStateTests(unittest.TestCase):
                     "display_name": "Reporter Name",
                     "first_name": "Reporter",
                     "message": "Hey Reporter, test message.",
-                    "leanspark_contact": "Reporter Name (@Reporter)",
                 }
             ],
         }
         self.assertEqual(store["records"][0]["state"], "x_av")
         with self.assertRaises(outreach.OutreachError):
-            outreach.resolve_record(store, CONFIG, "@Reporter", "l_done", None, None)
+            outreach.resolve_record(store, CONFIG, "@Reporter", "c_new", None, None)
         self.assertEqual(store["records"][0]["state"], "x_av")
 
     def test_handles_are_unique_case_insensitively(self):
@@ -94,18 +91,18 @@ class OutreachStateTests(unittest.TestCase):
         with self.assertRaises(outreach.OutreachError):
             outreach.add_record(store, "nfl", "@reporter")
 
-    def test_status_counts_logged_contacts_as_dmed(self):
+    def test_status_counts_dmed(self):
         store = {
             "version": 1,
             "records": [
                 {"handle": "@One", "vertical": "nfl", "state": "x_done"},
-                {"handle": "@Two", "vertical": "nfl", "state": "l_done"},
+                {"handle": "@Two", "vertical": "nfl", "state": "x_done"},
             ],
         }
         counts = Counter(record["state"] for record in store["records"])
-        self.assertEqual(counts["x_done"] + counts["l_done"], 2)
+        self.assertEqual(counts["x_done"], 2)
         report = outreach.status_markdown(store)
-        self.assertIn("| nfl | 2 | 0 | 0 | 2 |", report)
+        self.assertIn("| nfl | 2 | 0 | 0 | 2 | 0 | 0 |", report)
 
     def test_queue_count_is_global_across_verticals(self):
         store = {

@@ -17,27 +17,18 @@
 //
 // Pure + dependency-free: safe to import from a server action, a page, or a client component.
 //
-// `testuser@oparax.ai` is gated to non-production only: AGENTS.md publishes that exact
-// account's password as the frontend test login, so on production the override is a spend
-// hole — anyone who reads the repo can sign in with the published credential and extract a
-// voice from ANY public X handle, with each run paying for a full extraction call. Locally and in preview it's exactly the convenience it was
-// added for. Gated on `process.env.NODE_ENV === "production"` rather than `VERCEL_ENV`: this
-// module is imported by both server actions and client components (see the file header above),
-// and `NODE_ENV` is the one of the two Next.js guarantees is set correctly in every one of
-// those contexts — `VERCEL_ENV` is only defined on Vercel's own infra, so a non-Vercel
-// production build (or `next build && next start` run elsewhere) would silently fall back to
-// treating itself as non-production. The two real owner accounts stay unconditional in every
-// environment.
+// AGENTS.md publishes testuser's credential, so allowing its override in production permits
+// anyone who reads the repo to trigger a paid extraction from any public X handle. Owner decision
+// 2026-08-08: testuser gets the override in production too; the spend risk is knowingly accepted
+// so the shipped flow can be tested end-to-end on the deployed site.
 
 /** Owner-controlled accounts. Lowercase — `isOverrideOwner` lowercases before comparing. */
 const OVERRIDE_OWNER_EMAILS: readonly string[] = [
   "farzan@oparax.ai",
   "farzanmrz@gmail.com",
   "prabhuavula7@gmail.com",
+  "testuser@oparax.ai",
 ];
-
-/** The shared test login (AGENTS.md), admitted only outside production — see the file header. */
-const NON_PRODUCTION_OVERRIDE_OWNER_EMAILS: readonly string[] = ["testuser@oparax.ai"];
 
 /**
  * True when this signed-in email may type a different handle to extract a voice from.
@@ -49,9 +40,5 @@ const NON_PRODUCTION_OVERRIDE_OWNER_EMAILS: readonly string[] = ["testuser@opara
 export function isOverrideOwner(email: string | null | undefined): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
-  if (OVERRIDE_OWNER_EMAILS.includes(normalized)) return true;
-  return (
-    process.env.NODE_ENV !== "production" &&
-    NON_PRODUCTION_OVERRIDE_OWNER_EMAILS.includes(normalized)
-  );
+  return OVERRIDE_OWNER_EMAILS.includes(normalized);
 }

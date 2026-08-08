@@ -14,6 +14,7 @@ import type { PollerEnv } from "./env";
 import { describeError } from "./errors";
 import { fetchFeedItems } from "./feed";
 import { fetchArticleBody } from "./fetch-body";
+import { fetchListingItems } from "./listing";
 import { logger } from "./logger";
 import type { ConditionalGetCache, FeedItem } from "./sitemap";
 import { fetchSitemapItems } from "./sitemap";
@@ -48,6 +49,9 @@ async function fetchCandidateItems(
   userAgent: string,
   cache: ConditionalGetCache,
 ): Promise<{ items: FeedItem[]; notModified: boolean; nextCache: ConditionalGetCache }> {
+  if (source.change_detection === "listing") {
+    return fetchListingItems(source.listing_url ?? source.url, source.domain, userAgent, cache);
+  }
   if (source.change_detection === "sitemap" && source.sitemap_url) {
     return fetchSitemapItems(source.sitemap_url, source.domain, userAgent, cache);
   }
@@ -127,6 +131,8 @@ async function pollOneSource(
     for (const item of byNewestFirst(candidates)) {
       if (!(await hasSeenItem(client, source.id, item.itemKey))) unseen.push(item);
     }
+    // Undated listing items retain extraction order under JavaScript's stable sort. If the cap
+    // binds, later links wait for later ticks and can be lost if the page rotates first.
     const capped = unseen.slice(0, env.maxNewItemsPerSourceTick);
     if (unseen.length > capped.length) {
       logger.warn("tick: candidate list exceeds per-tick cap, remainder retried next tick", {

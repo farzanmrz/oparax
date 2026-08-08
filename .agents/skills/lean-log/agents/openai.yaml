@@ -1,6 +1,0 @@
-interface:
-  display_name: "Lean-log"
-  short_description: "Log X-contacted reporters in LeanSpark"
-  default_prompt: "Use $lean-log to log pending X contacts in LeanSpark."
-policy:
-  allow_implicit_invocation: false

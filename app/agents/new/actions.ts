@@ -227,7 +227,7 @@ export async function startWebsiteOnboardingAtCreation(
       await onboardSource(deskId, ownerId, url, beat, SONNET_ONBOARDING_MODEL, configId);
     } catch (err) {
       console.error("startWebsiteOnboardingAtCreation: onboardSource threw", err);
-      await markPendingSourceFailed(createAdminClient(), configId);
+      await markPendingSourceFailed(createAdminClient(), configId, "unexpected_error");
     }
   });
 

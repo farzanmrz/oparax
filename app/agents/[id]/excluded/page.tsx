@@ -43,7 +43,7 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
   } catch {
     return (
       <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
-        <PageHeading>Skipped Posts</PageHeading>
+        <PageHeading>Skipped</PageHeading>
         <ExcludedLoadError />
       </div>
     );
@@ -56,7 +56,7 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
-      <PageHeading>Skipped Posts</PageHeading>
+      <PageHeading>Skipped</PageHeading>
       {showSetup ? (
         <SetupProgressCard deskId={id} initial={progress} showHeading={false} />
       ) : page.items.length === 0 ? (

@@ -10,7 +10,9 @@ export function SourceRow({
   tone,
   icon,
   display,
+  variant = "row",
   status = "active",
+  statusLabel,
   removeDisabled = false,
   onRemove,
 }: {
@@ -18,10 +20,35 @@ export function SourceRow({
   tone: "x" | "website";
   icon?: ReactNode;
   display?: ReactNode;
+  variant?: "row" | "chip";
   status?: "active" | "pending" | "failed";
+  statusLabel?: string;
   removeDisabled?: boolean;
   onRemove: () => void;
 }) {
+  // Create-form chips are active-only, so status and its label intentionally stay row-only.
+  if (variant === "chip") {
+    return (
+      <li className="inline-flex h-11 max-w-full items-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--chip-x-bg)] py-0 pl-2.5 pr-1 desk:h-9">
+        {icon ? (
+          <span className="flex size-[15px] shrink-0 items-center justify-center">{icon}</span>
+        ) : null}
+        <span className="min-w-0 max-w-[16rem] truncate text-sm text-text-title" title={label}>
+          {display ?? label}
+        </span>
+        <button
+          aria-label={`Remove ${label}`}
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted outline-none hover:bg-destructive/12 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring desk:size-9"
+          disabled={removeDisabled}
+          onClick={onRemove}
+          type="button"
+        >
+          <RemoveIcon aria-hidden="true" className="size-4" />
+        </button>
+      </li>
+    );
+  }
+
   const surface =
     status === "pending"
       ? "bg-warning/12"
@@ -56,9 +83,9 @@ export function SourceRow({
       </span>
       {status !== "active" ? (
         <span
-          className={`ml-2 shrink-0 text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
+          className={`ml-2 min-w-0 text-right text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
         >
-          {status === "pending" ? "Pending" : "Couldn’t set up"}
+          {status === "pending" ? "Pending" : (statusLabel ?? "Couldn't set up")}
         </span>
       ) : null}
       <button
@@ -97,28 +124,30 @@ export function AddSourceField({
   onCommitParts?: (parts: string[]) => string[];
   className?: string;
 }) {
-  function handleChange(raw: string, opts?: { commitAll?: boolean }) {
-    if (!onCommitParts || !/[\s,]/.test(raw)) {
+  function handleChange(raw: string, opts?: { commitAll?: boolean; forceCommit?: boolean }) {
+    if (!onCommitParts) {
       onChange(raw);
       return;
     }
-    const bulk = opts?.commitAll || raw.length - value.length > 1;
-    const addedSeparator =
-      (raw.match(/[\s,]/g)?.length ?? 0) > (value.match(/[\s,]/g)?.length ?? 0);
-    if (!bulk && !addedSeparator) {
+    const commaAdded = (raw.match(/,/g)?.length ?? 0) > (value.match(/,/g)?.length ?? 0);
+    if (!opts?.commitAll && !opts?.forceCommit && !commaAdded) {
       onChange(raw);
       return;
     }
-    const endsWithSeparator = /[\s,]$/.test(raw);
-    const parts = splitList(raw);
-    const remainder = bulk || endsWithSeparator ? "" : (parts.pop() ?? "");
+    const endsWithComma = /,\s*$/.test(raw);
+    const segments = raw.split(",");
+    const remainder = opts?.commitAll || endsWithComma ? "" : (segments.pop() ?? "");
+    const parts = segments.flatMap((segment) => splitList(segment));
     const rejected = parts.length ? onCommitParts(parts) : [];
-    onChange([...rejected, remainder].filter(Boolean).join(" "));
+    onChange([...rejected, remainder.trimStart()].filter(Boolean).join(" "));
   }
 
   function commitAll() {
-    if (onCommitParts) handleChange(`${value} `, { commitAll: true });
-    else onSubmit?.();
+    if (!onCommitParts) {
+      onSubmit?.();
+      return;
+    }
+    handleChange(value, { commitAll: true });
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -132,9 +161,9 @@ export function AddSourceField({
     event.preventDefault();
     const selectionStart = event.currentTarget.selectionStart ?? value.length;
     const selectionEnd = event.currentTarget.selectionEnd ?? value.length;
-    const pasted = event.clipboardData.getData("text").replace(/\n/g, " ");
-    handleChange(`${value.slice(0, selectionStart)}${pasted}${value.slice(selectionEnd)} `, {
-      commitAll: true,
+    const pasted = event.clipboardData.getData("text").replace(/[\s\n]+/g, ",");
+    handleChange(`${value.slice(0, selectionStart)}${pasted}${value.slice(selectionEnd)}`, {
+      forceCommit: true,
     });
   }
 
@@ -150,7 +179,7 @@ export function AddSourceField({
         disabled={disabled}
         enterKeyHint="done"
         inputMode={inputMode}
-        onBlur={() => (onCommitParts ? commitAll() : onBlur?.())}
+        onBlur={() => onBlur?.()}
         onChange={(event) => handleChange(event.target.value)}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}

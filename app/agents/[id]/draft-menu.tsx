@@ -294,7 +294,7 @@ function DraftConstructionBreakdown({
           {construction.postMode.whyThisSourceFits}
         </p>
       </ConstructionBlock>
-      <ConstructionBlock title="Voice rules applied">
+      <ConstructionBlock title="Guide rules applied">
         <ul className="space-y-3">
           {construction.appliedRules.map((rule) => (
             <li className="space-y-1" key={`${rule.rule}-${rule.why}`}>

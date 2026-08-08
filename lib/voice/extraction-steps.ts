@@ -49,8 +49,8 @@ const STEPS = [
   },
   {
     key: "rules",
-    label: "Saving your voice rules",
-    failedLabel: "Couldn't save your voice rules",
+    label: "Saving your writing guide",
+    failedLabel: "Couldn't save your writing guide",
     stages: [5],
   },
 ] as const;
@@ -76,7 +76,7 @@ function completedLabel(stepKey: (typeof STEPS)[number]["key"], run: RunSnapshot
     case "extract":
       return "Learned how you write";
     case "rules":
-      return "Saved your voice rules";
+      return "Saved your writing guide";
   }
 }
 

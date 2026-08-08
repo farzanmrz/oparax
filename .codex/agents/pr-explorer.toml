@@ -1,4 +1,4 @@
-name = "pr_explorer"
+name = "pr-explorer"
 description = "Read-only codebase explorer: maps the code paths a plan or diff touches and returns distilled evidence (exports, signatures, callers) for the reviewer."
 model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"

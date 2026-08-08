@@ -4,6 +4,7 @@
   "framework": "nextjs",
   "git": {
     "deploymentEnabled": {
+      "beta": false,
       "chore/**": false,
       "codex-ft*/**": false,
       "feat/**": false,

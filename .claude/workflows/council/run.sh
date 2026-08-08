@@ -10,7 +10,9 @@
 #   label  : worker label; also the scratch filename stem (<label>.in.txt / .out.json)
 # The caller writes "<scratch>/<label>.in.txt" first, then runs this.
 #
-# ALL THREE FAMILIES RUN. A detach/retire of grok+agy was proposed 2026-07-30 and
+# ALL FOUR FAMILIES RUN (codex, grok, agy, cline — cline joined as the fourth; the
+# rationale below predates it and concerns grok+agy only).
+# A detach/retire of grok+agy was proposed 2026-07-30 and
 # REVERSED the same day once the durable record was actually read, because the case
 # against each rested on a bug that had already been fixed:
 #   agy  — the 2026-07-27 incident where the TUI picker silently selected Claude Opus
@@ -50,7 +52,7 @@ case "$FAM" in
   grok)  TIER="${COUNCIL_TIER:-high}" ;;                # subscription; high is fine (xhigh/max error). Bake-off tests medium.
   agy)   TIER="${COUNCIL_TIER:-gemini-3.1-pro-high}" ;; # reference tier. Bake-off tests gemini-3.6-flash-high.
   cline) TIER="${COUNCIL_TIER:-high}" ;;                # ClinePass ($9.99/mo flat). EFFORT only -> --thinking.
-                                                        # Model rides COUNCIL_MODEL (codex-shaped), default glm-5.2.
+                                                        # Model rides COUNCIL_MODEL (codex-shaped), default kimi-k3.
                                                         # Requires cline >= 3.x: -P/-m/-k are per-run only from 3.0.
   *) echo "run.sh: unknown family '$FAM' (codex | grok | agy | cline)" >&2; exit 2 ;;
 esac
