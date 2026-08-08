@@ -168,6 +168,18 @@ async function isOriginReachable(origin: string): Promise<boolean> {
   }
 }
 
+export async function checkOriginReachable(inputUrl: URL): Promise<boolean> {
+  if (await isOriginReachable(inputUrl.origin)) return true;
+  const toggledHostname = inputUrl.hostname.startsWith("www.")
+    ? inputUrl.hostname.slice(4)
+    : `www.${inputUrl.hostname}`;
+  if (!toggledHostname) return false;
+  const toggledUrl = new URL(inputUrl.toString());
+  toggledUrl.hostname = toggledHostname;
+  if (toggledUrl.hostname !== toggledHostname) return false;
+  return isOriginReachable(toggledUrl.origin);
+}
+
 /** Extracts `<link rel="alternate" type="application/rss+xml" href="...">` from an HTML
  *  document's `<head>`, resolved against `pageUrl`. */
 function extractRssAlternateLink(html: string, pageUrl: string): string | null {

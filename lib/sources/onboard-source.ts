@@ -17,6 +17,7 @@ import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
 import {
+  checkOriginReachable,
   discoverChangeDetection,
   fetchSafeSource,
   isPrivateHostname,
@@ -325,6 +326,11 @@ export async function onboardSource(
   if (isPrivateHostname(inputUrl.hostname)) return { status: "unreachable" };
 
   const admin = createAdminClient();
+
+  if (!(await checkOriginReachable(inputUrl))) {
+    await markPendingSourceFailed(admin, configId);
+    return { status: "unreachable" };
+  }
 
   const detection = await discoverChangeDetection(inputUrl);
   if (detection.mechanism === null) {

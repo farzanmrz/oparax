@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { checkBeatIntelligible } from "@/lib/agent/beat-gate";
 import { isOverrideOwner } from "@/lib/owner-allowlist";
 import {
   markPendingSourceFailed,
@@ -13,10 +14,25 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
+import {
+  checkHandlesExist,
+  type HandleCheckFailure,
+  refreshStaleHandleChecks,
+} from "@/lib/x/handle-check";
 import { getXLinkState } from "@/lib/x/link-state";
 import type { ActionResult } from "../[id]/actions";
 
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
+
+function describeInvalidHandles(invalid: HandleCheckFailure[]): string {
+  return `${invalid
+      .map((item) =>
+        item.status === "suspended"
+          ? `@${item.handle} is suspended.`
+          : `@${item.handle} doesn't exist on X.`,
+      )
+      .join(" ")} Remove them to continue.`;
+}
 
 /**
  * Create a desk (an `agents` row) as the signed-in reporter. The client starts voice extraction
@@ -103,6 +119,21 @@ export async function createDesk(input: {
     }
     reporterHandle = override;
   }
+
+  const existenceTargets = [...trackedHandles];
+  if (reporterHandle !== connectedHandle) existenceTargets.push(reporterHandle);
+  const existence = await checkHandlesExist(existenceTargets, user.id);
+  if (existence.ok && existence.invalid.length > 0) {
+    return { error: describeInvalidHandles(existence.invalid) };
+  }
+  if (beat.length > 2000) return { error: "Keep the beat under 2,000 characters." };
+  if (!(await checkBeatIntelligible(beat, user.id)).pass) {
+    return {
+      error:
+        "That beat doesn't read as something an agent can monitor — describe the news it should watch.",
+    };
+  }
+  after(() => refreshStaleHandleChecks(user.id));
 
   const { data, error } = await supabase
     .from("agents")
