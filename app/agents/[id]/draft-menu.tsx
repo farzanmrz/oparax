@@ -1,11 +1,18 @@
 "use client";
 
-import { ArrowUpRightIcon, BrainIcon, HistoryIcon, MoreHorizontalIcon, XIcon } from "lucide-react";
-import dynamic from "next/dynamic";
+import {
+  ArrowUpRightIcon,
+  BrainIcon,
+  HistoryIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  XIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import twitterText from "twitter-text";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,13 +30,10 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DraftHistoryDetail, HistoryVersion } from "@/lib/agent/council-query";
+import type { DraftConstruction } from "@/lib/agent/draft-construction";
 import { editDraft } from "./actions";
 import { type DraftReasoningResult, fetchDraftHistory, getDraftReasoning } from "./council-actions";
 import { relativeLabel } from "./relative-time";
-
-const DraftReasoning = dynamic(() => import("./draft-reasoning"), {
-  loading: () => <Skeleton className="h-32 w-full" />,
-});
 
 type LoadState<T> = { status: "loading" } | { status: "error" } | { status: "ready"; detail: T };
 
@@ -38,7 +42,6 @@ export function DraftMenu({
   versionCount,
   sourceUrl,
   sourceGone,
-  sourceLabel,
   canRevert,
   onDraftReplaced,
 }: {
@@ -46,7 +49,6 @@ export function DraftMenu({
   versionCount: number;
   sourceUrl: string | null;
   sourceGone: boolean;
-  sourceLabel: string;
   canRevert: boolean;
   onDraftReplaced: (draftId: string, text: string) => void;
 }) {
@@ -146,28 +148,56 @@ export function DraftMenu({
             </button>
           </SheetClose>
           <SheetHeader className="border-b border-[var(--band-border)] px-5 py-4">
-            <SheetTitle>Reasoning</SheetTitle>
-            <SheetDescription>
-              {reasoning.status === "ready" && reasoning.detail.edited
-                ? "Original draft reasoning"
-                : `Why Oparax drafted this post for ${sourceLabel}`}
-            </SheetDescription>
+            <SheetTitle className="flex items-center gap-2">
+              <BrainIcon aria-hidden="true" className="size-4" />
+              Reasoning
+            </SheetTitle>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+            <Alert className="border-primary/30 bg-primary/8 text-foreground">
+              <InfoIcon aria-hidden="true" />
+              <AlertDescription className="text-foreground/90">
+                This shows why Oparax surfaced this post for your beat and, when recorded, how it
+                shaped the original draft.
+              </AlertDescription>
+            </Alert>
             {reasoning.status === "loading" ? <Skeleton className="h-32 w-full" /> : null}
             {reasoning.status === "error" ? (
               <p className="text-sm text-destructive">Couldn&apos;t load the reasoning.</p>
             ) : null}
             {reasoning.status === "ready" && reasoning.detail.state === "found" ? (
-              <DraftReasoning content={reasoning.detail.reasoning} />
+              <section className="space-y-2" aria-labelledby="beat-reason-title">
+                <h2
+                  className="font-heading text-sm font-medium text-foreground"
+                  id="beat-reason-title"
+                >
+                  Why this post matches your beat
+                </h2>
+                <p className="text-sm leading-relaxed text-text-body">
+                  {reasoning.detail.onBeatReason}
+                </p>
+              </section>
             ) : null}
-            {reasoning.status === "ready" && reasoning.detail.state === "withheld" ? (
-              <p className="text-sm text-text-muted">
-                The model provider withheld this draft&apos;s reasoning trace.
+            {reasoning.status === "ready" &&
+            reasoning.detail.state === "found" &&
+            reasoning.detail.construction ? (
+              <DraftConstructionBreakdown
+                construction={reasoning.detail.construction}
+                edited={reasoning.detail.edited}
+              />
+            ) : null}
+            {reasoning.status === "ready" &&
+            reasoning.detail.state === "found" &&
+            !reasoning.detail.construction ? (
+              <p className="text-sm leading-relaxed text-text-muted">
+                Construction details were not recorded for this draft.
               </p>
             ) : null}
+            {reasoning.status === "ready" && reasoning.detail.state === "withheld" ? (
+              <p className="text-sm text-text-muted">Reasoning is unavailable for this draft.</p>
+            ) : null}
             {reasoning.status === "ready" && reasoning.detail.state === "none" ? (
-              <p className="text-sm text-text-muted">No reasoning trace was captured.</p>
+              <p className="text-sm text-text-muted">Reasoning is unavailable for this draft.</p>
             ) : null}
           </div>
         </SheetContent>
@@ -230,6 +260,70 @@ export function DraftMenu({
         </SheetContent>
       </Sheet>
     </>
+  );
+}
+
+function DraftConstructionBreakdown({
+  construction,
+  edited,
+}: {
+  construction: DraftConstruction;
+  edited: boolean;
+}) {
+  return (
+    <section className="space-y-3" aria-labelledby="draft-construction-title">
+      <div className="space-y-1">
+        <h2
+          className="font-heading text-sm font-medium text-foreground"
+          id="draft-construction-title"
+        >
+          How Oparax built the draft
+        </h2>
+        {edited ? (
+          <p className="text-sm leading-relaxed text-text-muted">
+            This breakdown describes the original model draft before your edit.
+          </p>
+        ) : null}
+      </div>
+      <ConstructionBlock title="Post mode">
+        <p className="text-sm text-text-muted">{construction.postMode.name}</p>
+        <p className="text-sm leading-relaxed text-text-body">
+          {construction.postMode.description}
+        </p>
+        <p className="text-sm leading-relaxed text-text-muted">
+          {construction.postMode.whyThisSourceFits}
+        </p>
+      </ConstructionBlock>
+      <ConstructionBlock title="Voice rules applied">
+        <ul className="space-y-3">
+          {construction.appliedRules.map((rule) => (
+            <li className="space-y-1" key={`${rule.rule}-${rule.why}`}>
+              <p className="text-sm font-medium text-foreground">{rule.rule}</p>
+              <p className="text-sm leading-relaxed text-text-muted">{rule.why}</p>
+            </li>
+          ))}
+        </ul>
+      </ConstructionBlock>
+      <ConstructionBlock title="Formatting choices">
+        <ul className="space-y-3">
+          {construction.formattingChoices.map((choice) => (
+            <li className="space-y-1" key={`${choice.choice}-${choice.why}`}>
+              <p className="text-sm font-medium text-foreground">{choice.choice}</p>
+              <p className="text-sm leading-relaxed text-text-muted">{choice.why}</p>
+            </li>
+          ))}
+        </ul>
+      </ConstructionBlock>
+    </section>
+  );
+}
+
+function ConstructionBlock({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <section className="space-y-3 rounded-md border border-[var(--card-border)] bg-black/15 p-4">
+      <h3 className="font-heading text-sm font-medium text-foreground">{title}</h3>
+      {children}
+    </section>
   );
 }
 

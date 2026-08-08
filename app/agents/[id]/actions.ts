@@ -15,7 +15,7 @@ import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { checkXPostable, resolveXTier, xUnpostableMessage } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveDeskTier, xUnpostableMessage } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
@@ -210,8 +210,19 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
   }
 
   if (parentDraft.platform === "x") {
-    const { tier } = await getXLinkState();
-    const postable = checkXPostable(trimmedText, resolveXTier(tier));
+    // Same desk-resolved ceiling as the pipeline, feed counter, and post gate (resolveDeskTier).
+    // The owned parent-draft read above is the ownership proof; this RLS read only gets its tier.
+    const [{ tier }, { data: tierAgent, error: tierAgentError }] = await Promise.all([
+      getXLinkState(),
+      supabase.from("agents").select("reporter_tier").eq("id", parentDraft.agent_id).maybeSingle(),
+    ]);
+    if (tierAgentError || !tierAgent) {
+      return {
+        ok: false,
+        error: "Could not verify this draft's character limit. Please try again.",
+      };
+    }
+    const postable = checkXPostable(trimmedText, resolveDeskTier(tierAgent.reporter_tier, tier));
     if (!postable.ok) {
       return { ok: false, error: xUnpostableMessage(postable.reason) };
     }

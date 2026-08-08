@@ -108,6 +108,15 @@ function hostname(url: string | null) {
     return null;
   }
 }
+function faviconUrl(url: string | null) {
+  try {
+    // The /favicon.ico convention rather than a stored asset: most news sites serve it, and
+    // the card degrades to its generic globe icon when one doesn't (see FeedSourceView).
+    return url ? `${new URL(url).origin}/favicon.ico` : null;
+  } catch {
+    return null;
+  }
+}
 
 type TweetLookup = { state: "available" | "gone" | "unavailable" };
 type TweetCacheEntry = TweetLookup & { expiresAt: number };
@@ -303,16 +312,35 @@ async function hydrate(
         console.warn("Skipping orphaned feed story", { agentId, storyId: entry.story.id });
       return Boolean(entry.source);
     });
+  // Reporter-facing site labels: this desk's own onboarded configs, keyed by www-stripped
+  // domain. Display-only — delivery routing stays on source_config_id (AGENTS.md); this map
+  // merely swaps "mundodeportivo.com" for "Mundo Deportivo" on the card, and rows onboarded
+  // before display names existed hold the hostname anyway, so the swap is a no-op for them.
+  // Non-fatal on error: a missing label must never take the feed down with it.
+  const siteNames = new Map<string, string>();
+  {
+    const { data, error } = await supabase
+      .from("source_configs")
+      .select("domain, display_name")
+      .eq("agent_id", agentId)
+      .eq("status", "active");
+    if (error) console.error("fetchFeedPage: source_configs label read failed", error);
+    for (const row of data ?? []) {
+      if (row.display_name) siteNames.set(row.domain.replace(/^www\./, ""), row.display_name);
+    }
+  }
   const tweets = await Promise.all(
     primary.map(({ source }) => (source.x_post_id ? getCachedTweet(source.x_post_id) : undefined)),
   );
   return primary.map(({ story, source }, index) => {
     const lookup = tweets[index];
     const kind = source.source === "x" ? "x" : source.text ? "article" : "headline";
+    const host = hostname(source.url);
     const sourceView: FeedSourceView = {
       kind,
       authorHandle: source.author_handle,
-      siteName: kind === "x" ? null : hostname(source.url),
+      siteName: kind === "x" ? null : ((host ? siteNames.get(host) : undefined) ?? host),
+      faviconUrl: kind === "x" ? null : faviconUrl(source.url),
       url:
         kind === "x" && source.x_post_id && source.author_handle
           ? `https://x.com/${source.author_handle}/status/${source.x_post_id}`

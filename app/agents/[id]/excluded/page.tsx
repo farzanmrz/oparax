@@ -32,7 +32,7 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
     page = await fetchExcludedPosts(admin, id);
   } catch {
     return (
-      <div className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 flex-col gap-4 py-4 desk:gap-6">
+      <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
         <PageHeading>Excluded Posts</PageHeading>
         <ExcludedLoadError />
       </div>
@@ -40,7 +40,7 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 flex-col gap-4 py-4 desk:gap-6">
+    <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
       <PageHeading>Excluded Posts</PageHeading>
       {page.items.length === 0 ? (
         <ExcludedEmptyState />

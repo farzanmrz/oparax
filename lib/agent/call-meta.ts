@@ -24,6 +24,8 @@ export async function resolveCallMeta(params: {
   reasoning: string | null;
   usage: unknown;
   providerMetadata?: Record<string, unknown>;
+  draftConstruction?: CouncilCall["draftConstruction"];
+  draftOnBeatReason?: CouncilCall["draftOnBeatReason"];
 }): Promise<CouncilCall> {
   const { costUsd, generationId } = await resolveGatewayCost({
     providerMetadata: params.providerMetadata,
@@ -39,5 +41,11 @@ export async function resolveCallMeta(params: {
     usage: params.usage,
     costUsd,
     generationId,
+    ...(params.draftConstruction === undefined
+      ? {}
+      : { draftConstruction: params.draftConstruction }),
+    ...(params.draftOnBeatReason === undefined
+      ? {}
+      : { draftOnBeatReason: params.draftOnBeatReason }),
   };
 }

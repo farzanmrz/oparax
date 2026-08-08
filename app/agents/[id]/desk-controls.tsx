@@ -2,7 +2,7 @@
 
 // app/agents/[id]/desk-controls.tsx
 //
-// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Sources/Excluded nav,
+// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Writing Guide/Sources/Excluded nav,
 // active state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
 // `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME four
 // links at the SAME URLs — one URL tree, no parallel nav model.
@@ -10,8 +10,8 @@
 import {
   EyeOffIcon,
   FileTextIcon,
-  MicVocalIcon,
   PauseIcon,
+  PenLineIcon,
   PlayIcon,
   RssIcon,
   Trash2Icon,
@@ -60,8 +60,8 @@ export const DESK_TABS = [
     exact: false,
   },
   {
-    label: "Voice",
-    icon: MicVocalIcon,
+    label: "Writing Guide",
+    icon: PenLineIcon,
     href: (id: string) => `/agents/${id}/voice`,
     exact: false,
   },
@@ -77,7 +77,7 @@ export function isDeskTabActive(pathname: string, href: string, exact: boolean):
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The Feed/Voice/Sources tab nav for wide layouts. */
+/** The Feed/Writing Guide/Sources tab nav for wide layouts. */
 export function DeskTabs({
   deskId,
   needsReviewCount,

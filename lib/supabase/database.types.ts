@@ -18,6 +18,7 @@ export type Database = {
           name: string | null;
           owner_id: string;
           reporter_handle: string;
+          reporter_tier: string | null;
           reporter_verified_at: string | null;
           status: string;
           tracked_handles: string[];
@@ -33,6 +34,7 @@ export type Database = {
           name?: string | null;
           owner_id: string;
           reporter_handle: string;
+          reporter_tier?: string | null;
           reporter_verified_at?: string | null;
           status?: string;
           tracked_handles?: string[];
@@ -48,6 +50,7 @@ export type Database = {
           name?: string | null;
           owner_id?: string;
           reporter_handle?: string;
+          reporter_tier?: string | null;
           reporter_verified_at?: string | null;
           status?: string;
           tracked_handles?: string[];

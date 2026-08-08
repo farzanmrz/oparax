@@ -138,7 +138,7 @@ export function FeedList({
       </div>
     );
   return (
-    <div className="flex flex-col gap-4 desk:gap-6">
+    <div className="flex flex-col gap-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)]">
       {state.items.map((item) => (
         <FeedItemCard charLimit={charLimit} item={item} key={item.storyId} xLinked={xLinked} />
       ))}

@@ -63,6 +63,10 @@ export type OnboardOutcome =
 
 const sourceOnboardingSchema = z.object({
   language: z.string().describe("primary language of the site's content"),
+  siteName: z
+    .string()
+    .nullable()
+    .describe('the publication\'s proper display name, e.g. "Mundo Deportivo", or null if unsure'),
   pathFilter: z.object({
     pathPrefix: z
       .string()
@@ -74,6 +78,14 @@ const sourceOnboardingSchema = z.object({
 });
 
 type SourceOnboardingVerdict = z.infer<typeof sourceOnboardingSchema>;
+
+/** Reporter-facing site label from the onboarding verdict. Bounded and single-line because it
+ *  renders verbatim on feed cards; anything empty or oversized falls back to the hostname at
+ *  the call site rather than storing an unusable label. */
+function cleanSiteName(name: string | null): string | null {
+  const collapsed = name?.replace(/\s+/g, " ").trim() ?? "";
+  return collapsed.length > 0 && collapsed.length <= 60 ? collapsed : null;
+}
 
 /** A reporter-pasted path beyond the bare domain carries real signal — generalizes onboarding
  *  across "bare domain" / "a specific section" / "a single article link" input shapes (#105)
@@ -406,7 +418,10 @@ export async function onboardSource(
     p_agent_id: agentId,
     p_url: inputUrl.toString(),
     p_domain: inputUrl.hostname,
-    p_display_name: inputUrl.hostname,
+    // The model's proper publication name ("Mundo Deportivo") when it gave a usable one;
+    // the hostname otherwise — which is also what every pre-#106 row already holds, so the
+    // feed's fallback path stays exercised either way.
+    p_display_name: cleanSiteName(verdict.siteName) ?? inputUrl.hostname,
     p_change_detection: detection.mechanism,
     // Left null deliberately: retrieval is no longer decided at onboarding (#105) — the
     // poller's fetch chain figures it out adaptively, per fetch. A non-null value here is

@@ -10,7 +10,7 @@
 // no user session available, and import this module directly — never through the Action
 // surface.
 import * as Sentry from "@sentry/nextjs";
-import { checkXPostable, resolveXTier, xUnpostableMessage } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveDeskTier, xUnpostableMessage } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createTweet, refreshTokens } from "@/lib/x/api";
 import { getXAccount, updateXTokens } from "@/lib/x/store";
@@ -76,7 +76,7 @@ export async function publishDraftToXForOwner(
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
   const [{ data: agent, error: agentError }, { data: modelCall, error: modelCallError }] =
     await Promise.all([
-      admin.from("agents").select("owner_id").eq("id", draft.agent_id).maybeSingle(),
+      admin.from("agents").select("owner_id, reporter_tier").eq("id", draft.agent_id).maybeSingle(),
       admin.from("model_calls").select("output").eq("id", draft.model_call_id).maybeSingle(),
     ]);
   if (agentError || modelCallError || agent?.owner_id !== ownerId) {
@@ -97,9 +97,9 @@ export async function publishDraftToXForOwner(
   // Server-side validity gate, mirroring the client's twitter-text check (post-to-x-control.tsx)
   // through the SHARED `checkXPostable` helper editDraft also calls — a repair failure, a human
   // edit, or a bypassed UI path (e.g. a hand-crafted Slack button value) could otherwise reach
-  // here over the ceiling with no server-side check at all. The stored posting-account tier is
-  // the same ceiling drafting and the feed counter enforce.
-  const postable = checkXPostable(text, resolveXTier(account.tier));
+  // here over the ceiling with no server-side check at all. The desk-resolved tier is the same
+  // ceiling drafting, the feed counter, and editDraft enforce; X remains the final arbiter.
+  const postable = checkXPostable(text, resolveDeskTier(agent.reporter_tier, account.tier));
   if (!postable.ok) {
     return {
       ok: false,

@@ -16,6 +16,19 @@ export function resolveXTier(value: string | null | undefined): XAccountTier {
   return value === "premium" ? "premium" : "standard";
 }
 
+/** The ceiling a DESK drafts, counts, edits, and post-gates against: premium applies when either
+ *  the corpus-proven reporter tier (`agents.reporter_tier`, written by voice extraction) or the
+ *  posting account's stored tier is premium. One resolver shared by the drafting pipeline, the
+ *  feed counter, editDraft, and post-core so those gates can never disagree. */
+export function resolveDeskTier(
+  reporterTier: string | null | undefined,
+  accountTier: string | null | undefined,
+): XAccountTier {
+  return resolveXTier(reporterTier) === "premium" || resolveXTier(accountTier) === "premium"
+    ? "premium"
+    : "standard";
+}
+
 /** Shared X validity gate — the same weighted-length + validity check both the posting path
  *  (lib/x/post-core.ts) and the edit path (app/agents/[id]/actions.ts) must enforce identically,
  *  so a draft that passes at edit time is guaranteed to also pass at actual post time. Length

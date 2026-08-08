@@ -335,13 +335,28 @@ async function runExtractionSpendPhaseInner(
     }
 
     try {
+      const inferred = inferAccountTier(corpus);
+      // The DESK always records its reporter's corpus-proven tier — this is what the drafting
+      // ceiling, feed counter, and gates resolve first (resolveDeskTier), so an owner-override
+      // desk drafting a premium reporter's voice isn't capped at 280 by the posting account.
+      // Same never-downgrade rule as x_accounts below: premium evidence is proof; a corpus
+      // that happens to lack long posts proves nothing and must not undo prior proof.
+      const deskTierUpdate = admin
+        .from("agents")
+        .update({ reporter_tier: inferred })
+        .eq("id", agentId);
+      const { error: deskTierError } =
+        inferred === "premium"
+          ? await deskTierUpdate
+          : await deskTierUpdate.is("reporter_tier", null);
+      if (deskTierError) throw deskTierError;
+
       const account = await getXAccount(ownerId);
       const sameReporter =
         account &&
         normalizeHandle(account.handle).toLowerCase() ===
           normalizeHandle(reporterHandle).toLowerCase();
       if (sameReporter) {
-        const inferred = inferAccountTier(corpus);
         // Premium evidence is proof; absence of long posts proves nothing. A manually seeded
         // premium account is therefore never downgraded by a standard inference.
         if (inferred === "premium" || account.tier === null) {

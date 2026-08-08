@@ -23,6 +23,9 @@ export type FeedSourceView = {
   kind: "x" | "article" | "headline";
   authorHandle: string | null;
   siteName: string | null;
+  /** `<origin>/favicon.ico` derived from the article URL — a convention most news sites
+   *  honor; the card falls back to its generic globe icon when the image 404s. */
+  faviconUrl: string | null;
   url: string | null;
   postedAt: string | null;
   gone: boolean;

@@ -19,9 +19,8 @@ import type { ActionResult } from "../[id]/actions";
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
 /**
- * Create a desk (an `agents` row) as the signed-in reporter, then kick off best-effort
- * voice extraction for their handle in `after()` — the request finishes and the client
- * navigates before extraction resolves; a failure there never rolls back the desk (see
+ * Create a desk (an `agents` row) as the signed-in reporter. The client starts voice extraction
+ * after this action returns, so a pre-flight failure never rolls back the newly created desk (see
  * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
  *
  * Identity now comes from the linked X account, never from client-supplied form state — the
@@ -40,6 +39,7 @@ export async function createDesk(input: {
 }): Promise<CreateDeskResult> {
   const name = input.name.trim();
   if (!name) return { error: "Name this agent." };
+  if (name.length > 30) return { error: "Agent name must be 30 characters or fewer." };
 
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this agent should watch." };

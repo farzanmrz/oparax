@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 // twitter-text 3.x is CommonJS — its ESM interop exposes only a default export (the
@@ -18,15 +18,17 @@ export function PostToXControl({
   disabled = false,
   onPendingChange,
   xLinked,
+  mobileMetadata,
 }: {
   draftId: string;
   draftText: string;
-  /** The desk's X ceiling — 280, or 25,000 when the posting account's stored `x_accounts.tier`
-   *  is premium (resolved by `resolveXTier` in page.tsx). */
+  /** The desk's X ceiling — 280, or 25,000 when its reporter or posting-account tier is premium
+   *  (resolved by `resolveDeskTier` in page.tsx). */
   charLimit: number;
   disabled?: boolean;
   onPendingChange: (pending: boolean) => void;
   xLinked: boolean;
+  mobileMetadata?: ReactNode;
 }): JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
@@ -35,15 +37,18 @@ export function PostToXControl({
 
   if (!xLinked) {
     return (
-      <Button
-        asChild
-        className="h-10 w-full rounded-t-none rounded-b-[9px] desk:h-[30px] desk:w-auto desk:rounded-md"
-        variant="outline"
-      >
-        {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X.
-            returnTo brings the reporter back to this exact desk page after linking. */}
-        <a href={`/auth/x?returnTo=${encodeURIComponent(pathname)}`}>Connect X</a>
-      </Button>
+      <div className="relative">
+        <Button
+          asChild
+          className="h-[var(--post-h-mobile)] w-full rounded-t-none rounded-b-[9px] desk:h-[var(--post-h-web)] desk:w-auto desk:rounded-md"
+          variant="outline"
+        >
+          {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X.
+              returnTo brings the reporter back to this exact desk page after linking. */}
+          <a href={`/auth/x?returnTo=${encodeURIComponent(pathname)}`}>Connect X</a>
+        </Button>
+        {mobileMetadata}
+      </div>
     );
   }
 
@@ -90,16 +95,19 @@ export function PostToXControl({
           {error}
         </p>
       ) : null}
-      <Button
-        className={cn(
-          "h-10 w-full rounded-t-none rounded-b-[9px] px-4 desk:h-[30px] desk:w-auto desk:rounded-md",
-          isPending && "bg-primary/50",
-        )}
-        disabled={disabled || isPending || !parsed.valid || overLimit}
-        onClick={handleConfirm}
-      >
-        {isPending ? "Posting…" : "Post"}
-      </Button>
+      <div className="relative">
+        <Button
+          className={cn(
+            "h-[var(--post-h-mobile)] w-full rounded-t-none rounded-b-[9px] px-4 desk:h-[var(--post-h-web)] desk:w-auto desk:rounded-md",
+            isPending && "bg-primary/50",
+          )}
+          disabled={disabled || isPending || !parsed.valid || overLimit}
+          onClick={handleConfirm}
+        >
+          {isPending ? "Posting…" : "Post"}
+        </Button>
+        {mobileMetadata}
+      </div>
     </div>
   );
 }

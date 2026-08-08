@@ -22,11 +22,16 @@ import {
   checkXPostable,
   PLATFORMS,
   type Platform,
-  resolveXTier,
+  resolveDeskTier,
 } from "@/lib/agent/desk-config";
 import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
 import { translateSourcePost } from "@/lib/agent/draft-translate";
 import { draftSourcePost } from "@/lib/agent/draft-write";
+import {
+  formatSourceIdentity,
+  normalizeWebsitePublisherMention,
+  type SourceIdentity,
+} from "@/lib/agent/source-identity";
 import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
 import { sendDraftEmail } from "@/lib/notify/email";
 import { sendSlackMessage } from "@/lib/notify/slack";
@@ -120,14 +125,14 @@ type MatchedAgent = {
   id: string;
   owner_id: string;
   reporter_handle: string;
+  reporter_tier: string | null;
   beat: string;
   status: string;
   auto_post_master: boolean;
   auto_post_sources: Json;
 };
 
-/** Best-effort hostname extraction for the website author-handle fallback. Malformed input
- *  degrades to "" rather than throwing. */
+/** Best-effort publisher extraction. A website hostname is provenance, never an X handle. */
 function hostnameOf(url: string): string {
   try {
     return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
@@ -193,6 +198,16 @@ async function insertModelCalls(
         usage: {
           ...(call.usage as object),
           reasoningWithheldByProvider: call.reasoningWithheldByProvider,
+          // This model-produced editorial account is reporter-facing provenance, not proof or
+          // chain-of-thought. Only live drafts carry it; historic, revision, and human calls do not.
+          ...(call.draftConstruction === null || call.draftConstruction === undefined
+            ? {}
+            : { draftConstruction: call.draftConstruction }),
+          // Persist the normalized verdict field separately from raw provider reasoning. The
+          // reporter-facing sheet must never derive its beat explanation by parsing that trace.
+          ...(call.draftOnBeatReason === null || call.draftOnBeatReason === undefined
+            ? {}
+            : { draftOnBeatReason: call.draftOnBeatReason }),
         } as unknown as Json,
         cost_usd: call.costUsd,
         generation_id: call.generationId,
@@ -238,7 +253,7 @@ async function deliverDraft(
   input: {
     agentId: string;
     ownerId: string;
-    authorHandle: string;
+    sourceIdentity: SourceIdentity;
     sourceText: string;
     winningText: string;
     winningDraftId: string;
@@ -251,7 +266,7 @@ async function deliverDraft(
   // renders its `*bold*` and `>` markers literally. One input, two renderings. Cost/model-count
   // display lives in the council provenance dialog now (reads model_calls directly), not here.
   const composeInput = {
-    authorHandle: input.authorHandle,
+    sourceIdentity: input.sourceIdentity,
     sourceText: input.sourceText,
     winningText: input.winningText,
     revised: input.revised,
@@ -303,7 +318,7 @@ async function deliverDraft(
     try {
       await sendDraftEmail({
         to: NOTIFY_EMAIL_TO,
-        subject: `${input.revised ? "Revised draft" : "New draft"} from @${input.authorHandle}`,
+        subject: `${input.revised ? "Revised draft" : "New draft"} from ${formatSourceIdentity(input.sourceIdentity)}`,
         text: composeDraftMessagePlainText(composeInput),
         draftId: input.winningDraftId,
       });
@@ -356,7 +371,7 @@ async function draftForAgent(
   );
   const beatSpec = extractBeatSpec(guide.guide_raw) ?? agent.beat;
   const xAccount = await getXAccount(agent.owner_id);
-  const accountTier = resolveXTier(xAccount?.tier);
+  const accountTier = resolveDeskTier(agent.reporter_tier, xAccount?.tier);
 
   const claimToken = randomUUID();
   // Atomic claim/reclaim: a delivery that outlives the ingest route's 800-second budget can
@@ -400,20 +415,23 @@ async function draftForAgent(
         ref_id: sourcePostId,
       });
     }
-    if (!translated.usable) {
+    if (!translated.usable || !translated.englishSourceText?.trim()) {
       throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
     }
 
     // Stage 2: one Qwen pass makes the beat decision, generated news title, news synthesis, and draft.
     const written = await draftSourcePost({
-      brief,
-      translation: translated.translation,
+      source: { identity: brief.identity, media: brief.media },
+      englishSourceText: translated.englishSourceText,
       beatSpec,
       siteGuidance,
       voiceGuidance,
       platform: "x",
       accountTier,
     });
+    if (written.verdict?.onBeat && written.verdict.draft !== null) {
+      written.call.output = normalizeWebsitePublisherMention(written.verdict.draft, brief.identity);
+    }
     const [drafterCallId] = await insertModelCalls(
       admin,
       agent.owner_id,
@@ -465,12 +483,14 @@ async function draftForAgent(
       };
     }
 
-    const draftText = verdict.draft;
-    if (draftText === null) {
+    const unnormalizedDraftText = verdict.draft;
+    if (unnormalizedDraftText === null) {
       throw new Error(
         `draft-pipeline: on-beat verdict missing draft for source post ${sourcePostId}`,
       );
     }
+    const draftText = normalizeWebsitePublisherMention(unnormalizedDraftText, brief.identity);
+    written.call.output = draftText;
     const fit = checkXPostable(draftText, accountTier);
     if (!fit.ok) {
       console.error(
@@ -483,7 +503,7 @@ async function draftForAgent(
     const cluster = await assignToStory({
       agentId: agent.id,
       sourcePostId,
-      authorHandle: brief.authorHandle,
+      sourceIdentity: brief.identity,
       text: brief.text,
     });
     if (cluster.calls.length > 0) {
@@ -594,7 +614,7 @@ async function draftForAgent(
     await deliverDraft(admin, {
       agentId: agent.id,
       ownerId: agent.owner_id,
-      authorHandle: brief.authorHandle,
+      sourceIdentity: brief.identity,
       sourceText: brief.text,
       winningText: primary.winningText,
       winningDraftId: primary.winningDraftId,
@@ -732,7 +752,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   const { data: allAgents, error: agentsError } = await admin
     .from("agents")
     .select(
-      "id, owner_id, reporter_handle, beat, tracked_handles, websites, status, auto_post_master, auto_post_sources",
+      "id, owner_id, reporter_handle, reporter_tier, beat, tracked_handles, websites, status, auto_post_master, auto_post_sources",
     );
   if (agentsError) throw agentsError;
   let websiteSourceAgentId: string | null = null;
@@ -794,18 +814,15 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
       ? {
           sourcePostId,
           xPostId: delivery.x_post_id,
-          authorHandle: delivery.author_handle,
+          identity: { kind: "x", handle: delivery.author_handle },
           text: delivery.text,
           lang: delivery.lang ?? null,
           media: delivery.media ?? [],
         }
       : {
           sourcePostId,
-          // xPostId is unused by draft-council-run.ts's actual logic (never read past being
-          // carried on SourceBrief) — "" for a website delivery rather than widening the type
-          // for a field nothing consumes (documented in task-20-report.md).
           xPostId: "",
-          authorHandle: delivery.author_handle ?? hostnameOf(delivery.url),
+          identity: { kind: "website", publisher: hostnameOf(delivery.url) },
           title: delivery.title,
           text: delivery.text,
           lang: delivery.lang,
@@ -853,12 +870,12 @@ export async function applyCorrection(input: {
   const [sourcePostResult, agentResult, modelCallResult] = await Promise.all([
     admin
       .from("source_posts")
-      .select("id, x_post_id, author_handle, text")
+      .select("id, source, url, x_post_id, author_handle, text")
       .eq("id", draftRow.source_post_id)
       .maybeSingle(),
     admin
       .from("agents")
-      .select("id, owner_id, reporter_handle")
+      .select("id, owner_id, reporter_handle, reporter_tier")
       .eq("id", draftRow.agent_id)
       .maybeSingle(),
     admin.from("model_calls").select("output").eq("id", draftRow.model_call_id).maybeSingle(),
@@ -909,16 +926,14 @@ export async function applyCorrection(input: {
     guide.guide_deploy,
   );
 
-  // source_posts.x_post_id / author_handle are nullable as of this Wave's website-source
-  // support (Part A above) — applyCorrection's own behavior is unchanged (out of scope for
-  // this task per the brief), this is only the minimal null-safety fix required to keep this
-  // file compiling against the widened schema; every draft reachable through this path today
-  // is still "x"-sourced (Wave 3 wires up website drafts' UI), so these fall back to "" in
-  // practice but never actually hit it (documented in task-20-report.md).
+  const sourceIdentity: SourceIdentity =
+    sourcePost.source === "website"
+      ? { kind: "website", publisher: hostnameOf(sourcePost.url ?? "") }
+      : { kind: "x", handle: sourcePost.author_handle ?? "" };
   const brief: SourceBrief = {
     sourcePostId: sourcePost.id,
     xPostId: sourcePost.x_post_id ?? "",
-    authorHandle: sourcePost.author_handle ?? "",
+    identity: sourceIdentity,
     text: sourcePost.text,
     lang: null,
     // reviseDraft (this function's only caller) never looks at media — the emailed-correction
@@ -929,11 +944,13 @@ export async function applyCorrection(input: {
   const revisionAccount = await getXAccount(agent.owner_id);
   const revision = await reviseDraft({
     voiceGuidance,
-    accountTier: resolveXTier(revisionAccount?.tier),
+    accountTier: resolveDeskTier(agent.reporter_tier, revisionAccount?.tier),
     brief,
     previousDraft,
     feedback: input.feedback,
   });
+  revision.text = normalizeWebsitePublisherMention(revision.text, sourceIdentity);
+  revision.calls[revision.finalCallIndex].output = revision.text;
 
   // Ledger-first, again.
   const callIds = await insertModelCalls(admin, agent.owner_id, revision.calls, sourcePost.id);
@@ -1031,7 +1048,7 @@ export async function applyCorrection(input: {
   await deliverDraft(admin, {
     agentId: agent.id,
     ownerId: agent.owner_id,
-    authorHandle: sourcePost.author_handle ?? "",
+    sourceIdentity,
     sourceText: sourcePost.text,
     winningText: revision.text,
     winningDraftId: newDraft.id,

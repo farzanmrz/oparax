@@ -1,0 +1,27 @@
+REVIEW CHARTER — oparax QC round 7 (one deep pass, whole stated range)
+
+RANGE: git diff 349e3ba..b0bdf5c (the ONLY unreviewed code; everything before 349e3ba was adjudicated in QC rounds 1-6 on issue #103). Repo root is the working directory. Read files in full where the diff composes with unchanged code — undiffed does not mean out of scope, including vendored components/ui and components/ai-elements code the diff's behavior composes with.
+
+WHAT THIS DELTA IS (its acceptance intent):
+1. Reporter-facing draft construction account: lib/agent/draft-construction.ts (new), draft-write.ts emits a structured `construction` object persisted via call-meta; the Reasoning sheet renders it (draft-menu/draft-box; draft-reasoning.tsx deleted). components/x-entity-text.tsx (new) styles @mentions/#hashtags/URLs in draft text and voice-guide post examples.
+2. Website source naming: onboarding schema gains `siteName` (lib/sources/onboard-source.ts, lib/sysprompts/source-onboarding.md), stored in source_configs.display_name; lib/agent/feed-query.ts maps the desk's own configs (domain -> display_name) for feed labels + derives <origin>/favicon.ico; feed card shows favicon in a fixed 15px slot (feed-item.tsx); Sources page shows two-line chips (bold name over narrow URL = domain + prefilter.pathPrefix) with favicon (sources/page.tsx ownership-proof-then-admin read; sources-card.tsx).
+3. Create-agent UX: info tooltips replaced by always-visible helper text; placeholders are examples only; chips-field.tsx gains a wrapped overlay placeholder, inline + Add button, autocapitalize/autocorrect/spellcheck off, enterKeyHint=done, inputMode=url for websites; 30-char agent-name cap (maxLength removed, live red error + submit guard); admin-only Extract Voice From defaults to ReshadRahman with no badge/help; X Accounts / News Websites labels.
+4. Desk-level reporter tier: migration adds agents.reporter_tier; lib/voice/create-desk-extraction.ts always records inferAccountTier(corpus) on the desk (premium always wins; standard only fills null), keeping the existing sameReporter x_accounts write; lib/agent/desk-config.ts adds resolveDeskTier(reporterTier ?? accountTier); consumers: draft-pipeline (main + revision), feed page charLimit, editDraft (app/agents/[id]/actions.ts), post gate (lib/x/post-core.ts). Intent: a desk drafting a premium reporter's voice is not capped at 280 by the posting account; all four gates must agree.
+5. DESIGN.md synced (feed strip sizes + 15px icon slot, Form Fields section, helper-text exception).
+6. Pre-session owner work in the same commit: feed/excluded list changes, draft-box/menu, desk-controls, band-card, page-heading, globals.css, sysprompts draft-write/draft-translate/draft-council-contract, notify/compose, cluster, call-meta, source-identity.ts (new).
+
+COVER: correctness bugs; cross-file contract breaks; acceptance-intent compliance; convention violations + instruction-file staleness (AGENTS.md/DESIGN.md); security (authz, injection, secret/token handling, trust boundaries — favicon URLs are third-party content rendered in <img>; display_name is model-authored text rendered in UI); concurrency/races; error paths.
+
+DISTILLED GUARDS (from AGENTS.md, binding on these files):
+- lib/agent/feed-query.ts reads take a service-role client and NEVER check desk ownership; every caller must prove owner_id first. The new source_configs label read inside fetchFeedPage rides that same client — verify no new unproven path calls it.
+- source_configs is deny-all RLS: any app read must prove ownership via an RLS query first, then use the admin client (sources/page.tsx pattern).
+- Website deliveries resolve desks by source_config_id, NEVER by hostname rematch. The new domain->display_name map must remain display-only.
+- checkXPostable (lib/agent/desk-config.ts) is the ONE shared X validity gate; drafting winner writers, editDraft, and post-core must call it with the SAME resolved tier — divergence between gates is a bug by definition.
+- Tokens never leave lib/x/ and lib/slack/.
+- lib/supabase/database.types.ts is a generated mirror — content must exactly reflect the migration (agents.reporter_tier: string | null).
+- lib/sysprompts/voice-extract.md is measured-not-authored (untouched in this diff; flag if touched).
+- DESIGN.md is the visual contract; page/card headers Title Case.
+
+OWNER DECISIONS CARRIED (vetoes — do not re-litigate): round-6 character-counter contrast policy; website-cap atomicity policy (atomic DB reservation implemented).
+
+OUTPUT: findings only, each with file:line, one technical sentence, a concrete failure scenario (inputs/state -> wrong outcome), and severity. No praise, no summaries.
