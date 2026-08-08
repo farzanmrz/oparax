@@ -11,6 +11,7 @@
 import { GlobeIcon } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { BandCard } from "@/components/band-card";
+import { SiteFavicon } from "@/components/site-favicon";
 import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
 import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
@@ -38,7 +39,6 @@ const RECONCILE_GRACE_MS = 2500;
 export type WebsiteDetail = {
   displayName: string;
   domain: string;
-  pathPrefix: string | null;
 };
 
 export function SourcesCard({
@@ -301,29 +301,27 @@ export function SourcesCard({
         <ul className="grid gap-2">
           {websites.map((url) => (
             <SourceRow
-              display={<WebsiteChipContent detail={websiteDetails[url]} url={url} />}
-              icon={<WebsiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+              icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
               key={url}
-              label={websiteLabel(url, websiteDetails[url])}
+              label={websiteName(url, websiteDetails[url])}
               onRemove={() => removeSite(url)}
               tone="website"
             />
           ))}
           {resolvedChips.map((url) => (
             <SourceRow
-              display={<WebsiteChipContent detail={websiteDetails[url]} url={url} />}
-              icon={<WebsiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+              icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
               key={url}
-              label={websiteLabel(url, websiteDetails[url])}
+              label={websiteName(url, websiteDetails[url])}
               onRemove={() => removeSite(url)}
               tone="website"
             />
           ))}
           {pendingChips.map((url) => (
             <SourceRow
-              icon={<WebsiteFavicon url={url} />}
+              icon={<SiteFavicon url={url} />}
               key={url}
-              label={formatWebsiteLabel(url)}
+              label={websiteName(url)}
               onRemove={() => removeSite(url)}
               status="pending"
               tone="website"
@@ -331,9 +329,9 @@ export function SourcesCard({
           ))}
           {failedChips.map((url) => (
             <SourceRow
-              icon={<WebsiteFavicon url={url} />}
+              icon={<SiteFavicon url={url} />}
               key={url}
-              label={formatWebsiteLabel(url)}
+              label={websiteName(url)}
               onRemove={() => removeSite(url)}
               status="failed"
               tone="website"
@@ -381,75 +379,13 @@ function SourceCount({ count, limit, noun }: { count: number; limit: number; nou
   );
 }
 
-function formatWebsiteLabel(value: string): string {
+function websiteName(value: string, detail?: WebsiteDetail): string {
+  if (detail?.displayName) return detail.displayName;
   try {
-    const url = new URL(value);
-    const host = url.hostname.replace(/^www\./i, "");
-    const path = url.pathname === "/" ? "" : url.pathname;
-    return `${host}${path}${url.search}${url.hash}`;
+    return new URL(value).hostname.replace(/^www\./i, "");
   } catch {
-    return value.replace(/^https?:\/\/(?:www\.)?/i, "");
+    return value;
   }
-}
-
-/** The narrow URL the poller actually watches — domain + onboarded path prefix — in place
- *  of the raw pasted URL. No detail row → the pasted-URL rendering, exactly as before. */
-function narrowUrl(url: string, detail?: WebsiteDetail): string {
-  if (!detail) return formatWebsiteLabel(url);
-  return `${detail.domain.replace(/^www\./i, "")}${detail.pathPrefix ?? ""}`;
-}
-
-/** Plain-text chip identity for aria-labels: "Mundo Deportivo (mundodeportivo.com/futbol/…)"
- *  when the name adds information, the narrow URL alone when it's still just the hostname. */
-function websiteLabel(url: string, detail?: WebsiteDetail): string {
-  const narrow = narrowUrl(url, detail);
-  return detail && !sameAsHost(detail, narrow) ? `${detail.displayName} (${narrow})` : narrow;
-}
-
-function sameAsHost(detail: WebsiteDetail, narrow: string): boolean {
-  return detail.displayName.replace(/^www\./i, "").toLowerCase() === narrow.toLowerCase();
-}
-
-/** Two-line chip body: the publication name in bold with the narrow URL beneath it styled
- *  as a URL — muted, smaller, breaking anywhere on narrow viewports. A row whose stored
- *  name is still just the hostname skips the bold line rather than stuttering. */
-function WebsiteChipContent({ url, detail }: { url: string; detail?: WebsiteDetail }) {
-  const narrow = narrowUrl(url, detail);
-  if (!detail || sameAsHost(detail, narrow)) return <>{narrow}</>;
-  return (
-    <>
-      <span className="block font-semibold text-text-title">{detail.displayName}</span>
-      <span className="block break-all text-xs leading-snug text-text-muted">{narrow}</span>
-    </>
-  );
-}
-
-/** Same fixed 15px icon slot as the feed card's source strip (DESIGN.md): the site's
- *  /favicon.ico by convention, settling on the generic globe after one failed load. */
-function WebsiteFavicon({ url, domain }: { url: string; domain?: string }) {
-  const [failed, setFailed] = useState(false);
-  let src: string | null = domain ? `https://${domain}/favicon.ico` : null;
-  if (!src) {
-    try {
-      src = `${new URL(url).origin}/favicon.ico`;
-    } catch {
-      src = null;
-    }
-  }
-  if (!src || failed) {
-    return <GlobeIcon aria-hidden="true" className="size-[15px] text-text-muted" />;
-  }
-  return (
-    // biome-ignore lint/performance/noImgElement: a 15px third-party favicon gains nothing from next/image proxying
-    <img
-      alt=""
-      aria-hidden="true"
-      className="size-[15px] rounded-[3px]"
-      onError={() => setFailed(true)}
-      referrerPolicy="no-referrer"
-      src={src}
-    />
-  );
 }
 
 /** `status` carries website onboarding lifecycle. The close action doubles as Cancel for a

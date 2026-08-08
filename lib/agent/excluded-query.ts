@@ -26,13 +26,6 @@ function hostname(url: string | null) {
   }
 }
 
-function faviconUrl(url: string | null) {
-  try {
-    return url ? `${new URL(url).origin}/favicon.ico` : null;
-  } catch {
-    return null;
-  }
-}
 
 export type ExcludedPost = {
   id: string; // excluded_posts.id
@@ -47,7 +40,7 @@ export type ExcludedPost = {
     source: string;
     url: string | null;
     siteName: string | null;
-    faviconUrl: string | null;
+    siteDomain: string | null;
   };
   onBeatReason: string;
   excludedAt: string;
@@ -110,7 +103,7 @@ export async function fetchExcludedPosts(
         url: sourcePost.url,
         siteName:
           sourcePost.source === "x" ? null : ((host ? siteNames.get(host) : undefined) ?? host),
-        faviconUrl: sourcePost.source === "x" ? null : faviconUrl(sourcePost.url),
+        siteDomain: sourcePost.source === "x" ? null : hostname(sourcePost.url),
       },
       onBeatReason: row.on_beat_reason,
       excludedAt: row.excluded_at,

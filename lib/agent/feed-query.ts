@@ -108,15 +108,6 @@ function hostname(url: string | null) {
     return null;
   }
 }
-function faviconUrl(url: string | null) {
-  try {
-    // The /favicon.ico convention rather than a stored asset: most news sites serve it, and
-    // the card degrades to its generic globe icon when one doesn't (see FeedSourceView).
-    return url ? `${new URL(url).origin}/favicon.ico` : null;
-  } catch {
-    return null;
-  }
-}
 
 type TweetLookup = { state: "available" | "gone" | "unavailable" };
 type TweetCacheEntry = TweetLookup & { expiresAt: number };
@@ -340,7 +331,7 @@ async function hydrate(
       kind,
       authorHandle: source.author_handle,
       siteName: kind === "x" ? null : ((host ? siteNames.get(host) : undefined) ?? host),
-      faviconUrl: kind === "x" ? null : faviconUrl(source.url),
+      siteDomain: kind === "x" ? null : hostname(source.url),
       url:
         kind === "x" && source.x_post_id && source.author_handle
           ? `https://x.com/${source.author_handle}/status/${source.x_post_id}`

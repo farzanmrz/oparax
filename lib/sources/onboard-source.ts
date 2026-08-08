@@ -66,7 +66,9 @@ const sourceOnboardingSchema = z.object({
   siteName: z
     .string()
     .nullable()
-    .describe('the publication\'s proper display name, e.g. "Mundo Deportivo", or null if unsure'),
+    .describe(
+      'the proper display name of the publication or section actually being tracked — when the tracked scope is a distinct product or section inside a larger site (an Athletic section inside nytimes.com), name that product ("The Athletic"), never the parent site; e.g. "Mundo Deportivo"; null if unsure',
+    ),
   pathFilter: z.object({
     pathPrefix: z
       .string()
@@ -410,9 +412,21 @@ export async function onboardSource(
     verdict.pathFilter.pathPrefix !== null &&
     matchCount >= MIN_MATCHES &&
     matchCount <= sample.length * MAX_MATCH_RATIO;
-  const storedPrefilter = inBand
+  let storedPrefilter = inBand
     ? { pathPrefix: verdict.pathFilter.pathPrefix, reasoning: verdict.pathFilter.reasoning }
     : null;
+  let storedMatchCount = inBand ? matchCount : null;
+  const typedPath = inputUrl.pathname;
+  if (!storedPrefilter && typedPath !== "/" && typedPath !== "") {
+    const typedMatches = countPathMatches(sample, typedPath);
+    if (typedMatches >= MIN_MATCHES && typedMatches <= sample.length * MAX_MATCH_RATIO) {
+      storedPrefilter = {
+        pathPrefix: typedPath,
+        reasoning: "reporter-typed section path; model returned no usable prefix",
+      };
+      storedMatchCount = typedMatches;
+    }
+  }
 
   const sourceConfigArgs = {
     p_agent_id: agentId,
@@ -435,7 +449,7 @@ export async function onboardSource(
     p_full_text_available: fullTextVerdict,
     p_sitemap_url: detection.sitemapUrl ?? null,
     p_feed_url: detection.feedUrl ?? null,
-    p_match_count: inBand ? matchCount : null,
+    p_match_count: storedMatchCount,
     p_sample_size: sample.length,
     p_model_call_id: modelCallId,
     p_beat_guidance: verdict.beatGuidance,
