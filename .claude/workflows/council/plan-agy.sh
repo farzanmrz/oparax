@@ -38,6 +38,32 @@ case "$MODEL" in
   *) echo "plan-agy: unknown model slug '$MODEL'" >&2; exit 2 ;;
 esac
 
+# Pin the GLOBAL persisted model to this run's target before launch. agy's /model choice
+# persists in ~/.gemini/antigravity-cli/settings.json across ALL sessions (global, not
+# per-project — confirmed against the CLI reference 2026-08-08), so an unrelated
+# interactive session silently moves every future launch's starting model. Measured
+# 2026-08-08: a stopped owner session left "Gemini 3.6 Flash (Low)" persisted, the
+# picker scan started from the wrong roster position, missed the target row, and the
+# lane failed twice (AGY_PICKER_MISS, then a degraded run). Pinning here makes wrapper
+# runs independent of interactive-session state; the /model dance below still runs and
+# still verifies the status line — this only fixes the STARTING position, the loud
+# verify-or-fail contract is unchanged.
+AGY_SETTINGS="$HOME/.gemini/antigravity-cli/settings.json"
+case "$MODEL" in
+  *-high)   AGY_EFFORT_LABEL="High" ;;
+  *-medium) AGY_EFFORT_LABEL="Medium" ;;
+  *)        AGY_EFFORT_LABEL="" ;;
+esac
+if [ -f "$AGY_SETTINGS" ] && command -v jq >/dev/null 2>&1; then
+  AGY_PINNED="$MODEL_NAME${AGY_EFFORT_LABEL:+ ($AGY_EFFORT_LABEL)}"
+  if agy_tmp="$(mktemp)" && jq --arg m "$AGY_PINNED" '.model = $m' "$AGY_SETTINGS" > "$agy_tmp" 2>/dev/null \
+     && [ -s "$agy_tmp" ]; then
+    mv "$agy_tmp" "$AGY_SETTINGS"
+  else
+    rm -f "$agy_tmp" 2>/dev/null || true   # never let a failed pin corrupt settings; the dance still runs
+  fi
+fi
+
 SES="agy-$(basename "${OUT%.out.json}" | tr -c 'a-zA-Z0-9' '-' | cut -c1-40)$$"
 OUTFILE_ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "${OUT%.out.json}").tui.json"
 PANE_LOG="${OUT%.out.json}.pane.log"

@@ -27,7 +27,7 @@ Write in full only at the ✋ gate.
 | --- | --- |
 | Session dial | owner's top dial (opus/fable, high) |
 | Exploration fan-out | batch independent Agent calls in one response |
-| Critique (phase 5) | externals: `codex` + `grok` + `agy` |
+| Critique (phase 5) | externals: `codex` + `grok` + `agy` + cline lanes (`kimi-k3`, `glm-5.2`, `minimax-m3`, `deepseek-v4-flash`) |
 | Close (phase 7) | `start.sh --issue <N>` |
 
 ## 1. Preflight
@@ -172,7 +172,8 @@ and appends a short plain-language gloss a non-engineer owner understands.
 
 ## 5. Critique
 
-Run three external CLI lanes: `codex`, `grok`, and `agy`. Judge a lane on its
+Run seven external CLI lanes: `codex`, `grok`, `agy`, and four `cline` model
+lanes (kimi-k3, glm-5.2, minimax-m3, deepseek-v4-flash). Judge a lane on its
 current output, never on its accumulated failure count.
 
 ### A. Briefs, not toolkits
@@ -235,17 +236,44 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   bash .claude/workflows/council/run.sh agy critique-agy
 ```
 
+**Cline lanes** (four launches, one per model; copy the shared brief to
+`critique-<name>.in.txt` first). Same env as above plus `COUNCIL_MODEL`;
+`COUNCIL_TIER=high` is clamped per model by the wrapper:
+
+```bash
+for m in "kimi moonshotai/kimi-k3" "glm z-ai/glm-5.2" \
+         "minimax minimax/minimax-m3" "deepseek deepseek/deepseek-v4-flash"; do
+  set -- $m
+  cp .feature/critique-grok.in.txt ".feature/critique-$1.in.txt"
+  CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
+    COUNCIL_MODEL="$2" COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
+    bash .claude/workflows/council/run.sh cline "critique-$1" &
+done
+```
+
+(The grok brief is the clean shared one; codex's carries a codex-only subagent
+addendum. Launch in the background like the other lanes; adjudication holds for
+all lanes' returns.)
+
 ### D. Tier and failure rules
 
 * **Tier is family-shaped;** never copy one lane's `COUNCIL_TIER` onto
   another. Codex takes `COUNCIL_MODEL=gpt-5.6-sol` at effort high. Grok is
   single-model (`grok-4.5`) at effort high, never xhigh/max (those error).
   Agy's tier IS its model slug (`gemini-3.1-pro-high` by default): that CLI
-  fuses model and effort and rejects them as separate flags.
+  fuses model and effort and rejects them as separate flags. Cline is a
+  FOURTH shape, model-shaped: each model has its own reasoning ladder and
+  `plan-cline.sh` clamps `COUNCIL_TIER` to what the model accepts (kimi-k3
+  high, glm-5.2 high, minimax toggle, deepseek-v4-flash none), so pass
+  `COUNCIL_TIER=high` and let the wrapper clamp.
 * **Failure conditions:** a lane that fails, or returns empty without having
   worked the requirements, is reported as FAILED, never treated as approval.
-  `AGY_EMPTY` is no-signal, not approval. All three failing = no external
-  critique, and the adjudication must say so explicitly.
+  `AGY_EMPTY` is no-signal, not approval. A `CLINE_FAILED` lane whose
+  `.raw.err` visibly contains a conforming payload is an ENVELOPE failure
+  (Cline cannot schema-constrain output): the payload may be recovered by
+  hand, validated against the schema, and adjudicated, but the lane is still
+  recorded as harness-failed. All lanes failing = no external critique, and
+  the adjudication must say so explicitly.
 
 ## 6. Refine and gate ✋
 

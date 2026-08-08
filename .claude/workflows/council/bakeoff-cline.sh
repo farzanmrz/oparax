@@ -20,7 +20,7 @@ mkdir -p "$OUTDIR"
 echo "brief: $IN ($(wc -c < "$IN") bytes)"
 
 # Five frontier models, none from Anthropic / OpenAI / Google / xAI.
-MODELS="${MODELS:-moonshotai/kimi-k3 deepseek/deepseek-v4-pro z-ai/glm-5.2 minimax/minimax-m3}"
+MODELS="${MODELS:-moonshotai/kimi-k3 deepseek/deepseek-v4-flash z-ai/glm-5.2 minimax/minimax-m3}"
 
 pids=()
 for m in $MODELS; do

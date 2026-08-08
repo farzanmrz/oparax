@@ -18,7 +18,7 @@ CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$HERE/../../.." && pwd)}"
 export CLAUDE_PROJECT_DIR
 S="$(mktemp -d)"   # kept on purpose: failure evidence lives here
 
-MODELS="${MODELS:-moonshotai/kimi-k3 deepseek/deepseek-v4-pro z-ai/glm-5.2 minimax/minimax-m3}"
+MODELS="${MODELS:-moonshotai/kimi-k3 deepseek/deepseek-v4-flash z-ai/glm-5.2 minimax/minimax-m3}"
 CANARY="ARTICHOKE-7731"
 
 cat > "$S/schema.json" <<'JSON'

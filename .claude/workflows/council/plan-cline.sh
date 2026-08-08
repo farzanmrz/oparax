@@ -55,6 +55,9 @@ MODE_FLAG=()
 #   z-ai/glm-5.2              effort  high|max            <- "high" is the FLOOR
 #   minimax/minimax-m3        toggle  (binary, not a ladder)
 #   deepseek/deepseek-v4-pro  none    (no effort axis exposed)
+#   deepseek/deepseek-v4-flash  none  (standing roster lane since 2026-08-08, replacing
+#                                      v4-pro whose 27-minute depth never fit the gated
+#                                      round; matches the same *deepseek-v4* clamp arm)
 #   openrouter/free           none
 # So a single COUNCIL_TIER cannot be correct across the family, and Cline's own default
 # (--thinking medium) is invalid for kimi-k3. Clamp to what the model actually accepts,

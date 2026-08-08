@@ -66,7 +66,7 @@ TXT
 #   CLINEPASS SUBSCRIPTION:          cline-pass/kimi-k3, cline-pass/deepseek-v4-pro, cline-pass/glm-5.2
 # The cline-pass/* namespace 404s without an active ClinePass; credits use the vendor ids.
 # Override with: MODELS="a b c" bash selftest-cline.sh
-MODELS="${MODELS:-moonshotai/kimi-k3 deepseek/deepseek-v4-pro z-ai/glm-5.2}"
+MODELS="${MODELS:-moonshotai/kimi-k3 deepseek/deepseek-v4-flash z-ai/glm-5.2}"
 
 pass=0; fail=0
 for m in $MODELS; do
