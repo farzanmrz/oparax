@@ -34,8 +34,8 @@ export function normalizeSourceUrl(raw: string): URL | null {
     // above too and would otherwise pass through unrestricted into agents.websites (and
     // from there into the scraper/ingestion worker).
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    // Hostnames without a dot (including IPv6 literals) are not public website sources.
-    if (!url.hostname.includes(".")) return null;
+    // IPv6 literals and hostnames without a dot are not public website sources.
+    if (url.hostname.includes("[") || !url.hostname.includes(".")) return null;
     return url;
   } catch {
     return null;
@@ -43,8 +43,9 @@ export function normalizeSourceUrl(raw: string): URL | null {
 }
 
 /** Reader-facing form of a stored website href: scheme, leading www., and the trailing
- *  slash stripped, PATH KEPT so two sections of one site stay distinguishable. Display
- *  only — the stored value and dedupe key remain the full normalized href. */
+ *  slash stripped, PATH KEPT so two sections of one site stay distinguishable. Display only —
+ *  the create form intentionally dedupes this projection, while Sources reserves exact
+ *  normalized URLs through its RPC. */
 export function displaySourceUrl(href: string): string {
   return href
     .replace(/^https?:\/\//i, "")

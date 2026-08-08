@@ -382,7 +382,7 @@ export async function onboardSource(
   if (sample.length === 0) {
     // A successful empty sample was reachable; persist the honest detection failure reason.
     await markPendingSourceFailed(admin, configId, "no_detection_mechanism");
-    return { status: "unreachable" };
+    return { status: "no_detection_mechanism" };
   }
 
   const fullTextVerdict = await measureFullTextAvailability(sample, inputUrl.hostname);

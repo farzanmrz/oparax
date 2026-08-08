@@ -610,12 +610,10 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
     resolvedUrl.toString(),
     resolvedUrl.hostname,
   );
-  if (!exactPage.res.ok) {
-    throw new Error(`Source ${resolvedUrl.toString()} returned ${exactPage.res.status}`);
-  }
   const contentType = exactPage.res.headers.get("content-type");
   const isHtml = !contentType || /^\s*(?:text|application)\/x?html\b/i.test(contentType);
-  const exactPageHtml = isHtml ? await exactPage.res.text() : null;
+  if (!exactPage.res.ok || !isHtml) await exactPage.res.body?.cancel();
+  const exactPageHtml = exactPage.res.ok && isHtml ? await exactPage.res.text() : null;
   const exactPageFeed = exactPageHtml
     ? extractRssAlternateLink(exactPageHtml, exactPage.finalUrl)
     : null;

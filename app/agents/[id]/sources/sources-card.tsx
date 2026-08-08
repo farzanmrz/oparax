@@ -15,7 +15,7 @@ import { SiteFavicon } from "@/components/site-favicon";
 import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
 import { displaySourceUrl, MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
-import { MAX_TRACKED_HANDLES, X_HANDLE_RE } from "@/lib/x/handle";
+import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
 import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import { removeWebsite, startWebsiteOnboarding } from "./actions";
@@ -167,14 +167,14 @@ export function SourcesCard({
   function commitHandles(raw: string) {
     const candidates = splitHandles(raw);
     if (candidates.length === 0) return;
-    const hasInvalidHandle = candidates.some((handle) => !X_HANDLE_RE.test(handle));
+    const hasInvalidHandle = candidates.some((handle) => !normalizeValidHandle(handle));
     setHandleError(
       hasInvalidHandle
         ? "Enter a valid X handle — letters, numbers, and underscores, up to 15."
         : null,
     );
     setHandleNotice(null);
-    if (hasInvalidHandle && candidates.every((handle) => !X_HANDLE_RE.test(handle))) return;
+    if (hasInvalidHandle && candidates.every((handle) => !normalizeValidHandle(handle))) return;
     startHandleTransition(async () => {
       const result = await addTrackedHandles(deskId, raw);
       if (!result.ok) {
@@ -319,7 +319,7 @@ export function SourcesCard({
             onChange={setHandleInput}
             onCommitParts={(parts) => {
               commitHandles(parts.join(" "));
-              return parts.filter((part) => !X_HANDLE_RE.test(part));
+              return parts.filter((part) => !normalizeValidHandle(part));
             }}
             placeholder={isHandlePending ? "Adding…" : "Add X accounts — usernames"}
             value={handleInput}

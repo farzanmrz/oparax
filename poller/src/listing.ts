@@ -1,6 +1,7 @@
 // Trimmed re-implementation of lib/sources/discovery.ts's listing extraction. Duplicated,
 // not imported, per poller/README.md's isolation rule.
 
+import { isPrivateHostname } from "./discovery-safety";
 import { assertFetchOk, fetchWithTimeout } from "./http";
 import { logger } from "./logger";
 import type { ConditionalGetCache, FeedItem } from "./sitemap";
@@ -44,8 +45,12 @@ export async function fetchListingItems(
   const res = await fetchWithTimeout("Listing", pageUrl, pageUrl, {
     method: "GET",
     headers: { ...conditionalHeaders(cache), "user-agent": userAgent },
+    redirect: "manual",
   });
   if (res.status === 304) return { items: [], notModified: true, nextCache: cache };
+  if (res.status >= 300 && res.status < 400) {
+    throw new Error(`Listing ${pageUrl} redirected (${res.status}), refusing to follow`);
+  }
   await assertFetchOk("Listing", pageUrl, res);
   const contentType = res.headers.get("content-type");
   if (contentType && !/^\s*(?:text|application)\/x?html\b/i.test(contentType)) {
@@ -55,7 +60,7 @@ export async function fetchListingItems(
   const finalUrl = res.url || pageUrl;
   const listingUrl = new URL(finalUrl);
   listingUrl.hash = "";
-  const expected = comparableHostname(expectedHostname);
+  const listingHostname = comparableHostname(listingUrl.hostname);
   const seen = new Set<string>();
   const items: FeedItem[] = [];
   const html = await res.text();
@@ -69,7 +74,12 @@ export async function fetchListingItems(
       continue;
     }
     if (candidate.protocol !== "http:" && candidate.protocol !== "https:") continue;
-    if (comparableHostname(candidate.hostname) !== expected) continue;
+    if (
+      comparableHostname(candidate.hostname) !== listingHostname ||
+      isPrivateHostname(candidate.hostname)
+    ) {
+      continue;
+    }
     candidate.hash = "";
     const url = candidate.toString();
     if (

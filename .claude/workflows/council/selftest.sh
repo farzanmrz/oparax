@@ -15,7 +15,7 @@
 # file read. A lane passes only when a schema-valid payload with at least one
 # item comes back. Anything else is a loud, named failure.
 #
-# Usage:  selftest.sh [--if-changed] [family ...]      (default: codex grok agy)
+# Usage:  selftest.sh [--if-changed] [family ...]      (default: codex grok agy cline:kimi cline:minimax)
 # Exit 0 only if every tested family passed.
 #
 # --if-changed exits 0 immediately when nothing that could break a lane has moved
@@ -30,7 +30,7 @@ SCRATCH="$REPO/.feature/selftest"
 SCHEMA="$HERE/../qc-findings-schema.json"
 IF_CHANGED=0
 if [ "${1:-}" = "--if-changed" ]; then IF_CHANGED=1; shift; fi
-FAMILIES=("$@"); [ ${#FAMILIES[@]} -eq 0 ] && FAMILIES=(codex grok agy)
+FAMILIES=("$@"); [ ${#FAMILIES[@]} -eq 0 ] && FAMILIES=(codex grok agy cline:kimi cline:minimax)
 
 # The inputs that can actually break a lane. Stamp lives in .git/ — per-clone,
 # never committed, and survives ship.sh sweeping .feature/.
@@ -78,13 +78,14 @@ EOF
 
 # Per-family cheap dial. agy's "tier" IS its model slug (the CLI fuses model and
 # effort), so its cheap dial is a flash slug, not an effort word.
-cheap_model() { case "$1" in codex) echo "gpt-5.6-luna" ;; *) echo "" ;; esac; }
-cheap_tier()  { case "$1" in agy) echo "gemini-3.6-flash-high" ;; grok) echo "low" ;; codex) echo "low" ;; esac; }
+cheap_model() { case "$1" in codex) echo "gpt-5.6-luna" ;; cline:kimi) echo "moonshotai/kimi-k3" ;; cline:minimax) echo "minimax/minimax-m3" ;; *) echo "" ;; esac; }
+cheap_tier()  { case "$1" in agy) echo "gemini-3.6-flash-high" ;; grok|codex) echo "low" ;; cline:*) echo "high" ;; esac; }
 
 pass=0; fail=0
 printf '%-7s %-8s %-9s %s\n' FAMILY VERDICT ELAPSED DETAIL
 for fam in "${FAMILIES[@]}"; do
-  label="selftest-$fam"
+  family="${fam%%:*}"
+  label="selftest-${fam//:/-}"
   printf '%s\n' "$BRIEF" > "$SCRATCH/$label.in.txt"
   rm -f "$SCRATCH/$label.out.json"
   start=$SECONDS
@@ -96,7 +97,7 @@ for fam in "${FAMILIES[@]}"; do
     COUNCIL_DEPTH=simple \
     COUNCIL_MODEL="${COUNCIL_MODEL:-$(cheap_model "$fam")}" \
     COUNCIL_TIER="${COUNCIL_TIER:-$(cheap_tier "$fam")}" \
-    bash "$HERE/run.sh" "$fam" "$label" >"$SCRATCH/$label.log" 2>&1
+    bash "$HERE/run.sh" "$family" "$label" >"$SCRATCH/$label.log" 2>&1
   rc=$?; el=$((SECONDS-start)); out="$SCRATCH/$label.out.json"
 
   if [ $rc -ne 0 ]; then

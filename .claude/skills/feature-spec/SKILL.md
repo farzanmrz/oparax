@@ -27,7 +27,7 @@ Write in full only at the ✋ gate.
 | --- | --- |
 | Session dial | owner's top dial (opus/fable, high) |
 | Exploration fan-out | batch independent Agent calls in one response |
-| Critique (phase 5) | externals: `codex` + `grok` + `agy` + cline lanes (`kimi-k3`, `glm-5.2`, `minimax-m3`, `deepseek-v4-flash`) |
+| Critique (phase 5) | externals: `codex` + `grok` + `agy` + cline lanes (`kimi-k3`, `minimax-m3`) |
 | Close (phase 7) | `start.sh --issue <N>` |
 
 ## 1. Preflight
@@ -172,9 +172,10 @@ and appends a short plain-language gloss a non-engineer owner understands.
 
 ## 5. Critique
 
-Run seven external CLI lanes: `codex`, `grok`, `agy`, and four `cline` model
-lanes (kimi-k3, glm-5.2, minimax-m3, deepseek-v4-flash). Judge a lane on its
-current output, never on its accumulated failure count.
+Run five external CLI lanes: `codex`, `grok`, `agy`, and two `cline` model
+lanes (kimi-k3, minimax-m3; glm-5.2 and deepseek-v4-flash removed by owner
+decision 2026-08-08). Judge a lane on its current output, never on its
+accumulated failure count.
 
 ### A. Briefs, not toolkits
 
@@ -236,24 +237,32 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
   bash .claude/workflows/council/run.sh agy critique-agy
 ```
 
-**Cline lanes** (four launches, one per model; copy the shared brief to
-`critique-<name>.in.txt` first). Same env as above plus `COUNCIL_MODEL`;
-`COUNCIL_TIER=high` is clamped per model by the wrapper:
+**Cline lanes** (two launches, one per model; copy the shared brief to
+`critique-<name>.in.txt` first). Launch each in its own named persistent
+task/session, record the real task/session id, and do not shell-background
+the bridge with `&`. Same env as above plus `COUNCIL_MODEL`;
+`COUNCIL_TIER=high` is clamped per model by the wrapper. Each session runs:
 
 ```bash
-for m in "kimi moonshotai/kimi-k3" "glm z-ai/glm-5.2" \
-         "minimax minimax/minimax-m3" "deepseek deepseek/deepseek-v4-flash"; do
-  set -- $m
-  cp .feature/critique-grok.in.txt ".feature/critique-$1.in.txt"
-  CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
-    COUNCIL_MODEL="$2" COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
-    bash .claude/workflows/council/run.sh cline "critique-$1" &
-done
+name=kimi
+model=moonshotai/kimi-k3
+cp .feature/critique-grok.in.txt ".feature/critique-$name.in.txt"
+set +e
+CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
+  COUNCIL_MODEL="$model" COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
+  bash .claude/workflows/council/run.sh cline "critique-$name" \
+  2> ".feature/critique-$name.stderr.log"
+status=$?
+printf '%s\n' "$status" > ".feature/critique-$name.exit"
+exit "$status"
 ```
 
-(The grok brief is the clean shared one; codex's carries a codex-only subagent
-addendum. Launch in the background like the other lanes; adjudication holds for
-all lanes' returns.)
+(Use `name=minimax` and `model=minimax/minimax-m3` for the second session. The
+grok brief is the clean shared one; codex's carries a codex-only subagent
+addendum. Poll each live task/session and its exact `.exit` artifact; read its
+exact `.out.json` only after exit `0`. A non-zero exit, or a vanished session
+without its exit artifact, is FAILED even if an older output is present.
+Adjudication holds for all lanes' returns.)
 
 ### D. Tier and failure rules
 
@@ -264,8 +273,8 @@ all lanes' returns.)
   fuses model and effort and rejects them as separate flags. Cline is a
   FOURTH shape, model-shaped: each model has its own reasoning ladder and
   `plan-cline.sh` clamps `COUNCIL_TIER` to what the model accepts (kimi-k3
-  high, glm-5.2 high, minimax toggle, deepseek-v4-flash none), so pass
-  `COUNCIL_TIER=high` and let the wrapper clamp.
+  high, minimax toggle), so pass `COUNCIL_TIER=high` and let the wrapper
+  clamp.
 * **Failure conditions:** a lane that fails, or returns empty without having
   worked the requirements, is reported as FAILED, never treated as approval.
   `AGY_EMPTY` is no-signal, not approval. A `CLINE_FAILED` lane whose
