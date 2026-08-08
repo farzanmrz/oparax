@@ -129,9 +129,11 @@ export function DeskTabs({
  * redirects on success, so there's no success state to render for it.
  */
 export function DeskControls({
+  controlsState,
   deskId,
   status,
 }: {
+  readonly controlsState: "hidden" | "delete-only" | "full";
   readonly deskId: string;
   readonly status: string;
 }) {
@@ -164,51 +166,55 @@ export function DeskControls({
     });
   }
 
+  if (controlsState === "hidden") return null;
+
   return (
     <div className="flex shrink-0 items-center">
-      <Dialog
-        onOpenChange={(open) => {
-          setPauseOpen(open);
-          if (!open) setPauseError(null);
-        }}
-        open={pauseOpen}
-      >
-        <DialogTrigger asChild>
-          <Button
-            aria-label={isLive ? "Pause this agent" : "Resume this agent"}
-            className={
-              isLive
-                ? "size-11 text-warning hover:text-warning desk:size-7"
-                : "size-11 text-success hover:text-success desk:size-7"
-            }
-            size="icon-sm"
-            variant="ghost"
-          >
-            {isLive ? <PauseIcon /> : <PlayIcon />}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isLive ? "Pause this agent?" : "Resume this agent?"}</DialogTitle>
-            <DialogDescription>
-              {isLive
-                ? "While paused, Oparax stops watching the beat — nothing is scanned and nothing is posted automatically."
-                : "Oparax will start watching the beat again and drafting — and posting on your behalf where your settings allow it."}
-            </DialogDescription>
-          </DialogHeader>
-          {pauseError ? <p className="text-sm text-destructive">{pauseError}</p> : null}
-          <DialogFooter>
+      {controlsState === "full" ? (
+        <Dialog
+          onOpenChange={(open) => {
+            setPauseOpen(open);
+            if (!open) setPauseError(null);
+          }}
+          open={pauseOpen}
+        >
+          <DialogTrigger asChild>
             <Button
-              className="min-h-11"
-              disabled={isPending}
-              onClick={handlePauseResume}
-              variant={isLive ? "outline" : "default"}
+              aria-label={isLive ? "Pause this agent" : "Resume this agent"}
+              className={
+                isLive
+                  ? "size-11 text-warning hover:text-warning desk:size-7"
+                  : "size-11 text-success hover:text-success desk:size-7"
+              }
+              size="icon-sm"
+              variant="ghost"
             >
-              {isPending ? "Working…" : isLive ? "Pause agent" : "Resume agent"}
+              {isLive ? <PauseIcon /> : <PlayIcon />}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{isLive ? "Pause this agent?" : "Resume this agent?"}</DialogTitle>
+              <DialogDescription>
+                {isLive
+                  ? "While paused, Oparax stops watching the beat — nothing is scanned and nothing is posted automatically."
+                  : "Oparax will start watching the beat again and drafting — and posting on your behalf where your settings allow it."}
+              </DialogDescription>
+            </DialogHeader>
+            {pauseError ? <p className="text-sm text-destructive">{pauseError}</p> : null}
+            <DialogFooter>
+              <Button
+                className="min-h-11"
+                disabled={isPending}
+                onClick={handlePauseResume}
+                variant={isLive ? "outline" : "default"}
+              >
+                {isPending ? "Working…" : isLive ? "Pause agent" : "Resume agent"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       <AlertDialog
         onOpenChange={(open) => {
