@@ -13,9 +13,13 @@ import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveCallMeta } from "@/lib/agent/call-meta";
-// TYPE-ONLY import — this module never imports a function from draft-council-run.ts.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
-import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
+import {
+  QWEN_DRAFT_MODEL,
+  QWEN_DRAFT_PROVIDER_OPTIONS,
+  QWEN_DRAFT_TIMEOUT_MS,
+} from "@/lib/agent/qwen-draft-config";
+import { formatSourceIdentity, type SourceIdentity } from "@/lib/agent/source-identity";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { STORY_CLUSTER_PROMPT } from "@/lib/sysprompts";
@@ -98,7 +102,7 @@ function deterministicSummary(text: string): string {
 
 function buildClusterPrompt(
   candidates: Array<{ id: string; summary: string }>,
-  authorHandle: string,
+  sourceIdentity: SourceIdentity,
   text: string,
 ): string {
   // A tracked account's post text is untrusted and reaches this prompt verbatim — <post> tags
@@ -110,7 +114,9 @@ function buildClusterPrompt(
     "Candidate stories:",
     candidateList,
     "",
-    `New post by @${authorHandle}:`,
+    sourceIdentity.kind === "x"
+      ? `New post by ${formatSourceIdentity(sourceIdentity)}:`
+      : `New article from publisher ${formatSourceIdentity(sourceIdentity)}:`,
     "<post>",
     text,
     "</post>",
@@ -220,10 +226,10 @@ const CLUSTERING_ENABLED = false;
 export async function assignToStory(input: {
   agentId: string;
   sourcePostId: string;
-  authorHandle: string;
+  sourceIdentity: SourceIdentity;
   text: string;
 }): Promise<ClusterResult> {
-  const { agentId, sourcePostId, authorHandle, text } = input;
+  const { agentId, sourcePostId, sourceIdentity, text } = input;
   const admin = createAdminClient();
 
   // Dormant path (see CLUSTERING_ENABLED): identical to the zero-candidate branch below — a new
@@ -264,7 +270,8 @@ export async function assignToStory(input: {
   // `story-cluster.md`; schema failure degrades to a one-source story instead of hiding a post.
   // `match`/`storyIndex`/`summary` imperatively under its Output heading (leg 2); leg 3 is the
   // deterministic degrade in the catch block below, not a retry (a temp-0 failure isn't sampling
-  // variance, matching the judge's own reasoning); `maxOutputTokens: 2000` is leg 4.
+  // variance, matching the judge's own reasoning). Leg 4's output ceiling is deliberately absent —
+  // see lib/agent/draft-translate.ts.
   // `onStepEnd` fires before JSON parsing/schema validation in AI SDK v7, so the completed
   // provider response remains ledgerable even when Zod rejects the structured verdict.
   const completedStepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
@@ -274,10 +281,10 @@ export async function assignToStory(input: {
       providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
       reasoning: "none",
       temperature: 0,
-      maxOutputTokens: 2000,
+      abortSignal: AbortSignal.timeout(QWEN_DRAFT_TIMEOUT_MS),
       schema: clusterVerdictSchema,
       system: STORY_CLUSTER_PROMPT,
-      prompt: buildClusterPrompt(candidates, authorHandle, text),
+      prompt: buildClusterPrompt(candidates, sourceIdentity, text),
       onStepEnd: (event) => {
         completedStepRef.value = event;
       },

@@ -62,11 +62,9 @@ quote, and time in your draft and find each one in the brief. Delete any that is
 that carries only the brief's facts in the reporter's voice is correct even if it is barer than the
 guide's examples — a missing flourish is fine; an invented fact is not.
 
-# Translate-then-draft
+# Canonical English source and immutable output language
 
-If the source material is in a language other than English, translate the facts first, then draft
-in English in the reporter's voice as the guide describes it. Never draft in the source language
-just because the source was.
+The drafting brief's canonical source is English. Write the draft and every free-text field in English, including any structured explanations. Source or outlet language and voice-guide examples affect neither the source facts nor the output language. The guide controls style only, never language.
 
 # The character ceiling
 

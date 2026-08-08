@@ -1,17 +1,26 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { isOverrideOwner } from "@/lib/owner-allowlist";
+import {
+  markPendingSourceFailed,
+  onboardSource,
+  reservePendingSource,
+  SONNET_ONBOARDING_MODEL,
+} from "@/lib/sources/onboard-source";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
 import { getXLinkState } from "@/lib/x/link-state";
+import type { ActionResult } from "../[id]/actions";
 
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
 
 /**
- * Create a desk (an `agents` row) as the signed-in reporter, then kick off best-effort
- * voice extraction for their handle in `after()` — the request finishes and the client
- * navigates before extraction resolves; a failure there never rolls back the desk (see
+ * Create a desk (an `agents` row) as the signed-in reporter. The client starts voice extraction
+ * after this action returns, so a pre-flight failure never rolls back the newly created desk (see
  * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
  *
  * Identity now comes from the linked X account, never from client-supplied form state — the
@@ -30,6 +39,7 @@ export async function createDesk(input: {
 }): Promise<CreateDeskResult> {
   const name = input.name.trim();
   if (!name) return { error: "Name this agent." };
+  if (name.length > 30) return { error: "Agent name must be 30 characters or fewer." };
 
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this agent should watch." };
@@ -135,4 +145,53 @@ export async function createDesk(input: {
   revalidatePath("/agents", "layout");
 
   return { id: data.id };
+}
+
+/**
+ * Creation-time website onboarding (#106) — same shape as
+ * `app/agents/[id]/sources/actions.ts`'s `startWebsiteOnboarding` (reserve synchronously so the
+ * chip renders immediately and survives the redirect to the new desk's Sources page, then hand
+ * the real, billed onboarding call to `after()`), except this path runs on Sonnet
+ * (`SONNET_ONBOARDING_MODEL`), not Qwen — the one deliberate difference between the two entry
+ * points per this issue's own scoping. Called once per website, in parallel, right after
+ * `createDesk` resolves; never blocks the create-desk form's navigation.
+ */
+export async function startWebsiteOnboardingAtCreation(
+  deskId: string,
+  rawUrl: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agents")
+    .select("owner_id, beat")
+    .eq("id", deskId)
+    .maybeSingle();
+  if (error || !data) return { ok: false, error: "Could not load the agent." };
+
+  const url = normalizeSourceUrl(rawUrl);
+  if (url === null)
+    return { ok: false, error: `"${rawUrl.trim()}" doesn't look like a valid website.` };
+
+  const reserved = await reservePendingSource(deskId, url);
+  if ("status" in reserved) {
+    if (reserved.status === "source_limit_reached") {
+      return { ok: false, error: `An agent can track up to ${MAX_WEBSITES} websites.` };
+    }
+    if (reserved.status === "already_tracked") return { ok: true };
+    return { ok: false, error: "Couldn't reach that site." };
+  }
+
+  const ownerId = data.owner_id;
+  const beat = data.beat;
+  const configId = reserved.configId;
+  after(async () => {
+    try {
+      await onboardSource(deskId, ownerId, url, beat, SONNET_ONBOARDING_MODEL, configId);
+    } catch (err) {
+      console.error("startWebsiteOnboardingAtCreation: onboardSource threw", err);
+      await markPendingSourceFailed(createAdminClient(), configId);
+    }
+  });
+
+  return { ok: true };
 }

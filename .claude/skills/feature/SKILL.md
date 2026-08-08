@@ -3,9 +3,10 @@ name: feature
 description: >-
   The end-to-end feature flow: plan → build → QC → triage+ship, run as one guided
   sequence. Use when the user wants a full slice built from idea to shipped commit.
-  For a single phase, use the granular skills directly: /feature-plan,
+  For a single phase, use the granular skills directly: /feature-spec,
   /feature-build, /feature-qc, /feature-ship (or /simplify, /code-review,
-  /feature-lint for individual QC passes). To resume in a fresh session, use the
+  /feature-lint for individual QC passes). Stubbing ideas happens OUTSIDE
+  this flow via /feature-plan. To resume in a fresh session, use the
   global /handoff and /continue skills.
 argument-hint: "[feature description]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
@@ -23,7 +24,7 @@ PRs, no CI. Parallelism is a private implementation detail.
 * **Task tracking:** create one TaskCreate task per phase (2 through 5 below)
   and tick each as it finishes; the flow is complete only when the last ticks.
 * **Scripts:** `start.sh`, `ship.sh`, and `promote.sh` live in
-  `.claude/skills/feature/scripts/`, called by feature-plan and feature-ship.
+  `.claude/skills/feature/scripts/`, called by feature-spec and feature-ship.
 * **Nothing about a run is persisted:** the branch identifies the slice, the
   issue body is its spec, the terminal target rides in the conversation. To
   stop mid-flow, run the global `/handoff` and resume in a fresh session with
@@ -35,7 +36,7 @@ PRs, no CI. Parallelism is a private implementation detail.
 ## Harness portability
 
 * **One flow, two harnesses:** Codex invokes these same skills through the
-  `.agents/skills/` symlinks (`$feature`, `$feature-plan`, `$feature-build`,
+  `.agents/skills/` symlinks (`$feature`, `$feature-spec`, `$feature-build`,
   `$feature-qc`, `$feature-ship`), reading the Codex column of each skill's
   dials table.
 * **Never a second per-harness copy:** a duplicated skill drifts measurably
@@ -61,7 +62,7 @@ gh issue view <N> --comments
 ```
 
 **Marker format:** each new QC marker comment is titled `## QC round <R>: <suffix>`
-(`findings`, `fixes`, `docs`, `verified`). Match markers by the
+(`findings`, `browsed`, `fixes`, `docs`, `verified`). Match markers by the
 `## QC round <R>` prefix plus the suffix keyword, separator-agnostic (older
 rounds used an em dash).
 
@@ -69,10 +70,11 @@ Decide the entry point from the FIRST missing marker, in order:
 
 | Marker present? | Meaning | Next |
 |---|---|---|
-| no ft branch / open ft issue for this ask | nothing started | `feature-plan` (phase 2) |
+| stub issue only (from /feature-plan), no spec/branch | nothing specced | `feature-spec` (phase 2) |
 | `ft/N` + issue, no commits beyond the branch cut | planned, not built | build (phase 3, owner picks harness) |
 | build commits, no `## QC round` comments | built | `feature-find` |
-| findings marker without matching fixes marker | adjudicated | `feature-fix` |
+| findings marker without browsed marker | adjudicated | `feature-browse` (OWNER-TRIGGERED: surface it as the pending step, never auto-run) |
+| browsed marker without matching fixes marker | browsed | `feature-fix` |
 | fixes marker without docs marker | fixed | `feature-docs` |
 | docs marker without verified marker | synced | `feature-verify` |
 | verified marker present | verified | triage/`feature-ship` (phase 5, ✋) |
@@ -83,15 +85,15 @@ Decide the entry point from the FIRST missing marker, in order:
   marker. In particular, NEVER enter ship while the latest round lacks the
   verified marker.
 
-## 2. Plan
+## 2. Spec
 
-Invoke **`feature-plan`** to its ✋ gate: plan approved, issue opened,
+Invoke **`feature-spec`** to its ✋ gate: spec approved onto the stub issue,
 `ft/<issue#>` cut.
 
 * **The session STOPS here** (standing owner decision). The issue body is the
   complete spec, so the owner chooses where build runs: `/feature-build N` in
-  a Claude session on their build dial, or a Codex chat on a cheap dial
-  (`$feature-build`). Later phases are owner-triggered.
+  a Claude session, or `$feature-build` in a Codex chat, on whatever dial
+  they pick. Later phases are owner-triggered.
 
 ## 3. Build
 
@@ -155,8 +157,8 @@ watches the reasoning trace, and interim narration is forbidden output (the
   are the record; scratch lives in self-gitignored `.feature/` and dies at
   ship.
 * **Skill grounding is binding everywhere:** the plan grounds each task in the
-  stack skills its area needs (via feature-plan's grounding-pack agent); the
-  build session invokes those skills as it implements each task.
+  stack skills its area needs (selected inline in feature-spec's grounding
+  phase); the build session invokes those skills as it implements each task.
 * **STOP and present options, never autonomous:** dependency MAJOR upgrades,
   framework migrations, schema/data migrations.
 * **Behavior contracts:** preserve server-action field names, Supabase auth

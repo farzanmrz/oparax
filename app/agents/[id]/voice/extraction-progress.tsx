@@ -78,14 +78,12 @@ export function ExtractionProgress({
   });
 
   return (
-    <div className="rounded-xl border border-border p-4 sm:p-5">
-      <ExtractionChain
-        isStreaming={run.status === "running"}
-        reasoningByStage={run.reasoningByStage}
-        textByStage={run.textByStage}
-        toolActivities={run.toolActivities}
-        steps={pipelineSteps(run)}
-      />
-    </div>
+    <ExtractionChain
+      isStreaming={run.status === "running"}
+      reasoningByStage={run.reasoningByStage}
+      steps={pipelineSteps(run)}
+      textByStage={run.textByStage}
+      toolActivities={run.toolActivities}
+    />
   );
 }

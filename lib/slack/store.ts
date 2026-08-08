@@ -59,12 +59,6 @@ export async function upsertSlackAccount(
   if (error) throw error;
 }
 
-export async function deleteSlackAccount(agentId: string): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin.from("slack_accounts").delete().eq("agent_id", agentId);
-  if (error) throw error;
-}
-
 /** Atomic idempotency claim for one Slack interactive-button callback (used by the
  *  interactions route, a later task) — mirrors `draft-pipeline.ts`'s `draft_claims`
  *  insert-then-branch-on-23505 atomic-claim shape (`draftForAgent`). INSERTs and

@@ -3,10 +3,9 @@
 // ONE shared implementation of the derived-metadata trio every `CouncilCall` builder needs:
 // `costUsd`/`generationId` via `resolveGatewayCost`, and `reasoningWithheldByProvider` via
 // `reasoningTraceState(...) === "withheld"`. `cluster.ts`'s `buildClusterCall` calls this.
-// `draft-council-run.ts`'s `toCouncilCall` still computes the same trio inline — deliberately
-// left alone rather than swapped over to this helper, to avoid touching that file while it may
-// be under concurrent edit elsewhere. The duplication is a known, tracked leftover, not an
-// oversight; a future pass can point `toCouncilCall` at this helper once that risk has passed.
+// `draft-council-run.ts`'s `toCouncilCall` still computes the same trio inline for correction
+// revisions. The duplication is a known, tracked leftover, not an oversight; a future pass can
+// point `toCouncilCall` at this helper once that risk has passed.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
@@ -25,6 +24,8 @@ export async function resolveCallMeta(params: {
   reasoning: string | null;
   usage: unknown;
   providerMetadata?: Record<string, unknown>;
+  draftConstruction?: CouncilCall["draftConstruction"];
+  draftOnBeatReason?: CouncilCall["draftOnBeatReason"];
 }): Promise<CouncilCall> {
   const { costUsd, generationId } = await resolveGatewayCost({
     providerMetadata: params.providerMetadata,
@@ -40,5 +41,11 @@ export async function resolveCallMeta(params: {
     usage: params.usage,
     costUsd,
     generationId,
+    ...(params.draftConstruction === undefined
+      ? {}
+      : { draftConstruction: params.draftConstruction }),
+    ...(params.draftOnBeatReason === undefined
+      ? {}
+      : { draftOnBeatReason: params.draftOnBeatReason }),
   };
 }

@@ -15,9 +15,9 @@ import type { TelemetryOptions } from "ai";
 export type AiStage =
   | "voice_extraction"
   | "story_cluster"
-  | "draft_ground"
+  | "draft_translate"
   | "draft_council"
-  | "draft_judge";
+  | "draft_write";
 
 /**
  * Whether a stage's prompt and completion text are recorded, per stage — NOT a global switch.
@@ -30,7 +30,7 @@ export type AiStage =
  * stages carry unpublished journalism, so their content is disabled only in production.
  *
  * `functionId` groups calls in Sentry's AI dashboard — pass something stable and specific
- * (`"voice-extraction-stream"`, `"draft-judge-qwen"`), because it is the axis latency and
+ * (`"voice-extraction-stream"`, `"draft-write-qwen"`), because it is the axis latency and
  * cost get compared along.
  *
  * There is deliberately NO custom-metadata parameter. `experimental_telemetry.metadata` was
@@ -44,9 +44,9 @@ const DRAFT_CONTENT_ALLOWED = process.env.VERCEL_ENV !== "production";
 const RECORDS_CONTENT: Record<AiStage, boolean> = {
   voice_extraction: true,
   story_cluster: true,
-  draft_ground: DRAFT_CONTENT_ALLOWED,
+  draft_translate: DRAFT_CONTENT_ALLOWED,
   draft_council: DRAFT_CONTENT_ALLOWED,
-  draft_judge: DRAFT_CONTENT_ALLOWED,
+  draft_write: DRAFT_CONTENT_ALLOWED,
 };
 
 export function aiTelemetry(stage: AiStage, functionId: string): TelemetryOptions {

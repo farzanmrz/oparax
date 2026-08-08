@@ -1,19 +1,11 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { TriangleAlertIcon, UserRoundIcon } from "lucide-react";
+import { BandCard } from "@/components/band-card";
+import { PageHeading } from "@/components/page-heading";
 import { createClient } from "@/lib/supabase/server";
-import { getUsername } from "@/lib/user";
+import { getAvatarKey, getUsername } from "@/lib/user";
 import { getXLinkState } from "@/lib/x/link-state";
-import { DeleteAccountButton, DisconnectXButton, UsernameForm } from "./settings-forms";
+import { AvatarPicker, DeleteAccountButton, UsernameForm, XAccountField } from "./settings-forms";
 
-/**
- * Settings: profile (username), security (password placeholder — no real flow
- * exists yet), and a danger zone (account deletion). Same server actions and
- * form wiring as before; only the presentation changed. Reads only the
- * signed-in user. The header spans the full layout column and stays pinned
- * (matching the other /agents pages); only the cards scroll, centered in
- * their narrower column.
- */
 export default async function SettingsPage() {
   const supabase = await createClient();
   const {
@@ -22,79 +14,26 @@ export default async function SettingsPage() {
   const xLink = await getXLinkState();
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="shrink-0 border-b border-border py-5">
-        <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your profile and account.</p>
-      </header>
-
-      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-6 overflow-y-auto py-6 pb-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-            <CardDescription>How your byline appears across Oparax.</CardDescription>
-          </CardHeader>
-          <CardContent>
+    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
+      <PageHeading>Settings</PageHeading>
+      <BandCard icon={<UserRoundIcon />} title="Profile">
+        <div className="flex flex-col gap-6 desk:flex-row desk:items-start">
+          <AvatarPicker initialAvatar={getAvatarKey(user)} />
+          <div className="grid min-w-0 flex-1 gap-5 desk:grid-cols-2">
             <UsernameForm initialUsername={getUsername(user)} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>X account</CardTitle>
-            <CardDescription>Where your agents post from.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {xLink.linked && xLink.handle ? (
-              <DisconnectXButton handle={xLink.handle} />
-            ) : (
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium">X account</p>
-                  <p className="text-sm text-muted-foreground">Not connected.</p>
-                </div>
-                <Button asChild variant="outline">
-                  <a href="/auth/x?returnTo=/agents/settings">Connect X</a>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Security</CardTitle>
-            <CardDescription>Password and sign-in options.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium">Password</p>
-                <p className="text-sm text-muted-foreground">
-                  Password changes aren&apos;t available yet.
-                </p>
-              </div>
-              {/* No real password-change flow exists yet (same as the old page). */}
-              <Button disabled type="button" variant="outline">
-                Coming soon
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-destructive/30">
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger zone</CardTitle>
-            <CardDescription>
-              Permanently delete your account, your agents, and everything they&apos;ve aggregated.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Separator className="mb-4" />
-            <DeleteAccountButton />
-          </CardContent>
-        </Card>
-      </div>
+            <XAccountField handle={xLink.handle} linked={xLink.linked} />
+          </div>
+        </div>
+      </BandCard>
+      <BandCard icon={<TriangleAlertIcon />} title="Danger Zone" variant="danger">
+        <div className="flex flex-col items-start justify-between gap-4 desk:flex-row desk:items-center">
+          <p className="max-w-2xl text-sm text-text-body">
+            Permanently delete your account, every agent, and all of their drafts and source
+            history. This cannot be undone.
+          </p>
+          <DeleteAccountButton />
+        </div>
+      </BandCard>
     </div>
   );
 }

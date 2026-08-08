@@ -12,8 +12,10 @@
 import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
+import { resolveImageMediaType } from "@/lib/agent/source-media";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
+import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import type {
   ExtractionReasoningByStage,
   ExtractionReasoningStage,
@@ -85,10 +87,11 @@ export type CorpusPost = {
 };
 
 /** Ceiling on how many images one extraction sends. A reporter posting four photos on every one
- *  of 100 posts would otherwise ship 400 images into a single call — images are the expensive
- *  part of a multimodal request, and extraction has no spend gate to catch it (owner decision,
- *  AGENTS.md). At a typical ~50 this never binds; when it does, the prompt SAYS so rather than
- *  letting the model infer that the unshown posts had no media. */
+ *  of MAX_POSTS (50) posts would otherwise ship 200 images into a single call — images are the
+ *  expensive part of a multimodal request, and extraction has no spend gate to catch it (owner
+ *  decision, AGENTS.md). At a measured ~40% media rate that is ~20 for a 50-post corpus, so this
+ *  now rarely binds; when it does, the prompt SAYS so rather than letting the model infer that
+ *  the unshown posts had no media. */
 const MAX_CORPUS_IMAGES = 60;
 
 /** The most of a corpus the model may exclude as off-beat before the tool refuses outright.
@@ -191,21 +194,22 @@ function buildScopeTool(
   let captured: ScopeExclusion | null = null;
 
   const factsFor = (subset: CorpusPost[]) =>
-    measuredFacts(
+    `<measured_style_facts>\n${measuredFacts(
       handle,
       subset.map((p) => p.text ?? "").filter((t) => t.trim()),
-    );
+    )}\n</measured_style_facts>`;
 
   const scopeTool = tool({
     description:
-      "Exclude posts that fall outside the reporter's stated beat, then recompute the MEASURED " +
-      "FACTS block over only the posts that remain. Call this ONCE, after you have read the " +
-      "whole corpus and before you write the guide. The block this returns REPLACES the one in " +
-      "your input and is the binding one. If every post is on beat, do not call this at all.",
+      'Exclude <post id="…"> elements that fall outside the reporter\'s stated beat, then ' +
+      "recompute the <measured_style_facts> block over only the posts that remain. Call this " +
+      "ONCE, after you have read the whole <corpus> and before you write the guide. The block " +
+      "this returns REPLACES the one in your input and is the binding one. If every post is on " +
+      "beat, do not call this at all.",
     inputSchema: z.object({
       offBeatPostIds: z
         .array(z.string())
-        .describe("The post ids ([id] in the corpus listing) that fall outside the stated beat."),
+        .describe('The values of the <post id="…"> attributes that fall outside the stated beat.'),
       reason: z
         .string()
         .describe(
@@ -222,7 +226,7 @@ function buildScopeTool(
         const note =
           `REFUSED: ${known.length} of ${posts.length} posts (${Math.round(share * 100)}%) is over ` +
           `the ${Math.round(MAX_OFF_BEAT_SHARE * 100)}% ceiling on how much of a corpus may be ` +
-          `excluded. The MEASURED FACTS block below is unchanged and still covers every post. ` +
+          `excluded. The <measured_style_facts> block below is unchanged and still covers every post. ` +
           `Write the guide against it, and record the off-beat categories under Beat & Scope's ` +
           `Excludes instead.`;
         captured = { postIds: known, reason, applied: false, note };
@@ -232,7 +236,7 @@ function buildScopeTool(
 
       const kept = posts.filter((p) => !known.includes(p.id));
       const note =
-        `Excluded ${known.length} of ${posts.length} posts. The MEASURED FACTS block below is ` +
+        `Excluded ${known.length} of ${posts.length} posts. The <measured_style_facts> block below is ` +
         `recomputed over the remaining ${kept.length} and REPLACES the one in your input.` +
         (unknown.length > 0
           ? ` NOTE: ${unknown.length} id(s) you listed are not in this corpus and were ignored: ${unknown.join(", ")}.`
@@ -246,31 +250,10 @@ function buildScopeTool(
   return { tools: { exclude_off_beat_posts: scopeTool }, read: () => captured };
 }
 
-/** X's CDN serves `.jpg` for photos and for video/GIF poster frames, and `.png` for a minority of
- *  uploads. Read it off the url rather than assuming, since an incorrect mediaType is rejected.
- *
- *  Returns `null` on an unparsable url instead of throwing — a single malformed media url from a
- *  live X timeline response must not abort the whole extraction (which, at the point media is
- *  attached, has already billed for the corpus read). The caller drops that one image and keeps
- *  going rather than crashing the run. */
-function imageMediaType(url: string): string | null {
-  let ext: string | undefined;
-  try {
-    ext = new URL(url).pathname.split(".").pop()?.toLowerCase();
-  } catch (e) {
-    console.error(`extract-guide: skipping media with unparsable url: ${url}`, e);
-    return null;
-  }
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "gif") return "image/gif";
-  return "image/jpeg";
-}
-
 /** Shared by both call shapes below (plain and streaming) so the prompt they send the model can
  *  never drift apart — extracted rather than duplicated inline a second time.
  *
- * The corpus line format is lab-identical and load-bearing, not cosmetic: the system prompt
+ * The corpus XML format is lab-identical and load-bearing, not cosmetic: the system prompt
  * grades `## RECENCY` off the dates, ranks mode performance off the engagement counts, and
  * describes each mode's "transformation" from the reacted-to post. Dropping any of them makes
  * those dimensions unanswerable and the guide measurably worse for the same spend. */
@@ -284,22 +267,31 @@ function buildExtractionContent(
     handle,
     posts.map((p) => p.text ?? "").filter((t) => t.trim()),
   );
-  const lines: string[] = [];
+  const corpusPosts: string[] = [];
   for (const p of posts) {
     const media = p.media ?? [];
-    // The marker tells the model a post's link resolves to an attachment BEFORE it reaches the
-    // images, so a `🚨 https://t.co/…` line is never read as a bare link post.
-    const mediaMark = media.length
-      ? ` [MEDIA: ${media.map((m) => m.kind).join(", ")} — shown below]`
-      : "";
-    lines.push(
-      `[${p.id}] ${p.date} ${p.long ? "LONG " : ""}(♥${p.likes} ↻${p.reposts})${mediaMark}: ${p.text}`,
+    const attributes = [
+      `id="${escapeXmlAttribute(p.id)}"`,
+      `date="${escapeXmlAttribute(p.date)}"`,
+      `likes="${p.likes}"`,
+      `reposts="${p.reposts}"`,
+      ...(p.long ? ['long="true"'] : []),
+      ...(media.length
+        ? [`media="${escapeXmlAttribute(media.map((item) => item.kind).join(","))}"`]
+        : []),
+    ].join(" ");
+    const reactingTo = p.reactingTo?.text.trim()
+      ? [
+          `<reacting_to author="@${escapeXmlAttribute(p.reactingTo.handle)}">`,
+          escapeXmlText(p.reactingTo.text.trim()),
+          "</reacting_to>",
+        ].join("\n")
+      : null;
+    corpusPosts.push(
+      [`<post ${attributes}>`, escapeXmlText(p.text), reactingTo, "</post>"]
+        .filter((part): part is string => part !== null)
+        .join("\n"),
     );
-    if (p.reactingTo?.text.trim()) {
-      lines.push(
-        `    ↳ was REACTING TO @${p.reactingTo.handle}: "${p.reactingTo.text.trim().slice(0, 300)}"`,
-      );
-    }
   }
 
   const content: ExtractionContentPart[] = [
@@ -309,12 +301,26 @@ function buildExtractionContent(
       // boundary; the corpus below only adds precision inside it (see voice-extract.md). Passing
       // the corpus without it would leave the extractor inferring scope from activity alone,
       // which widens the beat to whatever the reporter happens to post about.
-      text: `REPORTER: @${handle}\n\nTHE BEAT, IN THE REPORTER'S OWN WORDS:\n${beat.trim() || "(not stated)"}\n\n${facts}\n\nTHE CORPUS (most recent first):\n\n${lines.join("\n")}`,
+      text: [
+        `<reporter>@${escapeXmlText(handle)}</reporter>`,
+        "",
+        "<beat>",
+        escapeXmlText(beat.trim() || "(not stated)"),
+        "</beat>",
+        "",
+        "<measured_style_facts>",
+        facts,
+        "</measured_style_facts>",
+        "",
+        "<corpus>",
+        corpusPosts.join("\n\n"),
+        "</corpus>",
+      ].join("\n"),
     },
   ];
 
   // Attached media, as real images the model looks at. A post id labels each one so an image is
-  // unambiguously bound to its corpus line — the corpus block above is a single text part and
+  // unambiguously bound to its corpus element — the corpus block above is a single text part and
   // could not carry that binding on its own.
   const withMedia = posts.filter((p) => (p.media ?? []).length > 0);
   if (withMedia.length > 0) {
@@ -325,7 +331,7 @@ function buildExtractionContent(
         // A malformed url can't be shown either way — count it against the same "dropped" note
         // rather than silently vanishing, so the model still knows this post carried media it
         // couldn't inspect instead of reading as having none.
-        if (imageMediaType(m.imageUrl) === null) {
+        if (resolveImageMediaType(m.imageUrl) === null) {
           dropped++;
           continue;
         }
@@ -336,7 +342,7 @@ function buildExtractionContent(
     content.push({
       type: "text",
       text:
-        `\nATTACHED MEDIA — the images below are the attachments on the posts marked [MEDIA] above. ` +
+        `\nATTACHED MEDIA — the images below are the attachments on posts with media attributes above. ` +
         `Each image is preceded by its post id. A video or GIF is represented by its poster frame.` +
         (dropped > 0
           ? `\n\nNOTE: ${dropped} further attachment(s) exist on these posts and are NOT shown here — treat their posts as having media you could not inspect, not as having none.`
@@ -345,7 +351,7 @@ function buildExtractionContent(
     for (const s of shown) {
       // Already validated when `shown` was built, but re-checked here defensively rather than
       // trusting that invariant across the two loops — a skip here is still a skip, not a crash.
-      const mediaType = imageMediaType(s.imageUrl);
+      const mediaType = resolveImageMediaType(s.imageUrl);
       let fileUrl: URL;
       try {
         fileUrl = new URL(s.imageUrl);

@@ -1,18 +1,19 @@
-import { LoaderCircleIcon } from "lucide-react";
+import { FeedCardSkeleton } from "./feed-item";
 
 /** Route-level loading UI must remain neutral: this route can resolve to an existing feed, an
  * empty ready feed, or a live extraction. Story/draft skeletons falsely promise rows while a new
  * agent is still being set up. */
 export default function FeedLoading() {
+  const skeletonRows = ["loading-1", "loading-2"];
+
   return (
-    <div className="flex min-h-0 flex-1 py-4">
-      <div
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-14 text-muted-foreground text-sm"
-        role="status"
-      >
-        <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
-        <span>Loading your agent…</span>
-      </div>
+    <div
+      className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]"
+      role="status"
+    >
+      {skeletonRows.map((row) => (
+        <FeedCardSkeleton key={row} />
+      ))}
     </div>
   );
 }

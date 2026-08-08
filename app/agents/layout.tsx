@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
+import { ScrollContainerProvider, ScrollRegion } from "@/components/scroll-container";
 import { SentryUserContext } from "@/components/sentry-user-context";
 import { SiteHeader } from "@/components/site-header";
 import { createClient } from "@/lib/supabase/server";
-import { getUsername } from "@/lib/user";
+import { getAvatarKey, getUsername } from "@/lib/user";
 
 /**
  * App auth guard + shell for /agents/*. Chrome is one always-rendered site header
@@ -50,14 +51,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }));
 
   return (
-    <div className="flex h-dvh min-h-0 min-w-0 flex-col bg-background text-foreground">
+    <div className="op-app-shell relative flex h-dvh min-h-0 min-w-0 flex-col bg-background text-foreground">
       <SentryUserContext email={user.email} id={user.id} />
-      <SiteHeader desks={headerDesks} username={getUsername(user)} />
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex h-full w-full max-w-[102rem] flex-col px-4 sm:px-6">
-          {children}
-        </div>
-      </div>
+      <ScrollContainerProvider>
+        <SiteHeader
+          avatarKey={getAvatarKey(user)}
+          desks={headerDesks}
+          username={getUsername(user)}
+        />
+        <ScrollRegion className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-[var(--content-max)] flex-col px-[var(--gutter-mobile)] desk:px-[var(--gutter-web)]">
+            {children}
+          </div>
+        </ScrollRegion>
+      </ScrollContainerProvider>
     </div>
   );
 }

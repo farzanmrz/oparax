@@ -4,7 +4,7 @@ import { LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
+import type { AvatarKey } from "@/lib/user";
 
 /**
  * Site-header account menu: a circular initials avatar opening an identity +
@@ -22,7 +23,13 @@ import { createClient } from "@/lib/supabase/client";
  * refresh to bust the client router cache (incl. bfcache) so Back can't
  * restore a signed-in view after sign-out.
  */
-export function AccountMenu({ username }: { readonly username: string }) {
+export function AccountMenu({
+  avatarKey,
+  username,
+}: {
+  readonly avatarKey: AvatarKey;
+  readonly username: string;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -56,10 +63,14 @@ export function AccountMenu({ username }: { readonly username: string }) {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Account menu"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-md pl-2 outline-none focus-visible:ring-2 focus-visible:ring-ring desk:h-8"
           type="button"
         >
+          <span className="hidden max-w-40 truncate text-sm text-text-label desk:block">
+            {username}
+          </span>
           <Avatar>
+            <AvatarImage alt="" src={`/avatars/${avatarKey}.png`} />
             <AvatarFallback className="bg-secondary text-xs font-semibold text-secondary-foreground">
               {initials || "?"}
             </AvatarFallback>

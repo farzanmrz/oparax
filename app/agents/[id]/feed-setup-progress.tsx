@@ -1,8 +1,9 @@
 "use client";
 
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, MicVocalIcon, TriangleAlertIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BandCard } from "@/components/band-card";
 import { ExtractionChain } from "@/components/extraction-chain";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -46,11 +47,15 @@ export function FeedSetupProgress({
         <InfoIcon aria-hidden="true" className="text-primary" />
         <AlertDescription className="text-foreground/90">
           Agent setup will take 5–6 minutes. You can safely leave and return to this page while
-          Voice and Setup fill automatically.
+          Voice and Sources fill automatically.
         </AlertDescription>
       </Alert>
 
-      <div className="rounded-xl border border-border p-4 sm:p-5">
+      <BandCard
+        icon={failed ? <TriangleAlertIcon /> : <MicVocalIcon />}
+        title={failed ? "Extraction Incomplete" : "Preparing Writing Guide"}
+        variant={failed ? "danger" : "default"}
+      >
         <ExtractionChain
           isStreaming={run.status === "running"}
           reasoningByStage={run.reasoningByStage}
@@ -65,7 +70,7 @@ export function FeedSetupProgress({
             </Button>
           </div>
         ) : null}
-      </div>
+      </BandCard>
     </div>
   );
 }

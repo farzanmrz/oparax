@@ -37,7 +37,7 @@ fi
 # Residual lint report (informational). NUL-safe file list; empty list = skip.
 changed="$(git diff --name-only -z "$range" -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null | tr '\0' '\n' | sed '/^$/d')"
 if [ -n "$changed" ]; then
-  lint_out="$(printf '%s\n' "$changed" | tr '\n' '\0' | xargs -0 pnpm exec biome check --no-errors-on-unmatched 2>&1)"; lint_rc=$?
+  lint_out="$(printf '%s\n' "$changed" | tr '\n' '\0' | xargs -0 pnpm exec biome check --max-diagnostics=none --no-errors-on-unmatched 2>&1)"; lint_rc=$?
   if [ "$lint_rc" -eq 0 ]; then
     echo "LINT residual: none"
   else

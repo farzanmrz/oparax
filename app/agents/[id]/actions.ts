@@ -7,14 +7,15 @@
 // replaces. Every mutation revalidates the desk's own path on success so the layout and
 // its children re-render with the fresh row. The revalidate is `"layout"`-scoped, not the
 // default `"page"`: DeskControls lives in the shared desk layout (rendered on Feed, Voice,
-// and Setup alike), so a page-scoped revalidate would leave the status pill stale when the
+// and Sources alike), so a page-scoped revalidate would leave the status pill stale when the
 // user pauses/resumes from a tab other than Feed — matches settings/actions.ts's precedent.
 "use server";
 
+import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { checkXPostable, resolveXTier, xUnpostableMessage } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveDeskTier, xUnpostableMessage } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
@@ -26,6 +27,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
  *  20-account cap dropped (see the function comment below), which the plain `ActionResult`'s
  *  `{ ok: true }` has no room for. */
 export type AddHandlesResult = { ok: true; dropped: number } | { ok: false; error: string };
+export type EditDraftResult = { ok: true; draftId: string } | { ok: false; error: string };
 
 /** Pause a desk: Oparax stops watching the beat and stops posting on its behalf. */
 export async function pauseDesk(id: string): Promise<ActionResult> {
@@ -88,7 +90,7 @@ export async function deleteDesk(id: string): Promise<ActionResult> {
 /**
  * Add a tracked X handle. Read-modify-write under RLS (no atomic array-append in
  * PostgREST): fetch the desk's current `tracked_handles`, add the normalized handle if
- * it isn't already tracked, then update. Setup (T8) is this action's first consumer;
+ * it isn't already tracked, then update. Sources is this action's owner-facing consumer;
  * it's wired here now so that task only needs to build the UI.
  *
  * The handle is charset-validated (`normalizeValidHandle`) before it can be stored — a raw
@@ -161,38 +163,16 @@ export async function addTrackedHandles(id: string, raw: string): Promise<AddHan
 const editDraftIdSchema = z.string().uuid();
 
 /**
- * Draft edit-in-place (item 9, T3.6). A human edit has no model call behind it, but
- * `drafts.model_call_id` is a real NOT-NULL FK to `model_calls` — and `model_calls`
- * carries deny-all RLS (no insert policy at all, service-role only), so there is no way to
- * satisfy that FK from the owner-scoped client alone. The resolved shape mirrors
- * `draft-pipeline.ts`'s `applyCorrection` (dethrone-then-insert) as closely as the trust
- * boundary allows:
- *
- *   1. RLS/cookie client: SELECT the parent draft through `drafts_select_via_agent`
- *      (the existing owner-scoped EXISTS-join policy). This IS the ownership proof for the
- *      admin-client writes below — reaching this line already establishes the caller owns
- *      the desk this draft belongs to.
- *   2. Admin client: dethrone the current winner via a compare-and-set on its EXACT row id,
- *      guarded by `is_winner = true` AND `posted_url IS NULL` — `drafts` carries no
- *      owner-scoped UPDATE policy at all, so this step has no RLS-client alternative regardless
- *      of preference. The `posted_url` leg re-checks at WRITE time what step 1 only read: a
- *      concurrent Post-to-X that CONFIRMED this winner in between must not be dethroned.
- *   3. Admin client: INSERT one `model_calls` row that exists PURELY to satisfy the FK — not
- *      a real billed call. `model: "human-edit"` / `stage: "manual_edit"` / `cost_usd: 0` /
- *      `reasoning: null` / `usage: null` mark it unmistakably as the deliberate, documented
- *      exception to "every model_calls row is a real billed call" (AGENTS.md) that it is —
- *      a future reader must not mistake this for an L12 violation. It runs AFTER the CAS so an
- *      aborted edit never leaves an orphaned, unreferenced ledger row behind.
- *   4. RLS/cookie client: INSERT the new `drafts` row. THIS is the step the plan text
- *      calls out — "via the owner-scoped RLS client... never service-role for a browser
- *      write" — the `drafts_insert_via_agent` policy's `WITH CHECK` clause is what
- *      actually proves the browser caller owns this desk for the write itself.
+ * Replace the current winner with a human-edited winner while preserving its metadata and
+ * lineage. The owner-scoped client proves ownership and inserts the replacement; the admin
+ * client performs the compare-and-set dethrone and creates the zero-cost human-edit ledger row
+ * required by drafts.model_call_id.
  */
-export async function editDraft(draftId: string, newText: string): Promise<ActionResult> {
+export async function editDraft(draftId: string, newText: string): Promise<EditDraftResult> {
   const parsedId = editDraftIdSchema.safeParse(draftId);
   if (!parsedId.success) return { ok: false, error: "Select a draft to edit." };
   const trimmedText = newText.trim();
-  if (trimmedText.length === 0) return { ok: false, error: "Draft text can't be empty." };
+  if (!trimmedText) return { ok: false, error: "Draft text can't be empty." };
 
   const supabase = await createClient();
   const {
@@ -200,34 +180,20 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Please sign in again." };
 
-  // Step 1 — the ownership proof (see the function comment above).
   const { data: parentDraft, error: parentError } = await supabase
     .from("drafts")
-    .select("id, source_post_id, agent_id, story_id, platform")
+    .select(
+      "id, source_post_id, agent_id, story_id, platform, news_title, news_synthesis, translation",
+    )
     .eq("id", parsedId.data)
     .maybeSingle();
   if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
 
-  // The already-posted guard checks the STORY's current winner for this platform, not
-  // `parentDraft`'s own `posted_at` — `parentDraft` is whatever draft id the browser passed in,
-  // and council-query.ts exposes every council member's draftId to the browser, including
-  // losing candidates. A losing candidate's own row always carries `posted_at: null`, even
-  // after the actual winner has posted — so checking the passed-in row directly let a stale
-  // losing-candidate id sail past this guard, dethrone the ACTUAL posted winner below, and
-  // insert a fresh `is_winner: true` row with `posted_at: null`, making the feed render the
-  // (already-live) story as unposted with an enabled Post button — one click from a
-  // near-duplicate tweet. Scoped by source_post_id + agent_id + platform, the same triple
-  // applyCorrection's dethrone step in draft-pipeline.ts uses.
-  // postedAt alone is the ambiguous state, not proof of a live post (mirrors
-  // draft-platform-switcher.tsx's three-way signal) — only a confirmed post (postedAt &&
-  // postedUrl) blocks editing. Editing an ambiguous draft is the reporter's actual recovery
-  // path: it mints a fresh, unposted winner they can then post cleanly. Accepted tradeoff: if
-  // the original ambiguous post genuinely went through, resubmitting and posting the new
-  // winner risks a real duplicate on X — the UI's ambiguous-state copy tells the reporter to
-  // check their account first; this function does not and cannot verify that for them.
   const { data: currentWinner, error: currentWinnerError } = await supabase
     .from("drafts")
-    .select("id, posted_at, posted_url")
+    .select(
+      "id, posted_at, posted_url, posting_claimed_at, news_title, news_synthesis, translation",
+    )
     .eq("source_post_id", parentDraft.source_post_id)
     .eq("agent_id", parentDraft.agent_id)
     .eq("platform", parentDraft.platform)
@@ -236,63 +202,50 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
   if (currentWinnerError) {
     return { ok: false, error: "Could not verify this draft's status. Please try again." };
   }
-  if (currentWinner?.posted_at && currentWinner?.posted_url) {
+  if (currentWinner?.posted_at && currentWinner.posted_url) {
     return { ok: false, error: "This draft was already posted to X and can't be edited." };
   }
+  if (currentWinner?.posting_claimed_at) {
+    return { ok: false, error: "This draft is currently being posted to X. Please wait a moment." };
+  }
 
-  // Server-side validity gate for X, mirroring post-core.ts's postDraftToXForOwner exactly
-  // (the SHARED `checkXPostable` helper, so the two can't drift) — a repair failure, a
-  // hand-edited draft, or any path reaching editDraft without going through the Post button's
-  // client-side check could otherwise save an unpostable winner that then fails at X with
-  // claim-release churn.
   if (parentDraft.platform === "x") {
-    const { tier } = await getXLinkState();
-    const postable = checkXPostable(trimmedText, resolveXTier(tier));
-    if (!postable.ok) {
+    // Same desk-resolved ceiling as the pipeline, feed counter, and post gate (resolveDeskTier).
+    // The owned parent-draft read above is the ownership proof; this RLS read only gets its tier.
+    const [{ tier }, { data: tierAgent, error: tierAgentError }] = await Promise.all([
+      getXLinkState(),
+      supabase.from("agents").select("reporter_tier").eq("id", parentDraft.agent_id).maybeSingle(),
+    ]);
+    if (tierAgentError || !tierAgent) {
       return {
         ok: false,
-        error: xUnpostableMessage(postable.reason),
+        error: "Could not verify this draft's character limit. Please try again.",
       };
+    }
+    const postable = checkXPostable(trimmedText, resolveDeskTier(tierAgent.reporter_tier, tier));
+    if (!postable.ok) {
+      return { ok: false, error: xUnpostableMessage(postable.reason) };
     }
   }
 
-  const admin = createAdminClient();
-
-  // Step 2 — CAS-scoped dethrone of the EXACT winner row this call observed. Two concurrent
-  // editDraft calls reading the same currentWinner: only the call that actually flips THIS row
-  // from true to false proceeds past this point; the loser's update matches zero rows and aborts
-  // before ever inserting a second winner. A currentWinner read as null — no is_winner:true row
-  // visible at Step 1, either a genuine transient window between another call's dethrone and its
-  // own insert, or an inconsistent state — aborts here too, rather than proceeding unguarded:
-  // there is nothing to prove exclusive ownership over. Traced through both interleavings (same
-  // winner observed by both callers; second caller lands in the transient zero-winner window),
-  // this closes the double-insert race by construction.
-  //
-  // `.is("posted_url", null)` re-checks at WRITE time what the already-posted guard above only
-  // READ: a concurrent Post-to-X click can confirm this exact winner (posted_at AND posted_url
-  // both stamped) between that read and this update, and dethroning a confirmed post would put
-  // the feed back into "unposted" with a live tweet already out. An ambiguous row (posted_at set,
-  // posted_url null) still dethrones — that is the reporter's intended recovery path — as does a
-  // wholly unposted one. A row confirmed in the interim simply matches zero rows and falls
-  // through to the same "edited elsewhere" error below.
   if (!currentWinner) {
     return { ok: false, error: "This draft was just edited elsewhere — refresh and try again." };
   }
+
+  const admin = createAdminClient();
   const { data: dethroned, error: dethroneError } = await admin
     .from("drafts")
     .update({ is_winner: false })
     .eq("id", currentWinner.id)
     .eq("is_winner", true)
     .is("posted_url", null)
+    .is("posting_claimed_at", null)
     .select("id");
   if (dethroneError) return { ok: false, error: "Could not save your edit. Please try again." };
-  if (!dethroned || dethroned.length === 0) {
+  if (!dethroned?.length) {
     return { ok: false, error: "This draft was just edited elsewhere — refresh and try again." };
   }
 
-  // Step 3 — the FK-satisfying model_calls row. Not a real model call: see the comment above.
-  // Deliberately AFTER the CAS: this call now uniquely owns the dethroned row, so the row it
-  // writes here is always referenced by the insert below rather than orphaned by an abort.
   const { data: modelCall, error: modelCallError } = await admin
     .from("model_calls")
     .insert({
@@ -311,39 +264,25 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
     .select("id")
     .single();
   if (modelCallError || !modelCall) {
-    // The CAS already dethroned the winner, so this abort owes the same compensation the insert
-    // failure below owes — otherwise the story is left with no winner at all.
-    await admin.from("drafts").update({ is_winner: true }).eq("id", currentWinner.id);
-    return { ok: false, error: "Could not save your edit. Please try again." };
-  }
-
-  // Step 4 — the owner-scoped write the plan text specifically calls out.
-  const { error: insertError } = await supabase.from("drafts").insert({
-    source_post_id: parentDraft.source_post_id,
-    agent_id: parentDraft.agent_id,
-    story_id: parentDraft.story_id,
-    platform: parentDraft.platform,
-    model_call_id: modelCall.id,
-    is_winner: true,
-    judge_verdict: null,
-    // The lineage parent is the row that was actually dethroned, NOT `parentDraft.id` — the
-    // browser can pass any council member's id, including a losing candidate, so pointing at it
-    // would record a parent this draft never superseded.
-    parent_draft_id: currentWinner.id,
-  });
-  if (insertError) {
-    // drafts still carries no partial unique index enforcing one is_winner=true row per
-    // (source_post_id, agent_id, platform), so steps 2-4 remain non-transactional calls
-    // with no serialization at the database layer. But the double-insert race that index would
-    // have closed is now closed at the application level instead — Step 2's CAS above guarantees
-    // this call uniquely owns currentWinner before reaching this point, so an insert failure here
-    // only ever leaves a single dethroned winner to restore, never a competing second winner to
-    // reconcile against.
-    const { error: restoreError } = await admin
+    const { data: restoredWinner, error: restoreError } = await admin
       .from("drafts")
       .update({ is_winner: true })
-      .eq("id", currentWinner.id);
-    if (restoreError) {
+      .eq("id", currentWinner.id)
+      .select("id");
+    if (restoreError || !restoredWinner?.length) {
+      Sentry.captureException(
+        restoreError ??
+          new Error("editDraft model-call failure did not restore its previous winner"),
+        {
+          tags: {
+            scope: "edit_draft_winner_restore",
+            failure_leg: "model_call_insert",
+            draftId: currentWinner.id,
+            agentId: parentDraft.agent_id,
+          },
+          extra: { modelCallError: modelCallError?.message ?? "No model-call row returned" },
+        },
+      );
       return {
         ok: false,
         error:
@@ -353,8 +292,68 @@ export async function editDraft(draftId: string, newText: string): Promise<Actio
     return { ok: false, error: "Could not save your edit. Please try again." };
   }
 
+  const { data: insertedDraft, error: insertError } = await supabase
+    .from("drafts")
+    .insert({
+      source_post_id: parentDraft.source_post_id,
+      agent_id: parentDraft.agent_id,
+      story_id: parentDraft.story_id,
+      platform: parentDraft.platform,
+      model_call_id: modelCall.id,
+      is_winner: true,
+      judge_verdict: null,
+      parent_draft_id: currentWinner.id,
+      news_title: currentWinner.news_title,
+      news_synthesis: currentWinner.news_synthesis,
+      translation: currentWinner.translation,
+    })
+    .select("id")
+    .single();
+  if (insertError || !insertedDraft) {
+    // This is a best-effort two-step rollback: a process kill between dethroning and restoring
+    // can still leave no winner. True atomicity requires an RPC, outside this round.
+    const { data: restoredWinner, error: restoreError } = await admin
+      .from("drafts")
+      .update({ is_winner: true })
+      .eq("id", currentWinner.id)
+      .select("id");
+    const { error: deleteModelCallError } = await admin
+      .from("model_calls")
+      .delete()
+      .eq("id", modelCall.id);
+    if (restoreError || !restoredWinner?.length) {
+      Sentry.captureException(
+        restoreError ?? new Error("editDraft insert failure did not restore its previous winner"),
+        {
+          tags: {
+            scope: "edit_draft_winner_restore",
+            failure_leg: "draft_insert",
+            draftId: currentWinner.id,
+            agentId: parentDraft.agent_id,
+          },
+          extra: { insertError: insertError?.message ?? "No draft row returned" },
+        },
+      );
+      return {
+        ok: false,
+        error:
+          "Could not save your edit, and the previous draft's status could not be restored. Please refresh and check the feed before retrying.",
+      };
+    }
+    if (deleteModelCallError) {
+      Sentry.captureException(deleteModelCallError, {
+        tags: {
+          scope: "edit_draft_model_call_rollback",
+          modelCallId: modelCall.id,
+          agentId: parentDraft.agent_id,
+        },
+      });
+    }
+    return { ok: false, error: "Could not save your edit. Please try again." };
+  }
+
   revalidatePath(`/agents/${parentDraft.agent_id}`, "layout");
-  return { ok: true };
+  return { ok: true, draftId: insertedDraft.id };
 }
 
 /** Remove a tracked X handle — same read-modify-write shape as `addTrackedHandle`. */

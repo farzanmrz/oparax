@@ -2,14 +2,13 @@
 name: feature-build
 description: >-
   Phase 2 of the feature flow, standalone: execute the approved plan from the
-  ft/N issue inline, as a dumb executor over a hyper-specific spec. Use when the
+  ft/N issue inline; the spec decides, build implements. Use when the
   user says /feature-build, "build the plan", "implement the tasks", or "just
   build X" mid-flight on a feature branch.
 argument-hint: "[issue# | what to build]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *)
-# inherit, not a pin: the owner dials build sessions cheap (sonnet low). The
-# plan carries the judgment; this phase carries it out. A pin would override
-# that dial.
+# inherit, not a pin: the owner sets the session dial. The plan carries the
+# judgment; this phase carries it out. A pin would override that dial.
 model: inherit
 effort: medium
 ---
@@ -23,6 +22,12 @@ effort: medium
   One branch, no scope creep beyond what they said.
 * **Communication rule:** the `Flow` output style governs. Zero prose during
   execution; the only permitted text is an escalation.
+* **Grounding fan-out (Codex only):** before writing code, ground the issue
+  body's named files with PARALLEL read-only `cx_grounder` instances, named
+  explicitly, whenever they span 3+ independent files/areas (≤6 threads);
+  Codex never fans out unprompted and sequential-reads otherwise.
+  IMPLEMENTATION stays inline and sequential in both harnesses (the rule
+  below); fan-out is for reading, never writing.
 
 ## 1. Preflight
 
@@ -76,8 +81,9 @@ pnpm exec tsc --noEmit
 
 ## Hard rules
 
-* **Never push, never branch, never open PRs.** No builds or lint here: that
-  is `/feature-qc`.
+* **Never push, never branch, never open PRs.** No `pnpm build` here: that
+  is `/feature-qc`. Lint runs exactly once, as the phase-3 exit sweep, never
+  mid-task.
 * **No browser here, ever:** build never opens a browser (not
   `agent-browser`, not an MCP surface) and never dispatches a browser agent.
   Proving behavior in a rendered page is the owner's manual check.
@@ -92,6 +98,21 @@ pnpm exec tsc --noEmit
 
 ## 3. Exit: STOP when built
 
+* **Exit lint sweep (changed files only):** before reporting, run
+
+```bash
+files=$(git diff --name-only --diff-filter=ACMR origin/beta...HEAD \
+  -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs')
+[ -n "$files" ] && echo "$files" | xargs pnpm exec biome check --write --no-errors-on-unmatched
+```
+
+  then fix every remaining diagnostic inline (the writer fixes its own lint
+  while context is hot; a behavior-changing fix like a hook-dependency edit
+  gets one flag line in the build summary), re-run `pnpm exec tsc --noEmit`,
+  and commit. Handoff contract: zero Biome diagnostics on the branch's
+  changed files, so QC's residual-lint step starts empty. Never widen to
+  `biome check .`: pre-existing findings in untouched code are QC's scope
+  call, not this build's.
 * **Stop and report** when every task is done and the last checkpoint from
   phase 2 is green: tasks completed, files touched, and any deviations or
   escalations. A compact build summary, nothing more.

@@ -16,6 +16,19 @@ export function resolveXTier(value: string | null | undefined): XAccountTier {
   return value === "premium" ? "premium" : "standard";
 }
 
+/** The ceiling a DESK drafts, counts, edits, and post-gates against: premium applies when either
+ *  the corpus-proven reporter tier (`agents.reporter_tier`, written by voice extraction) or the
+ *  posting account's stored tier is premium. One resolver shared by the drafting pipeline, the
+ *  feed counter, editDraft, and post-core so those gates can never disagree. */
+export function resolveDeskTier(
+  reporterTier: string | null | undefined,
+  accountTier: string | null | undefined,
+): XAccountTier {
+  return resolveXTier(reporterTier) === "premium" || resolveXTier(accountTier) === "premium"
+    ? "premium"
+    : "standard";
+}
+
 /** Shared X validity gate — the same weighted-length + validity check both the posting path
  *  (lib/x/post-core.ts) and the edit path (app/agents/[id]/actions.ts) must enforce identically,
  *  so a draft that passes at edit time is guaranteed to also pass at actual post time. Length
@@ -67,10 +80,10 @@ const ALL_PLATFORMS = ["x", "linkedin", "bluesky"] as const;
 export type Platform = (typeof ALL_PLATFORMS)[number];
 
 /** The platforms drafting actually FANS OUT to today — X only, matching the shipped flow
- *  (X sources → X draft → Slack → post to X). Adding a platform back to this array is the one
- *  edit that reactivates it end to end: the council fan-out, the feed's platform pills, and
- *  `isPlatform`'s filter all read from here. Order is fan-out order, not priority — every
- *  platform runs in parallel via `Promise.allSettled`. */
+ *  (X sources → X draft → Slack → post to X). Reactivating another platform also requires
+ *  per-platform pipeline drafting: the current pipeline hardcodes X-shaped single-drafter output.
+ *  The council fan-out, feed platform pills, and `isPlatform` filter all read from here. Order is
+ *  fan-out order, not priority — every platform runs in parallel via `Promise.allSettled`. */
 export const PLATFORMS = ["x"] as const satisfies readonly Platform[];
 
 /** Character ceilings for the non-X platforms. X's ceiling stays SOLELY in X_CHAR_LIMITS
@@ -81,10 +94,7 @@ export const NON_X_PLATFORM_CHAR_LIMITS: Record<Exclude<Platform, "x">, number> 
 };
 
 /** Dormant-by-design (AGENTS.md): auto-post (publish without review) is a settled off-switch,
- *  not a gap. The SHARED source of truth — `sources-card.tsx` reads it to grey the toggle
- *  client-side, `draft-pipeline.ts` reads the SAME constant to gate the server-side auto-post
- *  path, so the UI being disabled is never the only thing standing between a delivery and an
- *  unreviewed post. Flipping this back is the lever's whole reactivation on the server side —
- *  the master switch also needs a UI path to ever become true, which does not exist yet (see
- *  `auto_post_master`'s own comment in the `agents` table). */
+ *  not a gap. `draft-pipeline.ts` reads this server-side gate before it can publish an
+ *  unreviewed post. The disabled Setup switch was removed, so reactivation also requires a UI
+ *  path to set the master and per-source configuration (see `auto_post_master` in `agents`). */
 export const AUTO_POST_ENABLED = false;

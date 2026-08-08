@@ -2,17 +2,18 @@
 
 // app/agents/[id]/desk-controls.tsx
 //
-// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Voice/Setup nav, active
-// state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
-// `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME three
+// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Writing Guide/Sources/Excluded nav,
+// active state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
+// `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME four
 // links at the SAME URLs — one URL tree, no parallel nav model.
 
 import {
+  EyeOffIcon,
   FileTextIcon,
-  MicVocalIcon,
   PauseIcon,
+  PenLineIcon,
   PlayIcon,
-  SettingsIcon,
+  RssIcon,
   Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
@@ -50,16 +51,24 @@ export const DESK_TABS = [
     href: (id: string) => `/agents/${id}`,
     exact: true,
   },
+  // Excluded sits beside Feed because it holds the same objects the Feed does — the ones
+  // filtration dropped. Voice and Sources are configuration, so they follow.
   {
-    label: "Voice",
-    icon: MicVocalIcon,
+    label: "Excluded",
+    icon: EyeOffIcon,
+    href: (id: string) => `/agents/${id}/excluded`,
+    exact: false,
+  },
+  {
+    label: "Writing Guide",
+    icon: PenLineIcon,
     href: (id: string) => `/agents/${id}/voice`,
     exact: false,
   },
   {
-    label: "Setup",
-    icon: SettingsIcon,
-    href: (id: string) => `/agents/${id}/setup`,
+    label: "Sources",
+    icon: RssIcon,
+    href: (id: string) => `/agents/${id}/sources`,
     exact: false,
   },
 ] as const;
@@ -68,7 +77,7 @@ export function isDeskTabActive(pathname: string, href: string, exact: boolean):
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The Feed/Voice/Setup tab nav, wide layout (`hidden md:flex` at the call site). */
+/** The Feed/Writing Guide/Sources tab nav for wide layouts. */
 export function DeskTabs({
   deskId,
   needsReviewCount,
@@ -83,6 +92,7 @@ export function DeskTabs({
       {DESK_TABS.map((tab) => {
         const href = tab.href(deskId);
         const active = isDeskTabActive(pathname, href, tab.exact);
+        const Icon = tab.icon;
         return (
           <Link
             className={cn(
@@ -95,6 +105,7 @@ export function DeskTabs({
             key={tab.label}
             aria-current={active ? "page" : undefined}
           >
+            <Icon aria-hidden="true" className="size-4 shrink-0" />
             {tab.label}
             {tab.label === "Feed" && needsReviewCount > 0 ? (
               <Badge
@@ -154,7 +165,7 @@ export function DeskControls({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-0.5">
+    <div className="flex shrink-0 items-center">
       <Dialog
         onOpenChange={(open) => {
           setPauseOpen(open);
@@ -166,7 +177,9 @@ export function DeskControls({
           <Button
             aria-label={isLive ? "Pause this agent" : "Resume this agent"}
             className={
-              isLive ? "text-warning hover:text-warning" : "text-success hover:text-success"
+              isLive
+                ? "size-11 text-warning hover:text-warning desk:size-7"
+                : "size-11 text-success hover:text-success desk:size-7"
             }
             size="icon-sm"
             variant="ghost"
@@ -186,6 +199,7 @@ export function DeskControls({
           {pauseError ? <p className="text-sm text-destructive">{pauseError}</p> : null}
           <DialogFooter>
             <Button
+              className="min-h-11"
               disabled={isPending}
               onClick={handlePauseResume}
               variant={isLive ? "outline" : "default"}
@@ -206,7 +220,7 @@ export function DeskControls({
         <AlertDialogTrigger asChild>
           <Button
             aria-label="Delete this agent"
-            className="text-destructive hover:text-destructive"
+            className="size-11 text-destructive hover:text-destructive desk:size-7"
             size="icon-sm"
             variant="ghost"
           >
@@ -222,8 +236,15 @@ export function DeskControls({
           </AlertDialogHeader>
           {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <Button disabled={isPending} onClick={handleDelete} variant="destructive">
+            <AlertDialogCancel className="min-h-11" disabled={isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              className="min-h-11"
+              disabled={isPending}
+              onClick={handleDelete}
+              variant="destructive"
+            >
               {isPending ? "Deleting…" : "Delete agent"}
             </Button>
           </AlertDialogFooter>

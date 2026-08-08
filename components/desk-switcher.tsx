@@ -32,11 +32,11 @@ export function DeskSwitcher({ desks }: { readonly desks: SwitcherDesk[] }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="flex h-8 min-w-0 max-w-36 items-center gap-1.5 rounded-md border border-border bg-background px-2 text-foreground text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring md:max-w-none md:gap-2 md:border-transparent md:bg-transparent"
+          className="flex h-11 min-w-0 max-w-30 items-center gap-1.5 rounded-md border border-border bg-background px-2 text-foreground text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring desk:h-8 desk:max-w-none desk:gap-2 desk:border-transparent desk:bg-transparent"
           type="button"
         >
           <StatusDot active={currentDesk?.status === "active"} />
-          <span className="max-w-40 truncate font-medium">
+          <span className="max-w-32 truncate font-medium desk:max-w-40">
             {currentDesk ? deskDisplayName(currentDesk) : "Agents"}
           </span>
           <ChevronsUpDownIcon
@@ -73,7 +73,7 @@ function StatusDot({ active }: { readonly active: boolean }) {
       aria-hidden="true"
       className={cn(
         "size-2 shrink-0 rounded-full",
-        active ? "animate-pulse bg-success" : "bg-muted-foreground/50",
+        active ? "animate-[op-pulse_2s_ease-in-out_infinite] bg-success" : "bg-warning",
       )}
     />
   );

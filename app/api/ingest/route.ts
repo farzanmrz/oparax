@@ -15,7 +15,7 @@ import { processDelivery } from "@/lib/agent/draft-pipeline";
 import { reconcileMissingCosts } from "@/lib/agent/gateway-cost";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function isAuthorized(header: string | null, secret: string): boolean {
   if (!header) return false;
@@ -35,6 +35,9 @@ const ingestBodySchema = z.discriminatedUnion("source", [
     posted_at: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
       message: "posted_at must parse as a date",
     }),
+    // Optional for app-before-worker deploy order. Missing language is unknown and the
+    // translator decides whether a translation is needed.
+    lang: z.string().min(1).max(35).nullable().optional(),
     // Attached photos (full image) or video/GIF poster frames — descriptors only, matching
     // the settled media-handling decision (no playable-variant retention). Optional: most
     // posts carry no media.
@@ -43,6 +46,7 @@ const ingestBodySchema = z.discriminatedUnion("source", [
   }),
   z.object({
     source: z.literal("website"),
+    source_config_id: z.string().uuid(),
     // deterministic external id — never a fabricated x_post_id
     external_id: z.string().min(1), // sha256(canonicalUrl + "\n" + publishedAtIso)
     url: z.string().url(),
@@ -55,6 +59,7 @@ const ingestBodySchema = z.discriminatedUnion("source", [
       .refine((v) => v === null || !Number.isNaN(Date.parse(v)), {
         message: "published_at must parse as a date",
       }),
+    lang: z.string().min(1).max(35).nullable(),
     raw: z.unknown().optional(),
   }),
 ]);
@@ -87,13 +92,13 @@ export async function POST(req: Request) {
     // call sat at cost NULL forever; the first real end-to-end draft is what surfaced that. The
     // 25s pause is the lag plus margin, and it runs in `after()` — post-response, so the
     // forwarder's request is never held hostage to pricing, and inside this route's
-    // maxDuration = 300 budget. Deliveries are the only place drafting spend originates, so
+    // maxDuration budget. Deliveries are the only place drafting spend originates, so
     // repairing here (each run also sweeps prior still-null rows, since the repair is idempotent
     // over the newest 200) keeps the ledger converging without a cron.
     //
     // The 25s sleep shares this SAME maxDuration budget as the already-awaited processDelivery
     // call above — a slow delivery (e.g. two full council runs) can return with very little of
-    // the 300s left, and a blind 25s sleep would then get killed mid-reconcile with no log of the
+    // the seconds left, and a blind 25s sleep would then get killed mid-reconcile with no log of the
     // skip. So the sleep is adaptive: it shrinks to whatever's left after reserving a safety
     // margin for reconcileMissingCosts itself to run, and skips straight to reconciling (or skips
     // reconciling entirely, loudly) once the budget can't cover even that margin.

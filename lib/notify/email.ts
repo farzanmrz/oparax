@@ -25,9 +25,7 @@ export function extractDraftId(input: {
   return s ? s[1].toLowerCase() : null;
 }
 
-/** The one Resend REST call — auth, transport, error handling. Shared by sendDraftEmail
- *  (which adds the [draft:<id>] subject tag + reply-to) and sendTestEmail (a plain send with
- *  neither), so a future change to Resend's endpoint/auth/error-body shape happens once. */
+/** The one Resend REST call — auth, transport, and error handling. */
 async function sendEmail(input: {
   to: string;
   subject: string;
@@ -69,10 +67,4 @@ export async function sendDraftEmail(input: {
     text: input.text,
     replyTo: draftReplyAddress(input.draftId),
   });
-}
-
-/** A plain send with no draft context — Setup's Send-test control (no reply-to, no subject
- *  tag; there is no draft to route a reply back to). */
-export async function sendTestEmail(input: { to: string; subject: string; text: string }) {
-  await sendEmail(input);
 }

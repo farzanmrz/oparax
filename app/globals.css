@@ -1,29 +1,34 @@
-/* Stock shadcn Tailwind v4 baseline for this repo's pinned config
-   (components.json: style radix-nova, baseColor gray, cssVariables true) —
-   the structure `shadcn init --base radix --preset nova` emits, with the
-   official gray token values. No custom classes; v0 owns all design. */
-
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-/* revision: wire-blue accent */
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --font-heading: var(--font-sans);
-  /* Inner fallback matters: Hanken Grotesk arrives via next/font's
-     --font-hanken-grotesk variable on <body>; an undefined var with no
-     fallback would invalidate the whole font-family declaration. */
   --font-sans:
     var(--font-hanken-grotesk, "Hanken Grotesk"), "Hanken Grotesk", ui-sans-serif, system-ui,
     sans-serif;
-  /* JetBrains Mono backs Tailwind's font-mono utility — handles, counts,
-     timestamps, money. */
+  --font-draft:
+    var(--font-space-grotesk, "Space Grotesk"), "Space Grotesk", ui-sans-serif, system-ui,
+    sans-serif;
   --font-mono:
     var(--font-jetbrains-mono, "JetBrains Mono"), "JetBrains Mono", ui-monospace, monospace;
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warn-stale: var(--warn-stale);
+  --color-danger-text: var(--danger-text);
+  --color-band-header-text: var(--text-band-header);
+  --color-draft-bg: var(--draft-bg);
+  --color-text-title: var(--text-title);
+  --color-text-page-header: var(--text-page-header);
+  --color-text-body: var(--text-body);
+  --color-text-draft: var(--text-draft);
+  --color-text-label: var(--text-label);
+  --color-text-muted: var(--text-muted);
+  --color-text-count: var(--text-count);
+  --color-text-handle-x: var(--text-handle-x);
+  --color-text-handle-news: var(--text-handle-news);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -56,128 +61,199 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: 5px;
+  --radius-md: 6px;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-badge: 4px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-3xl: 22px;
+  --radius-4xl: 26px;
+  --breakpoint-desk: 700px;
 }
 
-/* Oparax editorial dark theme — "ink" near-black ground, warm paper-white
-   type, a wire-blue primary accent for interactive elements, and one
-   signal-red marker (--live) reserved for on-the-wire/LIVE indicators.
-   The app is dark by default: :root and .dark share the same palette. */
 :root {
-  --background: oklch(0.16 0.004 260);
-  --foreground: oklch(0.93 0.004 95);
-  --card: oklch(0.195 0.004 260);
-  --card-foreground: oklch(0.93 0.004 95);
-  --popover: oklch(0.195 0.004 260);
-  --popover-foreground: oklch(0.93 0.004 95);
-  --primary: oklch(0.62 0.15 245);
+  /* DESIGN.md is the UI contract; this block contains its production tokens. */
+  --page-bg: #0c0c0e;
+  --header-bg: #121214;
+  --card-grad-top: oklch(0.2 0.006 260);
+  --card-grad-bottom: oklch(0.172 0.004 260);
+  --card-border: rgba(255, 255, 255, 0.13);
+  --card-radius: 10px;
+  --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.38), 0 0 30px oklch(0.62 0.15 245 / 0.06);
+  --band-bg: rgba(255, 255, 255, 0.045);
+  --band-border: rgba(255, 255, 255, 0.09);
+  --strip-x-grad: linear-gradient(180deg, oklch(0.19 0 0), oklch(0.145 0 0));
+  --strip-news-grad: linear-gradient(180deg, oklch(0.225 0.032 85), oklch(0.18 0.026 85));
+  --draft-bg: oklch(0.24 0.015 250);
+  --draft-border-top: oklch(0.62 0.15 245 / 0.28);
+  --menu-bg: oklch(0.22 0.004 260);
+  --input-bg: oklch(0.16 0.004 260);
+  --chip-x-bg: oklch(0.12 0 0);
+  --chip-web-bg: oklch(0.2 0.02 85);
+  --accent: oklch(0.62 0.15 245);
+  --accent-hover: oklch(0.58 0.15 245);
+  --success: oklch(0.78 0.17 155);
+  --warn: oklch(0.8 0.14 76);
+  --warn-stale: oklch(0.66 0.04 76);
+  --danger: oklch(0.66 0.2 25);
+  --danger-text: oklch(0.72 0.15 25);
+  --text-title: oklch(0.97 0.008 95);
+  --text-page-header: oklch(0.96 0.004 95);
+  --text-band-header: oklch(0.9 0.03 250);
+  --text-body: oklch(0.74 0.012 90);
+  --text-draft: oklch(0.95 0.004 95);
+  --text-label: oklch(0.72 0.005 260);
+  --text-muted: oklch(0.62 0.006 260);
+  --text-count: oklch(0.55 0.02 250);
+  --text-handle-x: oklch(0.94 0.004 95);
+  --text-handle-news: oklch(0.9 0.03 88);
+  --font-ui:
+    var(--font-hanken-grotesk, "Hanken Grotesk"), "Hanken Grotesk", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-draft:
+    var(--font-space-grotesk, "Space Grotesk"), "Space Grotesk", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono, "JetBrains Mono"), "JetBrains Mono", ui-monospace, monospace;
+  --fs-page-header: 21px;
+  --fs-band-header: 15px;
+  --fs-card-title: 20px;
+  --fs-synthesis: 14.5px;
+  --fs-draft: 16.5px;
+  --fs-strip: 12.5px;
+  --fs-count: 11.5px;
+  --radius-card: 10px;
+  --radius-control: 6px;
+  --radius-tag: 5px;
+  --radius-badge: 4px;
+  --content-max: 1356px;
+  --gutter-web: 6px;
+  --gutter-mobile: 32px;
+  --gutter-mobile-narrow: 16px;
+  --page-rhythm-web: 24px;
+  --page-rhythm-mobile: 16px;
+  --strip-h-web: 32px;
+  --strip-h-mobile: 38px;
+  --breakpoint-mobile: 700px;
+  --post-h-web: 30px;
+  --post-h-mobile: 44px;
+  --draft-footer-gap-web: 1px;
+  --draft-footer-gap-mobile: 8px;
+  --char-count-gap-mobile: 4px;
+  --char-limit: 280;
+
+  /* shadcn semantic slots wired to the handoff system. */
+  --background: var(--page-bg);
+  --foreground: var(--text-title);
+  --card: var(--card-grad-top);
+  --card-foreground: var(--text-title);
+  --popover: var(--menu-bg);
+  --popover-foreground: var(--text-title);
+  --primary: var(--accent);
   --primary-foreground: oklch(0.98 0.005 245);
   --secondary: oklch(0.25 0.004 260);
-  --secondary-foreground: oklch(0.93 0.004 95);
+  --secondary-foreground: var(--text-title);
   --muted: oklch(0.24 0.004 260);
-  --muted-foreground: oklch(0.65 0.006 260);
-  --accent: oklch(0.27 0.025 250);
-  --accent-foreground: oklch(0.92 0.02 245);
-  --destructive: oklch(0.66 0.2 25);
-  --live: oklch(0.63 0.21 27);
-  --success: oklch(0.78 0.17 155);
-  --warning: oklch(0.8 0.14 76);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: oklch(0.98 0.005 245);
+  --destructive: var(--danger);
+  --live: var(--danger);
+  --warning: var(--warn);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.62 0.15 245);
-  --chart-1: oklch(0.62 0.15 245);
-  --chart-2: oklch(0.63 0.21 27);
-  --chart-3: oklch(0.65 0.006 260);
+  --ring: var(--accent);
+  --chart-1: var(--accent);
+  --chart-2: var(--danger);
+  --chart-3: var(--text-muted);
   --chart-4: oklch(0.45 0.006 260);
   --chart-5: oklch(0.85 0.004 95);
-  --radius: 0.5rem;
+  --radius: 10px;
   --sidebar: oklch(0.14 0.004 260);
-  --sidebar-foreground: oklch(0.93 0.004 95);
-  --sidebar-primary: oklch(0.62 0.15 245);
+  --sidebar-foreground: var(--text-title);
+  --sidebar-primary: var(--accent);
   --sidebar-primary-foreground: oklch(0.98 0.005 245);
   --sidebar-accent: oklch(0.24 0.004 260);
-  --sidebar-accent-foreground: oklch(0.93 0.004 95);
+  --sidebar-accent-foreground: var(--text-title);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.15 245);
+  --sidebar-ring: var(--accent);
 }
 
-.dark {
-  --background: oklch(0.16 0.004 260);
-  --foreground: oklch(0.93 0.004 95);
-  --card: oklch(0.195 0.004 260);
-  --card-foreground: oklch(0.93 0.004 95);
-  --popover: oklch(0.195 0.004 260);
-  --popover-foreground: oklch(0.93 0.004 95);
-  --primary: oklch(0.62 0.15 245);
-  --primary-foreground: oklch(0.98 0.005 245);
-  --secondary: oklch(0.25 0.004 260);
-  --secondary-foreground: oklch(0.93 0.004 95);
-  --muted: oklch(0.24 0.004 260);
-  --muted-foreground: oklch(0.65 0.006 260);
-  --accent: oklch(0.27 0.025 250);
-  --accent-foreground: oklch(0.92 0.02 245);
-  --destructive: oklch(0.66 0.2 25);
-  --live: oklch(0.63 0.21 27);
-  --success: oklch(0.78 0.17 155);
-  --warning: oklch(0.8 0.14 76);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.62 0.15 245);
-  --chart-1: oklch(0.62 0.15 245);
-  --chart-2: oklch(0.63 0.21 27);
-  --chart-3: oklch(0.65 0.006 260);
-  --chart-4: oklch(0.45 0.006 260);
-  --chart-5: oklch(0.85 0.004 95);
-  --sidebar: oklch(0.14 0.004 260);
-  --sidebar-foreground: oklch(0.93 0.004 95);
-  --sidebar-primary: oklch(0.62 0.15 245);
-  --sidebar-primary-foreground: oklch(0.98 0.005 245);
-  --sidebar-accent: oklch(0.24 0.004 260);
-  --sidebar-accent-foreground: oklch(0.93 0.004 95);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.15 245);
+@keyframes op-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes op-skeleton {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.op-skeleton + .op-skeleton {
+  animation-delay: 0.2s;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    @apply bg-background font-sans;
+  }
+
   body {
-    /* font-sans on body too (not just html): next/font defines
-       --font-hanken-grotesk via the body className, and var() resolves where
-       the property applies. */
     @apply bg-background text-foreground font-sans;
   }
-  html {
-    @apply font-sans;
-  }
-  /* Themed scrollbars — replace the browser-default white bar with a subtle
-     grey thumb on a transparent track, matching the ink palette. Covers
-     WebKit (Chrome/Safari/Edge) and Firefox. */
+
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background-color: var(--border);
-    border-radius: 9999px;
     border: 2px solid transparent;
+    border-radius: var(--radius-badge);
     background-clip: content-box;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     background-color: var(--muted-foreground);
+  }
+}
+
+.op-scroll-region {
+  padding-top: 56px;
+}
+
+@media (max-width: 699.98px) {
+  .op-app-shell:has([data-has-desk="true"]) .op-scroll-region {
+    padding-top: 100px;
+  }
+}
+
+@media (max-width: 359.98px) {
+  :root {
+    --gutter-mobile: var(--gutter-mobile-narrow);
   }
 }

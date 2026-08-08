@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/agents", origin));
   }
 
-  const returnPath = safeReturnPath(decoded.returnTo, `/agents/${decoded.agentId}/setup`);
+  const returnPath = safeReturnPath(decoded.returnTo, `/agents/${decoded.agentId}/sources`);
 
   const redirectBack = (params: Record<string, string>) => {
     const url = new URL(returnPath, origin);

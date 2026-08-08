@@ -13,6 +13,8 @@ export interface StreamTweetData {
   note_tweet?: { text?: string };
   author_id?: string;
   created_at?: string;
+  /** X's machine-detected BCP-47 language code. */
+  lang?: string;
   attachments?: { media_keys?: string[] };
 }
 
@@ -34,7 +36,7 @@ export interface StreamPayload {
   matching_rules?: Array<{ id: string; tag?: string }>;
 }
 
-/** One attached image the drafting/grounding stage can actually look at — a photo's own url,
+/** One attached image the drafting stage can actually look at — a photo's own url,
  *  or a video/GIF's poster frame (the one still frame available; the settled decision is
  *  descriptors only, never a playable variant). Mirrors `XTimelineMedia` in lib/x/timeline.ts
  *  exactly, so both acquisition paths (live stream, voice-extraction timeline read) hand the
@@ -54,6 +56,7 @@ export interface IngestDeliveryBody {
   author_handle: string;
   text: string;
   posted_at: string;
+  lang: string | null;
   media?: IngestDeliveryMedia[];
   raw?: unknown;
 }

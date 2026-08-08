@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "approach": { "type": "string", "description": "the chosen architecture in 3-6 sentences: what is built, in what shape, and why this shape over the obvious alternatives" },
+    "rejectedAlternatives": { "type": "array", "items": { "type": "string" }, "description": "each considered-and-rejected shape with its one-line trade-off" },
+    "buildSteps": { "type": "array", "items": { "type": "string" }, "description": "ordered build steps; each names the exact files touched and near-code for anything non-obvious" },
+    "risks": { "type": "array", "items": { "type": "string" }, "description": "what could sink this plan: contract breaks, races, RLS, migration hazards" },
+    "openQuestions": { "type": "array", "items": { "type": "string" }, "description": "decisions the brief leaves genuinely open; empty when none" }
+  },
+  "// required-note": "Same rule as qc-findings-schema.json: OpenAI's structured-output API rejects any schema whose `required` omits a key present in `properties` — optionality is expressed with nullable types, never by omission from `required`.",
+  "required": ["approach", "rejectedAlternatives", "buildSteps", "risks", "openQuestions"]
+}

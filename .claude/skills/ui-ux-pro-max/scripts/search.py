@@ -90,7 +90,8 @@ if __name__ == "__main__":
     parser.add_argument("query", help="Search query")
     # oparax keeps only the data this repo can act on (trimmed 2026-07-30, 1.8M -> 412K):
     # the platforms it does not target, and the design-GENERATION corpus (fonts, colors,
-    # typography, styles) that `[design: reuse]` forbids, were deleted. Offering a choice
+    # typography, styles) this repo's aesthetic-alignment policy never uses, were deleted.
+    # Offering a choice
     # whose CSV is gone would turn a normal query into a "File not found" that reads like
     # tool breakage, so the pickers are narrowed to what still exists.
     _DOMAINS = [d for d in CSV_CONFIG if (DATA_DIR / CSV_CONFIG[d]["file"]).exists()]

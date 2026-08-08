@@ -20,6 +20,8 @@ next-env.d.ts
 
 # Local scratch data (regenerable)
 data/
+# Canonical UI handoff bundle remains local; only copied production assets ship.
+design_handoff_oparax_ui/
 # Stream-transcript dumps — raw model output and full reasoning traces
 .diag/
 # The voice lab — deleted 2026-07-30 once every port landed. Kept ignored so a restored
@@ -42,3 +44,7 @@ npm-debug.log*
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Supabase CLI link metadata/cache
+supabase/.temp/
+.gstack/

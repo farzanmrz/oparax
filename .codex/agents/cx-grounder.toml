@@ -1,5 +1,5 @@
 name = "cx_grounder"
-description = "Read-only evidence gatherer for the cx feature flow: grounding packs (plan phase) and QC setup blocks (diff stats, issue criteria, dead-code sweep). Cheap and fast; never edits."
+description = "Read-only evidence gatherer for the cx feature flow: grounding packs (plan phase) and QC setup blocks (diff stats, issue criteria). Cheap and fast; never edits."
 model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
@@ -17,11 +17,7 @@ the slice will touch or interface with (quote them, cite paths).
 QC setup block: given a diff range and issue number, return (1) git diff
 --shortstat and --stat over the range, flagging generated files; (2) the ft
 issue's "Stack & design acceptance criteria" section verbatim, via one gh
-issue view; (3) the dead-code
-sweep: pnpm deadcode, then verify each hit by grepping for dynamic/string
-references knip misses, cross-check AGENTS.md's "Dormant by design" table (a
-switched-off lever is not dead code — flag but say so), and collapse dead
-chains to one root finding.
+issue view.
 
 Never edit files, never start servers, never push. Distill — the session must
 never need to re-derive what you return.

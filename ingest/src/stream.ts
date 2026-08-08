@@ -20,10 +20,10 @@ export class StreamTransientError extends Error {}
 //
 // `attachments.media_keys`/`media.fields` mirror lib/x/timeline.ts's extraction-side read
 // exactly — a post whose meaning lives entirely in a photo (or is off-beat/on-beat only once
-// you can see the picture) must reach the grounding stage able to look at it, not just at an
+// you can see the picture) must reach the drafting stage able to look at it, not just at an
 // opaque t.co link.
 const STREAM_URL =
-  "https://api.x.com/2/tweets/search/stream?expansions=author_id,attachments.media_keys&user.fields=username&tweet.fields=created_at,note_tweet&media.fields=type,url,preview_image_url";
+  "https://api.x.com/2/tweets/search/stream?expansions=author_id,attachments.media_keys&user.fields=username&tweet.fields=created_at,note_tweet,lang&media.fields=type,url,preview_image_url";
 
 /** x_post_id = the tweet id; author_handle = the author's username (resolved via
  *  expansions=author_id/includes.users, requested above); text = the COMPLETE tweet body —
@@ -67,6 +67,7 @@ export function mapTweetToDelivery(payload: StreamPayload): IngestDeliveryBody |
     author_handle: author.username,
     text: fullText,
     posted_at: tweet.created_at ?? new Date().toISOString(),
+    lang: tweet.lang ?? null,
     ...(media.length > 0 ? { media } : {}),
     raw: payload,
   };
