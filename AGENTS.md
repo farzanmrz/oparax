@@ -1,15 +1,14 @@
 # Oparax
 
-AI news desk: monitors X, catches stories, drafts in a reporter's voice, and posts autonomously once trusted.
-
 ## Code map
 
-- **`app/api/ingest` is the delivery interface** — the Bearer-authed entry point every source post enters through. `poller/` and `ingest/`'s X stream forwarder both POST here.
+- **`app/api/ingest`:** Bearer-auth delivery interface for poller and X-stream posts.
 - **Website deliveries keep their `source_config_id`** from poller through ingest: `draft-pipeline.ts` resolves it to one desk, never rematch by hostname, so tracked paths cannot cross-deliver.
-- **Website onboarding reserves before spending:** both entry points call `reservePendingSource`; its locked RPC atomically counts `active` and `pending` rows for the five-site cap and duplicate no-bill guarantee.
+- **Website onboarding uses `reservePendingSource`:** its locked RPC atomically enforces the five-site cap and duplicate no-bill guarantee. `add_source_config` completes by reservation ID, so a stale dismissed attempt cannot activate a re-added row.
+- **Private/internal website URLs fail before reservation:** users receive inline validation, never a persisted failed row.
 - **`app/api/slack/interactions`** is `after()`-deferred to meet Slack's 3s ack deadline before slow X-post work.
 - **`agents.reporter_tier` is corpus-proven; `resolveDeskTier` is the only desk-tier resolver** — premium when either reporter or posting-account tier is premium — for drafting, feed count, edit, and post gates. **`checkXPostable` owns X validity**; every writer of a `drafts` winner must call it, never re-derive it.
-- **`lib/agent/feed-query.ts`'s `fetchFeedPage`/`fetchFeedCounts` and lineage read take a service-role client and never check desk ownership** — every caller (`page.tsx`, `feed-actions.ts`) must prove `owner_id` match first.
+- **Feed readers use a service-role client without desk checks:** callers (`page.tsx`, `feed-actions.ts`) prove `owner_id`.
 - **`lib/x/timeline.ts` is the extraction X-read** — original posts only; its size also feeds `inferAccountTier`, so a smaller corpus can miss premium evidence. Handle validation reads X separately.
 - **Tokens never leave `lib/x/` and `lib/slack/`.**
 - **`lib/voice/rules.ts` owns the drafting input:** `flattenRulesToPrompt(enabledRules) + measuredFacts`, not the raw guide (audit only), goes through translator → single drafter → `draft-write.ts`. `corpus-store.ts` upserts, never prunes. `extraction-run.ts`'s atomic boolean claim prevents false spend; stale reclaim uses `reclaim_extraction_run` because PostgREST cannot filter a body-written column. It bounds one desk to ONE concurrent run, **not** rationing. Progress polls an ownership-proving server action, never Realtime.
