@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { splitList } from "@/lib/split-list";
-import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
+import { displaySourceUrl, MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED, normalizeValidHandle } from "@/lib/x/handle";
 import { mergeHandles, splitHandles } from "@/lib/x/handle-input";
 import { startExtraction } from "../[id]/voice/actions";
@@ -33,7 +33,12 @@ function mergeWebsites(existing: readonly string[], incoming: readonly string[])
   const next = [...existing];
   for (const site of incoming) {
     if (next.length >= MAX_WEBSITES) break;
-    if (!next.some((value) => value.toLowerCase() === site.toLowerCase())) next.push(site);
+    if (
+      !next.some(
+        (value) => displaySourceUrl(value).toLowerCase() === displaySourceUrl(site).toLowerCase(),
+      )
+    )
+      next.push(site);
   }
   return next;
 }
@@ -174,8 +179,14 @@ export function CreateDeskForm({
         continue;
       }
       if (
-        websites.some((website) => website.toLowerCase() === normalized.toLowerCase()) ||
-        valid.some((website) => website.toLowerCase() === normalized.toLowerCase())
+        websites.some(
+          (website) =>
+            displaySourceUrl(website).toLowerCase() === displaySourceUrl(normalized).toLowerCase(),
+        ) ||
+        valid.some(
+          (website) =>
+            displaySourceUrl(website).toLowerCase() === displaySourceUrl(normalized).toLowerCase(),
+        )
       ) {
         continue;
       }
@@ -395,11 +406,11 @@ export function CreateDeskForm({
         <BandCard className="h-full" icon={<GlobeIcon />} title="Sources">
           <div className="flex h-full flex-col gap-5">
             <div className="flex flex-1 flex-col gap-1.5">
-              <FieldLabel help="Type or paste usernames — separate several with spaces, commas, or new lines. This agent watches these accounts for news.">
+              <FieldLabel help="Type or paste usernames — add each with a comma, Enter, or the + button. This agent watches these accounts for news.">
                 X Accounts ({handles.length}/{MAX_TRACKED})
               </FieldLabel>
               {handles.length > 0 ? (
-                <ul className="grid gap-2">
+                <ul className="flex flex-wrap gap-2">
                   {handles.map((handle) => (
                     <SourceRow
                       key={handle}
@@ -409,6 +420,7 @@ export function CreateDeskForm({
                       }
                       removeDisabled={formDisabled}
                       tone="x"
+                      variant="chip"
                     />
                   ))}
                 </ul>
@@ -430,21 +442,22 @@ export function CreateDeskForm({
             </div>
 
             <div className="flex flex-1 flex-col gap-1.5">
-              <FieldLabel help="Type or paste site addresses — a homepage, a section, or any article link works. This agent watches these sites for news; setup runs automatically after the agent is created.">
+              <FieldLabel help="Type or paste site addresses — a homepage, a section, or an article link — and add each with a comma, Enter, or the + button. Setup runs automatically after the agent is created.">
                 News Websites ({websites.length}/{MAX_WEBSITES})
               </FieldLabel>
               {websites.length > 0 ? (
-                <ul className="grid gap-2">
+                <ul className="flex flex-wrap gap-2">
                   {websites.map((site) => (
                     <SourceRow
                       icon={<SiteFavicon url={site} />}
                       key={site}
-                      label={site}
+                      label={displaySourceUrl(site)}
                       onRemove={() =>
                         setWebsites((current) => current.filter((value) => value !== site))
                       }
                       removeDisabled={formDisabled}
                       tone="website"
+                      variant="chip"
                     />
                   ))}
                 </ul>

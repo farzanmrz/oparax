@@ -14,7 +14,7 @@ import { BandCard } from "@/components/band-card";
 import { SiteFavicon } from "@/components/site-favicon";
 import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
-import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
+import { displaySourceUrl, MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES, X_HANDLE_RE } from "@/lib/x/handle";
 import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
@@ -424,11 +424,7 @@ function SourceCount({ count, limit, noun }: { count: number; limit: number; nou
 
 function websiteName(value: string, detail?: WebsiteDetail): string {
   if (detail?.displayName) return detail.displayName.replace(/^www\./i, "");
-  try {
-    return new URL(value).hostname.replace(/^www\./i, "");
-  } catch {
-    return value;
-  }
+  return displaySourceUrl(value);
 }
 
 function SingleLineLabel({ children }: { children: string }) {
