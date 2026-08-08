@@ -14,6 +14,7 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import { Readable } from "node:stream";
+import type { SourceSampleEntry } from "@/lib/sources/sitemap";
 
 const SITEMAP_PATHS = [
   "/sitemap.xml",
@@ -22,6 +23,11 @@ const SITEMAP_PATHS = [
   "/sitemap-news.xml",
 ];
 const FEED_PATHS = ["/feed", "/rss.xml", "/feed/rss"];
+const LISTING_MIN_ARTICLE_LINKS = 5;
+const LISTING_MIN_ARTICLE_RATIO = 0.2;
+const LISTING_SAMPLE_LIMIT = 50;
+const NON_ARTICLE_EXT_RE =
+  /\.(svg|png|jpe?g|gif|webp|ico|css|js|json|xml|woff2?|ttf|otf|pdf|mp4|webm)$/i;
 
 /** Same bound as sitemap.ts's NO_LASTMOD_CANDIDATE_CAP — a robots.txt declaring dozens of
  *  sitemaps (goal.com: 35 locale variants) can't turn one onboarding attempt into dozens of
@@ -33,6 +39,14 @@ export async function fetchSafeSource(
   url: string,
   expectedHostname: string,
 ): Promise<Response> {
+  return (await fetchSafeSourceWithFinalUrl(endpoint, url, expectedHostname)).res;
+}
+
+async function fetchSafeSourceWithFinalUrl(
+  endpoint: string,
+  url: string,
+  expectedHostname: string,
+): Promise<{ res: Response; finalUrl: string }> {
   let current = new URL(url);
   // Match fetch's existing redirect ceiling while validating every destination before it is
   // requested. A repeated URL is a redirect loop even before the ceiling is exhausted.
@@ -46,9 +60,11 @@ export async function fetchSafeSource(
     }
     visited.add(current.toString());
     const res = await fetchPinnedSource(endpoint, current);
-    if (res.status < 300 || res.status >= 400) return res;
+    if (res.status < 300 || res.status >= 400) {
+      return { res, finalUrl: current.toString() };
+    }
     const location = res.headers.get("location");
-    if (!location) return res;
+    if (!location) return { res, finalUrl: current.toString() };
     await res.body?.cancel();
     current = new URL(location, current);
   }
@@ -376,6 +392,65 @@ function extractRssAlternateLink(html: string, pageUrl: string): string | null {
   return null;
 }
 
+/** Article-shaped paths carry a date segment, a slug-like leaf with at least three hyphens,
+ *  or a hyphenated HTML leaf. Static assets and short section paths never qualify. */
+function isArticleShapedPath(pathname: string): boolean {
+  if (NON_ARTICLE_EXT_RE.test(pathname)) return false;
+  if (/\/(?:19|20)\d{2}(?:\/|$)/.test(pathname)) return true;
+  const leaf = pathname.split("/").filter(Boolean).at(-1) ?? "";
+  const hyphens = leaf.match(/-/g)?.length ?? 0;
+  return hyphens >= 3 || (/\.html?$/i.test(leaf) && leaf.includes("-"));
+}
+
+function comparableHostname(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, "");
+}
+
+/** Extracts same-host anchors from server-rendered HTML. This intentionally mirrors the
+ *  module's regex RSS extraction instead of adding an HTML parser; nested anchor markup is
+ *  tag-stripped and can occasionally produce a lossy title. */
+function extractListingSample(html: string, finalUrl: string): SourceSampleEntry[] {
+  const listingUrl = new URL(finalUrl);
+  listingUrl.hash = "";
+  const seen = new Set<string>();
+  const sameHostDistinct: { url: string; title?: string }[] = [];
+  const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+
+  for (const match of html.matchAll(anchorPattern)) {
+    let candidate: URL;
+    try {
+      candidate = new URL(match[1], finalUrl);
+    } catch {
+      continue;
+    }
+    if (candidate.protocol !== "http:" && candidate.protocol !== "https:") continue;
+    if (comparableHostname(candidate.hostname) !== comparableHostname(listingUrl.hostname)) {
+      continue;
+    }
+    if (isPrivateHostname(candidate.hostname)) continue;
+    candidate.hash = "";
+    const href = candidate.toString();
+    if (href === listingUrl.toString() || seen.has(href)) continue;
+    seen.add(href);
+    const title = match[2]
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    sameHostDistinct.push({ url: href, ...(title ? { title } : {}) });
+  }
+
+  const articleShaped = sameHostDistinct.filter((entry) =>
+    isArticleShapedPath(new URL(entry.url).pathname),
+  );
+  if (
+    articleShaped.length < LISTING_MIN_ARTICLE_LINKS ||
+    articleShaped.length / sameHostDistinct.length < LISTING_MIN_ARTICLE_RATIO
+  ) {
+    return [];
+  }
+  return articleShaped.slice(0, LISTING_SAMPLE_LIMIT);
+}
+
 /** Checks the given page for an RSS `<link rel="alternate">` tag, returning its resolved
  *  feed URL if present. Returns null on any fetch/parse failure — RSS discovery has more
  *  fallback paths to try after this one, so a failure here is never fatal. */
@@ -513,9 +588,11 @@ async function resolveReachableInputUrl(inputUrl: URL): Promise<URL> {
  *  `resolveReachableInputUrl` resolves the host first (#109/#110) before any of the above
  *  runs. */
 export async function discoverChangeDetection(inputUrl: URL): Promise<{
-  mechanism: "sitemap" | "rss" | null;
+  mechanism: "sitemap" | "rss" | "listing" | null;
   sitemapUrl?: string;
   feedUrl?: string;
+  listingUrl?: string;
+  listingSample?: SourceSampleEntry[];
 }> {
   const resolvedUrl = await resolveReachableInputUrl(inputUrl);
   const origin = resolvedUrl.origin;
@@ -528,7 +605,20 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
     if (await urlExists(candidate)) return { mechanism: "sitemap", sitemapUrl: candidate };
   }
 
-  const exactPageFeed = await checkPageForRssLink(resolvedUrl.toString());
+  const exactPage = await fetchSafeSourceWithFinalUrl(
+    resolvedUrl.toString(),
+    resolvedUrl.toString(),
+    resolvedUrl.hostname,
+  );
+  if (!exactPage.res.ok) {
+    throw new Error(`Source ${resolvedUrl.toString()} returned ${exactPage.res.status}`);
+  }
+  const contentType = exactPage.res.headers.get("content-type");
+  const isHtml = !contentType || /^\s*(?:text|application)\/x?html\b/i.test(contentType);
+  const exactPageHtml = isHtml ? await exactPage.res.text() : null;
+  const exactPageFeed = exactPageHtml
+    ? extractRssAlternateLink(exactPageHtml, exactPage.finalUrl)
+    : null;
   if (exactPageFeed) return { mechanism: "rss", feedUrl: exactPageFeed };
 
   if (resolvedUrl.toString() !== `${origin}/`) {
@@ -539,6 +629,18 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
   for (const path of FEED_PATHS) {
     const candidate = `${origin}${path}`;
     if (await urlExists(candidate)) return { mechanism: "rss", feedUrl: candidate };
+  }
+
+  const listingSample =
+    exactPageHtml && !isArticleShapedPath(new URL(exactPage.finalUrl).pathname)
+      ? extractListingSample(exactPageHtml, exactPage.finalUrl)
+      : [];
+  if (listingSample.length > 0) {
+    return {
+      mechanism: "listing",
+      listingUrl: exactPage.finalUrl,
+      listingSample,
+    };
   }
 
   return { mechanism: null };

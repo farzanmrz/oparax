@@ -83,7 +83,7 @@ export function SourceRow({
         <span
           className={`ml-2 shrink-0 text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
         >
-          {status === "pending" ? "Pending" : (statusLabel ?? "Couldn’t set up")}
+          {status === "pending" ? "Pending" : (statusLabel ?? "Couldn't set up")}
         </span>
       ) : null}
       <button

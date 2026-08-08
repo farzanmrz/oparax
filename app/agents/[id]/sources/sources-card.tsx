@@ -31,6 +31,12 @@ function XLogo() {
 // Grace period so a poll already in flight when the user adds or dismisses a site can't
 // clobber that optimistic change for the ~2s until the next poll catches up with the server.
 const RECONCILE_GRACE_MS = 2500;
+const FAILED_STATUS_COPY: Readonly<Record<string, string>> = {
+  no_detection_mechanism: "No articles found to watch",
+  unreachable: "Couldn't reach this site",
+  schema_validation_failed: "Setup failed",
+  unexpected_error: "Setup failed",
+};
 
 /** Onboarded display facts for one website chip, keyed by the config's exact url string
  *  (`agents.websites` entries and `source_configs.url` share the same normalized form).
@@ -377,6 +383,7 @@ export function SourcesCard({
               label={websiteName(url)}
               onRemove={() => removeSite(url)}
               status="failed"
+              statusLabel={FAILED_STATUS_COPY[failedUrls.get(url) ?? ""] ?? "Couldn't set up"}
               tone="website"
             />
           ))}
