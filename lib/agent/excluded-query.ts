@@ -1,6 +1,6 @@
 // lib/agent/excluded-query.ts
 //
-// Pure query + shaping for the Excluded tab's list. source_posts carries deny-all RLS (zero
+// Pure query + shaping for the Skipped Posts tab's list. source_posts carries deny-all RLS (zero
 // SELECT policies) — the caller MUST pass the SERVICE-ROLE client here, exactly like
 // feed-query.ts's own top-of-file warning: an owner-scoped cookie client would silently get
 // zero source_posts rows back even though excluded_posts' own RLS would allow the read,
@@ -26,14 +26,6 @@ function hostname(url: string | null) {
   }
 }
 
-function faviconUrl(url: string | null) {
-  try {
-    return url ? `${new URL(url).origin}/favicon.ico` : null;
-  } catch {
-    return null;
-  }
-}
-
 export type ExcludedPost = {
   id: string; // excluded_posts.id
   sourcePost: {
@@ -42,12 +34,12 @@ export type ExcludedPost = {
     text: string;
     postedAt: string | null;
     xPostId: string | null;
-    // Branches the card x-vs-website. Website display data comes only from this desk's active
-    // configs, matching feed-query; a source URL hostname remains the display fallback.
+    // Branches the card x-vs-website. Website display data comes only from this desk's
+    // config lineage, matching feed-query; a source URL hostname remains the display fallback.
     source: string;
     url: string | null;
     siteName: string | null;
-    faviconUrl: string | null;
+    siteDomain: string | null;
   };
   onBeatReason: string;
   excludedAt: string;
@@ -69,7 +61,7 @@ export async function fetchExcludedPosts(
   let query = client
     .from("excluded_posts")
     .select(
-      "id, on_beat_reason, excluded_at, source_posts(id, author_handle, text, posted_at, x_post_id, source, url)",
+      "id, on_beat_reason, excluded_at, source_posts(id, author_handle, text, posted_at, x_post_id, source, source_config_id, url)",
     )
     .eq("agent_id", agentId)
     .order("excluded_at", { ascending: false })
@@ -78,20 +70,18 @@ export async function fetchExcludedPosts(
   const { data, error } = await query.limit(limit);
   if (error) throw error;
 
-  // Reporter-facing site labels mirror the Feed's active source-config map. This is display
-  // data only: excluded delivery ownership remains defined by excluded_posts.agent_id.
-  const siteNames = new Map<string, string>();
+  // Reporter-facing site labels mirror the Feed's config-id map. This is display data only:
+  // excluded delivery ownership remains defined by excluded_posts.agent_id.
+  const siteNamesByConfigId = new Map<string, string>();
   {
     const { data: configs, error: configError } = await client
       .from("source_configs")
-      .select("domain, display_name")
-      .eq("agent_id", agentId)
-      .eq("status", "active");
+      .select("id, display_name")
+      .eq("agent_id", agentId);
     if (configError)
       console.error("fetchExcludedPosts: source_configs label read failed", configError);
     for (const config of configs ?? []) {
-      if (config.display_name)
-        siteNames.set(config.domain.replace(/^www\./, ""), config.display_name);
+      if (config.display_name) siteNamesByConfigId.set(config.id, config.display_name);
     }
   }
 
@@ -109,8 +99,12 @@ export async function fetchExcludedPosts(
         source: sourcePost.source,
         url: sourcePost.url,
         siteName:
-          sourcePost.source === "x" ? null : ((host ? siteNames.get(host) : undefined) ?? host),
-        faviconUrl: sourcePost.source === "x" ? null : faviconUrl(sourcePost.url),
+          sourcePost.source === "x"
+            ? null
+            : ((sourcePost.source_config_id
+                ? siteNamesByConfigId.get(sourcePost.source_config_id)
+                : undefined) ?? host),
+        siteDomain: sourcePost.source === "x" ? null : hostname(sourcePost.url),
       },
       onBeatReason: row.on_beat_reason,
       excludedAt: row.excluded_at,

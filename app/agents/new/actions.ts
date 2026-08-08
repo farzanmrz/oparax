@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { checkBeatIntelligible } from "@/lib/agent/beat-gate";
 import { isOverrideOwner } from "@/lib/owner-allowlist";
 import {
   markPendingSourceFailed,
@@ -13,10 +14,25 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
+import {
+  checkHandlesExist,
+  type HandleCheckFailure,
+  refreshStaleHandleChecks,
+} from "@/lib/x/handle-check";
 import { getXLinkState } from "@/lib/x/link-state";
 import type { ActionResult } from "../[id]/actions";
 
 export type CreateDeskResult = { id: string; error?: never } | { id?: never; error: string };
+
+function describeInvalidHandles(invalid: HandleCheckFailure[]): string {
+  return `${invalid
+    .map((item) =>
+      item.status === "suspended"
+        ? `@${item.handle} is suspended.`
+        : `@${item.handle} doesn't exist on X.`,
+    )
+    .join(" ")} Remove them to continue.`;
+}
 
 /**
  * Create a desk (an `agents` row) as the signed-in reporter. The client starts voice extraction
@@ -43,6 +59,7 @@ export async function createDesk(input: {
 
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this agent should watch." };
+  if (beat.length > 2000) return { error: "Keep the beat under 2,000 characters." };
 
   // Every tracked handle is charset-validated too — not just normalized. An unvalidated handle
   // flows into the ingestion worker's globally-shared X stream rule where it could inject stream
@@ -58,7 +75,9 @@ export async function createDesk(input: {
         error: `"${raw.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
       };
     }
-    if (!trackedHandles.includes(handle)) trackedHandles.push(handle);
+    if (!trackedHandles.some((tracked) => tracked.toLowerCase() === handle.toLowerCase())) {
+      trackedHandles.push(handle);
+    }
   }
   if (trackedHandles.length === 0) {
     return { error: "Add at least one tracked X account." };
@@ -103,6 +122,25 @@ export async function createDesk(input: {
     }
     reporterHandle = override;
   }
+
+  // OAuth proves the linked account exists, including when it is also tracked. Keep its typed
+  // casing in `trackedHandles`, but compare identity case-insensitively because X handles are.
+  const connectedHandleKey = connectedHandle.toLowerCase();
+  const existenceTargets = trackedHandles.filter(
+    (tracked) => tracked.toLowerCase() !== connectedHandleKey,
+  );
+  if (reporterHandle.toLowerCase() !== connectedHandleKey) existenceTargets.push(reporterHandle);
+  const existence = await checkHandlesExist(existenceTargets, user.id);
+  if (existence.ok && existence.invalid.length > 0) {
+    return { error: describeInvalidHandles(existence.invalid) };
+  }
+  if (!(await checkBeatIntelligible(beat, user.id)).pass) {
+    return {
+      error:
+        "That beat doesn't read as something an agent can monitor — describe the news it should watch.",
+    };
+  }
+  after(() => refreshStaleHandleChecks(user.id));
 
   const { data, error } = await supabase
     .from("agents")

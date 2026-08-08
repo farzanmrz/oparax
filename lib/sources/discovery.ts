@@ -8,7 +8,12 @@
 // still never uses it to gate what the fetcher is willing to do. Pure I/O module: no
 // Supabase, no React.
 
-import { fetchWithTimeout } from "@/lib/http-fetch";
+import type { LookupAddress } from "node:dns";
+import { lookup } from "node:dns/promises";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
+import { isIP } from "node:net";
+import { Readable } from "node:stream";
 
 const SITEMAP_PATHS = [
   "/sitemap.xml",
@@ -40,35 +45,220 @@ export async function fetchSafeSource(
       throw new Error(`Source ${endpoint} redirected to an unsafe URL`);
     }
     visited.add(current.toString());
-    const res = await fetchWithTimeout("Source", endpoint, current.toString(), {
-      method: "GET",
-      redirect: "manual",
-    });
+    const res = await fetchPinnedSource(endpoint, current);
     if (res.status < 300 || res.status >= 400) return res;
     const location = res.headers.get("location");
     if (!location) return res;
+    await res.body?.cancel();
     current = new URL(location, current);
   }
   throw new Error(`Source ${endpoint} exceeded the redirect limit`);
+}
+
+/** Resolves a hostname once, refuses every non-public answer, then hands the selected
+ *  address to Node's connection layer through `lookup`. Supplying that callback is important:
+ *  validating DNS and then using global fetch would let a second DNS lookup connect to a
+ *  rebinding answer. `https.request` keeps the URL hostname as SNI and for certificate
+ *  verification while its socket connects only to this address. */
+async function fetchPinnedSource(endpoint: string, url: URL): Promise<Response> {
+  const deadline = Date.now() + 15_000;
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  const addresses = await lookupBeforeDeadline(endpoint, hostname, deadline);
+  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicIpAddress(address))) {
+    throw new Error(`Source ${endpoint} resolved to an unsafe address`);
+  }
+  const request = url.protocol === "https:" ? httpsRequest : httpRequest;
+
+  return new Promise<Response>((resolve, reject) => {
+    let timedOut = false;
+    let responseStarted = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      reject(new Error(`Source ${endpoint} timed out after 15s`));
+      return;
+    }
+    const req = request(
+      url,
+      {
+        headers: {
+          accept: "text/html, application/xml, application/rss+xml;q=0.9, */*;q=0.8",
+          "accept-encoding": "identity",
+          "user-agent": "Oparax source discovery",
+        },
+        method: "GET",
+        lookup: (_hostname, options, callback) => {
+          if (options.all) {
+            callback(null, addresses);
+            return;
+          }
+          const destination =
+            addresses.find((address) => !options.family || address.family === options.family) ??
+            addresses[0];
+          callback(null, destination.address, destination.family);
+        },
+      },
+      (res) => {
+        responseStarted = true;
+        const status = res.statusCode ?? 500;
+        if (status < 200 || status > 599) {
+          if (timeout) clearTimeout(timeout);
+          res.resume();
+          reject(new Error(`Source ${endpoint} returned an invalid HTTP status`));
+          return;
+        }
+        const clearRequestTimeout = () => {
+          if (timeout) clearTimeout(timeout);
+        };
+        res.once("end", clearRequestTimeout);
+        res.once("error", clearRequestTimeout);
+        res.once("close", clearRequestTimeout);
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(res.headers)) {
+          if (Array.isArray(value)) {
+            for (const entry of value) headers.append(name, entry);
+          } else if (value !== undefined) {
+            headers.set(name, String(value));
+          }
+        }
+        const body = [204, 205, 304].includes(status)
+          ? null
+          : (Readable.toWeb(res) as ReadableStream);
+        resolve(
+          new Response(body, {
+            headers,
+            status,
+            statusText: res.statusMessage,
+          }),
+        );
+      },
+    );
+    timeout = setTimeout(() => {
+      timedOut = true;
+      req.destroy(new Error(`Source ${endpoint} timed out after 15s`));
+    }, remaining);
+    req.once("error", (err) => {
+      if (timeout) clearTimeout(timeout);
+      if (responseStarted) return;
+      if (timedOut) {
+        reject(new Error(`Source ${endpoint} timed out after 15s`));
+      } else {
+        reject(err);
+      }
+    });
+    req.end();
+  });
+}
+
+async function lookupBeforeDeadline(
+  endpoint: string,
+  hostname: string,
+  deadline: number,
+): Promise<LookupAddress[]> {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) throw new Error(`Source ${endpoint} timed out after 15s`);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return (await Promise.race([
+      lookup(hostname, { all: true, verbatim: true }),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`Source ${endpoint} timed out after 15s`)),
+          remaining,
+        );
+      }),
+    ])) as LookupAddress[];
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 async function sourceFetch(endpoint: string, url: string): Promise<Response> {
   return fetchSafeSource(endpoint, url, new URL(url).hostname);
 }
 
-/** Hostnames this server must never be talked into fetching: loopback, private-range and
- *  link-local IP literals (169.254.169.254 is the cloud metadata endpoint). Matched as
- *  literals only — this is not a DNS-resolving SSRF guard, it is the cheap check that stops
- *  a hostile site from naming an internal address outright. */
-const PRIVATE_IPV4_PATTERNS = [
-  /^0\./,
-  /^10\./,
-  /^100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
-  /^127\./,
-  /^169\.254\./,
-  /^172\.(?:1[6-9]|2\d|3[01])\./,
-  /^192\.168\./,
-];
+function ipv4Value(address: string): number {
+  return address.split(".").reduce((value, part) => (value << 8) | Number(part), 0) >>> 0;
+}
+
+function ipv4InRange(address: string, base: string, prefixLength: number): boolean {
+  const mask = prefixLength === 0 ? 0 : (0xffffffff << (32 - prefixLength)) >>> 0;
+  return (ipv4Value(address) & mask) === (ipv4Value(base) & mask);
+}
+
+function ipv6Value(address: string): bigint {
+  let normalized = address.toLowerCase();
+  const lastColon = normalized.lastIndexOf(":");
+  const ipv4Tail = normalized.slice(lastColon + 1);
+  if (ipv4Tail.includes(".")) {
+    const value = ipv4Value(ipv4Tail);
+    normalized = `${normalized.slice(0, lastColon)}:${(value >>> 16).toString(16)}:${(
+      value & 0xffff
+    ).toString(16)}`;
+  }
+  const [head = "", tail = ""] = normalized.split("::");
+  const headParts = head ? head.split(":") : [];
+  const tailParts = tail ? tail.split(":") : [];
+  const parts = [
+    ...headParts,
+    ...Array.from({ length: 8 - headParts.length - tailParts.length }, () => "0"),
+    ...tailParts,
+  ];
+  return parts.reduce((value, part) => (value << 16n) | BigInt(`0x${part}`), 0n);
+}
+
+function ipv6InRange(address: bigint, base: bigint, prefixLength: bigint): boolean {
+  return address >> (128n - prefixLength) === base >> (128n - prefixLength);
+}
+
+/** Accept only globally routable unicast destinations. Besides the usual private, loopback,
+ *  and link-local blocks, this excludes documentation, benchmarking, multicast, and other
+ *  reserved address space so no special-use address is reachable through a hostname either. */
+function isPublicIpAddress(address: string): boolean {
+  if (isIP(address) === 4) {
+    const nonPublicRanges: readonly (readonly [string, number])[] = [
+      ["0.0.0.0", 8],
+      ["10.0.0.0", 8],
+      ["100.64.0.0", 10],
+      ["127.0.0.0", 8],
+      ["169.254.0.0", 16],
+      ["172.16.0.0", 12],
+      ["192.0.0.0", 24],
+      ["192.0.2.0", 24],
+      ["192.31.196.0", 24],
+      ["192.52.193.0", 24],
+      ["192.88.99.0", 24],
+      ["192.168.0.0", 16],
+      ["192.175.48.0", 24],
+      ["198.18.0.0", 15],
+      ["198.51.100.0", 24],
+      ["203.0.113.0", 24],
+      ["224.0.0.0", 4],
+      ["240.0.0.0", 4],
+    ];
+    return !nonPublicRanges.some(([base, prefixLength]) =>
+      ipv4InRange(address, base, prefixLength),
+    );
+  }
+  if (isIP(address) !== 6) return false;
+
+  const value = ipv6Value(address);
+  const mappedIpv4 = 0xffffn << 32n;
+  if (ipv6InRange(value, mappedIpv4, 96n)) {
+    const mapped = Number(value & 0xffffffffn);
+    return isPublicIpAddress(
+      `${mapped >>> 24}.${(mapped >>> 16) & 0xff}.${(mapped >>> 8) & 0xff}.${mapped & 0xff}`,
+    );
+  }
+  // 2000::/3 is global unicast. The exclusions inside it are IANA special-purpose ranges.
+  return (
+    ipv6InRange(value, 0x20000000000000000000000000000000n, 3n) &&
+    !ipv6InRange(value, 0x20010000000000000000000000000000n, 23n) &&
+    !ipv6InRange(value, 0x20010db8000000000000000000000000n, 32n) &&
+    !ipv6InRange(value, 0x20020000000000000000000000000000n, 16n) &&
+    !ipv6InRange(value, 0x3fff0000000000000000000000000000n, 20n)
+  );
+}
 
 /** Exported so `onboardSource` can reject a reporter-pasted URL that names a private/
  *  loopback/link-local address directly — `isSafeDiscoveredUrl`'s same-site check doesn't
@@ -79,7 +269,7 @@ export function isPrivateHostname(hostname: string): boolean {
   // strip a trailing FQDN dot — found in QC review (#110): "localhost." (a valid absolute
   // hostname per DNS) passed both the exact-match and suffix checks below unstripped, a
   // second route to the same hole a direct "localhost." paste already had.
-  let host = hostname
+  const host = hostname
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
     .replace(/\.$/, "");
@@ -87,20 +277,7 @@ export function isPrivateHostname(hostname: string): boolean {
     return true;
   }
   if (!host.includes(":") && !host.includes(".")) return true;
-  const dottedMapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (dottedMapped) {
-    host = dottedMapped[1];
-  } else {
-    const hexMapped = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
-    if (hexMapped) {
-      const high = Number.parseInt(hexMapped[1], 16);
-      const low = Number.parseInt(hexMapped[2], 16);
-      host = `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
-    }
-  }
-  if (PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(host))) return true;
-  // IPv6: ::1 loopback, fc00::/7 unique-local, fe80::/10 link-local.
-  return host === "::1" || /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host);
+  return isIP(host) !== 0 && !isPublicIpAddress(host);
 }
 
 /** Guards a URL that came from site-controlled content — a sitemap index's `<loc>` — before
@@ -166,6 +343,18 @@ async function isOriginReachable(origin: string): Promise<boolean> {
     if (err instanceof Error && err.message.includes("timed out after")) return true;
     return false;
   }
+}
+
+export async function checkOriginReachable(inputUrl: URL): Promise<boolean> {
+  if (await isOriginReachable(inputUrl.origin)) return true;
+  const toggledHostname = inputUrl.hostname.startsWith("www.")
+    ? inputUrl.hostname.slice(4)
+    : `www.${inputUrl.hostname}`;
+  if (!toggledHostname) return false;
+  const toggledUrl = new URL(inputUrl.toString());
+  toggledUrl.hostname = toggledHostname;
+  if (toggledUrl.hostname !== toggledHostname) return false;
+  return isOriginReachable(toggledUrl.origin);
 }
 
 /** Extracts `<link rel="alternate" type="application/rss+xml" href="...">` from an HTML

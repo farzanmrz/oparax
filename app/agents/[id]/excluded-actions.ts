@@ -34,6 +34,6 @@ export async function fetchOwnedExcludedPage(deskId: string, cursor: ExcludedCur
       }),
     };
   } catch {
-    return { ok: false as const, error: "Could not load more excluded posts." };
+    return { ok: false as const, error: "Could not load more skipped posts." };
   }
 }

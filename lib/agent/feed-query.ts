@@ -30,6 +30,7 @@ type SourcePost = {
   posted_at: string | null;
   x_post_id: string | null;
   source: string;
+  source_config_id: string | null;
   url: string | null;
 };
 type AssignmentRow = { story_id: string; source_post_id: string };
@@ -104,15 +105,6 @@ function hostname(url: string | null) {
     // www-stripped so site labels read "mundodeportivo.com" whichever host variant the
     // sitemap resolved, matching draft-pipeline's hostnameOf match rule.
     return url ? new URL(url).hostname.replace(/^www\./, "") : null;
-  } catch {
-    return null;
-  }
-}
-function faviconUrl(url: string | null) {
-  try {
-    // The /favicon.ico convention rather than a stored asset: most news sites serve it, and
-    // the card degrades to its generic globe icon when one doesn't (see FeedSourceView).
-    return url ? `${new URL(url).origin}/favicon.ico` : null;
   } catch {
     return null;
   }
@@ -247,7 +239,7 @@ async function hydrate(
     if (!part.length) continue;
     const { data, error } = await supabase
       .from("source_posts")
-      .select("id, author_handle, text, posted_at, x_post_id, source, url")
+      .select("id, author_handle, text, posted_at, x_post_id, source, source_config_id, url")
       .in("id", part);
     if (error) throw error;
     for (const post of data ?? []) sourcePosts.set(post.id, post);
@@ -312,21 +304,19 @@ async function hydrate(
         console.warn("Skipping orphaned feed story", { agentId, storyId: entry.story.id });
       return Boolean(entry.source);
     });
-  // Reporter-facing site labels: this desk's own onboarded configs, keyed by www-stripped
-  // domain. Display-only — delivery routing stays on source_config_id (AGENTS.md); this map
-  // merely swaps "mundodeportivo.com" for "Mundo Deportivo" on the card, and rows onboarded
-  // before display names existed hold the hostname anyway, so the swap is a no-op for them.
+  // Reporter-facing site labels are resolved through the delivery's config lineage, never by
+  // hostname. The agent filter prevents another desk's config from affecting this feed; absent
+  // lineage (including configs deleted with ON DELETE SET NULL) keeps the hostname fallback.
   // Non-fatal on error: a missing label must never take the feed down with it.
-  const siteNames = new Map<string, string>();
+  const siteNamesByConfigId = new Map<string, string>();
   {
     const { data, error } = await supabase
       .from("source_configs")
-      .select("domain, display_name")
-      .eq("agent_id", agentId)
-      .eq("status", "active");
+      .select("id, display_name")
+      .eq("agent_id", agentId);
     if (error) console.error("fetchFeedPage: source_configs label read failed", error);
     for (const row of data ?? []) {
-      if (row.display_name) siteNames.set(row.domain.replace(/^www\./, ""), row.display_name);
+      if (row.display_name) siteNamesByConfigId.set(row.id, row.display_name);
     }
   }
   const tweets = await Promise.all(
@@ -339,8 +329,13 @@ async function hydrate(
     const sourceView: FeedSourceView = {
       kind,
       authorHandle: source.author_handle,
-      siteName: kind === "x" ? null : ((host ? siteNames.get(host) : undefined) ?? host),
-      faviconUrl: kind === "x" ? null : faviconUrl(source.url),
+      siteName:
+        kind === "x"
+          ? null
+          : ((source.source_config_id
+              ? siteNamesByConfigId.get(source.source_config_id)
+              : undefined) ?? host),
+      siteDomain: kind === "x" ? null : hostname(source.url),
       url:
         kind === "x" && source.x_post_id && source.author_handle
           ? `https://x.com/${source.author_handle}/status/${source.x_post_id}`

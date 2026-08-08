@@ -159,6 +159,15 @@ require_clean_tree() {
   fi
 }
 
+# Self-heal the scratch dir's ignore file before any clean-tree check. That one
+# tracked file is what keeps .feature/ (critique outputs, plan-<N>.md) invisible
+# to git; without it every scratch artifact reads as untracked and walls the
+# branch cut. Restoring a tracked file to its committed content discards no work.
+if git ls-files --error-unmatch .feature/.gitignore >/dev/null 2>&1 \
+   && [ ! -f .feature/.gitignore ]; then
+  git checkout -- .feature/.gitignore >&2 || true
+fi
+
 # Refresh only the base ref. Never checkout local beta: it may legitimately be
 # checked out in another worktree.
 git fetch --prune origin beta >&2

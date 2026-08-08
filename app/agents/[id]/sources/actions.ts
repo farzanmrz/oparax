@@ -81,15 +81,17 @@ export async function startWebsiteOnboarding(
 }
 
 /**
- * Polls `source_configs` for this desk's pending/failed onboarding attempts — the browser's
+ * Polls `source_configs` for this desk's source status and model-resolved labels — the browser's
  * one channel into this deny-all-RLS table, ownership proved via the same RLS `agents` read
  * every other action in this file already uses (a row coming back IS the proof), then read
  * via the admin client, mirroring `getExtractionProgress`'s ownership-then-admin-read shape.
  */
-export async function getWebsiteOnboardingStatus(
-  deskId: string,
-): Promise<
-  { ok: true; entries: { url: string; status: string; errorCode?: string }[] } | { ok: false }
+export async function getWebsiteOnboardingStatus(deskId: string): Promise<
+  | {
+      ok: true;
+      entries: { url: string; status: string; displayName?: string; errorCode?: string }[];
+    }
+  | { ok: false }
 > {
   const supabase = await createClient();
   const { data: owned, error: ownError } = await supabase
@@ -105,9 +107,9 @@ export async function getWebsiteOnboardingStatus(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("source_configs")
-    .select("url, status")
+    .select("url, status, display_name")
     .eq("agent_id", deskId)
-    .in("status", ["pending", "failed_validation"]);
+    .in("status", ["active", "pending", "failed_validation"]);
   if (error || !data) {
     console.error("getWebsiteOnboardingStatus: source_configs read failed", error);
     return { ok: false };
@@ -117,6 +119,7 @@ export async function getWebsiteOnboardingStatus(
     entries: data.map((row) => ({
       url: row.url,
       status: row.status,
+      displayName: row.display_name ?? undefined,
       errorCode: row.status === "failed_validation" ? "failed" : undefined,
     })),
   };

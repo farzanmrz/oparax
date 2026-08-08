@@ -41,10 +41,6 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
         kind: extraction.status === "running" ? "extraction_running" : "extraction_failed",
         initial: {
           stage: extraction.stage,
-          progressNote: extraction.progressNote,
-          reasoningByStage: extraction.reasoningByStage,
-          textByStage: extraction.textByStage,
-          toolActivities: extraction.toolActivities,
           status: extraction.status,
           errorCode: extraction.errorCode,
           corpusPostCount: extraction.corpusPostCount,

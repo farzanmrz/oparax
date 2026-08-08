@@ -17,6 +17,7 @@ export type HeaderDesk = {
   beat: string;
   status: string;
   needsReviewCount: number;
+  controlsState: "hidden" | "delete-only" | "full";
 };
 
 /**
@@ -62,7 +63,11 @@ export function SiteHeader({
           <Separator className="hidden h-4 desk:block" orientation="vertical" />
           <DeskSwitcher desks={desks} />
           {currentDesk ? (
-            <DeskControls deskId={currentDesk.id} status={currentDesk.status} />
+            <DeskControls
+              controlsState={currentDesk.controlsState}
+              deskId={currentDesk.id}
+              status={currentDesk.status}
+            />
           ) : null}
         </div>
 

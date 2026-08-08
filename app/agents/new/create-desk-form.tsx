@@ -2,24 +2,18 @@
 
 import { GlobeIcon, Loader2Icon, UserRoundIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import {
-  type ClipboardEvent,
-  type KeyboardEvent,
-  type ReactNode,
-  useEffect,
-  useState,
-  useTransition,
-} from "react";
+import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { BandCard } from "@/components/band-card";
-import { ChipsField } from "@/components/chips-field";
 import { PageHeading } from "@/components/page-heading";
+import { SiteFavicon } from "@/components/site-favicon";
+import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { splitList } from "@/lib/split-list";
-import { MAX_WEBSITES } from "@/lib/websites";
-import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
+import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
+import { MAX_TRACKED_HANDLES as MAX_TRACKED, normalizeValidHandle } from "@/lib/x/handle";
 import { mergeHandles, splitHandles } from "@/lib/x/handle-input";
 import { startExtraction } from "../[id]/voice/actions";
 import { createDesk, startWebsiteOnboardingAtCreation } from "./actions";
@@ -86,6 +80,8 @@ export function CreateDeskForm({
   const [handleDraft, setHandleDraft] = useState("");
   const [websites, setWebsites] = useState<string[]>([]);
   const [websiteDraft, setWebsiteDraft] = useState("");
+  const [handleFieldError, setHandleFieldError] = useState<string | null>(null);
+  const [websiteFieldError, setWebsiteFieldError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [createdDeskId, setCreatedDeskId] = useState<string | null>(null);
   // Admin sessions default the voice-override field to the standing test reporter; everyone
@@ -133,46 +129,72 @@ export function CreateDeskForm({
   const atHandleLimit = handles.length >= MAX_TRACKED;
   const atWebsiteLimit = websites.length >= MAX_WEBSITES;
 
-  function commitHandleDraft() {
-    const parts = splitHandles(handleDraft);
-    if (parts.length) setHandles((current) => mergeHandles(current, parts));
-    setHandleDraft("");
+  function commitHandleParts(parts: string[]): string[] {
+    const valid: string[] = [];
+    const rejected: string[] = [];
+    let overflowed: string | null = null;
+    for (const part of parts) {
+      const normalized = normalizeValidHandle(part);
+      if (!normalized) {
+        rejected.push(part);
+        continue;
+      }
+      if (
+        handles.some((handle) => handle.toLowerCase() === normalized.toLowerCase()) ||
+        valid.some((handle) => handle.toLowerCase() === normalized.toLowerCase())
+      ) {
+        continue;
+      }
+      if (handles.length + valid.length >= MAX_TRACKED) {
+        rejected.push(part);
+        overflowed = part;
+        continue;
+      }
+      valid.push(normalized);
+    }
+    if (valid.length) setHandles((current) => mergeHandles(current, valid));
+    setHandleFieldError(
+      rejected.length
+        ? overflowed
+          ? `Maximum of ${MAX_TRACKED} X accounts reached; couldn't add "${overflowed}".`
+          : `"${rejected[0]}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`
+        : null,
+    );
+    return rejected;
   }
 
-  function onTrackedKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter" && event.key !== ",") return;
-    event.preventDefault();
-    commitHandleDraft();
-  }
-
-  function onTrackedPaste(event: ClipboardEvent<HTMLInputElement>) {
-    const text = event.clipboardData.getData("text");
-    const incoming = splitHandles(`${handleDraft} ${text}`);
-    if (!incoming.length) return;
-    event.preventDefault();
-    setHandles((current) => mergeHandles(current, incoming));
-    setHandleDraft("");
-  }
-
-  function commitWebsiteDraft() {
-    const parts = splitList(websiteDraft);
-    if (parts.length) setWebsites((current) => mergeWebsites(current, parts));
-    setWebsiteDraft("");
-  }
-
-  function onWebsiteKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter" && event.key !== ",") return;
-    event.preventDefault();
-    commitWebsiteDraft();
-  }
-
-  function onWebsitePaste(event: ClipboardEvent<HTMLInputElement>) {
-    const text = event.clipboardData.getData("text");
-    const incoming = splitList(`${websiteDraft} ${text}`);
-    if (!incoming.length) return;
-    event.preventDefault();
-    setWebsites((current) => mergeWebsites(current, incoming));
-    setWebsiteDraft("");
+  function commitWebsiteParts(parts: string[]): string[] {
+    const valid: string[] = [];
+    const rejected: string[] = [];
+    let overflowed: string | null = null;
+    for (const part of parts) {
+      const normalized = normalizeSourceUrl(part)?.href;
+      if (!normalized) {
+        rejected.push(part);
+        continue;
+      }
+      if (
+        websites.some((website) => website.toLowerCase() === normalized.toLowerCase()) ||
+        valid.some((website) => website.toLowerCase() === normalized.toLowerCase())
+      ) {
+        continue;
+      }
+      if (websites.length + valid.length >= MAX_WEBSITES) {
+        rejected.push(part);
+        overflowed = part;
+        continue;
+      }
+      valid.push(normalized);
+    }
+    if (valid.length) setWebsites((current) => mergeWebsites(current, valid));
+    setWebsiteFieldError(
+      rejected.length
+        ? overflowed
+          ? `Maximum of ${MAX_WEBSITES} news websites reached; couldn't add "${overflowed}".`
+          : `"${rejected[0]}" isn't a valid website address.`
+        : null,
+    );
+    return rejected;
   }
 
   function handleSubmit(event: React.FormEvent) {
@@ -196,12 +218,30 @@ export function CreateDeskForm({
       return;
     }
 
-    const finalHandles = mergeHandles(handles, splitHandles(handleDraft));
+    const handleParts = splitHandles(handleDraft);
+    const rejectedHandles = commitHandleParts(handleParts);
+    if (rejectedHandles.length) return;
+    const finalHandles = mergeHandles(
+      handles,
+      handleParts.flatMap((part) => {
+        const normalized = normalizeValidHandle(part);
+        return normalized ? [normalized] : [];
+      }),
+    );
     if (!finalHandles.length) {
       setFormError("Add at least one tracked X account.");
       return;
     }
-    const finalWebsites = mergeWebsites(websites, splitList(websiteDraft));
+    const websiteParts = splitList(websiteDraft);
+    const rejectedWebsites = commitWebsiteParts(websiteParts);
+    if (rejectedWebsites.length) return;
+    const finalWebsites = mergeWebsites(
+      websites,
+      websiteParts.flatMap((part) => {
+        const normalized = normalizeSourceUrl(part)?.href;
+        return normalized ? [normalized] : [];
+      }),
+    );
 
     startTransition(async () => {
       const result = await createDesk({
@@ -247,12 +287,12 @@ export function CreateDeskForm({
       }
 
       try {
-        await startExtraction(deskId);
+        const extraction = await startExtraction(deskId);
+        if (!extraction.ok) toast.error(extraction.message);
       } finally {
-        // A created agent is recoverable from Feed/Voice even if the extraction start itself
-        // returns a failure. Replacing prevents Back from reopening a committed form. Sources
-        // is the landing page so creation-time onboarding's pending chips are visible.
-        router.replace(`/agents/${deskId}/sources`);
+        // A created agent is recoverable from Feed/Guide even if extraction start fails.
+        // Feed is the landing page because setup progress renders there immediately.
+        router.replace(`/agents/${deskId}`);
       }
     });
   }
@@ -329,6 +369,7 @@ export function CreateDeskForm({
                 id="agent-beat"
                 className="min-h-44 flex-1 resize-none rounded-md bg-[var(--input-bg)] text-base desk:text-sm"
                 disabled={formDisabled}
+                maxLength={2000}
                 onChange={(event) => setBeat(event.target.value)}
                 placeholder="e.g. FC Barcelona first-team news: transfers in and out, contract talks, injuries and recoveries, matchday lineups and results, and manager or board decisions. Rival clubs only when a story directly affects Barça. Skip basketball and other sections, women's and academy teams, and fan or gaming content."
                 value={beat}
@@ -357,59 +398,72 @@ export function CreateDeskForm({
               <FieldLabel help="Type or paste usernames — separate several with spaces, commas, or new lines. This agent watches these accounts for news.">
                 X Accounts ({handles.length}/{MAX_TRACKED})
               </FieldLabel>
-              <ChipsField
-                chipClassName="rounded-md bg-[var(--chip-x-bg)]"
-                chipLabel={(handle) => `@${handle}`}
-                chips={handles}
-                className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
-                hideInput={atHandleLimit}
-                addAriaLabel="Add X account"
-                atLimitMessage={`Maximum of ${MAX_TRACKED} X accounts reached.`}
-                inputDisabled={formDisabled || atHandleLimit}
-                inputAriaLabel="X accounts"
-                onBlur={commitHandleDraft}
-                onChange={setHandleDraft}
-                onKeyDown={onTrackedKeyDown}
-                onPaste={onTrackedPaste}
-                onRemove={(handle) =>
-                  setHandles((current) => current.filter((value) => value !== handle))
-                }
-                onSubmit={commitHandleDraft}
-                placeholder="e.g. FabrizioRomano, DavidOrnstein, Glongari, talkfcb_, fcbarcelona, BarcaUniversal, BarcaTimes, fcbarcelonaes, Barca_Buzz, TotalBarca, BarcaWorld_, laligaen, MundoDeportivo, sport, managingbarca, barcacentre, Gerardanyol, siegersayss, AlbertRoge, footmercato"
-                removeDisabled={formDisabled}
-                removeLabel={(handle) => `Remove @${handle}`}
-                value={handleDraft}
-              />
+              {handles.length > 0 ? (
+                <ul className="grid gap-2">
+                  {handles.map((handle) => (
+                    <SourceRow
+                      key={handle}
+                      label={`@${handle}`}
+                      onRemove={() =>
+                        setHandles((current) => current.filter((value) => value !== handle))
+                      }
+                      removeDisabled={formDisabled}
+                      tone="x"
+                    />
+                  ))}
+                </ul>
+              ) : null}
+              {!atHandleLimit ? (
+                <AddSourceField
+                  ariaLabel="Add X accounts"
+                  className="mt-0"
+                  disabled={formDisabled}
+                  onChange={setHandleDraft}
+                  onCommitParts={commitHandleParts}
+                  placeholder="e.g. FabrizioRomano, DavidOrnstein, Glongari"
+                  value={handleDraft}
+                />
+              ) : (
+                <span className="sr-only">Maximum of {MAX_TRACKED} X accounts reached.</span>
+              )}
+              {handleFieldError ? <FieldMessage error>{handleFieldError}</FieldMessage> : null}
             </div>
 
             <div className="flex flex-1 flex-col gap-1.5">
               <FieldLabel help="Type or paste site addresses — a homepage, a section, or any article link works. This agent watches these sites for news; setup runs automatically after the agent is created.">
                 News Websites ({websites.length}/{MAX_WEBSITES})
               </FieldLabel>
-              <ChipsField
-                chipClassName="rounded-md bg-[var(--chip-web-bg)]"
-                chipLabel={(site) => site}
-                chips={websites}
-                className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
-                hideInput={atWebsiteLimit}
-                addAriaLabel="Add news website"
-                atLimitMessage={`Maximum of ${MAX_WEBSITES} news websites reached.`}
-                inputDisabled={formDisabled || atWebsiteLimit}
-                inputAriaLabel="News websites"
-                inputMode="url"
-                onBlur={commitWebsiteDraft}
-                onChange={setWebsiteDraft}
-                onKeyDown={onWebsiteKeyDown}
-                onPaste={onWebsitePaste}
-                onRemove={(site) =>
-                  setWebsites((current) => current.filter((value) => value !== site))
-                }
-                onSubmit={commitWebsiteDraft}
-                placeholder="e.g. mundodeportivo.com, theathletic.com/football/club/barcelona/"
-                removeDisabled={formDisabled}
-                removeLabel={(site) => `Remove ${site}`}
-                value={websiteDraft}
-              />
+              {websites.length > 0 ? (
+                <ul className="grid gap-2">
+                  {websites.map((site) => (
+                    <SourceRow
+                      icon={<SiteFavicon url={site} />}
+                      key={site}
+                      label={site}
+                      onRemove={() =>
+                        setWebsites((current) => current.filter((value) => value !== site))
+                      }
+                      removeDisabled={formDisabled}
+                      tone="website"
+                    />
+                  ))}
+                </ul>
+              ) : null}
+              {!atWebsiteLimit ? (
+                <AddSourceField
+                  ariaLabel="Add news websites"
+                  className="mt-0"
+                  disabled={formDisabled}
+                  inputMode="url"
+                  onChange={setWebsiteDraft}
+                  onCommitParts={commitWebsiteParts}
+                  placeholder="e.g. mundodeportivo.com, theathletic.com"
+                  value={websiteDraft}
+                />
+              ) : (
+                <span className="sr-only">Maximum of {MAX_WEBSITES} news websites reached.</span>
+              )}
+              {websiteFieldError ? <FieldMessage error>{websiteFieldError}</FieldMessage> : null}
             </div>
           </div>
         </BandCard>

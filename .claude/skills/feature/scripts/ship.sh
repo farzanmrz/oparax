@@ -238,7 +238,14 @@ if [ "$finalize" = "true" ]; then
 
   cleanup_old_feature_branches "$branch"
 
-  rm -rf .feature .superpowers
+  # Wipe the scratch contents but KEEP the tracked .feature/.gitignore: that one
+  # file is what hides every scratch artifact from git. Deleting it here meant
+  # the next feature's .feature/ landed as an untracked directory, tripping
+  # start.sh's require_clean_tree at the branch cut.
+  if [ -d .feature ]; then
+    find .feature -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf {} +
+  fi
+  rm -rf .superpowers
   rmdir .claude/worktrees 2>/dev/null || true
   echo "Finalized $branch; retained it as the current recovery generation."
   exit 0

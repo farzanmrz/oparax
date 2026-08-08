@@ -1,22 +1,12 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import {
-  type ExtractionReasoningByStage,
-  type ExtractionTextByStage,
-  type ExtractionToolActivity,
-  parseExtractionProgress,
-} from "@/lib/voice/extraction-progress-reasoning";
 import { isExtractionRunStale } from "@/lib/voice/extraction-run";
 
 export type ExtractionProgressResult =
   | {
       ok: true;
       stage: string | null;
-      progressNote: string | null;
-      reasoningByStage: ExtractionReasoningByStage;
-      textByStage: ExtractionTextByStage;
-      toolActivities: ExtractionToolActivity[];
       status: string;
       errorCode: string | null;
       /** Counts from the persisted, accumulating corpus — not a per-run fetch total. */
@@ -51,7 +41,7 @@ export async function getOwnedExtractionProgress(
   const admin = createAdminClient();
   const { data, error: progressError } = await admin
     .from("voice_extraction_runs")
-    .select("stage, progress_note, reasoning_partial, status, error_code, updated_at")
+    .select("stage, status, error_code, updated_at")
     .eq("agent_id", deskId)
     .maybeSingle();
   if (progressError) return { ok: false, error: "Could not load this agent." };
@@ -60,10 +50,6 @@ export async function getOwnedExtractionProgress(
     return {
       ok: true,
       stage: null,
-      progressNote: null,
-      reasoningByStage: {},
-      textByStage: {},
-      toolActivities: [],
       status: "none",
       errorCode: null,
     };
@@ -89,15 +75,9 @@ export async function getOwnedExtractionProgress(
   // instead of displaying a dead run forever. The row itself stays reclaimable by startRun.
   const stale = data.status === "running" && isExtractionRunStale(data.updated_at);
 
-  const streamProgress = parseExtractionProgress(data.reasoning_partial, data.stage);
-
   return {
     ok: true,
     stage: data.stage,
-    progressNote: data.progress_note,
-    reasoningByStage: streamProgress.reasoningByStage,
-    textByStage: streamProgress.textByStage,
-    toolActivities: streamProgress.toolActivities,
     status: stale ? "failed" : data.status,
     errorCode: stale ? "stale_run" : data.error_code,
     corpusPostCount: corpusCountResult.count ?? 0,
