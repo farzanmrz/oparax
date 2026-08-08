@@ -57,7 +57,7 @@ export function SetupProgressCard({
       ) : null}
       <BandCard
         icon={failed ? <TriangleAlertIcon /> : <MicVocalIcon />}
-        title={failed ? "Extraction Incomplete" : "Preparing Guide"}
+        title={failed ? "Guide Setup Failed" : "Preparing Guide"}
         variant={failed ? "danger" : "default"}
       >
         <ExtractionChain steps={pipelineSteps(run)} />

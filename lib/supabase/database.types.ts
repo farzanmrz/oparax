@@ -573,6 +573,7 @@ export type Database = {
           posted_at: string | null;
           raw: Json | null;
           source: string;
+          source_config_id: string | null;
           text: string;
           title: string | null;
           url: string | null;
@@ -587,6 +588,7 @@ export type Database = {
           posted_at?: string | null;
           raw?: Json | null;
           source?: string;
+          source_config_id?: string | null;
           text: string;
           title?: string | null;
           url?: string | null;
@@ -601,12 +603,21 @@ export type Database = {
           posted_at?: string | null;
           raw?: Json | null;
           source?: string;
+          source_config_id?: string | null;
           text?: string;
           title?: string | null;
           url?: string | null;
           x_post_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "source_posts_source_config_id_fkey";
+            columns: ["source_config_id"];
+            isOneToOne: false;
+            referencedRelation: "source_configs";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       source_seen_items: {
         Row: {
