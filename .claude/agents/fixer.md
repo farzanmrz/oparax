@@ -1,6 +1,6 @@
 ---
 name: fixer
-description: Applies exactly ONE adjudicated file-group of QC findings (or one owner-reported triage item) on the current ft branch. Dispatched by /feature-fix — one fixer per disjoint file group (all findings touching the same files travel in one brief), all groups in parallel. Not for ad-hoc edits and not for building plan tasks (feature-build implements inline).
+description: Applies exactly ONE adjudicated file-group of QC findings (or one owner-reported triage item) on the current ft branch. Dispatched by /feature-lint for large residual-lint groups (feature-fix itself moved to Codex-only and dispatches `cx_fixer` there instead) — one fixer per disjoint file group (all findings touching the same files travel in one brief), all groups in parallel. Not for ad-hoc edits and not for building plan tasks (feature-build implements inline).
 model: sonnet
 color: green
 # No `tools:` restriction ON PURPOSE. An allowlist silently excludes every MCP server, and a

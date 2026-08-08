@@ -1,29 +1,32 @@
 ---
 name: feature-browse
 description: >-
-  QC step 2 of 5, hop-anywhere and OWNER-TRIGGERED ONLY: after a find round,
-  drive the current ft branch's rendered surfaces in the built-in browser
-  against a checklist derived from the issue (plan states, NOT VERIFIABLE
-  lines, manual-check set), then post the browsed report feature-fix reads
-  alongside the findings. Use when the user says /feature-browse or "run the
-  browser review". Never runs inside find/fix/docs/verify or the relay on a
-  session's own judgment.
-allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Bash(lsof *) Agent mcp__Claude_Browser__preview_start mcp__Claude_Browser__preview_stop mcp__Claude_Browser__preview_logs mcp__Claude_Browser__navigate mcp__Claude_Browser__read_page mcp__Claude_Browser__find mcp__Claude_Browser__computer mcp__Claude_Browser__form_input mcp__Claude_Browser__read_console_messages mcp__Claude_Browser__read_network_requests mcp__Claude_Browser__resize_window mcp__Claude_Browser__javascript_tool mcp__Claude_Browser__tabs_context
-model: inherit
+  QC step 2 of 3, CODEX ONLY, hop-anywhere and OWNER-TRIGGERED ONLY: after a
+  find round, drive the current ft branch's rendered surfaces in the built-in
+  browser against a checklist derived from the issue (plan states, NOT
+  VERIFIABLE lines, manual-check set), then post the browsed report
+  feature-fix reads alongside the findings. Use when the owner says
+  $feature-browse or "run the browser review". Never runs inside
+  find/fix/verify or the relay on a session's own judgment. This skill does
+  not run in Claude Code: it lives only under `.agents/skills/`, which
+  Claude Code never scans, so it is not listed or invocable there. A Claude
+  Code session that reaches this step stops and tells the owner to switch to
+  Codex (feature-qc's routing rule). Moved out of `.claude/skills/` on
+  2026-08-08 by owner decision: the owner never ran browse in Claude Code.
+allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Bash(lsof *) Agent
+model: gpt-5.6-terra
 ---
 
 # Browse: checklist-drive the rendered app, report, stop
 
 The owner invoking this skill IS the explicit browser authorization the QC
-hard rule requires; the settings ask-gate may still prompt once and the owner
-approving it is expected, not an error.
+hard rule requires.
 
-## Dials (per harness)
-
-| | Claude Code | Codex |
-|---|---|---|
-| Session dial | sonnet (mechanical checklist-driving, not judgment) | `gpt-5.6-terra` |
-| Browser | the in-app Browser pane (`mcp__Claude_Browser__*`) | the app's built-in browser (the Browser panel; owner-enabled in Settings > Browser, "control the built-in browser"). If browser control is disabled in this install, STOP and report BLOCKED-harness with the instruction to enable it or run /feature-browse in Claude Code. Never substitute agent-browser or a hand-rolled driver. |
+Browser: the app's built-in browser (the Browser panel; owner-enabled in
+Settings > Browser, "control the built-in browser"). If browser control is
+disabled in this install, STOP and report BLOCKED-harness with the
+instruction to enable it. Never substitute agent-browser or a hand-rolled
+driver.
 
 ## 1. Derive the checklist (durable state only)
 
@@ -87,17 +90,17 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth
   re-assert the viewport before continuing (the 2026-08-06 crash cascade:
   server death, recovery tab, tainted findings, came from skipping the
   re-assert).
-* **Browser:** open the pane at `http://localhost:3000`, log in with the
-  test account (`testuser@oparax.ai` / `hello123`, pre-authorized in
-  AGENTS.md). Set the viewport per the phase-1 rule (1280x800 first, the
-  375x812 mobile pass after).
+* **Browser:** open the built-in browser panel at `http://localhost:3000`,
+  log in with the test account (`testuser@oparax.ai` / `hello123`,
+  pre-authorized in AGENTS.md). Set the viewport per the phase-1 rule
+  (1280x800 first, the 375x812 mobile pass after).
 
 ## 3. Drive the checklist
 
-* **Text assertions over pixels:** `read_page` / `find` / console and
-  network reads are the evidence of record; screenshots only where a claim
-  is inherently visual (one per such item, never per step). No GIFs, no
-  videos, no exploratory wandering off the checklist.
+* **Text assertions over pixels:** page-read / console and network reads are
+  the evidence of record; screenshots only where a claim is inherently
+  visual (one per such item, never per step). No GIFs, no videos, no
+  exploratory wandering off the checklist.
 * **HARD RULE, never violated:** never confirm a post to X, never submit
   anything that leaves the machine, never edit files, never touch
   non-localhost origins. A checklist item that would require it is
@@ -107,10 +110,10 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth
 * **Created desk ids:** after every successful Create Agent submission,
   record the desk id from the resulting `/agents/<id>` URL. Keep only ids
   created in this run; never add a pre-existing desk to this set.
-* **Stuck clicks (Codex):** if a Playwright click leaves the target
-  unchanged (e.g. `aria-expanded` still false) after 2 tries, switch to
-  `dom_cua.click` by node id immediately: a Radix menu once ate 6 attempts
-  and a selector deadline before the fallback landed on the first try.
+* **Stuck clicks:** if a click leaves the target unchanged (e.g.
+  `aria-expanded` still false) after 2 tries, switch to `dom_cua.click` by
+  node id immediately: a Radix menu once ate 6 attempts and a selector
+  deadline before the fallback landed on the first try.
 * **Per item:** record PASS / FAIL / BLOCKED with one line of evidence
   (element text, count, console line). A FAIL is written as a
   fix-ready brief: what was done, what happened, what was expected, suspect
@@ -119,7 +122,7 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth
 ## 4. Report and stop
 
 * **Desk teardown:** if this run created desks, delegate one service-role
-  cleanup to `supabase-runner`. Delete exactly the captured ids from
+  cleanup to `cx_supabase_runner`. Delete exactly the captured ids from
   `agents` with both `WHERE id IN (<this run's ids>)` and an owner guard for
   the `auth.users` row whose email is `testuser@oparax.ai`; FK cascades clear
   children. Never delete through the UI, never include pre-existing desks,
@@ -144,13 +147,13 @@ Teardown: <n> test desks deleted | FAILED: <concise error>
 
 * **The manual-check handoff:** the report's HUMAN-ONLY list REPLACES the
   owner's previous manual-check set; everything browser-checked here is off
-  the owner's plate, and the next `verified` report cites this comment
+  the owner's plate, and the next verification report cites this comment
   instead of re-listing covered items.
-* **Exit handoff: next is the post-browse relay:** `$feature-qc chain` in
-  Codex (`/feature-qc chain` in Claude Code) on the smart dial, which runs
-  fix -> docs -> verify in one session from this round's markers; standalone
-  `/feature-fix` remains the hop-anywhere fallback. Never route around fix:
-  even a round with zero browse failures usually has accepted findings
-  waiting in the findings comment, and judging "nothing to fix" is
-  feature-fix's call, not this session's (an empty round gets its fixes
-  marker from feature-fix, so verify's guard always has it).
+* **Exit handoff: next is $feature-qc chain,** which runs `feature-fix`
+  (apply → doc sync → re-prove → verification gate, one continuous run) from
+  this round's markers; standalone `$feature-fix` remains the hop-anywhere
+  fallback. Never route around it: even a round with zero browse failures
+  usually has accepted findings waiting in the findings comment, and judging
+  "nothing to fix" is `feature-fix`'s call, not this session's (an empty
+  round still gets its fixes marker from `feature-fix`, so its own
+  verification report always has it).

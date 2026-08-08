@@ -33,10 +33,14 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 ```
 
 * **Required markers:** the latest `## QC round <R>` family must include the
-  `findings`, `browsed`, `fixes`, `docs`, AND `verified` markers (match on
-  the keyword; separator punctuation may vary across rounds). Rounds older
-  than the five-step battery (no `browsed` anywhere on the issue) are judged
-  on the original four.
+  `findings`, `browsed`, `fixes`, AND `verified` markers (match on the
+  keyword; separator punctuation may vary across rounds). Rounds older than
+  the browse step (no `browsed` anywhere on the issue) are judged on the
+  original findings/fixes/verified three. A round carrying a separate `docs`
+  marker predates `feature-docs` folding into `feature-verify`
+  (2026-08-08) — its presence is fine, but it is no longer required: going
+  forward, doc sync is verify's phase 0 and its byte line lives inside the
+  `verified` comment.
 * **Any marker missing:** name what's missing and STOP: the branch has
   unfinished QC (e.g. fixes applied but never re-proven), and the missing
   step runs first in whichever app the owner likes.

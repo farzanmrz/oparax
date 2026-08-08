@@ -153,7 +153,8 @@ python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux
 * **Rendered-appearance claims:** every one is reported
   `NOT VERIFIABLE: <reason>`, never silently skipped. Those lines flow
   verbatim into feature-browse's checklist (step 2, owner-run); whatever
-  browse marks HUMAN-ONLY lands in feature-verify's manual-check set.
+  browse marks HUMAN-ONLY lands in feature-fix's manual-check set (phase 6 of
+  its verification report).
 * **No substitutes:** no screenshotting, no starting a browser, no synthetic
   fixture built solely to make a state reachable.
 
@@ -211,25 +212,41 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
 
 ### C. Lane roster
 
-SEVEN externals: `codex` (with `COUNCIL_MODEL=gpt-5.6-sol`), `grok`, `agy`,
-and four `cline` model lanes launched via `run.sh cline <label>` with
-`COUNCIL_MODEL` set per lane: `moonshotai/kimi-k3`, `z-ai/glm-5.2`,
-`minimax/minimax-m3`, `deepseek/deepseek-v4-flash`. Plus the internal
-`bug-finder` lane. Each cline lane gets its own `<label>.in.txt` copy of the
-shared brief (never codex's, which carries a codex-only subagent addendum).
+FOUR externals: `codex` (with `COUNCIL_MODEL=gpt-5.6-sol`), `grok`, `agy`,
+and ONE `cline` model lane, `minimax/minimax-m3`, launched via
+`run.sh cline <label>`. Plus the internal `bug-finder` lane. kimi-k3 was cut
+from find by owner decision 2026-08-08: two concurrent cline lanes share one
+local hub daemon with no per-run isolation, and QC rounds 1 and 4 each lost a
+cline lane to that contention — round 1's glm lane and round 4's kimi lane
+both hung/died while their cline sibling completed normally in the same
+window (round 4: #112 finding #19, a 2423s zero-byte hang). Find now runs
+exactly one cline lane, so that contention cannot recur here. This is find-
+specific: feature-spec's critique phase still runs kimi-k3 alongside
+minimax-m3 deliberately (both have returned clean there), so do not port this
+cut to feature-spec — the two skills' cline rosters are allowed to differ.
+Each cline lane gets its own `<label>.in.txt` copy of the shared brief (never
+codex's, which carries a codex-only subagent addendum).
 
 ### D. Tier and failure rules
 
 * **Tier is family-shaped:** codex and grok take an EFFORT tier, but agy's
   `COUNCIL_TIER` is its model slug (`gemini-3.1-pro-high`): that CLI fuses
   model and effort. Cline is model-shaped: `plan-cline.sh` clamps
-  `COUNCIL_TIER` to each model's real ladder (kimi-k3 high, glm-5.2 high,
-  minimax toggle, deepseek-v4-flash none), so pass `COUNCIL_TIER=high` and
-  let the wrapper clamp. Don't copy one lane's tier onto another.
+  `COUNCIL_TIER` to the model's real ladder (minimax is a toggle, not a
+  ladder), so pass `COUNCIL_TIER=high` and let the wrapper clamp.
+* **A stalled or frozen cline lane is now the wrapper's problem, not the
+  skill's:** `plan-cline.sh` runs the CLI under an external watchdog that
+  kills and retries once on a stall producing zero output (free — nothing was
+  spent), or kills and fails without retry once real output exists (it may
+  have spent). Override `COUNCIL_CLINE_STALL_S` / `COUNCIL_CLINE_MAX_S` only
+  to debug; the defaults (600s / 2400s) are set above every lane's measured
+  runtime.
 * **Cline lanes review a working tree a build may still be touching:** when a
   find round runs while edits are in flight, set `COUNCIL_CLINE_WORKTREE=1`
-  so those lanes read a detached snapshot instead of tripping the
-  write-detection diff on someone else's concurrent edits.
+  so the lane reads a detached snapshot instead of tripping the
+  write-detection diff on someone else's concurrent edits, or on a plan-mode
+  slip of its own — plan mode is advisory, not enforced, and has been
+  observed to not hold on a live run.
 * **Failure conditions:** a failed lane is reported FAILED, never as a clean
   pass. `AGY_EMPTY` is no-signal, not approval. A `CLINE_FAILED` lane whose
   `.raw.err` visibly contains a conforming payload is an ENVELOPE failure
@@ -268,6 +285,14 @@ Merge, dedup by file+line, judge every finding:
   the findings comment for the owner to pick. NEVER write an either/or menu
   for a fixer (that pattern is how a fixer once invented a 6,000-char input
   cap on its own).
+* **A cline-attributed wrong drop feeds the lesson file:** when a `cline`
+  finding is dropped or vetoed specifically because it contradicted
+  AGENTS.md, DESIGN.md, a plan-frozen veto, or a dormant-by-design
+  capability — not merely out of scope — append one line, inline, no
+  dispatch (you already hold the verdict):
+  `bash .claude/skills/feature/scripts/cline-lesson.sh "<the pattern, one line>"`.
+  Skip this for every other drop reason; not every dropped finding is a
+  cline mistake worth recording.
 
 ## 6. Persist: the findings record
 
@@ -281,12 +306,16 @@ QC-round comments + 1). Contents:
 * **Dropped:** one-line reason each.
 * **Vetoed by plan.**
 
-This comment is the complete brief for `/feature-fix` in ANY session:
+This comment is the complete brief for `$feature-fix` in ANY Codex session:
 write it so nothing from this conversation is needed.
 
 **Standalone:** STOP here. Report the round number, counts, and lane
-coverage, then suggest the next step in one line: `/feature-browse`
-(owner-triggered) grounds this round's `NOT VERIFIABLE` lines before
-`/feature-fix` applies both records.
-Under `/feature-qc` chain: continue into feature-browse (the chain
-invocation is the browser unlock, per feature-qc).
+coverage, then suggest the next step in one line: both `feature-browse`
+(owner-triggered) and `feature-fix` are Codex only, so the line is "switch
+to Codex — `$feature-browse` grounds this round's `NOT VERIFIABLE` lines
+before `$feature-fix` applies both records." This session may itself be
+Codex (find runs in either harness) — only say "switch" when this session
+actually is Claude Code.
+Under `/feature-qc` chain in Claude Code: the chain ends here (the harness
+guard fires on the next step) with the same Codex redirect. Under
+`$feature-qc chain` already in Codex: continue into feature-browse.

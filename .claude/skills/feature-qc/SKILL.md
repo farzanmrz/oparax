@@ -2,43 +2,60 @@
 name: feature-qc
 description: >-
   Phase 3 of the feature flow, standalone: the QC battery over the current
-  feature branch as a GATED RELAY: run the next pending step (find, browse,
-  fix, docs, verify), then stop with a handoff naming the following step and
-  its model dial. Use when the user says /feature-qc or "run QC". Say
-  "/feature-qc chain" to run all five in one sitting with no stops.
-  Harness-neutral: runs in Claude Code or Codex.
+  feature branch as a GATED RELAY: run the next pending step, then stop with
+  a handoff naming the following step and its model dial. Use when the user
+  says /feature-qc or "run QC". Say "/feature-qc chain" to run all pending
+  steps in one sitting with no stops (Codex only, past feature-find — see
+  the harness rule below). feature-find is dual-harness; feature-browse and
+  feature-fix (which now also covers doc sync and verify) are Codex only.
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Skill
 model: inherit
 ---
 
-# The QC battery: five steps, gated relay by default
+# The QC battery: three steps, gated relay by default
 
-* **Hop-anywhere contract:** QC is five separable steps, each a skill of its
-  own, so the owner can run any step in any session or app (Claude Code or
-  Codex). Every step starts from durable state only (the branch, the issue,
-  its `QC round` comments) and ends by writing durable state back.
+* **Hop-anywhere contract, within a harness:** QC is three separable steps,
+  each a skill of its own. `feature-find` runs in either harness; `
+  feature-browse` and `feature-fix` (which absorbed `feature-verify`, and
+  `feature-docs` before it) run ONLY in Codex — real files under
+  `.agents/skills/`, absent from `.claude/skills/` by 2026-08-08 owner
+  decision, so Claude Code cannot discover or invoke them. Every step starts
+  from durable state only (the branch, the issue, its `QC round` comments)
+  and ends by writing durable state back.
+* **CLAUDE-CODE HARNESS GUARD — check this before routing to any step:** if
+  this session is Claude Code and the detected next pending step is
+  `feature-browse` or `feature-fix`, do NOT attempt the Skill tool for it
+  (it is not in this harness's listing; the call would just fail
+  confusingly). Instead STOP immediately and tell the owner plainly: "This
+  step only runs in Codex — switch to Codex/ChatGPT and run `$feature-<x>`
+  there." State the detected round position first, exactly as any other
+  handoff would, then the redirect. This is not a dial mismatch (route,
+  don't run, below) — it is a harness mismatch, and no session model change
+  fixes it.
 * **Under /feature-qc (default = gated relay):** detect the next pending step
   from the issue's `QC round` markers, run ONLY that step, then STOP with a
   handoff. The handoff states: what completed, the durable state written, the
   exact next command (`/feature-find` etc., `$`-form for Codex), and the
   recommended dial for the next step from the step-dial table below. The
-  owner runs each step in a fresh session on the matching dial.
-* **Wrong dial or owner-run step = route, don't run:** when the detected
-  step's tier doesn't match this session's model, or the step is
-  feature-browse (owner-run by the hard rule), do NOT run it: report the
-  detected step and STOP with the handoff (exact command, both harness
-  forms, dial). This makes `/feature-qc` safe to invoke on ANY dial as a
-  pure router: the owner never needs to remember the sequence.
+  owner runs each step in a fresh session on the matching dial (and, for
+  browse/fix, in Codex).
+* **Wrong dial = route, don't run:** when the detected step's tier doesn't
+  match this session's model, do NOT run it: report the detected step and
+  STOP with the handoff (exact command, both harness forms where the step
+  actually runs in both, dial). This makes `/feature-qc` safe to invoke on
+  ANY dial as a pure router: the owner never needs to remember the sequence.
 * **Under /feature-qc chain (explicit opt-in):** invoke the REMAINING
   pending steps in order in THIS session with no stops between — the chain
-  starts at the next pending marker, never at step 1. The common post-browse
-  form: after a `browsed` marker lands, `$feature-qc chain` relays
-  fix → docs → verify in one sitting. The chain's only gate is the
-  verification ✋ in phase 5. The owner's chain invocation is the browser
-  unlock for the browse step (the settings ask-gate still prompts).
+  starts at the next pending marker, never at step 1. In Claude Code, the
+  chain can only ever complete `feature-find`: if the next pending step
+  after that is `feature-browse` or `feature-fix`, the harness guard above
+  fires and the chain ends there with the Codex redirect. A chain begun in
+  Codex on or after `feature-browse` can run straight through to the
+  verification ✋ in one sitting; the owner's chain invocation is the
+  browser unlock for the browse step (the settings ask-gate still prompts).
 * **Sub-skill authority:** each sub-skill's own text governs its step;
-  nothing here overrides them, and each carries its own per-harness dials
-  table naming the subagents it dispatches.
+  nothing here overrides them, and each carries its own dials naming the
+  subagents it dispatches.
 * **A v0 merge starts a fresh round:** when the plan declares an OWNER-V0
   interlude and its merge-back lands on the ft branch, that is new
   unreviewed code: the relay's next step is feature-find over the updated
@@ -47,13 +64,11 @@ model: inherit
 
 ## Step dials (what the handoff recommends)
 
-| Step | Tier | Claude Code | Codex |
+| Step | Harness | Tier | Dial |
 |---|---|---|---|
-| feature-find | smart (adjudication) | fable/opus high | `gpt-5.6-sol` high |
-| feature-browse | normal | sonnet | `gpt-5.6-terra` |
-| feature-fix | normal | sonnet | `gpt-5.6-terra` |
-| feature-docs | normal | sonnet | `gpt-5.6-terra` |
-| feature-verify | smart (the owner-facing ✋) | fable/opus high | `gpt-5.6-sol` high |
+| feature-find | Claude Code or Codex | smart (adjudication) | fable/opus high / `gpt-5.6-sol` high |
+| feature-browse | Codex only | normal | `gpt-5.6-terra` |
+| feature-fix | Codex only | smart (the owner-facing ✋); its own doc-sync phase dispatches at normal | `gpt-5.6-sol` high |
 
 * **The relay is what protects recall:** `bug-finder` inherits the session
   model, so running find on a cheap dial silently weakens the last automated
@@ -83,27 +98,21 @@ second file.
 ## 1. feature-find
 
 Gates + the cross-model review council + adjudication. Findings posted to the
-ft issue.
+ft issue. Runs in either harness.
 
-## 2. feature-browse
+## 2. feature-browse (Codex only)
 
 Checklist-drive the rendered branch in the built-in browser (the round's
 `NOT VERIFIABLE` lines, plan states, manual-check set). Browsed report posted
 to the issue; failures become fix-ready briefs for step 3.
 
-## 3. feature-fix
+## 3. feature-fix (Codex only)
 
-Apply the round (one fixer per disjoint file group of findings + browse
-failures, gates re-run, residual lint). Fixes recorded on the issue.
-
-## 4. feature-docs
-
-Doc sync, subtractive first, default no change.
-
-## 5. feature-verify
-
-Re-prove (gates + boot smoke). The verification ✋, written to the
-owner-legibility contract.
+One continuous run: apply the round (one `cx_fixer` per disjoint file group
+of findings + browse failures, gates re-run, residual lint) → doc sync
+(subtractive first, default no change) → re-prove (gates + boot smoke) → the
+verification ✋, written to the owner-legibility contract. Fixes and the
+verification report both recorded on the issue.
 
 ## Hard rules (bind the whole chain)
 
@@ -121,23 +130,26 @@ owner-legibility contract.
 bash .claude/workflows/council/selftest.sh --if-changed
 ```
 
-* **Milestone lines are required output:** one entering each of the five
+* **Milestone lines are required output:** one entering each of the three
   steps, one launching any long background wait (name + expected duration).
   Nothing else between them.
 * **Open questions freeze writes:** before pausing to ask the owner anything,
   stop or await write-capable subagents. Read-only agents may drain; nothing
   edits files while a question is open.
-* **Durable record:** all five `findings` / `browsed` / `fixes` / `docs` /
-  `verified` markers land as issue comments even in the one-session chain.
-  They are what resume detection and both ships' completeness guards read,
-  and that record is what makes hop-anywhere and post-hoc audit possible.
-* **Browsers only inside /feature-browse:** no other step opens the in-app
-  Browser pane, agent-browser, or any browser on its own judgment; a check
-  that would need a browser to be meaningful is reported unproven, never
-  backfilled by browsing. Browse is a fixed step, but the relay still never
-  runs it itself: find's handoff DIRECTS the owner to `/feature-browse`, and
-  the owner invoking it (or invoking the chain) is the only unlock (the
-  settings ask-gate on the Browser tools enforces this).
+* **Durable record:** all four `findings` / `browsed` / `fixes` / `verified`
+  markers land as issue comments even in a one-session Codex chain (the
+  doc-sync byte line rides inside `verified`, not a marker of its own) —
+  four markers from three steps, since `feature-fix` posts two. They are
+  what resume detection and both ships' completeness guards read, and that
+  record is what makes hop-anywhere (within a harness) and post-hoc audit
+  possible.
+* **Browsers only inside feature-browse:** no other step opens a browser on
+  its own judgment; a check that would need a browser to be meaningful is
+  reported unproven, never backfilled by browsing. Browse is a fixed step,
+  but the relay still never runs it itself: find's handoff DIRECTS the owner
+  to Codex and `$feature-browse`, and the owner invoking it (or invoking the
+  chain, from Codex) is the only unlock (the settings ask-gate on the
+  browser tools enforces this).
 * **Cleanup is not a QC step:** run `/simplify` off the critical path.
 * **Escalation:** a dependency MAJOR upgrade, framework migration, or
   schema/data migration surfacing here: STOP and present options; never

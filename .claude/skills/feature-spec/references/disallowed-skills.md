@@ -6,8 +6,6 @@ feature-qc
 feature-find
 feature-browse
 feature-fix
-feature-docs
-feature-verify
 feature-lint
 feature-ship
 skill-style

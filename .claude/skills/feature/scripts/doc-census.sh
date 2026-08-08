@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instruction-corpus census — the input to feature-docs' subtractive pass.
+# Instruction-corpus census — the input to feature-fix's phase 4 subtractive pass (Codex only).
 # Prints per-file bytes, longest paragraph, mean paragraph, and every paragraph
 # over the 120-word ceiling, then the corpus total. Read-only; never edits.
 #

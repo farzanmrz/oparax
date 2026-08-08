@@ -35,16 +35,23 @@ PRs, no CI. Parallelism is a private implementation detail.
 
 ## Harness portability
 
-* **One flow, two harnesses:** Codex invokes these same skills through the
-  `.agents/skills/` symlinks (`$feature`, `$feature-spec`, `$feature-build`,
-  `$feature-qc`, `$feature-ship`), reading the Codex column of each skill's
-  dials table.
+* **One flow, two harnesses, with one deliberate exception:** Codex invokes
+  most of these skills through the `.agents/skills/` symlinks (`$feature`,
+  `$feature-spec`, `$feature-build`, `$feature-qc`, `$feature-ship`),
+  reading the Codex column of each skill's dials table. `feature-browse` and
+  `feature-fix` are NOT symlinked: they are real files that exist only
+  under `.agents/skills/`, invisible to Claude Code by construction (its
+  skill discovery never scans that directory), because the owner never runs
+  either in Claude Code. Every other skill stays genuinely dual-harness.
 * **Never a second per-harness copy:** a duplicated skill drifts measurably
   weaker, so a genuine per-harness difference (session dial, subagent names,
-  which council lanes run) belongs in a dials row; nothing else differs.
-* **Hop-anywhere:** each phase starts from durable state only (the issue body,
-  the branch, `origin/beta...ft/<N>`, the `## QC round` comments), so a slice
-  may switch harness at any phase boundary, in either direction.
+  which council lanes run) belongs in a dials row; nothing else differs. The
+  browse/fix asymmetry above is a placement difference, not a duplication —
+  there is still exactly one copy of each.
+* **Hop-anywhere, within a harness:** each phase starts from durable state
+  only (the issue body, the branch, `origin/beta...ft/<N>`, the `## QC
+  round` comments), so a slice may switch harness at any phase boundary
+  that both harnesses actually support — which excludes browse and fix.
 
 ## 1. Resume detection: run on EVERY invocation, before anything else
 
@@ -62,9 +69,11 @@ gh issue view <N> --comments
 ```
 
 **Marker format:** each new QC marker comment is titled `## QC round <R>: <suffix>`
-(`findings`, `browsed`, `fixes`, `docs`, `verified`). Match markers by the
-`## QC round <R>` prefix plus the suffix keyword, separator-agnostic (older
-rounds used an em dash).
+(`findings`, `browsed`, `fixes`, `verified` — `docs` was a fifth marker before
+2026-08-08, when `feature-docs` folded into `feature-verify`; a round with a
+separate `docs` marker predates the merge and is still valid history). Match
+markers by the `## QC round <R>` prefix plus the suffix keyword,
+separator-agnostic (older rounds used an em dash).
 
 Decide the entry point from the FIRST missing marker, in order:
 
@@ -72,18 +81,25 @@ Decide the entry point from the FIRST missing marker, in order:
 |---|---|---|
 | stub issue only (from /feature-plan), no spec/branch | nothing specced | `feature-spec` (phase 2) |
 | `ft/N` + issue, no commits beyond the branch cut | planned, not built | build (phase 3, owner picks harness) |
-| build commits, no `## QC round` comments | built | `feature-find` |
-| findings marker without browsed marker | adjudicated | `feature-browse` (OWNER-TRIGGERED: surface it as the pending step, never auto-run) |
-| browsed marker without matching fixes marker | browsed | `feature-fix` |
-| fixes marker without docs marker | fixed | `feature-docs` |
-| docs marker without verified marker | synced | `feature-verify` |
+| build commits, no `## QC round` comments | built | `feature-find` (either harness) |
+| findings marker without browsed marker | adjudicated | `feature-browse` — OWNER-TRIGGERED, CODEX ONLY: surface it as the pending step, never auto-run; if this session is Claude Code, tell the owner to switch to Codex and run `$feature-browse` there |
+| browsed marker without matching fixes marker | browsed | `feature-fix` from its phase 1 — CODEX ONLY (now covers apply, doc sync, and verify in one run); if this session is Claude Code, tell the owner to switch to Codex and run `$feature-fix` there |
+| fixes marker without verified marker | fixed but not re-proven (an interrupted `feature-fix` run) | `feature-fix` again, resuming at its phase 4 (doc sync) — same Codex-only redirect applies |
 | verified marker present | verified | triage/`feature-ship` (phase 5, ✋) |
 
 * **State the detected position in one line** ("ft/73 has round-1 findings but
-  no fixes: resuming at feature-fix") and continue from there.
+  no fixes: resuming at feature-fix in Codex") and continue from there.
 * **Never re-run** a completed phase; **never skip forward** past a missing
   marker. In particular, NEVER enter ship while the latest round lacks the
   verified marker.
+* **Claude Code stops at the harness boundary:** this table's `feature-browse`
+  and `feature-fix` rows only run in Codex (real files under
+  `.agents/skills/`, absent from `.claude/skills/` by design). A Claude Code
+  session landing on either one reports the position and redirects — it
+  does not attempt the Skill tool for a name that isn't in its own listing.
+  `feature-qc`'s own copy of this rule is the fuller version; this one exists
+  because `/feature` can land here directly, without going through
+  `feature-qc`.
 
 ## 2. Spec
 
@@ -106,9 +122,12 @@ its own app.
 
 Invoke **`feature-qc`**, ending at the verification ✋.
 
-* **Four hoppable sub-steps:** `feature-find`, `feature-fix`, `feature-docs`,
-  `feature-verify`, each runnable standalone in either app; under this
-  orchestrator they chain in one session.
+* **Three sub-steps, one harness split:** `feature-find` (either harness),
+  `feature-browse`, `feature-fix` (Codex only — `feature-fix` now covers
+  apply, doc sync, and verify in one continuous run). Each is runnable
+  standalone; under this orchestrator, or under `/feature-qc chain`, they
+  chain in one session up to the harness boundary (see feature-qc's harness
+  guard).
 
 ## 5. Ship
 

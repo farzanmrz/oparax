@@ -290,6 +290,14 @@ Adjudicate each critique on its merits: fix the real ones, reject taste and
 scope inflation. Record every accept/reject call in a "Critique adjudication"
 section.
 
+* **A cline-attributed wrong reject feeds the lesson file:** when a `cline`
+  critique (kimi-k3 or minimax-m3) is rejected specifically because it
+  contradicted AGENTS.md, DESIGN.md, or a frozen/dormant decision — not taste,
+  not scope inflation — append one line, inline, no dispatch (you already
+  hold the verdict):
+  `bash .claude/skills/feature/scripts/cline-lesson.sh "<the pattern, one line>"`.
+  Same file `feature-find` phase 5 writes to; both cline touchpoints share it.
+
 **Scope and terminology discipline:**
 
 * The owner enforces scope at the gate. Everything asked for together is one
