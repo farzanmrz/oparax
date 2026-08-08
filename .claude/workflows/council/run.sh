@@ -6,7 +6,7 @@
 # workflow can fall back to calling plan-<family>.sh directly (unchanged, proven).
 #
 # Usage:  run.sh <family> <label>
-#   family : codex | grok | agy
+#   family : codex | grok | agy | cline
 #   label  : worker label; also the scratch filename stem (<label>.in.txt / .out.json)
 # The caller writes "<scratch>/<label>.in.txt" first, then runs this.
 #
@@ -49,7 +49,10 @@ case "$FAM" in
   codex) TIER="${COUNCIL_TIER:-high}" ;;                # reference-tier default; strict no-survey makes high land (311s). Bake-off tests medium (186s).
   grok)  TIER="${COUNCIL_TIER:-high}" ;;                # subscription; high is fine (xhigh/max error). Bake-off tests medium.
   agy)   TIER="${COUNCIL_TIER:-gemini-3.1-pro-high}" ;; # reference tier. Bake-off tests gemini-3.6-flash-high.
-  *) echo "run.sh: unknown family '$FAM' (codex | grok | agy)" >&2; exit 2 ;;
+  cline) TIER="${COUNCIL_TIER:-high}" ;;                # ClinePass ($9.99/mo flat). EFFORT only -> --thinking.
+                                                        # Model rides COUNCIL_MODEL (codex-shaped), default glm-5.2.
+                                                        # Requires cline >= 3.x: -P/-m/-k are per-run only from 3.0.
+  *) echo "run.sh: unknown family '$FAM' (codex | grok | agy | cline)" >&2; exit 2 ;;
 esac
 # Success key: callers used to have to export COUNCIL_CHECK_KEY to match the schema
 # (default "plan"), and the rebuilt skills never did — a lane returning perfect
