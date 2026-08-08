@@ -159,6 +159,9 @@ function buildContent(input: {
 function normalizeVerdict(raw: RawDraftVerdict): DraftVerdict {
   // Only persist construction when it is a complete, valid reporter-facing account.
   const construction = draftConstructionSchema.safeParse(raw.construction);
+  if (raw.onBeat && raw.construction != null && !construction.success) {
+    console.warn("draft-write: discarded malformed construction");
+  }
   return {
     ...raw,
     onBeatReason: normalizeDraftOnBeatReason(raw.onBeatReason) ?? "",

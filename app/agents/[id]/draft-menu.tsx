@@ -286,9 +286,7 @@ function DraftConstructionBreakdown({
         ) : null}
       </div>
       <ConstructionBlock title="Post mode">
-        <h3 className="font-heading text-sm font-medium text-foreground">
-          {construction.postMode.name}
-        </h3>
+        <p className="text-sm text-text-muted">{construction.postMode.name}</p>
         <p className="text-sm leading-relaxed text-text-body">
           {construction.postMode.description}
         </p>

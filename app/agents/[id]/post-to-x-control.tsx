@@ -22,8 +22,8 @@ export function PostToXControl({
 }: {
   draftId: string;
   draftText: string;
-  /** The desk's X ceiling — 280, or 25,000 when the posting account's stored `x_accounts.tier`
-   *  is premium (resolved by `resolveXTier` in page.tsx). */
+  /** The desk's X ceiling — 280, or 25,000 when its reporter or posting-account tier is premium
+   *  (resolved by `resolveDeskTier` in page.tsx). */
   charLimit: number;
   disabled?: boolean;
   onPendingChange: (pending: boolean) => void;
@@ -37,15 +37,18 @@ export function PostToXControl({
 
   if (!xLinked) {
     return (
-      <Button
-        asChild
-        className="h-[var(--post-h-mobile)] w-full rounded-t-none rounded-b-[9px] desk:h-[var(--post-h-web)] desk:w-auto desk:rounded-md"
-        variant="outline"
-      >
-        {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X.
-            returnTo brings the reporter back to this exact desk page after linking. */}
-        <a href={`/auth/x?returnTo=${encodeURIComponent(pathname)}`}>Connect X</a>
-      </Button>
+      <div className="relative">
+        <Button
+          asChild
+          className="h-[var(--post-h-mobile)] w-full rounded-t-none rounded-b-[9px] desk:h-[var(--post-h-web)] desk:w-auto desk:rounded-md"
+          variant="outline"
+        >
+          {/* Plain link, not a fetch: /auth/x is a full-page OAuth redirect to X.
+              returnTo brings the reporter back to this exact desk page after linking. */}
+          <a href={`/auth/x?returnTo=${encodeURIComponent(pathname)}`}>Connect X</a>
+        </Button>
+        {mobileMetadata}
+      </div>
     );
   }
 

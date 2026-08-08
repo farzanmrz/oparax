@@ -277,7 +277,13 @@ export function SourcesCard({
   return (
     <div className="grid gap-[var(--page-rhythm-mobile)] [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))] desk:gap-[var(--page-rhythm-web)]">
       <BandCard
-        headerAside={<SourceCount count={trackedHandles.length} limit={MAX_TRACKED_HANDLES} />}
+        headerAside={
+          <SourceCount
+            count={trackedHandles.length}
+            limit={MAX_TRACKED_HANDLES}
+            noun="X accounts"
+          />
+        }
         icon={<XLogo />}
         title="X Accounts"
       >
@@ -310,7 +316,7 @@ export function SourcesCard({
       </BandCard>
 
       <BandCard
-        headerAside={<SourceCount count={websiteCount} limit={MAX_WEBSITES} />}
+        headerAside={<SourceCount count={websiteCount} limit={MAX_WEBSITES} noun="websites" />}
         icon={<GlobeIcon />}
         title="Websites"
       >
@@ -385,13 +391,20 @@ export function SourcesCard({
   );
 }
 
-function SourceCount({ count, limit }: { count: number; limit: number }) {
+function SourceCount({ count, limit, noun }: { count: number; limit: number; noun: string }) {
   return (
-    <span
-      className={`text-sm tabular-nums ${count >= limit ? "text-destructive" : "text-text-label"}`}
-    >
-      {count} / {limit}
-    </span>
+    <>
+      <span
+        className={`text-sm tabular-nums ${count >= limit ? "text-destructive" : "text-text-label"}`}
+      >
+        {count} / {limit}
+      </span>
+      {count >= limit ? (
+        <span className="sr-only">
+          Maximum of {limit} {noun} reached.
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -460,6 +473,7 @@ function WebsiteFavicon({ url, domain }: { url: string; domain?: string }) {
       aria-hidden="true"
       className="size-[15px] rounded-[3px]"
       onError={() => setFailed(true)}
+      referrerPolicy="no-referrer"
       src={src}
     />
   );
@@ -507,9 +521,15 @@ function SourceRow({
       className={`flex min-h-11 min-w-0 items-center rounded-md border border-[var(--card-border)] py-1.5 pl-3 desk:min-h-9 ${surface}`}
     >
       {icon ? (
-        <span className="mr-2 flex size-[15px] shrink-0 items-center justify-center">{icon}</span>
+        <span
+          className={`mr-2 flex size-[15px] shrink-0 items-center justify-center ${display ? "self-start mt-0.5" : ""}`}
+        >
+          {icon}
+        </span>
       ) : null}
-      <span className={`min-w-0 flex-1 break-words text-sm [overflow-wrap:anywhere] ${labelClass}`}>
+      <span
+        className={`min-w-0 flex-1 break-words text-sm [overflow-wrap:anywhere] ${display ? "self-start" : ""} ${labelClass}`}
+      >
         {display ?? label}
       </span>
       {status !== "active" ? (
@@ -567,7 +587,7 @@ function AddSourceField({
         value={value}
       />
       <Button
-        aria-label="Add source"
+        aria-label={ariaLabel}
         className="size-11 desk:size-9"
         disabled={disabled || !value.trim()}
         onMouseDown={(event) => event.preventDefault()}

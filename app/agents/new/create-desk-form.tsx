@@ -259,6 +259,7 @@ export function CreateDeskForm({
 
   const canSubmit =
     name.trim().length > 0 &&
+    name.trim().length <= 30 &&
     beat.trim().length > 0 &&
     mergeHandles(handles, splitHandles(handleDraft)).length > 0 &&
     hasLinkedAccount &&
@@ -307,7 +308,7 @@ export function CreateDeskForm({
                 className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
                 disabled={formDisabled}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="e.g. Barça Bulletin"
+                placeholder="Barça Bulletin"
                 value={name}
               />
               {name.trim().length > 30 ? (
@@ -362,6 +363,8 @@ export function CreateDeskForm({
                 chips={handles}
                 className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
                 hideInput={atHandleLimit}
+                addAriaLabel="Add X account"
+                atLimitMessage={`Maximum of ${MAX_TRACKED} X accounts reached.`}
                 inputDisabled={formDisabled || atHandleLimit}
                 inputAriaLabel="X accounts"
                 onBlur={commitHandleDraft}
@@ -389,6 +392,8 @@ export function CreateDeskForm({
                 chips={websites}
                 className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
                 hideInput={atWebsiteLimit}
+                addAriaLabel="Add news website"
+                atLimitMessage={`Maximum of ${MAX_WEBSITES} news websites reached.`}
                 inputDisabled={formDisabled || atWebsiteLimit}
                 inputAriaLabel="News websites"
                 inputMode="url"

@@ -16,17 +16,17 @@ export function resolveXTier(value: string | null | undefined): XAccountTier {
   return value === "premium" ? "premium" : "standard";
 }
 
-/** The ceiling a DESK drafts, counts, edits, and post-gates against: the reporter's
- *  corpus-proven tier (`agents.reporter_tier`, written by voice extraction) when recorded,
- *  else the posting account's stored tier. One resolver shared by the drafting pipeline, the
- *  feed counter, editDraft, and post-core so those gates can never disagree — on a desk whose
- *  voice is a premium reporter but whose posting account is someone else (owner-override
- *  desks), the voice governs and X itself remains the final arbiter at post time. */
+/** The ceiling a DESK drafts, counts, edits, and post-gates against: premium applies when either
+ *  the corpus-proven reporter tier (`agents.reporter_tier`, written by voice extraction) or the
+ *  posting account's stored tier is premium. One resolver shared by the drafting pipeline, the
+ *  feed counter, editDraft, and post-core so those gates can never disagree. */
 export function resolveDeskTier(
   reporterTier: string | null | undefined,
   accountTier: string | null | undefined,
 ): XAccountTier {
-  return resolveXTier(reporterTier ?? accountTier);
+  return resolveXTier(reporterTier) === "premium" || resolveXTier(accountTier) === "premium"
+    ? "premium"
+    : "standard";
 }
 
 /** Shared X validity gate — the same weighted-length + validity check both the posting path

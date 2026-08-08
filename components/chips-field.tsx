@@ -5,11 +5,8 @@
 // One bordered box holding already-added entries as removable chips, followed by an inline input
 // that grows to fill the remaining space — the shape a tag/handle field is expected to have.
 //
-// Extracted from app/agents/[id]/sources/sources-card.tsx so the create-agent form and Sources
-// card share ONE treatment. They previously diverged: Sources rendered chips inside the box (right)
-// while create-agent stacked them in a separate row above a plain <Input> (wrong — the chips read
-// as unrelated content rather than as the field's current value). A second copy is how that drift
-// happened, so both import this now.
+// Extracted for the create-agent form's X and website inputs, so those two source lists keep one
+// treatment instead of drifting into separate chip implementations.
 //
 // The box deliberately mirrors components/ui/input.tsx's border/background/focus treatment: it
 // must sit in a form beside real Inputs and be indistinguishable from them, per the uniform-fields
@@ -28,6 +25,8 @@ export function ChipsField({
   disabled = false,
   inputDisabled,
   inputAriaLabel,
+  addAriaLabel,
+  atLimitMessage,
   hideInput = false,
   onChange,
   onKeyDown,
@@ -53,6 +52,9 @@ export function ChipsField({
   readonly disabled?: boolean;
   readonly inputDisabled: boolean;
   readonly inputAriaLabel?: string;
+  readonly addAriaLabel: string;
+  /** Announces why the add affordance is absent after the field reaches its cap. */
+  readonly atLimitMessage?: string;
   /** Keep committed chips visible while removing the add-input at the cap. */
   readonly hideInput?: boolean;
   readonly onChange: (value: string) => void;
@@ -137,7 +139,7 @@ export function ChipsField({
           {/* One-by-one typing affordance (mirrors the Sources page's add field): a visible
               Add button so mobile users aren't left guessing that Enter commits a chip. */}
           <Button
-            aria-label="Add"
+            aria-label={addAriaLabel}
             className="size-11 shrink-0 desk:size-9"
             disabled={disabled || inputDisabled || !value.trim()}
             onMouseDown={(e) => e.preventDefault()}
@@ -150,6 +152,7 @@ export function ChipsField({
           </Button>
         </span>
       )}
+      {hideInput && atLimitMessage ? <span className="sr-only">{atLimitMessage}</span> : null}
     </div>
   );
 }

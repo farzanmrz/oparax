@@ -53,6 +53,6 @@ export function XEntityText({
   }
 
   if (cursor < text.length) rendered.push(text.slice(cursor));
-  if (appendTrailingLineMarker) rendered.push("\u200b");
+  if (appendTrailingLineMarker) rendered.push("\u00a0");
   return rendered;
 }

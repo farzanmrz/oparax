@@ -22,18 +22,26 @@ import { createClient } from "@/lib/supabase/server";
 export type DraftReasoningResult =
   | {
       state: "found";
-      onBeatReason: string;
+      onBeatReason: string | null;
       construction: DraftConstruction | null;
       edited: boolean;
     }
   | { state: "withheld" | "none"; onBeatReason: null; edited: boolean };
 
-/** Legacy rows predate `usage.draftOnBeatReason`. This fallback extracts a single line but
- * never renders the provider trace itself. */
+/** Legacy rows predate `usage.draftOnBeatReason`. This reads the verdict notes that
+ * draft-write appended after the provider trace, never the trace itself. */
 function legacyOnBeatReasonOf(reasoning: string): string | null {
-  const matches = [...reasoning.matchAll(/(?:^|\n)On beat:\s*yes\s*—\s*([^\r\n]+)/gi)];
-  const match = matches.at(-1);
-  const onBeatReason = match?.[1]?.trim();
+  const appendedNotesAt = reasoning.lastIndexOf("\n\nOn beat:");
+  const notes =
+    appendedNotesAt >= 0
+      ? reasoning.slice(appendedNotesAt + 2)
+      : reasoning.startsWith("On beat:")
+        ? reasoning
+        : null;
+  const match = notes?.match(
+    /^On beat:\s*yes\s*—\s*([^\r\n]+)\r?\nTitle:\r?\n[\s\S]*\r?\nSynthesis:\r?\n[\s\S]+$/i,
+  );
+  const onBeatReason = match?.[1].trim();
   return onBeatReason || null;
 }
 
@@ -89,14 +97,15 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
     if (call?.model === "human-edit") {
       edited = true;
     } else if (call) {
+      const construction = draftConstructionFromUsage(call.usage);
       const onBeatReason =
         draftOnBeatReasonFromUsage(call.usage) ??
         (call.reasoning ? legacyOnBeatReasonOf(call.reasoning) : null);
-      if (onBeatReason) {
+      if (onBeatReason || construction) {
         return {
           state: "found",
           onBeatReason,
-          construction: draftConstructionFromUsage(call.usage),
+          construction,
           edited,
         };
       }

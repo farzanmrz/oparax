@@ -1,28 +1,36 @@
+"use client";
+
 // An excluded post never reached drafting, so this card is the feed card minus its story and
 // draft zones: the source-tinted identity strip, the RAW source text (there is no translation
 // or synthesis to show), and the exclusion reason — the reason is the point of the page.
 import { GlobeIcon } from "lucide-react";
+import { useState } from "react";
 import type { ExcludedPost } from "@/lib/agent/excluded-query";
 import { cn } from "@/lib/utils";
 import { RelativeTime } from "./relative-time";
 
-// Mirrors feed-query's hostname(): www-stripped so the site label reads the same here as on
-// the feed's cards, whichever host variant the sitemap resolved.
-function hostname(url: string | null) {
-  try {
-    return url ? new URL(url).hostname.replace(/^www\./, "") : null;
-  } catch {
-    return null;
+function SourceIcon({ isX, faviconUrl }: { isX: boolean; faviconUrl: string | null }) {
+  const [faviconFailed, setFaviconFailed] = useState(false);
+  if (isX) {
+    return (
+      <svg aria-hidden="true" fill="currentColor" height="12" viewBox="0 0 24 24" width="12">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
+      </svg>
+    );
   }
-}
-
-function SourceIcon({ isX }: { isX: boolean }) {
-  return isX ? (
-    <svg aria-hidden="true" fill="currentColor" height="12" viewBox="0 0 24 24" width="12">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
-    </svg>
-  ) : (
-    <GlobeIcon aria-hidden="true" className="size-[13px] text-[oklch(0.82_0.05_85)]" />
+  if (!faviconUrl || faviconFailed) {
+    return <GlobeIcon aria-hidden="true" className="size-[13px] text-[oklch(0.82_0.05_85)]" />;
+  }
+  return (
+    // biome-ignore lint/performance/noImgElement: a 13px third-party favicon gains nothing from next/image proxying
+    <img
+      alt=""
+      aria-hidden="true"
+      className="size-[13px] rounded-[3px]"
+      onError={() => setFaviconFailed(true)}
+      referrerPolicy="no-referrer"
+      src={faviconUrl}
+    />
   );
 }
 
@@ -33,7 +41,7 @@ export function ExcludedItemCard({ item }: { item: ExcludedPost }) {
     ? sourcePost.authorHandle
       ? `@${sourcePost.authorHandle}`
       : "X source"
-    : (hostname(sourcePost.url) ?? "News source");
+    : (sourcePost.siteName ?? "News source");
   const href = isX
     ? sourcePost.authorHandle && sourcePost.xPostId
       ? `https://x.com/${sourcePost.authorHandle}/status/${sourcePost.xPostId}`
@@ -53,7 +61,7 @@ export function ExcludedItemCard({ item }: { item: ExcludedPost }) {
         )}
       >
         <span className="shrink-0">
-          <SourceIcon isX={isX} />
+          <SourceIcon faviconUrl={sourcePost.faviconUrl} isX={isX} />
         </span>
         {href ? (
           <a

@@ -48,6 +48,7 @@ function SourceIcon({ isX, faviconUrl }: { isX: boolean; faviconUrl: string | nu
       aria-hidden="true"
       className="size-[15px] rounded-[3px]"
       onError={() => setFaviconFailed(true)}
+      referrerPolicy="no-referrer"
       src={faviconUrl}
     />
   );

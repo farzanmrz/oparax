@@ -14,7 +14,7 @@ export default async function SettingsPage() {
   const xLink = await getXLinkState();
 
   return (
-    <div className="mx-auto flex w-full flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
+    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
       <PageHeading>Settings</PageHeading>
       <BandCard icon={<UserRoundIcon />} title="Profile">
         <div className="flex flex-col gap-6 desk:flex-row desk:items-start">

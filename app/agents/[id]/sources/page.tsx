@@ -30,7 +30,8 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
     const { data: configs, error: configError } = await createAdminClient()
       .from("source_configs")
       .select("url, domain, display_name, prefilter")
-      .eq("agent_id", desk.id);
+      .eq("agent_id", desk.id)
+      .eq("status", "active");
     if (configError) console.error("SourcesPage: source_configs label read failed", configError);
     for (const row of configs ?? []) {
       details[row.url] = {

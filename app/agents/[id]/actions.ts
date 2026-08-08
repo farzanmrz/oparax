@@ -211,12 +211,18 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
 
   if (parentDraft.platform === "x") {
     // Same desk-resolved ceiling as the pipeline, feed counter, and post gate (resolveDeskTier).
-    // The agents read runs on the RLS client, so it doubles as an ownership proof.
-    const [{ tier }, { data: tierAgent }] = await Promise.all([
+    // The owned parent-draft read above is the ownership proof; this RLS read only gets its tier.
+    const [{ tier }, { data: tierAgent, error: tierAgentError }] = await Promise.all([
       getXLinkState(),
       supabase.from("agents").select("reporter_tier").eq("id", parentDraft.agent_id).maybeSingle(),
     ]);
-    const postable = checkXPostable(trimmedText, resolveDeskTier(tierAgent?.reporter_tier, tier));
+    if (tierAgentError || !tierAgent) {
+      return {
+        ok: false,
+        error: "Could not verify this draft's character limit. Please try again.",
+      };
+    }
+    const postable = checkXPostable(trimmedText, resolveDeskTier(tierAgent.reporter_tier, tier));
     if (!postable.ok) {
       return { ok: false, error: xUnpostableMessage(postable.reason) };
     }

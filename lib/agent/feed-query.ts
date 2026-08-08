@@ -322,7 +322,8 @@ async function hydrate(
     const { data, error } = await supabase
       .from("source_configs")
       .select("domain, display_name")
-      .eq("agent_id", agentId);
+      .eq("agent_id", agentId)
+      .eq("status", "active");
     if (error) console.error("fetchFeedPage: source_configs label read failed", error);
     for (const row of data ?? []) {
       if (row.display_name) siteNames.set(row.domain.replace(/^www\./, ""), row.display_name);

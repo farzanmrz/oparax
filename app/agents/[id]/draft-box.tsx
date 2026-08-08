@@ -236,31 +236,40 @@ function DraftAction({
 
   if (posting) {
     return (
-      <span className={cn(statusClass, "bg-primary/50 text-primary-foreground")}>Posting…</span>
+      <div className="relative">
+        <span className={cn(statusClass, "bg-primary/50 text-primary-foreground")}>Posting…</span>
+        {mobileMetadata}
+      </div>
     );
   }
   if (confirmed) {
     return (
-      <a
-        className={cn(statusClass, "bg-success/12 text-success")}
-        href={postedUrl ?? "#"}
-        rel="noreferrer"
-        target="_blank"
-      >
-        <CheckIcon aria-hidden="true" className="size-3.5" />
-        Posted · view on X
-        <ExternalLinkIcon aria-hidden="true" className="size-3" />
-      </a>
+      <div className="relative">
+        <a
+          className={cn(statusClass, "bg-success/12 text-success")}
+          href={postedUrl ?? "#"}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <CheckIcon aria-hidden="true" className="size-3.5" />
+          Posted · view on X
+          <ExternalLinkIcon aria-hidden="true" className="size-3" />
+        </a>
+        {mobileMetadata}
+      </div>
     );
   }
   if (ambiguous) {
     return (
-      <span
-        className={cn(statusClass, "bg-warning/12 text-warning")}
-        title="Couldn't confirm this reached X — check your account on X"
-      >
-        Unconfirmed
-      </span>
+      <div className="relative">
+        <span
+          className={cn(statusClass, "bg-warning/12 text-warning")}
+          title="Couldn't confirm this reached X — check your account on X"
+        >
+          Unconfirmed
+        </span>
+        {mobileMetadata}
+      </div>
     );
   }
   return (

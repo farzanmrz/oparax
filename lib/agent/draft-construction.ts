@@ -2,7 +2,15 @@ import { z } from "zod";
 
 const ruleTextSchema = z.string().trim().min(1).max(750);
 const explanationSchema = z.string().trim().min(1).max(500);
-const draftOnBeatReasonSchema = z.string().trim().min(1).max(750);
+const MAX_DRAFT_ON_BEAT_REASON_CODE_POINTS = 750;
+const draftOnBeatReasonSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(
+    (value) => Array.from(value).length <= MAX_DRAFT_ON_BEAT_REASON_CODE_POINTS,
+    `Must be at most ${MAX_DRAFT_ON_BEAT_REASON_CODE_POINTS} code points`,
+  );
 
 /** A concise, model-produced editorial account of how a live draft was constructed. This is
  * deliberately structured provenance for reporters, not proof of the model's reasoning or
@@ -41,7 +49,7 @@ export type DraftConstruction = z.infer<typeof draftConstructionSchema>;
 export function normalizeDraftOnBeatReason(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return trimmed.length <= 750 ? trimmed : trimmed.slice(0, 750);
+  return Array.from(trimmed).slice(0, MAX_DRAFT_ON_BEAT_REASON_CODE_POINTS).join("");
 }
 
 /** Reads only the bounded, explicit beat-decision provenance that live drafts persist. */

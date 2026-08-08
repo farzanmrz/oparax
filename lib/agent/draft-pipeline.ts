@@ -429,6 +429,9 @@ async function draftForAgent(
       platform: "x",
       accountTier,
     });
+    if (written.verdict?.onBeat && written.verdict.draft !== null) {
+      written.call.output = normalizeWebsitePublisherMention(written.verdict.draft, brief.identity);
+    }
     const [drafterCallId] = await insertModelCalls(
       admin,
       agent.owner_id,

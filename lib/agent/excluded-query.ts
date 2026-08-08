@@ -18,6 +18,22 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type Client = SupabaseClient<Database>;
 
+function hostname(url: string | null) {
+  try {
+    return url ? new URL(url).hostname.replace(/^www\./, "") : null;
+  } catch {
+    return null;
+  }
+}
+
+function faviconUrl(url: string | null) {
+  try {
+    return url ? `${new URL(url).origin}/favicon.ico` : null;
+  } catch {
+    return null;
+  }
+}
+
 export type ExcludedPost = {
   id: string; // excluded_posts.id
   sourcePost: {
@@ -26,10 +42,12 @@ export type ExcludedPost = {
     text: string;
     postedAt: string | null;
     xPostId: string | null;
-    // Branches the card x-vs-website: the label is @handle or hostname, never a display
-    // name dug out of raw — matching the feed cards.
+    // Branches the card x-vs-website. Website display data comes only from this desk's active
+    // configs, matching feed-query; a source URL hostname remains the display fallback.
     source: string;
     url: string | null;
+    siteName: string | null;
+    faviconUrl: string | null;
   };
   onBeatReason: string;
   excludedAt: string;
@@ -60,8 +78,26 @@ export async function fetchExcludedPosts(
   const { data, error } = await query.limit(limit);
   if (error) throw error;
 
+  // Reporter-facing site labels mirror the Feed's active source-config map. This is display
+  // data only: excluded delivery ownership remains defined by excluded_posts.agent_id.
+  const siteNames = new Map<string, string>();
+  {
+    const { data: configs, error: configError } = await client
+      .from("source_configs")
+      .select("domain, display_name")
+      .eq("agent_id", agentId)
+      .eq("status", "active");
+    if (configError)
+      console.error("fetchExcludedPosts: source_configs label read failed", configError);
+    for (const config of configs ?? []) {
+      if (config.display_name)
+        siteNames.set(config.domain.replace(/^www\./, ""), config.display_name);
+    }
+  }
+
   const items = (data ?? []).map((row) => {
     const sourcePost = row.source_posts;
+    const host = hostname(sourcePost.url);
     return {
       id: row.id,
       sourcePost: {
@@ -72,6 +108,9 @@ export async function fetchExcludedPosts(
         xPostId: sourcePost.x_post_id,
         source: sourcePost.source,
         url: sourcePost.url,
+        siteName:
+          sourcePost.source === "x" ? null : ((host ? siteNames.get(host) : undefined) ?? host),
+        faviconUrl: sourcePost.source === "x" ? null : faviconUrl(sourcePost.url),
       },
       onBeatReason: row.on_beat_reason,
       excludedAt: row.excluded_at,

@@ -39,7 +39,7 @@ function sourceDocument(brief: SourceBrief): string {
 
 export async function translateSourcePost(input: { brief: SourceBrief }): Promise<TranslateResult> {
   const primary = primaryLanguage(input.brief.lang);
-  if (primary === "en") {
+  if (input.brief.lang === "en") {
     return {
       call: null,
       translation: null,
@@ -132,8 +132,11 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
     return {
       call,
       translation,
-      englishSourceText: translation,
-      usable: translation !== null,
+      // A detected-but-undetermined source and an explicit no-translation result must still
+      // advance the paid delivery. The drafter can inspect the source directly rather than
+      // turning a billable, non-English delivery into a retry loop.
+      englishSourceText: translation ?? sourceDocument(input.brief),
+      usable: true,
     };
   } finally {
     clearTimeout(inactivityTimer);
