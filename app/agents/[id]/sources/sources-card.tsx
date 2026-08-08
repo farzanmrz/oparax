@@ -14,9 +14,9 @@ import { BandCard } from "@/components/band-card";
 import { SiteFavicon } from "@/components/site-favicon";
 import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
+import { splitList } from "@/lib/split-list";
 import { displaySourceUrl, MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES, normalizeValidHandle } from "@/lib/x/handle";
-import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import { removeWebsite, startWebsiteOnboarding } from "./actions";
 
@@ -165,18 +165,22 @@ export function SourcesCard({
   }, [websites]);
 
   function commitHandles(raw: string) {
-    const candidates = splitHandles(raw);
+    const candidates = splitList(raw);
     if (candidates.length === 0) return;
-    const hasInvalidHandle = candidates.some((handle) => !normalizeValidHandle(handle));
+    const validHandles = candidates.flatMap((handle) => {
+      const normalized = normalizeValidHandle(handle);
+      return normalized ? [normalized] : [];
+    });
+    const hasInvalidHandle = validHandles.length !== candidates.length;
     setHandleError(
       hasInvalidHandle
         ? "Enter a valid X handle — letters, numbers, and underscores, up to 15."
         : null,
     );
     setHandleNotice(null);
-    if (hasInvalidHandle && candidates.every((handle) => !normalizeValidHandle(handle))) return;
+    if (validHandles.length === 0) return;
     startHandleTransition(async () => {
-      const result = await addTrackedHandles(deskId, raw);
+      const result = await addTrackedHandles(deskId, validHandles.join(" "));
       if (!result.ok) {
         setHandleError(result.error);
         return;
@@ -201,8 +205,8 @@ export function SourcesCard({
   // discovery and a billed model call per site, so there is no equivalent of "commit a
   // comma-separated blob" here. The chip renders the moment this fires and the input clears
   // immediately; a not-ok return (bad URL, limit, unreachable) rolls the optimistic chip back.
-  function addWebsite() {
-    const raw = websiteInput.trim();
+  function addWebsite(input = websiteInput) {
+    const raw = input.trim();
     if (!raw) return;
     const normalized = normalizeSourceUrl(raw);
     const priorFailed = normalized ? failedUrls.get(normalized.toString()) : undefined;
@@ -241,6 +245,15 @@ export function SourcesCard({
         }
       }
     });
+  }
+
+  function commitWebsiteParts(parts: string[]): string[] {
+    if (parts.length !== 1) {
+      setWebsiteError("Add one website at a time.");
+      return parts;
+    }
+    addWebsite(parts[0]);
+    return [];
   }
 
   // Doubles as "cancel" for a pending chip and "dismiss" for a failed one — remove_source_config
@@ -319,7 +332,7 @@ export function SourcesCard({
             onChange={setHandleInput}
             onCommitParts={(parts) => {
               commitHandles(parts.join(" "));
-              return parts.filter((part) => !normalizeValidHandle(part));
+              return parts.filter((part) => !normalizeValidHandle(part) && !part.startsWith("@@"));
             }}
             placeholder={isHandlePending ? "Adding…" : "Add X accounts — usernames"}
             value={handleInput}
@@ -339,8 +352,8 @@ export function SourcesCard({
             <SourceRow
               icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
               key={url}
-              display={<SingleLineLabel>{websiteName(url, websiteDetails[url])}</SingleLineLabel>}
-              label={websiteName(url, websiteDetails[url])}
+              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
+              label={websiteName(url)}
               onRemove={() => removeSite(url)}
               tone="website"
             />
@@ -354,12 +367,8 @@ export function SourcesCard({
                 />
               }
               key={url}
-              display={
-                <SingleLineLabel>
-                  {websiteName(url, resolvedWebsiteDetails[url] ?? websiteDetails[url])}
-                </SingleLineLabel>
-              }
-              label={websiteName(url, resolvedWebsiteDetails[url] ?? websiteDetails[url])}
+              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
+              label={websiteName(url)}
               onRemove={() => removeSite(url)}
               tone="website"
             />
@@ -393,7 +402,7 @@ export function SourcesCard({
             disabled={false}
             ariaLabel="Add a website"
             onChange={setWebsiteInput}
-            onSubmit={addWebsite}
+            onCommitParts={commitWebsiteParts}
             placeholder="Add a website — example.com"
             value={websiteInput}
           />
@@ -429,8 +438,7 @@ function SourceCount({ count, limit, noun }: { count: number; limit: number; nou
   );
 }
 
-function websiteName(value: string, detail?: WebsiteDetail): string {
-  if (detail?.displayName) return detail.displayName.replace(/^www\./i, "");
+function websiteName(value: string): string {
   return displaySourceUrl(value);
 }
 

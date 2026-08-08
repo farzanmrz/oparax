@@ -2,7 +2,7 @@
 
 The Railway worker for Oparax's website-source ingestion path (issue #101). Every
 `POLLER_TICK_INTERVAL_MS` (default 45s) it reads every `active` row in `source_configs` (the
-desks' onboarded website sources from #100), checks that source's sitemap or RSS feed via
+desks' onboarded website sources from #100), checks that source's sitemap, RSS feed, or listing page via
 conditional GET, finds items it has never delivered before, fetches each new item's body via
 the adaptive retrieval chain (#105 — see `fetch-body.ts` below), and POSTs a `"website"`-shaped
 delivery to the app's
@@ -17,7 +17,7 @@ package:
 - Own `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `biome.jsonc`, `pnpm-workspace.yaml`.
   Not listed under the root repo's `pnpm-workspace.yaml` (no `packages:` globs there), so this
   package's install/build never touches the app's.
-- **Zero imports from the app's `lib/`.** The sitemap/feed parsing and SSRF-safety checks
+- **Zero imports from the app's `lib/`.** The sitemap/feed/listing parsing and SSRF-safety checks
   #100 built in `lib/sources/*` are duplicated here in trimmed form rather than imported —
   those modules use the Next.js `@/*` path alias (doesn't resolve outside the app's
   `tsconfig.json`) and `ingest/`'s own README already establishes the "isolated package, zero
@@ -37,7 +37,7 @@ package:
   same-site requirement — for SERP-discovered candidates, which are expected to be a
   different host). Every URL pulled out of a sitemap/feed/SERP result is untrusted
   third-party content and gets checked before being fetched.
-- `sitemap.ts` / `feed.ts` — trimmed re-implementations of #100's sitemap/feed parsing,
+- `sitemap.ts` / `feed.ts` / `listing.ts` — trimmed re-implementations of #100's sitemap/feed/listing parsing,
   returning only `{ url, itemKey, title, publishedAt, bodyFromFeed }` per item, with
   conditional-GET support (ETag + Last-Modified) so an unchanged feed short-circuits on a
   `304` without re-parsing.

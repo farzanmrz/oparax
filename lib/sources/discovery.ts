@@ -393,10 +393,12 @@ function extractRssAlternateLink(html: string, pageUrl: string): string | null {
 }
 
 /** Article-shaped paths carry a date segment, a slug-like leaf with at least three hyphens,
- *  or a hyphenated HTML leaf. Static assets and short section paths never qualify. */
+ *  or a hyphenated HTML leaf. Static assets, short section paths, and navigation taxonomies
+ *  never qualify. */
 function isArticleShapedPath(pathname: string): boolean {
   if (NON_ARTICLE_EXT_RE.test(pathname)) return false;
   if (/\/(?:19|20)\d{2}(?:\/|$)/.test(pathname)) return true;
+  if (/\/(?:topics?|tags?|authors?|categories?)(?:\/|$)/i.test(pathname)) return false;
   const leaf = pathname.split("/").filter(Boolean).at(-1) ?? "";
   const hyphens = leaf.match(/-/g)?.length ?? 0;
   return hyphens >= 3 || (/\.html?$/i.test(leaf) && leaf.includes("-"));
@@ -412,7 +414,8 @@ function comparableHostname(hostname: string): string {
 function extractListingSample(html: string, finalUrl: string): SourceSampleEntry[] {
   const listingUrl = new URL(finalUrl);
   listingUrl.hash = "";
-  const seen = new Set<string>();
+  listingUrl.search = "";
+  const seen = new Map<string, number>();
   const sameHostDistinct: { url: string; title?: string }[] = [];
   const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
 
@@ -429,14 +432,20 @@ function extractListingSample(html: string, finalUrl: string): SourceSampleEntry
     }
     if (isPrivateHostname(candidate.hostname)) continue;
     candidate.hash = "";
+    candidate.search = "";
     const href = candidate.toString();
-    if (href === listingUrl.toString() || seen.has(href)) continue;
-    seen.add(href);
+    if (href === listingUrl.toString()) continue;
     const title = match[2]
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    sameHostDistinct.push({ url: href, ...(title ? { title } : {}) });
+    const previousIndex = seen.get(href);
+    if (previousIndex === undefined) {
+      seen.set(href, sameHostDistinct.length);
+      sameHostDistinct.push({ url: href, ...(title ? { title } : {}) });
+    } else if (title.length > (sameHostDistinct[previousIndex].title?.length ?? 0)) {
+      sameHostDistinct[previousIndex] = { url: href, title };
+    }
   }
 
   const articleShaped = sameHostDistinct.filter((entry) =>
@@ -605,17 +614,24 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
     if (await urlExists(candidate)) return { mechanism: "sitemap", sitemapUrl: candidate };
   }
 
-  const exactPage = await fetchSafeSourceWithFinalUrl(
-    resolvedUrl.toString(),
-    resolvedUrl.toString(),
-    resolvedUrl.hostname,
-  );
-  const contentType = exactPage.res.headers.get("content-type");
-  const isHtml = !contentType || /^\s*(?:text|application)\/x?html\b/i.test(contentType);
-  if (!exactPage.res.ok || !isHtml) await exactPage.res.body?.cancel();
-  const exactPageHtml = exactPage.res.ok && isHtml ? await exactPage.res.text() : null;
+  let exactPageHtml: string | null = null;
+  let exactPageFinalUrl: string | null = null;
+  try {
+    const exactPage = await fetchSafeSourceWithFinalUrl(
+      resolvedUrl.toString(),
+      resolvedUrl.toString(),
+      resolvedUrl.hostname,
+    );
+    const contentType = exactPage.res.headers.get("content-type");
+    const isHtml = !contentType || /^\s*(?:text|application)\/x?html\b/i.test(contentType);
+    if (!exactPage.res.ok || !isHtml) await exactPage.res.body?.cancel();
+    exactPageHtml = exactPage.res.ok && isHtml ? await exactPage.res.text() : null;
+    exactPageFinalUrl = exactPage.finalUrl;
+  } catch {
+    // The exact page is optional: RSS fallbacks may still be reachable.
+  }
   const exactPageFeed = exactPageHtml
-    ? extractRssAlternateLink(exactPageHtml, exactPage.finalUrl)
+    ? extractRssAlternateLink(exactPageHtml, exactPageFinalUrl ?? resolvedUrl.toString())
     : null;
   if (exactPageFeed) return { mechanism: "rss", feedUrl: exactPageFeed };
 
@@ -630,13 +646,13 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
   }
 
   const listingSample =
-    exactPageHtml && !isArticleShapedPath(new URL(exactPage.finalUrl).pathname)
-      ? extractListingSample(exactPageHtml, exactPage.finalUrl)
+    exactPageHtml && exactPageFinalUrl && !isArticleShapedPath(new URL(exactPageFinalUrl).pathname)
+      ? extractListingSample(exactPageHtml, exactPageFinalUrl)
       : [];
   if (listingSample.length > 0) {
     return {
       mechanism: "listing",
-      listingUrl: exactPage.finalUrl,
+      listingUrl: exactPageFinalUrl ?? undefined,
       listingSample,
     };
   }

@@ -5,6 +5,7 @@
 - **`app/api/ingest`:** Bearer-auth delivery interface for poller and X-stream posts.
 - **Website deliveries keep their `source_config_id`** from poller through ingest: `draft-pipeline.ts` resolves it to one desk, never rematch by hostname, so tracked paths cannot cross-deliver.
 - **Website onboarding uses `reservePendingSource`:** its locked RPC atomically enforces the five-site cap and duplicate no-bill guarantee. `add_source_config` completes by reservation ID, so a stale dismissed attempt cannot activate a re-added row.
+- **Website discovery uses sitemap, RSS feed, or listing:** the poller's listing parser is deliberately duplicated for package isolation, stores its validated page as `listing_url`, and records failed-source reasons in `error_code`.
 - **Private/internal website URLs fail before reservation:** users receive inline validation, never a persisted failed row.
 - **`app/api/slack/interactions`** is `after()`-deferred to meet Slack's 3s ack deadline before slow X-post work.
 - **`agents.reporter_tier` is corpus-proven; `resolveDeskTier` is the only desk-tier resolver** — premium when either reporter or posting-account tier is premium — for drafting, feed count, edit, and post gates. **`checkXPostable` owns X validity**; every writer of a `drafts` winner must call it, never re-derive it.

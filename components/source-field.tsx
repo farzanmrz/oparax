@@ -29,21 +29,21 @@ export function SourceRow({
   // Create-form chips are active-only, so status and its label intentionally stay row-only.
   if (variant === "chip") {
     return (
-      <li className="inline-flex max-w-full min-h-11 items-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--chip-x-bg)] py-0 pl-2.5 pr-0.5 desk:min-h-9">
+      <li className="inline-flex h-11 max-w-full items-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--chip-x-bg)] py-0 pl-2.5 pr-1 desk:h-9">
         {icon ? (
           <span className="flex size-[15px] shrink-0 items-center justify-center">{icon}</span>
         ) : null}
-        <span className="min-w-0 max-w-[16rem] truncate text-sm text-text-title">
+        <span className="min-w-0 max-w-[16rem] truncate text-sm text-text-title" title={label}>
           {display ?? label}
         </span>
         <button
           aria-label={`Remove ${label}`}
-          className="flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted outline-none hover:bg-destructive/12 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring desk:size-7"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted outline-none hover:bg-destructive/12 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring desk:size-9"
           disabled={removeDisabled}
           onClick={onRemove}
           type="button"
         >
-          <RemoveIcon aria-hidden="true" className="size-4 desk:size-3.5" />
+          <RemoveIcon aria-hidden="true" className="size-4" />
         </button>
       </li>
     );
@@ -83,7 +83,7 @@ export function SourceRow({
       </span>
       {status !== "active" ? (
         <span
-          className={`ml-2 shrink-0 text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
+          className={`ml-2 min-w-0 text-right text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
         >
           {status === "pending" ? "Pending" : (statusLabel ?? "Couldn't set up")}
         </span>

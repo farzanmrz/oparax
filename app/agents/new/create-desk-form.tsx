@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { splitList } from "@/lib/split-list";
 import { displaySourceUrl, MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED, normalizeValidHandle } from "@/lib/x/handle";
-import { mergeHandles, splitHandles } from "@/lib/x/handle-input";
+import { mergeHandles } from "@/lib/x/handle-input";
 import { startExtraction } from "../[id]/voice/actions";
 import { createDesk, startWebsiteOnboardingAtCreation } from "./actions";
 
@@ -33,14 +33,20 @@ function mergeWebsites(existing: readonly string[], incoming: readonly string[])
   const next = [...existing];
   for (const site of incoming) {
     if (next.length >= MAX_WEBSITES) break;
-    if (
-      !next.some(
-        (value) => displaySourceUrl(value).toLowerCase() === displaySourceUrl(site).toLowerCase(),
-      )
-    )
-      next.push(site);
+    if (!next.some((value) => websiteDedupeKey(value) === websiteDedupeKey(site))) next.push(site);
   }
   return next;
+}
+
+function websiteDedupeKey(href: string): string {
+  const display = displaySourceUrl(href);
+  const slashIndex = display.indexOf("/");
+  if (slashIndex === -1) return display.toLowerCase();
+  return `${display.slice(0, slashIndex).toLowerCase()}${display.slice(slashIndex)}`;
+}
+
+function sameWebsiteForCreate(a: string, b: string): boolean {
+  return websiteDedupeKey(a) === websiteDedupeKey(b);
 }
 
 /** Label plus always-visible helper text (owner decision: the create form is the deliberate
@@ -179,14 +185,8 @@ export function CreateDeskForm({
         continue;
       }
       if (
-        websites.some(
-          (website) =>
-            displaySourceUrl(website).toLowerCase() === displaySourceUrl(normalized).toLowerCase(),
-        ) ||
-        valid.some(
-          (website) =>
-            displaySourceUrl(website).toLowerCase() === displaySourceUrl(normalized).toLowerCase(),
-        )
+        websites.some((website) => sameWebsiteForCreate(website, normalized)) ||
+        valid.some((website) => sameWebsiteForCreate(website, normalized))
       ) {
         continue;
       }
@@ -229,7 +229,7 @@ export function CreateDeskForm({
       return;
     }
 
-    const handleParts = splitHandles(handleDraft);
+    const handleParts = splitList(handleDraft);
     const rejectedHandles = commitHandleParts(handleParts);
     if (rejectedHandles.length) return;
     const finalHandles = mergeHandles(
@@ -312,7 +312,7 @@ export function CreateDeskForm({
     name.trim().length > 0 &&
     name.trim().length <= 30 &&
     beat.trim().length > 0 &&
-    mergeHandles(handles, splitHandles(handleDraft)).length > 0 &&
+    mergeHandles(handles, splitList(handleDraft)).length > 0 &&
     hasLinkedAccount &&
     !isPending &&
     !createdDeskId;
