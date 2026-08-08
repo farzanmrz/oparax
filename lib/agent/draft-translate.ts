@@ -18,6 +18,8 @@ export type TranslateResult = {
   /** Null when the English fast path skipped the model entirely — nothing to ledger. */
   call: CouncilCall | null;
   translation: string | null;
+  /** The canonical English document the drafter may consume. */
+  englishSourceText: string | null;
   /** False means the call billed but its output is unusable; the caller ledgers it, then throws. */
   usable: boolean;
 };
@@ -31,10 +33,19 @@ function isUndeterminedLanguage(lang: string | null): boolean {
   return lang === null || UNDETERMINED_LANGUAGE_CODES.has(lang);
 }
 
+function sourceDocument(brief: SourceBrief): string {
+  return brief.title ? `${brief.title}\n\n${brief.text}` : brief.text;
+}
+
 export async function translateSourcePost(input: { brief: SourceBrief }): Promise<TranslateResult> {
   const primary = primaryLanguage(input.brief.lang);
   if (primary === "en") {
-    return { call: null, translation: null, usable: true };
+    return {
+      call: null,
+      translation: null,
+      englishSourceText: sourceDocument(input.brief),
+      usable: true,
+    };
   }
 
   const controller = new AbortController();
@@ -121,7 +132,8 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
     return {
       call,
       translation,
-      usable: isUndeterminedLanguage(primary) || translation !== null,
+      englishSourceText: translation,
+      usable: translation !== null,
     };
   } finally {
     clearTimeout(inactivityTimer);

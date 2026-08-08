@@ -73,7 +73,7 @@
 }
 
 :root {
-  /* Canonical handoff tokens: prototype > README > tokens.css. */
+  /* DESIGN.md is the UI contract; this block contains its production tokens. */
   --page-bg: #0c0c0e;
   --header-bg: #121214;
   --card-grad-top: oklch(0.2 0.006 260);
@@ -127,16 +127,20 @@
   --radius-control: 6px;
   --radius-tag: 5px;
   --radius-badge: 4px;
-  --content-max: 1080px;
-  --gutter-web: 12px;
-  --gutter-mobile: 16px;
-  --card-gap-web: 24px;
-  --card-gap-mobile: 16px;
+  --content-max: 1356px;
+  --gutter-web: 6px;
+  --gutter-mobile: 32px;
+  --gutter-mobile-narrow: 16px;
+  --page-rhythm-web: 24px;
+  --page-rhythm-mobile: 16px;
   --strip-h-web: 32px;
   --strip-h-mobile: 38px;
   --breakpoint-mobile: 700px;
   --post-h-web: 30px;
-  --post-h-mobile: 40px;
+  --post-h-mobile: 44px;
+  --draft-footer-gap-web: 1px;
+  --draft-footer-gap-mobile: 8px;
+  --char-count-gap-mobile: 4px;
   --char-limit: 280;
 
   /* shadcn semantic slots wired to the handoff system. */
@@ -245,5 +249,11 @@
 @media (max-width: 699.98px) {
   .op-app-shell:has([data-has-desk="true"]) .op-scroll-region {
     padding-top: 100px;
+  }
+}
+
+@media (max-width: 359.98px) {
+  :root {
+    --gutter-mobile: var(--gutter-mobile-narrow);
   }
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOwnedExtractionProgress } from "@/app/agents/[id]/voice/get-extraction-progress";
-import { resolveXTier, X_CHAR_LIMITS } from "@/lib/agent/desk-config";
+import { resolveDeskTier, X_CHAR_LIMITS } from "@/lib/agent/desk-config";
 import { fetchFeedCounts, fetchFeedPage } from "@/lib/agent/feed-query";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -16,7 +16,7 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
   // rendering, but do not prove this server component has not already started an admin read.
   const { data: agent, error: agentError } = await supabase
     .from("agents")
-    .select("reporter_handle, status, tracked_handles")
+    .select("reporter_handle, reporter_tier, status, tracked_handles")
     .eq("id", id)
     .maybeSingle();
   if (agentError || !agent) notFound();
@@ -52,9 +52,9 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
         },
       };
   }
-  const charLimit = X_CHAR_LIMITS[resolveXTier(xLink.tier)];
+  const charLimit = X_CHAR_LIMITS[resolveDeskTier(agent.reporter_tier, xLink.tier)];
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 flex-col gap-4 py-4">
+    <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
       <FeedAutoRefresh />
       {counts.totalStories === 0 ? (
         <FeedEmptyState deskId={id} readiness={readiness} />

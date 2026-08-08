@@ -27,13 +27,29 @@ function getSourceLabel(source: FeedItem["source"]): string {
     : (source.siteName ?? "News source");
 }
 
-function SourceIcon({ isX }: { isX: boolean }) {
-  return isX ? (
-    <svg aria-hidden="true" fill="currentColor" height="12" viewBox="0 0 24 24" width="12">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
-    </svg>
-  ) : (
-    <GlobeIcon aria-hidden="true" className="size-[13px] text-[oklch(0.82_0.05_85)]" />
+function SourceIcon({ isX, faviconUrl }: { isX: boolean; faviconUrl: string | null }) {
+  // Favicons are best-effort (see FeedSourceView.faviconUrl): a site without /favicon.ico
+  // fires onError once and the card settles on the generic globe for good.
+  const [faviconFailed, setFaviconFailed] = useState(false);
+  if (isX) {
+    return (
+      <svg aria-hidden="true" fill="currentColor" height="15" viewBox="0 0 24 24" width="15">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
+      </svg>
+    );
+  }
+  if (!faviconUrl || faviconFailed) {
+    return <GlobeIcon aria-hidden="true" className="size-[15px] text-[oklch(0.82_0.05_85)]" />;
+  }
+  return (
+    // biome-ignore lint/performance/noImgElement: a 13px third-party favicon gains nothing from next/image proxying
+    <img
+      alt=""
+      aria-hidden="true"
+      className="size-[15px] rounded-[3px]"
+      onError={() => setFaviconFailed(true)}
+      src={faviconUrl}
+    />
   );
 }
 
@@ -87,12 +103,14 @@ function SourceStrip({
         isX ? "bg-[image:var(--strip-x-grad)]" : "bg-[image:var(--strip-news-grad)]",
       )}
     >
-      <span className="shrink-0">
-        <SourceIcon isX={isX} />
+      {/* Fixed 15px source-icon slot: X logo, favicon, and globe fallback all render at
+          exactly this size so the strip's leading edge never shifts between source kinds. */}
+      <span className="flex size-[15px] shrink-0 items-center justify-center">
+        <SourceIcon faviconUrl={source.faviconUrl} isX={isX} />
       </span>
       <span
         className={cn(
-          "shrink-0 whitespace-nowrap font-medium desk:min-w-0 desk:shrink desk:truncate",
+          "shrink-0 whitespace-nowrap text-[14.5px] font-medium desk:min-w-0 desk:shrink desk:truncate desk:text-[13.5px]",
           isX ? "text-text-handle-x" : "text-text-handle-news",
         )}
       >
@@ -105,7 +123,7 @@ function SourceStrip({
           source.fresh ? "animate-[op-pulse_2s_ease-in-out_infinite] bg-warning" : "bg-warn-stale",
         )}
       />
-      <span className="shrink-0 whitespace-nowrap text-[13px] text-text-muted desk:min-w-0 desk:shrink-[2] desk:truncate desk:text-xs">
+      <span className="shrink-0 whitespace-nowrap text-[14px] text-text-muted desk:min-w-0 desk:shrink-[2] desk:truncate desk:text-[13px]">
         <RelativeTime iso={source.postedAt ?? createdAt} />
       </span>
       <span className="min-w-0 flex-1" />
@@ -115,7 +133,6 @@ function SourceStrip({
         draftId={draft.draftId}
         onDraftReplaced={onDraftReplaced}
         sourceGone={source.gone}
-        sourceLabel={label}
         sourceUrl={source.url}
         versionCount={draft.versionCount}
       />

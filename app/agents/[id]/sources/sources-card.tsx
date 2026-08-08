@@ -8,10 +8,11 @@
 // normalized URL string so a purely local optimistic add reconciles cleanly with what the
 // poll later reports for the exact same site.
 
-import { GlobeIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { GlobeIcon, PlusIcon, XIcon as RemoveIcon } from "lucide-react";
 import {
   type ClipboardEvent,
   type KeyboardEvent,
+  type ReactNode,
   useEffect,
   useRef,
   useState,
@@ -26,7 +27,7 @@ import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import { removeWebsite, startWebsiteOnboarding } from "./actions";
 
-function XIcon() {
+function XLogo() {
   return (
     <svg aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231z" />
@@ -38,13 +39,25 @@ function XIcon() {
 // clobber that optimistic change for the ~2s until the next poll catches up with the server.
 const RECONCILE_GRACE_MS = 2500;
 
+/** Onboarded display facts for one website chip, keyed by the config's exact url string
+ *  (`agents.websites` entries and `source_configs.url` share the same normalized form).
+ *  A chip whose url has no entry — a just-added site the server render predates, or a
+ *  failed read — falls back to showing its pasted URL as before. */
+export type WebsiteDetail = {
+  displayName: string;
+  domain: string;
+  pathPrefix: string | null;
+};
+
 export function SourcesCard({
   deskId,
   trackedHandles,
+  websiteDetails,
   websites,
 }: {
   deskId: string;
   trackedHandles: readonly string[];
+  websiteDetails: Readonly<Record<string, WebsiteDetail>>;
   websites: readonly string[];
 }) {
   const [handleInput, setHandleInput] = useState("");
@@ -262,12 +275,15 @@ export function SourcesCard({
   );
 
   return (
-    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))] desk:gap-6">
-      <BandCard icon={<XIcon />} title="X Accounts">
-        <SourceCount count={trackedHandles.length} limit={MAX_TRACKED_HANDLES} />
-        <div className="mt-4 flex flex-wrap gap-2">
+    <div className="grid gap-[var(--page-rhythm-mobile)] [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))] desk:gap-[var(--page-rhythm-web)]">
+      <BandCard
+        headerAside={<SourceCount count={trackedHandles.length} limit={MAX_TRACKED_HANDLES} />}
+        icon={<XLogo />}
+        title="X Accounts"
+      >
+        <ul className="grid gap-2 desk:grid-cols-2">
           {trackedHandles.map((handle) => (
-            <SourceChip
+            <SourceRow
               key={handle}
               label={`@${handle}`}
               onRemove={() => removeHandle(handle)}
@@ -275,7 +291,7 @@ export function SourcesCard({
               tone="x"
             />
           ))}
-        </div>
+        </ul>
         {!atHandleLimit ? (
           <AddSourceField
             disabled={isHandlePending}
@@ -285,7 +301,7 @@ export function SourcesCard({
             onKeyDown={onHandleKeyDown}
             onPaste={onHandlePaste}
             onSubmit={() => commitHandles(handleInput)}
-            placeholder={isHandlePending ? "Adding…" : "Add X accounts — @ optional"}
+            placeholder={isHandlePending ? "Adding…" : "Add X accounts — usernames"}
             value={handleInput}
           />
         ) : null}
@@ -293,34 +309,53 @@ export function SourcesCard({
         {handleNotice ? <FieldMessage>{handleNotice}</FieldMessage> : null}
       </BandCard>
 
-      <BandCard icon={<GlobeIcon />} title="Websites">
-        <SourceCount count={websiteCount} limit={MAX_WEBSITES} />
-        <div className="mt-4 flex flex-wrap gap-2">
+      <BandCard
+        headerAside={<SourceCount count={websiteCount} limit={MAX_WEBSITES} />}
+        icon={<GlobeIcon />}
+        title="Websites"
+      >
+        <ul className="grid gap-2">
           {websites.map((url) => (
-            <SourceChip key={url} label={url} onRemove={() => removeSite(url)} tone="website" />
+            <SourceRow
+              display={<WebsiteChipContent detail={websiteDetails[url]} url={url} />}
+              icon={<WebsiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+              key={url}
+              label={websiteLabel(url, websiteDetails[url])}
+              onRemove={() => removeSite(url)}
+              tone="website"
+            />
           ))}
           {resolvedChips.map((url) => (
-            <SourceChip key={url} label={url} onRemove={() => removeSite(url)} tone="website" />
+            <SourceRow
+              display={<WebsiteChipContent detail={websiteDetails[url]} url={url} />}
+              icon={<WebsiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+              key={url}
+              label={websiteLabel(url, websiteDetails[url])}
+              onRemove={() => removeSite(url)}
+              tone="website"
+            />
           ))}
           {pendingChips.map((url) => (
-            <SourceChip
+            <SourceRow
+              icon={<WebsiteFavicon url={url} />}
               key={url}
-              label={url}
+              label={formatWebsiteLabel(url)}
               onRemove={() => removeSite(url)}
               status="pending"
               tone="website"
             />
           ))}
           {failedChips.map((url) => (
-            <SourceChip
+            <SourceRow
+              icon={<WebsiteFavicon url={url} />}
               key={url}
-              label={url}
+              label={formatWebsiteLabel(url)}
               onRemove={() => removeSite(url)}
               status="failed"
               tone="website"
             />
           ))}
-        </div>
+        </ul>
         {!atWebsiteLimit ? (
           <AddSourceField
             disabled={false}
@@ -352,27 +387,102 @@ export function SourcesCard({
 
 function SourceCount({ count, limit }: { count: number; limit: number }) {
   return (
-    <p className="text-sm text-text-muted">
-      <span className={count >= limit ? "text-destructive" : "text-text-label"}>{count}</span>/
-      {limit}
-      {count >= limit ? " · Source limit reached" : " connected"}
-    </p>
+    <span
+      className={`text-sm tabular-nums ${count >= limit ? "text-destructive" : "text-text-label"}`}
+    >
+      {count} / {limit}
+    </span>
   );
 }
 
-/** `status` carries an onboarding chip's lifecycle (amber "— pending" / red "— couldn't set
- *  up", per DESIGN.md's stable color meanings); the remove button doubles as Cancel (pending)
- *  and Dismiss (failed), so it is never disabled on a status chip — `removeDisabled` only
- *  guards active chips whose removal transition is in flight. */
-function SourceChip({
+function formatWebsiteLabel(value: string): string {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./i, "");
+    const path = url.pathname === "/" ? "" : url.pathname;
+    return `${host}${path}${url.search}${url.hash}`;
+  } catch {
+    return value.replace(/^https?:\/\/(?:www\.)?/i, "");
+  }
+}
+
+/** The narrow URL the poller actually watches — domain + onboarded path prefix — in place
+ *  of the raw pasted URL. No detail row → the pasted-URL rendering, exactly as before. */
+function narrowUrl(url: string, detail?: WebsiteDetail): string {
+  if (!detail) return formatWebsiteLabel(url);
+  return `${detail.domain.replace(/^www\./i, "")}${detail.pathPrefix ?? ""}`;
+}
+
+/** Plain-text chip identity for aria-labels: "Mundo Deportivo (mundodeportivo.com/futbol/…)"
+ *  when the name adds information, the narrow URL alone when it's still just the hostname. */
+function websiteLabel(url: string, detail?: WebsiteDetail): string {
+  const narrow = narrowUrl(url, detail);
+  return detail && !sameAsHost(detail, narrow) ? `${detail.displayName} (${narrow})` : narrow;
+}
+
+function sameAsHost(detail: WebsiteDetail, narrow: string): boolean {
+  return detail.displayName.replace(/^www\./i, "").toLowerCase() === narrow.toLowerCase();
+}
+
+/** Two-line chip body: the publication name in bold with the narrow URL beneath it styled
+ *  as a URL — muted, smaller, breaking anywhere on narrow viewports. A row whose stored
+ *  name is still just the hostname skips the bold line rather than stuttering. */
+function WebsiteChipContent({ url, detail }: { url: string; detail?: WebsiteDetail }) {
+  const narrow = narrowUrl(url, detail);
+  if (!detail || sameAsHost(detail, narrow)) return <>{narrow}</>;
+  return (
+    <>
+      <span className="block font-semibold text-text-title">{detail.displayName}</span>
+      <span className="block break-all text-xs leading-snug text-text-muted">{narrow}</span>
+    </>
+  );
+}
+
+/** Same fixed 15px icon slot as the feed card's source strip (DESIGN.md): the site's
+ *  /favicon.ico by convention, settling on the generic globe after one failed load. */
+function WebsiteFavicon({ url, domain }: { url: string; domain?: string }) {
+  const [failed, setFailed] = useState(false);
+  let src: string | null = domain ? `https://${domain}/favicon.ico` : null;
+  if (!src) {
+    try {
+      src = `${new URL(url).origin}/favicon.ico`;
+    } catch {
+      src = null;
+    }
+  }
+  if (!src || failed) {
+    return <GlobeIcon aria-hidden="true" className="size-[15px] text-text-muted" />;
+  }
+  return (
+    // biome-ignore lint/performance/noImgElement: a 15px third-party favicon gains nothing from next/image proxying
+    <img
+      alt=""
+      aria-hidden="true"
+      className="size-[15px] rounded-[3px]"
+      onError={() => setFailed(true)}
+      src={src}
+    />
+  );
+}
+
+/** `status` carries website onboarding lifecycle. The close action doubles as Cancel for a
+ * pending row and Dismiss for a failed row; `removeDisabled` only guards active X rows whose
+ * removal transition is already in flight. */
+function SourceRow({
   label,
   tone,
+  icon,
+  display,
   status = "active",
   removeDisabled = false,
   onRemove,
 }: {
+  /** Plain-text identity — always what the remove button's aria-label speaks. */
   label: string;
   tone: "x" | "website";
+  icon?: ReactNode;
+  /** Optional rich rendering (e.g. bold site name over its URL); `label` renders when absent. */
+  display?: ReactNode;
   status?: "active" | "pending" | "failed";
   removeDisabled?: boolean;
   onRemove: () => void;
@@ -393,24 +503,32 @@ function SourceChip({
         : "text-text-title";
   const action = status === "pending" ? "Cancel" : status === "failed" ? "Dismiss" : "Remove";
   return (
-    <span className={`flex min-w-0 items-center rounded-md pl-3 ${surface}`}>
-      <span className={`max-w-60 truncate text-sm ${labelClass}`}>
-        {status === "pending"
-          ? `${label} — pending`
-          : status === "failed"
-            ? `${label} — couldn't set up`
-            : label}
+    <li
+      className={`flex min-h-11 min-w-0 items-center rounded-md border border-[var(--card-border)] py-1.5 pl-3 desk:min-h-9 ${surface}`}
+    >
+      {icon ? (
+        <span className="mr-2 flex size-[15px] shrink-0 items-center justify-center">{icon}</span>
+      ) : null}
+      <span className={`min-w-0 flex-1 break-words text-sm [overflow-wrap:anywhere] ${labelClass}`}>
+        {display ?? label}
       </span>
+      {status !== "active" ? (
+        <span
+          className={`ml-2 shrink-0 text-xs ${status === "pending" ? "text-warning" : "text-danger-text"}`}
+        >
+          {status === "pending" ? "Pending" : "Couldn’t set up"}
+        </span>
+      ) : null}
       <button
         aria-label={`${action} ${label}`}
-        className="flex size-11 shrink-0 items-center justify-center rounded-md text-destructive outline-none hover:bg-destructive/12 focus-visible:ring-2 focus-visible:ring-ring desk:size-8"
+        className="ml-1 flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted outline-none hover:bg-destructive/12 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring desk:size-9"
         disabled={removeDisabled}
         onClick={onRemove}
         type="button"
       >
-        <Trash2Icon aria-hidden="true" className="size-6" />
+        <RemoveIcon aria-hidden="true" className="size-4" />
       </button>
-    </span>
+    </li>
   );
 }
 

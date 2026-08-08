@@ -18,14 +18,16 @@ import { generateText } from "ai";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { DRAFT_COUNCIL_CONTRACT, DRAFT_REVISE_PROMPT } from "@/lib/sysprompts";
 import { X_CHAR_LIMITS } from "./desk-config";
+import type { DraftConstruction } from "./draft-construction";
 import { resolveGatewayCost } from "./gateway-cost";
 import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS, stripMarkdown } from "./qwen-draft-config";
 import { reasoningTraceState } from "./reasoning-trace";
+import { formatSourceIdentity, type SourceIdentity } from "./source-identity";
 
 export type SourceBrief = {
   sourcePostId: string;
   xPostId: string;
-  authorHandle: string;
+  identity: SourceIdentity;
   text: string;
   /** Website headline when available. X posts have no separate title. */
   title?: string;
@@ -49,6 +51,12 @@ export type CouncilCall = {
   usage: unknown;
   costUsd: number | null;
   generationId: string | null;
+  /** Present only for the live draft call: the model's structured editorial account, not
+   * proof or chain-of-thought. Historic, revision, and human-originated calls may lack it. */
+  draftConstruction?: DraftConstruction | null;
+  /** Present only for the live primary draft: its explicit, reporter-facing beat decision.
+   * It is kept distinct from raw provider reasoning so readers never need to parse that trace. */
+  draftOnBeatReason?: string | null;
 };
 
 /** ONE helper that builds every `CouncilCall` — the only place `reasoningWithheldByProvider`
@@ -86,7 +94,11 @@ async function toCouncilCall(params: {
 }
 
 function formatSourceBrief(brief: SourceBrief): string {
-  return `Source post by @${brief.authorHandle}:${brief.title ? `\nHeadline: ${brief.title}` : ""}\n${brief.text}`;
+  const source =
+    brief.identity.kind === "x"
+      ? `Source post by ${formatSourceIdentity(brief.identity)}`
+      : `Source article from publisher ${formatSourceIdentity(brief.identity)} (publisher metadata is provenance, not an X mention)`;
+  return `${source}:${brief.title ? `\nHeadline: ${brief.title}` : ""}\n${brief.text}`;
 }
 
 function buildRepairPrompt(originalPrompt: string, violations: string[], badDraft: string): string {

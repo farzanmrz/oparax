@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { parseWebsites } from "@/lib/websites";
-import { SourcesCard } from "./sources-card";
+import { SourcesCard, type WebsiteDetail } from "./sources-card";
 
 // Mirrors app/agents/new/page.tsx's maxDuration (see its comment for the 800 rationale): the
 // sources-card's website onboarding kicks off discovery + up to 10 sub-sitemap fetches + fetch
@@ -20,11 +21,32 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
     .maybeSingle();
   if (error || !desk) notFound();
 
+  // Reporter-facing labels for the website chips ("Mundo Deportivo: mundodeportivo.com/futbol/
+  // fc-barcelona"). source_configs is deny-all RLS, so this is the standard ownership-then-
+  // service-role read: the RLS desk select above already proved the caller owns this desk.
+  // Display-only and non-fatal — a failed read renders chips with their URL fallback.
+  const details: Record<string, WebsiteDetail> = {};
+  {
+    const { data: configs, error: configError } = await createAdminClient()
+      .from("source_configs")
+      .select("url, domain, display_name, prefilter")
+      .eq("agent_id", desk.id);
+    if (configError) console.error("SourcesPage: source_configs label read failed", configError);
+    for (const row of configs ?? []) {
+      details[row.url] = {
+        displayName: row.display_name ?? row.domain,
+        domain: row.domain,
+        pathPrefix: (row.prefilter as { pathPrefix?: string } | null)?.pathPrefix ?? null,
+      };
+    }
+  }
+
   return (
-    <div className="py-4 desk:py-6">
+    <div className="py-[var(--page-rhythm-mobile)] desk:py-[var(--page-rhythm-web)]">
       <SourcesCard
         deskId={desk.id}
         trackedHandles={desk.tracked_handles}
+        websiteDetails={details}
         websites={parseWebsites(desk.websites)}
       />
     </div>

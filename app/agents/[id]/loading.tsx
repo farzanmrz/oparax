@@ -7,15 +7,13 @@ export default function FeedLoading() {
   const skeletonRows = ["loading-1", "loading-2"];
 
   return (
-    <div className="flex min-h-0 flex-1 py-4">
-      <div
-        className="mx-auto flex w-full max-w-[1040px] flex-col gap-4 p-1 desk:gap-6"
-        role="status"
-      >
-        {skeletonRows.map((row) => (
-          <FeedCardSkeleton key={row} />
-        ))}
-      </div>
+    <div
+      className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]"
+      role="status"
+    >
+      {skeletonRows.map((row) => (
+        <FeedCardSkeleton key={row} />
+      ))}
     </div>
   );
 }

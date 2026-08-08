@@ -4,12 +4,14 @@ import { cn } from "@/lib/utils";
 export function BandCard({
   icon,
   title,
+  headerAside,
   variant = "default",
   className,
   children,
 }: {
   icon: ReactNode;
   title: ReactNode;
+  headerAside?: ReactNode;
   variant?: "default" | "danger";
   className?: string;
   children: ReactNode;
@@ -37,6 +39,7 @@ export function BandCard({
           {icon}
         </span>
         <span>{title}</span>
+        {headerAside ? <span className="ml-auto shrink-0">{headerAside}</span> : null}
       </header>
       <div className="px-6 py-5">{children}</div>
     </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { GlobeIcon, InfoIcon, Loader2Icon, UserRoundIcon } from "lucide-react";
+import { GlobeIcon, Loader2Icon, UserRoundIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type ClipboardEvent,
@@ -14,11 +14,9 @@ import { toast } from "sonner";
 import { BandCard } from "@/components/band-card";
 import { ChipsField } from "@/components/chips-field";
 import { PageHeading } from "@/components/page-heading";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { splitList } from "@/lib/split-list";
 import { MAX_WEBSITES } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED } from "@/lib/x/handle";
@@ -46,6 +44,9 @@ function mergeWebsites(existing: readonly string[], incoming: readonly string[])
   return next;
 }
 
+/** Label plus always-visible helper text (owner decision: the create form is the deliberate
+ *  exception to the no-eyebrow-helper rule — users were struggling here, especially on
+ *  mobile where the old info-tooltip hover was undiscoverable; see DESIGN.md). */
 function FieldLabel({
   children,
   help,
@@ -58,25 +59,14 @@ function FieldLabel({
   htmlFor?: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <label className="text-sm font-medium text-text-label" htmlFor={htmlFor}>
-        {children}
-      </label>
-      {help ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              aria-label="More information"
-              className="flex size-11 items-center justify-center rounded-md text-text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring desk:size-6"
-              type="button"
-            >
-              <InfoIcon className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-xs">{help}</TooltipContent>
-        </Tooltip>
-      ) : null}
-      {badge}
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <label className="text-sm font-medium text-text-label" htmlFor={htmlFor}>
+          {children}
+        </label>
+        {badge}
+      </div>
+      {help ? <p className="text-xs leading-relaxed text-text-muted">{help}</p> : null}
     </div>
   );
 }
@@ -98,7 +88,11 @@ export function CreateDeskForm({
   const [websiteDraft, setWebsiteDraft] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [createdDeskId, setCreatedDeskId] = useState<string | null>(null);
-  const [extractFrom, setExtractFrom] = useState(xLinkState.handle ?? "");
+  // Admin sessions default the voice-override field to the standing test reporter; everyone
+  // else never sees the field and their connected handle flows through it untouched.
+  const [extractFrom, setExtractFrom] = useState(
+    canOverrideHandle ? "ReshadRahman" : (xLinkState.handle ?? ""),
+  );
 
   useEffect(() => {
     const raw = window.sessionStorage.getItem(DRAFT_KEY);
@@ -192,6 +186,11 @@ export function CreateDeskForm({
       setFormError("Name this agent.");
       return;
     }
+    // Belt to the Input's maxLength braces: pasted or prefilled text can bypass the attribute.
+    if (name.trim().length > 30) {
+      setFormError("Agent name must be 30 characters or fewer.");
+      return;
+    }
     if (!beat.trim()) {
       setFormError("Describe the beat this agent should watch.");
       return;
@@ -267,20 +266,22 @@ export function CreateDeskForm({
     !createdDeskId;
 
   return (
-    <form className="flex w-full flex-col gap-4 py-4 desk:gap-6 desk:py-6" onSubmit={handleSubmit}>
+    <form
+      className="flex w-full flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]"
+      onSubmit={handleSubmit}
+    >
       <PageHeading>Create Agent</PageHeading>
-      <div className="grid items-stretch gap-4 desk:grid-cols-2 desk:gap-6">
+      <div className="grid items-stretch gap-[var(--page-rhythm-mobile)] desk:grid-cols-2 desk:gap-[var(--page-rhythm-web)]">
         <BandCard className="h-full" icon={<UserRoundIcon />} title="Identity">
           <div className="flex h-full flex-col gap-5">
             <div className="flex flex-col gap-1.5">
-              <FieldLabel help="Connect the X account Oparax will use to publish approved drafts.">
+              <FieldLabel help="Oparax needs your X account connected so it can learn your writing style from your posts and post approved drafts on your behalf.">
                 Your X Account
               </FieldLabel>
               {xLinkState.linked && xLinkState.handle ? (
                 <div className="flex min-h-11 items-center gap-2 rounded-md border border-input bg-[var(--input-bg)] px-3 text-sm">
                   <span aria-hidden="true" className="size-2 rounded-full bg-success" />
                   <span className="truncate font-medium">@{xLinkState.handle}</span>
-                  <span className="text-text-muted">Connected</span>
                 </div>
               ) : (
                 <Button asChild className="min-h-11 w-fit" variant="outline">
@@ -297,7 +298,7 @@ export function CreateDeskForm({
             <div className="flex flex-col gap-1.5">
               <FieldLabel
                 htmlFor="agent-name"
-                help="Shown in the agent switcher and throughout the workspace."
+                help="What you'll call this agent — shown in the agent switcher and around the workspace. Up to 30 characters."
               >
                 Agent Name
               </FieldLabel>
@@ -306,15 +307,20 @@ export function CreateDeskForm({
                 className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
                 disabled={formDisabled}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="e.g. Arsenal Watch"
+                placeholder="e.g. Barça Bulletin"
                 value={name}
               />
+              {name.trim().length > 30 ? (
+                <p className="text-sm leading-relaxed text-destructive" role="alert">
+                  Agent name must be 30 characters or fewer.
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-1 flex-col gap-1.5">
               <FieldLabel
                 htmlFor="agent-beat"
-                help="Define what counts as relevant and what this agent should ignore."
+                help="Explain the exact news this agent should track and what it should skip — be as detailed as possible."
               >
                 Beat
               </FieldLabel>
@@ -323,24 +329,14 @@ export function CreateDeskForm({
                 className="min-h-44 flex-1 resize-none rounded-md bg-[var(--input-bg)] text-base desk:text-sm"
                 disabled={formDisabled}
                 onChange={(event) => setBeat(event.target.value)}
-                placeholder="Explain the exact news this agent should track and what it should skip — be as detailed as possible. e.g. Arsenal team news, transfers, and match reaction; skip gaming and personal posts."
+                placeholder="e.g. FC Barcelona first-team news: transfers in and out, contract talks, injuries and recoveries, matchday lineups and results, and manager or board decisions. Rival clubs only when a story directly affects Barça. Skip basketball and other sections, women's and academy teams, and fan or gaming content."
                 value={beat}
               />
             </div>
 
             {canOverrideHandle && xLinkState.linked ? (
               <div className="flex flex-col gap-1.5">
-                <FieldLabel
-                  htmlFor="extract-voice-from"
-                  badge={
-                    <Badge className="rounded-badge" variant="secondary">
-                      Owner only
-                    </Badge>
-                  }
-                  help="Whose voice this agent writes in. Posts still publish from your connected account."
-                >
-                  Extract Voice From
-                </FieldLabel>
+                <FieldLabel htmlFor="extract-voice-from">Extract Voice From</FieldLabel>
                 <Input
                   id="extract-voice-from"
                   className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
@@ -357,8 +353,8 @@ export function CreateDeskForm({
         <BandCard className="h-full" icon={<GlobeIcon />} title="Sources">
           <div className="flex h-full flex-col gap-5">
             <div className="flex flex-1 flex-col gap-1.5">
-              <FieldLabel help="The X accounts this agent watches. Paste one or several handles.">
-                Tracked X Accounts ({handles.length}/{MAX_TRACKED})
+              <FieldLabel help="Type or paste usernames — separate several with spaces, commas, or new lines. This agent watches these accounts for news.">
+                X Accounts ({handles.length}/{MAX_TRACKED})
               </FieldLabel>
               <ChipsField
                 chipClassName="rounded-md bg-[var(--chip-x-bg)]"
@@ -367,7 +363,7 @@ export function CreateDeskForm({
                 className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
                 hideInput={atHandleLimit}
                 inputDisabled={formDisabled || atHandleLimit}
-                inputAriaLabel="Tracked X accounts"
+                inputAriaLabel="X accounts"
                 onBlur={commitHandleDraft}
                 onChange={setHandleDraft}
                 onKeyDown={onTrackedKeyDown}
@@ -376,7 +372,7 @@ export function CreateDeskForm({
                   setHandles((current) => current.filter((value) => value !== handle))
                 }
                 onSubmit={commitHandleDraft}
-                placeholder="Paste handles — @ optional"
+                placeholder="e.g. FabrizioRomano, DavidOrnstein, Glongari, talkfcb_, fcbarcelona, BarcaUniversal, BarcaTimes, fcbarcelonaes, Barca_Buzz, TotalBarca, BarcaWorld_, laligaen, MundoDeportivo, sport, managingbarca, barcacentre, Gerardanyol, siegersayss, AlbertRoge, footmercato"
                 removeDisabled={formDisabled}
                 removeLabel={(handle) => `Remove @${handle}`}
                 value={handleDraft}
@@ -384,8 +380,8 @@ export function CreateDeskForm({
             </div>
 
             <div className="flex flex-1 flex-col gap-1.5">
-              <FieldLabel help="Websites are onboarded automatically once your desk is created — each appears as a pending chip until it's ready.">
-                Websites ({websites.length}/{MAX_WEBSITES})
+              <FieldLabel help="Type or paste site addresses — a homepage, a section, or any article link works. This agent watches these sites for news; setup runs automatically after the agent is created.">
+                News Websites ({websites.length}/{MAX_WEBSITES})
               </FieldLabel>
               <ChipsField
                 chipClassName="rounded-md bg-[var(--chip-web-bg)]"
@@ -394,7 +390,8 @@ export function CreateDeskForm({
                 className="min-h-36 flex-1 rounded-md border-dashed bg-[var(--input-bg)]"
                 hideInput={atWebsiteLimit}
                 inputDisabled={formDisabled || atWebsiteLimit}
-                inputAriaLabel="Websites"
+                inputAriaLabel="News websites"
+                inputMode="url"
                 onBlur={commitWebsiteDraft}
                 onChange={setWebsiteDraft}
                 onKeyDown={onWebsiteKeyDown}
@@ -403,7 +400,7 @@ export function CreateDeskForm({
                   setWebsites((current) => current.filter((value) => value !== site))
                 }
                 onSubmit={commitWebsiteDraft}
-                placeholder="Paste websites — example.com"
+                placeholder="e.g. mundodeportivo.com, theathletic.com/football/club/barcelona/"
                 removeDisabled={formDisabled}
                 removeLabel={(site) => `Remove ${site}`}
                 value={websiteDraft}

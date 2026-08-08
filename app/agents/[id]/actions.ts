@@ -15,7 +15,7 @@ import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { checkXPostable, resolveXTier, xUnpostableMessage } from "@/lib/agent/desk-config";
+import { checkXPostable, resolveDeskTier, xUnpostableMessage } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
@@ -210,8 +210,13 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
   }
 
   if (parentDraft.platform === "x") {
-    const { tier } = await getXLinkState();
-    const postable = checkXPostable(trimmedText, resolveXTier(tier));
+    // Same desk-resolved ceiling as the pipeline, feed counter, and post gate (resolveDeskTier).
+    // The agents read runs on the RLS client, so it doubles as an ownership proof.
+    const [{ tier }, { data: tierAgent }] = await Promise.all([
+      getXLinkState(),
+      supabase.from("agents").select("reporter_tier").eq("id", parentDraft.agent_id).maybeSingle(),
+    ]);
+    const postable = checkXPostable(trimmedText, resolveDeskTier(tierAgent?.reporter_tier, tier));
     if (!postable.ok) {
       return { ok: false, error: xUnpostableMessage(postable.reason) };
     }

@@ -11,12 +11,31 @@
 
 import type { CouncilDetail, DraftHistoryDetail } from "@/lib/agent/council-query";
 import { queryCouncilDetail, queryDraftHistory } from "@/lib/agent/council-query";
+import {
+  type DraftConstruction,
+  draftConstructionFromUsage,
+  draftOnBeatReasonFromUsage,
+} from "@/lib/agent/draft-construction";
 import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
 import { createClient } from "@/lib/supabase/server";
 
 export type DraftReasoningResult =
-  | { state: "found"; reasoning: string; edited: boolean }
-  | { state: "withheld" | "none"; reasoning: null; edited: boolean };
+  | {
+      state: "found";
+      onBeatReason: string;
+      construction: DraftConstruction | null;
+      edited: boolean;
+    }
+  | { state: "withheld" | "none"; onBeatReason: null; edited: boolean };
+
+/** Legacy rows predate `usage.draftOnBeatReason`. This fallback extracts a single line but
+ * never renders the provider trace itself. */
+function legacyOnBeatReasonOf(reasoning: string): string | null {
+  const matches = [...reasoning.matchAll(/(?:^|\n)On beat:\s*yes\s*—\s*([^\r\n]+)/gi)];
+  const match = matches.at(-1);
+  const onBeatReason = match?.[1]?.trim();
+  return onBeatReason || null;
+}
 
 export async function fetchCouncilDetail(
   sourcePostId: string,
@@ -39,7 +58,7 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
     .eq("id", draftId)
     .maybeSingle();
   if (baseError) throw baseError;
-  if (!base) return { state: "none", reasoning: null, edited: false };
+  if (!base) return { state: "none", onBeatReason: null, edited: false };
 
   const { data: drafts, error: draftsError } = await supabase
     .from("drafts")
@@ -70,8 +89,16 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
     if (call?.model === "human-edit") {
       edited = true;
     } else if (call) {
-      if (call.reasoning?.trim()) {
-        return { state: "found", reasoning: call.reasoning, edited };
+      const onBeatReason =
+        draftOnBeatReasonFromUsage(call.usage) ??
+        (call.reasoning ? legacyOnBeatReasonOf(call.reasoning) : null);
+      if (onBeatReason) {
+        return {
+          state: "found",
+          onBeatReason,
+          construction: draftConstructionFromUsage(call.usage),
+          edited,
+        };
       }
       if (reasoningTraceState(call.reasoning, call.usage) === "withheld") withheld = true;
     }
@@ -79,6 +106,6 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
   }
 
   return withheld
-    ? { state: "withheld", reasoning: null, edited }
-    : { state: "none", reasoning: null, edited };
+    ? { state: "withheld", onBeatReason: null, edited }
+    : { state: "none", onBeatReason: null, edited };
 }

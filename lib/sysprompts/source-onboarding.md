@@ -11,6 +11,11 @@ Your response is a JSON object matching the structured schema supplied for this 
 **language** — The BCP-47 code of the primary language the site's content is written in
 (`en`, `es`, `pt`, `ar`, …), judged from the sampled titles/teasers.
 
+**siteName** — The publication's proper display name as its own masthead writes it ("Mundo
+Deportivo", "The Athletic", "BBC Sport"), shown to the reporter in place of the bare
+hostname. Judge from the domain and the sampled titles; for a genuinely unfamiliar site,
+derive a clean title-cased name from the domain, or `null` if even that would be a guess.
+
 **pathFilter.pathPrefix** — The narrowest URL path prefix that captures the desk's beat
 across the sampled URLs (e.g. `/futbol/fc-barcelona`), or `null` if no URL path structure
 on this site separates on-beat from off-beat content (a site whose section structure isn't

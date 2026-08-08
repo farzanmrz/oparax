@@ -10,6 +10,11 @@ import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { MAX_SITE_GUIDANCE_CHARS } from "../sources/site-guidance";
 import { resolveCallMeta } from "./call-meta";
 import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
+import {
+  type DraftConstruction,
+  draftConstructionSchema,
+  normalizeDraftOnBeatReason,
+} from "./draft-construction";
 import type { CouncilCall, SourceBrief } from "./draft-council-run";
 import {
   QWEN_DRAFT_MODEL,
@@ -17,6 +22,7 @@ import {
   QWEN_DRAFT_TIMEOUT_MS,
   stripMarkdown,
 } from "./qwen-draft-config";
+import { formatSourceIdentity } from "./source-identity";
 import { resolveImageMediaType } from "./source-media";
 
 const draftVerdictSchema = z.object({
@@ -35,11 +41,22 @@ const draftVerdictSchema = z.object({
       "2-4 plain English sentences explaining the source as understandable news — what happened, who is involved, why it matters.",
     ),
   draft: z.string().nullable().describe("One post in the reporter's voice, or null when off-beat."),
+  // Construction is reporter-facing provenance, not core delivery data. Keeping the raw
+  // field permissive means a malformed or omitted account cannot discard a valid draft.
+  construction: z
+    .unknown()
+    .optional()
+    .describe("A concise reporter-facing editorial account, or null when off-beat."),
 });
+
+type RawDraftVerdict = z.infer<typeof draftVerdictSchema>;
 
 type DraftWriteContentPart =
   | { type: "text"; text: string }
   | { type: "file"; data: URL; mediaType: string };
+
+/** The drafter gets source provenance and media, never the original-language text or metadata. */
+type DraftSourceContext = Pick<SourceBrief, "identity" | "media">;
 
 const MEDIA_TAGS: Record<string, "photo" | "video" | "animated_gif"> = {
   photo: "photo",
@@ -48,7 +65,9 @@ const MEDIA_TAGS: Record<string, "photo" | "video" | "animated_gif"> = {
   animated_gif: "animated_gif",
 };
 
-export type DraftVerdict = z.infer<typeof draftVerdictSchema>;
+export type DraftVerdict = Omit<RawDraftVerdict, "construction"> & {
+  construction: DraftConstruction | null;
+};
 export type DraftWriteResult = { call: CouncilCall; verdict: DraftVerdict | null };
 
 function clampGuidance(clause: string): string {
@@ -59,8 +78,8 @@ function clampGuidance(clause: string): string {
 }
 
 function buildContent(input: {
-  brief: SourceBrief;
-  translation: string | null;
+  source: DraftSourceContext;
+  englishSourceText: string;
   beatSpec: string;
   siteGuidance: { onBeat: string; offBeat: string } | null;
   platform: Platform;
@@ -88,23 +107,21 @@ function buildContent(input: {
         "",
         `<character_ceiling>${input.ceiling}</character_ceiling>`,
         "",
-        `<post platform="${input.platform}" author="@${escapeXmlAttribute(input.brief.authorHandle)}">`,
-        `<source_language>${escapeXmlText(input.brief.lang ?? "und")}</source_language>`,
-        ...(input.brief.title === undefined
-          ? []
-          : ["<title>", escapeXmlText(input.brief.title), "</title>"]),
-        "<content>",
-        escapeXmlText(input.brief.text),
-        "</content>",
-        ...(input.translation === null
-          ? []
-          : ["<translation>", escapeXmlText(input.translation), "</translation>"]),
+        input.source.identity.kind === "x"
+          ? `<post platform="${input.platform}" author="${escapeXmlAttribute(formatSourceIdentity(input.source.identity))}">`
+          : `<source platform="${input.platform}" publisher="${escapeXmlAttribute(formatSourceIdentity(input.source.identity))}">`,
+        ...(input.source.identity.kind === "website"
+          ? ["Website publisher metadata is provenance, not an X mention; never prefix it with @."]
+          : []),
+        "<english_source>",
+        escapeXmlText(input.englishSourceText),
+        "</english_source>",
       ].join("\n"),
     },
   ];
   const mediaParts: DraftWriteContentPart[] = [];
 
-  for (const item of input.brief.media) {
+  for (const item of input.source.media) {
     const mediaTag = MEDIA_TAGS[item.kind];
     if (!mediaTag) {
       console.warn(`draft-write: skipping unsupported media kind ${item.kind}`);
@@ -132,19 +149,26 @@ function buildContent(input: {
       text: "</attachments>",
     });
   }
-  content.push({ type: "text", text: "</post>" });
+  content.push({
+    type: "text",
+    text: input.source.identity.kind === "x" ? "</post>" : "</source>",
+  });
   return content;
 }
 
-function normalizeVerdict(raw: DraftVerdict): DraftVerdict {
+function normalizeVerdict(raw: RawDraftVerdict): DraftVerdict {
+  // Only persist construction when it is a complete, valid reporter-facing account.
+  const construction = draftConstructionSchema.safeParse(raw.construction);
   return {
     ...raw,
+    onBeatReason: normalizeDraftOnBeatReason(raw.onBeatReason) ?? "",
     draft:
       raw.onBeat === false
         ? null
         : raw.draft === null
           ? null
           : stripMarkdown(raw.draft.trim()) || null,
+    construction: raw.onBeat && construction.success ? construction.data : null,
   };
 }
 
@@ -164,8 +188,8 @@ function verdictNotes(verdict: DraftVerdict): string {
 }
 
 export async function draftSourcePost(input: {
-  brief: SourceBrief;
-  translation: string | null;
+  source: DraftSourceContext;
+  englishSourceText: string;
   beatSpec: string;
   siteGuidance: { onBeat: string; offBeat: string } | null;
   voiceGuidance: string;
@@ -195,8 +219,8 @@ export async function draftSourcePost(input: {
         {
           role: "user",
           content: buildContent({
-            brief: input.brief,
-            translation: input.translation,
+            source: input.source,
+            englishSourceText: input.englishSourceText,
             beatSpec: input.beatSpec,
             siteGuidance: input.siteGuidance,
             platform: input.platform,
@@ -221,6 +245,8 @@ export async function draftSourcePost(input: {
         : verdictNotes(verdict),
       usage: result.usage,
       providerMetadata: result.providerMetadata,
+      draftConstruction: verdict.construction,
+      draftOnBeatReason: verdict.onBeatReason || null,
     });
     if (!isUsableVerdict(verdict)) {
       console.error("draft-write: Qwen returned an incomplete semantic verdict");

@@ -1,4 +1,18 @@
-import { FileTextIcon, MicVocalIcon, TriangleAlertIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  AlignLeftIcon,
+  BlocksIcon,
+  CompassIcon,
+  FingerprintIcon,
+  GitBranchIcon,
+  ListTreeIcon,
+  MessageSquareQuoteIcon,
+  PenLineIcon,
+  QuoteIcon,
+  ShieldCheckIcon,
+  TriangleAlertIcon,
+  WorkflowIcon,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { BandCard } from "@/components/band-card";
@@ -14,6 +28,21 @@ const GuideMarkdown = dynamic(() => import("./guide-markdown"));
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type GuideSection = { title: string; content: string };
+type GuideCard =
+  | { type: "section"; title: string; content: string; icon: LucideIcon }
+  | { type: "rules"; always: string | null; never: string | null };
+
+const SECTION_ICONS: Record<string, LucideIcon> = {
+  "Beat & Scope": CompassIcon,
+  "Identity & Register": FingerprintIcon,
+  Formatting: AlignLeftIcon,
+  "Vocabulary & Phrasing": MessageSquareQuoteIcon,
+  "Post Modes": WorkflowIcon,
+  "Repeating Sub-Units": ListTreeIcon,
+  "Block Skeleton": BlocksIcon,
+  "Post Relationships": GitBranchIcon,
+  "Representative Posts": QuoteIcon,
+};
 
 function splitGuideSections(guide: string): GuideSection[] {
   const sections: GuideSection[] = [];
@@ -39,9 +68,35 @@ function splitGuideSections(guide: string): GuideSection[] {
   return [{ title: "Writing Guide", content: guide.trim() }];
 }
 
+function toGuideCards(sections: GuideSection[]): GuideCard[] {
+  const cards: GuideCard[] = [];
+  const always = sections.find((section) => section.title === "Hard Rules — Always")?.content;
+  const never = sections.find((section) => section.title === "Hard Rules — Never")?.content;
+  let insertedRules = false;
+
+  for (const section of sections) {
+    if (section.title === "Hard Rules — Always" || section.title === "Hard Rules — Never") {
+      if (!insertedRules) {
+        cards.push({ type: "rules", always: always || null, never: never || null });
+        insertedRules = true;
+      }
+      continue;
+    }
+
+    cards.push({
+      type: "section",
+      title: section.title,
+      content: section.content,
+      icon: SECTION_ICONS[section.title] ?? PenLineIcon,
+    });
+  }
+
+  return cards;
+}
+
 function EmptyState({ deskId, reporterHandle }: { deskId: string; reporterHandle: string }) {
   return (
-    <BandCard icon={<MicVocalIcon />} title="Writing Guide">
+    <BandCard icon={<PenLineIcon />} title="Writing Guide">
       <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
         <h3 className="text-sm font-semibold">No Writing Guide Yet for @{reporterHandle}</h3>
         <p className="max-w-sm text-pretty text-sm text-text-muted">
@@ -77,12 +132,13 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
   const extractionInFlight = progress?.ok === true && progress.status === "running";
   const extractionFailed = progress?.ok === true && progress.status === "failed";
   const sections = guide ? splitGuideSections(guide.guide_deploy) : [];
+  const cards = toGuideCards(sections);
 
   return (
-    <div className="flex flex-col gap-4 py-4 desk:py-6">
-      <PageHeading>Writing Guide (@{desk.reporter_handle})</PageHeading>
+    <div className="flex flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
+      <PageHeading icon={<PenLineIcon />}>Writing Guide (@{desk.reporter_handle})</PageHeading>
       {extractionInFlight && progress.ok ? (
-        <BandCard icon={<MicVocalIcon />} title="Preparing Writing Guide">
+        <BandCard icon={<PenLineIcon />} title="Preparing Writing Guide">
           <ExtractionProgress
             deskId={id}
             initialCorpusPostCount={progress.corpusPostCount}
@@ -108,12 +164,44 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
             </BandCard>
           ) : null}
           {guide ? (
-            <div className="[column-gap:16px] desk:[columns:2_440px]">
-              {sections.map((section) => (
-                <div className="mb-4 break-inside-avoid" key={section.title}>
-                  <BandCard icon={<FileTextIcon />} title={section.title}>
-                    <GuideMarkdown content={section.content} />
-                  </BandCard>
+            <div className="[column-gap:var(--page-rhythm-mobile)] desk:[column-gap:var(--page-rhythm-web)] desk:[columns:2_440px]">
+              {cards.map((card, index) => (
+                <div
+                  className="mb-[var(--page-rhythm-mobile)] break-inside-avoid desk:mb-[var(--page-rhythm-web)]"
+                  key={card.type === "rules" ? "rules" : card.title}
+                >
+                  {card.type === "rules" ? (
+                    <BandCard icon={<ShieldCheckIcon />} title="Rules">
+                      <div className="space-y-5">
+                        {card.always ? (
+                          <section aria-labelledby={`rules-do-${index}`}>
+                            <h3
+                              className="mb-2 text-sm font-semibold text-text-body"
+                              id={`rules-do-${index}`}
+                            >
+                              Do
+                            </h3>
+                            <GuideMarkdown content={card.always} />
+                          </section>
+                        ) : null}
+                        {card.never ? (
+                          <section aria-labelledby={`rules-avoid-${index}`}>
+                            <h3
+                              className="mb-2 text-sm font-semibold text-text-body"
+                              id={`rules-avoid-${index}`}
+                            >
+                              Avoid
+                            </h3>
+                            <GuideMarkdown content={card.never} />
+                          </section>
+                        ) : null}
+                      </div>
+                    </BandCard>
+                  ) : (
+                    <BandCard icon={<card.icon />} title={card.title}>
+                      <GuideMarkdown content={card.content} />
+                    </BandCard>
+                  )}
                 </div>
               ))}
             </div>
