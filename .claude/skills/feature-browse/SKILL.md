@@ -8,7 +8,7 @@ description: >-
   alongside the findings. Use when the user says /feature-browse or "run the
   browser review". Never runs inside find/fix/docs/verify or the relay on a
   session's own judgment.
-allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Bash(lsof *) mcp__Claude_Browser__preview_start mcp__Claude_Browser__preview_stop mcp__Claude_Browser__preview_logs mcp__Claude_Browser__navigate mcp__Claude_Browser__read_page mcp__Claude_Browser__find mcp__Claude_Browser__computer mcp__Claude_Browser__form_input mcp__Claude_Browser__read_console_messages mcp__Claude_Browser__read_network_requests mcp__Claude_Browser__resize_window mcp__Claude_Browser__javascript_tool mcp__Claude_Browser__tabs_context
+allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Bash(lsof *) Agent mcp__Claude_Browser__preview_start mcp__Claude_Browser__preview_stop mcp__Claude_Browser__preview_logs mcp__Claude_Browser__navigate mcp__Claude_Browser__read_page mcp__Claude_Browser__find mcp__Claude_Browser__computer mcp__Claude_Browser__form_input mcp__Claude_Browser__read_console_messages mcp__Claude_Browser__read_network_requests mcp__Claude_Browser__resize_window mcp__Claude_Browser__javascript_tool mcp__Claude_Browser__tabs_context
 model: inherit
 ---
 
@@ -28,7 +28,7 @@ approving it is expected, not an error.
 ## 1. Derive the checklist (durable state only)
 
 Read the ft issue body (the plan's observable-states table), then ONLY the
-QC marker comments — a full `--comments` read is 30k+ tokens, truncates, and
+QC marker comments: a full `--comments` read is 30k+ tokens, truncates, and
 forces re-parsing:
 
 ```bash
@@ -51,7 +51,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   viewports. Only the submit itself is HUMAN-ONLY (classifying the whole
   create-agent form HUMAN-ONLY is how its input shipped broken).
 * **Always include the mechanics** even if no source names them: initial
-  render, pagination up to 3 pages or the list's end — whichever first
+  render, pagination up to 3 pages or the list's end, whichever first
   (count pages; duplicates or a premature stop are findings; when the
   previous round's browsed/findings comment already records this pagination
   FAIL, confirm it with ONE probe and cite that comment instead of
@@ -84,8 +84,8 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth
 * **Server:** reuse a listening :3000 (`lsof -i :3000 -sTCP:LISTEN -t`) or
   start `pnpm dev` in the background and record the PID. A reused server is
   not owned by this session; if the server dies mid-run, restart it once and
-  re-assert the viewport before continuing (the 2026-08-06 crash cascade —
-  server death, recovery tab, tainted findings — came from skipping the
+  re-assert the viewport before continuing (the 2026-08-06 crash cascade:
+  server death, recovery tab, tainted findings, came from skipping the
   re-assert).
 * **Browser:** open the pane at `http://localhost:3000`, log in with the
   test account (`testuser@oparax.ai` / `hello123`, pre-authorized in
@@ -101,10 +101,15 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth
 * **HARD RULE, never violated:** never confirm a post to X, never submit
   anything that leaves the machine, never edit files, never touch
   non-localhost origins. A checklist item that would require it is
-  HUMAN-ONLY by definition.
+  HUMAN-ONLY by definition. The sole exception is a plan-authorized Create
+  Agent submission through localhost under the test login, whose desk is
+  captured for teardown below.
+* **Created desk ids:** after every successful Create Agent submission,
+  record the desk id from the resulting `/agents/<id>` URL. Keep only ids
+  created in this run; never add a pre-existing desk to this set.
 * **Stuck clicks (Codex):** if a Playwright click leaves the target
   unchanged (e.g. `aria-expanded` still false) after 2 tries, switch to
-  `dom_cua.click` by node id immediately — a Radix menu once ate 6 attempts
+  `dom_cua.click` by node id immediately: a Radix menu once ate 6 attempts
   and a selector deadline before the fallback landed on the first try.
 * **Per item:** record PASS / FAIL / BLOCKED with one line of evidence
   (element text, count, console line). A FAIL is written as a
@@ -113,7 +118,14 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth
 
 ## 4. Report and stop
 
-* **Teardown:** stop the dev server only if THIS session started it.
+* **Desk teardown:** if this run created desks, delegate one service-role
+  cleanup to `supabase-runner`. Delete exactly the captured ids from
+  `agents` with both `WHERE id IN (<this run's ids>)` and an owner guard for
+  the `auth.users` row whose email is `testuser@oparax.ai`; FK cascades clear
+  children. Never delete through the UI, never include pre-existing desks,
+  and report the affected-row count. On failure, do not retry silently:
+  record the failure in the browsed comment.
+* **Server teardown:** stop the dev server only if THIS session started it.
 * **Post the report** as an issue comment, then STOP with the relay
   handoff:
 
@@ -127,15 +139,16 @@ Checked at 1280x800 and 375x812, test login, <n> items.
 
 Failures (fix-ready briefs): ...
 Remaining HUMAN-ONLY items: ...
+Teardown: <n> test desks deleted | FAILED: <concise error>
 </browsed-comment-template>
 
 * **The manual-check handoff:** the report's HUMAN-ONLY list REPLACES the
   owner's previous manual-check set; everything browser-checked here is off
   the owner's plate, and the next `verified` report cites this comment
   instead of re-listing covered items.
-* **Exit handoff: next is the post-browse relay** — `$feature-qc chain` in
+* **Exit handoff: next is the post-browse relay:** `$feature-qc chain` in
   Codex (`/feature-qc chain` in Claude Code) on the smart dial, which runs
-  fix → docs → verify in one session from this round's markers; standalone
+  fix -> docs -> verify in one session from this round's markers; standalone
   `/feature-fix` remains the hop-anywhere fallback. Never route around fix:
   even a round with zero browse failures usually has accepted findings
   waiting in the findings comment, and judging "nothing to fix" is
