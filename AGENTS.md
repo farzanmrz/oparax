@@ -2,26 +2,26 @@
 
 ## Code map
 
-- **`app/api/ingest`:** Bearer-auth delivery interface for poller and X-stream posts.
-- **Website deliveries keep their `source_config_id`** from poller through ingest: `draft-pipeline.ts` resolves it to one desk, never rematch by hostname, so tracked paths cannot cross-deliver.
-- **Website onboarding uses `reservePendingSource`:** its locked RPC atomically enforces the five-site cap and duplicate no-bill guarantee. `add_source_config` completes by reservation ID, so a stale dismissed attempt cannot activate a re-added row.
+- **`app/api/ingest`:** Bearer-auth delivery for poller and X-stream posts.
+- **Website deliveries keep `source_config_id`** through ingest: `draft-pipeline.ts` resolves it to one desk, never rematch by hostname, so tracked paths cannot cross-deliver.
+- **Website onboarding uses `reservePendingSource`:** its locked RPC atomically enforces the five-site cap and duplicate no-bill guarantee. `add_source_config` completes by reservation ID, preventing a stale dismissed attempt from activating a re-added row.
 - **Website discovery uses sitemap, RSS feed, or listing:** the poller's listing parser is deliberately duplicated for package isolation, stores its validated page as `listing_url`, and records failed-source reasons in `error_code`.
-- **Private/internal website URLs fail before reservation:** users receive inline validation, never a persisted failed row.
-- **`app/api/slack/interactions`** is `after()`-deferred to meet Slack's 3s ack deadline before slow X-post work.
+- **Lexically private/internal website URLs fail before reservation:** users receive inline validation, never a persisted failed row.
+- **`app/api/slack/interactions`** defers slow X-post work with `after()` to meet Slack's 3s ack deadline.
 - **`agents.reporter_tier` is corpus-proven; `resolveDeskTier` is the only desk-tier resolver** — premium when either reporter or posting-account tier is premium — for drafting, feed count, edit, and post gates. **`checkXPostable` owns X validity**; every writer of a `drafts` winner must call it, never re-derive it.
-- **Feed readers use a service-role client without desk checks:** callers (`page.tsx`, `feed-actions.ts`) prove `owner_id`.
-- **`lib/x/timeline.ts` is the extraction X-read** — original posts only; its size also feeds `inferAccountTier`, so a smaller corpus can miss premium evidence. Handle validation reads X separately.
+- **Feed readers use service role without desk checks:** callers (`page.tsx`, `feed-actions.ts`) prove `owner_id`.
+- **`lib/x/timeline.ts` is the extraction X-read** — original posts only; its size feeds `inferAccountTier`, so a smaller corpus can miss premium evidence. Handle validation reads X separately.
 - **Tokens never leave `lib/x/` and `lib/slack/`.**
-- **`lib/voice/rules.ts` owns the drafting input:** `flattenRulesToPrompt(enabledRules) + measuredFacts`, not the raw guide (audit only), goes through translator → single drafter → `draft-write.ts`. `corpus-store.ts` upserts, never prunes. `extraction-run.ts`'s atomic boolean claim prevents false spend; stale reclaim uses `reclaim_extraction_run` because PostgREST cannot filter a body-written column. It bounds one desk to ONE concurrent run, **not** rationing. Progress polls an ownership-proving server action, never Realtime.
-- **`lib/notify/` senders neither persist nor meter** — `draft-pipeline.ts` does both. `email.ts` keeps the reply encoder and its decoder in one file so they cannot drift.
+- **`lib/voice/rules.ts` owns drafting input:** `flattenRulesToPrompt(enabledRules) + measuredFacts`, not the raw guide (audit only), passes translator → drafter → `draft-write.ts`. `corpus-store.ts` upserts, never prunes. `extraction-run.ts`'s atomic claim prevents false spend; stale reclaim uses `reclaim_extraction_run` because PostgREST cannot filter a body-written column. One concurrent run per desk, **not** rationing. Progress polls an ownership-proving server action, never Realtime.
+- **`lib/notify/` senders neither persist nor meter** — `draft-pipeline.ts` does both. `email.ts` keeps its reply encoder and decoder together.
 - **`lib/sysprompts/voice-extract.md` is measured, not authored.** Never tune it by read-through.
 - **Frontend test login: `testuser@oparax.ai` / `hello123`** — an agentic-test-only dummy account; owner-requested browser login is pre-authorized.
-- **Sentry**: keep the four root files (`instrumentation.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) exactly named for the build plugin. Keep `tunnelRoute: "/monitoring"` outside `proxy.ts`'s matcher, `httpBodies: []`, production `tracesSampleRate: 1` with 1.75s extraction polls dropped in `beforeSendTransaction`, and no `@sentry/profiling-node`; local AI DevTools is development-only.
+- **Sentry**: keep its four root files (`instrumentation.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) exactly named for the build plugin. Keep `tunnelRoute: "/monitoring"` outside `proxy.ts`'s matcher, `httpBodies: []`, production `tracesSampleRate: 1` with 1.75s extraction polls dropped in `beforeSendTransaction`, no `@sentry/profiling-node`, and development-only local AI DevTools.
 - **UI:** `DESIGN.md` is the visual contract; page and card headers use Title Case.
 
 ## Data
 
-**Columns and types: read `lib/supabase/database.types.ts`**
+**Types: `lib/supabase/database.types.ts`**
 
 | Table | RLS shape |
 | --- | --- |
@@ -38,9 +38,9 @@
 | `draft_claims`, `unmatched_deliveries`, `voice_extraction_runs` | deny-all |
 | `source_configs`, `source_seen_items` | deny-all |
 
-### Dormant by design — switched off, not missing
+### Dormant: switched off, not missing
 
-Don't fix or rebuild them; each row names its lever or reactivation condition.
+Don't rebuild them; rows name their lever or reactivation condition.
 
 | Capability | Lever | Where |
 | --- | --- | --- |
