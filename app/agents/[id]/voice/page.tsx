@@ -18,7 +18,7 @@ import { notFound } from "next/navigation";
 import { BandCard } from "@/components/band-card";
 import { PageHeading } from "@/components/page-heading";
 import { createClient } from "@/lib/supabase/server";
-import { ExtractionProgress } from "./extraction-progress";
+import { SetupProgressCard } from "../setup-progress-card";
 import { getOwnedExtractionProgress } from "./get-extraction-progress";
 import { RetryExtractionButton } from "./retry-extraction-button";
 
@@ -138,18 +138,16 @@ export default async function VoicePage({ params }: { params: Promise<{ id: stri
     <div className="flex flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
       <PageHeading icon={<PenLineIcon />}>Writing Guide (@{desk.reporter_handle})</PageHeading>
       {extractionInFlight && progress.ok ? (
-        <BandCard icon={<PenLineIcon />} title="Preparing Writing Guide">
-          <ExtractionProgress
-            deskId={id}
-            initialCorpusPostCount={progress.corpusPostCount}
-            initialProgressNote={progress.progressNote}
-            initialReasoningByStage={progress.reasoningByStage}
-            initialScopeExcludedCount={progress.scopeExcludedCount}
-            initialStage={progress.stage}
-            initialTextByStage={progress.textByStage}
-            initialToolActivities={progress.toolActivities}
-          />
-        </BandCard>
+        <SetupProgressCard
+          deskId={id}
+          initial={{
+            stage: progress.stage,
+            status: progress.status,
+            errorCode: progress.errorCode,
+            corpusPostCount: progress.corpusPostCount,
+            scopeExcludedCount: progress.scopeExcludedCount,
+          }}
+        />
       ) : (
         <>
           {extractionFailed ? (

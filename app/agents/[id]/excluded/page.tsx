@@ -8,6 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ExcludedEmptyState, ExcludedLoadError } from "../excluded-item";
 import { ExcludedList } from "../excluded-list";
+import { SetupProgressCard } from "../setup-progress-card";
+import { getOwnedExtractionProgress } from "../voice/get-extraction-progress";
 
 /**
  * The Excluded tab — posts the drafting pipeline judged off this desk's beat, newest first.
@@ -26,6 +28,23 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
     .eq("id", id)
     .maybeSingle();
   if (agentError || !agent) notFound();
+  const { data: guide } = await supabase
+    .from("voice_guides")
+    .select("agent_id")
+    .eq("agent_id", id)
+    .limit(1)
+    .maybeSingle();
+  const progress = guide ? null : await getOwnedExtractionProgress(id);
+  const showSetup =
+    progress?.ok === true && (progress.status === "running" || progress.status === "failed");
+  if (showSetup && progress.ok) {
+    return (
+      <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
+        <PageHeading>Excluded Posts</PageHeading>
+        <SetupProgressCard deskId={id} initial={progress} />
+      </div>
+    );
+  }
   const admin = createAdminClient();
   let page: ExcludedPostsPage;
   try {

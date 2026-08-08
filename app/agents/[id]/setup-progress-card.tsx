@@ -16,7 +16,7 @@ import {
 const POLL_INTERVAL_MS = 1750;
 const COMPLETION_HOLD_MS = 1500;
 
-export function FeedSetupProgress({
+export function SetupProgressCard({
   deskId,
   initial,
 }: {
@@ -33,9 +33,10 @@ export function FeedSetupProgress({
       if (result.status === "completed") {
         stop();
         window.setTimeout(() => router.refresh(), COMPLETION_HOLD_MS);
-        return;
+      } else if (result.status !== "running") {
+        stop();
+        router.refresh();
       }
-      if (result.status !== "running") stop();
     },
   });
   const failed = run.status === "failed";
@@ -43,30 +44,25 @@ export function FeedSetupProgress({
   return (
     <div className="flex w-full flex-col gap-4">
       <h1 className="sr-only">Setting up your agent</h1>
-      <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status">
-        <InfoIcon aria-hidden="true" className="text-primary" />
-        <AlertDescription className="text-foreground/90">
-          Agent setup will take 5–6 minutes. You can safely leave and return to this page while
-          Voice and Sources fill automatically.
-        </AlertDescription>
-      </Alert>
-
+      {run.status === "running" ? (
+        <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status">
+          <InfoIcon aria-hidden="true" className="text-primary" />
+          <AlertDescription className="text-foreground/90">
+            Agent setup will take 5–6 minutes. You can safely leave and return to this page while
+            Guide and Sources fill automatically.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <BandCard
         icon={failed ? <TriangleAlertIcon /> : <MicVocalIcon />}
-        title={failed ? "Extraction Incomplete" : "Preparing Writing Guide"}
+        title={failed ? "Extraction Incomplete" : "Preparing Guide"}
         variant={failed ? "danger" : "default"}
       >
-        <ExtractionChain
-          isStreaming={run.status === "running"}
-          reasoningByStage={run.reasoningByStage}
-          textByStage={run.textByStage}
-          toolActivities={run.toolActivities}
-          steps={pipelineSteps(run)}
-        />
+        <ExtractionChain steps={pipelineSteps(run)} />
         {failed ? (
           <div className="mt-5 border-border border-t pt-4">
             <Button asChild className="min-h-11" size="sm" variant="outline">
-              <Link href={`/agents/${deskId}/voice`}>Retry in Voice</Link>
+              <Link href={`/agents/${deskId}/voice`}>Retry in Guide</Link>
             </Button>
           </div>
         ) : null}

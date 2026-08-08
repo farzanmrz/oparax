@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
 import { DraftBox } from "./draft-box";
 import { DraftMenu } from "./draft-menu";
-import { FeedSetupProgress } from "./feed-setup-progress";
+import { SetupProgressCard } from "./setup-progress-card";
 import { RelativeTime } from "./relative-time";
 
 function getSourceLabel(source: FeedItem["source"]): string {
@@ -283,7 +283,7 @@ export function FeedEmptyState({
   readonly readiness: FeedReadiness;
 }) {
   if (readiness.kind === "extraction_running" || readiness.kind === "extraction_failed") {
-    return <FeedSetupProgress deskId={deskId} initial={readiness.initial} />;
+    return <SetupProgressCard deskId={deskId} initial={readiness.initial} />;
   }
   const content = EMPTY[readiness.kind];
   if (readiness.kind === "ready") {
