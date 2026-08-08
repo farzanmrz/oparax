@@ -59,6 +59,7 @@ export async function createDesk(input: {
 
   const beat = input.beat.trim();
   if (!beat) return { error: "Describe the beat this agent should watch." };
+  if (beat.length > 2000) return { error: "Keep the beat under 2,000 characters." };
 
   // Every tracked handle is charset-validated too — not just normalized. An unvalidated handle
   // flows into the ingestion worker's globally-shared X stream rule where it could inject stream
@@ -74,7 +75,9 @@ export async function createDesk(input: {
         error: `"${raw.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
       };
     }
-    if (!trackedHandles.includes(handle)) trackedHandles.push(handle);
+    if (!trackedHandles.some((tracked) => tracked.toLowerCase() === handle.toLowerCase())) {
+      trackedHandles.push(handle);
+    }
   }
   if (trackedHandles.length === 0) {
     return { error: "Add at least one tracked X account." };
@@ -120,13 +123,17 @@ export async function createDesk(input: {
     reporterHandle = override;
   }
 
-  const existenceTargets = [...trackedHandles];
-  if (reporterHandle !== connectedHandle) existenceTargets.push(reporterHandle);
+  // OAuth proves the linked account exists, including when it is also tracked. Keep its typed
+  // casing in `trackedHandles`, but compare identity case-insensitively because X handles are.
+  const connectedHandleKey = connectedHandle.toLowerCase();
+  const existenceTargets = trackedHandles.filter(
+    (tracked) => tracked.toLowerCase() !== connectedHandleKey,
+  );
+  if (reporterHandle.toLowerCase() !== connectedHandleKey) existenceTargets.push(reporterHandle);
   const existence = await checkHandlesExist(existenceTargets, user.id);
   if (existence.ok && existence.invalid.length > 0) {
     return { error: describeInvalidHandles(existence.invalid) };
   }
-  if (beat.length > 2000) return { error: "Keep the beat under 2,000 characters." };
   if (!(await checkBeatIntelligible(beat, user.id)).pass) {
     return {
       error:

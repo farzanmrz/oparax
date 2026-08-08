@@ -239,7 +239,7 @@ const EMPTY: Record<
   { title: string; body: string; actionLabel?: string; actionHref?: string }
 > = {
   ready: {
-    title: "Your Voice Is Ready",
+    title: "Your Guide Is Ready",
     body: "You can review it in Guide. New stories and drafts will appear here as soon as your agent finds something on-beat.",
   },
   paused: {
@@ -254,7 +254,7 @@ const EMPTY: Record<
   },
   extraction_missing: {
     title: "Finish Setting Up Your Agent",
-    body: "Your agent still needs to learn your voice before it can create drafts.",
+    body: "Your agent still needs to complete its writing guide before it can create drafts.",
     actionLabel: "Go to Guide",
     actionHref: "/voice",
   },

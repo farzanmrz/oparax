@@ -10,6 +10,12 @@ import type { Json } from "@/lib/supabase/database.types";
 import { BEAT_GATE_PROMPT } from "@/lib/sysprompts";
 
 const MODEL = "anthropic/claude-sonnet-5";
+// Adaptive thinking and the JSON response share this ceiling. Keep enough headroom for Sonnet
+// to finish thinking before emitting the verdict; see the identical onboarding bound.
+const SONNET_BEAT_GATE_MAX_OUTPUT_TOKENS = 16_000;
+const SONNET_BEAT_GATE_PROVIDER_OPTIONS = {
+  anthropic: { thinking: { type: "adaptive", effort: "medium" } },
+};
 
 async function insertBeatGateModelCall(
   ownerId: string,
@@ -61,10 +67,12 @@ export async function checkBeatIntelligible(
   try {
     const result = await generateObject({
       model: MODEL,
+      providerOptions: SONNET_BEAT_GATE_PROVIDER_OPTIONS,
+      reasoning: "medium",
       schema: z.object({ interpretable: z.boolean(), reason: z.string() }),
       system: BEAT_GATE_PROMPT,
       prompt: beat,
-      maxOutputTokens: 500,
+      maxOutputTokens: SONNET_BEAT_GATE_MAX_OUTPUT_TOKENS,
       onStepEnd: (event) => {
         stepRef.value = event;
       },
@@ -84,6 +92,15 @@ export async function checkBeatIntelligible(
         reasoning: stepRef.value?.reasoning ?? null,
         usage: stepRef.value?.usage ?? error.usage,
         providerMetadata: stepRef.value?.providerMetadata,
+      });
+    } else if (stepRef.value) {
+      // A timeout can arrive after the provider completed a billed step. Preserve its captured
+      // usage even though no object was returned to this request.
+      await insertBeatGateModelCall(ownerId, {
+        output: stepRef.value.objectText ?? null,
+        reasoning: stepRef.value.reasoning ?? null,
+        usage: stepRef.value.usage,
+        providerMetadata: stepRef.value.providerMetadata,
       });
     }
     return { pass: true };

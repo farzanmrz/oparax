@@ -28,23 +28,14 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
     .eq("id", id)
     .maybeSingle();
   if (agentError || !agent) notFound();
-  const { data: guide } = await supabase
+  const { data: guide, error: guideError } = await supabase
     .from("voice_guides")
     .select("agent_id")
     .eq("agent_id", id)
     .limit(1)
     .maybeSingle();
-  const progress = guide ? null : await getOwnedExtractionProgress(id);
-  const showSetup =
-    progress?.ok === true && (progress.status === "running" || progress.status === "failed");
-  if (showSetup && progress.ok) {
-    return (
-      <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
-        <PageHeading>Skipped Posts</PageHeading>
-        <SetupProgressCard deskId={id} initial={progress} />
-      </div>
-    );
-  }
+  if (guideError) throw new Error("Failed to load the writing guide. Please try again.");
+  const progress = await getOwnedExtractionProgress(id);
   const admin = createAdminClient();
   let page: ExcludedPostsPage;
   try {
@@ -58,10 +49,17 @@ export default async function ExcludedPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  const showSetup =
+    page.items.length === 0 &&
+    progress.ok &&
+    (progress.status === "failed" || (!guide && progress.status === "running"));
+
   return (
     <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
       <PageHeading>Skipped Posts</PageHeading>
-      {page.items.length === 0 ? (
+      {showSetup ? (
+        <SetupProgressCard deskId={id} initial={progress} showHeading={false} />
+      ) : page.items.length === 0 ? (
         <ExcludedEmptyState />
       ) : (
         <ExcludedList agentId={id} initialCursor={page.nextCursor} initialItems={page.items} />

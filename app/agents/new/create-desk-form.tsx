@@ -132,15 +132,32 @@ export function CreateDeskForm({
   function commitHandleParts(parts: string[]): string[] {
     const valid: string[] = [];
     const rejected: string[] = [];
+    let overflowed: string | null = null;
     for (const part of parts) {
       const normalized = normalizeValidHandle(part);
-      if (normalized) valid.push(normalized);
-      else rejected.push(part);
+      if (!normalized) {
+        rejected.push(part);
+        continue;
+      }
+      if (
+        handles.some((handle) => handle.toLowerCase() === normalized.toLowerCase()) ||
+        valid.some((handle) => handle.toLowerCase() === normalized.toLowerCase())
+      ) {
+        continue;
+      }
+      if (handles.length + valid.length >= MAX_TRACKED) {
+        rejected.push(part);
+        overflowed = part;
+        continue;
+      }
+      valid.push(normalized);
     }
     if (valid.length) setHandles((current) => mergeHandles(current, valid));
     setHandleFieldError(
       rejected.length
-        ? `"${rejected[0]}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`
+        ? overflowed
+          ? `Maximum of ${MAX_TRACKED} X accounts reached; couldn't add "${overflowed}".`
+          : `"${rejected[0]}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`
         : null,
     );
     return rejected;
@@ -149,13 +166,33 @@ export function CreateDeskForm({
   function commitWebsiteParts(parts: string[]): string[] {
     const valid: string[] = [];
     const rejected: string[] = [];
+    let overflowed: string | null = null;
     for (const part of parts) {
-      if (normalizeSourceUrl(part)) valid.push(part);
-      else rejected.push(part);
+      const normalized = normalizeSourceUrl(part)?.href;
+      if (!normalized) {
+        rejected.push(part);
+        continue;
+      }
+      if (
+        websites.some((website) => website.toLowerCase() === normalized.toLowerCase()) ||
+        valid.some((website) => website.toLowerCase() === normalized.toLowerCase())
+      ) {
+        continue;
+      }
+      if (websites.length + valid.length >= MAX_WEBSITES) {
+        rejected.push(part);
+        overflowed = part;
+        continue;
+      }
+      valid.push(normalized);
     }
     if (valid.length) setWebsites((current) => mergeWebsites(current, valid));
     setWebsiteFieldError(
-      rejected.length ? `"${rejected[0]}" isn't a valid website address.` : null,
+      rejected.length
+        ? overflowed
+          ? `Maximum of ${MAX_WEBSITES} news websites reached; couldn't add "${overflowed}".`
+          : `"${rejected[0]}" isn't a valid website address.`
+        : null,
     );
     return rejected;
   }
@@ -181,12 +218,30 @@ export function CreateDeskForm({
       return;
     }
 
-    const finalHandles = mergeHandles(handles, splitHandles(handleDraft));
+    const handleParts = splitHandles(handleDraft);
+    const rejectedHandles = commitHandleParts(handleParts);
+    if (rejectedHandles.length) return;
+    const finalHandles = mergeHandles(
+      handles,
+      handleParts.flatMap((part) => {
+        const normalized = normalizeValidHandle(part);
+        return normalized ? [normalized] : [];
+      }),
+    );
     if (!finalHandles.length) {
       setFormError("Add at least one tracked X account.");
       return;
     }
-    const finalWebsites = mergeWebsites(websites, splitList(websiteDraft));
+    const websiteParts = splitList(websiteDraft);
+    const rejectedWebsites = commitWebsiteParts(websiteParts);
+    if (rejectedWebsites.length) return;
+    const finalWebsites = mergeWebsites(
+      websites,
+      websiteParts.flatMap((part) => {
+        const normalized = normalizeSourceUrl(part)?.href;
+        return normalized ? [normalized] : [];
+      }),
+    );
 
     startTransition(async () => {
       const result = await createDesk({
@@ -232,7 +287,8 @@ export function CreateDeskForm({
       }
 
       try {
-        await startExtraction(deskId);
+        const extraction = await startExtraction(deskId);
+        if (!extraction.ok) toast.error(extraction.message);
       } finally {
         // A created agent is recoverable from Feed/Guide even if extraction start fails.
         // Feed is the landing page because setup progress renders there immediately.
@@ -360,6 +416,7 @@ export function CreateDeskForm({
               {!atHandleLimit ? (
                 <AddSourceField
                   ariaLabel="Add X accounts"
+                  className="mt-0"
                   disabled={formDisabled}
                   onChange={setHandleDraft}
                   onCommitParts={commitHandleParts}
@@ -395,6 +452,7 @@ export function CreateDeskForm({
               {!atWebsiteLimit ? (
                 <AddSourceField
                   ariaLabel="Add news websites"
+                  className="mt-0"
                   disabled={formDisabled}
                   inputMode="url"
                   onChange={setWebsiteDraft}

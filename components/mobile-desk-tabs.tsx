@@ -34,7 +34,7 @@ export function MobileDeskTabs({
             aria-current={active ? "page" : undefined}
             className={cn(
               // Four tabs share a 375px row, so the padding and gap are sized to fit the
-              // longest label ("Excluded") plus Feed's count badge without truncating — the
+              // longest label ("Skipped Posts") plus Feed's count badge without truncating — the
               // same no-truncation rule DESIGN.md sets for mobile source names.
               "relative z-10 flex min-h-11 min-w-0 flex-auto items-center justify-center gap-0.5 px-2 text-[12px] font-medium outline-offset-2 transition",
               active

@@ -2,7 +2,7 @@
 
 // app/agents/[id]/desk-controls.tsx
 //
-// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Writing Guide/Sources/Excluded nav,
+// The desk sub-nav's interactive leaves: `DeskTabs` (the Feed/Skipped Posts/Guide/Sources nav,
 // active state via usePathname) and `DeskControls` (the pause/resume + delete icon buttons).
 // `DESK_TABS` is exported so all desk-scoped tab surfaces render the SAME four
 // links at the SAME URLs — one URL tree, no parallel nav model.
@@ -51,10 +51,10 @@ export const DESK_TABS = [
     href: (id: string) => `/agents/${id}`,
     exact: true,
   },
-  // Excluded sits beside Feed because it holds the same objects the Feed does — the ones
-  // filtration dropped. Voice and Sources are configuration, so they follow.
+  // Skipped Posts sits beside Feed because it holds the same objects the Feed does — the ones
+  // filtration dropped. Guide and Sources are configuration, so they follow.
   {
-    label: "Skipped",
+    label: "Skipped Posts",
     icon: EyeOffIcon,
     href: (id: string) => `/agents/${id}/excluded`,
     exact: false,
@@ -77,7 +77,7 @@ export function isDeskTabActive(pathname: string, href: string, exact: boolean):
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The Feed/Writing Guide/Sources tab nav for wide layouts. */
+/** The Feed/Skipped Posts/Guide/Sources tab nav for wide layouts. */
 export function DeskTabs({
   deskId,
   needsReviewCount,

@@ -84,6 +84,7 @@ export function AddSourceField({
   onSubmit,
   onBlur,
   onCommitParts,
+  className = "mt-4",
 }: {
   value: string;
   placeholder: string;
@@ -94,6 +95,7 @@ export function AddSourceField({
   onSubmit?: () => void;
   onBlur?: () => void;
   onCommitParts?: (parts: string[]) => string[];
+  className?: string;
 }) {
   function handleChange(raw: string, opts?: { commitAll?: boolean }) {
     if (!onCommitParts || !/[\s,]/.test(raw)) {
@@ -101,6 +103,12 @@ export function AddSourceField({
       return;
     }
     const bulk = opts?.commitAll || raw.length - value.length > 1;
+    const addedSeparator =
+      (raw.match(/[\s,]/g)?.length ?? 0) > (value.match(/[\s,]/g)?.length ?? 0);
+    if (!bulk && !addedSeparator) {
+      onChange(raw);
+      return;
+    }
     const endsWithSeparator = /[\s,]$/.test(raw);
     const parts = splitList(raw);
     const remainder = bulk || endsWithSeparator ? "" : (parts.pop() ?? "");
@@ -122,13 +130,18 @@ export function AddSourceField({
   function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
     if (!onCommitParts) return;
     event.preventDefault();
-    handleChange(`${value} ${event.clipboardData.getData("text").replace(/\n/g, " ")} `, {
+    const selectionStart = event.currentTarget.selectionStart ?? value.length;
+    const selectionEnd = event.currentTarget.selectionEnd ?? value.length;
+    const pasted = event.clipboardData.getData("text").replace(/\n/g, " ");
+    handleChange(`${value.slice(0, selectionStart)}${pasted}${value.slice(selectionEnd)} `, {
       commitAll: true,
     });
   }
 
   return (
-    <div className="mt-4 flex min-h-11 items-center rounded-md border border-dashed border-input bg-[var(--input-bg)] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50">
+    <div
+      className={`${className} flex min-h-11 items-center rounded-md border border-dashed border-input bg-[var(--input-bg)] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50`}
+    >
       <input
         aria-label={ariaLabel}
         autoCapitalize="none"

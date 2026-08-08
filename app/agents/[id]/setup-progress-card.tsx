@@ -19,9 +19,11 @@ const COMPLETION_HOLD_MS = 1500;
 export function SetupProgressCard({
   deskId,
   initial,
+  showHeading = true,
 }: {
   readonly deskId: string;
   readonly initial: ExtractionProgressState;
+  readonly showHeading?: boolean;
 }) {
   const router = useRouter();
   const run = useExtractionProgress(deskId, {
@@ -43,7 +45,7 @@ export function SetupProgressCard({
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <h1 className="sr-only">Setting up your agent</h1>
+      {showHeading ? <h1 className="sr-only">Setting up your agent</h1> : null}
       {run.status === "running" ? (
         <Alert className="border-primary/30 bg-primary/8 text-foreground" role="status">
           <InfoIcon aria-hidden="true" className="text-primary" />

@@ -66,7 +66,7 @@ export function ExcludedList({
       {state.items.map((item) => (
         <ExcludedItemCard item={item} key={item.id} />
       ))}
-      <div ref={sentinel} />
+      <div className="h-px" ref={sentinel} />
       {loading ? <div className="h-24 animate-pulse rounded-lg bg-white/6" /> : null}
       {error ? (
         <div className="flex items-center gap-2">

@@ -15,7 +15,7 @@ import { SiteFavicon } from "@/components/site-favicon";
 import { AddSourceField, FieldMessage, SourceRow } from "@/components/source-field";
 import { useWebsiteOnboardingStatus } from "@/lib/sources/use-website-onboarding-status";
 import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
-import { MAX_TRACKED_HANDLES } from "@/lib/x/handle";
+import { MAX_TRACKED_HANDLES, X_HANDLE_RE } from "@/lib/x/handle";
 import { splitHandles } from "@/lib/x/handle-input";
 import { addTrackedHandles, removeTrackedHandle } from "../actions";
 import { removeWebsite, startWebsiteOnboarding } from "./actions";
@@ -68,6 +68,9 @@ export function SourcesCard({
   // rendered as a plain chip immediately rather than waiting for a full page reload to pick it
   // up from the server-rendered `websites` prop (#106 finding #1).
   const [resolvedUrls, setResolvedUrls] = useState<ReadonlySet<string>>(new Set());
+  const [resolvedWebsiteDetails, setResolvedWebsiteDetails] = useState<
+    Readonly<Record<string, WebsiteDetail>>
+  >({});
   // Grace-period guards (#106 finding #7) — entries expire after RECONCILE_GRACE_MS.
   const recentlyAddedRef = useRef<Map<string, number>>(new Map());
   const recentlyDismissedRef = useRef<Map<string, number>>(new Map());
@@ -102,6 +105,17 @@ export function SourcesCard({
         .filter((e) => !recentlyAddedRef.current.has(e.url))
         .map((e) => [e.url, e.errorCode ?? "failed"]),
     );
+    const nextResolvedDetails = Object.fromEntries(
+      polledEntries
+        .filter(
+          (entry): entry is typeof entry & { displayName: string } =>
+            entry.status === "active" && Boolean(entry.displayName),
+        )
+        .map((entry) => [
+          entry.url,
+          { displayName: entry.displayName, domain: new URL(entry.url).hostname },
+        ]),
+    );
 
     const prevPending = pendingUrlsRef.current;
     const nextPending = new Set(serverPending);
@@ -118,6 +132,9 @@ export function SourcesCard({
     );
     setPendingUrls(nextPending);
     if (resolved.length > 0) setResolvedUrls((current) => new Set([...current, ...resolved]));
+    if (Object.keys(nextResolvedDetails).length > 0) {
+      setResolvedWebsiteDetails((current) => ({ ...current, ...nextResolvedDetails }));
+    }
     setFailedUrls(() => {
       const next = new Map(serverFailed);
       for (const url of recentlyDismissedRef.current.keys()) next.delete(url);
@@ -133,12 +150,25 @@ export function SourcesCard({
       const next = new Set([...current].filter((url) => !websites.includes(url)));
       return next.size === current.size ? current : next;
     });
+    setResolvedWebsiteDetails((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([url]) => !websites.includes(url)),
+      );
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
   }, [websites]);
 
   function commitHandles(raw: string) {
-    if (splitHandles(raw).length === 0) return;
-    setHandleError(null);
+    const candidates = splitHandles(raw);
+    if (candidates.length === 0) return;
+    const hasInvalidHandle = candidates.some((handle) => !X_HANDLE_RE.test(handle));
+    setHandleError(
+      hasInvalidHandle
+        ? "Enter a valid X handle — letters, numbers, and underscores, up to 15."
+        : null,
+    );
     setHandleNotice(null);
+    if (hasInvalidHandle && candidates.every((handle) => !X_HANDLE_RE.test(handle))) return;
     startHandleTransition(async () => {
       const result = await addTrackedHandles(deskId, raw);
       if (!result.ok) {
@@ -283,7 +313,7 @@ export function SourcesCard({
             onChange={setHandleInput}
             onCommitParts={(parts) => {
               commitHandles(parts.join(" "));
-              return [];
+              return parts.filter((part) => !X_HANDLE_RE.test(part));
             }}
             placeholder={isHandlePending ? "Adding…" : "Add X accounts — usernames"}
             value={handleInput}
@@ -303,6 +333,7 @@ export function SourcesCard({
             <SourceRow
               icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
               key={url}
+              display={<SingleLineLabel>{websiteName(url, websiteDetails[url])}</SingleLineLabel>}
               label={websiteName(url, websiteDetails[url])}
               onRemove={() => removeSite(url)}
               tone="website"
@@ -310,9 +341,19 @@ export function SourcesCard({
           ))}
           {resolvedChips.map((url) => (
             <SourceRow
-              icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+              icon={
+                <SiteFavicon
+                  domain={resolvedWebsiteDetails[url]?.domain ?? websiteDetails[url]?.domain}
+                  url={url}
+                />
+              }
               key={url}
-              label={websiteName(url, websiteDetails[url])}
+              display={
+                <SingleLineLabel>
+                  {websiteName(url, resolvedWebsiteDetails[url] ?? websiteDetails[url])}
+                </SingleLineLabel>
+              }
+              label={websiteName(url, resolvedWebsiteDetails[url] ?? websiteDetails[url])}
               onRemove={() => removeSite(url)}
               tone="website"
             />
@@ -321,6 +362,7 @@ export function SourcesCard({
             <SourceRow
               icon={<SiteFavicon url={url} />}
               key={url}
+              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
               label={websiteName(url)}
               onRemove={() => removeSite(url)}
               status="pending"
@@ -331,6 +373,7 @@ export function SourcesCard({
             <SourceRow
               icon={<SiteFavicon url={url} />}
               key={url}
+              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
               label={websiteName(url)}
               onRemove={() => removeSite(url)}
               status="failed"
@@ -380,12 +423,16 @@ function SourceCount({ count, limit, noun }: { count: number; limit: number; nou
 }
 
 function websiteName(value: string, detail?: WebsiteDetail): string {
-  if (detail?.displayName) return detail.displayName;
+  if (detail?.displayName) return detail.displayName.replace(/^www\./i, "");
   try {
     return new URL(value).hostname.replace(/^www\./i, "");
   } catch {
     return value;
   }
+}
+
+function SingleLineLabel({ children }: { children: string }) {
+  return <span className="block truncate whitespace-nowrap">{children}</span>;
 }
 
 /** `status` carries website onboarding lifecycle. The close action doubles as Cancel for a
