@@ -29,7 +29,7 @@ the best available dial (fable/opus, high) from the start.
 | Setup scout | one agent, `model: haiku`, `effort: low` |
 | Internal review lane | `bug-finder` (inherits the session model) |
 | Exploration fan-out | batch independent Agent calls in one response |
-| Design critic (UI slices only) | one agent, `model: sonnet`, `effort: high` |
+| Design critic (UI slices only) | the session model itself, inline, no dispatch |
 | External council lanes | `codex` + `grok` + `agy` CLI wrappers |
 | DB seeding / exploratory Supabase ops | `supabase-runner` (sonnet, its own default) |
 
@@ -90,9 +90,10 @@ bash .claude/skills/feature/scripts/qc-gates.sh
 
 ## 3. Design critic (UI-touching slices only)
 
-ONE pass (`model: sonnet`, `effort: high`). Design findings enter phase 5's
-adjudication like any lane's. No UI in the diff: record "no UI surface,
-design critic skipped".
+ONE pass, run inline by the session model itself (owner decision: design
+judgment stays on the smart dial, never delegated to a cheaper dispatch).
+Design findings enter phase 5's adjudication like any lane's. No UI in the
+diff: record "no UI surface, design critic skipped".
 
 ### A. Yardstick
 
@@ -123,6 +124,15 @@ streaming/motion feel, layout shift) plus this tells checklist:
   loading states that don't match final layout; missing empty/error states
 * `useState` tracking continuous input (mouse/scroll) instead of motion
   values
+* mobile containment, reasoned per surface at 375px: fixed equal-column or
+  nowrap layouts that cannot fit their content, a min-width on a child
+  inside a shrinkable (`min-w-0`) flex item (defeats wrapping and paints
+  past the container), overlay/absolute text layers standing in for native
+  behavior, any element able to widen the page; each rendered-at-mobile
+  claim becomes a `NOT VERIFIABLE` line so browse's mobile pass inherits it
+* internal machinery on user surfaces: raw tool payloads, model reasoning
+  or narration, log-grade error strings; consumer-facing surfaces render
+  none of these
 * WCAG AA contrast on every CTA and form control
 * this repo's hard rules: sentence case, no eyebrow headers, uniform form
   fields

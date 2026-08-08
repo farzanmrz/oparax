@@ -107,8 +107,9 @@ owner-legibility contract.
 
 ## Hard rules (bind the whole chain)
 
-* **Session model boundary:** the session model does adjudication + the final
-  report ONLY. Everything else is a pinned dispatch or shell.
+* **Session model boundary:** the session model does adjudication, the
+  inline design-critic pass (feature-find phase 3), + the final report ONLY.
+  Everything else is a pinned dispatch or shell.
 * **One combined review charter per lane:** never re-expand into per-angle ×
   per-family fan-outs; never add a separate verifier quorum.
 * **Failure conditions:** a failed lane is reported FAILED, never as a clean
