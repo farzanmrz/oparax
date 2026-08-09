@@ -188,6 +188,7 @@ diff showed).
   distilled guards to the matching `.feature/<label>.in.txt`, and consume
   only that exact `<label>.out.json`. Never glob old `*.out.json` files or
   reuse an unqualified `review-<family>` label.
+* **The spec's `Input space` and `Acceptance journeys` sections go into every brief verbatim** (when the plan has them), with this charter line: "Also attack the frame: name a real input or condition this feature now faces that no code path in or around the diff handles — a missing input class outranks any in-frame bug." A diff can satisfy every criterion of a wrong frame; lanes that only verify what is written inherit the plan's blind spots (five clean lanes once verified a slice whose modal input hard-failed in production).
 * **Distilled guards are part of the brief, not a harness setting:** distill
   the constraints that bear on the files in this diff (a few lines, read
   from the code itself — trust boundaries, auth shapes, invariants — plus
