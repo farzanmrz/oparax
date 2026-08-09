@@ -9,9 +9,9 @@ const nextConfig: NextConfig = {
   // The sysprompt markdown is read via readFileSync(process.cwd()/lib/sysprompts/...) at
   // module load — trace it into every serverless function that transitively imports
   // lib/sysprompts (the delivery interface + the inbound-email webhook, both via
-  // draft-pipeline.ts -> draft-council-run.ts; the new-desk create action, whose after()
-  // voice-extraction call reaches lib/sysprompts via lib/voice/extract-guide.ts; and
-  // /agents/[id]/voice's retryExtraction action, which reaches the same
+  // draft-pipeline.ts -> draft-council-run.ts; the legacy strip-phrases refresh route and the
+  // new-desk create action, both via lib/sources/onboard-source.ts / lib/voice/extract-guide.ts;
+  // and /agents/[id]/voice's retryExtraction action, which reaches the same
   // lib/voice/extract-guide.ts path via runExtractionSpendPhase on a manual retry). The
   // per-minute cron dispatcher this list once traced (/api/cron/tick) was deleted with the
   // retired scan/draft pipeline (D15), and the /api/chat entry it once traced was deleted with
@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/ingest": ["./lib/sysprompts/*.md"],
     "/api/email/inbound": ["./lib/sysprompts/*.md"],
+    "/api/sources/refresh-strip-phrases": ["./lib/sysprompts/*.md"],
     "/agents/new": ["./lib/sysprompts/*.md"],
     "/agents/[id]/voice": ["./lib/sysprompts/*.md"],
     "/agents/[id]/sources": ["./lib/sysprompts/*.md"],

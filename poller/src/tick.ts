@@ -102,7 +102,17 @@ async function pollOneSource(
   staleAlarms: Map<string, AlarmState>,
 ): Promise<void> {
   if (source.strip_phrases === null) {
-    await refreshLegacyStripPhrases(env.ingestUrl, env.ingestSecret, source.id);
+    // Best-effort: a failed backfill (app-side outage, bad deploy) must not take the source's
+    // poll down with it — degrade to polling without strip phrases and retry the refresh next
+    // tick, same as any other transient app-side failure this loop already tolerates.
+    try {
+      await refreshLegacyStripPhrases(env.ingestUrl, env.ingestSecret, source.id);
+    } catch (e) {
+      logger.warn("tick: legacy strip-phrase refresh failed, polling without it", {
+        domain: source.domain,
+        error: describeError(e),
+      });
+    }
   }
   const cache = caches.get(source.id) ?? {};
   const {
