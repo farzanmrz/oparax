@@ -535,7 +535,7 @@ export async function extractVoiceGuideStreaming(
     providerOptions: {
       anthropic: { thinking: { type: "adaptive", effort: "medium", display: "summarized" } },
     },
-    // NO `tools` key — enforced by review, invisible to the type system.
+    // The scope tool is intentionally passed through `scope.tools` above.
     abortSignal: AbortSignal.timeout(Math.min(timeoutMs, EXTRACT_TIMEOUT_MS)),
     // Identifying attributes (handle, corpus size) ride on the WRAPPING span, not here — see
     // aiTelemetry's note on v7 dropping telemetry metadata.
@@ -545,6 +545,7 @@ export async function extractVoiceGuideStreaming(
   let textSoFar = "";
   let modelStep = -1;
   let streamError: unknown;
+  let streamedFinishReason: string | null = null;
   let activeReasoningStage: ExtractionReasoningStage = "scope";
   const reasoningByStage: ExtractionReasoningByStage = {};
   const textByStage: ExtractionTextByStage = {};
@@ -561,85 +562,95 @@ export async function extractVoiceGuideStreaming(
     });
   };
 
-  for await (const part of result.fullStream) {
-    // The raw observer sees EVERY part, before any filtering — it is the only witness to the
-    // parts the accumulation below discards, which is where an unexplained empty guide hides.
-    if (onRawPart) await onRawPart(part as unknown as Record<string, unknown> & { type: string });
-    if (part.type === "start-step") {
-      modelStep += 1;
-      activeReasoningStage = modelStep === 0 ? "scope" : "extract";
+  try {
+    for await (const part of result.fullStream) {
+      // The raw observer sees EVERY part, before any filtering — it is the only witness to the
+      // parts the accumulation below discards, which is where an unexplained empty guide hides.
+      if (onRawPart) await onRawPart(part as unknown as Record<string, unknown> & { type: string });
+      if (part.type === "start-step") {
+        modelStep += 1;
+        activeReasoningStage = modelStep === 0 ? "scope" : "extract";
+        await reportProgress();
+        continue;
+      }
+      if (part.type === "text-start") {
+        // The tool is optional when every post is on-beat, so guide generation can begin in the
+        // first SDK step. Ordinary output text is always the guide, regardless of step count.
+        activeReasoningStage = "extract";
+        await reportProgress();
+        continue;
+      }
+      if (part.type === "text-delta") {
+        activeReasoningStage = "extract";
+        textSoFar += part.text;
+        textByStage[activeReasoningStage] = (textByStage[activeReasoningStage] ?? "") + part.text;
+      } else if (part.type === "reasoning-delta") {
+        reasoningByStage[activeReasoningStage] =
+          (reasoningByStage[activeReasoningStage] ?? "") + part.text;
+      } else if (part.type === "tool-input-start") {
+        toolActivities.set(part.id, {
+          id: part.id,
+          toolName: part.toolName,
+          stage: activeReasoningStage,
+          state: "input-streaming",
+          inputText: "",
+        });
+      } else if (part.type === "tool-input-delta") {
+        const activity = toolActivities.get(part.id);
+        if (activity) activity.inputText += part.delta;
+      } else if (part.type === "tool-input-end") {
+        const activity = toolActivities.get(part.id);
+        if (activity) activity.state = "input-available";
+      } else if (part.type === "tool-call") {
+        const previous = toolActivities.get(part.toolCallId);
+        toolActivities.set(part.toolCallId, {
+          id: part.toolCallId,
+          toolName: part.toolName,
+          stage: previous?.stage ?? activeReasoningStage,
+          state: "input-available",
+          inputText: previous?.inputText ?? JSON.stringify(part.input),
+          input: part.input,
+        });
+      } else if (part.type === "tool-result") {
+        const previous = toolActivities.get(part.toolCallId);
+        toolActivities.set(part.toolCallId, {
+          id: part.toolCallId,
+          toolName: part.toolName,
+          stage: previous?.stage ?? activeReasoningStage,
+          state: "output-available",
+          inputText: previous?.inputText ?? JSON.stringify(part.input),
+          input: part.input,
+          output: part.output,
+        });
+      } else if (part.type === "tool-error") {
+        const previous = toolActivities.get(part.toolCallId);
+        toolActivities.set(part.toolCallId, {
+          id: part.toolCallId,
+          toolName: part.toolName,
+          stage: previous?.stage ?? activeReasoningStage,
+          state: "output-error",
+          inputText: previous?.inputText ?? JSON.stringify(part.input),
+          input: part.input,
+          errorText: part.error instanceof Error ? part.error.message : String(part.error),
+        });
+      } else if (part.type === "finish") {
+        streamedFinishReason = part.finishReason ?? null;
+        continue;
+      } else if (part.type === "error") {
+        // Keep the FIRST error — a dying stream can emit a cascade, and the first part is the
+        // proximate cause the later ones echo.
+        if (streamError === undefined) streamError = part.error;
+        continue;
+      } else {
+        continue;
+      }
       await reportProgress();
-      continue;
     }
-    if (part.type === "text-start") {
-      // The tool is optional when every post is on-beat, so guide generation can begin in the
-      // first SDK step. Ordinary output text is always the guide, regardless of step count.
-      activeReasoningStage = "extract";
-      await reportProgress();
-      continue;
-    }
-    if (part.type === "text-delta") {
-      activeReasoningStage = "extract";
-      textSoFar += part.text;
-      textByStage[activeReasoningStage] = (textByStage[activeReasoningStage] ?? "") + part.text;
-    } else if (part.type === "reasoning-delta") {
-      reasoningByStage[activeReasoningStage] =
-        (reasoningByStage[activeReasoningStage] ?? "") + part.text;
-    } else if (part.type === "tool-input-start") {
-      toolActivities.set(part.id, {
-        id: part.id,
-        toolName: part.toolName,
-        stage: activeReasoningStage,
-        state: "input-streaming",
-        inputText: "",
-      });
-    } else if (part.type === "tool-input-delta") {
-      const activity = toolActivities.get(part.id);
-      if (activity) activity.inputText += part.delta;
-    } else if (part.type === "tool-input-end") {
-      const activity = toolActivities.get(part.id);
-      if (activity) activity.state = "input-available";
-    } else if (part.type === "tool-call") {
-      const previous = toolActivities.get(part.toolCallId);
-      toolActivities.set(part.toolCallId, {
-        id: part.toolCallId,
-        toolName: part.toolName,
-        stage: previous?.stage ?? activeReasoningStage,
-        state: "input-available",
-        inputText: previous?.inputText ?? JSON.stringify(part.input),
-        input: part.input,
-      });
-    } else if (part.type === "tool-result") {
-      const previous = toolActivities.get(part.toolCallId);
-      toolActivities.set(part.toolCallId, {
-        id: part.toolCallId,
-        toolName: part.toolName,
-        stage: previous?.stage ?? activeReasoningStage,
-        state: "output-available",
-        inputText: previous?.inputText ?? JSON.stringify(part.input),
-        input: part.input,
-        output: part.output,
-      });
-    } else if (part.type === "tool-error") {
-      const previous = toolActivities.get(part.toolCallId);
-      toolActivities.set(part.toolCallId, {
-        id: part.toolCallId,
-        toolName: part.toolName,
-        stage: previous?.stage ?? activeReasoningStage,
-        state: "output-error",
-        inputText: previous?.inputText ?? JSON.stringify(part.input),
-        input: part.input,
-        errorText: part.error instanceof Error ? part.error.message : String(part.error),
-      });
-    } else if (part.type === "error") {
-      // Keep the FIRST error — a dying stream can emit a cascade, and the first part is the
-      // proximate cause the later ones echo.
-      if (streamError === undefined) streamError = part.error;
-      continue;
-    } else {
-      continue;
-    }
-    await reportProgress();
+  } catch (error) {
+    // Some provider failures reject the iterable instead of yielding an `error` part. Keep that
+    // error, then inspect the result promises individually: their rejection must not erase any
+    // usage or finish state the SDK did settle before the stream died.
+    if (streamError === undefined) streamError = error;
   }
 
   // `result.steps` resolves the same underlying per-step array `generateText`'s does (it's a
@@ -647,17 +658,27 @@ export async function extractVoiceGuideStreaming(
   // already fully drained `fullStream`, so it resolves immediately. See `reconstructFromSteps`
   // for why this replaces the old `result.text`/`.reasoningText`/`.providerMetadata` reads, which
   // are last-step-only getters on this SDK version.
-  const [steps, usage, finishReason] = await Promise.all([
+  const [stepsResult, usageResult, finishReasonResult] = await Promise.allSettled([
     result.steps,
     result.usage,
     result.finishReason,
   ]);
+  if (streamError === undefined) {
+    const rejected = [stepsResult, usageResult, finishReasonResult].find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    if (rejected) streamError = rejected.reason;
+  }
+  const steps = stepsResult.status === "fulfilled" ? stepsResult.value : [];
+  const usage = usageResult.status === "fulfilled" ? usageResult.value : null;
+  const finishReason =
+    finishReasonResult.status === "fulfilled" ? finishReasonResult.value : streamedFinishReason;
   const { text, reasoning, thinkingTokens, costUsd, generationId } =
     await reconstructFromSteps(steps);
 
   const scopeExclusion = scope.read();
   return {
-    guideRaw: text,
+    guideRaw: text || textSoFar,
     measuredFactsBlock: scopeExclusion?.applied
       ? measuredFacts(
           handle,
@@ -668,7 +689,7 @@ export async function extractVoiceGuideStreaming(
         )
       : facts,
     scopeExclusion,
-    reasoning,
+    reasoning: reasoning || Object.values(reasoningByStage).join("\n\n") || null,
     thinkingTokens,
     costUsd,
     usage,

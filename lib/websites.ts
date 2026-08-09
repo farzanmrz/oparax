@@ -61,10 +61,10 @@ export function displaySourceUrl(href: string): string {
  *  typed URL, so a nytimes.com chip labeled "The Athletic" gave no hint of what was really
  *  being polled (owner report, 2026-08-09). Display-only: falls back to the typed URL, never
  *  to nothing.
- *  - listing → the resolver-validated section page (`listing_url` IS the poll target)
- *  - rss     → the feed being polled
- *  - sitemap → the prefilter path the poller keeps (domain + prefix), else the typed URL —
- *              the sitemap XML's own URL is plumbing, not a reader-facing scope */
+ *  - any mechanism with a prefilter → that watched domain + path scope
+ *  - listing without one → the resolver-validated section page (`listing_url` IS the poll target)
+ *  - rss/sitemap without one → the typed URL; feed and sitemap XML are plumbing, not
+ *    reader-facing consumer scope */
 export function trackedSourceUrl(config: {
   url: string;
   domain: string | null;
@@ -73,9 +73,7 @@ export function trackedSourceUrl(config: {
   feedUrl: string | null;
   prefilter: unknown;
 }): string {
-  if (config.changeDetection === "listing" && config.listingUrl) return config.listingUrl;
-  if (config.changeDetection === "rss" && config.feedUrl) return config.feedUrl;
-  if (config.changeDetection === "sitemap" && config.domain) {
+  if (config.domain) {
     const prefix =
       typeof config.prefilter === "object" &&
       config.prefilter !== null &&
@@ -85,5 +83,6 @@ export function trackedSourceUrl(config: {
         : null;
     if (prefix) return `https://${config.domain}${prefix.startsWith("/") ? prefix : `/${prefix}`}`;
   }
+  if (config.changeDetection === "listing" && config.listingUrl) return config.listingUrl;
   return config.url;
 }

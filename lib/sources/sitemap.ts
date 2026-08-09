@@ -118,12 +118,19 @@ export async function fetchSitemapSample(
   return entries.slice(0, limit);
 }
 
-/** Counts how many `entries` have a URL path starting with `pathPrefix` — the code-side
+/** Whether `pathname` is inside `pathPrefix` on a URL-path boundary. `/athletic` therefore
+ *  matches `/athletic/news`, but never `/athletics-betting`. */
+export function pathMatchesPrefix(pathname: string, pathPrefix: string): boolean {
+  const prefix = pathPrefix.replace(/\/+$/, "") || "/";
+  return prefix === "/" || pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/** Counts how many `entries` have a URL path within `pathPrefix` — the code-side
  *  verification of the model's proposed filter. */
 export function countPathMatches(entries: SourceSampleEntry[], pathPrefix: string): number {
   return entries.filter((entry) => {
     try {
-      return new URL(entry.url).pathname.startsWith(pathPrefix);
+      return pathMatchesPrefix(new URL(entry.url).pathname, pathPrefix);
     } catch {
       return false;
     }

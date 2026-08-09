@@ -73,7 +73,7 @@ async function xGet(path: string): Promise<Response> {
 /** Resolves a handle to its numeric id, which every timeline read is keyed by. Throws with the
  *  distinction the caller needs: a handle that does not exist is the reporter's problem, a 429 or
  *  5xx is ours. */
-async function resolveUserId(handle: string): Promise<{ id: string; postCount: number }> {
+export async function resolveXUserId(handle: string): Promise<{ id: string; postCount: number }> {
   const clean = handle.trim().replace(/^@/, "");
   const res = await xGet(
     `/users/by/username/${encodeURIComponent(clean)}?user.fields=public_metrics`,
@@ -106,8 +106,12 @@ async function resolveUserId(handle: string): Promise<{ id: string; postCount: n
  * Meters exactly one `usage_events` row per call, matching the metering rule every other
  * acquisition path follows — stamped after success, so a thrown read meters nothing.
  */
-export async function fetchUserTimeline(handle: string, ownerId: string): Promise<XTimelinePost[]> {
-  const { id } = await resolveUserId(handle);
+export async function fetchUserTimeline(
+  handle: string,
+  ownerId: string,
+  resolvedXUserId?: string,
+): Promise<{ xUserId: string; posts: XTimelinePost[] }> {
+  const { id } = resolvedXUserId ? { id: resolvedXUserId } : await resolveXUserId(handle);
 
   const posts: XTimelinePost[] = [];
   let paginationToken: string | undefined;
@@ -197,5 +201,5 @@ export async function fetchUserTimeline(handle: string, ownerId: string): Promis
   });
   if (error) console.error(`fetchUserTimeline: usage_events stamp failed for @${handle}`, error);
 
-  return trimmed;
+  return { xUserId: id, posts: trimmed };
 }

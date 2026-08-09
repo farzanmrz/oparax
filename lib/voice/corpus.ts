@@ -10,7 +10,7 @@
 // Previously wrapped Bright Data's pullXTimeline; that source is deleted (it returns zero records
 // for every X profile now — see lib/x/timeline.ts's header for the probe).
 import type { XTimelinePost } from "@/lib/x/timeline";
-import { fetchUserTimeline } from "@/lib/x/timeline";
+import { fetchUserTimeline, resolveXUserId } from "@/lib/x/timeline";
 // extractVoiceGuide's input shape is frozen — re-export it rather than defining a competing
 // type, so this file and extract-guide.ts can never drift apart.
 import type { CorpusPost } from "./extract-guide";
@@ -44,7 +44,15 @@ function toCorpusPost(post: XTimelinePost): CorpusPost {
  * the same failures fetchUserTimeline throws on (missing bearer token, a handle that resolves to
  * no account, a non-2xx from X); callers decide their own fallback.
  */
-export async function fetchCorpus(handle: string, ownerId: string): Promise<CorpusPost[]> {
-  const posts = await fetchUserTimeline(handle, ownerId);
-  return posts.map(toCorpusPost);
+export async function resolveCorpusXUserId(handle: string): Promise<string> {
+  return (await resolveXUserId(handle)).id;
+}
+
+export async function fetchCorpus(
+  handle: string,
+  ownerId: string,
+  resolvedXUserId?: string,
+): Promise<{ xUserId: string; posts: CorpusPost[] }> {
+  const { xUserId, posts } = await fetchUserTimeline(handle, ownerId, resolvedXUserId);
+  return { xUserId, posts: posts.map(toCorpusPost) };
 }

@@ -14,7 +14,7 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
  *  likely a block page, a paywall stub, or a template with no article content actually
  *  present. Also the "did this fetch actually work" signal the adaptive retrieval chain
  *  (fetchArticleBody) uses to decide whether to escalate to the next tier. */
-const MIN_BODY_LENGTH = 200;
+export const MIN_BODY_LENGTH = 200;
 
 /** Above this length, skip JSON-LD/JSDOM/Readability entirely and go straight to the blunt
  *  strip — a generous cap (real article pages are typically well under 500KB) that guards
@@ -54,6 +54,7 @@ function stripHtml(html: string): string {
  *  single-instance worker. */
 const MAX_STRIP_PHRASES = 12;
 const MIN_STRIP_PHRASE_LENGTH = 12;
+const MAX_STRIP_PHRASE_LENGTH = 120;
 
 /** Narrows source_configs.strip_phrases — a jsonb column that arrives as `unknown` — to the
  *  only shape the contract allows: an array of verbatim substrings. Anything else (null, a
@@ -62,12 +63,18 @@ const MIN_STRIP_PHRASE_LENGTH = 12;
 export function narrowStripPhrases(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
-    .filter((p): p is string => typeof p === "string" && p.length >= MIN_STRIP_PHRASE_LENGTH)
+    .filter(
+      (p): p is string =>
+        typeof p === "string" &&
+        p.trim().length >= MIN_STRIP_PHRASE_LENGTH &&
+        p.length <= MAX_STRIP_PHRASE_LENGTH,
+    )
+    .sort((a, b) => b.length - a.length || a.localeCompare(b))
     .slice(0, MAX_STRIP_PHRASES);
 }
 
-/** Removes every occurrence of each onboarding-measured boilerplate phrase, then collapses the
- *  whitespace seams left behind. Purely mechanical — the smart model measured the phrases ONCE
+/** Removes every occurrence of each onboarding-measured boilerplate phrase without any further
+ *  whitespace normalization. Purely mechanical — the smart model measured the phrases ONCE
  *  at onboarding; no model call happens here, ever, and no phrase list is hardcoded in this
  *  package. Observed live (2026-08-09) on a nytimes.com editorial: "AdvertisementSKIP
  *  ADVERTISEMENT", "Thank you for your patience while we verify access." and subscribe/log-in
@@ -77,16 +84,19 @@ export function narrowStripPhrases(value: unknown): string[] {
 function stripConfiguredPhrases(text: string, phrases: readonly string[]): string {
   if (phrases.length === 0 || !text) return text;
   let out = text;
+  let stripped = false;
   for (const phrase of phrases) {
+    if (!out.includes(phrase)) continue;
     out = out.split(phrase).join(" ");
+    stripped = true;
   }
-  return out.replace(/\s+/g, " ").trim();
+  return stripped ? out : text;
 }
 
 /** Many real-world news sites emit schema.org NewsArticle/Article JSON-LD with an
  *  `articleBody` field for SEO — when present, it's the cleanest possible source (no page
- *  chrome to strip at all — though the configured phrase strip still runs on it: cheap, a
- *  no-op when the phrases are absent, and some sites do leak chrome into articleBody). Tries
+ *  chrome to strip at all — though the configured phrase strip still runs on it, and some sites
+ *  do leak chrome into articleBody). Tries
  *  every <script type="application/ld+json"> block on the page; a site can have several
  *  (breadcrumbs, org info) alongside the one that matters. Phrases are stripped BEFORE the
  *  MIN_BODY_LENGTH gate so a body that is pure boilerplate correctly fails it. */
@@ -375,6 +385,14 @@ export async function fetchArticleBody(
 ): Promise<{ text: string; usedFallback: boolean }> {
   const stripPhrases = narrowStripPhrases(rawStripPhrases);
   const result = await fetchArticleBodyByTier(item, retrieval, expectedHostname, env, stripPhrases);
+  // A configured removal may reveal that the only apparent body was source chrome. Do not send
+  // and permanently mark that item seen: throwing leaves it eligible for the next poll, where
+  // the normal adaptive retrieval chain can retry/escalate safely.
+  if (stripPhrases.length > 0 && result.text.length < MIN_BODY_LENGTH) {
+    throw new Error(
+      `article content below usable length after configured stripping (${result.text.length})`,
+    );
+  }
   if (result.text.length <= MAX_BODY_LENGTH) return result;
   logger.warn("fetch-body: extracted text exceeds cap, truncating", {
     url: item.url,

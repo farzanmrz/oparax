@@ -25,7 +25,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeHandle, X_HANDLE_RE } from "@/lib/x/handle";
 import { getXAccount, updateXAccountTier } from "@/lib/x/store";
-import { fetchCorpus } from "./corpus";
+import { fetchCorpus, resolveCorpusXUserId } from "./corpus";
 import { accumulateCorpus, findReusableCorpus, markCorpusExclusions } from "./corpus-store";
 import { deployGuide } from "./deploy-guide";
 import {
@@ -49,10 +49,10 @@ const ROUTE_BUDGET_MS = 800_000;
 /** Reserved for the corpus/ledger/rule writes on either side of a retried call — the same ~30s
  *  EXTRACT_TIMEOUT_MS reserves out of the route budget for the first attempt. */
 const RETRY_BUFFER_MS = 30_000;
-/** Don't bother retrying into a window a healthy extraction can't finish in. The measured clean
- *  run is ~200s (extract-guide.ts); a floor just above it means a retry either gets a real
- *  chance or honestly doesn't run. */
-const RETRY_FLOOR_MS = 240_000;
+/** Don't retry into a window that cannot survive the tail: the measured clean run is ~200s, and
+ *  a live run was still mid-reasoning at 280s. A floor below that tail can start a retry that
+ *  aborts before its first step completes, bills real money, and writes no model_calls row. */
+const RETRY_FLOOR_MS = 350_000;
 
 /** A stream error rendered for a jsonb/text column or an error message. Errors stringify to
  *  `{}` under JSON.stringify, so they're taken via message/stack first; gateway error PARTS
@@ -151,6 +151,28 @@ async function insertExtractionModelCall(
     .single();
   if (error) throw error;
   return data.id;
+}
+
+/** A billed extraction attempt has two durable records: its provenance row and its usage event.
+ *  Keep them adjacent so failures cannot be retried past an attempt that was charged but not
+ *  recorded in both ledgers. */
+async function recordExtractionAttempt(
+  admin: AdminClient,
+  ownerId: string,
+  agentId: string,
+  reporterHandle: string,
+  ext: VoiceExtraction,
+): Promise<string> {
+  const modelCallId = await insertExtractionModelCall(admin, ownerId, agentId, ext);
+  const { error } = await admin.from("usage_events").insert({
+    owner_id: ownerId,
+    kind: "voice_extraction",
+    units: 1,
+    cost_usd: ext.costUsd,
+    ref_id: reporterHandle,
+  });
+  if (error) throw error;
+  return modelCallId;
 }
 
 /** Throttles `recordProgress` calls raised by `extractVoiceGuideStreaming`'s stream-event
@@ -262,6 +284,7 @@ export async function runExtractionSpendPhase(
   agentId: string,
   reporterHandle: string,
   ownerId: string,
+  requestStartedAtMs = Date.now(),
 ): Promise<ExtractionOutcome> {
   // WHICH reporter hit a failure is most of the diagnostic value in an error report, and this
   // path typically runs inside `after()` — detached from the request that authenticated it — so
@@ -278,7 +301,7 @@ export async function runExtractionSpendPhase(
         "oparax.handle": reporterHandle,
       },
     },
-    () => runExtractionSpendPhaseInner(agentId, reporterHandle, ownerId),
+    () => runExtractionSpendPhaseInner(agentId, reporterHandle, ownerId, requestStartedAtMs),
   );
 }
 
@@ -289,10 +312,8 @@ async function runExtractionSpendPhaseInner(
   agentId: string,
   reporterHandle: string,
   ownerId: string,
+  requestStartedAtMs: number,
 ): Promise<ExtractionOutcome> {
-  // Anchors the auto-retry's remaining-budget math. Measured from phase entry, not the route
-  // handler, but the gap between the two is the pre-flight gates — milliseconds, not seconds.
-  const phaseStartMs = Date.now();
   try {
     const admin = createAdminClient();
 
@@ -320,29 +341,35 @@ async function runExtractionSpendPhaseInner(
     // fresh read (see findReusableCorpus). The X timeline read is rate-limited and metered, and
     // re-reading the same handle teaches the extraction nothing new — so the read happens only
     // when there is no usable corpus already.
-    const reused = await findReusableCorpus(reporterHandle);
-    let corpus: Awaited<ReturnType<typeof fetchCorpus>>;
-    if (reused) {
-      corpus = reused.posts;
-      console.log(
-        `runExtractionSpendPhase: reusing ${corpus.length} stored posts for @${reporterHandle} ` +
-          `(pulled ${reused.pulledAt}) — skipping the X timeline read`,
-      );
-    } else {
-      try {
-        corpus = await fetchCorpus(reporterHandle, ownerId);
-      } catch (corpusError) {
-        console.error(
-          `runExtractionSpendPhase: fetchCorpus failed for @${reporterHandle}`,
-          corpusError,
+    let corpus: Awaited<ReturnType<typeof fetchCorpus>>["posts"];
+    let corpusXUserId: string;
+    let reusedCreatedAtByPostId: ReadonlyMap<string, string> | undefined;
+    let reused: Awaited<ReturnType<typeof findReusableCorpus>>;
+    try {
+      corpusXUserId = await resolveCorpusXUserId(reporterHandle);
+      reused = await findReusableCorpus(corpusXUserId);
+      if (reused) {
+        corpus = reused.posts;
+        reusedCreatedAtByPostId = reused.createdAtByPostId;
+        console.log(
+          `runExtractionSpendPhase: reusing ${corpus.length} stored posts for @${reporterHandle} ` +
+            `(pulled ${reused.pulledAt}) — skipping the X timeline read`,
         );
-        Sentry.captureException(corpusError, {
-          tags: { stage: "voice_extraction", error_code: "corpus_failed" },
-          contexts: { extraction: { agentId, handle: reporterHandle } },
-        });
-        await finishRun(agentId, { status: "failed", errorCode: "corpus_failed" });
-        return { status: "corpus_failed" };
+      } else {
+        const freshCorpus = await fetchCorpus(reporterHandle, ownerId, corpusXUserId);
+        corpus = freshCorpus.posts;
       }
+    } catch (corpusError) {
+      console.error(
+        `runExtractionSpendPhase: fetchCorpus failed for @${reporterHandle}`,
+        corpusError,
+      );
+      Sentry.captureException(corpusError, {
+        tags: { stage: "voice_extraction", error_code: "corpus_failed" },
+        contexts: { extraction: { agentId, handle: reporterHandle } },
+      });
+      await finishRun(agentId, { status: "failed", errorCode: "corpus_failed" });
+      return { status: "corpus_failed" };
     }
     Sentry.getActiveSpan()?.setAttribute("oparax.corpus_reused", reused !== null);
     await recordProgress(agentId, {
@@ -379,7 +406,7 @@ async function runExtractionSpendPhaseInner(
     // These analysis side-writes happen only after the usable-corpus guard. A failed or empty
     // pull must never wipe a known corpus or overwrite a linked account's tier inference.
     try {
-      await accumulateCorpus(agentId, corpus);
+      await accumulateCorpus(agentId, corpusXUserId, corpus, reusedCreatedAtByPostId);
     } catch (corpusStoreError) {
       console.error(
         `runExtractionSpendPhase: accumulateCorpus failed for @${reporterHandle}`,
@@ -484,6 +511,7 @@ async function runExtractionSpendPhaseInner(
           timeoutMs,
         );
       ext = await runExtraction();
+      let modelCallId: string | undefined;
 
       // ONE automatic retry for a transient stream death (the 2026-08-09 production case: the
       // gateway reported `gateway_stream_terminated` — Anthropic's stream cut off mid-generation
@@ -496,12 +524,13 @@ async function runExtractionSpendPhaseInner(
       // which is strictly worse than an honest failed state with a Retry button.
       if (isTransientStreamDeath(ext)) {
         try {
-          await insertExtractionModelCall(admin, ownerId, agentId, ext);
+          modelCallId = await recordExtractionAttempt(admin, ownerId, agentId, reporterHandle, ext);
         } catch (ledgerError) {
           console.error(
-            `runExtractionSpendPhase: failed to ledger dead first attempt for @${reporterHandle}`,
+            `runExtractionSpendPhase: failed to ledger or meter dead first attempt for @${reporterHandle}`,
             ledgerError,
           );
+          throw ledgerError;
         }
         Sentry.captureException(
           ext.streamError instanceof Error
@@ -519,7 +548,7 @@ async function runExtractionSpendPhaseInner(
             },
           },
         );
-        const remainingMs = ROUTE_BUDGET_MS - RETRY_BUFFER_MS - (Date.now() - phaseStartMs);
+        const remainingMs = ROUTE_BUDGET_MS - RETRY_BUFFER_MS - (Date.now() - requestStartedAtMs);
         if (remainingMs >= RETRY_FLOOR_MS) {
           await recordProgress(agentId, {
             stage: "scoping",
@@ -530,18 +559,20 @@ async function runExtractionSpendPhaseInner(
           // accumulateCorpus's reset-then-reapply contract is exactly the tool for that
           // (idempotent by design — see its header).
           try {
-            await accumulateCorpus(agentId, corpus);
+            await accumulateCorpus(agentId, corpusXUserId, corpus, reusedCreatedAtByPostId);
           } catch (resetError) {
             console.error(
               `runExtractionSpendPhase: exclusion reset before retry failed for @${reporterHandle}`,
               resetError,
             );
+            throw resetError;
           }
           ext = await runExtraction(remainingMs);
+          modelCallId = undefined;
         }
       }
 
-      const modelCallId = await insertExtractionModelCall(admin, ownerId, agentId, ext);
+      modelCallId ??= await recordExtractionAttempt(admin, ownerId, agentId, reporterHandle, ext);
 
       // An extraction can finish cleanly and produce NOTHING. Observed live once, 2026-07-25: a
       // run returned `finishReason: "stop"`, 9,443 thinking tokens, 7,365 characters of reasoning,
@@ -583,26 +614,6 @@ async function runExtractionSpendPhaseInner(
           // provider/gateway failure itself, not only this wrapper — before this, the underlying
           // error lived exclusively in runtime logs that age out within the hour.
           ext.streamError !== undefined ? { cause: ext.streamError } : undefined,
-        );
-      }
-
-      // Meter the extraction call itself (AGENTS.md: every touch point stamps usage_events —
-      // "every model call" included). Best-effort: the call is already paid and its model_calls
-      // row is durable, so a ledger-stamp failure must not fail the extraction. The failure is
-      // INSPECTED rather than caught — supabase-js's builder resolves with `{ data, error }` and
-      // only rejects under `.throwOnError()`, so a try/catch around it would never fire and
-      // unmetered spend would leave no trace at all.
-      const { error: meterError } = await admin.from("usage_events").insert({
-        owner_id: ownerId,
-        kind: "voice_extraction",
-        units: 1,
-        cost_usd: ext.costUsd,
-        ref_id: reporterHandle,
-      });
-      if (meterError) {
-        console.error(
-          `runExtractionSpendPhase: usage_events stamp failed for @${reporterHandle}`,
-          meterError,
         );
       }
 
