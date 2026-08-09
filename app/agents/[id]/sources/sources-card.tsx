@@ -473,17 +473,18 @@ function websiteChipLabel(
   return { path, name: showName ? name : undefined };
 }
 
+/** Name on its own line, tracked path on the line below in the muted grey — never one
+ *  truncating line. `break-all` (not `break-words`): a URL path is one unbroken token, so
+ *  word-boundary wrapping would just push the whole path off the edge on mobile, which is the
+ *  exact truncation this replaces (owner report, 2026-08-09). A nameless chip is a bare path
+ *  and keeps the title tone. */
 function WebsiteChipDisplay({ name, path }: { name?: string; path: string }) {
+  if (!name) return <span className="block break-all">{path}</span>;
   return (
-    <SingleLineLabel>
-      {name ? (
-        <>
-          {name}
-          <span className="text-text-muted"> · </span>
-        </>
-      ) : null}
-      <span className={name ? "text-text-muted" : undefined}>{path}</span>
-    </SingleLineLabel>
+    <span className="block">
+      <span className="block">{name}</span>
+      <span className="block break-all text-text-muted">{path}</span>
+    </span>
   );
 }
 

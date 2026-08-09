@@ -146,6 +146,13 @@ export type VoiceExtraction = {
    *  means a ceiling clipped the answer, `"stop"` means the model chose to end having written
    *  nothing, and those two failures need opposite fixes. */
   finishReason: string | null;
+  /** The `error` part the stream emitted, if any — the underlying provider/gateway error behind
+   *  a `finishReason: "error"` run. streamText never throws these into the consuming loop; it
+   *  yields them as parts and moves on, so without capturing here the only trace of WHY a stream
+   *  died is the SDK's default console log, which ages out with the platform's runtime logs
+   *  (lived through 2026-08-09: a production `gateway_stream_terminated` was recoverable only
+   *  because the logs were pulled minutes after the failure). */
+  streamError: unknown;
   /** What the off-beat scope tool did, or `null` when the model never called it (in which case
    *  the guide was written against the full corpus — the pre-tool behaviour, and a valid run). */
   scopeExclusion: ScopeExclusion | null;
@@ -510,6 +517,10 @@ export async function extractVoiceGuideStreaming(
   onProgress?: (snapshot: ExtractionStreamSnapshot) => void | Promise<void>,
   onRawPart?: ExtractionRawPartObserver,
   onScope?: (e: ScopeExclusion) => void | Promise<void>,
+  // Overridable ONLY downward, for the auto-retry after a transient stream death: the second
+  // attempt must fit the route budget MINUS what the dead first attempt already spent, and the
+  // caller is the one who knows that remainder. A no-arg call keeps the measured default.
+  timeoutMs: number = EXTRACT_TIMEOUT_MS,
 ): Promise<VoiceExtraction> {
   const { facts, content } = buildExtractionContent(handle, posts, beat);
   const scope = buildScopeTool(handle, posts, onScope);
@@ -525,7 +536,7 @@ export async function extractVoiceGuideStreaming(
       anthropic: { thinking: { type: "adaptive", effort: "medium", display: "summarized" } },
     },
     // NO `tools` key — enforced by review, invisible to the type system.
-    abortSignal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
+    abortSignal: AbortSignal.timeout(Math.min(timeoutMs, EXTRACT_TIMEOUT_MS)),
     // Identifying attributes (handle, corpus size) ride on the WRAPPING span, not here — see
     // aiTelemetry's note on v7 dropping telemetry metadata.
     experimental_telemetry: aiTelemetry("voice_extraction", "voice-extraction-stream"),
@@ -533,6 +544,7 @@ export async function extractVoiceGuideStreaming(
 
   let textSoFar = "";
   let modelStep = -1;
+  let streamError: unknown;
   let activeReasoningStage: ExtractionReasoningStage = "scope";
   const reasoningByStage: ExtractionReasoningByStage = {};
   const textByStage: ExtractionTextByStage = {};
@@ -619,6 +631,11 @@ export async function extractVoiceGuideStreaming(
         input: part.input,
         errorText: part.error instanceof Error ? part.error.message : String(part.error),
       });
+    } else if (part.type === "error") {
+      // Keep the FIRST error — a dying stream can emit a cascade, and the first part is the
+      // proximate cause the later ones echo.
+      if (streamError === undefined) streamError = part.error;
+      continue;
     } else {
       continue;
     }
@@ -657,5 +674,6 @@ export async function extractVoiceGuideStreaming(
     usage,
     generationId,
     finishReason: finishReason ?? null,
+    streamError,
   };
 }

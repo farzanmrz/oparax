@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { parseWebsites } from "@/lib/websites";
+import { parseWebsites, trackedSourceUrl } from "@/lib/websites";
 import { SourcesCard, type WebsiteDetail } from "./sources-card";
 
 // Mirrors app/agents/new/page.tsx's maxDuration (see its comment for the 800 rationale): the
@@ -29,7 +29,7 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
   {
     const { data: configs, error: configError } = await createAdminClient()
       .from("source_configs")
-      .select("url, domain, display_name, listing_url")
+      .select("url, domain, display_name, listing_url, feed_url, change_detection, prefilter")
       .eq("agent_id", desk.id)
       .eq("status", "active");
     if (configError) console.error("SourcesPage: source_configs label read failed", configError);
@@ -37,7 +37,14 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
       details[row.url] = {
         displayName: row.display_name ?? row.domain,
         domain: row.domain.replace(/^www\./i, ""),
-        trackedUrl: row.listing_url ?? undefined,
+        trackedUrl: trackedSourceUrl({
+          url: row.url,
+          domain: row.domain,
+          changeDetection: row.change_detection,
+          listingUrl: row.listing_url,
+          feedUrl: row.feed_url,
+          prefilter: row.prefilter,
+        }),
       };
     }
   }

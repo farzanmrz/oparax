@@ -497,6 +497,7 @@ export type Database = {
           sample_size: number | null;
           sitemap_url: string | null;
           status: string;
+          strip_phrases: Json | null;
           updated_at: string;
           url: string;
         };
@@ -523,6 +524,7 @@ export type Database = {
           sample_size?: number | null;
           sitemap_url?: string | null;
           status?: string;
+          strip_phrases?: Json | null;
           updated_at?: string;
           url: string;
         };
@@ -549,6 +551,7 @@ export type Database = {
           sample_size?: number | null;
           sitemap_url?: string | null;
           status?: string;
+          strip_phrases?: Json | null;
           updated_at?: string;
           url?: string;
         };
@@ -1018,6 +1021,7 @@ export type Database = {
           p_retrieval: string;
           p_sample_size: number;
           p_sitemap_url: string;
+          p_strip_phrases?: Json;
           p_url: string;
         };
         Returns: string;

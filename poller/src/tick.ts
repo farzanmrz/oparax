@@ -68,7 +68,13 @@ async function deliverNewItem(
   item: FeedItem,
   env: PollerEnv,
 ): Promise<void> {
-  const { text } = await fetchArticleBody(item, source.retrieval, source.domain, env);
+  const { text } = await fetchArticleBody(
+    item,
+    source.retrieval,
+    source.domain,
+    env,
+    source.strip_phrases,
+  );
   const externalId = buildExternalId(item.url, item.publishedAt);
   await postDelivery(env.ingestUrl, env.ingestSecret, {
     source: "website",
