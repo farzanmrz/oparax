@@ -49,12 +49,11 @@ PRs, no CI. Parallelism is a private implementation detail.
   weaker, so a genuine per-harness difference (session dial, subagent names,
   which council lanes run) belongs in a dials row; nothing else differs. The
   build/browse/fix asymmetry above is a placement difference, not a
-  duplication — there is still exactly one copy of each.
+  duplication: there is still exactly one copy of each.
 * **Hop-anywhere, within a harness:** each phase starts from durable state
   only (the issue body, the branch, `origin/beta...ft/<N>`, the `## QC
   round` comments), so a slice may switch harness at any phase boundary
-  that both harnesses actually support — which excludes build, browse, and
-  fix.
+  that both harnesses actually support (excluding build, browse, and fix).
 
 ## 1. Resume detection: run on EVERY invocation, before anything else
 
@@ -72,7 +71,7 @@ gh issue view <N> --comments
 ```
 
 **Marker format:** each new QC marker comment is titled `## QC round <R>: <suffix>`
-(`findings`, `browsed`, `fixes`, `verified` — `docs` was a fifth marker before
+(`findings`, `browsed`, `fixes`, `verified`; `docs` was a fifth marker before
 2026-08-08, when `feature-docs` folded into `feature-verify`; a round with a
 separate `docs` marker predates the merge and is still valid history). Match
 markers by the `## QC round <R>` prefix plus the suffix keyword,
@@ -83,11 +82,11 @@ Decide the entry point from the FIRST missing marker, in order:
 | Marker present? | Meaning | Next |
 |---|---|---|
 | stub issue only (from /ft-plan), no spec/branch | nothing specced | `ft-spec` (phase 2) |
-| `ft/N` + issue, no commits beyond the branch cut | planned, not built | `ft-build` — OWNER-TRIGGERED, CODEX ONLY: surface it as the pending step, never auto-run; if this session is Claude Code, tell the owner to switch to ChatGPT (gpt-5.6-terra high) and run `/ft-build` there |
+| `ft/N` + issue, no commits beyond the branch cut | planned, not built | `ft-build` (OWNER-TRIGGERED, CODEX ONLY): surface it as the pending step, never auto-run; if this session is Claude Code, tell the owner to switch to ChatGPT (gpt-5.6-terra high) and run `/ft-build` there |
 | build commits, no `## QC round` comments | built | `ft-find` (either harness) |
-| findings marker without browsed marker | adjudicated | `ft-browse` — OWNER-TRIGGERED, CODEX ONLY: surface it as the pending step, never auto-run; if this session is Claude Code, tell the owner to switch to Codex and run `/ft-browse` there |
-| browsed marker without matching fixes marker | browsed | `ft-fix` from its phase 1 — CODEX ONLY (now covers apply, doc sync, and verify in one run); if this session is Claude Code, tell the owner to switch to Codex and run `/ft-fix` there |
-| fixes marker without verified marker | fixed but not re-proven (an interrupted `ft-fix` run) | `ft-fix` again, resuming at its phase 4 (doc sync) — same Codex-only redirect applies |
+| findings marker without browsed marker | adjudicated | `ft-browse` (OWNER-TRIGGERED, CODEX ONLY): surface it as the pending step, never auto-run; if this session is Claude Code, tell the owner to switch to Codex and run `/ft-browse` there |
+| browsed marker without matching fixes marker | browsed | `ft-fix` from its phase 1 (CODEX ONLY, now covers apply, doc sync, and verify in one run); if this session is Claude Code, tell the owner to switch to Codex and run `/ft-fix` there |
+| fixes marker without verified marker | fixed but not re-proven (an interrupted `ft-fix` run) | `ft-fix` again, resuming at its phase 4 (doc sync): same Codex-only redirect applies |
 | verified marker present | verified | triage/`ft-ship` (phase 5, ✋) |
 
 * **State the detected position in one line** ("ft/73 has round-1 findings but
@@ -98,7 +97,7 @@ Decide the entry point from the FIRST missing marker, in order:
 * **Claude Code stops at the harness boundary:** this table's `ft-browse`
   and `ft-fix` rows only run in Codex (real files under
   `.agents/skills/`, absent from `.claude/skills/` by design). A Claude Code
-  session landing on either one reports the position and redirects — it
+  session landing on either one reports the position and redirects: it
   does not attempt the Skill tool for a name that isn't in its own listing.
   `ft-qc`'s own copy of this rule is the fuller version; this one exists
   because `/ft` can land here directly, without going through
@@ -127,7 +126,7 @@ this orchestrator lands here in Claude Code, restate that handoff and STOP.
 Invoke **`ft-qc`**, ending at the verification ✋.
 
 * **Three sub-steps, one harness split:** `ft-find` (either harness),
-  `ft-browse`, `ft-fix` (Codex only — `ft-fix` now covers
+  `ft-browse`, `ft-fix` (Codex only; `ft-fix` now covers
   apply, doc sync, and verify in one continuous run). Each is runnable
   standalone; under this orchestrator, or under `/ft-qc chain`, they
   chain in one session up to the harness boundary (see ft-qc's harness
@@ -166,8 +165,7 @@ watches the reasoning trace, and interim narration is forbidden output (the
   protected branches.
 * **Terminal target:** carry the release target (`beta` or `main`) in the
   conversation across Build, QC, and Ship; nothing persists it to disk. One
-  explicit final authorization names the entire consequence; successful
-  target deployment checks do not create extra approval gates.
+  explicit final authorization names the entire Git release path.
 * **Fan-out cap:** ≤10 agents TOTAL per fan-out, whatever any sub-skill's
   default says.
 * **Scope freeze (agent-self-generated ideas only):** mid-build work an agent

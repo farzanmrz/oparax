@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Transactional feature shipping. Lands ft/<issue> on beta through a temporary
 # detached worktree. A separate --finalize invocation closes the issue and performs
-# conservative old-feature cleanup only after the requested promotion/deployment
-# checks have completed.
+# conservative old-feature cleanup after the requested promotion has completed.
 #
 # Usage:
 #   ship.sh <issue-number> "<commit message>"

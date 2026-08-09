@@ -16,16 +16,15 @@ model: inherit
 
 This skill is single-source: Codex invokes this same file (`/ft-ship`,
 via the `.agents/skills/` symlink). Everything below is identical across
-harnesses (the scripts, the gates, the gate questions) except these two rows.
+harnesses (the scripts, the gates, the gate questions) except this row.
 
 | | Claude Code | Codex |
 |---|---|---|
 | Session dial | inherit (owner's dial) | `gpt-5.6-sol` high |
-| Deployment check (the `main` path only) | dispatch `deploy-checker` | spawn `deploy-checker` |
 
 ## 1. QC-completeness guard (before anything else)
 
-The guard needs marker TITLES only — never pull the full thread for it:
+The guard needs marker TITLES only: never pull the full thread for it.
 
 ```bash
 gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
@@ -36,25 +35,25 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   FULL round: a `## QC round <R>` family with `findings`, `fixes`, AND
   `verified` (plus `browsed` for rounds after the browse step joined the
   flow; match on the keyword, separator punctuation may vary). (2) The
-  LATEST round has `fixes` + `verified` — a fixes-only PATCH ROUND (owner
+  LATEST round has `fixes` + `verified`: a fixes-only PATCH ROUND (owner
   triage after a full round) is a legitimate final round and never demands
   a fresh council run by itself. The old rule required the latest family to
   carry all four markers, which made every owner-nit round un-shippable
-  without re-running find over an unchanged diff — that was manufactured
+  without re-running find over an unchanged diff: that was manufactured
   looping, not rigor. A round carrying a separate `docs` marker predates
   the docs step's retirement (2026-08-08): fine in old rounds, never
   required.
 * **Any marker missing:** name what's missing and STOP: the branch has
   unfinished QC (e.g. fixes applied but never re-proven), and the missing
   step runs first in whichever app the owner likes.
-* **Stale `verified` is missing `verified` — FEATURE paths only:** commits
+* **Stale `verified` is missing `verified` (FEATURE paths only):** commits
   newer than the latest `verified` marker that touch feature paths (`app/`,
   `lib/`, `components/`, `poller/`, `supabase/`, `public/`, or root config
   like `package.json` / `vercel.json` / `next.config.*`) mean the proven
   state is not the shipping state: STOP and require a fresh QC round over
   the new diff (a v0 design merge is the recurring case). Commits touching
   ONLY meta paths (`.claude/`, `.agents/`, `.codex/`, `.grok/`, `docs/`,
-  root `*.md`) never trip this guard — check with
+  root `*.md`) never trip this guard: check with
   `git log --name-only <last-verified-time>..` or the diff since the
   verified round's checkpoint commit; a docs-only edit after verify once
   blocked a clean ship behind an owner override (#112).
@@ -95,17 +94,20 @@ resumed from) in plain words.
 GATE ✋: use the one question matching that target:
 
 <gate-question-beta>
-Ready to ship every listed change to beta at beta.oparax.ai, or more to fix first?
+
+Ready to ship every listed change to beta, or more to fix first?
+
 </gate-question-beta>
 
 <gate-question-main>
-Ready to ship every listed change to beta, and then promote it through to production at oparax.ai, or more to fix first?
+
+Ready to ship every listed change to beta, and then promote it through main to production at oparax.ai, or more to fix first?
+
 </gate-question-main>
 
 * **A green build is never permission.** Only the user's explicit approval of
   that named consequence advances.
-* **One authorization** covers the full authorized release path; deployment
-  verification between hops is a safety check, not another approval gate.
+* **One authorization** covers the full authorized Git release path.
 * **Standing pre-approval carve-out:** when the owner's own invocation
   already says to ship ("/ft-ship", "ship it", "close the slice"), that
   phrasing IS the answer: still show the inventory and name the target, but
@@ -132,25 +134,14 @@ Ready to ship every listed change to beta, and then promote it through to produc
 
 ## 5. Ordered promotion
 
-**This session never watches a deployment.** Vercel deploys the pushed ref on
-its own, and a green ref update ends the slice's work: no polling, no
-`vercel:*` skills, no Vercel MCP (measured: watching bought nothing the owner
-acts on and billed heavily).
-
 ### A. Target `beta`
 
-Go straight to the finalize step (phase 6) after `ship.sh`'s last line. A
-failed beta deploy surfaces on its own and is its own small fix.
+Go straight to the finalize step (phase 6) after `ship.sh`'s last line.
 
 ### B. Target `main`
 
-Promoting a broken beta is the one real risk.
-
-* **Check beta first:** dispatch the deployment check (dials table) for the
-  exact `beta_sha` (never `recovery_tip`: that is the feature tip and is
-  never deployed) at `https://beta.oparax.ai`. Failed verdict: STOP.
-* **Good verdict:** promote, capture the sole stdout line (the new `main`
-  SHA), check that SHA at `https://oparax.ai`, then phase 6.
+Immediately promote, capture the sole stdout line (the new `main` SHA), then
+phase 6.
 
 ```bash
 .claude/skills/ft/scripts/promote.sh beta main
@@ -162,7 +153,7 @@ Promoting a broken beta is the one real risk.
 
 ## 6. Finalize
 
-After the authorized target has landed (and, for `main`, its checks passed):
+After the authorized Git target has landed:
 
 ```bash
 .claude/skills/ft/scripts/ship.sh --finalize <issue#>
@@ -182,8 +173,8 @@ After the authorized target has landed (and, for `main`, its checks passed):
 
 * **Feature slices always run on `ft/<issue#>`:** app code is never developed
   directly on `beta` or `main` (ONE carve-out: owner-directed micro-edits
-  to instruction files and docs — `.claude/**`, `AGENTS.md`, `docs/**`,
-  nothing the deployed app executes — may land directly on `beta` as
+  to instruction files and docs (`.claude/**`, `AGENTS.md`, `docs/**`,
+  nothing the deployed app executes) may land directly on `beta` as
   ordinary fast-forward commits).
 * **Never skip `beta` on the way to `main`.**
 * **Never force-push protected branches.**
