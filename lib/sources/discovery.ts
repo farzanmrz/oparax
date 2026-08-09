@@ -29,6 +29,7 @@ const LISTING_SAMPLE_LIMIT = 50;
 const NON_ARTICLE_EXT_RE =
   /\.(svg|png|jpe?g|gif|webp|ico|css|js|json|xml|woff2?|ttf|otf|pdf|mp4|webm)$/i;
 const MAX_HTML_LENGTH = 5_000_000;
+const RESOLVER_SUMMARY_MAX_SERIALIZED_LENGTH = 4_096;
 
 /** Same bound as sitemap.ts's NO_LASTMOD_CANDIDATE_CAP — a robots.txt declaring dozens of
  *  sitemaps (goal.com: 35 locale variants) can't turn one onboarding attempt into dozens of
@@ -39,14 +40,16 @@ export async function fetchSafeSource(
   endpoint: string,
   url: string,
   expectedHostname: string,
+  signal?: AbortSignal,
 ): Promise<Response> {
-  return (await fetchSafeSourceWithFinalUrl(endpoint, url, expectedHostname)).res;
+  return (await fetchSafeSourceWithFinalUrl(endpoint, url, expectedHostname, signal)).res;
 }
 
 async function fetchSafeSourceWithFinalUrl(
   endpoint: string,
   url: string,
   expectedHostname: string,
+  signal?: AbortSignal,
 ): Promise<{ res: Response; finalUrl: string }> {
   let current = new URL(url);
   // Match fetch's existing redirect ceiling while validating every destination before it is
@@ -60,7 +63,7 @@ async function fetchSafeSourceWithFinalUrl(
       throw new Error(`Source ${endpoint} redirected to an unsafe URL`);
     }
     visited.add(current.toString());
-    const res = await fetchPinnedSource(endpoint, current);
+    const res = await fetchPinnedSource(endpoint, current, signal);
     if (res.status < 300 || res.status >= 400) {
       return { res, finalUrl: current.toString() };
     }
@@ -77,10 +80,14 @@ async function fetchSafeSourceWithFinalUrl(
  *  validating DNS and then using global fetch would let a second DNS lookup connect to a
  *  rebinding answer. `https.request` keeps the URL hostname as SNI and for certificate
  *  verification while its socket connects only to this address. */
-async function fetchPinnedSource(endpoint: string, url: URL): Promise<Response> {
+async function fetchPinnedSource(
+  endpoint: string,
+  url: URL,
+  signal?: AbortSignal,
+): Promise<Response> {
   const deadline = Date.now() + 15_000;
   const hostname = url.hostname.replace(/^\[|\]$/g, "");
-  const addresses = await lookupBeforeDeadline(endpoint, hostname, deadline);
+  const addresses = await lookupBeforeDeadline(endpoint, hostname, deadline, signal);
   if (addresses.length === 0 || addresses.some(({ address }) => !isPublicIpAddress(address))) {
     throw new Error(`Source ${endpoint} resolved to an unsafe address`);
   }
@@ -93,6 +100,15 @@ async function fetchPinnedSource(endpoint: string, url: URL): Promise<Response> 
     const remaining = deadline - Date.now();
     if (remaining <= 0) {
       reject(new Error(`Source ${endpoint} timed out after 15s`));
+      return;
+    }
+    const onAbort = () => {
+      req.destroy(
+        signal?.reason instanceof Error ? signal.reason : new Error(`${endpoint} aborted`),
+      );
+    };
+    if (signal?.aborted) {
+      reject(signal.reason instanceof Error ? signal.reason : new Error(`${endpoint} aborted`));
       return;
     }
     const req = request(
@@ -126,6 +142,7 @@ async function fetchPinnedSource(endpoint: string, url: URL): Promise<Response> 
         }
         const clearRequestTimeout = () => {
           if (timeout) clearTimeout(timeout);
+          signal?.removeEventListener("abort", onAbort);
         };
         res.once("end", clearRequestTimeout);
         res.once("error", clearRequestTimeout);
@@ -156,6 +173,7 @@ async function fetchPinnedSource(endpoint: string, url: URL): Promise<Response> 
     }, remaining);
     req.once("error", (err) => {
       if (timeout) clearTimeout(timeout);
+      signal?.removeEventListener("abort", onAbort);
       if (responseStarted) return;
       if (timedOut) {
         reject(new Error(`Source ${endpoint} timed out after 15s`));
@@ -163,6 +181,7 @@ async function fetchPinnedSource(endpoint: string, url: URL): Promise<Response> 
         reject(err);
       }
     });
+    signal?.addEventListener("abort", onAbort, { once: true });
     req.end();
   });
 }
@@ -171,6 +190,7 @@ async function lookupBeforeDeadline(
   endpoint: string,
   hostname: string,
   deadline: number,
+  signal?: AbortSignal,
 ): Promise<LookupAddress[]> {
   const remaining = deadline - Date.now();
   if (remaining <= 0) throw new Error(`Source ${endpoint} timed out after 15s`);
@@ -184,6 +204,28 @@ async function lookupBeforeDeadline(
           remaining,
         );
       }),
+      ...(signal
+        ? [
+            new Promise<never>((_, reject) => {
+              if (signal.aborted) {
+                reject(
+                  signal.reason instanceof Error ? signal.reason : new Error(`${endpoint} aborted`),
+                );
+                return;
+              }
+              signal.addEventListener(
+                "abort",
+                () =>
+                  reject(
+                    signal.reason instanceof Error
+                      ? signal.reason
+                      : new Error(`${endpoint} aborted`),
+                  ),
+                { once: true },
+              );
+            }),
+          ]
+        : []),
     ])) as LookupAddress[];
   } finally {
     if (timeout) clearTimeout(timeout);
@@ -334,6 +376,14 @@ export function isSafeDiscoveredUrl(candidate: string, expectedHostname: string)
   return !isPrivateHostname(host);
 }
 
+/** Resolver-only host boundary. Unlike the sitemap safety floor, this never admits a parent
+ * domain of the publication the reporter supplied. */
+export function isResolverAllowedHost(candidateHost: string, resolvedHost: string): boolean {
+  const candidate = candidateHost.toLowerCase().replace(/^www\./, "");
+  const resolved = resolvedHost.toLowerCase().replace(/^www\./, "");
+  return candidate === resolved || candidate.endsWith(`.${resolved}`);
+}
+
 /** True unless the response explicitly declares itself HTML. A soft-404 or SPA catch-all
  *  answers 200 with `text/html`, which would otherwise be read as a working sitemap/feed,
  *  parse to zero entries, and permanently skip the remaining fallbacks. A response with no
@@ -409,7 +459,7 @@ function extractRssAlternateLink(html: string, pageUrl: string): string | null {
 /** Article-shaped paths carry a date segment, a slug-like leaf with at least three hyphens,
  *  or a hyphenated HTML leaf. Static assets, short section paths, and navigation taxonomies
  *  never qualify. */
-function isArticleShapedPath(pathname: string): boolean {
+export function isArticleShapedPath(pathname: string): boolean {
   if (NON_ARTICLE_EXT_RE.test(pathname)) return false;
   if (/\/(?:19|20)\d{2}(?:\/|$)/.test(pathname)) return true;
   if (/\/(?:topics?|tags?|authors?|categories?)(?:\/|$)/i.test(pathname)) return false;
@@ -422,7 +472,7 @@ function comparableHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/^www\./, "");
 }
 
-function extractAnchors(html: string): { href: string; text: string }[] {
+export function extractAnchors(html: string): { href: string; text: string }[] {
   const anchors: { href: string; text: string }[] = [];
   let open: { href: string; contentStart: number } | null = null;
   let cursor = 0;
@@ -523,6 +573,186 @@ function extractListingSample(html: string, finalUrl: string): SourceSampleEntry
   return articleShaped.slice(0, LISTING_SAMPLE_LIMIT);
 }
 
+function isFeedShapedPath(pathname: string): boolean {
+  const normalized = pathname.replace(/\/+$/, "").toLowerCase() || "/";
+  return (
+    FEED_PATHS.some((path) => normalized === path || normalized.endsWith(path)) ||
+    /\/(?:feed|rss|atom\.xml|rss\.xml)$/.test(normalized)
+  );
+}
+
+function cleanResolverText(value: string, maxLength: number): string {
+  return Array.from(value, (character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || (code >= 127 && code <= 159) ? " " : character;
+  })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+export function summarizePageForResolver(
+  html: string,
+  finalUrl: string,
+): { navPaths: string[]; articleLinkCount: number; sampleTitles: string[] } {
+  const navPaths = new Set<string>();
+  const sampleTitles: string[] = [];
+  let articleLinkCount = 0;
+  const pageHostname = new URL(finalUrl).hostname;
+  const fitsSerializedSummary = (nextNavPaths: string[], nextSampleTitles: string[]) =>
+    JSON.stringify({
+      navPaths: nextNavPaths,
+      articleLinkCount,
+      sampleTitles: nextSampleTitles,
+    }).length <= RESOLVER_SUMMARY_MAX_SERIALIZED_LENGTH;
+  for (const anchor of extractAnchors(html)) {
+    let candidate: URL;
+    try {
+      candidate = new URL(anchor.href, finalUrl);
+    } catch {
+      continue;
+    }
+    if (candidate.protocol !== "http:" && candidate.protocol !== "https:") continue;
+    if (comparableHostname(candidate.hostname) !== comparableHostname(pageHostname)) continue;
+    const path = `${candidate.pathname}${candidate.search}`;
+    if (isArticleShapedPath(candidate.pathname)) {
+      articleLinkCount += 1;
+      const title = cleanResolverText(anchor.text, 120);
+      if (
+        title &&
+        sampleTitles.length < 10 &&
+        !sampleTitles.includes(title) &&
+        fitsSerializedSummary([...navPaths], [...sampleTitles, title])
+      )
+        sampleTitles.push(title);
+    } else if (navPaths.size < 40) {
+      const cleanPath = cleanResolverText(path, 200);
+      if (
+        cleanPath &&
+        !navPaths.has(cleanPath) &&
+        fitsSerializedSummary([...navPaths, cleanPath], sampleTitles)
+      ) {
+        navPaths.add(cleanPath);
+      }
+    }
+  }
+  const boundedNavPaths = [...navPaths].filter(Boolean);
+  while (
+    JSON.stringify({ navPaths: boundedNavPaths, articleLinkCount, sampleTitles }).length >
+    RESOLVER_SUMMARY_MAX_SERIALIZED_LENGTH
+  ) {
+    if (sampleTitles.length > 0) sampleTitles.pop();
+    else boundedNavPaths.pop();
+  }
+  return { navPaths: boundedNavPaths, articleLinkCount, sampleTitles };
+}
+
+export async function validateSectionCandidate(
+  candidateUrl: string,
+  expectedHostname: string,
+  signal?: AbortSignal,
+  onFetchStart?: () => void,
+): Promise<{ finalUrl: string; listingSample: SourceSampleEntry[] } | null> {
+  let candidate: URL;
+  try {
+    candidate = new URL(candidateUrl);
+  } catch {
+    return null;
+  }
+  if (
+    !isResolverAllowedHost(candidate.hostname, expectedHostname) ||
+    !isSafeDiscoveredUrl(candidate.toString(), expectedHostname) ||
+    isFeedShapedPath(candidate.pathname) ||
+    isArticleShapedPath(candidate.pathname)
+  ) {
+    return null;
+  }
+  try {
+    onFetchStart?.();
+    const { res, finalUrl } = await fetchSafeSourceWithFinalUrl(
+      "Resolver section",
+      candidate.toString(),
+      expectedHostname,
+      signal,
+    );
+    if (
+      !res.ok ||
+      !/^\s*(?:text|application)\/x?html\b/i.test(res.headers.get("content-type") ?? "text/html")
+    ) {
+      await res.body?.cancel();
+      return null;
+    }
+    const final = new URL(finalUrl);
+    if (
+      !isResolverAllowedHost(final.hostname, expectedHostname) ||
+      isFeedShapedPath(final.pathname) ||
+      isArticleShapedPath(final.pathname)
+    ) {
+      await res.body?.cancel();
+      return null;
+    }
+    const html = await readHtmlWithinLimit(res, "Resolver section");
+    const listingSample = extractListingSample(html, finalUrl);
+    return listingSample.length > 0 ? { finalUrl, listingSample } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchPageForResolver(
+  url: string,
+  expectedHostname: string,
+  signal?: AbortSignal,
+): Promise<
+  | { ok: true; finalUrl: string; summary: ReturnType<typeof summarizePageForResolver> }
+  | { ok: false; reason: "off_site" | "article_page" | "unreachable" | "not_html" }
+> {
+  let candidate: URL;
+  try {
+    candidate = new URL(url);
+  } catch {
+    return { ok: false, reason: "off_site" };
+  }
+  if (
+    !isResolverAllowedHost(candidate.hostname, expectedHostname) ||
+    !isSafeDiscoveredUrl(candidate.toString(), expectedHostname)
+  ) {
+    return { ok: false, reason: "off_site" };
+  }
+  if (isArticleShapedPath(candidate.pathname)) return { ok: false, reason: "article_page" };
+  try {
+    const { res, finalUrl } = await fetchSafeSourceWithFinalUrl(
+      "Resolver page",
+      candidate.toString(),
+      expectedHostname,
+      signal,
+    );
+    if (!res.ok) {
+      await res.body?.cancel();
+      return { ok: false, reason: "unreachable" };
+    }
+    const contentType = res.headers.get("content-type");
+    if (contentType && !/^\s*(?:text|application)\/x?html\b/i.test(contentType)) {
+      await res.body?.cancel();
+      return { ok: false, reason: "not_html" };
+    }
+    const final = new URL(finalUrl);
+    if (!isResolverAllowedHost(final.hostname, expectedHostname)) {
+      await res.body?.cancel();
+      return { ok: false, reason: "off_site" };
+    }
+    if (isArticleShapedPath(final.pathname)) {
+      await res.body?.cancel();
+      return { ok: false, reason: "article_page" };
+    }
+    const html = await readHtmlWithinLimit(res, "Resolver page");
+    return { ok: true, finalUrl, summary: summarizePageForResolver(html, finalUrl) };
+  } catch {
+    return { ok: false, reason: "unreachable" };
+  }
+}
+
 /** Checks the given page for an RSS `<link rel="alternate">` tag, returning its resolved
  *  feed URL if present. Returns null on any fetch/parse failure — RSS discovery has more
  *  fallback paths to try after this one, so a failure here is never fatal. */
@@ -595,17 +825,19 @@ async function hasSitemapEntries(url: string): Promise<boolean> {
 async function discoverFromRobots(
   origin: string,
   expectedHostname: string,
-): Promise<string | null> {
+): Promise<{ sitemapUrl: string | null; robotsText: string | null }> {
   let candidates: string[];
+  let robotsText: string;
   try {
     const res = await sourceFetch(`${origin}/robots.txt`, `${origin}/robots.txt`);
-    if (!res.ok) return null;
-    candidates = sortByNewsKeyword(parseRobotsSitemaps(await res.text(), origin)).slice(
+    if (!res.ok) return { sitemapUrl: null, robotsText: null };
+    robotsText = await res.text();
+    candidates = sortByNewsKeyword(parseRobotsSitemaps(robotsText, origin)).slice(
       0,
       ROBOTS_CANDIDATE_CAP,
     );
   } catch {
-    return null;
+    return { sitemapUrl: null, robotsText: null };
   }
 
   for (const raw of candidates) {
@@ -615,9 +847,11 @@ async function discoverFromRobots(
     // here and is simply skipped, same as any other non-existent candidate.
     const candidate = raw.startsWith("http://") ? raw.replace(/^http:/, "https:") : raw;
     if (!isSafeDiscoveredUrl(candidate, expectedHostname)) continue;
-    if (await hasSitemapEntries(candidate)) return candidate;
+    if (await hasSitemapEntries(candidate)) {
+      return { sitemapUrl: candidate, robotsText: robotsText.slice(0, 2_000) };
+    }
   }
-  return null;
+  return { sitemapUrl: null, robotsText: robotsText.slice(0, 2_000) };
 }
 
 /** Resolves `inputUrl` to whichever of it or its `www.`-toggled variant is actually
@@ -668,20 +902,39 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
   feedUrl?: string;
   listingUrl?: string;
   listingSample?: SourceSampleEntry[];
+  resolvedUrl: string;
+  robotsText: string | null;
+  exactPageHtml: string | null;
+  exactPageFinalUrl: string | null;
+  exactPageStatus: number | null;
 }> {
   const resolvedUrl = await resolveReachableInputUrl(inputUrl);
   const origin = resolvedUrl.origin;
 
-  const robotsSitemap = await discoverFromRobots(origin, resolvedUrl.hostname);
-  if (robotsSitemap) return { mechanism: "sitemap", sitemapUrl: robotsSitemap };
+  let exactPageHtml: string | null = null;
+  let exactPageFinalUrl: string | null = null;
+  let exactPageStatus: number | null = null;
+  const { sitemapUrl: robotsSitemap, robotsText } = await discoverFromRobots(
+    origin,
+    resolvedUrl.hostname,
+  );
+  const evidence = () => ({
+    resolvedUrl: resolvedUrl.toString(),
+    robotsText,
+    exactPageHtml,
+    exactPageFinalUrl,
+    exactPageStatus,
+  });
+  if (robotsSitemap) {
+    return { mechanism: "sitemap", sitemapUrl: robotsSitemap, ...evidence() };
+  }
 
   for (const path of SITEMAP_PATHS) {
     const candidate = `${origin}${path}`;
-    if (await urlExists(candidate)) return { mechanism: "sitemap", sitemapUrl: candidate };
+    if (await urlExists(candidate)) {
+      return { mechanism: "sitemap", sitemapUrl: candidate, ...evidence() };
+    }
   }
-
-  let exactPageHtml: string | null = null;
-  let exactPageFinalUrl: string | null = null;
   try {
     const exactPage = await fetchSafeSourceWithFinalUrl(
       resolvedUrl.toString(),
@@ -690,28 +943,39 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
     );
     const contentType = exactPage.res.headers.get("content-type");
     const isHtml = !contentType || /^\s*(?:text|application)\/x?html\b/i.test(contentType);
-    if (!exactPage.res.ok || !isHtml) await exactPage.res.body?.cancel();
-    exactPageHtml =
-      exactPage.res.ok && isHtml
-        ? await readHtmlWithinLimit(exactPage.res, resolvedUrl.toString())
-        : null;
+    exactPageStatus = exactPage.res.status;
     exactPageFinalUrl = exactPage.finalUrl;
+    if (exactPage.res.ok && !isHtml) {
+      const body = await readHtmlWithinLimit(exactPage.res, resolvedUrl.toString());
+      const feedContentType = /^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)\b/i.test(
+        contentType?.trim() ?? "",
+      );
+      if (feedContentType || /<(?:rss|feed)\b/i.test(body.slice(0, 2_000))) {
+        return { mechanism: "rss", feedUrl: exactPage.finalUrl, ...evidence() };
+      }
+    } else if (exactPage.res.ok) {
+      exactPageHtml = await readHtmlWithinLimit(exactPage.res, resolvedUrl.toString());
+    } else {
+      await exactPage.res.body?.cancel();
+    }
   } catch {
     // The exact page is optional: RSS fallbacks may still be reachable.
   }
   const exactPageFeed = exactPageHtml
     ? extractRssAlternateLink(exactPageHtml, exactPageFinalUrl ?? resolvedUrl.toString())
     : null;
-  if (exactPageFeed) return { mechanism: "rss", feedUrl: exactPageFeed };
+  if (exactPageFeed) return { mechanism: "rss", feedUrl: exactPageFeed, ...evidence() };
 
   if (resolvedUrl.toString() !== `${origin}/`) {
     const rootFeed = await checkPageForRssLink(`${origin}/`);
-    if (rootFeed) return { mechanism: "rss", feedUrl: rootFeed };
+    if (rootFeed) return { mechanism: "rss", feedUrl: rootFeed, ...evidence() };
   }
 
   for (const path of FEED_PATHS) {
     const candidate = `${origin}${path}`;
-    if (await urlExists(candidate)) return { mechanism: "rss", feedUrl: candidate };
+    if (await urlExists(candidate)) {
+      return { mechanism: "rss", feedUrl: candidate, ...evidence() };
+    }
   }
 
   const listingSample =
@@ -723,8 +987,9 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
       mechanism: "listing",
       listingUrl: exactPageFinalUrl ?? undefined,
       listingSample,
+      ...evidence(),
     };
   }
 
-  return { mechanism: null };
+  return { mechanism: null, ...evidence() };
 }

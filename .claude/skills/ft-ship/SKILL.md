@@ -32,21 +32,32 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   --jq '.[] | select(.body|startswith("## QC round")) | (.body|split("\n")[0])'
 ```
 
-* **Required markers:** the latest `## QC round <R>` family must include the
-  `findings`, `browsed`, `fixes`, AND `verified` markers (match on the
-  keyword; separator punctuation may vary across rounds). Rounds older than
-  the browse step (no `browsed` anywhere on the issue) are judged on the
-  original findings/fixes/verified three. A round carrying a separate `docs`
-  marker predates the docs step's retirement (2026-08-08) — its presence in
-  old rounds is fine, but it is never required.
+* **Required markers, two-part test.** (1) The issue carries at least ONE
+  FULL round: a `## QC round <R>` family with `findings`, `fixes`, AND
+  `verified` (plus `browsed` for rounds after the browse step joined the
+  flow; match on the keyword, separator punctuation may vary). (2) The
+  LATEST round has `fixes` + `verified` — a fixes-only PATCH ROUND (owner
+  triage after a full round) is a legitimate final round and never demands
+  a fresh council run by itself. The old rule required the latest family to
+  carry all four markers, which made every owner-nit round un-shippable
+  without re-running find over an unchanged diff — that was manufactured
+  looping, not rigor. A round carrying a separate `docs` marker predates
+  the docs step's retirement (2026-08-08): fine in old rounds, never
+  required.
 * **Any marker missing:** name what's missing and STOP: the branch has
   unfinished QC (e.g. fixes applied but never re-proven), and the missing
   step runs first in whichever app the owner likes.
-* **Stale `verified` is missing `verified`:** commits on the branch newer
-  than the latest `verified` marker (a v0 design merge is the recurring
-  case) mean the proven state is not the shipping state. STOP and require a
-  fresh QC round over the new diff; the owner-override rule above still
-  applies.
+* **Stale `verified` is missing `verified` — FEATURE paths only:** commits
+  newer than the latest `verified` marker that touch feature paths (`app/`,
+  `lib/`, `components/`, `poller/`, `supabase/`, `public/`, or root config
+  like `package.json` / `vercel.json` / `next.config.*`) mean the proven
+  state is not the shipping state: STOP and require a fresh QC round over
+  the new diff (a v0 design merge is the recurring case). Commits touching
+  ONLY meta paths (`.claude/`, `.agents/`, `.codex/`, `.grok/`, `docs/`,
+  root `*.md`) never trip this guard — check with
+  `git log --name-only <last-verified-time>..` or the diff since the
+  verified round's checkpoint commit; a docs-only edit after verify once
+  blocked a clean ship behind an owner override (#112).
 * **Owner override:** the owner may explicitly override ("ship anyway");
   record that override in the ship summary.
 * **No QC round comments at all:** the slice predates this contract or

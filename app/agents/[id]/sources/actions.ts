@@ -89,7 +89,14 @@ export async function startWebsiteOnboarding(
 export async function getWebsiteOnboardingStatus(deskId: string): Promise<
   | {
       ok: true;
-      entries: { url: string; status: string; displayName?: string; errorCode?: string }[];
+      entries: {
+        url: string;
+        status: string;
+        displayName?: string;
+        errorCode?: string;
+        trackedUrl?: string;
+        domain?: string;
+      }[];
     }
   | { ok: false }
 > {
@@ -107,7 +114,7 @@ export async function getWebsiteOnboardingStatus(deskId: string): Promise<
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("source_configs")
-    .select("url, status, display_name, error_code")
+    .select("url, status, display_name, error_code, listing_url, domain")
     .eq("agent_id", deskId)
     .in("status", ["active", "pending", "failed_validation"]);
   if (error || !data) {
@@ -120,6 +127,8 @@ export async function getWebsiteOnboardingStatus(deskId: string): Promise<
       url: row.url,
       status: row.status,
       displayName: row.display_name ?? undefined,
+      trackedUrl: row.status === "active" ? (row.listing_url ?? undefined) : undefined,
+      domain: row.status === "active" ? row.domain : undefined,
       errorCode: row.status === "failed_validation" ? (row.error_code ?? "failed") : undefined,
     })),
   };

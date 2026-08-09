@@ -59,6 +59,13 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 * **Owner triage mode:** when the owner brought manual-test findings
   directly, their words are the brief. Owner findings are binding: no
   push-back, no deferral unless they explicitly say an item can wait.
+  Before applying, ask ONCE: "anything else to fold into this round?" —
+  owners naturally drip findings as they notice them, and each drip
+  otherwise mints its own full round (a shipped slice once ran three
+  fixes-only rounds inside two hours for this reason alone). An
+  owner-triage round with no new council findings and no browse failures
+  is a PATCH ROUND: it runs this skill end to end but reports small
+  (phase 5's patch-round rule).
 * **The comment is the contract:** nothing from the find session's
   conversation is needed.
 * **Empty round:** zero accepted findings AND zero browse failures =
@@ -179,6 +186,16 @@ This report is the product of QC. It is written for the owner as a user of
 the app first and a developer second, and its bar is: **the owner should
 never need to ask a clarifying question.**
 
+**Patch rounds report small.** When the round applied only owner-triage
+items (no council findings, no browse failures adjudicated), the verified
+comment is a ≤10-line delta, not the full report: each item as one line
+(plain words first, `file:line` second), the GREEN/RED gates line, boot OK,
+and anything owed. The full section shape below is for rounds that
+adjudicated council findings — re-writing the whole essay for a two-line
+fix is the recurring waste this rule removes. Marker titles stay identical
+(`fixes`, `verified`) so resume detection and ship's guard read both round
+sizes the same way.
+
 ### A. Binding rules
 
 * **Terms of art:** every one gets a one-clause plain definition at first use
@@ -207,8 +224,11 @@ never need to ask a clarifying question.**
    in ~10 lines, plain language only (no identifiers, paths, or numbers the
    owner didn't coin): the GREEN/RED gates line; one counts line (N fixed /
    M dropped / K decisions owed / J manual checks); each owed decision as
-   ONE line with its options; the exact next command. The owner who reads
-   nothing else must still leave knowing the state and what they owe.
+   ONE line with its options; the exact next command; and, when the round's
+   browsed report lists any `Unproven DoD journeys`, that line verbatim —
+   an acceptance journey nobody proved is ship-relevant state, never a
+   footnote. The owner who reads nothing else must still leave knowing the
+   state and what they owe.
 1. **What this slice changed, as a user:** a short walk-through of the new
    behavior: "when X happens, the app now does Y; before, it did Z."
 2. **Status + coverage:** builds/boots/gates one-liner; review-lane coverage with

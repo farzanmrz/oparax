@@ -47,6 +47,7 @@ real code, never a summary of it.
 * **Ground truth:** Read the files the slice will touch or interface with
   (signatures, exported types, route shapes), batching independent reads in
   one response.
+* **Ground against reality, not only code:** when the slice depends on anything outside the repo — third-party sites, external APIs, network behavior, live data shapes, device constraints — probe the real thing NOW: fetch the actual domains the stub's journeys name, hit the actual endpoints, read the actual DB rows, record status codes and payload shapes. Park the transcript in `.feature/probes.md` and cite it in the plan. A spec written against imagined external behavior is ungrounded no matter how well it cites the repo (one 30-second fetch of a bot-blocked homepage would have re-framed a slice that instead shipped and failed on first real use).
 * **Skill constraints:** two flat lists in `references/`, one skill name
   per line. `guided-skills.md`: consider every entry, select those whose
   area this slice touches. `disallowed-skills.md`: never consider when
@@ -73,6 +74,7 @@ WHY it settled. `Decided` is binding, `Notes` are hints.
   missing piece stops drafting until resolved.
 * **Genuinely ambiguous: interview the owner,** one question at a time, each
   with your best-guess answer attached, until coherent.
+* **Spec the input space, not the example:** enumerate the classes of input/behavior each user-facing entry point admits (worked derivations: `references/input-space-examples.md`). For EVERY class the plan states one of: handled (mechanism named), graceful failure (the exact user-visible copy plus the recovery step), or out of scope (the owner acknowledges it at the gate). A class that silently hard-fails is a spec defect, not an edge case. The stub's modal input is the PRIMARY acceptance case; the conversation's example never substitutes for it.
 * **These are conversations, not sign-offs.** The ✋ gate in phase 6 is this
   flow's only approval gate.
 
@@ -159,6 +161,8 @@ Off by default; adds competing drafts, never changes the rules below.
 Downstream phases depend on these exact sections:
 
 * Definition of done
+* Acceptance journeys (the stub's, refined to observable expectations, each tagged `QC-LIVE` / `OWNER-MANUAL`; every DoD item traces to at least one journey)
+* Input space (the phase 3 enumeration: every class with its disposition — handled / graceful failure / out of scope)
 * Approach (including rejected alternatives)
 * In scope / Deferred
 * Build steps (per-task files + the skills each task invokes)
@@ -211,6 +215,7 @@ re-invokes you when they finish.
   does the old thing" is not a finding. Lanes verify the plan's CLAIMS about
   the current code and attack the DESIGN. Without this line a lane audits the
   tree against the plan and returns "not implemented yet" as blockers.
+* **Frame attack (mandatory in every brief):** instruct each lane, as a separate charter item from claim verification: "ATTACK THE FRAME: name concrete real inputs, user behaviors, or environmental conditions this plan never mentions but a real user will produce. A missing input class outranks any in-frame bug." Lanes that only verify what is written inherit the plan's blind spots — five confirmations of a wrong frame shipped a production failure once; this line is what makes the lanes' diversity attack scope, not just correctness.
 
 **Codex** (append to its `.in.txt` only: "You have repo-defined subagents:
 spawn `pr-explorer` to map and evidence the code paths each build task names,
@@ -255,9 +260,9 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
   COUNCIL_MODEL="$model" COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
   bash .claude/workflows/council/run.sh cline "critique-$name" \
   2> ".feature/critique-$name.stderr.log"
-status=$?
-printf '%s\n' "$status" > ".feature/critique-$name.exit"
-exit "$status"
+rc=$?   # NOT "status": that name is a read-only builtin in zsh, and the assignment error after the bridge completes records a healthy lane as harness-failed
+printf '%s\n' "$rc" > ".feature/critique-$name.exit"
+exit "$rc"
 ```
 
 (Use `name=minimax` and `model=minimax/minimax-m3` for the second session. The
@@ -300,7 +305,8 @@ section.
   not scope inflation — append one line, inline, no dispatch (you already
   hold the verdict):
   `bash .claude/skills/ft/scripts/cline-lesson.sh "<the pattern, one line>"`.
-  Same file `ft-find` phase 5 writes to; both cline touchpoints share it.
+  Spec is the flow's only cline touchpoint (ft-find dropped its cline lane
+  by owner decision 2026-08-09).
 
 **Scope and terminology discipline:**
 
@@ -338,6 +344,7 @@ question):
   brand new, as short bullets or labeled subsections.
 * **User narrative:** a step-through of the feature working, so the owner
   sees the whole behavior before any technical detail.
+* **What happens when (input space):** every input class in plain words — "paste just `example.com`: X happens", "reply with only an emoji: Y happens" — so the owner approves the FRAME, not only the feature. An out-of-scope class is stated here in plain words too; the owner's yes at the gate is what makes it legitimately out of scope.
 * **The full plan:** every section from phase 4.
 * **Critique adjudication:** every accepted item and every rejected item
   carries its technical statement plus a plain-words explanation the owner
@@ -345,8 +352,8 @@ question):
 
 **Pre-present check** (fix, then present): first three sections free of
 identifiers; every section bulleted, no prose walls; In scope / Deferred
-present with their glosses; every adjudication entry carries its
-plain-words line.
+present with their glosses; the input-space lines present in plain words;
+every adjudication entry carries its plain-words line.
 
 ## 7. Close the gate
 

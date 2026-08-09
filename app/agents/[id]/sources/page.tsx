@@ -29,14 +29,15 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
   {
     const { data: configs, error: configError } = await createAdminClient()
       .from("source_configs")
-      .select("url, domain, display_name")
+      .select("url, domain, display_name, listing_url")
       .eq("agent_id", desk.id)
       .eq("status", "active");
     if (configError) console.error("SourcesPage: source_configs label read failed", configError);
     for (const row of configs ?? []) {
       details[row.url] = {
         displayName: row.display_name ?? row.domain,
-        domain: row.domain,
+        domain: row.domain.replace(/^www\./i, ""),
+        trackedUrl: row.listing_url ?? undefined,
       };
     }
   }

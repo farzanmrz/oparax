@@ -34,8 +34,10 @@ export function normalizeSourceUrl(raw: string): URL | null {
     // above too and would otherwise pass through unrestricted into agents.websites (and
     // from there into the scraper/ingestion worker).
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (url.username || url.password) return null;
     // IPv6 literals and hostnames without a dot are not public website sources.
     if (url.hostname.includes("[") || !url.hostname.includes(".")) return null;
+    url.hash = "";
     return url;
   } catch {
     return null;

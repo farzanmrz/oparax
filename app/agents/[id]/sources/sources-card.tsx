@@ -9,6 +9,7 @@
 // poll later reports for the exact same site.
 
 import { GlobeIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { BandCard } from "@/components/band-card";
 import { SiteFavicon } from "@/components/site-favicon";
@@ -32,6 +33,7 @@ function XLogo() {
 // clobber that optimistic change for the ~2s until the next poll catches up with the server.
 const RECONCILE_GRACE_MS = 2500;
 const FAILED_STATUS_COPY: Readonly<Record<string, string>> = {
+  no_beat_section: "Nothing on your beat found",
   no_detection_mechanism: "No articles found to watch",
   unreachable: "Couldn't reach this site",
   schema_validation_failed: "Setup failed",
@@ -45,6 +47,7 @@ const FAILED_STATUS_COPY: Readonly<Record<string, string>> = {
 export type WebsiteDetail = {
   displayName: string;
   domain: string;
+  trackedUrl?: string;
 };
 
 export function SourcesCard({
@@ -119,7 +122,11 @@ export function SourcesCard({
         )
         .map((entry) => [
           entry.url,
-          { displayName: entry.displayName, domain: new URL(entry.url).hostname },
+          {
+            displayName: entry.displayName,
+            domain: (entry.domain ?? new URL(entry.url).hostname).replace(/^www\./i, ""),
+            trackedUrl: entry.trackedUrl,
+          },
         ]),
     );
 
@@ -297,6 +304,10 @@ export function SourcesCard({
 
   const pendingChips = [...pendingUrls].filter((url) => !websites.includes(url));
   const failedChips = [...failedUrls.keys()].filter((url) => !websites.includes(url));
+  const firstHonestMissUrl = failedChips.find((url) => {
+    const code = failedUrls.get(url);
+    return code === "no_beat_section" || code === "no_detection_mechanism";
+  });
   const resolvedChips = [...resolvedUrls].filter(
     (url) => !websites.includes(url) && !pendingUrls.has(url) && !failedUrls.has(url),
   );
@@ -348,31 +359,33 @@ export function SourcesCard({
         title="Websites"
       >
         <ul className="grid gap-2">
-          {websites.map((url) => (
-            <SourceRow
-              icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
-              key={url}
-              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
-              label={websiteName(url)}
-              onRemove={() => removeSite(url)}
-              tone="website"
-            />
-          ))}
-          {resolvedChips.map((url) => (
-            <SourceRow
-              icon={
-                <SiteFavicon
-                  domain={resolvedWebsiteDetails[url]?.domain ?? websiteDetails[url]?.domain}
-                  url={url}
-                />
-              }
-              key={url}
-              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
-              label={websiteName(url)}
-              onRemove={() => removeSite(url)}
-              tone="website"
-            />
-          ))}
+          {websites.map((url) => {
+            const { path, name } = websiteChipLabel(url, websiteDetails[url]);
+            return (
+              <SourceRow
+                icon={<SiteFavicon domain={websiteDetails[url]?.domain} url={url} />}
+                key={url}
+                display={<WebsiteChipDisplay name={name} path={path} />}
+                label={name ? `${name} · ${path}` : path}
+                onRemove={() => removeSite(url)}
+                tone="website"
+              />
+            );
+          })}
+          {resolvedChips.map((url) => {
+            const detail = resolvedWebsiteDetails[url] ?? websiteDetails[url];
+            const { path, name } = websiteChipLabel(url, detail);
+            return (
+              <SourceRow
+                icon={<SiteFavicon domain={detail?.domain} url={url} />}
+                key={url}
+                display={<WebsiteChipDisplay name={name} path={path} />}
+                label={name ? `${name} · ${path}` : path}
+                onRemove={() => removeSite(url)}
+                tone="website"
+              />
+            );
+          })}
           {pendingChips.map((url) => (
             <SourceRow
               icon={<SiteFavicon url={url} />}
@@ -397,6 +410,9 @@ export function SourcesCard({
             />
           ))}
         </ul>
+        {firstHonestMissUrl ? (
+          <FieldMessage>{`Couldn't find a section of ${displaySourceUrl(new URL(firstHonestMissUrl).origin)} to watch — paste a link to the section you actually read there.`}</FieldMessage>
+        ) : null}
         {!atWebsiteLimit ? (
           <AddSourceField
             disabled={false}
@@ -442,7 +458,36 @@ function websiteName(value: string): string {
   return displaySourceUrl(value);
 }
 
-function SingleLineLabel({ children }: { children: string }) {
+function websiteChipLabel(
+  url: string,
+  detail?: { displayName?: string; domain?: string; trackedUrl?: string },
+): { path: string; name?: string } {
+  const path = displaySourceUrl(detail?.trackedUrl ?? url);
+  const rawName = detail?.displayName?.trim() ?? "";
+  const name = rawName.replace(/^www\./i, "");
+  const bareDomain = (detail?.domain ?? "").replace(/^www\./i, "").toLowerCase();
+  const showName =
+    name.length > 0 &&
+    name.toLowerCase() !== bareDomain &&
+    name.toLowerCase() !== path.toLowerCase();
+  return { path, name: showName ? name : undefined };
+}
+
+function WebsiteChipDisplay({ name, path }: { name?: string; path: string }) {
+  return (
+    <SingleLineLabel>
+      {name ? (
+        <>
+          {name}
+          <span className="text-text-muted"> · </span>
+        </>
+      ) : null}
+      <span className={name ? "text-text-muted" : undefined}>{path}</span>
+    </SingleLineLabel>
+  );
+}
+
+function SingleLineLabel({ children }: { children: ReactNode }) {
   return <span className="block truncate whitespace-nowrap">{children}</span>;
 }
 

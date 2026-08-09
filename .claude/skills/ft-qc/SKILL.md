@@ -85,7 +85,7 @@ second file.
 | | Claude Code | Codex |
 |---|---|---|
 | Session dial | fable/opus, high | `gpt-5.6-sol` high (set with `/model` before starting) |
-| Review council (phase 1) | internal `bug-finder` lane + the `codex`, `grok`, `agy` and `cline` (minimax-m3) externals | native `reviewer` (the oparax critic contract in `.codex/agents/reviewer.toml`) spawning `pr-explorer` for evidence, **named explicitly in the prompt**, + the `grok`, `agy` and `cline` (minimax-m3) externals. No codex lane: that family IS this session |
+| Review council (phase 1) | internal `bug-finder` lane + the `codex`, `grok` and `agy` externals | native `reviewer` (the oparax critic contract in `.codex/agents/reviewer.toml`) spawning `pr-explorer` for evidence, **named explicitly in the prompt**, + the `grok` and `agy` externals. No codex lane: that family IS this session |
 | Subagents | `bug-finder`, `fixer`, `supabase-runner` | `grounder`, `fixer`, `supabase-runner` |
 | Concurrency cap | ≤10 agents per fan-out | ≤6 threads (the global `[agents]` cap) |
 
