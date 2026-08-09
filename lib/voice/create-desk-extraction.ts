@@ -26,7 +26,7 @@ import type { Json } from "@/lib/supabase/database.types";
 import { normalizeHandle, X_HANDLE_RE } from "@/lib/x/handle";
 import { getXAccount, updateXAccountTier } from "@/lib/x/store";
 import { fetchCorpus } from "./corpus";
-import { accumulateCorpus, markCorpusExclusions } from "./corpus-store";
+import { accumulateCorpus, findReusableCorpus, markCorpusExclusions } from "./corpus-store";
 import { deployGuide } from "./deploy-guide";
 import {
   EXTRACTION_MODEL,
@@ -316,21 +316,35 @@ async function runExtractionSpendPhaseInner(
       .maybeSingle();
     const beat = deskRow?.beat ?? "";
 
+    // A corpus this product already holds for this reporter, recent enough to stand in for a
+    // fresh read (see findReusableCorpus). The X timeline read is rate-limited and metered, and
+    // re-reading the same handle teaches the extraction nothing new — so the read happens only
+    // when there is no usable corpus already.
+    const reused = await findReusableCorpus(reporterHandle);
     let corpus: Awaited<ReturnType<typeof fetchCorpus>>;
-    try {
-      corpus = await fetchCorpus(reporterHandle, ownerId);
-    } catch (corpusError) {
-      console.error(
-        `runExtractionSpendPhase: fetchCorpus failed for @${reporterHandle}`,
-        corpusError,
+    if (reused) {
+      corpus = reused.posts;
+      console.log(
+        `runExtractionSpendPhase: reusing ${corpus.length} stored posts for @${reporterHandle} ` +
+          `(pulled ${reused.pulledAt}) — skipping the X timeline read`,
       );
-      Sentry.captureException(corpusError, {
-        tags: { stage: "voice_extraction", error_code: "corpus_failed" },
-        contexts: { extraction: { agentId, handle: reporterHandle } },
-      });
-      await finishRun(agentId, { status: "failed", errorCode: "corpus_failed" });
-      return { status: "corpus_failed" };
+    } else {
+      try {
+        corpus = await fetchCorpus(reporterHandle, ownerId);
+      } catch (corpusError) {
+        console.error(
+          `runExtractionSpendPhase: fetchCorpus failed for @${reporterHandle}`,
+          corpusError,
+        );
+        Sentry.captureException(corpusError, {
+          tags: { stage: "voice_extraction", error_code: "corpus_failed" },
+          contexts: { extraction: { agentId, handle: reporterHandle } },
+        });
+        await finishRun(agentId, { status: "failed", errorCode: "corpus_failed" });
+        return { status: "corpus_failed" };
+      }
     }
+    Sentry.getActiveSpan()?.setAttribute("oparax.corpus_reused", reused !== null);
     await recordProgress(agentId, {
       stage: "corpus_ready",
       progressNote: `Read ${corpus.length} posts`,

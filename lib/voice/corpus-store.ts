@@ -55,6 +55,111 @@ export async function accumulateCorpus(agentId: string, posts: CorpusPost[]): Pr
   if (upsertError) throw upsertError;
 }
 
+/** How long a stored corpus stays reusable. OWNER DECISION: a reporter's writing voice does not
+ *  meaningfully change month to month, so re-reading the same timeline from X for every
+ *  extraction of the same handle buys nothing and spends a rate-limited third-party call every
+ *  time — most visibly when one handle (an admin test account, or a reporter with several desks)
+ *  is extracted repeatedly. A month is deliberately conservative against that reasoning. */
+const CORPUS_REUSE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Cap matches lib/x/timeline.ts's MAX_POSTS — a reused corpus must be the same SIZE as a freshly
+ *  read one, or the measured facts (and `inferAccountTier`, which needs to SEE a long post) are
+ *  computed over a different sample than a fresh run would use. */
+const REUSED_CORPUS_LIMIT = 50;
+
+function toCorpusPostRow(row: {
+  x_post_id: string;
+  text: string;
+  posted_at: string;
+  like_count: number;
+  repost_count: number;
+  is_long: boolean;
+  media: unknown;
+}): CorpusPost {
+  return {
+    id: row.x_post_id,
+    date: row.posted_at,
+    text: row.text,
+    likes: row.like_count,
+    reposts: row.repost_count,
+    long: row.is_long,
+    media: Array.isArray(row.media) ? (row.media as CorpusPost["media"]) : [],
+  };
+}
+
+/**
+ * The already-stored corpus for THIS REPORTER, from any desk that has extracted them, when it is
+ * recent enough to stand in for a fresh X read — else null, and the caller reads X as before.
+ *
+ * Keyed by reporter handle rather than by desk on purpose: `corpus_posts` rows belong to a desk,
+ * but the timeline they came from belongs to the reporter, so a second desk on the same reporter
+ * would otherwise re-read a timeline the product already holds. This shares the raw PUBLIC POSTS
+ * only — never a voice guide or rules, which stay per-desk because each desk's beat scopes and
+ * edits them differently (an explicitly rejected earlier idea).
+ *
+ * Freshness is judged by the newest row's `created_at` — when this handle's corpus was last
+ * WRITTEN, not when its newest post was published. That errs toward re-reading: a dormant
+ * reporter's corpus stops being refreshed, its `created_at` ages out, and the next extraction
+ * pulls from X again rather than reusing indefinitely.
+ *
+ * Best-effort by design: any read failure returns null (read X instead), because a cache miss
+ * must never be able to fail an extraction that would otherwise have worked.
+ */
+export async function findReusableCorpus(
+  reporterHandle: string,
+  now = Date.now(),
+): Promise<{ posts: CorpusPost[]; sourceAgentId: string; pulledAt: string } | null> {
+  try {
+    const admin = createAdminClient();
+    const wanted = reporterHandle.trim().toLowerCase();
+    // `ilike` is the case-insensitive match Postgres offers, but it also treats `_` as a
+    // single-character WILDCARD — and an underscore is legal in an X handle, so `foo_bar` would
+    // match `fooXbar`'s desks too. The pattern stays a deliberate superset and the exact
+    // comparison happens here, where `_` is just a character.
+    const { data: deskRows, error: deskError } = await admin
+      .from("agents")
+      .select("id, reporter_handle")
+      .ilike("reporter_handle", reporterHandle);
+    if (deskError) throw deskError;
+    const deskIds = (deskRows ?? [])
+      .filter((row) => row.reporter_handle.trim().toLowerCase() === wanted)
+      .map((row) => row.id);
+    if (deskIds.length === 0) return null;
+
+    // The freshest corpus row across this reporter's desks identifies BOTH whether a reusable
+    // corpus exists and which desk's rows to read. Picking one desk rather than merging several
+    // keeps the reused corpus identical in shape to what a single X read produces.
+    const { data: newest, error: newestError } = await admin
+      .from("corpus_posts")
+      .select("agent_id, created_at")
+      .in("agent_id", deskIds)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (newestError) throw newestError;
+    if (!newest) return null;
+    if (now - new Date(newest.created_at).getTime() > CORPUS_REUSE_MAX_AGE_MS) return null;
+
+    const { data: rows, error: rowsError } = await admin
+      .from("corpus_posts")
+      .select("x_post_id, text, posted_at, like_count, repost_count, is_long, media")
+      .eq("agent_id", newest.agent_id)
+      .order("posted_at", { ascending: false })
+      .limit(REUSED_CORPUS_LIMIT);
+    if (rowsError) throw rowsError;
+
+    const posts = (rows ?? []).map(toCorpusPostRow);
+    // A stored corpus with no usable text is a broken cache, not a saving — a fresh read might
+    // succeed where whatever produced this did not. Mirrors the caller's own empty-corpus guard.
+    if (!posts.some((p) => p.text.trim())) return null;
+
+    return { posts, sourceAgentId: newest.agent_id, pulledAt: newest.created_at };
+  } catch (e) {
+    console.error(`findReusableCorpus: lookup failed for @${reporterHandle}`, e);
+    return null;
+  }
+}
+
 export async function markCorpusExclusions(
   agentId: string,
   postIds: string[],
