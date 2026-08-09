@@ -11,7 +11,6 @@
 //
 // SERVER-ONLY (transitively imports lib/sysprompts via readFileSync at module scope, and
 // writes via the admin client) — never importable from a client component.
-import { Readability } from "@mozilla/readability";
 import type { GenerateObjectStepEndEvent } from "ai";
 import {
   gateway,
@@ -22,7 +21,6 @@ import {
   stepCountIs,
   tool,
 } from "ai";
-import { JSDOM } from "jsdom";
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
@@ -335,9 +333,17 @@ async function measureFullTextAvailability(
     const res = await fetchSafeSource("Source", candidate.url, expectedHostname);
     if (!res.ok) return { verdict: "unknown", sampleText: null };
     const html = await readHtmlWithinLimit(res, candidate.url);
-    // This duplicates the isolated poller's extraction exactly: JSON-LD, Readability, then the
-    // same blunt tag strip, with the same 200-character gates and entity behavior. Phrase
-    // validation must be against the representation the poller will later strip.
+    // JSON-LD, then the same blunt tag strip the poller uses, with the same 200-character gate.
+    // Deliberately skips the poller's middle Readability tier: that needs jsdom, which is
+    // unusable on Vercel here (found live 2026-08-09 — jsdom's cssstyle -> @asamuzakjp/css-color
+    // dependency is ESM-only, and Next's default server-external-packages handling of jsdom
+    // hits that with a raw runtime `require()`, throwing ERR_REQUIRE_ESM on every request to any
+    // function that transitively imports this module; bundling it instead, via
+    // transpilePackages, fails too — jsdom's own asset loading relies on being unbundled). The
+    // poller's own extraction (poller/src/fetch-body.ts) is unaffected — it runs on Railway, not
+    // Vercel — so live delivered article text still gets the full three-tier extraction; only
+    // this onboarding-time full-text/boilerplate sample measurement loses the middle tier. Phrase
+    // validation must still be against the representation the poller will later strip.
     let jsonLdBody: string | null = null;
     for (const match of html.matchAll(
       /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
@@ -367,20 +373,9 @@ async function measureFullTextAvailability(
       }
       if (jsonLdBody) break;
     }
-    let bodyText = jsonLdBody;
-    if (!bodyText) {
-      try {
-        const parsed = new Readability(
-          new JSDOM(html, { url: candidate.url }).window.document,
-        ).parse();
-        const readable = parsed?.textContent?.replace(/\s+/g, " ").trim();
-        if (readable && readable.length >= 200) bodyText = readable;
-      } catch {
-        // Match the poller: malformed pages fall through to the blunt tag strip.
-      }
-    }
-    if (!bodyText)
-      bodyText = html
+    const bodyText =
+      jsonLdBody ??
+      html
         .replace(/<[^>]+>/g, " ")
         .replace(/\s+/g, " ")
         .trim();
