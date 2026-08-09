@@ -18,7 +18,7 @@ import {
 } from "@/lib/sources/onboard-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
+import { MAX_WEBSITES, normalizeSourceUrl, trackedSourceUrl } from "@/lib/websites";
 import type { ActionResult } from "../actions";
 
 /** One-liner shown for each non-completed `OnboardOutcome` — the "one honest message" the
@@ -114,7 +114,9 @@ export async function getWebsiteOnboardingStatus(deskId: string): Promise<
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("source_configs")
-    .select("url, status, display_name, error_code, listing_url, domain")
+    .select(
+      "url, status, display_name, error_code, listing_url, feed_url, change_detection, prefilter, domain",
+    )
     .eq("agent_id", deskId)
     .in("status", ["active", "pending", "failed_validation"]);
   if (error || !data) {
@@ -127,7 +129,20 @@ export async function getWebsiteOnboardingStatus(deskId: string): Promise<
       url: row.url,
       status: row.status,
       displayName: row.display_name ?? undefined,
-      trackedUrl: row.status === "active" ? (row.listing_url ?? undefined) : undefined,
+      // The mechanism-aware watched scope (see trackedSourceUrl) — before this, only
+      // listing-narrowed sources ever showed a tracked path and every sitemap/feed source
+      // fell back to the typed URL in the chip.
+      trackedUrl:
+        row.status === "active"
+          ? trackedSourceUrl({
+              url: row.url,
+              domain: row.domain,
+              changeDetection: row.change_detection,
+              listingUrl: row.listing_url,
+              feedUrl: row.feed_url,
+              prefilter: row.prefilter,
+            })
+          : undefined,
       domain: row.status === "active" ? row.domain : undefined,
       errorCode: row.status === "failed_validation" ? (row.error_code ?? "failed") : undefined,
     })),

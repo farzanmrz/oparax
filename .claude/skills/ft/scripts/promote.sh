@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Promote one remote branch hop without checking out or changing the caller's
-# branch. The feature flow deliberately invokes one hop at a time so it can
-# verify the matching Vercel deployment before beginning the next hop.
+# branch.
 #
 # Usage:
 #   promote.sh dev beta
@@ -24,11 +23,7 @@ destination_branch="$2"
 # stays available for a manual sweep during the soak period; Phase 3 removes it
 # once dev itself is retired.
 case "${source_branch}:${destination_branch}" in
-  dev:beta)
-    deployment_alias="beta.oparax.ai"
-    ;;
-  beta:main)
-    deployment_alias="oparax.ai"
+  dev:beta | beta:main)
     ;;
   *)
     echo "promote: invalid hop ${source_branch} -> ${destination_branch}." >&2
@@ -92,21 +87,18 @@ fi
 source_sha="$(git rev-parse "${source_ref}^{commit}")"
 destination_before_sha="$(git rev-parse "${destination_ref}^{commit}")"
 
-emit_verification_contract() {
+emit_result() {
   promoted_sha="$1"
   result="$2"
 
   printf '%s\n' "$promoted_sha"
   echo "promote: result: ${result}; ${source_branch} ${source_sha} -> ${destination_branch} ${promoted_sha}." >&2
-  echo "promote: Git hop complete. Do not begin another promotion hop until" >&2
-  echo "promote: ${deployment_alias} has a READY Vercel deployment for exact Git SHA ${promoted_sha}." >&2
 }
 
-# A repeated invocation is safe. It still emits the deployment-verification
-# contract because the caller must prove the destination alias serves this SHA.
+# A repeated invocation is safe.
 if git merge-base --is-ancestor "$source_sha" "$destination_before_sha"; then
   echo "promote: origin/${destination_branch} already contains origin/${source_branch}; no Git update needed." >&2
-  emit_verification_contract "$destination_before_sha" "already-contained"
+  emit_result "$destination_before_sha" "already-contained"
   exit 0
 fi
 
@@ -185,7 +177,7 @@ if [ "$promoted_tree" != "$preview_tree" ]; then
 fi
 
 # From this point onward a recovery commit exists. Retain its worktree until the
-# exact remote ref has been confirmed; any push or verification failure leaves
+# exact remote ref has been confirmed; any push failure leaves
 # the commit immediately inspectable.
 retain_worktree=1
 
@@ -243,4 +235,4 @@ if [ "$remote_sha" != "$promoted_sha" ]; then
 fi
 
 retain_worktree=0
-emit_verification_contract "$promoted_sha" "promoted"
+emit_result "$promoted_sha" "promoted"

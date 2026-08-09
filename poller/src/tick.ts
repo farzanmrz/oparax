@@ -16,16 +16,21 @@ import { fetchFeedItems } from "./feed";
 import { fetchArticleBody } from "./fetch-body";
 import { fetchListingItems } from "./listing";
 import { logger } from "./logger";
+import { refreshLegacyStripPhrases } from "./refresh-strip-phrases";
 import type { ConditionalGetCache, FeedItem } from "./sitemap";
 import { fetchSitemapItems } from "./sitemap";
 import { buildExternalId } from "./types";
 
-function applyPrefilter(items: FeedItem[], prefilter: SourceConfigRow["prefilter"]): FeedItem[] {
+export function applyPrefilter(
+  items: FeedItem[],
+  prefilter: SourceConfigRow["prefilter"],
+): FeedItem[] {
   if (!prefilter?.pathPrefix) return items;
-  const prefix = prefilter.pathPrefix;
+  const prefix = prefilter.pathPrefix.replace(/\/+$/, "") || "/";
   return items.filter((item) => {
     try {
-      return new URL(item.url).pathname.startsWith(prefix);
+      const pathname = new URL(item.url).pathname;
+      return prefix === "/" || pathname === prefix || pathname.startsWith(`${prefix}/`);
     } catch {
       return false;
     }
@@ -68,7 +73,13 @@ async function deliverNewItem(
   item: FeedItem,
   env: PollerEnv,
 ): Promise<void> {
-  const { text } = await fetchArticleBody(item, source.retrieval, source.domain, env);
+  const { text } = await fetchArticleBody(
+    item,
+    source.retrieval,
+    source.domain,
+    env,
+    source.strip_phrases,
+  );
   const externalId = buildExternalId(item.url, item.publishedAt);
   await postDelivery(env.ingestUrl, env.ingestSecret, {
     source: "website",
@@ -90,6 +101,9 @@ async function pollOneSource(
   caches: Map<string, ConditionalGetCache>,
   staleAlarms: Map<string, AlarmState>,
 ): Promise<void> {
+  if (source.strip_phrases === null) {
+    await refreshLegacyStripPhrases(env.ingestUrl, env.ingestSecret, source.id);
+  }
   const cache = caches.get(source.id) ?? {};
   const {
     items: rawItems,

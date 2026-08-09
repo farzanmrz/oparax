@@ -504,7 +504,7 @@ export function extractAnchors(html: string): { href: string; text: string }[] {
   return anchors;
 }
 
-async function readHtmlWithinLimit(res: Response, endpoint: string): Promise<string> {
+export async function readHtmlWithinLimit(res: Response, endpoint: string): Promise<string> {
   const contentLength = Number(res.headers.get("content-length") ?? "0");
   if (contentLength > MAX_HTML_LENGTH) {
     await res.body?.cancel();

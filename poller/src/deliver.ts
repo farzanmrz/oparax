@@ -14,7 +14,7 @@ const BASE_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
 // Mirrors app/api/ingest/route.ts's exported maxDuration (800 seconds). This isolated worker
 // cannot import app code, but it must allow a valid translation to use the route's full budget.
-const INGEST_MAX_DURATION_MS = 800 * 1_000;
+export const INGEST_MAX_DURATION_MS = 800 * 1_000;
 
 /** Thrown after MAX_ATTEMPTS exhausted on a 500/network error — tick.ts's own contract
  *  (see its comment above the deliverNewItem call) is that a throw here means the item stays

@@ -9,7 +9,6 @@
 // poll later reports for the exact same site.
 
 import { GlobeIcon } from "lucide-react";
-import type { ReactNode } from "react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { BandCard } from "@/components/band-card";
 import { SiteFavicon } from "@/components/site-favicon";
@@ -386,29 +385,35 @@ export function SourcesCard({
               />
             );
           })}
-          {pendingChips.map((url) => (
-            <SourceRow
-              icon={<SiteFavicon url={url} />}
-              key={url}
-              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
-              label={websiteName(url)}
-              onRemove={() => removeSite(url)}
-              status="pending"
-              tone="website"
-            />
-          ))}
-          {failedChips.map((url) => (
-            <SourceRow
-              icon={<SiteFavicon url={url} />}
-              key={url}
-              display={<SingleLineLabel>{websiteName(url)}</SingleLineLabel>}
-              label={websiteName(url)}
-              onRemove={() => removeSite(url)}
-              status="failed"
-              statusLabel={FAILED_STATUS_COPY[failedUrls.get(url) ?? ""] ?? "Couldn't set up"}
-              tone="website"
-            />
-          ))}
+          {pendingChips.map((url) => {
+            const { name, path } = websiteOnboardingChipLabel(url);
+            return (
+              <SourceRow
+                icon={<SiteFavicon url={url} />}
+                key={url}
+                display={<WebsiteChipDisplay name={name} path={path} />}
+                label={`${name} · ${path}`}
+                onRemove={() => removeSite(url)}
+                status="pending"
+                tone="website"
+              />
+            );
+          })}
+          {failedChips.map((url) => {
+            const { name, path } = websiteOnboardingChipLabel(url);
+            return (
+              <SourceRow
+                icon={<SiteFavicon url={url} />}
+                key={url}
+                display={<WebsiteChipDisplay name={name} path={path} />}
+                label={`${name} · ${path}`}
+                onRemove={() => removeSite(url)}
+                status="failed"
+                statusLabel={FAILED_STATUS_COPY[failedUrls.get(url) ?? ""] ?? "Couldn't set up"}
+                tone="website"
+              />
+            );
+          })}
         </ul>
         {firstHonestMissUrl ? (
           <FieldMessage>{`Couldn't find a section of ${displaySourceUrl(new URL(firstHonestMissUrl).origin)} to watch — paste a link to the section you actually read there.`}</FieldMessage>
@@ -458,6 +463,13 @@ function websiteName(value: string): string {
   return displaySourceUrl(value);
 }
 
+function websiteOnboardingChipLabel(url: string): { name: string; path: string } {
+  return {
+    name: new URL(url).hostname.replace(/^www\./i, ""),
+    path: websiteName(url),
+  };
+}
+
 function websiteChipLabel(
   url: string,
   detail?: { displayName?: string; domain?: string; trackedUrl?: string },
@@ -473,22 +485,17 @@ function websiteChipLabel(
   return { path, name: showName ? name : undefined };
 }
 
+/** Name on its own line, tracked path on the line below in muted grey — never one
+ *  truncating line. SourceRow's break-words and overflow-wrap handling wraps long paths. A
+ *  nameless chip is a bare path and keeps the title tone. */
 function WebsiteChipDisplay({ name, path }: { name?: string; path: string }) {
+  if (!name) return <span className="block">{path}</span>;
   return (
-    <SingleLineLabel>
-      {name ? (
-        <>
-          {name}
-          <span className="text-text-muted"> · </span>
-        </>
-      ) : null}
-      <span className={name ? "text-text-muted" : undefined}>{path}</span>
-    </SingleLineLabel>
+    <span className="block">
+      <span className="block">{name}</span>
+      <span className="block text-text-muted">{path}</span>
+    </span>
   );
-}
-
-function SingleLineLabel({ children }: { children: ReactNode }) {
-  return <span className="block truncate whitespace-nowrap">{children}</span>;
 }
 
 /** `status` carries website onboarding lifecycle. The close action doubles as Cancel for a

@@ -18,6 +18,13 @@ export interface SourceConfigRow {
   sitemap_url: string | null;
   feed_url: string | null;
   listing_url: string | null;
+  // Site-specific boilerplate substrings measured ONCE by the smart model at onboarding
+  // (lib/sources/onboard-source.ts) and stripped programmatically per fetch by fetch-body.ts —
+  // never a model call here. Contract: null or a JSON array of verbatim substrings (each
+  // >= 12 chars, <= 12 of them). Typed `unknown` on purpose: it's a jsonb column, so the value
+  // is narrowed defensively at the point of use (fetch-body.ts's narrowStripPhrases) instead
+  // of trusted here.
+  strip_phrases: unknown;
   status: string; // 'active' | 'failed_validation' | 'stale'
   last_matched_at: string | null;
   last_verified_at: string;
@@ -31,7 +38,7 @@ export async function fetchActiveSourceConfigs(client: SupabaseClient): Promise<
   const { data, error } = await client
     .from("source_configs")
     .select(
-      "id, agent_id, url, domain, language, change_detection, retrieval, prefilter, beat_guidance, sitemap_url, feed_url, listing_url, status, last_matched_at, last_verified_at",
+      "id, agent_id, url, domain, language, change_detection, retrieval, prefilter, beat_guidance, sitemap_url, feed_url, listing_url, strip_phrases, status, last_matched_at, last_verified_at",
     )
     .eq("status", "active");
   if (error) throw error;

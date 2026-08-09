@@ -13,7 +13,12 @@ import type { CorpusPost } from "./extract-guide";
 // everything previously stored for this desk fully intact — there is no delete step to have run
 // first or to run after, so there is no window where a failure can leave the desk with fewer
 // rows than it had before the call.
-export async function accumulateCorpus(agentId: string, posts: CorpusPost[]): Promise<void> {
+export async function accumulateCorpus(
+  agentId: string,
+  xUserId: string,
+  posts: CorpusPost[],
+  sourceCreatedAtByPostId?: ReadonlyMap<string, string>,
+): Promise<void> {
   if (posts.length === 0) {
     // Nothing usable came back from this run's fetch. With deletion off the table, an empty new
     // set is a plain no-op: nothing to add, nothing to refresh, and — per the accumulation
@@ -40,6 +45,7 @@ export async function accumulateCorpus(agentId: string, posts: CorpusPost[]): Pr
   const { error: upsertError } = await admin.from("corpus_posts").upsert(
     posts.map((p) => ({
       agent_id: agentId,
+      x_user_id: xUserId,
       x_post_id: p.id,
       text: p.text,
       posted_at: p.date,
@@ -49,10 +55,115 @@ export async function accumulateCorpus(agentId: string, posts: CorpusPost[]): Pr
       media: p.media ?? [],
       excluded_off_beat: false,
       exclude_reason: null,
+      // A copied corpus retains the source row's acquisition time. Reusing it must not make a
+      // month-old X read look fresh merely because it was copied into another desk today.
+      ...(sourceCreatedAtByPostId?.get(p.id)
+        ? { created_at: sourceCreatedAtByPostId.get(p.id) }
+        : {}),
     })),
     { onConflict: "agent_id,x_post_id" },
   );
   if (upsertError) throw upsertError;
+}
+
+/** How long a stored corpus stays reusable. OWNER DECISION: a reporter's writing voice does not
+ *  meaningfully change month to month, so re-reading the same timeline from X for every
+ *  extraction of the same reporter buys nothing and spends a rate-limited third-party call every
+ *  time — most visibly when one handle (an admin test account, or a reporter with several desks)
+ *  is extracted repeatedly. A month is deliberately conservative against that reasoning. */
+const CORPUS_REUSE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Cap matches lib/x/timeline.ts's MAX_POSTS — a reused corpus must be the same SIZE as a freshly
+ *  read one, or the measured facts (and `inferAccountTier`, which needs to SEE a long post) are
+ *  computed over a different sample than a fresh run would use. */
+const REUSED_CORPUS_LIMIT = 50;
+
+function toCorpusPostRow(row: {
+  x_post_id: string;
+  text: string;
+  posted_at: string;
+  like_count: number;
+  repost_count: number;
+  is_long: boolean;
+  media: unknown;
+}): CorpusPost {
+  return {
+    id: row.x_post_id,
+    date: row.posted_at,
+    text: row.text,
+    likes: row.like_count,
+    reposts: row.repost_count,
+    long: row.is_long,
+    media: Array.isArray(row.media) ? (row.media as CorpusPost["media"]) : [],
+  };
+}
+
+/**
+ * The already-stored corpus for THIS REPORTER, from any desk that has extracted them, when it is
+ * recent enough to stand in for a fresh X read — else null, and the caller reads X as before.
+ *
+ * Keyed by immutable X account id rather than by desk or mutable handle: `corpus_posts` rows
+ * belong to a desk, but the timeline they came from belongs to the reporter, so a second desk on
+ * the same reporter would otherwise re-read a timeline the product already holds. This shares the raw PUBLIC POSTS
+ * only — never a voice guide or rules, which stay per-desk because each desk's beat scopes and
+ * edits them differently (an explicitly rejected earlier idea).
+ *
+ * Freshness is judged by the newest row's `created_at` — when X actually read this corpus, not
+ * when it was copied into another desk. A dormant reporter's corpus therefore ages out and the
+ * next extraction pulls from X rather than reusing indefinitely.
+ *
+ * Best-effort by design: any read failure returns null (read X instead), because a cache miss
+ * must never be able to fail an extraction that would otherwise have worked.
+ */
+export async function findReusableCorpus(
+  xUserId: string,
+  now = Date.now(),
+): Promise<{
+  posts: CorpusPost[];
+  sourceAgentId: string;
+  pulledAt: string;
+  createdAtByPostId: Map<string, string>;
+} | null> {
+  try {
+    const admin = createAdminClient();
+    // The freshest corpus row for this immutable X account identifies BOTH whether a reusable
+    // corpus exists and which desk's rows to read. Picking one desk rather than merging several
+    // keeps the reused corpus identical in shape to what a single X read produces.
+    const { data: newest, error: newestError } = await admin
+      .from("corpus_posts")
+      .select("agent_id, created_at")
+      .eq("x_user_id", xUserId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (newestError) throw newestError;
+    if (!newest) return null;
+    if (now - new Date(newest.created_at).getTime() > CORPUS_REUSE_MAX_AGE_MS) return null;
+
+    const { data: rows, error: rowsError } = await admin
+      .from("corpus_posts")
+      .select("x_post_id, text, posted_at, like_count, repost_count, is_long, media, created_at")
+      .eq("agent_id", newest.agent_id)
+      .eq("x_user_id", xUserId)
+      .order("posted_at", { ascending: false })
+      .limit(REUSED_CORPUS_LIMIT);
+    if (rowsError) throw rowsError;
+
+    const posts = (rows ?? []).map(toCorpusPostRow);
+    // A stored corpus with no usable text is a broken cache, not a saving — a fresh read might
+    // succeed where whatever produced this did not. Mirrors the caller's own empty-corpus guard.
+    if (!posts.some((p) => p.text.trim())) return null;
+
+    return {
+      posts,
+      sourceAgentId: newest.agent_id,
+      pulledAt: newest.created_at,
+      createdAtByPostId: new Map((rows ?? []).map((row) => [row.x_post_id, row.created_at])),
+    };
+  } catch (e) {
+    console.error(`findReusableCorpus: lookup failed for X account ${xUserId}`, e);
+    return null;
+  }
 }
 
 export async function markCorpusExclusions(

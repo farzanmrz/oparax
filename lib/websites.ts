@@ -54,3 +54,35 @@ export function displaySourceUrl(href: string): string {
     .replace(/^www\./i, "")
     .replace(/\/$/, "");
 }
+
+/** The URL a source config ACTUALLY watches, per its detection mechanism — what the Sources
+ *  chip should show under the display name. Before this, only resolver-narrowed listing
+ *  sources ever showed a tracked path; a sitemap- or feed-detected source fell back to the
+ *  typed URL, so a nytimes.com chip labeled "The Athletic" gave no hint of what was really
+ *  being polled (owner report, 2026-08-09). Display-only: falls back to the typed URL, never
+ *  to nothing.
+ *  - any mechanism with a prefilter → that watched domain + path scope
+ *  - listing without one → the resolver-validated section page (`listing_url` IS the poll target)
+ *  - rss/sitemap without one → the typed URL; feed and sitemap XML are plumbing, not
+ *    reader-facing consumer scope */
+export function trackedSourceUrl(config: {
+  url: string;
+  domain: string | null;
+  changeDetection: string | null;
+  listingUrl: string | null;
+  feedUrl: string | null;
+  prefilter: unknown;
+}): string {
+  if (config.domain) {
+    const prefix =
+      typeof config.prefilter === "object" &&
+      config.prefilter !== null &&
+      "pathPrefix" in config.prefilter &&
+      typeof (config.prefilter as { pathPrefix: unknown }).pathPrefix === "string"
+        ? (config.prefilter as { pathPrefix: string }).pathPrefix
+        : null;
+    if (prefix) return `https://${config.domain}${prefix.startsWith("/") ? prefix : `/${prefix}`}`;
+  }
+  if (config.changeDetection === "listing" && config.listingUrl) return config.listingUrl;
+  return config.url;
+}

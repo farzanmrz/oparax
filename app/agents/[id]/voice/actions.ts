@@ -111,6 +111,7 @@ const ALREADY_RUNNING = "An extraction is already running for this agent.";
  * already flushed, far too late to stop the spend.
  */
 export async function startExtraction(deskId: string): Promise<PreflightStepResult> {
+  const requestStartedAtMs = Date.now();
   const owned = await ownedDesk(deskId);
   if ("error" in owned) return { ok: false, gates: [], message: owned.error };
 
@@ -121,7 +122,7 @@ export async function startExtraction(deskId: string): Promise<PreflightStepResu
     return { ok: false, gates: shape.gates, message: ALREADY_RUNNING };
   }
 
-  after(() => runExtractionSpendPhase(deskId, owned.handle, owned.userId));
+  after(() => runExtractionSpendPhase(deskId, owned.handle, owned.userId, requestStartedAtMs));
   return { ok: true, gates: shape.gates, proceed: true };
 }
 
@@ -152,6 +153,7 @@ function outcomeMessage(outcome: ExtractionOutcome): string {
  * first means the re-render sees a "running" row and renders the live progress view instead.
  */
 export async function retryExtraction(deskId: string): Promise<ActionResult> {
+  const requestStartedAtMs = Date.now();
   const owned = await ownedDesk(deskId);
   if ("error" in owned) return { ok: false, error: owned.error };
 
@@ -160,7 +162,7 @@ export async function retryExtraction(deskId: string): Promise<ActionResult> {
 
   if (!(await startRun(deskId))) return { ok: false, error: ALREADY_RUNNING };
 
-  after(() => runExtractionSpendPhase(deskId, owned.handle, owned.userId));
+  after(() => runExtractionSpendPhase(deskId, owned.handle, owned.userId, requestStartedAtMs));
   revalidatePath(`/agents/${deskId}`, "layout");
   return { ok: true };
 }

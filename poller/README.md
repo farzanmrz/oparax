@@ -49,6 +49,7 @@ package:
   teaser as the last resort. `source_configs.retrieval` is an optional operator override
   (`"feed"` / `"none"` / `"unlocker"`) that skips straight to that tier — null (the default)
   runs the full adaptive chain, SERP fallback included.
+  `source_configs.strip_phrases` is an optional, onboarding-measured JSON array of at most 12 non-blank verbatim boilerplate substrings (12–120 characters each). It is narrowed and ordered longest-first at fetch time; stripping itself adds no further global whitespace collapse beyond each extraction tier's normal representation. A configured strip that leaves less than usable article content throws so the item is retried rather than permanently marked seen. `null` is a legacy row awaiting automatic poller-triggered refresh; `[]` means that refresh measured a clean sample.
 - `db.ts` — the poller's own service-role Supabase client; reads `active` `source_configs`
   rows, calls the `record_seen_item` RPC (atomic check-and-mark dedup).
 - `deliver.ts` / `types.ts` — `postDelivery` (adapted from `ingest/src/deliver.ts`'s

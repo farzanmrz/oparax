@@ -124,6 +124,7 @@ export type Database = {
           repost_count: number;
           text: string;
           x_post_id: string;
+          x_user_id: string | null;
         };
         Insert: {
           agent_id: string;
@@ -138,6 +139,7 @@ export type Database = {
           repost_count?: number;
           text: string;
           x_post_id: string;
+          x_user_id?: string | null;
         };
         Update: {
           agent_id?: string;
@@ -152,6 +154,7 @@ export type Database = {
           repost_count?: number;
           text?: string;
           x_post_id?: string;
+          x_user_id?: string | null;
         };
         Relationships: [
           {
@@ -497,6 +500,7 @@ export type Database = {
           sample_size: number | null;
           sitemap_url: string | null;
           status: string;
+          strip_phrases: Json | null;
           updated_at: string;
           url: string;
         };
@@ -523,6 +527,7 @@ export type Database = {
           sample_size?: number | null;
           sitemap_url?: string | null;
           status?: string;
+          strip_phrases?: Json | null;
           updated_at?: string;
           url: string;
         };
@@ -549,6 +554,7 @@ export type Database = {
           sample_size?: number | null;
           sitemap_url?: string | null;
           status?: string;
+          strip_phrases?: Json | null;
           updated_at?: string;
           url?: string;
         };
@@ -1018,7 +1024,17 @@ export type Database = {
           p_retrieval: string;
           p_sample_size: number;
           p_sitemap_url: string;
+          p_strip_phrases?: Json;
           p_url: string;
+        };
+        Returns: string;
+      };
+      refresh_source_strip_phrases: {
+        Args: {
+          p_agent_id: string;
+          p_config_id: string;
+          p_model_call_id: string;
+          p_strip_phrases: Json;
         };
         Returns: string;
       };

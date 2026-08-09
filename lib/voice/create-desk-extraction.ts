@@ -25,13 +25,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeHandle, X_HANDLE_RE } from "@/lib/x/handle";
 import { getXAccount, updateXAccountTier } from "@/lib/x/store";
-import { fetchCorpus } from "./corpus";
-import { accumulateCorpus, markCorpusExclusions } from "./corpus-store";
+import { fetchCorpus, resolveCorpusXUserId } from "./corpus";
+import { accumulateCorpus, findReusableCorpus, markCorpusExclusions } from "./corpus-store";
 import { deployGuide } from "./deploy-guide";
 import {
   EXTRACTION_MODEL,
   type ExtractionStreamSnapshot,
   extractVoiceGuideStreaming,
+  type ScopeExclusion,
   type VoiceExtraction,
 } from "./extract-guide";
 import { serializeExtractionProgress } from "./extraction-progress-reasoning";
@@ -40,6 +41,38 @@ import { materializeRulesFromGuide } from "./rules";
 import { inferAccountTier } from "./tier";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+/** The extraction routes both export `maxDuration = 800` (see EXTRACT_TIMEOUT_MS's comment in
+ *  extract-guide.ts for the measured numbers behind it). The auto-retry below must fit inside
+ *  that platform ceiling or a killed invocation leaves the run row stuck at `running`. */
+const ROUTE_BUDGET_MS = 800_000;
+/** Reserved for the corpus/ledger/rule writes on either side of a retried call — the same ~30s
+ *  EXTRACT_TIMEOUT_MS reserves out of the route budget for the first attempt. */
+const RETRY_BUFFER_MS = 30_000;
+/** Don't retry into a window that cannot survive the tail: the measured clean run is ~200s, and
+ *  a live run was still mid-reasoning at 280s. A floor below that tail can start a retry that
+ *  aborts before its first step completes, bills real money, and writes no model_calls row. */
+const RETRY_FLOOR_MS = 350_000;
+
+/** A stream error rendered for a jsonb/text column or an error message. Errors stringify to
+ *  `{}` under JSON.stringify, so they're taken via message/stack first; gateway error PARTS
+ *  (e.g. the observed `gateway_stream_terminated` object) are plain objects and survive
+ *  stringification with their `code`/`message`/`origin` fields intact. */
+function describeStreamError(err: unknown): string {
+  if (err instanceof Error) return err.stack ?? err.message;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
+/** The transient class the auto-retry targets: the stream died under the call (an `error` part
+ *  arrived, or the run finished as `"error"`) AND no guide text survived. A non-empty guide with
+ *  a late stream hiccup is NOT retried — the expensive output exists; let it proceed. */
+function isTransientStreamDeath(ext: VoiceExtraction): boolean {
+  return !ext.guideRaw.trim() && (ext.streamError !== undefined || ext.finishReason === "error");
+}
 
 /** Every distinct terminal state a caller needs to branch on. The gates and the billable phase
  *  never throw — every failure, including an internal one, comes back as a value. */
@@ -101,6 +134,13 @@ async function insertExtractionModelCall(
         // not merely "the trace is null", which is also true of a call that never
         // reasoned and was this line's original tautology.
         reasoningWithheldByProvider: ext.reasoning == null && (ext.thinkingTokens ?? 0) > 0,
+        // The run's scope decision and stream failure ride on THIS row because it is the one
+        // record a retry can't overwrite: voice_extraction_runs holds a single row per desk
+        // (reopened in place), corpus_posts exclusion flags are reset by the next run's
+        // accumulate, and the run row's progress notes go with them. Lived through 2026-08-09:
+        // "which 3 posts did the failed run set aside, and why?" was unanswerable.
+        scopeExclusion: (ext.scopeExclusion as unknown as Json) ?? null,
+        streamError: ext.streamError !== undefined ? describeStreamError(ext.streamError) : null,
       } as unknown as Json,
       cost_usd: ext.costUsd,
       generation_id: ext.generationId,
@@ -111,6 +151,28 @@ async function insertExtractionModelCall(
     .single();
   if (error) throw error;
   return data.id;
+}
+
+/** A billed extraction attempt has two durable records: its provenance row and its usage event.
+ *  Keep them adjacent so failures cannot be retried past an attempt that was charged but not
+ *  recorded in both ledgers. */
+async function recordExtractionAttempt(
+  admin: AdminClient,
+  ownerId: string,
+  agentId: string,
+  reporterHandle: string,
+  ext: VoiceExtraction,
+): Promise<string> {
+  const modelCallId = await insertExtractionModelCall(admin, ownerId, agentId, ext);
+  const { error } = await admin.from("usage_events").insert({
+    owner_id: ownerId,
+    kind: "voice_extraction",
+    units: 1,
+    cost_usd: ext.costUsd,
+    ref_id: reporterHandle,
+  });
+  if (error) throw error;
+  return modelCallId;
 }
 
 /** Throttles `recordProgress` calls raised by `extractVoiceGuideStreaming`'s stream-event
@@ -222,6 +284,7 @@ export async function runExtractionSpendPhase(
   agentId: string,
   reporterHandle: string,
   ownerId: string,
+  requestStartedAtMs = Date.now(),
 ): Promise<ExtractionOutcome> {
   // WHICH reporter hit a failure is most of the diagnostic value in an error report, and this
   // path typically runs inside `after()` — detached from the request that authenticated it — so
@@ -238,7 +301,7 @@ export async function runExtractionSpendPhase(
         "oparax.handle": reporterHandle,
       },
     },
-    () => runExtractionSpendPhaseInner(agentId, reporterHandle, ownerId),
+    () => runExtractionSpendPhaseInner(agentId, reporterHandle, ownerId, requestStartedAtMs),
   );
 }
 
@@ -249,6 +312,7 @@ async function runExtractionSpendPhaseInner(
   agentId: string,
   reporterHandle: string,
   ownerId: string,
+  requestStartedAtMs: number,
 ): Promise<ExtractionOutcome> {
   try {
     const admin = createAdminClient();
@@ -273,9 +337,28 @@ async function runExtractionSpendPhaseInner(
       .maybeSingle();
     const beat = deskRow?.beat ?? "";
 
-    let corpus: Awaited<ReturnType<typeof fetchCorpus>>;
+    // A corpus this product already holds for this reporter, recent enough to stand in for a
+    // fresh read (see findReusableCorpus). The X timeline read is rate-limited and metered, and
+    // re-reading the same handle teaches the extraction nothing new — so the read happens only
+    // when there is no usable corpus already.
+    let corpus: Awaited<ReturnType<typeof fetchCorpus>>["posts"];
+    let corpusXUserId: string;
+    let reusedCreatedAtByPostId: ReadonlyMap<string, string> | undefined;
+    let reused: Awaited<ReturnType<typeof findReusableCorpus>>;
     try {
-      corpus = await fetchCorpus(reporterHandle, ownerId);
+      corpusXUserId = await resolveCorpusXUserId(reporterHandle);
+      reused = await findReusableCorpus(corpusXUserId);
+      if (reused) {
+        corpus = reused.posts;
+        reusedCreatedAtByPostId = reused.createdAtByPostId;
+        console.log(
+          `runExtractionSpendPhase: reusing ${corpus.length} stored posts for @${reporterHandle} ` +
+            `(pulled ${reused.pulledAt}) — skipping the X timeline read`,
+        );
+      } else {
+        const freshCorpus = await fetchCorpus(reporterHandle, ownerId, corpusXUserId);
+        corpus = freshCorpus.posts;
+      }
     } catch (corpusError) {
       console.error(
         `runExtractionSpendPhase: fetchCorpus failed for @${reporterHandle}`,
@@ -288,6 +371,7 @@ async function runExtractionSpendPhaseInner(
       await finishRun(agentId, { status: "failed", errorCode: "corpus_failed" });
       return { status: "corpus_failed" };
     }
+    Sentry.getActiveSpan()?.setAttribute("oparax.corpus_reused", reused !== null);
     await recordProgress(agentId, {
       stage: "corpus_ready",
       progressNote: `Read ${corpus.length} posts`,
@@ -322,7 +406,7 @@ async function runExtractionSpendPhaseInner(
     // These analysis side-writes happen only after the usable-corpus guard. A failed or empty
     // pull must never wipe a known corpus or overwrite a linked account's tier inference.
     try {
-      await accumulateCorpus(agentId, corpus);
+      await accumulateCorpus(agentId, corpusXUserId, corpus, reusedCreatedAtByPostId);
     } catch (corpusStoreError) {
       console.error(
         `runExtractionSpendPhase: accumulateCorpus failed for @${reporterHandle}`,
@@ -387,44 +471,108 @@ async function runExtractionSpendPhaseInner(
 
     let ext: VoiceExtraction | undefined;
     try {
-      ext = await extractVoiceGuideStreaming(
-        reporterHandle,
-        corpus,
-        beat,
-        throttledStreamProgress(agentId),
-        undefined,
-        async (scope) => {
-          // Both the reporter and Sentry learn what the model set aside and whether the guardrail
-          // let it. An exclusion the guardrail REFUSED is the interesting case after the fact, so
-          // it lands as a span attribute rather than only a progress note that scrolls away.
-          Sentry.getActiveSpan()?.setAttributes({
-            "oparax.scope_excluded": scope.postIds.length,
-            "oparax.scope_applied": scope.applied,
-            "oparax.scope_reason": scope.reason,
-          });
-          await recordProgress(agentId, {
-            progressNote: scope.applied
-              ? `Set aside ${scope.postIds.length} off-beat posts — ${scope.reason}`
-              : `Kept all posts — ${scope.note.slice(0, 120)}`,
-          });
-          if (scope.applied && scope.postIds.length > 0) {
-            try {
-              await markCorpusExclusions(agentId, scope.postIds, scope.reason);
-            } catch (exclusionError) {
-              console.error(
-                `runExtractionSpendPhase: markCorpusExclusions failed for @${reporterHandle}`,
-                exclusionError,
-              );
-              Sentry.captureException(exclusionError, {
-                tags: { stage: "voice_extraction", error_code: "corpus_exclusion_store_failed" },
-                contexts: { extraction: { agentId, handle: reporterHandle } },
-              });
-            }
+      const onScope = async (scope: ScopeExclusion) => {
+        // Both the reporter and Sentry learn what the model set aside and whether the guardrail
+        // let it. An exclusion the guardrail REFUSED is the interesting case after the fact, so
+        // it lands as a span attribute rather than only a progress note that scrolls away.
+        Sentry.getActiveSpan()?.setAttributes({
+          "oparax.scope_excluded": scope.postIds.length,
+          "oparax.scope_applied": scope.applied,
+          "oparax.scope_reason": scope.reason,
+        });
+        await recordProgress(agentId, {
+          progressNote: scope.applied
+            ? `Set aside ${scope.postIds.length} off-beat posts — ${scope.reason}`
+            : `Kept all posts — ${scope.note.slice(0, 120)}`,
+        });
+        if (scope.applied && scope.postIds.length > 0) {
+          try {
+            await markCorpusExclusions(agentId, scope.postIds, scope.reason);
+          } catch (exclusionError) {
+            console.error(
+              `runExtractionSpendPhase: markCorpusExclusions failed for @${reporterHandle}`,
+              exclusionError,
+            );
+            Sentry.captureException(exclusionError, {
+              tags: { stage: "voice_extraction", error_code: "corpus_exclusion_store_failed" },
+              contexts: { extraction: { agentId, handle: reporterHandle } },
+            });
           }
-        },
-      );
+        }
+      };
+      const runExtraction = (timeoutMs?: number) =>
+        extractVoiceGuideStreaming(
+          reporterHandle,
+          corpus,
+          beat,
+          throttledStreamProgress(agentId),
+          undefined,
+          onScope,
+          timeoutMs,
+        );
+      ext = await runExtraction();
+      let modelCallId: string | undefined;
 
-      const modelCallId = await insertExtractionModelCall(admin, ownerId, agentId, ext);
+      // ONE automatic retry for a transient stream death (the 2026-08-09 production case: the
+      // gateway reported `gateway_stream_terminated` — Anthropic's stream cut off mid-generation
+      // — and the reporter was made to click Retry for an infrastructure blip that was nobody's
+      // decision). Guarded three ways: the failure must match the transient class (see
+      // isTransientStreamDeath — a run with real guide text is never re-billed), the dead
+      // attempt's billed call is ledgered FIRST (the model-call rule doesn't care that the money
+      // bought nothing), and the second attempt must fit the route's remaining budget or it
+      // doesn't run — a platform-killed invocation would leave the run row stuck at `running`,
+      // which is strictly worse than an honest failed state with a Retry button.
+      if (isTransientStreamDeath(ext)) {
+        try {
+          modelCallId = await recordExtractionAttempt(admin, ownerId, agentId, reporterHandle, ext);
+        } catch (ledgerError) {
+          console.error(
+            `runExtractionSpendPhase: failed to ledger or meter dead first attempt for @${reporterHandle}`,
+            ledgerError,
+          );
+          throw ledgerError;
+        }
+        Sentry.captureException(
+          ext.streamError instanceof Error
+            ? ext.streamError
+            : new Error(`extraction stream died: ${describeStreamError(ext.streamError)}`),
+          {
+            tags: { stage: "voice_extraction", error_code: "extraction_stream_retried" },
+            contexts: {
+              extraction: {
+                agentId,
+                handle: reporterHandle,
+                costUsd: ext.costUsd ?? null,
+                finishReason: ext.finishReason ?? null,
+              },
+            },
+          },
+        );
+        const remainingMs = ROUTE_BUDGET_MS - RETRY_BUFFER_MS - (Date.now() - requestStartedAtMs);
+        if (remainingMs >= RETRY_FLOOR_MS) {
+          await recordProgress(agentId, {
+            stage: "scoping",
+            progressNote: "The connection to the model dropped — retrying automatically…",
+          });
+          // Re-reset this corpus's exclusion flags before the fresh attempt: the dead attempt's
+          // scope tool may have marked exclusions the retry's model won't re-choose, and
+          // accumulateCorpus's reset-then-reapply contract is exactly the tool for that
+          // (idempotent by design — see its header).
+          try {
+            await accumulateCorpus(agentId, corpusXUserId, corpus, reusedCreatedAtByPostId);
+          } catch (resetError) {
+            console.error(
+              `runExtractionSpendPhase: exclusion reset before retry failed for @${reporterHandle}`,
+              resetError,
+            );
+            throw resetError;
+          }
+          ext = await runExtraction(remainingMs);
+          modelCallId = undefined;
+        }
+      }
+
+      modelCallId ??= await recordExtractionAttempt(admin, ownerId, agentId, reporterHandle, ext);
 
       // An extraction can finish cleanly and produce NOTHING. Observed live once, 2026-07-25: a
       // run returned `finishReason: "stop"`, 9,443 thinking tokens, 7,365 characters of reasoning,
@@ -439,6 +587,13 @@ async function runExtractionSpendPhaseInner(
       // (gen_ai spans carry the output; the run's finishReason and token split land in the ledger
       // row), so the next occurrence will be diagnosable instead of argued about.
       //
+      // A SECOND empty-guide class was caught live 2026-08-09 and is now fully characterized:
+      // `finishReason: "error"` — the stream died under the call ($0.059 billed, reasoning cut
+      // mid-word; the gateway reported `gateway_stream_terminated`, upstream finish never
+      // received). That class is handled ABOVE this check (isTransientStreamDeath → one budgeted
+      // retry), and its error part now persists on the ledger row and rides the throw below as
+      // `cause` — the 07-25 `"stop"` case remains the mystery this comment refuses to name.
+      //
       // Without this check that empty string flowed straight into `deployGuide`, was upserted as
       // a `voice_guides` row, and the run was stamped COMPLETED — leaving a desk that looks
       // extracted, drafts from an empty voice guide, and offers no retry because a guide exists.
@@ -450,27 +605,15 @@ async function runExtractionSpendPhaseInner(
       if (!ext.guideRaw.trim()) {
         throw new Error(
           `extraction produced an empty guide (finishReason ${ext.finishReason ?? "unknown"}, ` +
-            `${ext.thinkingTokens ?? 0} thinking tokens, model_call ${modelCallId})`,
-        );
-      }
-
-      // Meter the extraction call itself (AGENTS.md: every touch point stamps usage_events —
-      // "every model call" included). Best-effort: the call is already paid and its model_calls
-      // row is durable, so a ledger-stamp failure must not fail the extraction. The failure is
-      // INSPECTED rather than caught — supabase-js's builder resolves with `{ data, error }` and
-      // only rejects under `.throwOnError()`, so a try/catch around it would never fire and
-      // unmetered spend would leave no trace at all.
-      const { error: meterError } = await admin.from("usage_events").insert({
-        owner_id: ownerId,
-        kind: "voice_extraction",
-        units: 1,
-        cost_usd: ext.costUsd,
-        ref_id: reporterHandle,
-      });
-      if (meterError) {
-        console.error(
-          `runExtractionSpendPhase: usage_events stamp failed for @${reporterHandle}`,
-          meterError,
+            `${ext.thinkingTokens ?? 0} thinking tokens, model_call ${modelCallId}` +
+            (ext.streamError !== undefined
+              ? `, stream error: ${describeStreamError(ext.streamError)}`
+              : "") +
+            `)`,
+          // The captured stream error rides as `cause` so Sentry's exception chain shows the
+          // provider/gateway failure itself, not only this wrapper — before this, the underlying
+          // error lived exclusively in runtime logs that age out within the hour.
+          ext.streamError !== undefined ? { cause: ext.streamError } : undefined,
         );
       }
 
@@ -543,6 +686,8 @@ async function runExtractionSpendPhaseInner(
             finishReason: ext?.finishReason ?? null,
             guideChars: ext?.guideRaw.length ?? null,
             thinkingTokens: ext?.thinkingTokens ?? null,
+            streamError:
+              ext?.streamError !== undefined ? describeStreamError(ext.streamError) : null,
           },
         },
       });
