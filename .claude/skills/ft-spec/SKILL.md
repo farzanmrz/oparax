@@ -260,9 +260,9 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
   COUNCIL_MODEL="$model" COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
   bash .claude/workflows/council/run.sh cline "critique-$name" \
   2> ".feature/critique-$name.stderr.log"
-status=$?
-printf '%s\n' "$status" > ".feature/critique-$name.exit"
-exit "$status"
+rc=$?   # NOT "status": that name is a read-only builtin in zsh, and the assignment error after the bridge completes records a healthy lane as harness-failed
+printf '%s\n' "$rc" > ".feature/critique-$name.exit"
+exit "$rc"
 ```
 
 (Use `name=minimax` and `model=minimax/minimax-m3` for the second session. The
@@ -305,7 +305,8 @@ section.
   not scope inflation — append one line, inline, no dispatch (you already
   hold the verdict):
   `bash .claude/skills/ft/scripts/cline-lesson.sh "<the pattern, one line>"`.
-  Same file `ft-find` phase 5 writes to; both cline touchpoints share it.
+  Spec is the flow's only cline touchpoint (ft-find dropped its cline lane
+  by owner decision 2026-08-09).
 
 **Scope and terminology discipline:**
 

@@ -31,7 +31,7 @@ Codex) from the start.
 | Internal review lane | `bug-finder` (inherits the session model) |
 | Exploration fan-out | batch independent Agent calls in one response |
 | Design critic (UI slices only) | the session model itself, inline, no dispatch |
-| External council lanes | `codex` + `grok` + `agy` + `cline` (minimax-m3) CLI wrappers |
+| External council lanes | `codex` + `grok` + `agy` CLI wrappers |
 | DB seeding / exploratory Supabase ops | `supabase-runner` (sonnet, its own default) |
 
 ## 1. Setup
@@ -221,47 +221,27 @@ CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" \
 
 ### C. Lane roster
 
-FOUR externals: `codex` (with `COUNCIL_MODEL=gpt-5.6-sol`), `grok`, `agy`,
-and ONE `cline` model lane, `minimax/minimax-m3`, launched via
-`run.sh cline <label>`. Plus the internal `bug-finder` lane. kimi-k3 was cut
-from find by owner decision 2026-08-08: two concurrent cline lanes share one
-local hub daemon with no per-run isolation, and QC rounds 1 and 4 each lost a
-cline lane to that contention — round 1's glm lane and round 4's kimi lane
-both hung/died while their cline sibling completed normally in the same
-window (round 4: #112 finding #19, a 2423s zero-byte hang). Find now runs
-exactly one cline lane, so that contention cannot recur here. This is find-
-specific: ft-spec's critique phase still runs kimi-k3 alongside
-minimax-m3 deliberately (both have returned clean there), so do not port this
-cut to ft-spec — the two skills' cline rosters are allowed to differ.
-Each cline lane gets its own `<label>.in.txt` copy of the shared brief (never
+THREE externals: `codex` (with `COUNCIL_MODEL=gpt-5.6-sol`), `grok`, and
+`agy`. Plus the internal `bug-finder` lane. Cline was cut from find entirely
+by owner decision 2026-08-09: after the daemon-contention hangs (#112 rounds
+1 and 4, including a 2423s zero-byte hang) the roster was already down to one
+lane, and #114 round 1's minimax-m3 then spent 552s and deleted every skill
+file in its isolated worktree despite plan mode — the containment held, but a
+lane that needs worktree isolation and write-detection just to fail safe
+returns too little signal for its risk and babysitting cost. This cut is
+find-specific: ft-spec's critique phase still runs kimi-k3 and minimax-m3
+deliberately (both hold and return clean payloads there), so do not port it
+to ft-spec — the two skills' cline rosters are allowed to differ.
+Grok and agy get their own `<label>.in.txt` copies of the shared brief (never
 codex's, which carries a codex-only subagent addendum).
 
 ### D. Tier and failure rules
 
 * **Tier is family-shaped:** codex and grok take an EFFORT tier, but agy's
   `COUNCIL_TIER` is its model slug (`gemini-3.1-pro-high`): that CLI fuses
-  model and effort. Cline is model-shaped: `plan-cline.sh` clamps
-  `COUNCIL_TIER` to the model's real ladder (minimax is a toggle, not a
-  ladder), so pass `COUNCIL_TIER=high` and let the wrapper clamp.
-* **A stalled or frozen cline lane is now the wrapper's problem, not the
-  skill's:** `plan-cline.sh` runs the CLI under an external watchdog that
-  kills and retries once on a stall producing zero output (free — nothing was
-  spent), or kills and fails without retry once real output exists (it may
-  have spent). Override `COUNCIL_CLINE_STALL_S` / `COUNCIL_CLINE_MAX_S` only
-  to debug; the defaults (600s / 2400s) are set above every lane's measured
-  runtime.
-* **Cline lanes review a working tree a build may still be touching:** when a
-  find round runs while edits are in flight, set `COUNCIL_CLINE_WORKTREE=1`
-  so the lane reads a detached snapshot instead of tripping the
-  write-detection diff on someone else's concurrent edits, or on a plan-mode
-  slip of its own — plan mode is advisory, not enforced, and has been
-  observed to not hold on a live run.
+  model and effort.
 * **Failure conditions:** a failed lane is reported FAILED, never as a clean
-  pass. `AGY_EMPTY` is no-signal, not approval. A `CLINE_FAILED` lane whose
-  `.raw.err` visibly contains a conforming payload is an ENVELOPE failure
-  (Cline cannot schema-constrain output): recover the payload by hand,
-  validate it against the schema, adjudicate the content, and still record
-  the lane as harness-failed. All externals failing =
+  pass. `AGY_EMPTY` is no-signal, not approval. All externals failing =
   single-family review, and the record must say so.
 * **Retry once, fast failures only:** a lane exiting non-zero within ~2 min
   with no output gets exactly ONE relaunch (preserve the first attempt's
@@ -294,14 +274,6 @@ Merge, dedup by file+line, judge every finding:
   the findings comment for the owner to pick. NEVER write an either/or menu
   for a fixer (that pattern is how a fixer once invented a 6,000-char input
   cap on its own).
-* **A cline-attributed wrong drop feeds the lesson file:** when a `cline`
-  finding is dropped or vetoed specifically because it contradicted
-  DESIGN.md, a plan-frozen veto, or a documented repo convention — not
-  merely out of scope — append one line, inline, no
-  dispatch (you already hold the verdict):
-  `bash .claude/skills/ft/scripts/cline-lesson.sh "<the pattern, one line>"`.
-  Skip this for every other drop reason; not every dropped finding is a
-  cline mistake worth recording.
 
 ## 6. Persist: the findings record
 
