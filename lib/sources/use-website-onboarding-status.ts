@@ -18,6 +18,8 @@ export type WebsiteOnboardingEntry = {
   status: string;
   displayName?: string;
   errorCode?: string;
+  trackedUrl?: string;
+  domain?: string;
 };
 
 export function useWebsiteOnboardingStatus(
