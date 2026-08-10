@@ -21,7 +21,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   --jq '.[] | select(.body|startswith("## QC round")) | (.body|split("\n")[0])'
 ```
 
-* **Feature-path staleness:** commits after the latest done marker touching feature paths (`app/`, `lib/`, `components/`, `poller/`, `supabase/`, `public/`, root config) mean the proven state is not the shipping state: STOP and route to a patch round. Meta-only commits (`.claude/`, `.agents/`, `.codex/`, `docs/`, root `*.md`) never trip this.
+* **Feature-path staleness:** commits after the latest done marker touching feature paths (`app/`, `lib/`, `components/`, `poller/`, `ingest/`, `supabase/`, `public/`, root config) mean the proven state is not the shipping state: STOP and route to a patch round. Meta-only commits (`.claude/`, `.agents/`, `.codex/`, `docs/`, root `*.md`) never trip this.
 * **Missing marker:** name it and STOP. **Owner override:** "ship anyway" is honored and recorded.
 
 ## 2. The gate ✋

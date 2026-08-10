@@ -1,27 +1,42 @@
 #!/usr/bin/env bash
-# Transactional feature shipping. Lands ft/<issue> on beta through a temporary
-# detached worktree. A separate --finalize invocation closes the issue and performs
-# conservative old-feature cleanup after the requested promotion has completed.
+# Transactional feature/bugfix shipping. Lands ft/<issue> or bf/<issue> (the
+# prefix is taken from the branch HEAD sits on) onto beta by default, or onto
+# main with --onto main (the bf hotfix path), through a temporary detached
+# worktree. A separate --finalize invocation closes the issue and performs
+# conservative old-branch cleanup after the requested promotion has completed.
 #
 # Usage:
-#   ship.sh <issue-number> "<commit message>"
+#   ship.sh [--onto beta|main] <issue-number> "<commit message>"
 #   ship.sh --finalize <issue-number>
 set -euo pipefail
 
 usage() {
   cat >&2 <<'USAGE'
 usage:
-  ship.sh <issue-number> "<commit message>"
+  ship.sh [--onto beta|main] <issue-number> "<commit message>"
   ship.sh --finalize <issue-number>
 USAGE
   exit 2
 }
 
 finalize="false"
+onto="beta"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --finalize)
       finalize="true"
+      shift
+      ;;
+    --onto)
+      shift
+      onto="${1:-}"
+      case "$onto" in
+        beta | main) ;;
+        *)
+          echo "ship: --onto must be beta or main." >&2
+          exit 2
+          ;;
+      esac
       shift
       ;;
     --)
@@ -53,7 +68,12 @@ case "$issue" in
     exit 2
     ;;
 esac
+# ft/<N> unless HEAD already sits on bf/<N>: the bugfix flow shares these
+# mechanics, and the trailers keep their Feature-* keys for history parsing.
 branch="ft/${issue}"
+if [ "$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)" = "bf/${issue}" ]; then
+  branch="bf/${issue}"
+fi
 
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$repo_root" ] || {
@@ -128,13 +148,13 @@ branch_in_worktree() {
 
 cleanup_old_feature_branches() {
   active_branch="$1"
-  echo "ship: checking older ft/<number> recovery branches conservatively." >&2
+  echo "ship: checking older ft/<number> and bf/<number> recovery branches conservatively." >&2
 
   git fetch --prune origin beta >&2
   candidates="$({
-    git for-each-ref --format='%(refname:short)' refs/heads/ft/
-    git for-each-ref --format='%(refname:short)' refs/remotes/origin/ft/
-  } | sed 's#^origin/##' | grep -E '^ft/[0-9]+$' | sort -u || true)"
+    git for-each-ref --format='%(refname:short)' refs/heads/ft/ refs/heads/bf/
+    git for-each-ref --format='%(refname:short)' refs/remotes/origin/ft/ refs/remotes/origin/bf/
+  } | sed 's#^origin/##' | grep -E '^(ft|bf)/[0-9]+$' | sort -u || true)"
 
   [ -n "$candidates" ] || {
     echo "ship: no older feature recovery branches found." >&2
@@ -158,7 +178,7 @@ cleanup_old_feature_branches() {
       continue
     fi
 
-    candidate_issue="${candidate#ft/}"
+    candidate_issue="${candidate#*/}"
     if ! issue_state="$(gh issue view "$candidate_issue" --json state --jq .state 2>/dev/null)"; then
       echo "ship: skip $candidate (could not verify GitHub issue state)." >&2
       continue
@@ -283,13 +303,13 @@ live_feature="$(remote_ref_sha origin "refs/heads/$branch")" || {
   exit 1
 }
 
-git fetch origin beta >&2
-beta_base="$(git rev-parse refs/remotes/origin/beta)"
+git fetch origin "$onto" >&2
+beta_base="$(git rev-parse "refs/remotes/origin/${onto}")"
 
 # Preview the exact two commits without touching the index, working tree, or a
 # branch ref. A conflict exits before the integration worktree exists.
 if ! git merge-tree --write-tree "$beta_base" "$source_tip" >/dev/null; then
-  show_conflict_report "$beta_base" "$source_tip" "$branch -> beta"
+  show_conflict_report "$beta_base" "$source_tip" "$branch -> $onto"
   exit 1
 fi
 
@@ -317,22 +337,22 @@ git -C "$integration_dir" commit \
   --trailer "Feature-Source-Tip: $source_tip" >&2
 beta_commit="$(git -C "$integration_dir" rev-parse HEAD)"
 
-# The new commit's parent is the fetched beta tip, so this is a normal
+# The new commit's parent is the fetched target tip, so this is a normal
 # fast-forward update. Remote movement is rejected; no force option is used.
-if ! git -C "$integration_dir" push origin "$beta_commit:refs/heads/beta" >&2; then
+if ! git -C "$integration_dir" push origin "$beta_commit:refs/heads/${onto}" >&2; then
   keep_integration="true"
-  echo "ship: origin/beta moved or the push failed. Recovery commit $beta_commit and worktree $integration_dir were kept; the feature branch is also safe on origin." >&2
+  echo "ship: origin/${onto} moved or the push failed. Recovery commit $beta_commit and worktree $integration_dir were kept; the source branch is also safe on origin." >&2
   exit 1
 fi
 
-live_beta="$(remote_ref_sha origin refs/heads/beta)" || {
+live_beta="$(remote_ref_sha origin "refs/heads/${onto}")" || {
   keep_integration="true"
-  echo "ship: beta push returned success but its live ref could not be verified. Recovery worktree kept at $integration_dir." >&2
+  echo "ship: ${onto} push returned success but its live ref could not be verified. Recovery worktree kept at $integration_dir." >&2
   exit 1
 }
 [ "$live_beta" = "$beta_commit" ] || {
   keep_integration="true"
-  echo "ship: live origin/beta ($live_beta) differs from the pushed integration commit ($beta_commit). Recovery worktree kept at $integration_dir." >&2
+  echo "ship: live origin/${onto} ($live_beta) differs from the pushed integration commit ($beta_commit). Recovery worktree kept at $integration_dir." >&2
   exit 1
 }
 
@@ -340,4 +360,4 @@ git worktree remove "$integration_dir" >&2
 integration_dir=""
 trap - EXIT
 
-echo "Shipped $branch -> beta. beta_sha=$beta_commit recovery_tip=$source_tip"
+echo "Shipped $branch -> ${onto}. ${onto}_sha=$beta_commit recovery_tip=$source_tip"

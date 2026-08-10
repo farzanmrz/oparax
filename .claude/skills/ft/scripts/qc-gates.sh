@@ -36,16 +36,17 @@ fi
 
 # Skill mirror gate: every real skill under .claude/skills/ must be symlinked
 # from .agents/skills/ so non-Claude harnesses see it — with deliberate
-# exceptions on both sides (ft-gate/ft-judge are Claude-only; ft-build/
-# ft-spec/ft-qc/ft-fix plus the x-* helpers are Codex-only real files).
+# exceptions on both sides (ft-gate/ft-judge/bf-plan/bf-adj/bf-judge are
+# Claude-only; ft-build/ft-spec/ft-qc/ft-fix plus bf-fix/bf-qc and the x-*
+# helpers are Codex-only real files).
 # Only directories containing SKILL.md count as skills; a scripts-only dir is
 # not one. Do NOT "fix" a listed exception by symlinking it.
 echo "GATE mirror: running..."
 # Deliberately unsymlinked. CLAUDE_ONLY: real files under .claude/skills only.
 # AGENTS_ONLY: real files under .agents/skills only — the Codex-only flow
 # steps, plus the x-* Codex outreach helper skills.
-CLAUDE_ONLY="ft-gate ft-judge"
-AGENTS_ONLY="ft-build ft-spec ft-qc ft-fix x-check x-dm x-recheck x-stat"
+CLAUDE_ONLY="ft-gate ft-judge bf-plan bf-adj bf-judge"
+AGENTS_ONLY="ft-build ft-spec ft-qc ft-fix bf-fix bf-qc x-check x-dm x-recheck x-stat"
 mirror_fail=""
 for d in .claude/skills/*/; do
   s="$(basename "$d")"
