@@ -12,7 +12,7 @@ model: inherit
 
 # Build: execute the spec, prove your own work
 
-Session dial: `gpt-5.6-sol` high. Source of tasks: the `ft/<N>` issue body
+Recommended dial: `gpt-5.6-sol` high (advisory, never a gate). Source of tasks: the `ft/<N>` issue body
 (the gate-approved decisions) plus `.feature/spec-<N>.md` for the full
 detail. No issue = small-build mode: the user's direct instruction is the
 plan, one branch, no scope creep. Zero prose during execution; the only

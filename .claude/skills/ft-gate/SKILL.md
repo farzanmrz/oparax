@@ -4,8 +4,9 @@ description: >-
   Phase 3 of the feature flow, CLAUDE CODE ONLY: judge the Codex-authored
   spec and present it to the owner for approval; on yes, freeze the spec and
   cut ft/N. Use when the user says /ft-gate N after /ft-spec finished in
-  Codex. Session model per the spec's handoff line: Fable 5 when the spec
-  carries UNSURE flags, Opus 4.8 otherwise.
+  Codex. Recommended model per the spec's handoff line (Fable 5 when the
+  spec carries UNSURE flags, Opus 4.8 otherwise); advisory, never a gate:
+  an owner invocation runs on the session's current model.
 argument-hint: "[issue #]"
 allowed-tools: Bash(git *) Bash(gh *)
 model: inherit

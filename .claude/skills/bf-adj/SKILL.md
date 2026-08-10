@@ -1,17 +1,23 @@
 ---
 name: bf-adj
 description: >-
-  Phase 2 of the bugfix flow, deep tier only, CLAUDE CODE ONLY on Fable 5:
+  Phase 2 of the bugfix flow, deep tier only, CLAUDE CODE ONLY, Fable 5
+  recommended:
   cold-adjudicate the /bf-plan brief against its own read and both
   critiques, present the plain-language screen, and on yes write the issue
   and cut bf/N. Use when the user says /bf-adj N after a deep-tier /bf-plan.
-  Always a FRESH session: never run inside the planning conversation.
+  A fresh session on Fable 5 is the recommendation, never a gate: an owner
+  invocation runs wherever it is made.
 argument-hint: "[issue #]"
 allowed-tools: Bash(git *) Bash(gh *)
 model: inherit
 ---
 
 # Adjudicate cold: own verdict first, then the critiques
+
+Session (advisory): a fresh session keeps the read cold. Invoked inside
+the planning conversation, run anyway and note in one line that the read
+is warm; never refuse or delay.
 
 Inputs: `.feature/bf-<N>-brief.md`, the issue,
 `.feature/bf-<N>-critique-grok.out.json`,

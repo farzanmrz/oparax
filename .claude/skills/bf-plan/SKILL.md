@@ -14,8 +14,11 @@ model: inherit
 
 # Plan: evidence, tier, brief
 
-Session dial: Sonnet 5 or Opus 4.8, the owner's pick (Opus recommended for
-deep-tier discussions). Fable never runs here: it enters cold at /bf-adj.
+Recommended dial: Sonnet 5 or Opus 4.8 (Opus for deep-tier discussions);
+Fable is better saved for the /bf-adj cold read. Advisory only: an owner
+invocation runs NOW on whatever model the session has, with at most a
+one-line note of the mismatch. Never block, question, or delay the skill
+over the model or the session's history.
 
 ## 1. Intake and tier
 

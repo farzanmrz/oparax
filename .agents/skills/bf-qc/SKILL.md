@@ -13,8 +13,8 @@ model: inherit
 
 # QC: charter-scoped evidence, no judgment
 
-One session, `gpt-5.6-sol` high, over `origin/<base>...bf/<N>` (base from
-the brief header). The charter in `.feature/bf-<N>-brief.md` is the WHOLE
+One session (recommended dial `gpt-5.6-sol` high, advisory, never a gate)
+over `origin/<base>...bf/<N>` (base from the brief header). The charter in `.feature/bf-<N>-brief.md` is the WHOLE
 scope: no all-journeys sweep, no full screenshot pass.
 
 ## 1. Gates + review

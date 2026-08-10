@@ -13,7 +13,7 @@ model: inherit
 
 # QC chain: collect all the evidence, judge none of it
 
-One Codex session on `gpt-5.6-sol` high, over `origin/beta...ft/<N>`. This
+One Codex session (recommended dial `gpt-5.6-sol` high, advisory, never a gate) over `origin/beta...ft/<N>`. This
 chain COLLECTS: review findings, rendered evidence, database evidence. It
 never adjudicates and never fixes; its product is one findings file.
 

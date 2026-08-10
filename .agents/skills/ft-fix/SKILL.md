@@ -13,7 +13,7 @@ model: inherit
 
 # Fix: execute the briefs, prove it, one marker
 
-Session dial: `gpt-5.6-sol` high. The briefs decided everything; this
+Recommended dial: `gpt-5.6-sol` high (advisory, never a gate). The briefs decided everything; this
 session executes. Nothing decision-shaped should be here: if a brief's fix
 shape does not survive contact with the file, STOP and report that brief,
 never invent a value or behavior (a fixer once invented a 6,000-char input

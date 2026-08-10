@@ -15,8 +15,9 @@ model: inherit
 
 The conversation IS the planning. This skill only closes it: park each
 converged user-facing functionality as one stub issue, then hand off.
-Session model: Opus 4.8 by default (plan output is small; what matters is
-pushback quality on the owner's thinking, not tokens).
+Recommended model: Opus 4.8 (plan output is small; what matters is
+pushback quality on the owner's thinking, not tokens). Advisory, never a
+gate: an owner invocation runs on the session's current model.
 
 ## 1. Match against what exists
 

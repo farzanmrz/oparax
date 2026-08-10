@@ -1,10 +1,12 @@
 ---
 name: bf-judge
 description: >-
-  Phase 5 of the bugfix flow, deep tier only, CLAUDE CODE ONLY on Fable 5:
-  adjudicate the /bf-qc findings, hunt what the lanes missed, then write
-  fix briefs for /bf-fix or clear the round. Use when the user says
-  /bf-judge N after /bf-qc finished in Codex. Fresh session, cold read.
+  Phase 5 of the bugfix flow, deep tier only, CLAUDE CODE ONLY: adjudicate
+  the /bf-qc findings, hunt what the lanes missed, then write fix briefs
+  for /bf-fix or clear the round. Use when the user says /bf-judge N after
+  /bf-qc finished in Codex. Fable 5 in a fresh session is the
+  recommendation, never a gate: an owner invocation runs wherever it is
+  made.
 argument-hint: "[issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit

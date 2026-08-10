@@ -32,7 +32,10 @@ participant changes.** Fable judges (gate, judge); Codex authors and labors
 | 9 Ship | `/ft-ship N` | either | squash to beta, promote; OWNER closes the issue after checking production |
 
 Every handoff is a copyable command in the previous phase's exit message;
-models are recommendations in those handoffs, never enforced by guards.
+models are recommendations in those handoffs, never enforced by guards. A
+skill the owner invokes runs immediately on the current session, whatever
+its model or history: a mismatch earns one advisory line, never a refusal
+or a stall. This binds every ft and bf phase skill.
 
 ## Resume detection (on /ft)
 

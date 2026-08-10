@@ -13,8 +13,9 @@ model: inherit
 # Fix: execute, re-prove the broken path, one marker
 
 Read `tier:` and `base:` from `.feature/bf-<N>-brief.md` (never infer them).
-Session dial by tier: quick and small on `gpt-5.6-terra` high, deep on
-`gpt-5.6-sol` high. Diff range: `origin/<base>...HEAD`.
+Recommended dial by tier: quick and small on `gpt-5.6-terra` high, deep on
+`gpt-5.6-sol` high (advisory, never a gate). Diff range:
+`origin/<base>...HEAD`.
 
 ## 1. Apply
 

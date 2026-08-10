@@ -16,7 +16,7 @@ model: inherit
 
 Author the spec that lets build execute without designing. The spec is
 DECISION-COMPLETE, not code-complete: decisions, contracts, and journeys,
-with near-code only where a contract is genuinely tricky. Session dial:
+with near-code only where a contract is genuinely tricky. Recommended dial (advisory, never a gate):
 `gpt-5.6-sol` high. Seed from the stub issue in `$ARGUMENTS` (title, bullets,
 journeys, `Decided` binding, `Notes` dossier).
 
