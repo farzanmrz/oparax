@@ -1,7 +1,7 @@
 ---
 name: ft-judge
 description: >-
-  Phase 5 of the feature flow, CLAUDE CODE ONLY, Fable 5 high: adjudicate
+  Phase 6 of the feature flow, CLAUDE CODE ONLY, Fable 5 high: adjudicate
   the QC chain's findings, then hunt the gaps the lanes missed, then write
   the fix briefs for /ft-fix (Codex). Use when the user says /ft-judge N
   after /ft-qc finished in Codex. This is one of exactly two places the

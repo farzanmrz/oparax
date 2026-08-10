@@ -22,7 +22,7 @@ participant changes.** Fable judges (gate, judge); Codex authors and labors
 | Phase | Skill | App, dial | Product |
 |---|---|---|---|
 | 1 Plan | `/ft-plan` | Claude, Opus 4.8 | stub issue: journeys, decisions, dossier |
-| 2 Spec | `/ft-spec N` | Codex, sol high | `.feature/spec-N.md` + grok critique |
+| 2 Spec | `/ft-spec N` | Codex, sol high | `.feature/spec-<N>.md` + grok critique |
 | 3 Gate | `/ft-gate N` | Claude, Fable if UNSURE flags else Opus | approved decisions on issue, `ft/N` cut |
 | 4 Build | `/ft-build N` | Codex, sol high | implemented + self-verified branch |
 | 5 QC | `/ft-qc` | Codex, sol high | `.feature/qc-r<R>-findings.md` |
@@ -48,7 +48,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 | State | Next |
 |---|---|
 | stub only, no branch | `/ft-spec N` (Codex) |
-| `.feature/spec-N.md` exists, no branch | `/ft-gate N` (Claude) |
+| `.feature/spec-<N>.md` exists, no branch | `/ft-gate N` (Claude) |
 | branch cut, no build commits | `/ft-build N` (Codex) |
 | build commits, no `.feature/qc-r*-findings.md` and no done marker | `/ft-qc` (Codex) |
 | findings file, no briefs file | `/ft-judge N` (Claude) |

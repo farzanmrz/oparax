@@ -36,8 +36,8 @@ fi
 
 # Skill mirror gate: every real skill under .claude/skills/ must be symlinked
 # from .agents/skills/ so non-Claude harnesses see it — with deliberate
-# exceptions on both sides (ft-spec is Claude-Code-only and unsymlinked;
-# ft-build/ft-browse/ft-fix are Codex-only real files with no .claude side).
+# exceptions on both sides (ft-gate/ft-judge are Claude-only; ft-build/
+# ft-spec/ft-qc/ft-fix plus the x-* helpers are Codex-only real files).
 # Only directories containing SKILL.md count as skills; a scripts-only dir is
 # not one. Do NOT "fix" a listed exception by symlinking it.
 echo "GATE mirror: running..."

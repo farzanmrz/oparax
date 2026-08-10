@@ -1,14 +1,13 @@
 ---
 name: ft-build
 description: >-
-  Phase 3 of the feature flow, CODEX ONLY: execute the approved spec from
+  Phase 4 of the feature flow, CODEX ONLY: execute the approved spec from
   the ft/N issue inline; the spec decided, build implements and self-checks.
   Use when the user says /ft-build, "build the plan", "implement the
   tasks", or "just build X" mid-flight on a feature branch.
 argument-hint: "[issue# | what to build]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *)
 model: inherit
-effort: medium
 ---
 
 # Build: execute the spec, prove your own work

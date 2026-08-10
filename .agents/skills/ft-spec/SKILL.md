@@ -1,7 +1,7 @@
 ---
 name: ft-spec
 description: >-
-  Phase 1 of the feature flow: author the decision-complete spec for a stub
+  Phase 2 of the feature flow: author the decision-complete spec for a stub
   issue. CODEX ONLY (real file under `.agents/skills/`; the gate that judges
   this spec runs in Claude Code as /ft-gate). Use when the user says
   /ft-spec N, "spec this out", or "plan this feature" for a stubbed

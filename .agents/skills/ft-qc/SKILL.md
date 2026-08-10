@@ -1,7 +1,7 @@
 ---
 name: ft-qc
 description: >-
-  Phase 4 of the feature flow, CODEX ONLY: the QC chain over the current ft
+  Phase 5 of the feature flow, CODEX ONLY: the QC chain over the current ft
   branch in ONE session: gates, deep review plus the grok lane, scripted
   journey browse with the built-in browser, DB assertions before teardown,
   then a deduped findings file for /ft-judge (Claude Code). Use when the
@@ -19,9 +19,14 @@ never adjudicates and never fixes; its product is one findings file.
 
 **First-use check (once, then delete this line's ceremony):** before the
 first round ever run from Codex, prove the grok wrapper launches from this
-harness: `bash .claude/workflows/council/selftest.sh --if-changed`. If the
-lane cannot launch here, the fallback is the owner pointing their own grok
-session at the findings file; report which path ran.
+harness:
+
+```bash
+bash .claude/workflows/council/selftest.sh --if-changed grok
+```
+
+If the lane cannot launch here, the fallback is the owner pointing their own
+grok session at the findings file; report which path ran.
 
 ## 1. Gates + review
 
@@ -31,7 +36,12 @@ bash .claude/skills/ft/scripts/qc-gates.sh
 
 `GATES: RED` = STOP. Then, in parallel:
 
-* **Grok lane, background:** brief to `.feature/review-r<R>-grok.in.txt` (diff range, acceptance criteria from the issue, distilled guards read from the touched code, the frame-attack line: "name a real input or condition this feature now faces that no code path handles"), launched via `run.sh grok <label>`.
+* **Grok lane, background:** brief to `.feature/review-r<R>-grok.in.txt` (diff range, acceptance criteria from the issue, distilled guards read from the touched code, the frame-attack line: "name a real input or condition this feature now faces that no code path handles"), then launch:
+
+```bash
+CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
+  bash .claude/workflows/council/run.sh grok review-r<R>-grok
+```
 * **Native deep review, this session:** spawn `pr-explorer` to map and evidence the changed code paths, then `reviewer` judges requirement by requirement against that evidence. Charter: correctness, cross-file contract breaks, acceptance criteria, the spec's input-space dispositions (a claimed-handled class with no code path is a top finding), security (authz, injection, secrets, trust boundaries), races, error paths, AND needless complexity, duplication, or missed reuse (simplification findings are findings). Undiffed code is in scope where the change composes with it.
 
 ## 2. Journey browse (built-in browser)

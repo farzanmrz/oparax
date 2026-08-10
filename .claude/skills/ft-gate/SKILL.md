@@ -1,7 +1,7 @@
 ---
 name: ft-gate
 description: >-
-  Phase 2 of the feature flow, CLAUDE CODE ONLY: judge the Codex-authored
+  Phase 3 of the feature flow, CLAUDE CODE ONLY: judge the Codex-authored
   spec and present it to the owner for approval; on yes, freeze the spec and
   cut ft/N. Use when the user says /ft-gate N after /ft-spec finished in
   Codex. Session model per the spec's handoff line: Fable 5 when the spec
@@ -13,9 +13,15 @@ model: inherit
 
 # Gate: judge the spec, ask the owner only what needs the owner
 
-Inputs: the stub issue `<N>`, `.feature/spec-<N>.md`, `.feature/critique-grok.out.json`
-(relaunch the grok lane via `run.sh grok critique-grok` if the file is missing
-or the lane died; a dead lane is reported, never silently skipped).
+Inputs: the stub issue `<N>`, `.feature/spec-<N>.md`, `.feature/critique-grok.out.json`.
+If the critique file is missing or the lane died, relaunch it (a dead lane is
+reported, never silently skipped):
+
+```bash
+CLAUDE_PROJECT_DIR="$PWD" COUNCIL_SCRATCH="$PWD/.feature" COUNCIL_TIER=high \
+  COUNCIL_DEPTH=deep COUNCIL_SCHEMA="$PWD/.claude/workflows/plan-critique-schema.json" \
+  bash .claude/workflows/council/run.sh grok critique-grok
+```
 
 ## 1. Judge (depth scales with the decision list)
 

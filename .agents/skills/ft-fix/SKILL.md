@@ -1,7 +1,7 @@
 ---
 name: ft-fix
 description: >-
-  Phase 6 of the feature flow, CODEX ONLY: execute the adjudicated fix
+  Phase 7 of the feature flow, CODEX ONLY: execute the adjudicated fix
   briefs from /ft-judge, re-prove the branch, post the round's one marker.
   Also the home of PATCH ROUNDS: owner-reported findings from the localhost
   walkthrough, applied fast with a small report. Use /ft-fix after

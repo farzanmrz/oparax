@@ -1,7 +1,7 @@
 ---
 name: ft-ship
 description: >-
-  Phase 7 of the feature flow, standalone: the ship gate. Use when the user
+  Phase 9 of the feature flow, standalone: the ship gate. Use when the user
   says /ft-ship, "ship it", or "close the slice" on a finished branch.
   Harness-neutral: runs in Claude Code or Codex. Ship does NOT close the
   issue; the owner closes it after their production check.
