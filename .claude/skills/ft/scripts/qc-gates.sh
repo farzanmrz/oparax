@@ -44,8 +44,8 @@ echo "GATE mirror: running..."
 # Deliberately unsymlinked. CLAUDE_ONLY: real files under .claude/skills only.
 # AGENTS_ONLY: real files under .agents/skills only — the Codex-only flow
 # steps, plus the x-* Codex outreach helper skills.
-CLAUDE_ONLY="ft-spec"
-AGENTS_ONLY="ft-build ft-browse ft-fix x-check x-dm x-recheck x-stat"
+CLAUDE_ONLY="ft-gate ft-judge"
+AGENTS_ONLY="ft-build ft-spec ft-qc ft-fix x-check x-dm x-recheck x-stat"
 mirror_fail=""
 for d in .claude/skills/*/; do
   s="$(basename "$d")"

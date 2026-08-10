@@ -11,11 +11,11 @@ in `scripts/search.py` is generated from the files that exist, so an
 unavailable choice is rejected by argparse rather than failing later as "File
 not found".
 
-* **Not invoked directly:** `ft-find`'s design critic (this skill's one
-  live caller) calls the script by path.
+* **Not invoked directly:** QC's screenshot judgment (`ft-qc` phase 2, its
+  one live caller) calls the script by path when it needs a citable rule.
 * **A source of rules to cite, not an aesthetic authority:** the binding
-  yardstick for any UI review in this repo is the plan's own stated design
-  intent plus the repo's UI copy rules (see `ft-find`'s design critic).
+  yardstick for any UI review in this repo is the spec's own stated design
+  intent plus root `DESIGN.md`.
 * **`--design-system` is inert; don't reach for it.** The design-generation
   corpus (fonts, colors, typography, styles, products, icons, charts, landing
   CSVs) and the non-target stacks were deleted: plans here align to the
