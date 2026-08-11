@@ -45,13 +45,13 @@ When the example and the modal input take different paths, the stub carries BOTH
 * **Show parts 1-4 in full** (title, bullets, table, journeys, Decided) and wait for the owner's yes. Never create silently.
 * **The Notes dossier is NOT surfaced in chat:** machine-facing; the owner sees one summary line. The full dossier goes into the issue body for the spec session.
 * **New UI needing real design exploration:** the stub marks an explicit owner step, "design in Claude Design first"; the exported result feeds the spec. Never explore design silently inside the flow.
-* **Surfaces are evidence-bound:** bullets and journeys name only surfaces walkable in the running app today; a planned surface (not yet built) is tagged explicitly "future, depends on #N". `@AGENTS.md`'s product prose is direction, never evidence a surface exists — verify against the running app before naming it.
+* **Surfaces are evidence-bound:** bullets and journeys name only surfaces that exist in the app's code today; a planned surface (not yet built) is tagged explicitly "future, depends on #N". `@AGENTS.md`'s product prose is direction, never evidence a surface exists — verify against the code before naming it.
 
 Stub body, five parts, never a prose paragraph:
 
 1. **Functionality bullets** (no header): one per implementable piece, `**bold key:** plain content`, owner's words.
 2. **Today / After this table**: the delta at a glance.
-3. **`## Acceptance journeys`**: one bullet per journey, REAL input (modal and laziest first) `→` observable outcome, tagged `QC-LIVE` (provable by QC driving the app) or `OWNER` (real accounts, money, taste). These become the spec's walkthrough and QC's browse script.
+3. **`## Acceptance journeys`**: one bullet per journey, REAL input (modal and laziest first) `→` observable outcome, tagged `QC-LIVE` (provable headlessly: harness fixtures, direct requests to real routes, DB assertions) or `OWNER` (anything only eyes on the rendered app can judge, plus real accounts, money, taste). QC never opens a browser; these become the spec's walkthrough and QC's journey-evidence scope.
 4. **`## Decided`**: decisions the owner locked while talking; binding on the spec.
 5. **`## Notes`**: the spec dossier, opening with the italic machine-facing line. Everything the spec session needs to reconstruct this conversation: diagnosis narrative with `file:line` and live-probe evidence, exact real-world data (URLs, status codes, DB rows, error copy), settled user-behavior assumptions, rejected interpretations. Thin notes are a stub defect. Unbounded length; the owner never reads it.
 

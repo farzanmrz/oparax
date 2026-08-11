@@ -15,6 +15,10 @@ model: inherit
 
 # Adjudicate cold: own verdict first, then the critiques
 
+Price approval-to-ship against 30 minutes of process wall-clock: strip
+redundant proof and ceremony from the charter you approve — never the
+remedy or its coverage.
+
 Session (advisory): a fresh session keeps the read cold. Invoked inside
 the planning conversation, run anyway and note in one line that the read
 is warm; never refuse or delay.
@@ -69,10 +73,8 @@ Then STOP:
 
 <exit-example>
 
-Issue #N approved, `bf/N` cut. Now switch to Codex on gpt-5.6-sol high and run:
-
-```
-/bf-fix N
-```
+Issue #N approved, `bf/N` cut. Fix dispatched to Codex via `codex-rescue`
+(cheap wrapper; Codex runs this repo's pinned sol high) — I'll report when
+its round marker lands. Manual fallback: run `/bf-fix N` in Codex.
 
 </exit-example>

@@ -26,6 +26,14 @@ export const QWEN_DRAFT_PROVIDER_OPTIONS = { gateway: { sort: "cost" } };
  *  can outrun the route's budget in aggregate — that predates the uncapped output and is
  *  unchanged here. */
 export const QWEN_DRAFT_TIMEOUT_MS = 120_000;
+export const QWEN_FILTER_TIMEOUT_MS = 30_000;
+export const QWEN_SYNTHESIZE_TIMEOUT_MS = 120_000;
+
+/** Bounds each stage by both its own stuck-call guard and the enclosing route deadline. */
+export function qwenStageAbortSignal(timeoutMs: number, deadlineAt?: number): AbortSignal {
+  const remaining = deadlineAt === undefined ? timeoutMs : Math.max(1, deadlineAt - Date.now());
+  return AbortSignal.timeout(Math.min(timeoutMs, remaining));
+}
 
 /** X renders no markdown, so a stray `**bold**` posts with literal asterisks. Model prompts
  * forbid it, but this deterministic backstop keeps stored text postable. */

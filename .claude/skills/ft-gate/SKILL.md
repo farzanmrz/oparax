@@ -41,7 +41,19 @@ The owner gates PRODUCT; this session gates technical. Surface, in this order:
 
 No file paths, no identifiers, no technical prose on this screen.
 
-## 3. Close on yes
+## 3. Price the pipeline against the 30-minute budget
+
+Before composing the gate file: price what the spec hands downstream —
+build steps, commissioned tooling, proof runs, QC journey evidence — 
+against the doctrine's 30-minute gate-to-ship budget. Strip process fat
+here, in the approved decisions: collapse redundant journeys that re-prove
+one mechanism, bound proof runs to one parallelized execution, delete
+gold-plating (extra baselines, exporters, ceremony) the functionality does
+not need. NEVER cut product: every stub functionality and journey outcome
+ships in totality; only the process that proves it gets cheaper. Record
+each strip as a one-liner in the adjudication list.
+
+## 4. Close on yes
 
 Compose `.feature/gate-<N>.md`: the stub body + an appended `## Approved decisions` section (product decisions, input-space table, walkthrough, adjudication one-liners). Then:
 
@@ -50,14 +62,16 @@ bash .claude/skills/ft/scripts/start.sh --issue <N> .feature/gate-<N>.md
 ```
 
 The script puts the composed body on the issue and lands on `ft/<N>`
-(adoption-aware; its resolution is the contract). Then STOP with the handoff:
+(adoption-aware; its resolution is the contract). Then dispatch the build
+to Codex via the `codex-rescue` subagent in the background — wrapper
+pinned to a cheap model (`sonnet`); the Codex runtime runs this repo's
+pinned sol high, so no Fable tokens are spent on the labor. The dispatch
+prompt is exactly `/ft-build <N>`. When the build returns, continue in
+THIS session with `/ft-qc <N>`. Manual fallback if dispatch is
+unavailable:
 
 <exit-example>
 
-Issue #118 approved, `ft/118` cut. Now switch to Codex on gpt-5.6-sol high and run:
-
-```
-/ft-build 118
-```
+Issue #118 approved, `ft/118` cut; build dispatched to Codex. I'll run QC here when it returns. (Fallback: run `/ft-build 118` in Codex yourself, then `/ft-qc 118` here.)
 
 </exit-example>

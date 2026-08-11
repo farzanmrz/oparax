@@ -218,8 +218,10 @@ export type Database = {
           judge_review: Json | null;
           judge_verdict: Json | null;
           model_call_id: string;
+          news_points: Json | null;
           news_synthesis: string | null;
           news_title: string | null;
+          on_beat_reason: string | null;
           parent_draft_id: string | null;
           platform: string;
           posted_at: string | null;
@@ -239,8 +241,10 @@ export type Database = {
           judge_review?: Json | null;
           judge_verdict?: Json | null;
           model_call_id: string;
+          news_points?: Json | null;
           news_synthesis?: string | null;
           news_title?: string | null;
+          on_beat_reason?: string | null;
           parent_draft_id?: string | null;
           platform?: string;
           posted_at?: string | null;
@@ -260,8 +264,10 @@ export type Database = {
           judge_review?: Json | null;
           judge_verdict?: Json | null;
           model_call_id?: string;
+          news_points?: Json | null;
           news_synthesis?: string | null;
           news_title?: string | null;
+          on_beat_reason?: string | null;
           parent_draft_id?: string | null;
           platform?: string;
           posted_at?: string | null;
@@ -503,6 +509,7 @@ export type Database = {
           external_id: string | null;
           id: string;
           lang: string | null;
+          publisher_claim_kind: Database["public"]["Enums"]["publisher_claim_kind"];
           posted_at: string | null;
           raw: Json | null;
           source: string;
@@ -518,6 +525,7 @@ export type Database = {
           external_id?: string | null;
           id?: string;
           lang?: string | null;
+          publisher_claim_kind?: Database["public"]["Enums"]["publisher_claim_kind"];
           posted_at?: string | null;
           raw?: Json | null;
           source?: string;
@@ -533,6 +541,7 @@ export type Database = {
           external_id?: string | null;
           id?: string;
           lang?: string | null;
+          publisher_claim_kind?: Database["public"]["Enums"]["publisher_claim_kind"];
           posted_at?: string | null;
           raw?: Json | null;
           source?: string;
@@ -965,8 +974,10 @@ export type Database = {
           p_agent_id: string;
           p_claim_token: string;
           p_model_call_id: string;
+          p_news_points: Json;
           p_news_synthesis: string;
           p_news_title: string;
+          p_on_beat_reason: string;
           p_platform: string;
           p_source_post_id: string;
           p_story_id: string;
@@ -1020,7 +1031,11 @@ export type Database = {
       };
     };
     Enums: {
-      [_ in never]: never;
+      publisher_claim_kind:
+        | "official"
+        | "insider-sourced"
+        | "outlet-characterization"
+        | "aggregator";
     };
     CompositeTypes: {
       [_ in never]: never;

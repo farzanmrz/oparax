@@ -24,7 +24,7 @@ journeys, `Decided` binding, `Notes` dossier).
 
 * **In code:** read the files the slice touches or interfaces with (signatures, exported types, route shapes). Mention paths explicitly; flag missing information instead of guessing.
 * **In reality:** when the slice depends on anything outside the repo (third-party sites, external APIs, live data shapes), probe the real thing NOW: fetch the actual domains the journeys name, hit the actual endpoints, read the actual DB rows. Record status codes and payload shapes in `.feature/probes.md`. A spec written against imagined external behavior is ungrounded no matter how well it cites the repo.
-* **Surfaces are evidence-bound:** verify every surface the stub names against code AND a live route on `localhost:3000`; a stub-named surface with no walkable path is flagged back to the owner in the decision list, never specced around or silently expanded.
+* **Surfaces are evidence-bound:** verify every surface the stub names against the code (the route, page, or component exists in the tree today — no browser probing); a stub-named surface with no code path is flagged back to the owner in the decision list, never specced around or silently expanded.
 * **Skills by path (mechanical, no judgment):** consult every row the slice's touched paths match, then record one audit line in the decision list: "skills consulted: ...". The gate checks this line against the diff paths.
 
 | Slice touches | Consult |
@@ -37,15 +37,17 @@ journeys, `Decided` binding, `Notes` dossier).
 
 ## 2. Write the spec (local files, not the issue)
 
-Write to `.feature/spec-<N>.md`. The issue gets nothing yet; the gate posts
-the approved summary later. Required sections:
+Write to `.feature/spec-<N>.md`, section by section as you go — a killed
+session resumes from the last completed section, never from scratch. The
+issue gets nothing yet; the gate posts the approved summary later.
+Required sections:
 
 * **Product decisions**, plain language: what a user experiences, per state and per failure, including exact user-facing copy for graceful failures.
 * **Technical decisions**: one line each with its why; mark every low-confidence decision with `UNSURE:` and what would settle it. This list is what the gate reviews.
 * **Input space**: every class of input each user-facing entry point admits, each dispositioned: handled (mechanism named), graceful failure (copy + recovery step), or out of scope (the owner acknowledges at the gate). A silently hard-failing class is a spec defect. The modal input is the PRIMARY acceptance case. Worked derivations: `references/input-space-examples.md`.
 * **Acceptance journeys**: the stub's, refined to observable expectations with real inputs.
-* **Owner walkthrough**: the exact post-build sequence the owner will click through ("open X, paste Y, you should see Z"), derived from the journeys, plain language. This becomes the gate presentation, the QC browse script, and the owner's pre-ship checklist.
-* **Build steps**: per-task files and the skills each task invokes.
+* **Owner walkthrough**: the exact post-build sequence the owner will click through ("open X, paste Y, you should see Z"), derived from the journeys, plain language. This becomes the gate presentation and the owner's pre-ship checklist; QC never drives the UI, so anything only eyes on a rendered surface can judge lives here, on the owner's list.
+* **Build steps**: per-task files and the skills each task invokes. Any script or harness a task commissions must state concurrent fan-out for its independent model/network calls; only timing measurements serialize.
 * Near-code ONLY where a contract is tricky; write it in Biome-clean idiom (`next/image`, complete hook dependency arrays).
 
 ## 3. Exit

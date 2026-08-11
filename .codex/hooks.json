@@ -25,18 +25,6 @@
           }
         ]
       }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./.codex/hooks/inject-delegation.sh",
-            "statusMessage": "subagent roster",
-            "timeout": 5
-          }
-        ]
-      }
     ]
   }
 }

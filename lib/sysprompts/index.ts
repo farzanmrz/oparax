@@ -10,6 +10,8 @@ const load = (name: string) => readFileSync(join(process.cwd(), "lib/sysprompts"
 
 export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
 export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
+export const DRAFT_FILTER_PROMPT = load("draft-filter.md");
+export const DRAFT_SYNTHESIZE_PROMPT = load("draft-synthesize.md");
 export const DRAFT_TRANSLATE_PROMPT = load("draft-translate.md");
 export const DRAFT_WRITE_PROMPT = load("draft-write.md");
 export const SOURCE_ONBOARDING_PROMPT = load("source-onboarding.md");

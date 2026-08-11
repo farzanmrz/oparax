@@ -18,9 +18,12 @@ import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
 import { checkXPostable, resolveDeskTier } from "@/lib/agent/desk-config";
 import type { CouncilCall, SourceBrief } from "@/lib/agent/draft-council-run";
+import { filterSourcePost } from "@/lib/agent/draft-filter";
+import { synthesizeSourcePost } from "@/lib/agent/draft-synthesize";
 import { translateSourcePost } from "@/lib/agent/draft-translate";
 import { draftSourcePost } from "@/lib/agent/draft-write";
 import { normalizeWebsitePublisherMention } from "@/lib/agent/source-identity";
+import { validateSourceMedia } from "@/lib/agent/source-media";
 import { draftingConversationId } from "@/lib/observability/ai-conversation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
@@ -67,9 +70,22 @@ export type ProcessDeliveryResult = {
     agentId: string;
     winningModel: string;
     degraded: boolean;
-    skipped?: "already_drafted" | "no_guide" | "off_beat";
+    skipped?: "already_drafted" | "no_guide" | "off_beat" | "oversized" | "synthesis_unusable";
   }>;
 };
+
+export class RetryableDeliveryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RetryableDeliveryError";
+  }
+}
+
+const MIN_NEXT_CLAIM_BUDGET_MS = 30_000;
+const DIRECT_SYNTHESIS_ENABLED = false;
+const OVERSIZED_EXCLUSION_REASON = "This delivery was too large to process and was skipped.";
+const SYNTHESIS_EXCLUSION_REASON =
+  "This story couldn't be turned into news points and was skipped.";
 
 /** A post whose text carries nothing to write FROM. The drafting models receive text only —
  *  never media — so "🌟 https://t.co/…" hands them an emoji and an opaque link, and the
@@ -83,7 +99,8 @@ export type ProcessDeliveryResult = {
  *  discarded merely because body retrieval fell back to a teaser. Text is NOT low-signal if a link is present AND at least 4 characters
  *  of caption remain after stripping @/# tags and emoji, OR (independent of any link) the
  *  stripped text alone is 12+ characters. */
-function isLowSignal(text: string, title?: string): boolean {
+function isLowSignal(text: string, title?: string, media: SourceBrief["media"] = []): boolean {
+  if (media.length > 0) return false;
   const sourceText = title ? `${title}\n${text}` : text;
   const hasLink = /https?:\/\/\S+/.test(sourceText);
   const stripped = sourceText
@@ -94,6 +111,43 @@ function isLowSignal(text: string, title?: string): boolean {
     .trim();
   if (hasLink && stripped.length >= 4) return false; // a link plus a real caption is signal
   return stripped.length < 12;
+}
+
+function requireTimeBudget(deadlineAt: number | undefined, beforeClaim = false): void {
+  if (deadlineAt === undefined) return;
+  const remaining = deadlineAt - Date.now();
+  const required = beforeClaim ? MIN_NEXT_CLAIM_BUDGET_MS : 1;
+  if (remaining < required) {
+    throw new RetryableDeliveryError(
+      `draft-pipeline: only ${Math.max(0, remaining)}ms remained in the drafting deadline`,
+    );
+  }
+}
+
+function isProviderInputTooLarge(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const status =
+    typeof error === "object" && error !== null && "statusCode" in error
+      ? (error as { statusCode?: unknown }).statusCode
+      : undefined;
+  return (
+    status === 413 ||
+    /(?:context|input|request).{0,80}(?:too large|too long|exceed|limit)|(?:too large|too long|context length|input length)/i.test(
+      message,
+    )
+  );
+}
+
+function isNewsPointsValidationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "22023" &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("news_points")
+  );
 }
 
 type MatchedAgent = {
@@ -210,22 +264,34 @@ async function stampUsageEvent(
   if (error && !isDuplicateStreamDelivery) throw error;
 }
 
+async function completeClaimWithExclusion(
+  admin: AdminClient,
+  agentId: string,
+  sourcePostId: string,
+  claimToken: string,
+  reason: string,
+): Promise<boolean> {
+  const { data: exclusionId, error } = await admin.rpc("upsert_claimed_exclusion", {
+    p_agent_id: agentId,
+    p_claim_token: claimToken,
+    p_excluded_at: new Date().toISOString(),
+    p_on_beat_reason: reason,
+    p_source_post_id: sourcePostId,
+  });
+  if (error) throw error;
+  return exclusionId !== null;
+}
+
 async function draftForAgent(
   admin: AdminClient,
   agent: MatchedAgent,
   sourcePostId: string,
   brief: SourceBrief,
   siteGuidance: { onBeat: string; offBeat: string } | null,
+  options: { deadlineAt?: number; oversizedInput: boolean },
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
-  // WHICH reporter's desk was drafting is most of an error report's diagnostic value, and this
-  // path runs from /api/ingest's Bearer-authed delivery — no user session exists to attribute it
-  // automatically. The owner id only; the desk's content stays out of Sentry (ai-telemetry.ts
-  // keeps drafting content unrecorded).
   Sentry.setUser({ id: agent.owner_id });
-  // A desk with no voice guide is a valid working state — its sources are tracked and
-  // ingestion runs; only drafting waits. Checked
-  // BEFORE the atomic claim below: a no-guide desk must not burn a draft_claims row it will
-  // never use.
+  Sentry.setConversationId(undefined);
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
     .select("guide_raw, guide_deploy, measured_facts")
@@ -235,22 +301,10 @@ async function draftForAgent(
   if (!guide) {
     return { agentId: agent.id, winningModel: "", degraded: false, skipped: "no_guide" };
   }
-  // rules.ts's own docstring names this composition step "the drafting call sites' job" —
-  // flattened enabled voice_rules + measured facts is the actual drafting input of record,
-  // falling back to the raw deployed guide only when no rule is enabled yet.
-  const voiceGuidance = resolveDraftingPrompt(
-    await listVoiceRules(agent.id),
-    guide.measured_facts,
-    guide.guide_deploy,
-  );
   const beatSpec = extractBeatSpec(guide.guide_raw) ?? agent.beat;
-  const xAccount = await getXAccount(agent.owner_id);
-  const accountTier = resolveDeskTier(agent.reporter_tier, xAccount?.tier);
 
+  requireTimeBudget(options.deadlineAt, true);
   const claimToken = randomUUID();
-  // Atomic claim/reclaim: a delivery that outlives the ingest route's 800-second budget can
-  // leave a claim behind without running the catch below. The RPC inserts when absent and only
-  // reclaims a claim older than that same route budget, preserving an in-progress delivery.
   const { data: claimed, error: claimError } = await admin.rpc("claim_draft", {
     p_agent_id: agent.id,
     p_source_post_id: sourcePostId,
@@ -267,45 +321,168 @@ async function draftForAgent(
     };
   }
 
-  // The claim above is a "drafting started" marker, not "drafting done". Every step below is
-  // paid or fallible; if any throws (a transient gateway 5xx, a DB error), the claim must be
-  // RELEASED — otherwise the worker's retry cannot re-attempt until claim_draft's stale cutoff.
-  // The attempt token prevents an old claimant from deleting a newer reclaimed claim.
-  // Release-on-failure reopens the (source_post, agent) pair immediately; the re-run re-bills,
-  // which is the right trade against a silently lost draft. The on-beat happy path AND the
-  // off-beat outcome both leave the claim in place (dedup intact) — an off-beat verdict must not
-  // be re-billed on redelivery.
   try {
-    // Stage 1: deterministic English sources skip translation entirely. Any completed model call
-    // is ledgered and metered before its output can decide whether drafting continues.
-    const translated = await translateSourcePost({ brief });
-    if (translated.call) {
-      await insertModelCalls(admin, agent.owner_id, [translated.call], sourcePostId);
-      await stampUsageEvent(admin, {
-        owner_id: agent.owner_id,
-        kind: "translation",
-        units: 1,
-        cost_usd: translated.call.costUsd,
-        ref_id: sourcePostId,
+    if (options.oversizedInput) {
+      const completed = await completeClaimWithExclusion(
+        admin,
+        agent.id,
+        sourcePostId,
+        claimToken,
+        OVERSIZED_EXCLUSION_REASON,
+      );
+      Sentry.captureMessage("draft-pipeline: terminal oversized delivery", {
+        level: "warning",
+        tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized" },
       });
-    }
-    if (!translated.usable || !translated.englishSourceText?.trim()) {
-      throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: completed ? "oversized" : "already_drafted",
+      };
     }
 
-    // Stage 2: one Qwen pass makes the beat decision, generated news title, news synthesis, and draft.
-    const written = await draftSourcePost({
-      source: { identity: brief.identity, media: brief.media },
-      englishSourceText: translated.englishSourceText,
+    // The cheap relevance stage is always ledgered before its verdict controls the next call.
+    const filtered = await filterSourcePost({
+      brief,
       beatSpec,
       siteGuidance,
+      deadlineAt: options.deadlineAt,
+    });
+    await insertModelCalls(admin, agent.owner_id, [filtered.call], sourcePostId);
+    await stampUsageEvent(admin, {
+      owner_id: agent.owner_id,
+      kind: "filtering",
+      units: 1,
+      cost_usd: filtered.call.costUsd,
+      ref_id: sourcePostId,
+    });
+    if (!filtered.verdict) {
+      throw new Error(`draft-pipeline: filter verdict unusable for source post ${sourcePostId}`);
+    }
+
+    if (!filtered.verdict.onBeat) {
+      const { data: exclusionId, error: exclusionError } = await admin.rpc(
+        "upsert_claimed_exclusion",
+        {
+          p_agent_id: agent.id,
+          p_claim_token: claimToken,
+          p_excluded_at: new Date().toISOString(),
+          p_on_beat_reason: filtered.verdict.onBeatReason,
+          p_source_post_id: sourcePostId,
+        },
+      );
+      if (exclusionError) throw exclusionError;
+      if (exclusionId === null) {
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: "already_drafted",
+        };
+      }
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: "off_beat",
+      };
+    }
+
+    requireTimeBudget(options.deadlineAt);
+    let translation: string | null = null;
+    let synthesisSourceText = brief.text;
+    let synthesisSourceLang = brief.lang;
+    let synthesisSourceTitle = brief.title;
+    let originalLang: string | null | undefined;
+    if (!DIRECT_SYNTHESIS_ENABLED) {
+      const translated = await translateSourcePost({ brief, deadlineAt: options.deadlineAt });
+      if (translated.call) {
+        await insertModelCalls(admin, agent.owner_id, [translated.call], sourcePostId);
+        await stampUsageEvent(admin, {
+          owner_id: agent.owner_id,
+          kind: "translation",
+          units: 1,
+          cost_usd: translated.call.costUsd,
+          ref_id: sourcePostId,
+        });
+      }
+      if (!translated.usable || !translated.englishSourceText?.trim()) {
+        throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
+      }
+      translation = translated.translation;
+      synthesisSourceText = translated.englishSourceText;
+      synthesisSourceLang = "en";
+      synthesisSourceTitle = undefined;
+      originalLang = brief.lang;
+    }
+
+    const synthesized = await synthesizeSourcePost({
+      brief,
+      sourceText: synthesisSourceText,
+      sourceLang: synthesisSourceLang,
+      sourceTitle: synthesisSourceTitle,
+      originalLang,
+      deadlineAt: options.deadlineAt,
+    });
+    await insertModelCalls(admin, agent.owner_id, [synthesized.call], sourcePostId);
+    await stampUsageEvent(admin, {
+      owner_id: agent.owner_id,
+      kind: "synthesis",
+      units: 1,
+      cost_usd: synthesized.call.costUsd,
+      ref_id: sourcePostId,
+    });
+    if (!synthesized.verdict) {
+      const completed = await completeClaimWithExclusion(
+        admin,
+        agent.id,
+        sourcePostId,
+        claimToken,
+        SYNTHESIS_EXCLUSION_REASON,
+      );
+      Sentry.captureMessage("draft-pipeline: terminal unusable synthesis", {
+        level: "warning",
+        tags: { sourcePostId, agentId: agent.id, scope: "draft_synthesis_unusable" },
+      });
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: completed ? "synthesis_unusable" : "already_drafted",
+      };
+    }
+
+    // Voice-rule composition is intentionally deferred until the story is known on-beat.
+    const voiceGuidance = resolveDraftingPrompt(
+      await listVoiceRules(agent.id),
+      guide.measured_facts,
+      guide.guide_deploy,
+    );
+    const xAccount = await getXAccount(agent.owner_id);
+    const accountTier = resolveDeskTier(agent.reporter_tier, xAccount?.tier);
+    const written = await draftSourcePost({
+      identity: brief.identity,
+      newsTitle: synthesized.verdict.newsTitle,
+      newsPoints: synthesized.verdict.newsPoints,
       voiceGuidance,
       platform: "x",
       accountTier,
+      deadlineAt: options.deadlineAt,
     });
-    if (written.verdict?.onBeat && written.verdict.draft !== null) {
-      written.call.output = normalizeWebsitePublisherMention(written.verdict.draft, brief.identity);
+    if (!written.verdict) {
+      await insertModelCalls(admin, agent.owner_id, [written.call], sourcePostId);
+      await stampUsageEvent(admin, {
+        owner_id: agent.owner_id,
+        kind: "drafting",
+        units: 1,
+        cost_usd: written.call.costUsd,
+        ref_id: sourcePostId,
+      });
+      throw new Error(`draft-pipeline: drafter verdict unusable for source post ${sourcePostId}`);
     }
+    const draftText = normalizeWebsitePublisherMention(written.verdict.draft, brief.identity);
+    written.call.output = draftText;
     const [drafterCallId] = await insertModelCalls(
       admin,
       agent.owner_id,
@@ -319,52 +496,6 @@ async function draftForAgent(
       cost_usd: written.call.costUsd,
       ref_id: sourcePostId,
     });
-    if (!written.verdict) {
-      throw new Error(`draft-pipeline: draft verdict unusable for source post ${sourcePostId}`);
-    }
-    const verdict = written.verdict;
-
-    if (!verdict.onBeat) {
-      // Persist every off-beat verdict so a reporter can review what got filtered and why
-      // (the Excluded tab reads this). One verdict, one reason: the single drafter's — the
-      // grounder-vs-judge arbitration beta recorded here died with those stages.
-      const { data: exclusionId, error: exclusionError } = await admin.rpc(
-        "upsert_claimed_exclusion",
-        {
-          p_agent_id: agent.id,
-          p_claim_token: claimToken,
-          p_excluded_at: new Date().toISOString(),
-          p_on_beat_reason: verdict.onBeatReason,
-          p_source_post_id: sourcePostId,
-        },
-      );
-      if (exclusionError) throw exclusionError;
-      if (exclusionId === null) {
-        return {
-          agentId: agent.id,
-          winningModel: "",
-          degraded: false,
-          skipped: "already_drafted",
-        };
-      }
-
-      // Off-beat: no story row, no council, no drafts row — reported, not drafted-and-hidden.
-      return {
-        agentId: agent.id,
-        winningModel: "",
-        degraded: false,
-        skipped: "off_beat",
-      };
-    }
-
-    const unnormalizedDraftText = verdict.draft;
-    if (unnormalizedDraftText === null) {
-      throw new Error(
-        `draft-pipeline: on-beat verdict missing draft for source post ${sourcePostId}`,
-      );
-    }
-    const draftText = normalizeWebsitePublisherMention(unnormalizedDraftText, brief.identity);
-    written.call.output = draftText;
     const fit = checkXPostable(draftText, accountTier);
     if (!fit.ok) {
       console.error(
@@ -372,8 +503,6 @@ async function draftForAgent(
       );
     }
 
-    // Part B: on-beat — one story per source post, directly (CLUSTERING_ENABLED stays off; the
-    // clustering path is not newly built into this flow).
     const cluster = await assignToStory({
       agentId: agent.id,
       sourcePostId,
@@ -395,28 +524,42 @@ async function draftForAgent(
       }
     }
 
-    // Grouping by story id is what lets Explore > Conversations show one story's drafting
-    // call as a single readable thread. Set after clustering because the story id does not
-    // exist before it; every AI span below inherits it from the isolation scope.
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
-    // Part C: the X winner row. Its model-call provenance is the single drafter; no
-    // verification judge or audit row follows this stage. The draft is persisted here and
-    // surfaced to the reporter in the app feed — there is no push delivery channel.
     const { data: winningDraftId, error: winnerError } = await admin.rpc("insert_claimed_winner", {
       p_agent_id: agent.id,
       p_claim_token: claimToken,
       p_model_call_id: drafterCallId,
-      p_news_synthesis: verdict.newsSynthesis,
-      p_news_title: verdict.newsTitle,
+      p_news_points: synthesized.verdict.newsPoints as unknown as Json,
+      p_news_synthesis: null as unknown as string,
+      p_news_title: synthesized.verdict.newsTitle,
+      p_on_beat_reason: filtered.verdict.onBeatReason,
       p_platform: "x",
       p_source_post_id: sourcePostId,
       p_story_id: cluster.storyId,
-      // The column is nullable and the translation fast path deliberately persists null;
-      // generated RPC args model PostgreSQL text as non-nullable.
-      p_translation: translated.translation as string,
+      p_translation: translation as unknown as string,
     });
-    if (winnerError) throw winnerError;
+    if (winnerError) {
+      if (isNewsPointsValidationError(winnerError)) {
+        const completed = await completeClaimWithExclusion(
+          admin,
+          agent.id,
+          sourcePostId,
+          claimToken,
+          SYNTHESIS_EXCLUSION_REASON,
+        );
+        Sentry.captureException(winnerError, {
+          tags: { sourcePostId, agentId: agent.id, scope: "draft_synthesis_validation" },
+        });
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: completed ? "synthesis_unusable" : "already_drafted",
+        };
+      }
+      throw winnerError;
+    }
     // No drafts row exists when the claim was lost between claim_draft and here (a concurrent
     // retry already won). Propagate so the outer catch releases draft_claims and allows a
     // retry. The billable stage ledger rows are already committed above, so no paid call is
@@ -436,12 +579,30 @@ async function draftForAgent(
       degraded: false,
     };
   } catch (err) {
-    // Release the claim so a retry of this delivery can re-attempt (see the comment above).
-    // The delete's own result must be inspected: a release that silently fails leaves the claim
-    // held until claim_draft's stale cutoff and this (source_post, agent) pair cannot produce a
-    // draft promptly — capture it so the failure is at
-    // least visible, using the same tagged Sentry.captureException pattern post-core.ts uses
-    // elsewhere in that file (not releaseClaim's own console-only handling).
+    if (isProviderInputTooLarge(err)) {
+      try {
+        const completed = await completeClaimWithExclusion(
+          admin,
+          agent.id,
+          sourcePostId,
+          claimToken,
+          OVERSIZED_EXCLUSION_REASON,
+        );
+        Sentry.captureException(err, {
+          tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized" },
+        });
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: completed ? "oversized" : "already_drafted",
+        };
+      } catch (completionError) {
+        Sentry.captureException(completionError, {
+          tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized_completion" },
+        });
+      }
+    }
     const { error: releaseError } = await admin
       .from("draft_claims")
       .delete()
@@ -454,11 +615,19 @@ async function draftForAgent(
         tags: { sourcePostId, agentId: agent.id, scope: "draft_claims_release" },
       });
     }
+    if (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt) {
+      throw new RetryableDeliveryError(
+        "draft-pipeline: drafting deadline elapsed after a claimed run",
+      );
+    }
     throw err;
   }
 }
 
-export async function processDelivery(delivery: IngestDelivery): Promise<ProcessDeliveryResult> {
+export async function processDelivery(
+  delivery: IngestDelivery,
+  options: { deadlineAt?: number } = {},
+): Promise<ProcessDeliveryResult> {
   const admin = createAdminClient();
 
   // Deduped-by-post-id (L4): redelivery of the same post must not create a second row — and must
@@ -483,6 +652,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             text: delivery.text,
             posted_at: delivery.posted_at,
             lang: delivery.lang ?? null,
+            publisher_claim_kind: "aggregator",
             raw: (delivery.raw ?? null) as unknown as Json,
           }
         : {
@@ -494,31 +664,61 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             author_handle: delivery.author_handle,
             text: delivery.text,
             posted_at: delivery.published_at,
+            lang: delivery.lang,
+            publisher_claim_kind: "outlet-characterization",
             raw: (delivery.raw ?? null) as unknown as Json,
           },
       { onConflict: onConflictColumn, ignoreDuplicates: true },
     )
-    .select("id");
+    .select("id, lang, publisher_claim_kind");
   if (upsertError) throw upsertError;
 
-  let sourcePostId: string;
+  let sourcePost: {
+    id: string;
+    lang: string | null;
+    publisher_claim_kind: SourceBrief["publisherClaimKind"];
+  };
   if (upserted && upserted.length > 0) {
-    sourcePostId = upserted[0].id;
+    sourcePost = upserted[0];
   } else {
     const conflictValue = delivery.source === "x" ? delivery.x_post_id : delivery.external_id;
     const { data: existing, error: existingError } = await admin
       .from("source_posts")
-      .select("id")
+      .select("id, lang, publisher_claim_kind")
       .eq(onConflictColumn, conflictValue)
       .single();
     if (existingError) throw existingError;
-    sourcePostId = existing.id;
+    sourcePost = existing;
+  }
+  const sourcePostId = sourcePost.id;
+
+  const mediaValidation =
+    delivery.source === "x"
+      ? await validateSourceMedia(delivery.media, options.deadlineAt)
+      : { media: [], oversized: false };
+  if (
+    delivery.source === "x" &&
+    delivery.media?.length &&
+    mediaValidation.media.length === 0 &&
+    !mediaValidation.oversized
+  ) {
+    console.warn("draft-pipeline: all delivery media dropped before low-signal evaluation", {
+      sourcePostId,
+      deliveredMediaCount: delivery.media.length,
+    });
   }
 
   // The low-signal gate sits AFTER the source_posts upsert (the record is kept — the post
   // really was delivered) and BEFORE matching/claiming/clustering (nothing downstream runs,
   // nothing bills, no story row is created so the feed never shows it).
-  if (isLowSignal(delivery.text, delivery.source === "website" ? delivery.title : undefined)) {
+  if (
+    !mediaValidation.oversized &&
+    isLowSignal(
+      delivery.text,
+      delivery.source === "website" ? delivery.title : undefined,
+      mediaValidation.media,
+    )
+  ) {
     return { sourcePostId, lowSignal: true, drafted: [] };
   }
 
@@ -542,14 +742,16 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     );
   if (agentsError) throw agentsError;
   let websiteSourceAgentId: string | null = null;
+  let websiteSourceLanguage: string | null = null;
   if (delivery.source === "website") {
     const { data: sourceConfig, error: sourceConfigError } = await admin
       .from("source_configs")
-      .select("agent_id")
+      .select("agent_id, language")
       .eq("id", delivery.source_config_id)
       .maybeSingle();
     if (sourceConfigError) throw sourceConfigError;
     websiteSourceAgentId = sourceConfig?.agent_id ?? null;
+    websiteSourceLanguage = sourceConfig?.language ?? null;
   }
   const matched: MatchedAgent[] =
     delivery.source === "x"
@@ -602,8 +804,9 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: delivery.x_post_id,
           identity: { kind: "x", handle: delivery.author_handle },
           text: delivery.text,
-          lang: delivery.lang ?? null,
-          media: delivery.media ?? [],
+          lang: sourcePost.lang ?? delivery.lang ?? null,
+          media: mediaValidation.media,
+          publisherClaimKind: sourcePost.publisher_claim_kind,
         }
       : {
           sourcePostId,
@@ -611,9 +814,10 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           identity: { kind: "website", publisher: hostnameOf(delivery.url) },
           title: delivery.title,
           text: delivery.text,
-          lang: delivery.lang,
+          lang: sourcePost.lang ?? websiteSourceLanguage ?? delivery.lang,
           // Website sources carry no structured media descriptors this slice.
           media: [],
+          publisherClaimKind: sourcePost.publisher_claim_kind,
         };
 
   const drafted: ProcessDeliveryResult["drafted"] = [];
@@ -625,11 +829,19 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     // worker also drops paused desks' handles from the stream on its next ~5-min rule rebuild;
     // this is the immediate guard for that lag window and for hand-seeded deliveries.
     if (agent.status !== "active") continue;
+    // A serial fan-out never acquires a new claim if the route cannot leave enough time for the
+    // claimed desk's release path. The worker treats the resulting 503 as retryable.
+    requireTimeBudget(options.deadlineAt, true);
     const siteGuidance =
       delivery.source === "website"
         ? await fetchSiteGuidance(admin, agent.id, delivery.source_config_id)
         : null;
-    drafted.push(await draftForAgent(admin, agent, sourcePostId, brief, siteGuidance));
+    drafted.push(
+      await draftForAgent(admin, agent, sourcePostId, brief, siteGuidance, {
+        deadlineAt: options.deadlineAt,
+        oversizedInput: mediaValidation.oversized,
+      }),
+    );
   }
 
   return { sourcePostId, drafted };

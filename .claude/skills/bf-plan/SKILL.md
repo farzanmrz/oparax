@@ -29,13 +29,13 @@ over the model or the session's history.
 |---|---|---|
 | quick | obvious one-liner, correct behavior trivial | /bf-fix, owner walk, /bf-ship |
 | small | routine fix deserving a sanity check | low-dial critiques adjudicated in-session, /bf-fix (charter QC embedded), /bf-ship |
-| deep | conceptual, judgment-shaped, or risk paths (auth, money, posting, schema) | high-dial critiques, /bf-adj (Fable), /bf-fix, /bf-qc, /bf-judge, /bf-ship |
+| deep | conceptual, judgment-shaped, or risk paths (auth, money, posting, schema) | high-dial critiques, /bf-adj (Fable), /bf-fix, /bf-qc (Fable), /bf-ship |
 
 * **Hotfix flag:** production is broken NOW and beta carries unshipped work: record `base: main` in the brief header (default `base: beta`). The branch then cuts from `origin/main` and /bf-ship runs hotfix mode.
 
 ## 2. Evidence before code
 
-* **Reproduce or locate the artifact FIRST:** drive the broken path on `localhost:3000` (anything listening on :3000 is this app: reuse it, else start it), or for wrong-output bugs pull the exact broken rows (dispatch `supabase-runner`: the draft row, its `item` jsonb, the source post). No repro and no artifact = STOP and report what was tried; never fix against a description.
+* **Reproduce or locate the artifact FIRST, without a browser:** pull the exact broken rows (dispatch `supabase-runner`: the draft row, its `item` jsonb, the source post), hit the failing route directly (curl against :3000 — anything listening there is this app: reuse it, else start it), or take the owner's own demonstrated repro as the record. Never drive the UI to reproduce. No repro and no artifact = STOP and report what was tried; never fix against a description.
 * **Conversion guard:** a remedy that would grow a capability, column, or model behavior was never a bug; stub it with /ft-plan instead.
 
 ## 3. Author the brief
@@ -46,7 +46,7 @@ words before any remedy is drafted. Then write `.feature/bf-<N>-brief.md`:
 * **Header lines:** `tier:` and `base:`.
 * **Mechanism** with `file:line`: why the behavior happens, not where it shows.
 * **Remedy** as fix shapes (approach + anchor, never a patch).
-* **Test charter:** the journeys with REAL inputs, the DB assertions, and which review lanes QC runs. This becomes /bf-qc's whole scope and the owner's walkthrough list.
+* **Test charter:** the journeys with REAL inputs (provable headlessly: direct requests and DB assertions — anything only rendered eyes can judge is an owner walkthrough item, never a QC journey), the DB assertions, and which review lanes QC runs. This becomes /bf-qc's whole scope and the owner's walkthrough list.
 * **Self-contained,** including a plain-language owner summary: the critics and /bf-adj read only this file, never this conversation.
 * **Surfaces are evidence-bound:** the brief names only surfaces reproduced in this session's own evidence; `@AGENTS.md`'s product prose is direction, never proof a surface exists.
 

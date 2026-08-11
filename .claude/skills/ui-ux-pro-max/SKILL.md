@@ -11,8 +11,9 @@ in `scripts/search.py` is generated from the files that exist, so an
 unavailable choice is rejected by argparse rather than failing later as "File
 not found".
 
-* **Not invoked directly:** QC's screenshot judgment (`ft-qc` phase 2, its
-  one live caller) calls the script by path when it needs a citable rule.
+* **No live flow caller:** QC's screenshot judgment, formerly the one
+  caller, was retired with all in-flow browser runs; query this manually
+  when reviewing UI.
 * **A source of rules to cite, not an aesthetic authority:** the binding
   yardstick for any UI review in this repo is the spec's own stated design
   intent plus root `DESIGN.md`.

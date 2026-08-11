@@ -21,6 +21,7 @@ Recommended dial by tier: quick and small on `gpt-5.6-terra` high, deep on
 
 * **Branch:** `bf/<N>` must already exist (cut at approval). Missing = the owner never approved: STOP.
 * **Execute the fix shapes exactly:** a shape that does not survive contact with the file = STOP and report that brief; never invent a value or behavior. Minimal correct fix, surrounding idiom, Biome-clean as written.
+* **No re-grounding:** the brief plus the files it cites are the whole context — no knowledge-skill re-reads, no changelog or doc probing, no history archaeology. Read a file when you are about to edit it.
 * **Patch rounds:** owner-reported findings are binding, never scope creep; ask ONCE "anything else to fold into this round?" so drip-fed findings batch.
 * **Guards:** conversion (capability growth = its own slice, STOP); schema changes STOP and present options first; agent-noticed extras stay off the branch.
 
@@ -30,11 +31,13 @@ Recommended dial by tier: quick and small on `gpt-5.6-terra` high, deep on
 bash .claude/skills/ft/scripts/qc-gates.sh origin/<base>...HEAD
 ```
 
-`GATES: RED` = STOP. Then re-drive the EXACT repro from the brief (the
-browser path on :3000, reuse a running server or start one, or the recorded
-DB assertion) and capture the after-evidence.
+`GATES: RED` = STOP. Then re-prove the EXACT repro from the brief
+headlessly (the recorded DB assertion, a direct request to the failing
+route on :3000, or the harness case — never by driving the UI) and capture
+the after-evidence. Re-prove only what the round touched — never a full
+suite for a scoped fix.
 
-* **Small tier only:** also run the charter here (its journeys with real inputs, its DB assertions via `supabase-runner` BEFORE any teardown), then close with a plain-words screen: what changed, what was verified, the two or three things the owner should eyeball on :3000.
+* **Small tier only:** also run the charter here (its journeys with real inputs, driven headlessly — direct requests and DB assertions via `supabase-runner` BEFORE any teardown; no browser), then close with a plain-words screen: what changed, what was verified, the two or three things the owner should eyeball on :3000.
 
 ## 3. One marker, then stop
 
@@ -57,7 +60,7 @@ The deep tier hands to QC instead:
 
 <exit-example>
 
-Round 1 done, gates GREEN. Now run here in Codex (gpt-5.6-sol high):
+Round 1 done, gates GREEN. Now run in Claude Code (Fable 5):
 
 ```
 /bf-qc N

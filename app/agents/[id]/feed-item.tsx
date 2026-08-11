@@ -148,7 +148,7 @@ export function FeedItemCard({
         postedAt: next.postedAt,
         postingClaimedAt: next.postingClaimedAt,
         postedUrl: next.postedUrl,
-        newsSynthesis: next.newsSynthesis,
+        body: next.body,
       };
     });
   }, [winner]);
@@ -189,9 +189,7 @@ export function FeedItemCard({
         <h2 className="text-pretty text-[17.5px] leading-[1.3] font-semibold tracking-[-0.017em] text-text-title desk:text-[20px]">
           {item.newsTitle}
         </h2>
-        <p className="mt-2.5 text-pretty text-[13.5px] leading-[1.6] text-text-body desk:mt-3 desk:text-[14.5px]">
-          {activeDraft.newsSynthesis ?? "NO SYNTHESIS"}
-        </p>
+        <StoryBody body={activeDraft.body} />
       </div>
       <DraftBox
         charLimit={charLimit}
@@ -203,6 +201,28 @@ export function FeedItemCard({
         xLinked={xLinked}
       />
     </article>
+  );
+}
+
+function StoryBody({ body }: { body: FeedDraft["body"] }) {
+  const className =
+    "mt-2.5 text-pretty text-[13.5px] leading-[1.6] text-text-body desk:mt-3 desk:text-[14.5px]";
+  if (body.kind === "points") {
+    return (
+      <ul className={`${className} list-disc space-y-1.5 pl-5`}>
+        {body.points.map((point) => (
+          <li key={point}>{point}</li>
+        ))}
+      </ul>
+    );
+  }
+  if (body.kind === "legacy") return <p className={className}>{body.synthesis}</p>;
+  return (
+    <p className={className}>
+      {body.sourceAvailable
+        ? "News points aren’t available for this draft. Open View source from the card menu to review the original."
+        : "News points and the original source aren’t available for this draft. Review the draft text below or skip this card."}
+    </p>
   );
 }
 

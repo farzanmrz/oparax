@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchTweet } from "react-tweet/api";
+import { z } from "zod";
 import type { Platform } from "@/lib/agent/desk-config";
 import {
   FEED_PAGE_SIZE,
@@ -9,9 +10,10 @@ import {
   type FeedItem,
   type FeedPage,
   type FeedSourceView,
+  type FeedStoryBody,
   isFeedCursor,
 } from "@/lib/agent/feed-shared";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 
 type Client = SupabaseClient<Database>;
 
@@ -45,7 +47,27 @@ type WinnerRow = {
   model_call_id: string;
   news_title: string | null;
   news_synthesis: string | null;
+  news_points: Json | null;
 };
+
+const storedNewsPointsSchema = z
+  .array(
+    z.object({
+      reason: z.string().trim().min(1),
+      point: z.string().trim().min(1),
+    }),
+  )
+  .min(1);
+
+function storyBodyOf(newsPoints: Json | null, synthesis: string | null): FeedStoryBody {
+  if (newsPoints !== null) {
+    const parsed = storedNewsPointsSchema.safeParse(newsPoints);
+    if (parsed.success) return { kind: "points", points: parsed.data.map(({ point }) => point) };
+    return { kind: "unavailable", sourceAvailable: false };
+  }
+  if (synthesis?.trim()) return { kind: "legacy", synthesis };
+  return { kind: "unavailable", sourceAvailable: false };
+}
 
 type LineageRow = {
   id: string;
@@ -216,7 +238,7 @@ async function hydrate(
     supabase
       .from("drafts")
       .select(
-        "id, story_id, platform, posted_at, posting_claimed_at, posted_url, model_call_id, news_title, news_synthesis",
+        "id, story_id, platform, posted_at, posting_claimed_at, posted_url, model_call_id, news_title, news_synthesis, news_points",
       )
       .eq("agent_id", agentId)
       .in("story_id", storyIds)
@@ -292,7 +314,7 @@ async function hydrate(
         postedAt: row.posted_at,
         postingClaimedAt: row.posting_claimed_at,
         postedUrl: row.posted_url,
-        newsSynthesis: row.news_synthesis,
+        body: storyBodyOf(row.news_points, row.news_synthesis),
         versionCount: versionCount(row.id),
       },
     });
@@ -344,6 +366,16 @@ async function hydrate(
       gone: lookup?.state === "gone",
       fresh: Date.now() - new Date(source.posted_at ?? story.created_at).getTime() < 3_600_000,
     };
+    const storyWinners = winners.get(story.id) ?? {};
+    const sourceAvailable = Boolean(sourceView.url && !sourceView.gone);
+    const sourceAwareWinners: FeedItem["winners"] = {};
+    for (const [platform, draft] of Object.entries(storyWinners)) {
+      if (!draft) continue;
+      sourceAwareWinners[platform as Platform] =
+        draft.body.kind === "unavailable"
+          ? { ...draft, body: { ...draft.body, sourceAvailable } }
+          : draft;
+    }
     return {
       storyId: story.id,
       createdAt: story.created_at,
@@ -352,7 +384,7 @@ async function hydrate(
       // older shows the placeholder.
       newsTitle: titleByStory.get(story.id) ?? "NO TITLE",
       source: sourceView,
-      winners: winners.get(story.id) ?? {},
+      winners: sourceAwareWinners,
     };
   });
 }

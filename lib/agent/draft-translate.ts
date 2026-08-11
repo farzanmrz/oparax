@@ -4,6 +4,7 @@
 import { streamText } from "ai";
 import { aiTelemetry } from "@/lib/observability/ai-telemetry";
 import { DRAFT_TRANSLATE_PROMPT } from "@/lib/sysprompts";
+import { escapeXmlText } from "@/lib/xml";
 import { resolveCallMeta } from "./call-meta";
 import type { CouncilCall, SourceBrief } from "./draft-council-run";
 import { QWEN_DRAFT_MODEL, QWEN_DRAFT_PROVIDER_OPTIONS } from "./qwen-draft-config";
@@ -37,9 +38,12 @@ function sourceDocument(brief: SourceBrief): string {
   return brief.title ? `${brief.title}\n\n${brief.text}` : brief.text;
 }
 
-export async function translateSourcePost(input: { brief: SourceBrief }): Promise<TranslateResult> {
+export async function translateSourcePost(input: {
+  brief: SourceBrief;
+  deadlineAt?: number;
+}): Promise<TranslateResult> {
   const primary = primaryLanguage(input.brief.lang);
-  if (input.brief.lang === "en") {
+  if (primary === "en") {
     return {
       call: null,
       translation: null,
@@ -85,7 +89,7 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
     messages: [
       {
         role: "user",
-        content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>${input.brief.title ? `\n<source_title>\n${input.brief.title}\n</source_title>` : ""}\n<source_post>\n${input.brief.text}\n</source_post>`,
+        content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>${input.brief.title ? `\n<source_title>\n${escapeXmlText(input.brief.title)}\n</source_title>` : ""}\n<source_post>\n${escapeXmlText(input.brief.text)}\n</source_post>`,
       },
     ],
     experimental_telemetry: aiTelemetry("draft_translate", "draft-translate-qwen"),
@@ -96,10 +100,17 @@ export async function translateSourcePost(input: { brief: SourceBrief }): Promis
   // on the provider side; that's repaired by the existing cost-reconciliation sweep
   // (reconcileMissingCosts), not ledgered here.
   try {
+    if (input.deadlineAt !== undefined && input.deadlineAt <= Date.now()) {
+      throw new Error("Translation started after the drafting deadline elapsed");
+    }
     armInactivityTimer();
+    const deadlineRemaining =
+      input.deadlineAt === undefined
+        ? ABSOLUTE_TIMEOUT_MS
+        : Math.max(1, input.deadlineAt - Date.now());
     absoluteTimer = setTimeout(
-      () => abortForTimeout("Translation stream exceeded its 240 second deadline"),
-      ABSOLUTE_TIMEOUT_MS,
+      () => abortForTimeout("Translation stream exceeded its route deadline"),
+      Math.min(ABSOLUTE_TIMEOUT_MS, deadlineRemaining),
     );
     // fullStream, not textStream: the reasoning phase emits no TEXT deltas for tens of seconds
     // (probe: 29.8s max gap on a 14k-char source — a near-miss against the 45s window), but its

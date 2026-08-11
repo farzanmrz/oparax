@@ -2,8 +2,7 @@
 //
 // The drafting pipeline's shared types: `SourceBrief` (what a delivery hands to a drafting
 // stage) and `CouncilCall` (what a drafting stage hands back for the pipeline to ledger). Live
-// deliveries run a deterministic language check, an optional translation call, and one Qwen
-// drafting/filtration call; those stages live in draft-translate.ts and draft-write.ts.
+// deliveries run relevance filtering, optional translation fallback, synthesis, then drafting.
 //
 // Every stage's own module carries the model-call contract (AGENTS.md): every model call —
 // translation, drafting, a repair — appears as its own `CouncilCall` element, carrying
@@ -12,6 +11,14 @@
 // one, draft-translate.ts, draft-write.ts) exists to prevent.
 import type { DraftConstruction } from "./draft-construction";
 import type { SourceIdentity } from "./source-identity";
+
+export type PublisherClaimKind =
+  | "official"
+  | "insider-sourced"
+  | "outlet-characterization"
+  | "aggregator";
+
+export type NewsPoint = { reason: string; point: string };
 
 export type SourceBrief = {
   sourcePostId: string;
@@ -23,15 +30,24 @@ export type SourceBrief = {
   /** BCP-47 source language supplied by X or website onboarding; null = unknown → the
    *  translator stage decides. */
   lang: string | null;
-  /** Attached photos (full image) or video/GIF poster frames — descriptors only. The
-   *  vision-capable drafter reads these original attachments directly. */
+  /** Attached photos (full image) or video/GIF poster frames — descriptors only. Filter and
+   *  synthesizer read them; the drafter only receives persisted news points. */
   media: { kind: string; imageUrl: string }[];
+  /** Conservative source-level attribution context. Explicit source text always wins. */
+  publisherClaimKind: PublisherClaimKind;
 };
 
 export type CouncilCall = {
-  kind: "draft" | "judge" | "ground" | "synthesis" | "translation";
-  stage: "drafting" | "judge" | "clustering" | "grounding" | "translation"; // model_calls.stage
-  role: "primary" | "judge" | "grounding" | "translation"; // model_calls.role
+  kind: "draft" | "filter" | "judge" | "ground" | "synthesis" | "translation";
+  stage:
+    | "drafting"
+    | "filtering"
+    | "judge"
+    | "clustering"
+    | "grounding"
+    | "synthesis"
+    | "translation"; // model_calls.stage
+  role: "filter" | "primary" | "judge" | "grounding" | "synthesis" | "translation"; // model_calls.role
   model: string;
   output: string | null; // verbatim; for a structured verdict, the serialized object
   reasoning: string | null;

@@ -41,7 +41,30 @@ if [ -f "$PROFILE" ]; then PROFILE_ARG=(--agent "$PROFILE"); fi
 # ONE flag, comma-separated: grok rejects a repeated --disallowed-tools outright.
 NO_INFRA_LIST="mcp__vercel__*,mcp__railway__*"
 
-if [ "$DEPTH" = "deep" ]; then
+WF="${COUNCIL_GROK_WORKFLOW:-1}"
+VK="${COUNCIL_GROK_VERIFY_K:-0}"
+CRITIQUE_WF="$REPO/.grok/workflows/critique.rhai"
+WF_MODE="diff"; case "$SCHEMA" in *plan-critique*) WF_MODE="plan";; esac
+if [ "$WF" = "1" ] && [ -f "$CRITIQUE_WF" ] && [ -n "${PROFILE_ARG[*]:-}" ]; then
+  # WORKFLOW LANE (default; COUNCIL_GROK_WORKFLOW=0 falls back to the single-critic
+  # deep/simple path below). The orchestrator profile reads a control line (mode +
+  # verify_k), launches .grok/workflows/critique.rhai — a deterministic PARALLEL
+  # lens panel (concurrency, retry-idempotency, frame-attack, data-migration,
+  # spec-completeness, contract, security, coverage) — and projects complete()'s
+  # findings to the stage schema. COUNCIL_GROK_VERIFY_K>0 adds an adversarial refute
+  # pass over important+ findings. Lenses run `git diff` via execute capability, so
+  # NO run_terminal_cmd denial here.
+  wf_prompt="$(mktemp)"
+  { printf 'COUNCIL_CTRL mode=%s verify_k=%s\n' "$WF_MODE" "$VK"; cat "$PF"; } > "$wf_prompt"
+  # Lenses inherit the SESSION effort. Default high for max per-lens depth
+  # (~160s barrier); COUNCIL_GROK_EFFORT=medium (~100s) or =low trades depth for speed.
+  GROK_SUBAGENTS=1 \
+  grok --prompt-file "$wf_prompt" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
+       "${PROFILE_ARG[@]}" --disallowed-tools "$NO_INFRA_LIST" \
+       --always-approve --effort "${COUNCIL_GROK_EFFORT:-high}" -m grok-4.5 --max-turns 150 \
+       --output-format json > "$raw_out" 2> "$raw_err"
+  rm -f "$wf_prompt"
+elif [ "$DEPTH" = "deep" ]; then
   # GROK_SUBAGENTS=1 enables grok's native explore/plan/general-purpose types so
   # a deep run can fan out across subsystems; the profile tells it when to.
   GROK_SUBAGENTS="${GROK_SUBAGENTS:-1}" \
