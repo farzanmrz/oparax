@@ -18,4 +18,5 @@ Issues are labeled, and the label routes the work:
 
 - `DESIGN.md` is the visual contract: the design system every UI change aligns to.
 - Frontend test login: `testuser@oparax.ai` / `hello123` — an agentic-test-only dummy account; owner-requested browser login is pre-authorized.
+- The proof bar, everywhere: does it build, does it boot, can the owner and a user access and experience the functionality? That is the ship bar. The owner and real users are the deep test; no comprehensive suites, benchmarks, multi-case harnesses, or deployment checks — ever — unless the owner explicitly orders one. Pushing the branch is the end of the job.
 - Supabase deployment convention: there is exactly one shared Supabase project; migrations apply to it during build through the normal workflow. A migration that retires a live signature (dropping an old RPC, tightening a column) opens an accepted transient window until the slice ships — that window is the owner's standing decision, so never block a build to ask for a preview branch, a deployment window, or migration-timing authorization.

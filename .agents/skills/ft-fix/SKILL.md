@@ -36,10 +36,9 @@ bash .claude/skills/ft/scripts/qc-gates.sh
 `GATES: RED` = STOP. Boot smoke: reuse a running :3000 server or start one;
 boot is the whole check. A fix for a journey-FAILED finding is re-proven by
 the same headless evidence that failed it (harness case, direct request, or
-DB assertion) before it may be called fixed. Never open a browser. The
-full regression suite re-runs only when the round touched prompts, the
-pipeline, or the harness itself; otherwise run only the cases the fixes
-touch.
+DB assertion) before it may be called fixed. Never open a browser, never
+run a multi-case suite or benchmark: re-prove exactly the touched
+journey, once.
 
 ## 3. One marker, then stop
 

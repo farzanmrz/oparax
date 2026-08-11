@@ -51,7 +51,7 @@ file. Never wait on it, never retrigger it.
 
 ## 2. Journey evidence (headless — no browser, ever)
 
-* **Prove every `QC-LIVE` journey headlessly** with its REAL input (the modal and laziest inputs verbatim, trailing spaces included): the regression harness where the journey has a fixture; a direct request to the real local route (curl against :3000) where it needs a live delivery. The server reaches the real network — "needs the external network" alone never disqualifies a journey.
+* **Prove each `QC-LIVE` journey ONCE, cheaply, headlessly** with its REAL input: a direct request to the real local route (curl against :3000). One pass per journey — the proof bar is "the feature works and can be experienced", not exhaustive coverage; the owner and real users are the deep test. Never run a multi-case suite or benchmark unless the owner ordered one.
 * **Fixtures are created by API or SQL, never through the UI:** deliveries go straight to the ingest route; rows that must pre-exist are seeded via `supabase-runner`. Rendered surfaces are proven by the owner's walkthrough, nowhere else.
 * **Evidence before teardown, always:** for every fixture created, capture the database assertions the journeys require (dispatch `supabase-runner`, read-only, with the exact fixture ids) BEFORE any deletion. A fixture with an unproven assertion is preserved and its ids recorded, never deleted. Teardown (service-role, exact captured ids, test-owner guard) runs only after all evidence is durable.
 
