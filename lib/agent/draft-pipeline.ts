@@ -301,7 +301,18 @@ async function draftForAgent(
   if (!guide) {
     return { agentId: agent.id, winningModel: "", degraded: false, skipped: "no_guide" };
   }
-  const beatSpec = extractBeatSpec(guide.guide_raw) ?? agent.beat;
+  // bf-124: both, never one or the other. `agents.beat` is the reporter's own sentence and is
+  // the boundary; the guide's `## Beat & Scope` section is corpus-derived precision INSIDE that
+  // boundary. The old `extractBeatSpec(...) ?? agent.beat` made the generated section win
+  // outright on every desk that had one -- which is every desk -- so the typed beat never
+  // reached the filter at all, and a section narrower than the typed beat silently shrank the
+  // desk. Passing both lets the filter prefer the reporter's words when the two disagree.
+  const generatedBeat = extractBeatSpec(guide.guide_raw);
+  const statedBeat = agent.beat?.trim() ?? "";
+  // A desk whose reporter never typed a beat has no stated boundary to govern, so the generated
+  // section is the only boundary there is -- the pre-bf-124 behavior, kept for exactly that case.
+  const beatSpec = statedBeat || (generatedBeat ?? "");
+  const beatDetail = statedBeat ? generatedBeat : null;
 
   requireTimeBudget(options.deadlineAt, true);
   const claimToken = randomUUID();
@@ -346,6 +357,7 @@ async function draftForAgent(
     const filtered = await filterSourcePost({
       brief,
       beatSpec,
+      beatDetail,
       siteGuidance,
       deadlineAt: options.deadlineAt,
     });

@@ -20,6 +20,9 @@ export type RegressionFixture = {
   };
   context: {
     beat: string;
+    /** The guide's corpus-derived `## Beat & Scope` section, subordinate to `beat` (bf-124).
+     *  Optional: a fixture that omits it exercises a desk filtering on the stated beat alone. */
+    beatDetail?: string | null;
     siteGuidance: { onBeat: string; offBeat: string } | null;
     publisherClaimKind: "official" | "insider-sourced" | "outlet-characterization" | "aggregator";
     reporterTier: string | null;
