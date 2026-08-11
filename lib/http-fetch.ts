@@ -1,13 +1,13 @@
 // lib/http-fetch.ts
 //
-// Shared raw-fetch-with-timeout helper for lib/x/api.ts and lib/slack/api.ts —
-// both wrapped fetch with a 15s AbortSignal.timeout, the same TimeoutError/AbortError
-// rethrow shape, and the same non-2xx error format (byte-for-byte except a label). Pure
+// Shared raw-fetch-with-timeout helper for lib/x/api.ts —
+// wraps fetch with a 15s AbortSignal.timeout, a clear TimeoutError/AbortError
+// rethrow shape, and a consistent non-2xx error format. Pure
 // module: no Supabase, no Next.js, no React, no I/O beyond fetch.
 
 /** Runs `fetch`, hard-timing-out at 15s and rethrowing a clear Error on
  *  TimeoutError/AbortError so a stalled call fails fast instead of hanging indefinitely.
- *  `label` prefixes the error message (e.g. "X" or "Slack") so the caller's own errors
+ *  `label` prefixes the error message (e.g. "X") so the caller's own errors
  *  keep their provider-specific wording. */
 export async function fetchWithTimeout(
   label: string,

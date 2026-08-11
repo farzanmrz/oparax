@@ -10,13 +10,17 @@ export const FEED_REFRESH_CHUNK = 100;
 export const FEED_REFRESH_MAX_CHUNKS = 5;
 
 export type FeedCursor = { createdAt: string; id: string };
+export type FeedStoryBody =
+  | { kind: "points"; points: string[] }
+  | { kind: "legacy"; synthesis: string }
+  | { kind: "unavailable"; sourceAvailable: boolean };
 export type FeedDraft = {
   draftId: string;
   draftText: string;
   postedAt: string | null;
   postingClaimedAt: string | null;
   postedUrl: string | null;
-  newsSynthesis: string | null;
+  body: FeedStoryBody;
   versionCount: number;
 };
 export type FeedSourceView = {

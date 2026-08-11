@@ -11,11 +11,12 @@
 import { timingSafeEqual } from "node:crypto";
 import { after } from "next/server";
 import { z } from "zod";
-import { processDelivery } from "@/lib/agent/draft-pipeline";
+import { processDelivery, RetryableDeliveryError } from "@/lib/agent/draft-pipeline";
 import { reconcileMissingCosts } from "@/lib/agent/gateway-cost";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const maxDuration = 800;
+const DRAFTING_DEADLINE_MARGIN_MS = 60_000;
 
 function isAuthorized(header: string | null, secret: string): boolean {
   if (!header) return false;
@@ -84,7 +85,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await processDelivery(parsed.data);
+    const result = await processDelivery(parsed.data, {
+      // Reserve one minute inside Vercel's hard ceiling so a claimed desk has time to release
+      // its fence before the worker retries the delivery.
+      deadlineAt: requestStartedAt + (maxDuration * 1000 - DRAFTING_DEADLINE_MARGIN_MS),
+    });
 
     // Repair BYOK costs after the response. This is `reconcileMissingCosts`'s ONE production
     // caller — it was implemented against the gateway's ~19s usage-event lag (live-probed: 404 at
@@ -137,6 +142,13 @@ export async function POST(req: Request) {
 
     return Response.json(result);
   } catch (e) {
+    if (e instanceof RetryableDeliveryError) {
+      console.warn("api/ingest: retryable delivery deadline", e.message);
+      return Response.json(
+        { error: "delivery deadline exceeded; retry this delivery" },
+        { status: 503 },
+      );
+    }
     console.error("api/ingest: processDelivery failed", e);
     return new Response("Internal Server Error", { status: 500 });
   }

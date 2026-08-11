@@ -1,0 +1,47 @@
+{
+  "id": "empty-voice-guide",
+  "source": {
+    "title": null,
+    "media": [],
+    "sourcePostId": "fixture-empty-voice-guide",
+    "xPostId": "fixture-empty-voice-guide",
+    "identity": {
+      "kind": "x",
+      "handle": "fixture_news"
+    },
+    "text": "Barcelona have signed Alex Smith on a contract until 2030, according to Fixture News.",
+    "lang": "en"
+  },
+  "context": {
+    "beat": "All news and updates surrounding FC Barcelona",
+    "siteGuidance": {
+      "onBeat": "Any news about FC Barcelona first team, women's team (Barça femenino), youth/lower divisions (Barça futbol base), transfers involving Barça players or targets, club management, and Barça-related player interviews or rumors.",
+      "offBeat": "Content about other clubs (Real Madrid, Athletic Club, Espanyol, Atlético de Madrid, PSG, etc.), other sports (tennis, basketball, cycling, handball, padel), general sports news unrelated to Barça, and lifestyle/fitness pieces."
+    },
+    "publisherClaimKind": "aggregator",
+    "reporterTier": "premium",
+    "accountTier": "premium",
+    "voiceGuide": {
+      "guideRaw": "",
+      "guideDeploy": "",
+      "measuredFacts": "",
+      "rules": []
+    }
+  },
+  "provenance": {
+    "sourcePostId": "fixture-empty-voice-guide",
+    "sourceConfigId": null,
+    "agentId": "c15f6f0f-3fcb-46fb-a3ff-bd787f0dfc1d",
+    "voiceGuideId": null,
+    "draftId": null
+  },
+  "assertions": {
+    "expectedOnBeat": true,
+    "required": ["Barcelona", "Alex Smith"]
+  },
+  "hashes": {
+    "source": "6028b4ef3d2b27691fa708899c103b4270eb90d4bfc600929dd82e83c213d66d",
+    "context": "c1360a4b7a588a6c1a4971ca32340cfcaca6dca5a965278e34ae62143ef1a330",
+    "fixture": "63c9f9e53d02ec8b95b0caffcb4138c0ba404ab1619f05bfc8372632ed193a27"
+  }
+}

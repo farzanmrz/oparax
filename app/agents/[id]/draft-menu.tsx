@@ -163,9 +163,13 @@ export function DraftMenu({
             </Alert>
             {reasoning.status === "loading" ? <Skeleton className="h-32 w-full" /> : null}
             {reasoning.status === "error" ? (
-              <p className="text-sm text-destructive">Couldn&apos;t load the reasoning.</p>
+              <p className="text-sm text-destructive" role="alert">
+                Couldn&apos;t load the reasoning. Close this panel and try again.
+              </p>
             ) : null}
-            {reasoning.status === "ready" && reasoning.detail.state === "found" ? (
+            {reasoning.status === "ready" &&
+            reasoning.detail.state === "found" &&
+            reasoning.detail.onBeatReason ? (
               <section className="space-y-2" aria-labelledby="beat-reason-title">
                 <h2
                   className="font-heading text-sm font-medium text-foreground"
@@ -176,6 +180,29 @@ export function DraftMenu({
                 <p className="text-sm leading-relaxed text-text-body">
                   {reasoning.detail.onBeatReason}
                 </p>
+              </section>
+            ) : null}
+            {reasoning.status === "ready" &&
+            reasoning.detail.state === "found" &&
+            reasoning.detail.newsPoints ? (
+              <section className="space-y-3" aria-labelledby="news-points-title">
+                <h2
+                  className="font-heading text-sm font-medium text-foreground"
+                  id="news-points-title"
+                >
+                  News Points
+                </h2>
+                <ol className="space-y-4">
+                  {reasoning.detail.newsPoints.map((newsPoint) => (
+                    <li className="space-y-2" key={`${newsPoint.point}:${newsPoint.reason}`}>
+                      <p className="text-sm font-medium leading-relaxed text-foreground">
+                        {newsPoint.point}
+                      </p>
+                      <h3 className="text-sm font-medium text-text-muted">Why This Point</h3>
+                      <p className="text-sm leading-relaxed text-text-body">{newsPoint.reason}</p>
+                    </li>
+                  ))}
+                </ol>
               </section>
             ) : null}
             {reasoning.status === "ready" &&

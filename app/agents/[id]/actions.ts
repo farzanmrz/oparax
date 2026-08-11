@@ -192,7 +192,7 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
   const { data: currentWinner, error: currentWinnerError } = await supabase
     .from("drafts")
     .select(
-      "id, posted_at, posted_url, posting_claimed_at, news_title, news_synthesis, translation",
+      "id, posted_at, posted_url, posting_claimed_at, news_title, news_synthesis, translation, news_points, on_beat_reason",
     )
     .eq("source_post_id", parentDraft.source_post_id)
     .eq("agent_id", parentDraft.agent_id)
@@ -306,6 +306,8 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
       news_title: currentWinner.news_title,
       news_synthesis: currentWinner.news_synthesis,
       translation: currentWinner.translation,
+      news_points: currentWinner.news_points,
+      on_beat_reason: currentWinner.on_beat_reason,
     })
     .select("id")
     .single();

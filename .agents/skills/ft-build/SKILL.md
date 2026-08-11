@@ -1,111 +1,50 @@
 ---
 name: ft-build
 description: >-
-  Phase 2 of the feature flow, standalone: execute the approved plan from the
-  ft/N issue inline; the spec decides, build implements. CODEX ONLY — real
-  file under `.agents/skills/`, absent from `.claude/skills/` (2026-08-08
-  owner decision: the owner always builds in ChatGPT, on gpt-5.6-terra high).
+  Phase 4 of the feature flow, CODEX ONLY: execute the approved spec from
+  the ft/N issue inline; the spec decided, build implements and self-checks.
   Use when the user says /ft-build, "build the plan", "implement the
   tasks", or "just build X" mid-flight on a feature branch.
 argument-hint: "[issue# | what to build]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *)
-# inherit, not a pin: the owner sets the session dial. The plan carries the
-# judgment; this phase carries it out. A pin would override that dial.
 model: inherit
-effort: medium
 ---
 
-# Build: inline, sequential, silent
+# Build: execute the spec, prove your own work
 
-* **Source of tasks:** the `ft/<issue#>` issue body via `gh issue view`. It is
-  hyper-specific by the plan phase's contract (files, signatures, near-code
-  per task).
-* **No issue = small-build mode:** the user's direct instruction is the plan.
-  One branch, no scope creep beyond what they said.
-* **Communication rule:** the `Flow` output style governs. Zero prose during
-  execution; the only permitted text is an escalation.
-* **Grounding fan-out:** before writing code, ground the issue body's named
-  files with PARALLEL read-only `grounder` instances, named explicitly,
-  whenever they span 3+ independent files/areas (≤6 threads); Codex never
-  fans out unprompted and sequential-reads otherwise. IMPLEMENTATION stays
-  inline and sequential (the rule below); fan-out is for reading, never
-  writing.
+Recommended dial: `gpt-5.6-sol` high (advisory, never a gate). Source of tasks: the `ft/<N>` issue body
+(the gate-approved decisions) plus `.feature/spec-<N>.md` for the full
+detail. No issue = small-build mode: the user's direct instruction is the
+plan, one branch, no scope creep.
 
 ## 1. Preflight
-
-Run the install gate:
 
 ```bash
 pnpm install --frozen-lockfile
 ```
 
-* **BLOCKER:** an unmet-peer warning on a feature-relevant package. Stop and
-  surface it (proven in #39: a green build hid a worker crash).
+* **BLOCKER:** an unmet-peer warning on a feature-relevant package (a green build once hid a worker crash).
+* **No re-grounding.** The spec IS the grounding: it arrives decision-complete with exact file anchors and probed reality. Read the issue body and the spec, then read each file as you edit it. Never spawn subagents to map, survey, or re-derive the codebase before editing.
 
 ## 2. Execute
 
-Work the plan's Build steps **yourself, in order, in this session**.
-**No dispatch, no briefs:** per-task implementer agents were measured and
-removed (brief overhead outweighed parallelism that mostly wasn't there, and
-concurrent agents confused each other's work). The plan already decided the
-design.
+Checkpoint commits are the durable progress ledger: on a restarted session, read the branch's commits and
+resume from the first unfinished step; never re-execute a completed one.
+Work the build steps yourself, in order, in this session. Per task:
 
-### A. Per-task loop
+1. **Skills first:** invoke the skills the spec's task names (binding).
+2. **Write to spec:** resolve only implementation nuance; match surrounding idiom; Biome-clean as written (`next/image` with real dimensions, complete hook dependency arrays).
+3. **Escalate instead of improvising:** if reality diverges from the spec beyond nuance, STOP and surface it in a sentence. An escalation must name the spec line it contradicts; if the spec decided it, execute it — a decided item is never re-litigated on the build dial. Design never happens on the build dial.
+4. **Checkpoint:** `pnpm exec tsc --noEmit` clean on the files just touched, then a checkpoint commit (restore points; the slice squash-merges at ship).
 
-1. **Skills first:** invoke the skills the plan names for that task (binding,
-   not optional).
-2. **Write to spec:** write the code the plan specifies, resolving only
-   implementation nuance (imports, adjacent-code idiom, minor type friction).
-   Match the surrounding code's style; no placeholder comments, no TODOs.
-   Write to Biome's conventions as you go — `next/image` with real
-   dimensions, never `<img>`; complete hook dependency arrays, or
-   restructure so an omission is deliberate — so the exit sweep and QC's
-   residual-lint step start near-empty (those two rules are the measured
-   bulk of every residual).
-3. **Escalate instead of improvising:** if reality diverges from the plan
-   beyond nuance (an interface can't exist as specified, a dependency
-   surprise, a guard the plan missed), STOP and surface it in one or two
-   sentences. Architecture decisions never happen on the build dial.
-4. **Checkpoint:** after each task, run the typecheck and confirm no error
-   names the files just written (the branch as a whole may not typecheck
-   until later tasks land; only the files just touched must be clean). Green =
-   commit checkpoint. Commits here are restore points, not history: the slice
-   squash-merges at ship.
+* **Standing guards:** stock shadcn + ai-elements only; no persistence until a data shape earns it; never resurrect deleted legacy patterns.
+* **Exploratory DB work:** dispatch `supabase-runner` instead of thrashing in-session; migrations and type-gen are ordinary inline tasks (MCP via ToolSearch).
+* **Scope:** mid-flight new scope stays off the branch.
 
-```bash
-pnpm exec tsc --noEmit
-```
+## 3. Self-verify (part of building, not QC)
 
-### B. Guards and MCP
-
-* **Standing guards:** stock shadcn + ai-elements only; no persistence until
-  a data shape earns it; never resurrect deleted legacy patterns.
-* **MCP tasks are ordinary tasks:** a Supabase migration, type regeneration,
-  or Vercel config task is done inline; load tools via ToolSearch.
-* **Exploratory DB work:** if a DB task turns exploratory (schema surprises,
-  repeated query failures), dispatch `supabase-runner` instead of
-  thrashing in-session.
-
-## Hard rules
-
-* **Never push, never branch, never open PRs.** No `pnpm build` here: that
-  is `/ft-qc`. Lint runs exactly once, as the phase-3 exit sweep, never
-  mid-task.
-* **No browser here, ever:** build never opens a browser and never dispatches
-  a browser agent. Proving behavior in a rendered page is the owner's manual
-  check.
-* **Verification-type slices:** when the plan itself demands live
-  demonstration or evidence capture, that work IS QC/verification. Finish the
-  build tasks, exit per phase 3 into `/ft-qc`, and let the evidence be
-  gathered at the owner's manual gate, never improvised mid-build.
-* **Scope:** mid-flight new scope stays off the branch: drop it. A deferral
-  the user names is a future slice.
-* **Progress tracking:** TaskUpdate only when the plan has 4+ tasks;
-  otherwise skip the ceremony.
-
-## 3. Exit: STOP when built
-
-* **Exit lint sweep (changed files only):** before reporting, run
+* **Boot smoke, no browser:** start or reuse the :3000 dev server and confirm it boots clean; exercise changed routes and actions with direct requests (curl or throwaway probe scripts, deleted after). Never open a browser and never screenshot — rendered surfaces are proven by the owner's walkthrough, nowhere else.
+* **Exit lint sweep, changed files only:**
 
 ```bash
 files=$(git diff --name-only --diff-filter=ACMR origin/beta...HEAD \
@@ -113,18 +52,19 @@ files=$(git diff --name-only --diff-filter=ACMR origin/beta...HEAD \
 [ -n "$files" ] && echo "$files" | xargs pnpm exec biome check --write --no-errors-on-unmatched
 ```
 
-  then fix every remaining diagnostic inline (the writer fixes its own lint
-  while context is hot; a behavior-changing fix like a hook-dependency edit
-  gets one flag line in the build summary), re-run `pnpm exec tsc --noEmit`,
-  and commit. Handoff contract: zero Biome diagnostics on the branch's
-  changed files, so QC's residual-lint step starts empty. Never widen to
-  `biome check .`: pre-existing findings in untouched code are QC's scope
-  call, not this build's.
-* **Stop and report** when every task is done and the last checkpoint from
-  phase 2 is green: tasks completed, files touched, and any deviations or
-  escalations. A compact build summary, nothing more.
-* **Never auto-invoke QC** (owner decision 2026-07-27): wait for the owner
-  to say whether QC runs now, later, or in a different session. When they
-  say go, the next step is `/ft-qc` in either app, and its first step
-  (ft-find) runs on the smart dial: fable/opus high in Claude Code,
-  `gpt-5.6-sol` high in Codex.
+Fix every remaining diagnostic inline, re-run `tsc --noEmit`, commit. Never widen to `biome check .`.
+
+## 4. Exit: STOP when built
+
+Never push, never branch, never open PRs, never auto-invoke QC. Report a
+compact build summary (tasks, files, deviations), then:
+
+<exit-example>
+
+Built: 6 tasks, 14 files, no deviations. When ready, run in Claude Code (Fable 5 high):
+
+```
+/ft-qc 118
+```
+
+</exit-example>

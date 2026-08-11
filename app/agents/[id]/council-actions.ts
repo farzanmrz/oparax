@@ -4,13 +4,14 @@
 // this file's only job is supplying the RLS-scoped server client. Both actions are plain
 // reads through `drafts` (EXISTS-joined to `agents`, so the RLS client scopes
 // ownership automatically): no admin client, no model calls, no writes. Never import
-// `draft-council-run.ts`/`lib/sysprompts` here — council-dialog.tsx/draft-menu.tsx
-// call these two actions directly from a client component, so anything this file imports
-// is reachable from the client bundle boundary.
+// `draft-council-run.ts`/`lib/sysprompts` here — draft-menu.tsx calls these actions
+// directly from a client component, so anything this file imports is reachable from the
+// client bundle boundary.
 "use server";
 
-import type { CouncilDetail, DraftHistoryDetail } from "@/lib/agent/council-query";
-import { queryCouncilDetail, queryDraftHistory } from "@/lib/agent/council-query";
+import { z } from "zod";
+import type { DraftHistoryDetail } from "@/lib/agent/council-query";
+import { queryDraftHistory } from "@/lib/agent/council-query";
 import {
   type DraftConstruction,
   draftConstructionFromUsage,
@@ -19,14 +20,26 @@ import {
 import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
 import { createClient } from "@/lib/supabase/server";
 
+const persistedNewsPointsSchema = z
+  .array(
+    z.object({
+      reason: z.string().trim().min(1),
+      point: z.string().trim().min(1),
+    }),
+  )
+  .min(1);
+
+export type DraftReasoningPoint = { reason: string; point: string };
+
 export type DraftReasoningResult =
   | {
       state: "found";
       onBeatReason: string | null;
+      newsPoints: DraftReasoningPoint[] | null;
       construction: DraftConstruction | null;
       edited: boolean;
     }
-  | { state: "withheld" | "none"; onBeatReason: null; edited: boolean };
+  | { state: "withheld" | "none"; onBeatReason: null; newsPoints: null; edited: boolean };
 
 /** Legacy rows predate `usage.draftOnBeatReason`. This reads the verdict notes that
  * draft-write appended after the provider trace, never the trace itself. */
@@ -45,14 +58,6 @@ function legacyOnBeatReasonOf(reasoning: string): string | null {
   return onBeatReason || null;
 }
 
-export async function fetchCouncilDetail(
-  sourcePostId: string,
-  agentId: string,
-): Promise<CouncilDetail> {
-  const supabase = await createClient();
-  return queryCouncilDetail(supabase, sourcePostId, agentId);
-}
-
 export async function fetchDraftHistory(winningDraftId: string): Promise<DraftHistoryDetail> {
   const supabase = await createClient();
   return queryDraftHistory(supabase, winningDraftId);
@@ -62,11 +67,16 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
   const supabase = await createClient();
   const { data: base, error: baseError } = await supabase
     .from("drafts")
-    .select("source_post_id, agent_id")
+    .select("source_post_id, agent_id, news_points, on_beat_reason")
     .eq("id", draftId)
     .maybeSingle();
   if (baseError) throw baseError;
-  if (!base) return { state: "none", onBeatReason: null, edited: false };
+  if (!base) return { state: "none", onBeatReason: null, newsPoints: null, edited: false };
+
+  const parsedPoints =
+    base.news_points === null ? null : persistedNewsPointsSchema.safeParse(base.news_points);
+  const newsPoints = parsedPoints?.success ? parsedPoints.data : null;
+  const directOnBeatReason = base.on_beat_reason?.trim() || null;
 
   const { data: drafts, error: draftsError } = await supabase
     .from("drafts")
@@ -104,7 +114,8 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
       if (onBeatReason || construction) {
         return {
           state: "found",
-          onBeatReason,
+          onBeatReason: directOnBeatReason ?? onBeatReason,
+          newsPoints,
           construction,
           edited,
         };
@@ -114,7 +125,16 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
     cursor = draft.parent_draft_id;
   }
 
+  if (directOnBeatReason || newsPoints) {
+    return {
+      state: "found",
+      onBeatReason: directOnBeatReason,
+      newsPoints,
+      construction: null,
+      edited,
+    };
+  }
   return withheld
-    ? { state: "withheld", onBeatReason: null, edited }
-    : { state: "none", onBeatReason: null, edited };
+    ? { state: "withheld", onBeatReason: null, newsPoints: null, edited }
+    : { state: "none", onBeatReason: null, newsPoints: null, edited };
 }

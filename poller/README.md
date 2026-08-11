@@ -29,9 +29,8 @@ package:
 
 - `env.ts` — validates required env vars at startup; missing/blank is fatal
   (`process.exit(1)`), same posture as `ingest/src/env.ts`.
-- `logger.ts` / `errors.ts` / `backoff.ts` / `slack.ts` — copied verbatim from `ingest/src/`
-  (structured JSON logging, catch-value serialization, half-jitter exponential backoff, raw
-  Slack webhook POST).
+- `logger.ts` / `errors.ts` / `backoff.ts` — copied verbatim from `ingest/src/` (structured
+  JSON logging, catch-value serialization, half-jitter exponential backoff).
 - `discovery-safety.ts` — `isPrivateHostname` / `isSafeDiscoveredUrl` (same-site required),
   duplicated from #100's `lib/sources/discovery.ts`, plus `isSafePublicUrl` (#107, no
   same-site requirement — for SERP-discovered candidates, which are expected to be a
@@ -60,15 +59,10 @@ package:
   erroring never stalls another), prefilter, a one-time "priming" pass on a source's first
   ever tick (seeds `source_seen_items` without delivering, so a freshly-onboarded source with
   ~100 sampled URLs doesn't fire a delivery storm), steady-state new-item delivery capped at
-  `POLLER_MAX_NEW_ITEMS_PER_TICK`, and a staleness alarm when a source stops matching.
-- `alarm.ts` — the staleness alarm (above) and `checkDeliveryCap`, mirroring `ingest/`'s own
-  80%-of-observed-cap alarm: a rolling 24h count of website articles ingested (across every
-  desk), Slack-alarmed once it crosses 80% of `POLLER_OBSERVED_DAILY_CAP` — a safety net for a
-  runaway (broken dedup, an unstable item identity), not a hard stop.
+  `POLLER_MAX_NEW_ITEMS_PER_TICK`.
 - `index.ts` — wires it together: loads env, runs an initial tick, then `setInterval` on
-  `POLLER_TICK_INTERVAL_MS` (guarded so ticks never overlap) plus a separate, much slower
-  `setInterval` on `POLLER_CAP_CHECK_INTERVAL_MS` for the delivery-cap check. Handles
-  `SIGTERM`/`SIGINT` for clean shutdown on redeploy.
+  `POLLER_TICK_INTERVAL_MS` (guarded so ticks never overlap). Handles `SIGTERM`/`SIGINT` for
+  clean shutdown on redeploy.
 
 ## Fatal-exit boundary
 
@@ -92,17 +86,12 @@ only). Set them in Railway's variable UI/CLI, never in `railway.json`.
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Service-role key for the same project. |
 | `INGEST_URL` | yes | The app's `/api/ingest` URL. |
 | `INGEST_SECRET` | yes | Must be byte-identical to the app's `INGEST_SECRET` (Vercel) and to `ingest/`'s own copy of the same value. |
-| `SLACK_WEBHOOK_URL` | yes | Staleness alarm + the delivery-cap alarm. |
 | `OPARAX_POLLER_USER_AGENT` | yes | e.g. `OparaxBot/0.1 (+https://oparax.ai/bot)` — a real, honest UA + contact URL, never a browser string. No default: a fabricated contact URL is worse than a required var. |
 | `BRIGHTDATA_API_KEY` | no | The adaptive chain's real Tier 2 fallback — used automatically whenever a direct fetch fails or looks blocked, for every source, not just ones with an explicit `retrieval` override. Unset means Tier 2 is skipped and a failed direct fetch falls straight to the teaser. |
 | `BRIGHTDATA_ZONE` | no | The Bright Data Web Unlocker zone name to request through. Required alongside `BRIGHTDATA_API_KEY` for Tier 2 to actually run. |
 | `BRIGHTDATA_SERP_ZONE` | no | The Bright Data SERP API zone name — a separate zone from `BRIGHTDATA_ZONE` (different product, same account/API key). Required alongside `BRIGHTDATA_API_KEY` for Tier 2b (#107) to actually run; unset means Tier 2b is skipped. |
 | `POLLER_TICK_INTERVAL_MS` | no (default `45000`) | 30-60s window per the issue's amendment. |
-| `POLLER_STALE_THRESHOLD_MS` | no (default `432000000` = 5 days) | No new matches for this long alarms Slack. |
-| `POLLER_ALARM_COOLDOWN_MS` | no (default `3600000` = 1h) | Debounce for the staleness alarm. |
 | `POLLER_MAX_NEW_ITEMS_PER_TICK` | no (default `20`) | Caps deliveries per source per tick; excess items are retried next tick. |
-| `POLLER_OBSERVED_DAILY_CAP` | no (default `300`) | Operator-tuned delivery-volume threshold (across every desk); the alarm fires at 80% of this over a rolling 24h window. |
-| `POLLER_CAP_CHECK_INTERVAL_MS` | no (default `300000` = 5 min) | How often the delivery-cap check runs — deliberately much slower than the tick loop. |
 
 ## Deploy checklist (operator)
 

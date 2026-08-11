@@ -111,13 +111,3 @@ export async function markPrimed(client: SupabaseClient, sourceConfigId: string)
  *  desks writes two rows), while source_posts has exactly one row per distinct website
  *  article regardless of how many desks track it — the more precise proxy for "how much new
  *  content has this worker introduced," which is what a runaway-ingestion alarm cares about. */
-export async function countRecentWebsiteDeliveries(client: SupabaseClient): Promise<number> {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count, error } = await client
-    .from("source_posts")
-    .select("*", { count: "exact", head: true })
-    .eq("source", "website")
-    .gte("created_at", since);
-  if (error) throw error;
-  return count ?? 0;
-}

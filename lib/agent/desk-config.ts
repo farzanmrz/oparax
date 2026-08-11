@@ -73,28 +73,5 @@ export function checkXPostable(
   return { ok: true };
 }
 
-/** Every platform the drafting code knows how to draft for. The TYPE stays complete so the
- *  LinkedIn/Bluesky paths (per-platform char ceilings, the feed's pill switcher, the council
- *  fan-out) keep compiling — they are dormant, not deleted. */
-const ALL_PLATFORMS = ["x", "linkedin", "bluesky"] as const;
-export type Platform = (typeof ALL_PLATFORMS)[number];
-
-/** The platforms drafting actually FANS OUT to today — X only, matching the shipped flow
- *  (X sources → X draft → Slack → post to X). Reactivating another platform also requires
- *  per-platform pipeline drafting: the current pipeline hardcodes X-shaped single-drafter output.
- *  The council fan-out, feed platform pills, and `isPlatform` filter all read from here. Order is
- *  fan-out order, not priority — every platform runs in parallel via `Promise.allSettled`. */
-export const PLATFORMS = ["x"] as const satisfies readonly Platform[];
-
-/** Character ceilings for the non-X platforms. X's ceiling stays SOLELY in X_CHAR_LIMITS
- *  (account-tier-dependent) — these two are flat, no tier concept for either platform. */
-export const NON_X_PLATFORM_CHAR_LIMITS: Record<Exclude<Platform, "x">, number> = {
-  linkedin: 3000, // LinkedIn's own post character cap
-  bluesky: 300, // Bluesky's own post character cap
-};
-
-/** Dormant-by-design (AGENTS.md): auto-post (publish without review) is a settled off-switch,
- *  not a gap. `draft-pipeline.ts` reads this server-side gate before it can publish an
- *  unreviewed post. The disabled Setup switch was removed, so reactivation also requires a UI
- *  path to set the master and per-source configuration (see `auto_post_master` in `agents`). */
-export const AUTO_POST_ENABLED = false;
+/** X is the only platform the product drafts for. */
+export type Platform = "x";

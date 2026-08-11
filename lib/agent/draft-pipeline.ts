@@ -4,56 +4,34 @@
 // its prompts at module scope); never importable from a client component.
 //
 // Owns ALL persistence and metering for the drafting path. The council
-// (draft-council-run.ts) and the notify senders (lib/notify/*) are pure and deliberately
-// touch neither the DB nor the ledger — this module is where both cross-cutting invariants
-// are actually satisfied (AGENTS.md's metering + model-call rules):
+// (draft-council-run.ts) is pure and deliberately touches neither the DB nor the ledger —
+// this module is where both cross-cutting invariants are actually satisfied (AGENTS.md's
+// metering + model-call rules):
 //   - every element of a council's `calls` array becomes exactly one `model_calls` row,
 //     carrying `output`, `reasoning`, and `usage` (including `reasoningWithheldByProvider`).
-//   - every touch point stamps `usage_events` — the inbound delivery, each model call,
-//     each Slack push, each email send, each verified inbound reply.
+//   - every touch point stamps `usage_events` — the inbound delivery, each model call.
 // Ledger-first ordering throughout, the same discipline the extraction path uses: `model_calls`
 // rows are written BEFORE the artifact rows (`drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
 import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
-import {
-  AUTO_POST_ENABLED,
-  checkXPostable,
-  PLATFORMS,
-  type Platform,
-  resolveDeskTier,
-} from "@/lib/agent/desk-config";
-import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
+import { checkXPostable, resolveDeskTier } from "@/lib/agent/desk-config";
+import type { CouncilCall, SourceBrief } from "@/lib/agent/draft-council-run";
+import { filterSourcePost } from "@/lib/agent/draft-filter";
+import { synthesizeSourcePost } from "@/lib/agent/draft-synthesize";
 import { translateSourcePost } from "@/lib/agent/draft-translate";
 import { draftSourcePost } from "@/lib/agent/draft-write";
-import {
-  formatSourceIdentity,
-  normalizeWebsitePublisherMention,
-  type SourceIdentity,
-} from "@/lib/agent/source-identity";
-import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
-import { sendDraftEmail } from "@/lib/notify/email";
-import { sendSlackMessage } from "@/lib/notify/slack";
+import { normalizeWebsitePublisherMention } from "@/lib/agent/source-identity";
+import { validateSourceMedia } from "@/lib/agent/source-media";
 import { draftingConversationId } from "@/lib/observability/ai-conversation";
-import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
-import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
 import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
-import { publishDraftToXForOwner } from "@/lib/x/post-core";
 import { getXAccount } from "@/lib/x/store";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
-
-/** Email draft-delivery is DORMANT — the shipped flow notifies on Slack only. Until now this
- *  path was inert only by accident (the `RESEND_*` keys were never provisioned), so provisioning
- *  Resend for any other reason would have silently switched draft emails back on. This makes it
- *  a decision. `lib/notify/email.ts`, the plus-addressed reply encoding, and the inbound-reply
- *  webhook all stay wired behind it — flipping this to `true` (with the keys set) restores the
- *  whole email leg, including reply-to-correct-a-draft. */
-const EMAIL_DELIVERY_ENABLED = false;
 
 // Part A (T2.4b): source_posts / IngestDelivery now carries a source discriminator —
 // app/api/ingest/route.ts's ingestBodySchema (already locked) validates this exact shape and
@@ -92,9 +70,22 @@ export type ProcessDeliveryResult = {
     agentId: string;
     winningModel: string;
     degraded: boolean;
-    skipped?: "already_drafted" | "no_guide" | "off_beat";
+    skipped?: "already_drafted" | "no_guide" | "off_beat" | "oversized" | "synthesis_unusable";
   }>;
 };
+
+export class RetryableDeliveryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RetryableDeliveryError";
+  }
+}
+
+const MIN_NEXT_CLAIM_BUDGET_MS = 30_000;
+const DIRECT_SYNTHESIS_ENABLED = false;
+const OVERSIZED_EXCLUSION_REASON = "This delivery was too large to process and was skipped.";
+const SYNTHESIS_EXCLUSION_REASON =
+  "This story couldn't be turned into news points and was skipped.";
 
 /** A post whose text carries nothing to write FROM. The drafting models receive text only —
  *  never media — so "🌟 https://t.co/…" hands them an emoji and an opaque link, and the
@@ -108,7 +99,8 @@ export type ProcessDeliveryResult = {
  *  discarded merely because body retrieval fell back to a teaser. Text is NOT low-signal if a link is present AND at least 4 characters
  *  of caption remain after stripping @/# tags and emoji, OR (independent of any link) the
  *  stripped text alone is 12+ characters. */
-function isLowSignal(text: string, title?: string): boolean {
+function isLowSignal(text: string, title?: string, media: SourceBrief["media"] = []): boolean {
+  if (media.length > 0) return false;
   const sourceText = title ? `${title}\n${text}` : text;
   const hasLink = /https?:\/\/\S+/.test(sourceText);
   const stripped = sourceText
@@ -121,6 +113,43 @@ function isLowSignal(text: string, title?: string): boolean {
   return stripped.length < 12;
 }
 
+function requireTimeBudget(deadlineAt: number | undefined, beforeClaim = false): void {
+  if (deadlineAt === undefined) return;
+  const remaining = deadlineAt - Date.now();
+  const required = beforeClaim ? MIN_NEXT_CLAIM_BUDGET_MS : 1;
+  if (remaining < required) {
+    throw new RetryableDeliveryError(
+      `draft-pipeline: only ${Math.max(0, remaining)}ms remained in the drafting deadline`,
+    );
+  }
+}
+
+function isProviderInputTooLarge(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const status =
+    typeof error === "object" && error !== null && "statusCode" in error
+      ? (error as { statusCode?: unknown }).statusCode
+      : undefined;
+  return (
+    status === 413 ||
+    /(?:context|input|request).{0,80}(?:too large|too long|exceed|limit)|(?:too large|too long|context length|input length)/i.test(
+      message,
+    )
+  );
+}
+
+function isNewsPointsValidationError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "22023" &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("news_points")
+  );
+}
+
 type MatchedAgent = {
   id: string;
   owner_id: string;
@@ -128,8 +157,6 @@ type MatchedAgent = {
   reporter_tier: string | null;
   beat: string;
   status: string;
-  auto_post_master: boolean;
-  auto_post_sources: Json;
 };
 
 /** Best-effort publisher extraction. A website hostname is provenance, never an X handle. */
@@ -237,102 +264,22 @@ async function stampUsageEvent(
   if (error && !isDuplicateStreamDelivery) throw error;
 }
 
-/** Slack push + (conditionally) email, each independently error-tolerant: a channel outage
- *  must never discard an already-paid council run's drafts. Only a channel that actually
- *  sent stamps its usage_events row.
- *
- *  QC fix: the per-desk Slack app (lib/slack/*, item 5) was built and linkable but this
- *  function still only ever called the legacy workspace webhook (sendSlackMessage) — the
- *  Block Kit "Post to X" button (buildDraftBlocks) and the whole interactions route were
- *  unreachable in every real delivery. Fixed: a linked desk (slack_accounts row present) gets
- *  the real per-desk push with the actionable button; SLACK_WEBHOOK_URL is now genuinely the
- *  legacy fallback for a desk that hasn't linked Slack, matching AGENTS.md's documented
- *  intent. */
-async function deliverDraft(
+async function completeClaimWithExclusion(
   admin: AdminClient,
-  input: {
-    agentId: string;
-    ownerId: string;
-    sourceIdentity: SourceIdentity;
-    sourceText: string;
-    winningText: string;
-    winningDraftId: string;
-    winningPlatform: Platform;
-    sourcePostId: string;
-    revised: boolean;
-  },
-): Promise<void> {
-  // Slack mrkdwn and plain text are NOT interchangeable: the same string in an email body
-  // renders its `*bold*` and `>` markers literally. One input, two renderings. Cost/model-count
-  // display lives in the council provenance dialog now (reads model_calls directly), not here.
-  const composeInput = {
-    sourceIdentity: input.sourceIdentity,
-    sourceText: input.sourceText,
-    winningText: input.winningText,
-    revised: input.revised,
-  };
-  const message = composeDraftMessage(composeInput);
-
-  try {
-    const slackAccount = await getSlackAccount(input.agentId);
-    if (slackAccount) {
-      // The interactive button always posts to X (SLACK_POST_TO_X_ACTION_ID ->
-      // postDraftToXForOwner) — only attach it when the winning draft actually IS an X draft.
-      // Otherwise (X's council failed and another platform's draft won instead) this would
-      // wire "Post to X" to a LinkedIn/Bluesky draft, posting the wrong platform's content.
-      await postMessage({
-        channelId: slackAccount.channel_id,
-        accessToken: slackAccount.access_token,
-        text: message,
-        ...(input.winningPlatform === "x"
-          ? {
-              blocks: buildDraftBlocks({
-                text: input.winningText,
-                draftId: input.winningDraftId,
-              }),
-            }
-          : {}),
-      });
-    } else {
-      await sendSlackMessage(message);
-    }
-    await stampUsageEvent(admin, {
-      owner_id: input.ownerId,
-      kind: "slack_notification",
-      units: 1,
-      cost_usd: null,
-      ref_id: input.sourcePostId,
-    });
-  } catch (err) {
-    console.error("draft-pipeline: slack delivery failed", err);
-  }
-
-  const { RESEND_API_KEY, RESEND_FROM, RESEND_REPLY_DOMAIN, NOTIFY_EMAIL_TO } = process.env;
-  if (
-    EMAIL_DELIVERY_ENABLED &&
-    RESEND_API_KEY &&
-    RESEND_FROM &&
-    RESEND_REPLY_DOMAIN &&
-    NOTIFY_EMAIL_TO
-  ) {
-    try {
-      await sendDraftEmail({
-        to: NOTIFY_EMAIL_TO,
-        subject: `${input.revised ? "Revised draft" : "New draft"} from ${formatSourceIdentity(input.sourceIdentity)}`,
-        text: composeDraftMessagePlainText(composeInput),
-        draftId: input.winningDraftId,
-      });
-      await stampUsageEvent(admin, {
-        owner_id: input.ownerId,
-        kind: "email_notification",
-        units: 1,
-        cost_usd: null,
-        ref_id: input.sourcePostId,
-      });
-    } catch (err) {
-      console.error("draft-pipeline: email delivery failed", err);
-    }
-  }
+  agentId: string,
+  sourcePostId: string,
+  claimToken: string,
+  reason: string,
+): Promise<boolean> {
+  const { data: exclusionId, error } = await admin.rpc("upsert_claimed_exclusion", {
+    p_agent_id: agentId,
+    p_claim_token: claimToken,
+    p_excluded_at: new Date().toISOString(),
+    p_on_beat_reason: reason,
+    p_source_post_id: sourcePostId,
+  });
+  if (error) throw error;
+  return exclusionId !== null;
 }
 
 async function draftForAgent(
@@ -340,18 +287,11 @@ async function draftForAgent(
   agent: MatchedAgent,
   sourcePostId: string,
   brief: SourceBrief,
-  deliverySource: IngestDelivery["source"],
   siteGuidance: { onBeat: string; offBeat: string } | null,
+  options: { deadlineAt?: number; oversizedInput: boolean },
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
-  // WHICH reporter's desk was drafting is most of an error report's diagnostic value, and this
-  // path runs from /api/ingest's Bearer-authed delivery — no user session exists to attribute it
-  // automatically. The owner id only; the desk's content stays out of Sentry (ai-telemetry.ts
-  // keeps drafting content unrecorded).
   Sentry.setUser({ id: agent.owner_id });
-  // A desk with no voice guide is a valid working state — its sources are tracked and
-  // ingestion runs; only drafting waits. Checked
-  // BEFORE the atomic claim below: a no-guide desk must not burn a draft_claims row it will
-  // never use.
+  Sentry.setConversationId(undefined);
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
     .select("guide_raw, guide_deploy, measured_facts")
@@ -361,22 +301,10 @@ async function draftForAgent(
   if (!guide) {
     return { agentId: agent.id, winningModel: "", degraded: false, skipped: "no_guide" };
   }
-  // rules.ts's own docstring names this composition step "the drafting call sites' job" —
-  // flattened enabled voice_rules + measured facts is the actual drafting input of record,
-  // falling back to the raw deployed guide only when no rule is enabled yet.
-  const voiceGuidance = resolveDraftingPrompt(
-    await listVoiceRules(agent.id),
-    guide.measured_facts,
-    guide.guide_deploy,
-  );
   const beatSpec = extractBeatSpec(guide.guide_raw) ?? agent.beat;
-  const xAccount = await getXAccount(agent.owner_id);
-  const accountTier = resolveDeskTier(agent.reporter_tier, xAccount?.tier);
 
+  requireTimeBudget(options.deadlineAt, true);
   const claimToken = randomUUID();
-  // Atomic claim/reclaim: a delivery that outlives the ingest route's 800-second budget can
-  // leave a claim behind without running the catch below. The RPC inserts when absent and only
-  // reclaims a claim older than that same route budget, preserving an in-progress delivery.
   const { data: claimed, error: claimError } = await admin.rpc("claim_draft", {
     p_agent_id: agent.id,
     p_source_post_id: sourcePostId,
@@ -393,45 +321,168 @@ async function draftForAgent(
     };
   }
 
-  // The claim above is a "drafting started" marker, not "drafting done". Every step below is
-  // paid or fallible; if any throws (a transient gateway 5xx, a DB error), the claim must be
-  // RELEASED — otherwise the worker's retry cannot re-attempt until claim_draft's stale cutoff.
-  // The attempt token prevents an old claimant from deleting a newer reclaimed claim.
-  // Release-on-failure reopens the (source_post, agent) pair immediately; the re-run re-bills,
-  // which is the right trade against a silently lost draft. The on-beat happy path AND the
-  // off-beat outcome both leave the claim in place (dedup intact) — an off-beat verdict must not
-  // be re-billed on redelivery.
   try {
-    // Stage 1: deterministic English sources skip translation entirely. Any completed model call
-    // is ledgered and metered before its output can decide whether drafting continues.
-    const translated = await translateSourcePost({ brief });
-    if (translated.call) {
-      await insertModelCalls(admin, agent.owner_id, [translated.call], sourcePostId);
-      await stampUsageEvent(admin, {
-        owner_id: agent.owner_id,
-        kind: "translation",
-        units: 1,
-        cost_usd: translated.call.costUsd,
-        ref_id: sourcePostId,
+    if (options.oversizedInput) {
+      const completed = await completeClaimWithExclusion(
+        admin,
+        agent.id,
+        sourcePostId,
+        claimToken,
+        OVERSIZED_EXCLUSION_REASON,
+      );
+      Sentry.captureMessage("draft-pipeline: terminal oversized delivery", {
+        level: "warning",
+        tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized" },
       });
-    }
-    if (!translated.usable || !translated.englishSourceText?.trim()) {
-      throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: completed ? "oversized" : "already_drafted",
+      };
     }
 
-    // Stage 2: one Qwen pass makes the beat decision, generated news title, news synthesis, and draft.
-    const written = await draftSourcePost({
-      source: { identity: brief.identity, media: brief.media },
-      englishSourceText: translated.englishSourceText,
+    // The cheap relevance stage is always ledgered before its verdict controls the next call.
+    const filtered = await filterSourcePost({
+      brief,
       beatSpec,
       siteGuidance,
+      deadlineAt: options.deadlineAt,
+    });
+    await insertModelCalls(admin, agent.owner_id, [filtered.call], sourcePostId);
+    await stampUsageEvent(admin, {
+      owner_id: agent.owner_id,
+      kind: "filtering",
+      units: 1,
+      cost_usd: filtered.call.costUsd,
+      ref_id: sourcePostId,
+    });
+    if (!filtered.verdict) {
+      throw new Error(`draft-pipeline: filter verdict unusable for source post ${sourcePostId}`);
+    }
+
+    if (!filtered.verdict.onBeat) {
+      const { data: exclusionId, error: exclusionError } = await admin.rpc(
+        "upsert_claimed_exclusion",
+        {
+          p_agent_id: agent.id,
+          p_claim_token: claimToken,
+          p_excluded_at: new Date().toISOString(),
+          p_on_beat_reason: filtered.verdict.onBeatReason,
+          p_source_post_id: sourcePostId,
+        },
+      );
+      if (exclusionError) throw exclusionError;
+      if (exclusionId === null) {
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: "already_drafted",
+        };
+      }
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: "off_beat",
+      };
+    }
+
+    requireTimeBudget(options.deadlineAt);
+    let translation: string | null = null;
+    let synthesisSourceText = brief.text;
+    let synthesisSourceLang = brief.lang;
+    let synthesisSourceTitle = brief.title;
+    let originalLang: string | null | undefined;
+    if (!DIRECT_SYNTHESIS_ENABLED) {
+      const translated = await translateSourcePost({ brief, deadlineAt: options.deadlineAt });
+      if (translated.call) {
+        await insertModelCalls(admin, agent.owner_id, [translated.call], sourcePostId);
+        await stampUsageEvent(admin, {
+          owner_id: agent.owner_id,
+          kind: "translation",
+          units: 1,
+          cost_usd: translated.call.costUsd,
+          ref_id: sourcePostId,
+        });
+      }
+      if (!translated.usable || !translated.englishSourceText?.trim()) {
+        throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
+      }
+      translation = translated.translation;
+      synthesisSourceText = translated.englishSourceText;
+      synthesisSourceLang = "en";
+      synthesisSourceTitle = undefined;
+      originalLang = brief.lang;
+    }
+
+    const synthesized = await synthesizeSourcePost({
+      brief,
+      sourceText: synthesisSourceText,
+      sourceLang: synthesisSourceLang,
+      sourceTitle: synthesisSourceTitle,
+      originalLang,
+      deadlineAt: options.deadlineAt,
+    });
+    await insertModelCalls(admin, agent.owner_id, [synthesized.call], sourcePostId);
+    await stampUsageEvent(admin, {
+      owner_id: agent.owner_id,
+      kind: "synthesis",
+      units: 1,
+      cost_usd: synthesized.call.costUsd,
+      ref_id: sourcePostId,
+    });
+    if (!synthesized.verdict) {
+      const completed = await completeClaimWithExclusion(
+        admin,
+        agent.id,
+        sourcePostId,
+        claimToken,
+        SYNTHESIS_EXCLUSION_REASON,
+      );
+      Sentry.captureMessage("draft-pipeline: terminal unusable synthesis", {
+        level: "warning",
+        tags: { sourcePostId, agentId: agent.id, scope: "draft_synthesis_unusable" },
+      });
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: completed ? "synthesis_unusable" : "already_drafted",
+      };
+    }
+
+    // Voice-rule composition is intentionally deferred until the story is known on-beat.
+    const voiceGuidance = resolveDraftingPrompt(
+      await listVoiceRules(agent.id),
+      guide.measured_facts,
+      guide.guide_deploy,
+    );
+    const xAccount = await getXAccount(agent.owner_id);
+    const accountTier = resolveDeskTier(agent.reporter_tier, xAccount?.tier);
+    const written = await draftSourcePost({
+      identity: brief.identity,
+      newsTitle: synthesized.verdict.newsTitle,
+      newsPoints: synthesized.verdict.newsPoints,
       voiceGuidance,
       platform: "x",
       accountTier,
+      deadlineAt: options.deadlineAt,
     });
-    if (written.verdict?.onBeat && written.verdict.draft !== null) {
-      written.call.output = normalizeWebsitePublisherMention(written.verdict.draft, brief.identity);
+    if (!written.verdict) {
+      await insertModelCalls(admin, agent.owner_id, [written.call], sourcePostId);
+      await stampUsageEvent(admin, {
+        owner_id: agent.owner_id,
+        kind: "drafting",
+        units: 1,
+        cost_usd: written.call.costUsd,
+        ref_id: sourcePostId,
+      });
+      throw new Error(`draft-pipeline: drafter verdict unusable for source post ${sourcePostId}`);
     }
+    const draftText = normalizeWebsitePublisherMention(written.verdict.draft, brief.identity);
+    written.call.output = draftText;
     const [drafterCallId] = await insertModelCalls(
       admin,
       agent.owner_id,
@@ -445,52 +496,6 @@ async function draftForAgent(
       cost_usd: written.call.costUsd,
       ref_id: sourcePostId,
     });
-    if (!written.verdict) {
-      throw new Error(`draft-pipeline: draft verdict unusable for source post ${sourcePostId}`);
-    }
-    const verdict = written.verdict;
-
-    if (!verdict.onBeat) {
-      // Persist every off-beat verdict so a reporter can review what got filtered and why
-      // (the Excluded tab reads this). One verdict, one reason: the single drafter's — the
-      // grounder-vs-judge arbitration beta recorded here died with those stages.
-      const { data: exclusionId, error: exclusionError } = await admin.rpc(
-        "upsert_claimed_exclusion",
-        {
-          p_agent_id: agent.id,
-          p_claim_token: claimToken,
-          p_excluded_at: new Date().toISOString(),
-          p_on_beat_reason: verdict.onBeatReason,
-          p_source_post_id: sourcePostId,
-        },
-      );
-      if (exclusionError) throw exclusionError;
-      if (exclusionId === null) {
-        return {
-          agentId: agent.id,
-          winningModel: "",
-          degraded: false,
-          skipped: "already_drafted",
-        };
-      }
-
-      // Off-beat: no story row, no council, no drafts row — reported, not drafted-and-hidden.
-      return {
-        agentId: agent.id,
-        winningModel: "",
-        degraded: false,
-        skipped: "off_beat",
-      };
-    }
-
-    const unnormalizedDraftText = verdict.draft;
-    if (unnormalizedDraftText === null) {
-      throw new Error(
-        `draft-pipeline: on-beat verdict missing draft for source post ${sourcePostId}`,
-      );
-    }
-    const draftText = normalizeWebsitePublisherMention(unnormalizedDraftText, brief.identity);
-    written.call.output = draftText;
     const fit = checkXPostable(draftText, accountTier);
     if (!fit.ok) {
       console.error(
@@ -498,8 +503,6 @@ async function draftForAgent(
       );
     }
 
-    // Part B: on-beat — one story per source post, directly (CLUSTERING_ENABLED stays off; the
-    // clustering path is not newly built into this flow).
     const cluster = await assignToStory({
       agentId: agent.id,
       sourcePostId,
@@ -521,61 +524,47 @@ async function draftForAgent(
       }
     }
 
-    // Grouping by story id is what lets Explore > Conversations show one story's drafting
-    // call as a single readable thread. Set after clustering because the story id does not
-    // exist before it; every AI span below inherits it from the isolation scope.
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
-    // Part C: one winner row per platform. Its model-call provenance is the single drafter; no
-    // verification judge or audit row follows this stage.
-    const runPlatformDraft = async (
-      platform: Platform,
-    ): Promise<{
-      platform: Platform;
-      winningText: string;
-      winningModel: string;
-      degraded: boolean;
-      winningDraftId: string;
-    } | null> => {
-      const { data, error } = await admin.rpc("insert_claimed_winner", {
-        p_agent_id: agent.id,
-        p_claim_token: claimToken,
-        p_model_call_id: drafterCallId,
-        p_news_synthesis: verdict.newsSynthesis,
-        p_news_title: verdict.newsTitle,
-        p_platform: platform,
-        p_source_post_id: sourcePostId,
-        p_story_id: cluster.storyId,
-        // The column is nullable and the translation fast path deliberately persists null;
-        // generated RPC args model PostgreSQL text as non-nullable.
-        p_translation: translated.translation as string,
-      });
-      if (error) throw error;
-      if (data === null) return null;
-      return {
-        platform,
-        winningText: draftText,
-        winningModel: written.call.model,
-        degraded: false,
-        winningDraftId: data,
-      };
-    };
-
-    const platformResults = await Promise.allSettled(PLATFORMS.map(runPlatformDraft));
-
-    platformResults.forEach((outcome, i) => {
-      if (outcome.status === "rejected") {
-        console.error(
-          `draft-pipeline: platform ${PLATFORMS[i]} failed for agent ${agent.id}`,
-          outcome.reason,
-        );
-      }
+    const { data: winningDraftId, error: winnerError } = await admin.rpc("insert_claimed_winner", {
+      p_agent_id: agent.id,
+      p_claim_token: claimToken,
+      p_model_call_id: drafterCallId,
+      p_news_points: synthesized.verdict.newsPoints as unknown as Json,
+      p_news_synthesis: null as unknown as string,
+      p_news_title: synthesized.verdict.newsTitle,
+      p_on_beat_reason: filtered.verdict.onBeatReason,
+      p_platform: "x",
+      p_source_post_id: sourcePostId,
+      p_story_id: cluster.storyId,
+      p_translation: translation as unknown as string,
     });
-
-    const lostClaim = platformResults.some(
-      (outcome) => outcome.status === "fulfilled" && outcome.value === null,
-    );
-    if (lostClaim) {
+    if (winnerError) {
+      if (isNewsPointsValidationError(winnerError)) {
+        const completed = await completeClaimWithExclusion(
+          admin,
+          agent.id,
+          sourcePostId,
+          claimToken,
+          SYNTHESIS_EXCLUSION_REASON,
+        );
+        Sentry.captureException(winnerError, {
+          tags: { sourcePostId, agentId: agent.id, scope: "draft_synthesis_validation" },
+        });
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: completed ? "synthesis_unusable" : "already_drafted",
+        };
+      }
+      throw winnerError;
+    }
+    // No drafts row exists when the claim was lost between claim_draft and here (a concurrent
+    // retry already won). Propagate so the outer catch releases draft_claims and allows a
+    // retry. The billable stage ledger rows are already committed above, so no paid call is
+    // discarded by this return.
+    if (winningDraftId === null) {
       return {
         agentId: agent.id,
         winningModel: "",
@@ -584,79 +573,36 @@ async function draftForAgent(
       };
     }
 
-    const fulfilled = platformResults
-      .filter(
-        (
-          outcome,
-        ): outcome is PromiseFulfilledResult<
-          Exclude<Awaited<ReturnType<typeof runPlatformDraft>>, null>
-        > => outcome.status === "fulfilled" && outcome.value !== null,
-      )
-      .map((outcome) => outcome.value);
-
-    // Zero fulfilled platforms means no drafts row exists — the single-statement insert
-    // above is what makes that true, a rejected platform having written neither of its rows.
-    // Propagate so the outer catch releases draft_claims and allows a retry. The billable stage
-    // ledger rows are already committed above, so no paid call is discarded by this throw.
-    if (fulfilled.length === 0) {
-      throw new Error(`draft-pipeline: all platforms failed for agent ${agent.id}`);
-    }
-
-    // At least one platform succeeded — a partial multi-platform draft is a real, useful
-    // outcome. Do NOT throw and do NOT release the claim past this point: releasing it here
-    // would let a retry re-bill the platforms that already succeeded.
-    const xResult = fulfilled.find((f) => f.platform === "x");
-    // deliverDraft fires ONCE per delivery per agent (not once per platform) — using the
-    // X platform's winning text when X succeeded, else the first-succeeded platform's winning
-    // text as a reasonable fallback.
-    const primary = xResult ?? fulfilled[0];
-
-    await deliverDraft(admin, {
-      agentId: agent.id,
-      ownerId: agent.owner_id,
-      sourceIdentity: brief.identity,
-      sourceText: brief.text,
-      winningText: primary.winningText,
-      winningDraftId: primary.winningDraftId,
-      winningPlatform: primary.platform,
-      sourcePostId,
-      revised: false,
-    });
-
-    // Part D: auto-post, after the X platform's drafts row exists. Gated on the server-side
-    // AUTO_POST_ENABLED constant (lib/agent/desk-config.ts). auto_post_sources is
-    // keyed by delivery source TYPE ({ x?: boolean; website?: boolean }) — a per-source-type
-    // toggle, the natural reading of "master + per-source toggles" given the only two source
-    // types this slice has. No model_calls row for the post itself — posting isn't a model
-    // call. A posting failure is logged and left as a recoverable draft state: never a
-    // rollback of drafts or ledgers, never a claim release.
-    const sourcesConfig = (agent.auto_post_sources ?? {}) as Record<string, boolean>;
-    const autoPostEligible =
-      AUTO_POST_ENABLED &&
-      agent.auto_post_master === true &&
-      sourcesConfig[deliverySource] === true;
-    if (autoPostEligible && xResult) {
-      const postResult = await publishDraftToXForOwner(xResult.winningDraftId, agent.owner_id);
-      if (!postResult.ok) {
-        console.error(
-          `draft-pipeline: auto-post failed for draft ${xResult.winningDraftId}`,
-          postResult.error,
-        );
-      }
-    }
-
     return {
       agentId: agent.id,
-      winningModel: primary.winningModel,
-      degraded: fulfilled.some((f) => f.degraded) || fulfilled.length < PLATFORMS.length,
+      winningModel: written.call.model,
+      degraded: false,
     };
   } catch (err) {
-    // Release the claim so a retry of this delivery can re-attempt (see the comment above).
-    // The delete's own result must be inspected: a release that silently fails leaves the claim
-    // held until claim_draft's stale cutoff and this (source_post, agent) pair cannot produce a
-    // draft promptly — capture it so the failure is at
-    // least visible, using the same tagged Sentry.captureException pattern post-core.ts uses
-    // elsewhere in that file (not releaseClaim's own console-only handling).
+    if (isProviderInputTooLarge(err)) {
+      try {
+        const completed = await completeClaimWithExclusion(
+          admin,
+          agent.id,
+          sourcePostId,
+          claimToken,
+          OVERSIZED_EXCLUSION_REASON,
+        );
+        Sentry.captureException(err, {
+          tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized" },
+        });
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: completed ? "oversized" : "already_drafted",
+        };
+      } catch (completionError) {
+        Sentry.captureException(completionError, {
+          tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized_completion" },
+        });
+      }
+    }
     const { error: releaseError } = await admin
       .from("draft_claims")
       .delete()
@@ -669,11 +615,19 @@ async function draftForAgent(
         tags: { sourcePostId, agentId: agent.id, scope: "draft_claims_release" },
       });
     }
+    if (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt) {
+      throw new RetryableDeliveryError(
+        "draft-pipeline: drafting deadline elapsed after a claimed run",
+      );
+    }
     throw err;
   }
 }
 
-export async function processDelivery(delivery: IngestDelivery): Promise<ProcessDeliveryResult> {
+export async function processDelivery(
+  delivery: IngestDelivery,
+  options: { deadlineAt?: number } = {},
+): Promise<ProcessDeliveryResult> {
   const admin = createAdminClient();
 
   // Deduped-by-post-id (L4): redelivery of the same post must not create a second row — and must
@@ -698,6 +652,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             text: delivery.text,
             posted_at: delivery.posted_at,
             lang: delivery.lang ?? null,
+            publisher_claim_kind: "aggregator",
             raw: (delivery.raw ?? null) as unknown as Json,
           }
         : {
@@ -709,31 +664,61 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
             author_handle: delivery.author_handle,
             text: delivery.text,
             posted_at: delivery.published_at,
+            lang: delivery.lang,
+            publisher_claim_kind: "outlet-characterization",
             raw: (delivery.raw ?? null) as unknown as Json,
           },
       { onConflict: onConflictColumn, ignoreDuplicates: true },
     )
-    .select("id");
+    .select("id, lang, publisher_claim_kind");
   if (upsertError) throw upsertError;
 
-  let sourcePostId: string;
+  let sourcePost: {
+    id: string;
+    lang: string | null;
+    publisher_claim_kind: SourceBrief["publisherClaimKind"];
+  };
   if (upserted && upserted.length > 0) {
-    sourcePostId = upserted[0].id;
+    sourcePost = upserted[0];
   } else {
     const conflictValue = delivery.source === "x" ? delivery.x_post_id : delivery.external_id;
     const { data: existing, error: existingError } = await admin
       .from("source_posts")
-      .select("id")
+      .select("id, lang, publisher_claim_kind")
       .eq(onConflictColumn, conflictValue)
       .single();
     if (existingError) throw existingError;
-    sourcePostId = existing.id;
+    sourcePost = existing;
+  }
+  const sourcePostId = sourcePost.id;
+
+  const mediaValidation =
+    delivery.source === "x"
+      ? await validateSourceMedia(delivery.media, options.deadlineAt)
+      : { media: [], oversized: false };
+  if (
+    delivery.source === "x" &&
+    delivery.media?.length &&
+    mediaValidation.media.length === 0 &&
+    !mediaValidation.oversized
+  ) {
+    console.warn("draft-pipeline: all delivery media dropped before low-signal evaluation", {
+      sourcePostId,
+      deliveredMediaCount: delivery.media.length,
+    });
   }
 
   // The low-signal gate sits AFTER the source_posts upsert (the record is kept — the post
   // really was delivered) and BEFORE matching/claiming/clustering (nothing downstream runs,
   // nothing bills, no story row is created so the feed never shows it).
-  if (isLowSignal(delivery.text, delivery.source === "website" ? delivery.title : undefined)) {
+  if (
+    !mediaValidation.oversized &&
+    isLowSignal(
+      delivery.text,
+      delivery.source === "website" ? delivery.title : undefined,
+      mediaValidation.media,
+    )
+  ) {
     return { sourcePostId, lowSignal: true, drafted: [] };
   }
 
@@ -753,18 +738,20 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   const { data: allAgents, error: agentsError } = await admin
     .from("agents")
     .select(
-      "id, owner_id, reporter_handle, reporter_tier, beat, tracked_handles, websites, status, auto_post_master, auto_post_sources",
+      "id, owner_id, reporter_handle, reporter_tier, beat, tracked_handles, websites, status",
     );
   if (agentsError) throw agentsError;
   let websiteSourceAgentId: string | null = null;
+  let websiteSourceLanguage: string | null = null;
   if (delivery.source === "website") {
     const { data: sourceConfig, error: sourceConfigError } = await admin
       .from("source_configs")
-      .select("agent_id")
+      .select("agent_id, language")
       .eq("id", delivery.source_config_id)
       .maybeSingle();
     if (sourceConfigError) throw sourceConfigError;
     websiteSourceAgentId = sourceConfig?.agent_id ?? null;
+    websiteSourceLanguage = sourceConfig?.language ?? null;
   }
   const matched: MatchedAgent[] =
     delivery.source === "x"
@@ -817,8 +804,9 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           xPostId: delivery.x_post_id,
           identity: { kind: "x", handle: delivery.author_handle },
           text: delivery.text,
-          lang: delivery.lang ?? null,
-          media: delivery.media ?? [],
+          lang: sourcePost.lang ?? delivery.lang ?? null,
+          media: mediaValidation.media,
+          publisherClaimKind: sourcePost.publisher_claim_kind,
         }
       : {
           sourcePostId,
@@ -826,9 +814,10 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
           identity: { kind: "website", publisher: hostnameOf(delivery.url) },
           title: delivery.title,
           text: delivery.text,
-          lang: delivery.lang,
+          lang: sourcePost.lang ?? websiteSourceLanguage ?? delivery.lang,
           // Website sources carry no structured media descriptors this slice.
           media: [],
+          publisherClaimKind: sourcePost.publisher_claim_kind,
         };
 
   const drafted: ProcessDeliveryResult["drafted"] = [];
@@ -840,223 +829,20 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
     // worker also drops paused desks' handles from the stream on its next ~5-min rule rebuild;
     // this is the immediate guard for that lag window and for hand-seeded deliveries.
     if (agent.status !== "active") continue;
+    // A serial fan-out never acquires a new claim if the route cannot leave enough time for the
+    // claimed desk's release path. The worker treats the resulting 503 as retryable.
+    requireTimeBudget(options.deadlineAt, true);
     const siteGuidance =
       delivery.source === "website"
         ? await fetchSiteGuidance(admin, agent.id, delivery.source_config_id)
         : null;
     drafted.push(
-      await draftForAgent(admin, agent, sourcePostId, brief, delivery.source, siteGuidance),
+      await draftForAgent(admin, agent, sourcePostId, brief, siteGuidance, {
+        deadlineAt: options.deadlineAt,
+        oversizedInput: mediaValidation.oversized,
+      }),
     );
   }
 
   return { sourcePostId, drafted };
-}
-
-/** Applies an emailed correction to a draft: one revision call → new drafts row →
- *  re-deliver. Returns null when the draft id is unknown (caller answers 200 regardless). */
-export async function applyCorrection(input: {
-  draftId: string;
-  feedback: string;
-  idempotencyKey: string; // the Svix message id
-}): Promise<{ newDraftId: string } | null> {
-  const admin = createAdminClient();
-
-  const { data: draftRow, error: draftError } = await admin
-    .from("drafts")
-    .select("id, source_post_id, agent_id, platform, story_id, model_call_id")
-    .eq("id", input.draftId)
-    .maybeSingle();
-  if (draftError) throw draftError;
-  if (!draftRow) return null;
-  const [sourcePostResult, agentResult, modelCallResult] = await Promise.all([
-    admin
-      .from("source_posts")
-      .select("id, source, url, x_post_id, author_handle, text")
-      .eq("id", draftRow.source_post_id)
-      .maybeSingle(),
-    admin
-      .from("agents")
-      .select("id, owner_id, reporter_handle, reporter_tier")
-      .eq("id", draftRow.agent_id)
-      .maybeSingle(),
-    admin.from("model_calls").select("output").eq("id", draftRow.model_call_id).maybeSingle(),
-  ]);
-  if (sourcePostResult.error) throw sourcePostResult.error;
-  if (agentResult.error) throw agentResult.error;
-  if (modelCallResult.error) throw modelCallResult.error;
-  const sourcePost = sourcePostResult.data;
-  const agent = agentResult.data;
-  const previousDraft = modelCallResult.data?.output;
-  if (!sourcePost || !agent) return null;
-  if (previousDraft == null) return null;
-  // QC fix: carried forward into the dethrone scope + the revision insert below — without
-  // these, a correction lost its story (feed-query only lists winners whose story_id belongs
-  // to the querying desk's stories, so a NULL story_id winner never renders) and dethroned
-  // every OTHER platform's winner for this story too (the old dethrone filtered only by
-  // source_post_id + agent_id, not platform).
-  const { platform, story_id: storyId } = draftRow;
-
-  // Idempotency CHECK stays first: a duplicate Svix delivery is a no-op. The WRITE of this
-  // stamp is deliberately deferred past the paid revision call below (see the comment there) —
-  // stamping here, before the call, would make any later failure in this function permanently
-  // discard the reporter's correction, since every retry would then see the stamp and no-op.
-  // This select is a fast-path only; the actual guarantee is the D16 partial unique index on
-  // usage_events(ref_id) WHERE kind = 'email_reply_received', enforced at the stamp's WRITE
-  // below — two concurrent deliveries of the same Svix message can both pass this select.
-  const { data: dup, error: dupError } = await admin
-    .from("usage_events")
-    .select("id")
-    .eq("kind", "email_reply_received")
-    .eq("ref_id", input.idempotencyKey)
-    .maybeSingle();
-  if (dupError) throw dupError;
-  if (dup) return null;
-
-  const { data: guide, error: guideError } = await admin
-    .from("voice_guides")
-    .select("guide_deploy, measured_facts")
-    .eq("agent_id", agent.id)
-    .maybeSingle();
-  if (guideError) throw guideError;
-  if (!guide) {
-    throw new Error(`draft-pipeline: no voice_guides row for agent ${agent.id}`);
-  }
-  const voiceGuidance = resolveDraftingPrompt(
-    await listVoiceRules(agent.id),
-    guide.measured_facts,
-    guide.guide_deploy,
-  );
-
-  const sourceIdentity: SourceIdentity =
-    sourcePost.source === "website"
-      ? { kind: "website", publisher: hostnameOf(sourcePost.url ?? "") }
-      : { kind: "x", handle: sourcePost.author_handle ?? "" };
-  const brief: SourceBrief = {
-    sourcePostId: sourcePost.id,
-    xPostId: sourcePost.x_post_id ?? "",
-    identity: sourceIdentity,
-    text: sourcePost.text,
-    lang: null,
-    // reviseDraft (this function's only caller) never looks at media — the emailed-correction
-    // path revises existing text; it does not re-run delivery-stage drafting.
-    media: [],
-  };
-
-  const revisionAccount = await getXAccount(agent.owner_id);
-  const revision = await reviseDraft({
-    voiceGuidance,
-    accountTier: resolveDeskTier(agent.reporter_tier, revisionAccount?.tier),
-    brief,
-    previousDraft,
-    feedback: input.feedback,
-  });
-  revision.text = normalizeWebsitePublisherMention(revision.text, sourceIdentity);
-  revision.calls[revision.finalCallIndex].output = revision.text;
-
-  // Ledger-first, again.
-  const callIds = await insertModelCalls(admin, agent.owner_id, revision.calls, sourcePost.id);
-
-  // The idempotency stamp's WRITE lands here — after the revision call succeeded and its
-  // model_calls rows are durably written — not before the call as it originally was. The
-  // original ordering's stated reason ("prevent double-pay on a duplicate webhook delivery")
-  // buys almost nothing here: the inbound route acks 200 immediately and runs this function
-  // inside `after()`, so Resend never observes a failure and never redelivers a failed
-  // correction anyway. Stamping first therefore only bought a narrow anti-double-pay window
-  // at the cost of silently discarding the reporter's correction outright on any failure
-  // after the stamp. Tradeoff accepted: a crash in the narrow window between this line and the
-  // paid call above can re-pay one ~cent revision on a redelivery, which is strictly preferable
-  // to losing a reporter's correction.
-  //
-  // D16's partial unique index on usage_events(ref_id) WHERE kind = 'email_reply_received' makes
-  // THIS insert the real idempotency guard: a 23505 unique-violation means another concurrent
-  // delivery of the same Svix message won the race and already stamped — that's the existing
-  // no-op return, never a 500 (any other error still propagates as before).
-  const { error: stampError } = await admin.from("usage_events").insert({
-    owner_id: agent.owner_id,
-    kind: "email_reply_received",
-    units: 1,
-    cost_usd: null,
-    ref_id: input.idempotencyKey,
-  });
-  if (stampError) {
-    if (stampError.code === "23505") return null;
-    throw stampError;
-  }
-
-  for (const call of revision.calls) {
-    await stampUsageEvent(admin, {
-      owner_id: agent.owner_id,
-      kind: "drafting",
-      units: 1,
-      cost_usd: call.costUsd,
-      ref_id: sourcePost.id,
-    });
-  }
-
-  // Dethrone the story's CURRENT winner FOR THIS PLATFORM before crowning the revision — NOT
-  // just the replied-to draft. A reporter can reply to a superseded draft (an older email still
-  // in the thread); flipping only input.draftId would leave the actual current winner set
-  // AND crown the revision, so one story ends up with two is_winner=true rows for this platform,
-  // which feed-query renders as duplicate cards. Unsetting whichever row currently wins this
-  // (source_post, agent, platform) keeps the one-winner-per-platform-per-story invariant
-  // regardless of which draft the reply targeted. Scoped by `platform` (QC fix) — without it
-  // this dethroned every OTHER platform's winner too, since a story can carry one winner PER
-  // platform (X, LinkedIn, Bluesky) as of the multi-platform fan-out. This runs BEFORE the
-  // insert so the new winner below isn't itself caught by this update. Pointer flip only — a
-  // drafts row's content stays an immutable record of what a model produced.
-  const { data: dethroned, error: dethroneError } = await admin
-    .from("drafts")
-    .update({ is_winner: false })
-    .eq("source_post_id", sourcePost.id)
-    .eq("agent_id", agent.id)
-    .eq("platform", platform)
-    .eq("is_winner", true)
-    .select("news_title, news_synthesis, translation");
-  if (dethroneError) throw dethroneError;
-  // The dethroned winner's card metadata comes back from that update so the revision below can
-  // carry it forward — same reason editDraft copies it off the row it dethrones. Read off the
-  // dethroned winner rather than `draftRow`, since a reply can target a superseded draft.
-  const dethronedWinner = dethroned?.[0] ?? null;
-
-  const { data: newDraft, error: newDraftError } = await admin
-    .from("drafts")
-    .insert({
-      source_post_id: sourcePost.id,
-      agent_id: agent.id,
-      model_call_id: callIds[revision.finalCallIndex],
-      is_winner: true,
-      judge_verdict: null,
-      parent_draft_id: input.draftId,
-      feedback: input.feedback,
-      // QC fix: carry the original draft's platform + story_id forward — omitting these
-      // defaulted platform to "x" and story_id to NULL, and a NULL-story winner is invisible
-      // to fetchFeedPage (it only lists winners whose story_id is among the querying desk's
-      // own stories), so the correction silently vanished from the feed.
-      platform,
-      story_id: storyId,
-      // QC fix, same class as the two above: a revision replaces the winning row, so it inherits
-      // the winner's card metadata. Omitting these left a corrected draft's card without its
-      // news title, news synthesis, or translation. Judge review deliberately resets
-      // (judge_verdict above) — the correction invalidates it.
-      news_title: dethronedWinner?.news_title ?? null,
-      news_synthesis: dethronedWinner?.news_synthesis ?? null,
-      translation: dethronedWinner?.translation ?? null,
-    })
-    .select("id")
-    .single();
-  if (newDraftError) throw newDraftError;
-
-  await deliverDraft(admin, {
-    agentId: agent.id,
-    ownerId: agent.owner_id,
-    sourceIdentity,
-    sourceText: sourcePost.text,
-    winningText: revision.text,
-    winningDraftId: newDraft.id,
-    winningPlatform: platform as Platform,
-    sourcePostId: sourcePost.id,
-    revised: true,
-  });
-
-  return { newDraftId: newDraft.id };
 }

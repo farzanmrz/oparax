@@ -11,11 +11,10 @@
  * rejected because it does not start with `/agents/`, and a traversal like
  * `/agents/../..` resolves against our own origin rather than escaping it.
  *
- * This lived as four copies — `app/auth/x/route.ts`, `app/auth/x/callback`,
- * `app/auth/slack/link`, `app/auth/slack/callback` — which is three chances for
- * one to drift and reopen the hole silently. Mirrors `lib/x/handle.ts`'s role as
- * the shared normalize-and-validate rail: a new entry point calls this rather
- * than re-deriving the check.
+ * This lived as two copies — `app/auth/x/route.ts`, `app/auth/x/callback` —
+ * which was one chance for them to drift and reopen the hole silently. Mirrors
+ * `lib/x/handle.ts`'s role as the shared normalize-and-validate rail: a new
+ * entry point calls this rather than re-deriving the check.
  */
 const DESK_PATH_PREFIX = "/agents/";
 

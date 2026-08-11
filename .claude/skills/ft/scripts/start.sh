@@ -2,15 +2,19 @@
 # Close the plan gate: put the approved plan on the issue and land on ft/<issue>.
 #
 # Usage:
-#   start.sh "<issue title>" [<plan-body-file>]
-#   start.sh --issue <N> [<plan-body-file>]   # plan an existing issue
+#   start.sh [--prefix ft|bf] "<issue title>" [<plan-body-file>]
+#   start.sh [--prefix ft|bf] --issue <N> [<plan-body-file>]   # plan an existing issue
+#
+# --prefix bf lands on bf/<issue> for the bugfix flow (default ft). The bf
+# hotfix path (base main) does NOT use this script: it cuts from origin/main
+# directly (see bf-adj/SKILL.md).
 #
 # With no plan file (or "-"), the approved plan is read from stdin. stdout is one
 # machine-readable line: the issue number. All Git/GitHub chatter goes to stderr.
 #
 # Feature slices always run on ft/<issue#> (app code never lands directly on
 # beta — owner instruction-file micro-edits are the one carve-out; see
-# feature/SKILL.md) and there is no persisted run state. A slice is
+# ft/SKILL.md) and there is no persisted run state. A slice is
 # identified by its branch, which is the only marker QC needs
 # (`origin/beta...ft/<N>`). ship.sh always lands on beta; the terminal release
 # target (beta or main) lives only in the conversation and is applied by
@@ -34,18 +38,31 @@
 set -euo pipefail
 
 usage() {
-  echo 'usage: start.sh "<title>" [<plan-body-file>]' >&2
-  echo '       start.sh --issue <N> [<plan-body-file>]   # plan an existing issue' >&2
+  echo 'usage: start.sh [--prefix ft|bf] "<title>" [<plan-body-file>]' >&2
+  echo '       start.sh [--prefix ft|bf] --issue <N> [<plan-body-file>]   # plan an existing issue' >&2
   exit 2
 }
 
 graduate_issue=""
+prefix="ft"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --issue)
       shift
       graduate_issue="${1:-}"
       [ -n "$graduate_issue" ] || { echo "start: --issue needs a number" >&2; usage; }
+      shift
+      ;;
+    --prefix)
+      shift
+      prefix="${1:-}"
+      case "$prefix" in
+        ft | bf) ;;
+        *)
+          echo "start: --prefix must be ft or bf" >&2
+          usage
+          ;;
+      esac
       shift
       ;;
     --)
@@ -183,7 +200,7 @@ fetched_beta_sha="$(git rev-parse refs/remotes/origin/beta)"
 branch_action="create"
 current_branch="$(git branch --show-current || true)"
 if [ -n "$graduate_issue" ]; then
-  target="ft/${graduate_issue}"
+  target="${prefix}/${graduate_issue}"
   git fetch --prune origin "+refs/heads/${target}:refs/remotes/origin/${target}" >/dev/null 2>&1 || true
   if [ "$current_branch" = "$target" ]; then
     branch_action="stay"
@@ -224,7 +241,7 @@ else
   }
 fi
 
-branch="ft/${issue}"
+branch="${prefix}/${issue}"
 case "$branch_action" in
   stay)
     echo "start: already on $branch — adopted in place." >&2

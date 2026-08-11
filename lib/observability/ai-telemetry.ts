@@ -15,6 +15,8 @@ import type { TelemetryOptions } from "ai";
 export type AiStage =
   | "voice_extraction"
   | "story_cluster"
+  | "draft_filter"
+  | "draft_synthesize"
   | "draft_translate"
   | "draft_council"
   | "draft_write";
@@ -44,6 +46,8 @@ const DRAFT_CONTENT_ALLOWED = process.env.VERCEL_ENV !== "production";
 const RECORDS_CONTENT: Record<AiStage, boolean> = {
   voice_extraction: true,
   story_cluster: true,
+  draft_filter: DRAFT_CONTENT_ALLOWED,
+  draft_synthesize: DRAFT_CONTENT_ALLOWED,
   draft_translate: DRAFT_CONTENT_ALLOWED,
   draft_council: DRAFT_CONTENT_ALLOWED,
   draft_write: DRAFT_CONTENT_ALLOWED,
