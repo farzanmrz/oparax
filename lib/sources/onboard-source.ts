@@ -816,6 +816,52 @@ export async function markPendingSourceFailed(
   if (error) console.error("onboardSource: failed to mark pending row failed_validation", error);
 }
 
+/** Refresh-mode's terminal failure marker. `markPendingSourceFailed`'s update only ever matches
+ *  `status = 'pending'`, but every `refresh_strip_phrases_only` target is `status = 'active'` by
+ *  construction (the route's own precondition) — so on that mode every failure branch below was
+ *  a silent no-op, and the row's `strip_phrases` stayed `null` forever. `strip_phrases = []` is
+ *  the ONLY signal `refresh-strip-phrases`'s poller-facing query (`status='active' AND
+ *  strip_phrases IS NULL`) responds to, so this reuses the same completed-marker RPC the success
+ *  path writes: this makes "no boilerplate phrases found" and "the resolver couldn't validate a
+ *  beat section" collapse to the same operational state, which is correct here — either way
+ *  there is nothing to strip and nothing left to retry. Root cause of the 2026-08-09 cost
+ *  incident: three legacy active rows retried every poll tick, forever, at full agentic-resolver
+ *  cost, because nothing terminal was ever persisted. */
+async function markRefreshFailed(
+  admin: ReturnType<typeof createAdminClient>,
+  configId: string,
+  agentId: string,
+  modelCallId: string | null,
+): Promise<void> {
+  const { error } = await admin.rpc("refresh_source_strip_phrases", {
+    p_config_id: configId,
+    p_agent_id: agentId,
+    p_strip_phrases: [],
+    // The generated Args type is `string | undefined` (the RPC's own DEFAULT NULL, not a nullable
+    // parameter type) — most failure branches never billed a model call, so there is nothing to
+    // pass; the RPC's default fills in SQL NULL.
+    p_model_call_id: modelCallId ?? undefined,
+  });
+  if (error) console.error("onboardSource: failed to persist refresh-mode terminal marker", error);
+}
+
+/** Dispatches to the right terminal-failure path for the current mode — see `markRefreshFailed`
+ *  for why `refresh_strip_phrases_only` cannot reuse `markPendingSourceFailed`. */
+async function failOnboarding(
+  admin: ReturnType<typeof createAdminClient>,
+  mode: OnboardingMode,
+  agentId: string,
+  configId: string,
+  errorCode: Parameters<typeof markPendingSourceFailed>[2],
+  modelCallId: string | null = null,
+): Promise<void> {
+  if (mode === "refresh_strip_phrases_only") {
+    await markRefreshFailed(admin, configId, agentId, modelCallId);
+    return;
+  }
+  await markPendingSourceFailed(admin, configId, errorCode);
+}
+
 /**
  * Onboards `inputUrl` as a source for `agentId`. Never throws on a business-logic failure —
  * every outcome, including "no sitemap/feed found" and "verification produced no usable
@@ -834,7 +880,7 @@ export async function onboardSource(
 ): Promise<OnboardOutcome> {
   const admin = createAdminClient();
   if (!(await checkOriginReachable(inputUrl))) {
-    await markPendingSourceFailed(admin, configId, "unreachable");
+    await failOnboarding(admin, mode, agentId, configId, "unreachable");
     return { status: "unreachable" };
   }
 
@@ -842,7 +888,7 @@ export async function onboardSource(
   try {
     detection = await discoverChangeDetection(inputUrl);
   } catch {
-    await markPendingSourceFailed(admin, configId, "unreachable");
+    await failOnboarding(admin, mode, agentId, configId, "unreachable");
     return { status: "unreachable" };
   }
   let sample: SourceSampleEntry[] = [];
@@ -872,7 +918,7 @@ export async function onboardSource(
   let narrowedUrl: URL | undefined;
   if (detection.mechanism === null || sample.length === 0 || sampleFailure) {
     if (sampleFailure instanceof Error && /unsafe|private|redirect/i.test(sampleFailure.message)) {
-      await markPendingSourceFailed(admin, configId, "unreachable");
+      await failOnboarding(admin, mode, agentId, configId, "unreachable");
       return { status: "unreachable" };
     }
     const narrowed = await resolveBeatSection(
@@ -892,11 +938,11 @@ export async function onboardSource(
     );
     if (narrowed.status === "cancelled") return { status: "failed", errorCode: "stale" };
     if (narrowed.status === "no_beat_section") {
-      await markPendingSourceFailed(admin, configId, "no_beat_section");
+      await failOnboarding(admin, mode, agentId, configId, "no_beat_section");
       return { status: "failed", errorCode: "no_beat_section" };
     }
     if (narrowed.status === "no_candidate_worked") {
-      await markPendingSourceFailed(admin, configId, "no_detection_mechanism");
+      await failOnboarding(admin, mode, agentId, configId, "no_detection_mechanism");
       return { status: "no_detection_mechanism" };
     }
     detection = {
@@ -960,14 +1006,21 @@ export async function onboardSource(
       // The call BILLED, so it still gets a ledgerable row (AGENTS.md's model-call rule) —
       // captured from the onStepEnd event before zod rejected the JSON, same pattern as
       // `completedStepRef` in lib/agent/draft-translate.ts and lib/agent/draft-write.ts.
-      await insertOnboardingModelCall(admin, ownerId, agentId, {
+      const failedCallId = await insertOnboardingModelCall(admin, ownerId, agentId, {
         model,
         output: stepRef.value?.objectText ?? err.text ?? null,
         reasoning: stepRef.value?.reasoning ?? null,
         usage: stepRef.value?.usage ?? err.usage,
         providerMetadata: stepRef.value?.providerMetadata,
       });
-      await markPendingSourceFailed(admin, configId, "schema_validation_failed");
+      await failOnboarding(
+        admin,
+        mode,
+        agentId,
+        configId,
+        "schema_validation_failed",
+        failedCallId,
+      );
       return { status: "failed", errorCode: "schema_validation_failed" };
     }
     throw err;
