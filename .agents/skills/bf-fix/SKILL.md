@@ -23,7 +23,7 @@ Recommended dial by tier: quick and small on `gpt-5.6-terra` high, deep on
 * **Execute the fix shapes exactly:** a shape that does not survive contact with the file = STOP and report that brief; never invent a value or behavior. Minimal correct fix, surrounding idiom, Biome-clean as written.
 * **No re-grounding:** the brief plus the files it cites are the whole context — no knowledge-skill re-reads, no changelog or doc probing, no history archaeology. Read a file when you are about to edit it.
 * **Patch rounds:** owner-reported findings are binding, never scope creep; ask ONCE "anything else to fold into this round?" so drip-fed findings batch.
-* **Guards:** conversion (capability growth = its own slice, STOP); schema changes STOP and present options first; agent-noticed extras stay off the branch.
+* **Guards:** conversion (capability growth = its own slice, STOP); schema changes STOP and present options first — an approved schema round may consult the `supabase-rules` distiller agent (one parallel call, the sole exception to no-re-grounding); agent-noticed extras stay off the branch.
 
 ## 2. Re-prove
 
