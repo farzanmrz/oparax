@@ -17,6 +17,7 @@ import { logger } from "./logger";
 import { refreshLegacyStripPhrases } from "./refresh-strip-phrases";
 import type { ConditionalGetCache, FeedItem } from "./sitemap";
 import { fetchSitemapItems } from "./sitemap";
+import { runSpendCheck, spendCheckDue } from "./spend-check";
 import { buildExternalId } from "./types";
 
 export function applyPrefilter(
@@ -197,6 +198,18 @@ export async function pollAllSources(
   env: PollerEnv,
   caches: Map<string, ConditionalGetCache>,
 ): Promise<void> {
+  // Cost observation, never a gate on delivery: this reads the ledger after the fact and
+  // alerts. It runs before the poll loop only because that is the cheapest place to hang a
+  // daily cadence off an existing timer; its failure is logged and dropped so a watchdog
+  // outage can never stop sources from being polled.
+  if (spendCheckDue(Date.now())) {
+    try {
+      await runSpendCheck(env.ingestUrl, env.ingestSecret);
+    } catch (e) {
+      logger.warn("tick: spend check failed, continuing", { error: describeError(e) });
+    }
+  }
+
   let sources: SourceConfigRow[];
   try {
     sources = await fetchActiveSourceConfigs(client);
