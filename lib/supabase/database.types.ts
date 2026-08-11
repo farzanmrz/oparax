@@ -423,6 +423,7 @@ export type Database = {
           model_call_id: string | null;
           policy_note: string | null;
           prefilter: Json | null;
+          refresh_attempts: number;
           retrieval: string | null;
           sample_size: number | null;
           sitemap_url: string | null;
@@ -450,6 +451,7 @@ export type Database = {
           model_call_id?: string | null;
           policy_note?: string | null;
           prefilter?: Json | null;
+          refresh_attempts?: number;
           retrieval?: string | null;
           sample_size?: number | null;
           sitemap_url?: string | null;
@@ -477,6 +479,7 @@ export type Database = {
           model_call_id?: string | null;
           policy_note?: string | null;
           prefilter?: Json | null;
+          refresh_attempts?: number;
           retrieval?: string | null;
           sample_size?: number | null;
           sitemap_url?: string | null;
@@ -968,7 +971,22 @@ export type Database = {
         };
         Returns: boolean;
       };
+      claim_strip_phrase_refresh_attempt: {
+        Args: { p_config_id: string };
+        Returns: number;
+      };
       delete_account: { Args: never; Returns: undefined };
+      detect_spend_anomalies: {
+        Args: { p_min_calls?: number; p_min_cost?: number; p_since: string };
+        Returns: {
+          calls: number;
+          first_call: string;
+          last_call: string;
+          ref_id: string;
+          stage: string;
+          total_cost: number;
+        }[];
+      };
       insert_claimed_winner: {
         Args: {
           p_agent_id: string;

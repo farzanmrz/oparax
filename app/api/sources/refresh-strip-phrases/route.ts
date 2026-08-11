@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { QWEN_DRAFT_MODEL } from "@/lib/agent/qwen-draft-config";
 import { onboardSource } from "@/lib/sources/onboard-source";
@@ -6,6 +7,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeSourceUrl } from "@/lib/websites";
 
 export const maxDuration = 800;
+
+/** How many times one row may run the refresh before this route gives up on it for good.
+ *
+ *  The poller asks on EVERY tick while `status='active' AND strip_phrases IS NULL`, so the
+ *  only thing that ever stopped it was a terminal write. On 2026-08-09 a failure branch
+ *  silently skipped that write and one source re-ran the full agentic resolver every 3-5
+ *  minutes for three days ($69). That specific hole is fixed in `onboardSource`, but this
+ *  bound is what makes the whole CLASS survivable: any future path that forgets a terminal
+ *  write now costs three attempts instead of an unbounded loop. Three is deliberately small —
+ *  a refresh that fails twice on real evidence is not going to succeed on the tenth try. */
+const MAX_REFRESH_ATTEMPTS = 3;
 
 const requestSchema = z.object({ sourceConfigId: z.string().uuid() });
 
@@ -53,6 +65,44 @@ export async function POST(req: Request) {
   }
   const url = normalizeSourceUrl(config.url);
   if (!url) return new Response("stored source URL invalid", { status: 422 });
+
+  // Burn the attempt BEFORE any billable work. Counting afterwards would let a hard-killed
+  // invocation (platform timeout, OOM) retry forever without the counter ever advancing —
+  // the exact shape of the incident this bounds.
+  const { data: attempts, error: claimError } = await admin.rpc(
+    "claim_strip_phrase_refresh_attempt",
+    { p_config_id: config.id },
+  );
+  if (claimError) {
+    console.error("refresh-strip-phrases: attempt claim failed", claimError);
+    return new Response("attempt claim failed", { status: 500 });
+  }
+  // NULL means the row stopped being a live refresh target between the select above and the
+  // claim (a concurrent tick finished it) — same "nothing to do" answer as the precondition.
+  if (attempts === null) return new Response(null, { status: 409 });
+
+  if (attempts > MAX_REFRESH_ATTEMPTS) {
+    // Out of attempts: persist the terminal marker so the poller stops asking, and say so
+    // loudly. `[]` is the same completed-clean-sample value the success path writes — the
+    // source keeps polling normally, just without measured strip phrases.
+    const { error: giveUpError } = await admin.rpc("refresh_source_strip_phrases", {
+      p_config_id: config.id,
+      p_agent_id: config.agent_id,
+      p_strip_phrases: [],
+    });
+    if (giveUpError) {
+      console.error("refresh-strip-phrases: give-up marker failed", giveUpError);
+      return new Response("give-up marker failed", { status: 500 });
+    }
+    const message = `refresh-strip-phrases: gave up on ${config.url} after ${MAX_REFRESH_ATTEMPTS} attempts`;
+    console.error(message);
+    Sentry.captureMessage(message, {
+      level: "warning",
+      tags: { area: "source_refresh", outcome: "attempts_exhausted" },
+      extra: { sourceConfigId: config.id, agentId: config.agent_id, attempts },
+    });
+    return new Response(null, { status: 204 });
+  }
 
   try {
     await onboardSource(
