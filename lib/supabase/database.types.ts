@@ -509,8 +509,8 @@ export type Database = {
           external_id: string | null;
           id: string;
           lang: string | null;
-          publisher_claim_kind: Database["public"]["Enums"]["publisher_claim_kind"];
           posted_at: string | null;
+          publisher_claim_kind: Database["public"]["Enums"]["publisher_claim_kind"];
           raw: Json | null;
           source: string;
           source_config_id: string | null;
@@ -525,8 +525,8 @@ export type Database = {
           external_id?: string | null;
           id?: string;
           lang?: string | null;
-          publisher_claim_kind?: Database["public"]["Enums"]["publisher_claim_kind"];
           posted_at?: string | null;
+          publisher_claim_kind?: Database["public"]["Enums"]["publisher_claim_kind"];
           raw?: Json | null;
           source?: string;
           source_config_id?: string | null;
@@ -541,8 +541,8 @@ export type Database = {
           external_id?: string | null;
           id?: string;
           lang?: string | null;
-          publisher_claim_kind?: Database["public"]["Enums"]["publisher_claim_kind"];
           posted_at?: string | null;
+          publisher_claim_kind?: Database["public"]["Enums"]["publisher_claim_kind"];
           raw?: Json | null;
           source?: string;
           source_config_id?: string | null;
@@ -1001,7 +1001,7 @@ export type Database = {
         Args: {
           p_agent_id: string;
           p_config_id: string;
-          p_model_call_id: string;
+          p_model_call_id?: string;
           p_strip_phrases: Json;
         };
         Returns: string;
@@ -1160,6 +1160,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      publisher_claim_kind: [
+        "official",
+        "insider-sourced",
+        "outlet-characterization",
+        "aggregator",
+      ],
+    },
   },
 } as const;
