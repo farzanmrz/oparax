@@ -4,7 +4,7 @@ description: >-
   The feature flow's map and resume router. Use when the user wants to know
   where a slice stands or resume it (/ft), or asks how the flow fits
   together. The phase skills do the work: /ft-plan, /ft-spec (Codex),
-  /ft-gate, /ft-build (Codex), /ft-qc, /ft-fix (Codex),
+  /ft-adj, /ft-build (Codex), /ft-qc, /ft-fix (Codex),
   /ft-ship. Bug fixes take the bf flow, not this one.
 argument-hint: "[issue#]"
 allowed-tools: Bash(git *) Bash(gh *)
@@ -27,7 +27,7 @@ and ship.
 |---|---|---|---|
 | 1 Plan | `/ft-plan` | Claude, Opus 4.8 | stub issue: journeys, decisions, dossier |
 | 2 Spec | `/ft-spec N` | Codex, sol high | `.feature/spec-<N>.md` + grok critique |
-| 3 Gate | `/ft-gate N` | Claude, Fable if UNSURE flags else Opus | approved decisions on issue, `ft/N` cut |
+| 3 Adjudicate | `/ft-adj N` | Claude, Fable if UNSURE flags else Opus | approved decisions on issue, `ft/N` cut |
 | 4 Build | `/ft-build N` | Codex, sol high | implemented + self-verified branch |
 | 5 QC | `/ft-qc N` | Claude, Fable high | evidence + adjudication + `.feature/qc-r<R>-briefs.md`; dispatches fix |
 | 6 Fix | `/ft-fix N` | Codex, sol high (dispatched by QC) | fixes + `## QC round <R>: done` marker |
@@ -54,7 +54,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 | State | Next |
 |---|---|
 | stub only, no branch | `/ft-spec N` (Codex) |
-| `.feature/spec-<N>.md` exists, no branch | `/ft-gate N` (Claude) |
+| `.feature/spec-<N>.md` exists, no branch | `/ft-adj N` (Claude) |
 | branch cut, no build commits | `/ft-build N` (Codex) |
 | build commits, no briefs file and no done marker | `/ft-qc N` (Claude) |
 | briefs file, no done marker for that round | `/ft-fix N` (Codex) |

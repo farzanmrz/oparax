@@ -7,7 +7,7 @@ description: >-
   hunt, fix briefs, then dispatching /ft-fix to Codex. Use when the user
   says /ft-qc after a build, or as the continuation when a gate-dispatched
   build returns. Fable 5 high is the recommendation (one of exactly two
-  places the smartest model pays; the other is /ft-gate), never a gate: an
+  places the smartest model pays; the other is /ft-adj), never a gate: an
   owner invocation runs on the session's current model.
 argument-hint: "[issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)

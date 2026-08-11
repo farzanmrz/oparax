@@ -1,10 +1,10 @@
 ---
-name: ft-gate
+name: ft-adj
 description: >-
   Phase 3 of the feature flow, CLAUDE CODE ONLY: judge the Codex-authored
   spec and present it to the owner for approval; on yes, freeze the spec and
-  cut ft/N. Use when the user says /ft-gate N after /ft-spec finished in
-  Codex. Recommended model per the spec's handoff line (Fable 5 when the
+  cut ft/N. Use when the user says /ft-adj N (formerly /ft-gate) after /ft-spec
+  finished in Codex. Recommended model per the spec's handoff line (Fable 5 when the
   spec carries UNSURE flags, Opus 4.8 otherwise); advisory, never a gate:
   an owner invocation runs on the session's current model.
 argument-hint: "[issue #]"
