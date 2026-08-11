@@ -5,17 +5,12 @@ export interface PollerEnv {
   supabaseServiceRoleKey: string;
   ingestUrl: string;
   ingestSecret: string;
-  slackWebhookUrl: string;
   userAgent: string;
   brightdataApiKey: string | null;
   brightdataZone: string | null;
   brightdataSerpZone: string | null;
   tickIntervalMs: number;
-  staleThresholdMs: number;
-  alarmCooldownMs: number;
   maxNewItemsPerSourceTick: number;
-  observedDailyCap: number;
-  capCheckIntervalMs: number;
 }
 
 /** Missing/blank required env is a fatal state — this exits immediately rather than looping,
@@ -55,7 +50,6 @@ export function loadEnv(): PollerEnv {
     supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
     ingestUrl: required("INGEST_URL"),
     ingestSecret: required("INGEST_SECRET"),
-    slackWebhookUrl: required("SLACK_WEBHOOK_URL"),
     // No default: a fabricated contact URL in the User-Agent is worse than a required var.
     userAgent: required("OPARAX_POLLER_USER_AGENT"),
     brightdataApiKey: optional("BRIGHTDATA_API_KEY"),
@@ -67,14 +61,6 @@ export function loadEnv(): PollerEnv {
     // brightdataZone above.
     brightdataSerpZone: optional("BRIGHTDATA_SERP_ZONE"),
     tickIntervalMs: optionalNumber("POLLER_TICK_INTERVAL_MS", 45_000),
-    staleThresholdMs: optionalNumber("POLLER_STALE_THRESHOLD_MS", 5 * 24 * 60 * 60 * 1000),
-    alarmCooldownMs: optionalNumber("POLLER_ALARM_COOLDOWN_MS", 60 * 60 * 1000),
     maxNewItemsPerSourceTick: optionalNumber("POLLER_MAX_NEW_ITEMS_PER_TICK", 20),
-    // A busy multi-source desk realistically sees tens of new articles/day (priming absorbs
-    // the initial backlog, dedup absorbs repeats) — 300 is generous headroom above that while
-    // still catching a genuine runaway (broken dedup, unstable keys) within hours, not days.
-    // Same "conservative starting guess, operator tunes it" framing as ingest/'s own cap.
-    observedDailyCap: optionalNumber("POLLER_OBSERVED_DAILY_CAP", 300),
-    capCheckIntervalMs: optionalNumber("POLLER_CAP_CHECK_INTERVAL_MS", 5 * 60 * 1000),
   };
 }

@@ -9,7 +9,7 @@ import { DRAFT_COUNCIL_CONTRACT, DRAFT_WRITE_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { MAX_SITE_GUIDANCE_CHARS } from "../sources/site-guidance";
 import { resolveCallMeta } from "./call-meta";
-import { NON_X_PLATFORM_CHAR_LIMITS, type Platform, X_CHAR_LIMITS } from "./desk-config";
+import { type Platform, X_CHAR_LIMITS } from "./desk-config";
 import {
   type DraftConstruction,
   draftConstructionSchema,
@@ -199,10 +199,7 @@ export async function draftSourcePost(input: {
   platform: Platform;
   accountTier: "standard" | "premium";
 }): Promise<DraftWriteResult> {
-  const ceiling =
-    input.platform === "x"
-      ? X_CHAR_LIMITS[input.accountTier]
-      : NON_X_PLATFORM_CHAR_LIMITS[input.platform];
+  const ceiling = X_CHAR_LIMITS[input.accountTier];
   const completedStepRef: { value: GenerateTextStepEndEvent | null } = { value: null };
 
   try {

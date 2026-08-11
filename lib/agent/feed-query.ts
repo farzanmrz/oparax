@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchTweet } from "react-tweet/api";
-import { PLATFORMS, type Platform } from "@/lib/agent/desk-config";
+import type { Platform } from "@/lib/agent/desk-config";
 import {
   FEED_PAGE_SIZE,
   FEED_REFRESH_CHUNK,
@@ -89,7 +89,7 @@ async function pagedRows<T>(
   return rows;
 }
 function isPlatform(value: string): value is Platform {
-  return (PLATFORMS as readonly string[]).includes(value);
+  return value === "x";
 }
 function compareStories(a: StoryRow, b: StoryRow) {
   return b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);

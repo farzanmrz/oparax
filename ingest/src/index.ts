@@ -1,5 +1,3 @@
-import type { AlarmState } from "./alarm";
-import { alarmDroppedHandles, alarmLiveness, checkDeliveryCap } from "./alarm";
 import { loadEnv } from "./env";
 import { describeError } from "./errors";
 import { logger } from "./logger";
@@ -15,8 +13,6 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const dropAlarmState: AlarmState = { lastAlarmAt: null };
-
   async function syncRulesOnce(): Promise<void> {
     try {
       const handles = await fetchTrackedHandles(supabase);
@@ -27,9 +23,6 @@ async function main(): Promise<void> {
         ruleCount: groups.length,
         droppedCount: dropped.length,
       });
-      alarmDroppedHandles(env.slackWebhookUrl, env.alarmCooldownMs, dropAlarmState, dropped).catch(
-        (e) => logger.error("rule-sync: dropped-handles alarm failed", { error: describeError(e) }),
-      );
     } catch (e) {
       // A failed sync keeps whatever rules X already has — never let a sync hiccup tear
       // down the previous, still-good rule set.
@@ -44,23 +37,9 @@ async function main(): Promise<void> {
     );
   }, env.ruleSyncIntervalMs);
 
-  const capAlarmState: AlarmState = { lastAlarmAt: null };
-  const capAlarmTimer = setInterval(() => {
-    checkDeliveryCap(
-      supabase,
-      env.observedDailyCap,
-      env.alarmCooldownMs,
-      capAlarmState,
-      env.slackWebhookUrl,
-    ).catch((e) => logger.error("cap-check: unexpected failure", { error: describeError(e) }));
-  }, env.ruleSyncIntervalMs);
-
-  const livenessAlarmState: AlarmState = { lastAlarmAt: null };
-
   const shutdown = (signal: string) => {
     logger.info("shutting down", { signal });
     clearInterval(ruleSyncTimer);
-    clearInterval(capAlarmTimer);
     process.exit(0);
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
@@ -73,12 +52,6 @@ async function main(): Promise<void> {
     livenessTimeoutMs: env.livenessTimeoutMs,
     onLivenessTimeout: (silentForMs) => {
       logger.error("stream: liveness timeout", { silentForMs });
-      alarmLiveness(
-        env.slackWebhookUrl,
-        env.alarmCooldownMs,
-        livenessAlarmState,
-        silentForMs,
-      ).catch((e) => logger.error("liveness: alarm failed", { error: describeError(e) }));
     },
     onFatal: fatal,
   });

@@ -66,6 +66,7 @@ completed phase. Old slices may carry legacy markers (`findings`,
 
 ## Hard rules (bind every phase)
 
+* **Surfaces are evidence-bound:** stubs and specs name only surfaces walkable in the running app today (`localhost:3000`); a planned surface needs an explicit future tag + issue #. Product prose in `@AGENTS.md` is direction, never evidence a surface exists.
 * **Branching:** never per-task branches or PRs. App code never lands directly on `beta`/`main`; the one carve-out is owner-directed micro-edits to instruction files and docs. `main` moves only through beta-to-main promotion.
 * **Scope:** agent-noticed extras stay off the branch; owner-reported findings are never scope creep and land before ship.
 * **No planning docs in the repo:** the issue + squash commit message are the record; scratch lives in self-gitignored `.feature/`, swept at finalize.

@@ -5,10 +5,9 @@
 // regardless of which client component (if any) references it — so a function that trusts a
 // caller-supplied ownerId, like this one, must never live in that file. `lib/x/actions.ts`'s
 // `postDraftToX` (the real browser-facing Server Action) resolves ownerId from the live
-// session, proves RLS ownership, then calls this; `app/api/slack/interactions/route.ts` and
-// `lib/agent/draft-pipeline.ts`'s auto-post path both already resolve ownerId server-side with
-// no user session available, and import this module directly — never through the Action
-// surface.
+// session, proves RLS ownership, then calls this; `lib/agent/draft-pipeline.ts`'s auto-post
+// path already resolves ownerId server-side with no user session available, and imports this
+// module directly — never through the Action surface.
 import * as Sentry from "@sentry/nextjs";
 import { checkXPostable, resolveDeskTier, xUnpostableMessage } from "@/lib/agent/desk-config";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -53,8 +52,7 @@ async function releaseClaim(
  *  (the "use server" browser action in lib/x/actions.ts) resolves ownerId via the live
  *  session, does its own RLS-scoped ownership proof, THEN calls this; `draft-pipeline.ts`'s
  *  auto-post path already knows ownerId from the agent row and calls this directly, with
- *  no session; `app/api/slack/interactions/route.ts` resolves ownerId from the linked
- *  `slack_accounts` row. Same CAS-claim, token-refresh, createTweet, outcome-stamp behavior
+ *  no session. Same CAS-claim, token-refresh, createTweet, outcome-stamp behavior
  *  either way — only the ownership-resolution step differs between callers, so this re-reads
  *  the draft via the ADMIN client (not any RLS-scoped read a caller may already have done — that
  *  read exists purely to prove a browser caller may act on this draft, and its result isn't
@@ -96,7 +94,7 @@ export async function publishDraftToXForOwner(
 
   // Server-side validity gate, mirroring the client's twitter-text check (post-to-x-control.tsx)
   // through the SHARED `checkXPostable` helper editDraft also calls — a repair failure, a human
-  // edit, or a bypassed UI path (e.g. a hand-crafted Slack button value) could otherwise reach
+  // edit, or a bypassed UI path (e.g. a hand-crafted API request) could otherwise reach
   // here over the ceiling with no server-side check at all. The desk-resolved tier is the same
   // ceiling drafting, the feed counter, and editDraft enforce; X remains the final arbiter.
   const postable = checkXPostable(text, resolveDeskTier(agent.reporter_tier, account.tier));

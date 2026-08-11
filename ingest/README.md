@@ -6,7 +6,7 @@ POSTs each matching tweet to the app's `POST /api/ingest`. **Deployed and live-v
 (issue #72, 2026-07-27): the Railway project/service exist, `INGEST_SECRET` parity against
 `/api/ingest`'s Bearer auth is proven by a live 422/401 probe pair, and one real tracked-source
 post has been observed traversing the full chain — worker → `/api/ingest` 200 → story claim →
-`gpt-5-nano` draft → Slack delivery → Post to X — with evidence on the issue. The deploy
+`gpt-5-nano` draft → Post to X — with evidence on the issue. The deploy
 checklist below remains the reference for redeploying or re-verifying, not a "never done"
 disclaimer.
 
@@ -22,9 +22,8 @@ This is a standalone Node/TypeScript package under `ingest/**`:
   own inline `@supabase/supabase-js` client — it shares only CONFIG with the app (the same
   Supabase project URL + a service-role key, read from this package's own env vars), never
   code, never the app's generated `lib/supabase/database.types.ts`. It is read-only: rule
-  sync selects `agents.tracked_handles`, the cap alarm selects a count from
-  `usage_events`. This worker never writes to Supabase — metering (`usage_events` inserts)
-  happens app-side in `processDelivery`, per the plan.
+  sync selects `agents.tracked_handles`. This worker never writes to Supabase — metering
+  (`usage_events` inserts) happens app-side in `processDelivery`, per the plan.
 - Runs via `tsx` (both `dev` and `start`) rather than a `tsc` build step, so `tsx` and its
   `esbuild` dependency are ordinary `dependencies`, not `devDependencies` — Railway's
   install must include them at runtime. `typescript` stays a `devDependency`; it's used only
@@ -48,13 +47,11 @@ This is a standalone Node/TypeScript package under `ingest/**`:
   app's contract (200/401/422/500 — see "Delivery response handling").
 - `reconnect.ts` — `runIngestionLoop`, the outer in-process backoff loop; classifies fatal
   vs. transient (see "Reconnect / fatal-exit boundary").
-- `alarm.ts` / `slack.ts` — the liveness alarm and the 80%-of-observed-cap alarm, both
-  posting to `SLACK_WEBHOOK_URL`.
 - `errors.ts` — `describeError`, a catch-value serializer so a thrown Supabase/PostgREST
   error object logs its `message`/`code`/`details` instead of `"[object Object]"`.
 - `index.ts` — wires it all together: loads env, does an initial rule sync then re-syncs on
-  an interval, runs the cap-alarm check on the same interval, and starts the ingestion loop.
-  Handles `SIGTERM`/`SIGINT` for a clean shutdown on redeploy.
+  an interval, and starts the ingestion loop. Handles `SIGTERM`/`SIGINT` for a clean shutdown
+  on redeploy.
 
 ## Rule-sync cap handling
 
@@ -98,22 +95,12 @@ On any fatal exit, `process.exit(1)` — Railway's `restartPolicyType=ALWAYS` is
 net; a bad-env crash loop is visible in the Railway dashboard until the operator fixes the
 variable, rather than a worker that silently sits there doing nothing.
 
-## Liveness + cap alarms
+## Liveness
 
-- **Liveness**: X sends a blank-line keepalive roughly every 20s even with no matching
-  tweets. `stream.ts`'s watchdog checks every `min(15s, INGEST_LIVENESS_TIMEOUT_MS)`
-  whether any activity (tweet or keepalive) has arrived within
-  `INGEST_LIVENESS_TIMEOUT_MS` (default 90s); if not, it Slack-alarms (debounced by
-  `INGEST_ALARM_COOLDOWN_MS`) and forces a reconnect.
-- **80%-of-observed-cap**: on the same interval as rule sync
-  (`INGEST_RULE_SYNC_INTERVAL_MS`), `alarm.ts`'s `checkDeliveryCap` reads a rolling 24h count
-  of `usage_events` rows with `kind = "stream_delivery"` (stamped app-side by
-  `processDelivery` — this worker never writes that row, only reads the count) via its own
-  service-role client, and Slack-alarms (debounced) once the count reaches 80% of
-  `INGEST_OBSERVED_DAILY_CAP`. X's free tier publishes **no documented delivery-volume
-  cap** — this threshold is deliberately operator-tuned (default 2000/day is a conservative
-  starting guess), not a caps API value; raise or lower it as real traffic teaches you where
-  the actual ceiling is.
+- X sends a blank-line keepalive roughly every 20s even with no matching tweets.
+  `stream.ts`'s watchdog checks every `min(15s, INGEST_LIVENESS_TIMEOUT_MS)` whether any
+  activity (tweet or keepalive) has arrived within `INGEST_LIVENESS_TIMEOUT_MS` (default
+  90s); if not, it forces a reconnect.
 
 ## Env vars
 
@@ -127,12 +114,9 @@ scoped to build/deploy settings, not secrets).
 | `INGEST_URL` | yes | The app's `/api/ingest` URL (e.g. `https://oparax.ai/api/ingest`). Kept as a variable, never hardcoded. |
 | `INGEST_SECRET` | yes | Must be **byte-identical** to the app's `INGEST_SECRET` (Vercel). A mismatch is a 401 on every delivery — treated as fatal (see above). |
 | `SUPABASE_URL` | yes | Same Supabase project as the app; a worker-local name (this package never imports `NEXT_PUBLIC_SUPABASE_URL` from the app). |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes | Service-role key for the same project — read-only use here (rule sync + cap count). |
-| `SLACK_WEBHOOK_URL` | yes | Liveness + cap alarms. |
-| `INGEST_OBSERVED_DAILY_CAP` | no (default `2000`) | Operator-tuned delivery-volume threshold; the alarm fires at 80% of this. |
-| `INGEST_RULE_SYNC_INTERVAL_MS` | no (default `300000` = 5 min) | Also drives the cap-check interval. |
-| `INGEST_LIVENESS_TIMEOUT_MS` | no (default `90000`) | No stream activity for this long forces a reconnect + alarm. |
-| `INGEST_ALARM_COOLDOWN_MS` | no (default `3600000` = 1h) | Debounce window shared by both alarms. |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Service-role key for the same project — read-only use here (rule sync). |
+| `INGEST_RULE_SYNC_INTERVAL_MS` | no (default `300000` = 5 min) | Rule-sync interval. |
+| `INGEST_LIVENESS_TIMEOUT_MS` | no (default `90000`) | No stream activity for this long forces a reconnect. |
 
 ## Deploy checklist (operator)
 
@@ -173,10 +157,10 @@ connection rather than adding capacity.
    - Single production environment only.
    - `sleepApplication = false` — this must never idle; sleeping drops the stream.
    - No `healthcheckPath` — this is a worker, not an HTTP service; it has no HTTP surface to
-     healthcheck (its liveness is the in-process watchdog + Slack alarm above).
+     healthcheck (its liveness is the in-process watchdog above).
 5. Set the env vars from the table above in Railway (never in source).
 6. Deploy, then verify: `railway logs` should show `"stream: connected"` and periodic
-   `"rule-sync: complete"` / `"cap-check"` lines with no `fatal` entries. Confirm a real
+   `"rule-sync: complete"` lines with no `fatal` entries. Confirm a real
    tracked handle's post reaches `/api/ingest` end to end (the delivery log line + a
    corresponding row via the app's own observability, not this worker's logs alone).
 7. Confirm the restart net: a deliberate bad-env redeploy (temporarily blank one required

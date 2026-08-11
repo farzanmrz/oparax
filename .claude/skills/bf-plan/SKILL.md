@@ -48,6 +48,7 @@ words before any remedy is drafted. Then write `.feature/bf-<N>-brief.md`:
 * **Remedy** as fix shapes (approach + anchor, never a patch).
 * **Test charter:** the journeys with REAL inputs, the DB assertions, and which review lanes QC runs. This becomes /bf-qc's whole scope and the owner's walkthrough list.
 * **Self-contained,** including a plain-language owner summary: the critics and /bf-adj read only this file, never this conversation.
+* **Surfaces are evidence-bound:** the brief names only surfaces reproduced in this session's own evidence; `@AGENTS.md`'s product prose is direction, never proof a surface exists.
 
 ## 4. Close per tier
 

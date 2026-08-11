@@ -6,11 +6,8 @@ export interface WorkerEnv {
   ingestSecret: string;
   supabaseUrl: string;
   supabaseServiceRoleKey: string;
-  slackWebhookUrl: string;
-  observedDailyCap: number;
   ruleSyncIntervalMs: number;
   livenessTimeoutMs: number;
-  alarmCooldownMs: number;
 }
 
 /** Missing/blank required env is a fatal state — bad env is one of the two named fatal
@@ -47,13 +44,7 @@ export function loadEnv(): WorkerEnv {
     ingestSecret: required("INGEST_SECRET"),
     supabaseUrl: required("SUPABASE_URL"),
     supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
-    slackWebhookUrl: required("SLACK_WEBHOOK_URL"),
-    // The X free tier publishes no delivery-volume cap — it can only be discovered
-    // operationally, hence "observed". This default is a conservative starting guess; the
-    // operator tunes it after real traffic (see README "Deploy checklist").
-    observedDailyCap: optionalNumber("INGEST_OBSERVED_DAILY_CAP", 2000),
     ruleSyncIntervalMs: optionalNumber("INGEST_RULE_SYNC_INTERVAL_MS", 5 * 60 * 1000),
     livenessTimeoutMs: optionalNumber("INGEST_LIVENESS_TIMEOUT_MS", 90 * 1000),
-    alarmCooldownMs: optionalNumber("INGEST_ALARM_COOLDOWN_MS", 60 * 60 * 1000),
   };
 }

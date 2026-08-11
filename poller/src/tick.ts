@@ -1,6 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AlarmState } from "./alarm";
-import { alarmStaleSource } from "./alarm";
 import {
   fetchActiveSourceConfigs,
   hasSeenItem,
@@ -99,7 +97,6 @@ async function pollOneSource(
   env: PollerEnv,
   source: SourceConfigRow,
   caches: Map<string, ConditionalGetCache>,
-  staleAlarms: Map<string, AlarmState>,
 ): Promise<void> {
   if (source.strip_phrases === null) {
     // Best-effort: a failed backfill (app-side outage, bad deploy) must not take the source's
@@ -188,21 +185,6 @@ async function pollOneSource(
 
   if (deliveredCount > 0) {
     logger.info("tick: delivered new items", { domain: source.domain, count: deliveredCount });
-    return;
-  }
-
-  const lastMatch = source.last_matched_at ?? source.last_verified_at;
-  const msSinceMatch = Date.now() - Date.parse(lastMatch);
-  if (msSinceMatch > env.staleThresholdMs) {
-    const state = staleAlarms.get(source.id) ?? { lastAlarmAt: null };
-    staleAlarms.set(source.id, state);
-    await alarmStaleSource(
-      env.slackWebhookUrl,
-      env.alarmCooldownMs,
-      state,
-      source.domain,
-      Math.floor(msSinceMatch / (24 * 60 * 60 * 1000)),
-    );
   }
 }
 
@@ -214,7 +196,6 @@ export async function pollAllSources(
   client: SupabaseClient,
   env: PollerEnv,
   caches: Map<string, ConditionalGetCache>,
-  staleAlarms: Map<string, AlarmState>,
 ): Promise<void> {
   let sources: SourceConfigRow[];
   try {
@@ -228,7 +209,7 @@ export async function pollAllSources(
 
   for (const source of sources) {
     try {
-      await pollOneSource(client, env, source, caches, staleAlarms);
+      await pollOneSource(client, env, source, caches);
     } catch (e) {
       if (e instanceof FatalIngestError) throw e;
       logger.error("tick: source failed, continuing", {

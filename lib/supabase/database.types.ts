@@ -397,85 +397,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      slack_accounts: {
-        Row: {
-          access_token: string;
-          agent_id: string;
-          bot_user_id: string;
-          channel_id: string;
-          channel_name: string;
-          created_at: string;
-          id: string;
-          scopes: string;
-          team_id: string;
-          team_name: string;
-          updated_at: string;
-        };
-        Insert: {
-          access_token: string;
-          agent_id: string;
-          bot_user_id: string;
-          channel_id: string;
-          channel_name: string;
-          created_at?: string;
-          id?: string;
-          scopes: string;
-          team_id: string;
-          team_name: string;
-          updated_at?: string;
-        };
-        Update: {
-          access_token?: string;
-          agent_id?: string;
-          bot_user_id?: string;
-          channel_id?: string;
-          channel_name?: string;
-          created_at?: string;
-          id?: string;
-          scopes?: string;
-          team_id?: string;
-          team_name?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "slack_accounts_agent_id_fkey";
-            columns: ["agent_id"];
-            isOneToOne: true;
-            referencedRelation: "agents";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      slack_delivery_receipts: {
-        Row: {
-          agent_id: string;
-          created_at: string;
-          id: string;
-          interaction_id: string;
-        };
-        Insert: {
-          agent_id: string;
-          created_at?: string;
-          id?: string;
-          interaction_id: string;
-        };
-        Update: {
-          agent_id?: string;
-          created_at?: string;
-          id?: string;
-          interaction_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "slack_delivery_receipts_agent_id_fkey";
-            columns: ["agent_id"];
-            isOneToOne: false;
-            referencedRelation: "agents";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       source_configs: {
         Row: {
           agent_id: string;
@@ -1029,15 +950,6 @@ export type Database = {
         };
         Returns: string;
       };
-      refresh_source_strip_phrases: {
-        Args: {
-          p_agent_id: string;
-          p_config_id: string;
-          p_model_call_id: string;
-          p_strip_phrases: Json;
-        };
-        Returns: string;
-      };
       claim_draft: {
         Args: {
           p_agent_id: string;
@@ -1073,6 +985,15 @@ export type Database = {
           p_source_config_id: string;
         };
         Returns: boolean;
+      };
+      refresh_source_strip_phrases: {
+        Args: {
+          p_agent_id: string;
+          p_config_id: string;
+          p_model_call_id: string;
+          p_strip_phrases: Json;
+        };
+        Returns: string;
       };
       remove_source_config: {
         Args: { p_agent_id: string; p_url: string };

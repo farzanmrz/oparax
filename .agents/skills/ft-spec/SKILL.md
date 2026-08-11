@@ -24,15 +24,16 @@ journeys, `Decided` binding, `Notes` dossier).
 
 * **In code:** read the files the slice touches or interfaces with (signatures, exported types, route shapes). Mention paths explicitly; flag missing information instead of guessing.
 * **In reality:** when the slice depends on anything outside the repo (third-party sites, external APIs, live data shapes), probe the real thing NOW: fetch the actual domains the journeys name, hit the actual endpoints, read the actual DB rows. Record status codes and payload shapes in `.feature/probes.md`. A spec written against imagined external behavior is ungrounded no matter how well it cites the repo.
-* **Skills by path (mechanical, no judgment):** consult every row the slice's touched paths match, then record one audit line in the decision list: "skills consulted: ...". The gate checks this line against the diff paths.
+* **Surfaces are evidence-bound:** verify every surface the stub names against code AND a live route on `localhost:3000`; a stub-named surface with no walkable path is flagged back to the owner in the decision list, never specced around or silently expanded.
+* **Skills by path (mechanical, no judgment):** consult every row the slice's touched paths match, then record one audit line in the decision list: "skills consulted: ...". A row that names a skill unresolvable in this harness is reported in that line as missing, never silently improvised from parametric knowledge. The gate checks this line against the diff paths.
 
 | Slice touches | Consult |
 |---|---|
-| `app/`, `components/` (any UI) | `web-design-guidelines`, root `DESIGN.md`, react best-practices |
+| `app/`, `components/` (any UI) | `web-design-guidelines`, read root `@DESIGN.md` |
 | `supabase/`, any query or schema | `supabase`, `supabase-postgres-best-practices` |
-| `lib/agent/`, model calls, gateway | `ai-sdk` |
-| routes, middleware, config, deploy | `nextjs` |
-| niche platform features (blob, queues, functions) | the matching platform skill, on demand |
+| `lib/agent/`, model calls, gateway | read the `ai-sdk` package's types/docs in-repo (no `ai-sdk` skill exists for this harness) |
+| routes, middleware, config, deploy | read Next.js's own docs/types in-repo (no `nextjs` skill exists for this harness) |
+| niche platform features (blob, queues, functions) | the matching platform skill, on demand, if resolvable in this harness |
 
 ## 2. Write the spec (local files, not the issue)
 

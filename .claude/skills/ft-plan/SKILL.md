@@ -45,6 +45,7 @@ When the example and the modal input take different paths, the stub carries BOTH
 * **Show parts 1-4 in full** (title, bullets, table, journeys, Decided) and wait for the owner's yes. Never create silently.
 * **The Notes dossier is NOT surfaced in chat:** machine-facing; the owner sees one summary line. The full dossier goes into the issue body for the spec session.
 * **New UI needing real design exploration:** the stub marks an explicit owner step, "design in Claude Design first"; the exported result feeds the spec. Never explore design silently inside the flow.
+* **Surfaces are evidence-bound:** bullets and journeys name only surfaces walkable in the running app today; a planned surface (not yet built) is tagged explicitly "future, depends on #N". `@AGENTS.md`'s product prose is direction, never evidence a surface exists — verify against the running app before naming it.
 
 Stub body, five parts, never a prose paragraph:
 

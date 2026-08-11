@@ -4,56 +4,31 @@
 // its prompts at module scope); never importable from a client component.
 //
 // Owns ALL persistence and metering for the drafting path. The council
-// (draft-council-run.ts) and the notify senders (lib/notify/*) are pure and deliberately
-// touch neither the DB nor the ledger — this module is where both cross-cutting invariants
-// are actually satisfied (AGENTS.md's metering + model-call rules):
+// (draft-council-run.ts) is pure and deliberately touches neither the DB nor the ledger —
+// this module is where both cross-cutting invariants are actually satisfied (AGENTS.md's
+// metering + model-call rules):
 //   - every element of a council's `calls` array becomes exactly one `model_calls` row,
 //     carrying `output`, `reasoning`, and `usage` (including `reasoningWithheldByProvider`).
-//   - every touch point stamps `usage_events` — the inbound delivery, each model call,
-//     each Slack push, each email send, each verified inbound reply.
+//   - every touch point stamps `usage_events` — the inbound delivery, each model call.
 // Ledger-first ordering throughout, the same discipline the extraction path uses: `model_calls`
 // rows are written BEFORE the artifact rows (`drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
 import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
-import {
-  AUTO_POST_ENABLED,
-  checkXPostable,
-  PLATFORMS,
-  type Platform,
-  resolveDeskTier,
-} from "@/lib/agent/desk-config";
-import { type CouncilCall, reviseDraft, type SourceBrief } from "@/lib/agent/draft-council-run";
+import { checkXPostable, resolveDeskTier } from "@/lib/agent/desk-config";
+import type { CouncilCall, SourceBrief } from "@/lib/agent/draft-council-run";
 import { translateSourcePost } from "@/lib/agent/draft-translate";
 import { draftSourcePost } from "@/lib/agent/draft-write";
-import {
-  formatSourceIdentity,
-  normalizeWebsitePublisherMention,
-  type SourceIdentity,
-} from "@/lib/agent/source-identity";
-import { composeDraftMessage, composeDraftMessagePlainText } from "@/lib/notify/compose";
-import { sendDraftEmail } from "@/lib/notify/email";
-import { sendSlackMessage } from "@/lib/notify/slack";
+import { normalizeWebsitePublisherMention } from "@/lib/agent/source-identity";
 import { draftingConversationId } from "@/lib/observability/ai-conversation";
-import { buildDraftBlocks, postMessage } from "@/lib/slack/api";
-import { getSlackAccount } from "@/lib/slack/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
 import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
-import { publishDraftToXForOwner } from "@/lib/x/post-core";
 import { getXAccount } from "@/lib/x/store";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
-
-/** Email draft-delivery is DORMANT — the shipped flow notifies on Slack only. Until now this
- *  path was inert only by accident (the `RESEND_*` keys were never provisioned), so provisioning
- *  Resend for any other reason would have silently switched draft emails back on. This makes it
- *  a decision. `lib/notify/email.ts`, the plus-addressed reply encoding, and the inbound-reply
- *  webhook all stay wired behind it — flipping this to `true` (with the keys set) restores the
- *  whole email leg, including reply-to-correct-a-draft. */
-const EMAIL_DELIVERY_ENABLED = false;
 
 // Part A (T2.4b): source_posts / IngestDelivery now carries a source discriminator —
 // app/api/ingest/route.ts's ingestBodySchema (already locked) validates this exact shape and
@@ -128,8 +103,6 @@ type MatchedAgent = {
   reporter_tier: string | null;
   beat: string;
   status: string;
-  auto_post_master: boolean;
-  auto_post_sources: Json;
 };
 
 /** Best-effort publisher extraction. A website hostname is provenance, never an X handle. */
@@ -237,110 +210,11 @@ async function stampUsageEvent(
   if (error && !isDuplicateStreamDelivery) throw error;
 }
 
-/** Slack push + (conditionally) email, each independently error-tolerant: a channel outage
- *  must never discard an already-paid council run's drafts. Only a channel that actually
- *  sent stamps its usage_events row.
- *
- *  QC fix: the per-desk Slack app (lib/slack/*, item 5) was built and linkable but this
- *  function still only ever called the legacy workspace webhook (sendSlackMessage) — the
- *  Block Kit "Post to X" button (buildDraftBlocks) and the whole interactions route were
- *  unreachable in every real delivery. Fixed: a linked desk (slack_accounts row present) gets
- *  the real per-desk push with the actionable button; SLACK_WEBHOOK_URL is now genuinely the
- *  legacy fallback for a desk that hasn't linked Slack, matching AGENTS.md's documented
- *  intent. */
-async function deliverDraft(
-  admin: AdminClient,
-  input: {
-    agentId: string;
-    ownerId: string;
-    sourceIdentity: SourceIdentity;
-    sourceText: string;
-    winningText: string;
-    winningDraftId: string;
-    winningPlatform: Platform;
-    sourcePostId: string;
-    revised: boolean;
-  },
-): Promise<void> {
-  // Slack mrkdwn and plain text are NOT interchangeable: the same string in an email body
-  // renders its `*bold*` and `>` markers literally. One input, two renderings. Cost/model-count
-  // display lives in the council provenance dialog now (reads model_calls directly), not here.
-  const composeInput = {
-    sourceIdentity: input.sourceIdentity,
-    sourceText: input.sourceText,
-    winningText: input.winningText,
-    revised: input.revised,
-  };
-  const message = composeDraftMessage(composeInput);
-
-  try {
-    const slackAccount = await getSlackAccount(input.agentId);
-    if (slackAccount) {
-      // The interactive button always posts to X (SLACK_POST_TO_X_ACTION_ID ->
-      // postDraftToXForOwner) — only attach it when the winning draft actually IS an X draft.
-      // Otherwise (X's council failed and another platform's draft won instead) this would
-      // wire "Post to X" to a LinkedIn/Bluesky draft, posting the wrong platform's content.
-      await postMessage({
-        channelId: slackAccount.channel_id,
-        accessToken: slackAccount.access_token,
-        text: message,
-        ...(input.winningPlatform === "x"
-          ? {
-              blocks: buildDraftBlocks({
-                text: input.winningText,
-                draftId: input.winningDraftId,
-              }),
-            }
-          : {}),
-      });
-    } else {
-      await sendSlackMessage(message);
-    }
-    await stampUsageEvent(admin, {
-      owner_id: input.ownerId,
-      kind: "slack_notification",
-      units: 1,
-      cost_usd: null,
-      ref_id: input.sourcePostId,
-    });
-  } catch (err) {
-    console.error("draft-pipeline: slack delivery failed", err);
-  }
-
-  const { RESEND_API_KEY, RESEND_FROM, RESEND_REPLY_DOMAIN, NOTIFY_EMAIL_TO } = process.env;
-  if (
-    EMAIL_DELIVERY_ENABLED &&
-    RESEND_API_KEY &&
-    RESEND_FROM &&
-    RESEND_REPLY_DOMAIN &&
-    NOTIFY_EMAIL_TO
-  ) {
-    try {
-      await sendDraftEmail({
-        to: NOTIFY_EMAIL_TO,
-        subject: `${input.revised ? "Revised draft" : "New draft"} from ${formatSourceIdentity(input.sourceIdentity)}`,
-        text: composeDraftMessagePlainText(composeInput),
-        draftId: input.winningDraftId,
-      });
-      await stampUsageEvent(admin, {
-        owner_id: input.ownerId,
-        kind: "email_notification",
-        units: 1,
-        cost_usd: null,
-        ref_id: input.sourcePostId,
-      });
-    } catch (err) {
-      console.error("draft-pipeline: email delivery failed", err);
-    }
-  }
-}
-
 async function draftForAgent(
   admin: AdminClient,
   agent: MatchedAgent,
   sourcePostId: string,
   brief: SourceBrief,
-  deliverySource: IngestDelivery["source"],
   siteGuidance: { onBeat: string; offBeat: string } | null,
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
   // WHICH reporter's desk was drafting is most of an error report's diagnostic value, and this
@@ -526,56 +400,28 @@ async function draftForAgent(
     // exist before it; every AI span below inherits it from the isolation scope.
     Sentry.setConversationId(draftingConversationId(cluster.storyId));
 
-    // Part C: one winner row per platform. Its model-call provenance is the single drafter; no
-    // verification judge or audit row follows this stage.
-    const runPlatformDraft = async (
-      platform: Platform,
-    ): Promise<{
-      platform: Platform;
-      winningText: string;
-      winningModel: string;
-      degraded: boolean;
-      winningDraftId: string;
-    } | null> => {
-      const { data, error } = await admin.rpc("insert_claimed_winner", {
-        p_agent_id: agent.id,
-        p_claim_token: claimToken,
-        p_model_call_id: drafterCallId,
-        p_news_synthesis: verdict.newsSynthesis,
-        p_news_title: verdict.newsTitle,
-        p_platform: platform,
-        p_source_post_id: sourcePostId,
-        p_story_id: cluster.storyId,
-        // The column is nullable and the translation fast path deliberately persists null;
-        // generated RPC args model PostgreSQL text as non-nullable.
-        p_translation: translated.translation as string,
-      });
-      if (error) throw error;
-      if (data === null) return null;
-      return {
-        platform,
-        winningText: draftText,
-        winningModel: written.call.model,
-        degraded: false,
-        winningDraftId: data,
-      };
-    };
-
-    const platformResults = await Promise.allSettled(PLATFORMS.map(runPlatformDraft));
-
-    platformResults.forEach((outcome, i) => {
-      if (outcome.status === "rejected") {
-        console.error(
-          `draft-pipeline: platform ${PLATFORMS[i]} failed for agent ${agent.id}`,
-          outcome.reason,
-        );
-      }
+    // Part C: the X winner row. Its model-call provenance is the single drafter; no
+    // verification judge or audit row follows this stage. The draft is persisted here and
+    // surfaced to the reporter in the app feed — there is no push delivery channel.
+    const { data: winningDraftId, error: winnerError } = await admin.rpc("insert_claimed_winner", {
+      p_agent_id: agent.id,
+      p_claim_token: claimToken,
+      p_model_call_id: drafterCallId,
+      p_news_synthesis: verdict.newsSynthesis,
+      p_news_title: verdict.newsTitle,
+      p_platform: "x",
+      p_source_post_id: sourcePostId,
+      p_story_id: cluster.storyId,
+      // The column is nullable and the translation fast path deliberately persists null;
+      // generated RPC args model PostgreSQL text as non-nullable.
+      p_translation: translated.translation as string,
     });
-
-    const lostClaim = platformResults.some(
-      (outcome) => outcome.status === "fulfilled" && outcome.value === null,
-    );
-    if (lostClaim) {
+    if (winnerError) throw winnerError;
+    // No drafts row exists when the claim was lost between claim_draft and here (a concurrent
+    // retry already won). Propagate so the outer catch releases draft_claims and allows a
+    // retry. The billable stage ledger rows are already committed above, so no paid call is
+    // discarded by this return.
+    if (winningDraftId === null) {
       return {
         agentId: agent.id,
         winningModel: "",
@@ -584,71 +430,10 @@ async function draftForAgent(
       };
     }
 
-    const fulfilled = platformResults
-      .filter(
-        (
-          outcome,
-        ): outcome is PromiseFulfilledResult<
-          Exclude<Awaited<ReturnType<typeof runPlatformDraft>>, null>
-        > => outcome.status === "fulfilled" && outcome.value !== null,
-      )
-      .map((outcome) => outcome.value);
-
-    // Zero fulfilled platforms means no drafts row exists — the single-statement insert
-    // above is what makes that true, a rejected platform having written neither of its rows.
-    // Propagate so the outer catch releases draft_claims and allows a retry. The billable stage
-    // ledger rows are already committed above, so no paid call is discarded by this throw.
-    if (fulfilled.length === 0) {
-      throw new Error(`draft-pipeline: all platforms failed for agent ${agent.id}`);
-    }
-
-    // At least one platform succeeded — a partial multi-platform draft is a real, useful
-    // outcome. Do NOT throw and do NOT release the claim past this point: releasing it here
-    // would let a retry re-bill the platforms that already succeeded.
-    const xResult = fulfilled.find((f) => f.platform === "x");
-    // deliverDraft fires ONCE per delivery per agent (not once per platform) — using the
-    // X platform's winning text when X succeeded, else the first-succeeded platform's winning
-    // text as a reasonable fallback.
-    const primary = xResult ?? fulfilled[0];
-
-    await deliverDraft(admin, {
-      agentId: agent.id,
-      ownerId: agent.owner_id,
-      sourceIdentity: brief.identity,
-      sourceText: brief.text,
-      winningText: primary.winningText,
-      winningDraftId: primary.winningDraftId,
-      winningPlatform: primary.platform,
-      sourcePostId,
-      revised: false,
-    });
-
-    // Part D: auto-post, after the X platform's drafts row exists. Gated on the server-side
-    // AUTO_POST_ENABLED constant (lib/agent/desk-config.ts). auto_post_sources is
-    // keyed by delivery source TYPE ({ x?: boolean; website?: boolean }) — a per-source-type
-    // toggle, the natural reading of "master + per-source toggles" given the only two source
-    // types this slice has. No model_calls row for the post itself — posting isn't a model
-    // call. A posting failure is logged and left as a recoverable draft state: never a
-    // rollback of drafts or ledgers, never a claim release.
-    const sourcesConfig = (agent.auto_post_sources ?? {}) as Record<string, boolean>;
-    const autoPostEligible =
-      AUTO_POST_ENABLED &&
-      agent.auto_post_master === true &&
-      sourcesConfig[deliverySource] === true;
-    if (autoPostEligible && xResult) {
-      const postResult = await publishDraftToXForOwner(xResult.winningDraftId, agent.owner_id);
-      if (!postResult.ok) {
-        console.error(
-          `draft-pipeline: auto-post failed for draft ${xResult.winningDraftId}`,
-          postResult.error,
-        );
-      }
-    }
-
     return {
       agentId: agent.id,
-      winningModel: primary.winningModel,
-      degraded: fulfilled.some((f) => f.degraded) || fulfilled.length < PLATFORMS.length,
+      winningModel: written.call.model,
+      degraded: false,
     };
   } catch (err) {
     // Release the claim so a retry of this delivery can re-attempt (see the comment above).
@@ -753,7 +538,7 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
   const { data: allAgents, error: agentsError } = await admin
     .from("agents")
     .select(
-      "id, owner_id, reporter_handle, reporter_tier, beat, tracked_handles, websites, status, auto_post_master, auto_post_sources",
+      "id, owner_id, reporter_handle, reporter_tier, beat, tracked_handles, websites, status",
     );
   if (agentsError) throw agentsError;
   let websiteSourceAgentId: string | null = null;
@@ -844,219 +629,8 @@ export async function processDelivery(delivery: IngestDelivery): Promise<Process
       delivery.source === "website"
         ? await fetchSiteGuidance(admin, agent.id, delivery.source_config_id)
         : null;
-    drafted.push(
-      await draftForAgent(admin, agent, sourcePostId, brief, delivery.source, siteGuidance),
-    );
+    drafted.push(await draftForAgent(admin, agent, sourcePostId, brief, siteGuidance));
   }
 
   return { sourcePostId, drafted };
-}
-
-/** Applies an emailed correction to a draft: one revision call → new drafts row →
- *  re-deliver. Returns null when the draft id is unknown (caller answers 200 regardless). */
-export async function applyCorrection(input: {
-  draftId: string;
-  feedback: string;
-  idempotencyKey: string; // the Svix message id
-}): Promise<{ newDraftId: string } | null> {
-  const admin = createAdminClient();
-
-  const { data: draftRow, error: draftError } = await admin
-    .from("drafts")
-    .select("id, source_post_id, agent_id, platform, story_id, model_call_id")
-    .eq("id", input.draftId)
-    .maybeSingle();
-  if (draftError) throw draftError;
-  if (!draftRow) return null;
-  const [sourcePostResult, agentResult, modelCallResult] = await Promise.all([
-    admin
-      .from("source_posts")
-      .select("id, source, url, x_post_id, author_handle, text")
-      .eq("id", draftRow.source_post_id)
-      .maybeSingle(),
-    admin
-      .from("agents")
-      .select("id, owner_id, reporter_handle, reporter_tier")
-      .eq("id", draftRow.agent_id)
-      .maybeSingle(),
-    admin.from("model_calls").select("output").eq("id", draftRow.model_call_id).maybeSingle(),
-  ]);
-  if (sourcePostResult.error) throw sourcePostResult.error;
-  if (agentResult.error) throw agentResult.error;
-  if (modelCallResult.error) throw modelCallResult.error;
-  const sourcePost = sourcePostResult.data;
-  const agent = agentResult.data;
-  const previousDraft = modelCallResult.data?.output;
-  if (!sourcePost || !agent) return null;
-  if (previousDraft == null) return null;
-  // QC fix: carried forward into the dethrone scope + the revision insert below — without
-  // these, a correction lost its story (feed-query only lists winners whose story_id belongs
-  // to the querying desk's stories, so a NULL story_id winner never renders) and dethroned
-  // every OTHER platform's winner for this story too (the old dethrone filtered only by
-  // source_post_id + agent_id, not platform).
-  const { platform, story_id: storyId } = draftRow;
-
-  // Idempotency CHECK stays first: a duplicate Svix delivery is a no-op. The WRITE of this
-  // stamp is deliberately deferred past the paid revision call below (see the comment there) —
-  // stamping here, before the call, would make any later failure in this function permanently
-  // discard the reporter's correction, since every retry would then see the stamp and no-op.
-  // This select is a fast-path only; the actual guarantee is the D16 partial unique index on
-  // usage_events(ref_id) WHERE kind = 'email_reply_received', enforced at the stamp's WRITE
-  // below — two concurrent deliveries of the same Svix message can both pass this select.
-  const { data: dup, error: dupError } = await admin
-    .from("usage_events")
-    .select("id")
-    .eq("kind", "email_reply_received")
-    .eq("ref_id", input.idempotencyKey)
-    .maybeSingle();
-  if (dupError) throw dupError;
-  if (dup) return null;
-
-  const { data: guide, error: guideError } = await admin
-    .from("voice_guides")
-    .select("guide_deploy, measured_facts")
-    .eq("agent_id", agent.id)
-    .maybeSingle();
-  if (guideError) throw guideError;
-  if (!guide) {
-    throw new Error(`draft-pipeline: no voice_guides row for agent ${agent.id}`);
-  }
-  const voiceGuidance = resolveDraftingPrompt(
-    await listVoiceRules(agent.id),
-    guide.measured_facts,
-    guide.guide_deploy,
-  );
-
-  const sourceIdentity: SourceIdentity =
-    sourcePost.source === "website"
-      ? { kind: "website", publisher: hostnameOf(sourcePost.url ?? "") }
-      : { kind: "x", handle: sourcePost.author_handle ?? "" };
-  const brief: SourceBrief = {
-    sourcePostId: sourcePost.id,
-    xPostId: sourcePost.x_post_id ?? "",
-    identity: sourceIdentity,
-    text: sourcePost.text,
-    lang: null,
-    // reviseDraft (this function's only caller) never looks at media — the emailed-correction
-    // path revises existing text; it does not re-run delivery-stage drafting.
-    media: [],
-  };
-
-  const revisionAccount = await getXAccount(agent.owner_id);
-  const revision = await reviseDraft({
-    voiceGuidance,
-    accountTier: resolveDeskTier(agent.reporter_tier, revisionAccount?.tier),
-    brief,
-    previousDraft,
-    feedback: input.feedback,
-  });
-  revision.text = normalizeWebsitePublisherMention(revision.text, sourceIdentity);
-  revision.calls[revision.finalCallIndex].output = revision.text;
-
-  // Ledger-first, again.
-  const callIds = await insertModelCalls(admin, agent.owner_id, revision.calls, sourcePost.id);
-
-  // The idempotency stamp's WRITE lands here — after the revision call succeeded and its
-  // model_calls rows are durably written — not before the call as it originally was. The
-  // original ordering's stated reason ("prevent double-pay on a duplicate webhook delivery")
-  // buys almost nothing here: the inbound route acks 200 immediately and runs this function
-  // inside `after()`, so Resend never observes a failure and never redelivers a failed
-  // correction anyway. Stamping first therefore only bought a narrow anti-double-pay window
-  // at the cost of silently discarding the reporter's correction outright on any failure
-  // after the stamp. Tradeoff accepted: a crash in the narrow window between this line and the
-  // paid call above can re-pay one ~cent revision on a redelivery, which is strictly preferable
-  // to losing a reporter's correction.
-  //
-  // D16's partial unique index on usage_events(ref_id) WHERE kind = 'email_reply_received' makes
-  // THIS insert the real idempotency guard: a 23505 unique-violation means another concurrent
-  // delivery of the same Svix message won the race and already stamped — that's the existing
-  // no-op return, never a 500 (any other error still propagates as before).
-  const { error: stampError } = await admin.from("usage_events").insert({
-    owner_id: agent.owner_id,
-    kind: "email_reply_received",
-    units: 1,
-    cost_usd: null,
-    ref_id: input.idempotencyKey,
-  });
-  if (stampError) {
-    if (stampError.code === "23505") return null;
-    throw stampError;
-  }
-
-  for (const call of revision.calls) {
-    await stampUsageEvent(admin, {
-      owner_id: agent.owner_id,
-      kind: "drafting",
-      units: 1,
-      cost_usd: call.costUsd,
-      ref_id: sourcePost.id,
-    });
-  }
-
-  // Dethrone the story's CURRENT winner FOR THIS PLATFORM before crowning the revision — NOT
-  // just the replied-to draft. A reporter can reply to a superseded draft (an older email still
-  // in the thread); flipping only input.draftId would leave the actual current winner set
-  // AND crown the revision, so one story ends up with two is_winner=true rows for this platform,
-  // which feed-query renders as duplicate cards. Unsetting whichever row currently wins this
-  // (source_post, agent, platform) keeps the one-winner-per-platform-per-story invariant
-  // regardless of which draft the reply targeted. Scoped by `platform` (QC fix) — without it
-  // this dethroned every OTHER platform's winner too, since a story can carry one winner PER
-  // platform (X, LinkedIn, Bluesky) as of the multi-platform fan-out. This runs BEFORE the
-  // insert so the new winner below isn't itself caught by this update. Pointer flip only — a
-  // drafts row's content stays an immutable record of what a model produced.
-  const { data: dethroned, error: dethroneError } = await admin
-    .from("drafts")
-    .update({ is_winner: false })
-    .eq("source_post_id", sourcePost.id)
-    .eq("agent_id", agent.id)
-    .eq("platform", platform)
-    .eq("is_winner", true)
-    .select("news_title, news_synthesis, translation");
-  if (dethroneError) throw dethroneError;
-  // The dethroned winner's card metadata comes back from that update so the revision below can
-  // carry it forward — same reason editDraft copies it off the row it dethrones. Read off the
-  // dethroned winner rather than `draftRow`, since a reply can target a superseded draft.
-  const dethronedWinner = dethroned?.[0] ?? null;
-
-  const { data: newDraft, error: newDraftError } = await admin
-    .from("drafts")
-    .insert({
-      source_post_id: sourcePost.id,
-      agent_id: agent.id,
-      model_call_id: callIds[revision.finalCallIndex],
-      is_winner: true,
-      judge_verdict: null,
-      parent_draft_id: input.draftId,
-      feedback: input.feedback,
-      // QC fix: carry the original draft's platform + story_id forward — omitting these
-      // defaulted platform to "x" and story_id to NULL, and a NULL-story winner is invisible
-      // to fetchFeedPage (it only lists winners whose story_id is among the querying desk's
-      // own stories), so the correction silently vanished from the feed.
-      platform,
-      story_id: storyId,
-      // QC fix, same class as the two above: a revision replaces the winning row, so it inherits
-      // the winner's card metadata. Omitting these left a corrected draft's card without its
-      // news title, news synthesis, or translation. Judge review deliberately resets
-      // (judge_verdict above) — the correction invalidates it.
-      news_title: dethronedWinner?.news_title ?? null,
-      news_synthesis: dethronedWinner?.news_synthesis ?? null,
-      translation: dethronedWinner?.translation ?? null,
-    })
-    .select("id")
-    .single();
-  if (newDraftError) throw newDraftError;
-
-  await deliverDraft(admin, {
-    agentId: agent.id,
-    ownerId: agent.owner_id,
-    sourceIdentity,
-    sourceText: sourcePost.text,
-    winningText: revision.text,
-    winningDraftId: newDraft.id,
-    winningPlatform: platform as Platform,
-    sourcePostId: sourcePost.id,
-    revised: true,
-  });
-
-  return { newDraftId: newDraft.id };
 }
