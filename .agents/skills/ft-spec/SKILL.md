@@ -47,7 +47,7 @@ Required sections:
 * **Input space**: every class of input each user-facing entry point admits, each dispositioned: handled (mechanism named), graceful failure (copy + recovery step), or out of scope (the owner acknowledges at the gate). A silently hard-failing class is a spec defect. The modal input is the PRIMARY acceptance case. Worked derivations: `references/input-space-examples.md`.
 * **Acceptance journeys**: the stub's, refined to observable expectations with real inputs.
 * **Owner walkthrough**: the exact post-build sequence the owner will click through ("open X, paste Y, you should see Z"), derived from the journeys, plain language. This becomes the gate presentation and the owner's pre-ship checklist; QC never drives the UI, so anything only eyes on a rendered surface can judge lives here, on the owner's list.
-* **Build steps**: per-task files and the skills each task invokes. Any script or harness a task commissions must state concurrent fan-out for its independent model/network calls; only timing measurements serialize.
+* **Build steps**: per-task files and the skills each task invokes. Never commission a test harness, fixture suite, benchmark, or regression lab unless the owner explicitly ordered one in the stub: the proof bar is build + boot + each journey experienced once. Any script a task does commission runs its independent model/network calls concurrently.
 * Near-code ONLY where a contract is tricky; write it in Biome-clean idiom (`next/image`, complete hook dependency arrays).
 
 ## 3. Exit

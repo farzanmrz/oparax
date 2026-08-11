@@ -39,12 +39,13 @@ invocation asks once. A green build is never permission.
 .claude/skills/ft/scripts/ship.sh <issue#> "<fix summary>"
 ```
 
-Dispatch `deploy-checker` for the exact `beta_sha` at
-`https://beta.oparax.ai`; failed verdict = STOP. Good verdict:
+Immediately after the beta push:
 
 ```bash
 .claude/skills/ft/scripts/promote.sh beta main
 ```
+
+The push IS the job. Never check, poll, or watch a deployment.
 
 ### B. Hotfix (base main)
 
@@ -65,8 +66,8 @@ git -C "$wt" push origin HEAD:refs/heads/beta
 git worktree remove "$wt"
 ```
 
-Dispatch `deploy-checker` for `<main_sha>` at `https://oparax.ai`; report
-the verdict, never watch a deployment beyond that.
+The push IS the job: never check, poll, or watch a deployment; the owner
+looks at the live app themselves.
 
 ## 4. Stop: the owner closes
 

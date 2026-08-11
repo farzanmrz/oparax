@@ -34,8 +34,8 @@ bash .claude/skills/ft/scripts/qc-gates.sh origin/<base>...HEAD
 `GATES: RED` = STOP. Then re-prove the EXACT repro from the brief
 headlessly (the recorded DB assertion, a direct request to the failing
 route on :3000, or the harness case — never by driving the UI) and capture
-the after-evidence. Re-prove only what the round touched — never a full
-suite for a scoped fix.
+the after-evidence. Re-prove exactly the repro, once — never a suite,
+never a benchmark.
 
 * **Small tier only:** also run the charter here (its journeys with real inputs, driven headlessly — direct requests and DB assertions via `supabase-runner` BEFORE any teardown; no browser), then close with a plain-words screen: what changed, what was verified, the two or three things the owner should eyeball on :3000.
 

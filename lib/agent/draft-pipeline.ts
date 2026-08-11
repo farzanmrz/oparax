@@ -82,7 +82,7 @@ export class RetryableDeliveryError extends Error {
 }
 
 const MIN_NEXT_CLAIM_BUDGET_MS = 30_000;
-const DIRECT_SYNTHESIS_ENABLED = false;
+const DIRECT_SYNTHESIS_ENABLED = true;
 const OVERSIZED_EXCLUSION_REASON = "This delivery was too large to process and was skipped.";
 const SYNTHESIS_EXCLUSION_REASON =
   "This story couldn't be turned into news points and was skipped.";

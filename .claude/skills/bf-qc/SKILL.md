@@ -46,7 +46,7 @@ retrigger.
 
 ## 2. Charter journeys (headless)
 
-* **Prove each charter journey headlessly** with its REAL input: direct requests to the real local routes on :3000 plus the charter's DB assertions — never by driving the UI. Rendered surfaces are the owner's walkthrough, nowhere else.
+* **Prove each charter journey ONCE, cheaply, headlessly** with its REAL input: a direct request to the real local route on :3000 plus the charter's DB assertion. One pass per journey; the owner and real users are the deep test — never a suite, never a benchmark.
 * **Evidence before teardown:** every DB assertion the charter names is captured (dispatch `supabase-runner`, read-only, exact fixture ids) BEFORE any deletion; an unproven fixture is preserved, never deleted.
 
 ## 3. Review + adjudicate

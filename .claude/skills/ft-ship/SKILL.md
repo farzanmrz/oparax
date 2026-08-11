@@ -44,14 +44,14 @@ conflict STOP: explain whether both intentions can coexist and offer
 exactly three resolutions (preserve both, prefer beta, prefer the feature);
 never a destructive reset.
 
-**Promotion to `main`:** dispatch `deploy-checker` for the exact `beta_sha`
-at `https://beta.oparax.ai`; failed verdict = STOP. Good verdict:
+**Promotion to `main`:** immediately after the beta push —
 
 ```bash
 .claude/skills/ft/scripts/promote.sh beta main
 ```
 
-Never watch a deployment beyond that check.
+The push IS the job. Never check, poll, or watch a deployment; the owner
+looks at the live app themselves.
 
 ## 4. Stop: the owner closes
 
