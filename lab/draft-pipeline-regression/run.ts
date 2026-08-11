@@ -57,6 +57,7 @@ async function runPath(
   const filter = await filterSourcePost({
     brief,
     beatSpec: fixture.context.beat,
+    beatDetail: fixture.context.beatDetail ?? null,
     siteGuidance: fixture.context.siteGuidance,
   });
   if (!filter.verdict?.onBeat) {

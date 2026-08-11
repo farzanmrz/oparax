@@ -47,9 +47,11 @@ function clampGuidance(clause: string): string {
 function buildContent(input: {
   brief: SourceBrief;
   beatSpec: string;
+  beatDetail: string | null;
   siteGuidance: { onBeat: string; offBeat: string } | null;
 }): FilterContentPart[] {
   const source = input.brief;
+  const beatDetail = input.beatDetail?.trim();
   const content: FilterContentPart[] = [
     {
       type: "text",
@@ -57,6 +59,9 @@ function buildContent(input: {
         "<beat>",
         escapeXmlText(input.beatSpec.trim() || "(not stated)"),
         "</beat>",
+        // bf-124: the corpus-derived section rides in its own subordinate tag. It used to BE
+        // <beat>, which presented an inference as the reporter's stated boundary.
+        ...(beatDetail ? ["", "<beat_detail>", escapeXmlText(beatDetail), "</beat_detail>"] : []),
         ...(input.siteGuidance === null
           ? []
           : [
@@ -104,6 +109,7 @@ function buildContent(input: {
 export async function filterSourcePost(input: {
   brief: SourceBrief;
   beatSpec: string;
+  beatDetail: string | null;
   siteGuidance: { onBeat: string; offBeat: string } | null;
   deadlineAt?: number;
 }): Promise<DraftFilterResult> {
