@@ -69,25 +69,19 @@ async function runPath(
     };
   }
   let sourceText = brief.text;
-  let sourceLang = brief.lang;
   let sourceTitle = brief.title;
-  let originalLang: string | null | undefined;
   if (mode === "translate") {
     const translated = await translateSourcePost({ brief });
     if (!translated.usable || !translated.englishSourceText) {
       throw new Error(`Unusable translation for ${fixture.id}`);
     }
     sourceText = translated.englishSourceText;
-    sourceLang = "en";
     sourceTitle = undefined;
-    originalLang = brief.lang;
   }
   const synthesis = await synthesizeSourcePost({
     brief,
     sourceText,
-    sourceLang,
     sourceTitle,
-    originalLang,
   });
   if (!synthesis.verdict) throw new Error(`Unusable synthesis for ${fixture.id}`);
   const voiceGuidance = resolveDraftingPrompt(

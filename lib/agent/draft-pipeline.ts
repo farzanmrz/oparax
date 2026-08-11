@@ -392,9 +392,7 @@ async function draftForAgent(
     requireTimeBudget(options.deadlineAt);
     let translation: string | null = null;
     let synthesisSourceText = brief.text;
-    let synthesisSourceLang = brief.lang;
     let synthesisSourceTitle = brief.title;
-    let originalLang: string | null | undefined;
     if (!DIRECT_SYNTHESIS_ENABLED) {
       const translated = await translateSourcePost({ brief, deadlineAt: options.deadlineAt });
       if (translated.call) {
@@ -412,17 +410,13 @@ async function draftForAgent(
       }
       translation = translated.translation;
       synthesisSourceText = translated.englishSourceText;
-      synthesisSourceLang = "en";
       synthesisSourceTitle = undefined;
-      originalLang = brief.lang;
     }
 
     const synthesized = await synthesizeSourcePost({
       brief,
       sourceText: synthesisSourceText,
-      sourceLang: synthesisSourceLang,
       sourceTitle: synthesisSourceTitle,
-      originalLang,
       deadlineAt: options.deadlineAt,
     });
     await insertModelCalls(admin, agent.owner_id, [synthesized.call], sourcePostId);
