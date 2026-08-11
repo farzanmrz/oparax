@@ -24,7 +24,7 @@ pnpm install --frozen-lockfile
 ```
 
 * **BLOCKER:** an unmet-peer warning on a feature-relevant package (a green build once hid a worker crash).
-* **No re-grounding.** The spec IS the grounding: it arrives decision-complete with exact file anchors and probed reality. Read the issue body and the spec, then read each file as you edit it. Never spawn subagents to map, survey, or re-derive the codebase before editing.
+* **No re-grounding.** The spec IS the grounding: it arrives decision-complete with exact file anchors and probed reality. Read the issue body and the spec, then read each file as you edit it. Never spawn subagents to map, survey, or re-derive the codebase before editing; the `*-rules` distillers in step 1 (fixed knowledge sources, one round) are the ONLY sanctioned spawn.
 
 ## 2. Execute
 
@@ -32,7 +32,7 @@ Checkpoint commits are the durable progress ledger: on a restarted session, read
 resume from the first unfinished step; never re-execute a completed one.
 Work the build steps yourself, in order, in this session. Per task:
 
-1. **Skills first:** invoke the skills the spec's task names (binding).
+1. **Rules packs first, once:** at build start, spawn the `*-rules` distiller agents matching the spec's named skills — exactly one per area, all in parallel, one round only — and use their packs for every task. Never re-read skill files inline mid-build; distillers never spawn agents.
 2. **Write to spec:** resolve only implementation nuance; match surrounding idiom; Biome-clean as written (`next/image` with real dimensions, complete hook dependency arrays).
 3. **Escalate instead of improvising:** if reality diverges from the spec beyond nuance, STOP and surface it in a sentence. An escalation must name the spec line it contradicts; if the spec decided it, execute it — a decided item is never re-litigated on the build dial. Design never happens on the build dial.
 4. **Checkpoint:** `pnpm exec tsc --noEmit` clean on the files just touched, then a checkpoint commit (restore points; the slice squash-merges at ship).

@@ -25,15 +25,15 @@ journeys, `Decided` binding, `Notes` dossier).
 * **In code:** read the files the slice touches or interfaces with (signatures, exported types, route shapes). Mention paths explicitly; flag missing information instead of guessing.
 * **In reality:** when the slice depends on anything outside the repo (third-party sites, external APIs, live data shapes), probe the real thing NOW: fetch the actual domains the journeys name, hit the actual endpoints, read the actual DB rows. Record status codes and payload shapes in `.feature/probes.md`. A spec written against imagined external behavior is ungrounded no matter how well it cites the repo.
 * **Surfaces are evidence-bound:** verify every surface the stub names against the code (the route, page, or component exists in the tree today — no browser probing); a stub-named surface with no code path is flagged back to the owner in the decision list, never specced around or silently expanded.
-* **Skills by path (mechanical, no judgment):** consult every row the slice's touched paths match, then record one audit line in the decision list: "skills consulted: ...". The gate checks this line against the diff paths.
+* **Skills by path (mechanical, no judgment):** spawn EXACTLY ONE matching `*-rules` distiller agent per matched row below, all in parallel, in one round, each briefed with the touched paths and a one-line change description. Their compact packs replace reading skill files inline. Never spawn anything else, never a second round, and distillers never spawn agents themselves. Record one audit line in the decision list: "rules consulted: ...". The adjudicator checks this line against the diff paths.
 
-| Slice touches | Consult |
+| Slice touches | Distiller agent |
 |---|---|
-| `app/`, `components/` (any UI) | `web-design-guidelines`, root `@DESIGN.md`, `react-best-practices` |
-| `supabase/`, any query or schema | `supabase`, `supabase-postgres-best-practices` |
-| `lib/agent/`, model calls, gateway | `ai-sdk` |
-| routes, middleware, config, deploy | `nextjs` |
-| niche platform features (blob, queues, functions) | the matching platform skill, on demand |
+| `app/`, `components/` (any UI) | `ux-rules` |
+| `supabase/`, any query or schema | `supabase-rules` |
+| `lib/agent/`, model calls, gateway | `ai-sdk-rules` |
+| routes, middleware, config, deploy | `nextjs-rules` |
+| niche platform features (blob, queues, functions) | the matching platform skill, read inline, on demand |
 
 ## 2. Write the spec (local files, not the issue)
 

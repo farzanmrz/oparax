@@ -61,6 +61,13 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 | done marker present | owner walkthrough, then `/ft-ship N` |
 | shipped, issue open | owner production check, then close |
 
+In Claude Code, a detected `(Codex)` Next is DISPATCHED from this session
+via the `codex-rescue` subagent (wrapper on `sonnet`; the Codex runtime
+runs this repo's pinned sol high) instead of handed back to the owner;
+the Claude phases (`/ft-adj`, `/ft-qc`) then continue here. The owner's
+only mandatory touchpoints are the adjudication screen, the walkthrough,
+and ship.
+
 State the detected position in one line and hand off; never re-run a
 completed phase. Old slices may carry legacy markers (`findings`,
 `browsed`, `fixes`, `verified`): treat a legacy `verified` as today's
