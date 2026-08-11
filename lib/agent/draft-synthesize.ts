@@ -44,22 +44,24 @@ export type DraftSynthesizeResult = { call: CouncilCall; verdict: SynthesisVerdi
 function buildContent(input: {
   brief: SourceBrief;
   sourceText: string;
-  sourceLang: string | null;
-  originalLang?: string | null;
   sourceTitle?: string;
 }): SynthesisContentPart[] {
   const source = input.brief;
-  const languageAttributes = [
-    `lang="${escapeXmlAttribute(input.sourceLang ?? "und")}"`,
+  // No language attribute here, deliberately. `source_posts.lang` is X's per-tweet tag and is
+  // routinely wrong: an already-English tweet arrived tagged `ca`, and this stage answered it
+  // with Catalan points, reasons, and title. The attribute reads as authority and outranked the
+  // text the model could see for itself. The <output> contract fixes the OUTPUT language, so the
+  // model never needs to be told the input's -- it can read that. `original_lang` is gone for the
+  // same reason: it would reintroduce the pull the moment the translator path is switched back on.
+  const sourceAttributes = [
     `type="${escapeXmlAttribute(source.publisherClaimKind)}"`,
     `publisher="${escapeXmlAttribute(formatSourceIdentity(source.identity))}"`,
-    ...(input.originalLang ? [`original_lang="${escapeXmlAttribute(input.originalLang)}"`] : []),
   ];
   const content: SynthesisContentPart[] = [
     {
       type: "text",
       text: [
-        `<source ${languageAttributes.join(" ")}>`,
+        `<source ${sourceAttributes.join(" ")}>`,
         ...(input.sourceTitle ? ["<title>", escapeXmlText(input.sourceTitle), "</title>"] : []),
         "<text>",
         escapeXmlText(input.sourceText),
@@ -95,8 +97,6 @@ function buildContent(input: {
 export async function synthesizeSourcePost(input: {
   brief: SourceBrief;
   sourceText: string;
-  sourceLang: string | null;
-  originalLang?: string | null;
   sourceTitle?: string;
   deadlineAt?: number;
 }): Promise<DraftSynthesizeResult> {
