@@ -5,7 +5,7 @@
 // vision-capable, so callers with source media must pass the original attachments rather than a
 // text-only description produced by another model.
 export const QWEN_DRAFT_MODEL = "alibaba/qwen3.7-flash";
-export const QWEN_DRAFT_PROVIDER_OPTIONS = { gateway: { sort: "cost" } };
+export const QWEN_DRAFT_PROVIDER_OPTIONS = { gateway: { sort: "ttft" } };
 
 /** Stuck-call guard, NOT a latency budget — and load-bearing precisely because these calls carry
  *  no `maxOutputTokens`. It guards the non-streaming calls that share this config: the drafter
