@@ -2,7 +2,7 @@
 name: ft-spec
 description: >-
   Phase 2 of the feature flow: author the decision-complete spec for a stub
-  issue. CODEX ONLY (real file under `.agents/skills/`; the gate that judges
+  issue. Runs in Codex (recommended dial: sol high) or Claude Code (the gate that judges
   this spec runs in Claude Code as /ft-adj). Use when the user says
   /ft-spec N, "spec this out", or "plan this feature" for a stubbed
   functionality. Not for stubbing ideas (/ft-plan) and not for building

@@ -16,21 +16,20 @@ disable-model-invocation: true
 
 One slice = one issue, one `ft/<N>` branch, one squash commit on `beta`.
 The design rule behind every boundary: **stages split where the required
-participant changes.** Fable judges (gate, qc); Codex authors and labors
-(spec, build, fix); the owner gates product and walks the result. The two
-Claude phases dispatch the Codex labor themselves via the `codex-rescue`
-subagent (cheap wrapper model; the Codex runtime runs this repo's pinned
-sol high), so the owner's only touchpoints are the gate, the walkthrough,
-and ship.
+participant changes.** Fable judges (gate, qc); the labor stages (spec,
+build, fix) run wherever the owner triggers them — Codex at sol high is
+the recommended dial, Claude Code works too; the owner gates product and
+walks the result. NO stage dispatches the next: every session ends by
+naming the next command, and the owner triggers it.
 
 | Phase | Skill | App, dial | Product |
 |---|---|---|---|
 | 1 Plan | `/ft-plan` | Claude, Opus 4.8 | stub issue: journeys, decisions, dossier |
-| 2 Spec | `/ft-spec N` | Codex, sol high | `.feature/spec-<N>.md` + grok critique |
+| 2 Spec | `/ft-spec N` | Codex sol high (rec.) or Claude | `.feature/spec-<N>.md` + grok critique |
 | 3 Adjudicate | `/ft-adj N` | Claude, Fable if UNSURE flags else Opus | approved decisions on issue, `ft/N` cut |
-| 4 Build | `/ft-build N` | Codex, sol high | implemented + self-verified branch |
-| 5 QC | `/ft-qc N` | Claude, Fable high | evidence + adjudication + `.feature/qc-r<R>-briefs.md`; dispatches fix |
-| 6 Fix | `/ft-fix N` | Codex, sol high (dispatched by QC) | fixes + `## QC round <R>: done` marker |
+| 4 Build | `/ft-build N` | Codex sol high (rec.) or Claude | implemented + self-verified branch |
+| 5 QC | `/ft-qc N` | Claude, Fable high | evidence + adjudication + `.feature/qc-r<R>-briefs.md`; names the fix command |
+| 6 Fix | `/ft-fix N` | Codex sol high (rec.) or Claude | fixes + `## QC round <R>: done` marker |
 | 7 Walkthrough | owner | localhost:3000 | patch rounds via `/ft-fix`, or go |
 | 8 Ship | `/ft-ship N` | either | squash to beta, promote; OWNER closes the issue after checking production |
 
@@ -61,12 +60,10 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 | done marker present | owner walkthrough, then `/ft-ship N` |
 | shipped, issue open | owner production check, then close |
 
-In Claude Code, a detected `(Codex)` Next is DISPATCHED from this session
-via the `codex-rescue` subagent (wrapper on `sonnet`; the Codex runtime
-runs this repo's pinned sol high) instead of handed back to the owner;
-the Claude phases (`/ft-adj`, `/ft-qc`) then continue here. The owner's
-only mandatory touchpoints are the adjudication screen, the walkthrough,
-and ship.
+The detected Next is HANDED BACK to the owner as a copyable command —
+never dispatched from this session. Every stage runs in whichever app the
+owner triggers it in; the app in the Next column is the recommendation,
+not a rail.
 
 State the detected position in one line and hand off; never re-run a
 completed phase. Old slices may carry legacy markers (`findings`,

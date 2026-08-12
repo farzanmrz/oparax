@@ -37,14 +37,17 @@ fi
 # Skill mirror gate: every real skill under .claude/skills/ must be symlinked
 # from .agents/skills/ so non-Claude harnesses see it — with deliberate
 # exceptions on both sides (ft-adj/ft-qc/bf-plan/bf-adj/bf-qc are
-# Claude-only; ft-build/ft-spec/ft-fix plus bf-fix and the x-* helpers are
-# Codex-only real files).
+# Claude-only; the x-* helpers are Codex-only real files; ft-build/ft-spec/
+# ft-fix/bf-fix are real files under .agents/skills REVERSE-symlinked into
+# .claude/skills so both apps can trigger them — every stage is
+# owner-triggerable in either app since the de-chaining).
 # Only directories containing SKILL.md count as skills; a scripts-only dir is
 # not one. Do NOT "fix" a listed exception by symlinking it.
 echo "GATE mirror: running..."
-# Deliberately unsymlinked. CLAUDE_ONLY: real files under .claude/skills only.
-# AGENTS_ONLY: real files under .agents/skills only — the Codex-only flow
-# steps, plus the x-* Codex outreach helper skills.
+# CLAUDE_ONLY: real files under .claude/skills only, no mirror expected.
+# AGENTS_ONLY: real files under .agents/skills (the flow-labor stages are in
+# this list because their REAL files live there; their .claude/skills
+# entries are symlinks, which the first loop resolves fine).
 CLAUDE_ONLY="ft-adj ft-qc bf-plan bf-adj bf-qc"
 AGENTS_ONLY="ft-build ft-spec ft-fix bf-fix x-check x-dm x-recheck x-stat"
 mirror_fail=""

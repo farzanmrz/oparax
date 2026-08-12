@@ -4,7 +4,8 @@ description: >-
   Phase 4 of the bugfix flow, deep tier only, CLAUDE CODE ONLY: the whole
   charter-scoped QC round on bf/N in one session — gates, headless charter
   journeys, this session's own review, a fire-and-forget grok lane,
-  adjudication, then re-brief (dispatching /bf-fix to Codex) or clear. Use
+  adjudication, then re-brief (STOP with /bf-fix named — the owner
+  triggers it in Codex or Claude Code) or clear. Use
   when the user says /bf-qc N after a deep-tier /bf-fix. Fable 5 is the
   recommendation, never a gate: an owner invocation runs on the session's
   current model.
@@ -67,14 +68,12 @@ Accepted findings and hunt catches become
 `.feature/bf-<N>-qc-r<R>-briefs.md` (fix shapes with `file:line` anchors,
 owner decisions inlined, drops listed with one-line reasons, dead lanes
 named). Nothing accepted = say so and hand to the owner's walkthrough.
-Otherwise dispatch the fix round to Codex via the `codex-rescue`
-subagent in the background — wrapper pinned to a cheap model (`sonnet`);
-the Codex runtime runs it on this repo's pinned sol high, so no Fable
-tokens are spent on execution. When the round's marker lands, re-run the
-gates and hand the owner the walkthrough. Manual fallback:
+Otherwise STOP — no dispatching, no background subagents, no waiting.
+The owner triggers the fix themselves; this session's last words name
+the next command and where it can run:
 
 <exit-example>
 
-Adjudicated 4 findings: 1 accepted, 3 dropped; hunt added 0. Briefs written; fix round dispatched to Codex. I'll hand you the walkthrough when its marker lands.
+Adjudicated 4 findings: 1 accepted, 3 dropped; hunt added 0. Briefs at `.feature/bf-N-qc-r1-briefs.md`. Next: `/bf-fix N` — Codex (recommended dial: sol high) or Claude Code, your pick. After the fix round, re-run `/bf-qc N` here.
 
 </exit-example>

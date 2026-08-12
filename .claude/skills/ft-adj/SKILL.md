@@ -62,16 +62,15 @@ bash .claude/skills/ft/scripts/start.sh --issue <N> .feature/gate-<N>.md
 ```
 
 The script puts the composed body on the issue and lands on `ft/<N>`
-(adoption-aware; its resolution is the contract). Then dispatch the build
-to Codex via the `codex-rescue` subagent in the background — wrapper
-pinned to a cheap model (`sonnet`); the Codex runtime runs this repo's
-pinned sol high, so no Fable tokens are spent on the labor. The dispatch
-prompt is exactly `/ft-build <N>`. When the build returns, continue in
-THIS session with `/ft-qc <N>`. Manual fallback if dispatch is
-unavailable:
+(adoption-aware; its resolution is the contract). Then STOP — no
+dispatching, no background subagents, no waiting. The owner triggers
+every stage themselves; this session's last words name the next command
+and where it can run:
 
 <exit-example>
 
-Issue #118 approved, `ft/118` cut; build dispatched to Codex. I'll run QC here when it returns. (Fallback: run `/ft-build 118` in Codex yourself, then `/ft-qc 118` here.)
+Issue #118 approved, `ft/118` cut. Next: `/ft-build 118` — Codex
+(recommended dial: sol high) or Claude Code, your pick. After the build,
+`/ft-qc 118` in a fresh Claude Code session.
 
 </exit-example>

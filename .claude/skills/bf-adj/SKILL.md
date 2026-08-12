@@ -73,8 +73,7 @@ Then STOP:
 
 <exit-example>
 
-Issue #N approved, `bf/N` cut. Fix dispatched to Codex via `codex-rescue`
-(cheap wrapper; Codex runs this repo's pinned sol high) — I'll report when
-its round marker lands. Manual fallback: run `/bf-fix N` in Codex.
+Issue #N approved, `bf/N` cut. Next: `/bf-fix N` — Codex (recommended
+dial: sol high) or Claude Code, your pick.
 
 </exit-example>

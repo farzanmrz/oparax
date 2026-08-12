@@ -4,11 +4,11 @@ description: >-
   Phase 5 of the feature flow, CLAUDE CODE ONLY: the whole QC round on the
   built branch in one session — gates, headless journey evidence, this
   session's own deep review, a fire-and-forget grok lane, adjudication, gap
-  hunt, fix briefs, then dispatching /ft-fix to Codex. Use when the user
-  says /ft-qc after a build, or as the continuation when a gate-dispatched
-  build returns. Fable 5 high is the recommendation (one of exactly two
-  places the smartest model pays; the other is /ft-adj), never a gate: an
-  owner invocation runs on the session's current model.
+  hunt, fix briefs, then STOP with the next command named (the owner
+  triggers /ft-fix themselves, in Codex or Claude Code). Use when the user
+  says /ft-qc after a build. Fable 5 high is the recommendation (one of
+  exactly two places the smartest model pays; the other is /ft-adj), never
+  a gate: an owner invocation runs on the session's current model.
 argument-hint: "[issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *)
 model: inherit
@@ -79,22 +79,18 @@ zero findings get a read; interactions between confirmed findings; risk
 paths in the diff (auth, money, posting, schema, trust boundaries)
 regardless of silence.
 
-## 5. Briefs, then dispatch the fix
+## 5. Briefs, then name the fix command
 
 Write `.feature/qc-r<R>-briefs.md`: every accepted finding and hunt catch
 as a fix brief with a FIX SHAPE (approach + `file:line` anchor, one or
 two lines, never a full patch), journey verdicts with evidence, owner
 decisions inlined, drops listed with one-line reasons, any dead lane
-named. Then dispatch the fix round to Codex via the `codex-rescue`
-subagent in the background — wrapper pinned to a cheap model (`sonnet`);
-the labor runs on the Codex runtime, which this repo pins to sol high, so
-no Fable tokens are spent on execution. The dispatch prompt is exactly
-`/ft-fix <N>` plus the briefs file path. When the round's done marker
-lands, re-run the gates and hand the owner the walkthrough. If dispatch
-is unavailable, fall back to the manual handoff:
+named. Then STOP — no dispatching, no background subagents, no waiting.
+The owner triggers the fix themselves; this session's last words name the
+next command and where it can run:
 
 <exit-example>
 
-Adjudicated 11 findings: 8 accepted, 3 dropped; gap hunt added 2; grok lane dead (recorded). Briefs written; fix round dispatched to Codex. I'll hand you the walkthrough when its marker lands.
+Adjudicated 11 findings: 8 accepted, 3 dropped; gap hunt added 2; grok lane dead (recorded). Briefs at `.feature/qc-r1-briefs.md`. Next: `/ft-fix 118` — Codex (recommended dial: sol high) or Claude Code, your pick. After the fix round, re-run `/ft-qc 118` here for the walkthrough.
 
 </exit-example>

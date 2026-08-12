@@ -1,7 +1,7 @@
 ---
 name: bf-fix
 description: >-
-  Phase 3 of the bugfix flow, CODEX ONLY: execute the approved brief on
+  Phase 3 of the bugfix flow, Codex (recommended dial: sol high) or Claude Code: execute the approved brief on
   bf/N, re-prove the exact repro, post the round marker; the small tier also
   runs its charter QC here. Also the home of bf PATCH ROUNDS from the
   owner's walkthrough. Use when the user says /bf-fix N.
