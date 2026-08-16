@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useState, useTransition } from "react";
+import { type JSX, type ReactNode, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 // twitter-text 3.x is CommonJS — its ESM interop exposes only a default export (the

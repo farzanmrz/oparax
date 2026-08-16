@@ -1,14 +1,17 @@
 // oparax cross-model council — Grok critique lane (deterministic lens panel).
 // Launched by the .grok/agents/oparax-critic ORCHESTRATOR via the workflow tool.
-// args: #{ mode ("plan"|"diff"|"bug"), brief (string), verify_k (int) }
+// args: #{ mode ("plan"|"diff"|"bug"), brief (string) }
 // Returns #{ findings: [ rich-finding ] }; the orchestrator projects to the stage schema.
+// No in-lane adjudication or verify pass: every lens's raw finding survives to
+// the caller untouched (only the mechanical schema projection below runs) — a
+// downstream adjudicator (e.g. Fable) sees each per-lens entry, never a
+// pre-merged or pre-filtered set.
 let meta = #{
     name: "critique",
-    description: "oparax council Grok critique lane: a parallel lens panel over a plan or diff, optional adversarial verify, returns schema-shaped findings."
+    description: "oparax council Grok critique lane: a parallel lens panel over a plan or diff, returns schema-shaped findings, one entry per lens, unfiltered."
 };
 let mode = args.mode;
 let brief = args.brief;
-let vk = args.verify_k;
 
 // Rich superset finding: covers BOTH the plan schema (critique/suggestion/target)
 // and the QC schema (file/line/scenario/summary). The orchestrator selects per stage.
@@ -27,9 +30,10 @@ let FSCHEMA = #{
   "required": ["severity","file","line","summary","scenario","critique","suggestion","target"]
 };
 
-// 13 themed lenses. Each focus is a checklist distilled from ~116 real failure
-// modes mined from past oparax Claude Code + Codex sessions (quota-efficient:
-// one themed agent per theme, not one agent per scar).
+// 14 lenses: 13 themed (each a checklist distilled from ~116 real failure modes
+// mined from past oparax Claude Code + Codex sessions — quota-efficient, one
+// themed agent per theme, not one agent per scar) plus one general/holistic
+// lens with no checklist, to catch whatever falls between the 13 narrow ones.
 let lenses = [
   #{ key: "concurrency-claims",       focus: "claim/lease races: a claim RPC whose WHERE re-reads a row a concurrent winner already committed; PostgREST .or() claim filters naming the wrong column; setInterval/polling loops with no in-flight guard so a slow tick overlaps; non-atomic check-then-write caps (a pre-read cap where two concurrent adds both pass and both bill); a missing second-concurrent-run guard for the same desk; concurrent multi-desk claim under a shared deadline; tool-call handlers mutating shared state without a promise-chain mutex (the AI SDK runs a step's tool calls concurrently); per-entity-per-period gates that read-then-write instead of an atomic UNIQUE claim" },
   #{ key: "ledger-billing",           focus: "billing and accounting integrity: a metered model call billed on a branch (early-return, catch, abort) that never writes the model_calls/usage_events row; a retry that re-bills a stage already ledgered; model_calls and usage_events written as two non-atomic statements; ledger-first discipline (write the ledger before the paid step); unbounded retry loops firing a paid resolve per source with no give-up; a hardcoded lang=null forcing every delivery through the billable translator" },
@@ -43,7 +47,8 @@ let lenses = [
   #{ key: "ui-state-reconciliation",  focus: "screen vs truth: an optimistic update clobbered by the next poll, or an error path resolving to optimistic true and masking the failure; revalidatePath firing before the row it displays exists; feed refresh and load-more without a shared epoch guard (stale-append race, scroll jump); a prop-sync useEffect overwriting an in-progress local edit on refresh; a source-chip showing a stale add-time identity instead of what is actually watched; post-hydration layout jump or a loading skeleton whose shape does not match the settled content; a stale still-running attempt clobbering a newer attempt's row; feed hydration that validates full objects but projects only a narrow subset, dropping paired reasons" },
   #{ key: "ux-affordance-a11y",       focus: "usability and design contract: a disabled control with no discoverable alternative path (View Source living only in the 3-dot menu); an empty/paused state blanking unrelated content (pause hiding the setup card); a sheet/error state that dead-ends with no recovery; a form input that is placeholder-only with no associated label or aria-label; a mobile touch target under 44px (sub-700px); missing focus-visible or prefers-reduced-motion on new interactive/animated elements; drift from locked DESIGN.md tokens (the 1040px shell, the warm feed-card palette) or the desk: breakpoint replaced by md:; page-level horizontal overflow; mobile truncation losing both name and path; toast-only feedback for an irreversible action; an at-limit add affordance left interactive; spec-required copy thinned below the stated example count" },
   #{ key: "scope-convention-doc",     focus: "completeness and hygiene: a governing doc (AGENTS.md code map / RLS contract table, DESIGN.md, a rule file) the diff has now made wrong; an acceptance criterion the close-out claims but the code does not meet; a frozen-unchanged property touched incidentally; unrelated files/hunks bundled into the branch; changed files not Biome-clean (unused imports, import-order, formatting); hard-wrapped markdown prose in .md files; a sibling config/script (self-test, dispatcher roster, critique contract) not synced to a newly added participant; a skill/verify/README doc still describing a removed or changed pipeline; a stale comment describing deleted behavior; an env-var checklist not updated after provisioning; a diff computed off a stale local ref instead of origin/beta" },
-  #{ key: "frame-attack",             focus: "ATTACK THE FRAME: name concrete real inputs, user behaviors, or environmental conditions this change never mentions but a real user or source will produce (image-only or emoji-only X deliveries, oversized or media-heavy sources, malformed HTML, missing sitemap/RSS, a paused or deleted desk mid-run, multilingual sources, duplicate re-delivery, deploy-window concurrency). For each, name the input and the wrong outcome; a missing input class outranks any in-frame bug" }
+  #{ key: "frame-attack",             focus: "ATTACK THE FRAME: name concrete real inputs, user behaviors, or environmental conditions this change never mentions but a real user or source will produce (image-only or emoji-only X deliveries, oversized or media-heavy sources, malformed HTML, missing sitemap/RSS, a paused or deleted desk mid-run, multilingual sources, duplicate re-delivery, deploy-window concurrency). For each, name the input and the wrong outcome; a missing input class outranks any in-frame bug" },
+  #{ key: "general-holistic",         focus: "NO CHECKLIST — read the whole plan or diff cold, the way a sharp engineer seeing it for the first time would, and judge it as a system, not a list of items. Does the overall design actually hang together, or does it solve the stated problem in a roundabout, overcomplicated, or wrong-layer way? Is there a simpler design that gets the same outcome with less machinery? Does any single decision contradict another decision elsewhere in the same document? Is the thing being built even the right thing given what the issue actually asks for? Do NOT re-run the other 13 lenses' specific checklists — if a finding fits neatly into concurrency, security, ux, or any other named dimension, leave it to that lens and skip it here. This lens exists for whatever doesn't fit a category, not for more coverage of ones that already have a dedicated lens." }
 ];
 
 let base = "";
@@ -65,43 +70,12 @@ let reviews = parallel(jobs);
 
 let all = [];
 for r in reviews {
-  if r != () && r.success && r.output != () && r.output.findings != () {
-    for f in r.output.findings { all.push(f); }
+  if r != () && r.success && r.output != () {
+    all.push(r.output);
   }
 }
 log("raw findings " + all.len().to_string());
-
-let survivors = [];
-if vk <= 0 {
-  survivors = all;
-} else {
-  let VSCHEMA = #{ "type":"object","properties":#{ "refuted":#{"type":"boolean"}, "reason":#{"type":"string"} }, "required":["refuted","reason"] };
-  let toverify = [];
-  for f in all {
-    if f.severity == "important" || f.severity == "blocking" { toverify.push(f); } else { survivors.push(f); }
-  }
-  let vjobs = [];
-  for f in toverify {
-    for i in 0..vk {
-      let vp = "Adversarially REFUTE this council finding; default refuted=true if the evidence is weak or the cited path does not exist. Check with git diff and file reads (read-only).\nTARGET: " + f.target + "\nSUMMARY: " + f.summary + "\nCRITIQUE: " + f.critique + "\nReturn {refuted: bool, reason: string}.";
-      vjobs.push(#{ prompt: vp, label: "verify", capability_mode: "read-only", output_schema: VSCHEMA });
-    }
-  }
-  phase("verify");
-  log("verify " + toverify.len().to_string() + " x " + vk.to_string());
-  let verdicts = parallel(vjobs);
-  let fi = 0;
-  for f in toverify {
-    let refutes = 0;
-    for j in 0..vk {
-      let v = verdicts[fi*vk + j];
-      if v != () && v.success && v.output != () && v.output.refuted == true { refutes += 1; }
-    }
-    if refutes * 2 <= vk { survivors.push(f); }
-    fi += 1;
-  }
-}
-log("survivors " + survivors.len().to_string());
+let survivors = all;
 
 // Deterministic projection to the EXACT stage schema, so the orchestrator is a
 // pure pass-through (no model reasoning = less wall time). Severity vocab differs

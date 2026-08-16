@@ -22,15 +22,6 @@ next-env.d.ts
 data/
 # Canonical UI handoff bundle remains local; only copied production assets ship.
 design_handoff_oparax_ui/
-# Stream-transcript dumps — raw model output and full reasoning traces
-.diag/
-# The voice lab — deleted 2026-07-30 once every port landed. Kept ignored so a restored
-# copy can never be swept into a commit by ship.sh's `git add -A`.
-.voice-lab/
-# 21st design-context generator output — regenerated on demand, nothing reads it
-.21st/
-# AI SDK DevTools — complete local prompts, outputs, reasoning, and provider payloads
-.devtools/
 
 # Logs
 *.log
@@ -38,14 +29,9 @@ npm-debug.log*
 
 # OS junk
 .DS_Store
-.codex/outreach/*.lock
-
-.agents/handoff/
 
 # Sentry Config File
 .env.sentry-build-plugin
 
 # Supabase CLI link metadata/cache
 supabase/.temp/
-.gstack/
-.env*

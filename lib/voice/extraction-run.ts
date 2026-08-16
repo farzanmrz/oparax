@@ -109,7 +109,7 @@ export async function startRun(agentId: string): Promise<boolean> {
     if (reclaimError) throw reclaimError;
     return reclaimed === true;
   } catch (e) {
-    console.error(`startRun: failed for agent ${agentId}`, e);
+    console.error("startRun: failed for agent", agentId, e);
     return false;
   }
 }
@@ -140,7 +140,7 @@ export async function recordProgress(
       .eq("agent_id", agentId);
     if (error) throw error;
   } catch (e) {
-    console.error(`recordProgress: failed for agent ${agentId}`, e);
+    console.error("recordProgress: failed for agent", agentId, e);
   }
 }
 
@@ -171,6 +171,6 @@ export async function finishRun(
       .eq("agent_id", agentId);
     if (error) throw error;
   } catch (e) {
-    console.error(`finishRun: failed for agent ${agentId}`, e);
+    console.error("finishRun: failed for agent", agentId, e);
   }
 }

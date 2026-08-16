@@ -2,10 +2,10 @@
 # slice ONLY by its branch name — QC diffs `origin/beta...ft/<N>` and ship keys
 # on the same ref — so an off-convention branch is invisible to the entire
 # QC/ship machinery. Allowed: main, beta, ft/<digits> (the issue number,
-# nothing appended), lab/* for experiments, and v0/* for v0's design-sync branches. A repo ruleset additionally
-# blocks off-convention branch CREATION at push time; this check is the
-# advisory layer PRs surface (make it a required check for PRs into beta in
-# Settings > Branches).
+# nothing appended), and bf/<digits> for bug-fix branches (same exact-issue-number
+# rule as ft). A repo ruleset additionally blocks off-convention branch CREATION
+# at push time; this check is the advisory layer PRs surface (make it a required
+# check for PRs into beta in Settings > Branches).
 name: branch-name
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
           BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           case "$BRANCH" in
-            main|beta|lab/*|v0/*) echo "ok: $BRANCH" ;;
+            main|beta) echo "ok: $BRANCH" ;;
             ft/*)
               if printf '%s' "$BRANCH" | grep -Eq '^ft/[0-9]+$'; then
                 echo "ok: $BRANCH"
@@ -29,8 +29,16 @@ jobs:
                 exit 1
               fi
               ;;
+            bf/*)
+              if printf '%s' "$BRANCH" | grep -Eq '^bf/[0-9]+$'; then
+                echo "ok: $BRANCH"
+              else
+                echo "::error::Branch '$BRANCH' breaks the convention: bug-fix branches must be bf/<issue-number> exactly (e.g. bf/103) — QC and ship resolve a slice by that name."
+                exit 1
+              fi
+              ;;
             *)
-              echo "::error::Branch '$BRANCH' breaks the convention: allowed names are main, beta, ft/<issue-number>, lab/*, v0/*."
+              echo "::error::Branch '$BRANCH' breaks the convention: allowed names are main, beta, ft/<issue-number>, bf/<issue-number>."
               exit 1
               ;;
           esac

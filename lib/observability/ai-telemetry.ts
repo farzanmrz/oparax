@@ -3,9 +3,8 @@
 // The `experimental_telemetry` block every AI SDK call in this repo passes, defined ONCE.
 //
 // Why a helper rather than a literal per call site: production registers no global AI SDK
-// telemetry integration, so Sentry records nothing unless each call opts in. Local development's
-// DevTools integration enables telemetry globally, but this helper still supplies the stable
-// function id and the per-stage input/output privacy policy both DevTools and Sentry honor. Eight
+// telemetry integration, so Sentry records nothing unless each call opts in. This helper supplies
+// the stable function id and the per-stage input/output privacy policy Sentry honors. Eight
 // literals across four files is eight chances to drift; a helper is one.
 import * as Sentry from "@sentry/nextjs";
 import type { TelemetryOptions } from "ai";
