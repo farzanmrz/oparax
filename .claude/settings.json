@@ -1,5 +1,12 @@
 {
   "outputStyle": "Flow",
+  "skillOverrides": {
+    "feature": "name-only",
+    "build": "name-only",
+    "ship": "name-only",
+    "lint": "name-only",
+    "ui-ux-pro-max": "name-only"
+  },
   "permissions": {
     "allow": [
       "Bash(set -a && . ./.env.local && set +a && curl -s \"$NEXT_PUBLIC_SUPABASE_URL*)"

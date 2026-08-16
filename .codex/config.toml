@@ -1,20 +1,5 @@
 # Project-scoped Codex config for oparax.
 
-# Owner's working preference: no sandbox friction in this repo. Restored
-# 2026-07-30 after its removal caused Codex to prompt at every phase boundary
-# (council launch, build, Supabase calls) because the user-level fallback is
-# workspace-write + on-request.
-# Caveat, recorded not enforced: this file is committed, so it applies to anyone
-# who clones and runs Codex here. Move it to ~/.codex/config.toml if that ever
-# matters.
-sandbox_mode = "danger-full-access"
-
-# Codex's default project-doc cap (32768) once silently truncated a larger
-# AGENTS.md's tail (verified 2026-07-30). AGENTS.md is short now; the raised
-# cap stays as headroom so future growth never silently truncates again.
-project_doc_max_bytes = 65536
-
-# The flow's labor dial, pinned so headless codex-rescue dispatches from
-# Claude (gate -> build, qc -> fix) always run the intended model.
-model = "gpt-5.6-sol"
-model_reasoning_effort = "high"
+model_verbosity = "medium"
+web_search = "indexed"
+approval_policy = "on-request"
