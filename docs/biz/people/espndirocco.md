@@ -1,0 +1,13 @@
+[2026-07-18T21:25Z | x | self] Hey Michael, I'm building a monitoring tool for beat reporters who can't afford to look away during trade season. One question: what does your current setup look like for catching breaks when you're not watching? No pitch, just learning.
+[2026-07-23T20:55Z | x | other] I'm always monitoring with texts and calls and check-ins anyway, and I just make sure I have my phone pretty much on me at all times, and especially as the trade deadline nears. Plus, I'm helped by the ESPN national reporters who are doing the same with their sources. Hope that helps.
+[2026-07-23T21:32Z | x | self] Thanks Michael, genuinely helpful. The human network side makes total sense, especially with sources who call you first anyway.
+[2026-07-23T21:32Z | x | self] Quick follow-up if you're open to it: what about the stuff that breaks on X or a club website before your sources even know? Like a team quietly posting injury news or a trade wire dropping before anyone texts you. Does that ever slip through, or do you have that covered too?
+[2026-07-25T14:12Z | x | other] I've got alerts set up for team X site as well as a lot of other NFL/Jaguars reporters so I'm able to react quickly if that happens. Sometimes, though, it can slip through and if that's the case then I just have to hustle to follow it up.
+[2026-07-25T15:55Z | x | self] That's really helpful. That "sometimes it slips and I hustle to follow it up" part is exactly what I'm trying to understand better. Would you say that happens once a week, a few times a season, or somewhere in between? Just trying to get a sense of how often the alerting actually fails you.
+[2026-07-25T17:14Z | x | other] Probably somewhere in between. Couple times a year, maybe? Hate it when it does, obviously, because it's my job to be on top of stuff.
+[2026-07-25T17:23Z | x | self] That's really useful context, thank you. Makes total sense that with the network you have, it's rare.
+[2026-07-25T17:23Z | x | self] One last question and I'll leave you alone: do you know reporters at a lower tier, maybe regional or freelance, who rely more on alerts than sources? Curious whether the problem hits harder there
+[2026-07-25T17:28Z | x | other] All the reporters I deal with on the Jags beat rely on sources. Everybody gets caught by surprise at one time or another, though. Just the nature of what we do.
+[2026-07-25T17:33Z | x | self] Really appreciate you taking the time, this was genuinely useful. I'll let you get back to it. If I have something more concrete to show down the line, would it be okay to reach back out?
+[2026-07-25T20:17Z | x | other] Absolutely.
+[2026-07-25T20:19Z | x | self] Thank you so much :)

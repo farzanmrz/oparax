@@ -9,10 +9,16 @@ ignoredBuiltDependencies:
 
 # Transitive-only security pins. Each closes an advisory that no direct-dependency
 # upgrade reaches, because the parent still declares the vulnerable range:
-#   @hono/node-server  <2.0.5   path traversal in serve-static   (via @ai-sdk/devtools)
-#   linkify-it         <5.0.2   quadratic-complexity DoS         (via ansi-to-react, pinned ^3.0.3)
-#   postcss            <8.5.18  path traversal + arbitrary read  (via next, @tailwindcss/postcss)
-#   sharp              <0.35.0  inherited libvips CVEs           (via next)
+#   @hono/node-server  <2.0.5     path traversal in serve-static     (via shadcn -> @modelcontextprotocol/sdk, dev-only)
+#   linkify-it         <5.0.2     quadratic-complexity DoS           (via ansi-to-react, pinned ^3.0.3)
+#   postcss            <8.5.18    path traversal + arbitrary read    (via next, @tailwindcss/postcss)
+#   sharp              <0.35.0    inherited libvips CVEs             (via next)
+#   nanoid             <3.3.17    indefinite loop on size 0          (via postcss, dedupes to the direct ^6.0.0 dep)
+#   hono               <4.12.34   SSR memo() cross-user data leak + DoS  (via shadcn -> @modelcontextprotocol/sdk, dev-only)
+#   dompurify          <=3.4.12   detached-subtree XSS               (via mermaid, @streamdown/mermaid + streamdown)
+#   js-yaml            <4.3.1     quadratic CPU on !!omap            (via shadcn -> cosmiconfig, dev-only)
+#   mermaid            <11.16.1   DoS/prototype-pollution/CSS-inject (via @streamdown/mermaid + streamdown)
+#   fast-uri           <3.1.5     host confusion via backslash       (via @sentry/nextjs build tooling)
 # This is the file pnpm 10 reads them from — a `pnpm.overrides` block in package.json
 # is silently IGNORED (it warns on `pnpm audit`, not on install).
 # Drop an entry once its parent's own range clears the advisory — verify with `pnpm audit`.
@@ -21,3 +27,9 @@ overrides:
   linkify-it: "^5.0.2"
   postcss: "^8.5.25"
   sharp: "^0.35.3"
+  nanoid: ">=3.3.17"
+  hono: ">=4.12.34"
+  dompurify: ">=3.4.13"
+  js-yaml: ">=4.3.1"
+  mermaid: ">=11.16.1"
+  fast-uri: ">=3.1.5"

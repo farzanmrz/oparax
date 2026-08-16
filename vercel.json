@@ -33,7 +33,7 @@
       "has": [
         {
           "type": "host",
-          "value": "oparax-chirp-farzanmrzs-projects.vercel.app"
+          "value": "oparax-farzanmrzs-projects.vercel.app"
         }
       ],
       "permanent": true,
@@ -44,7 +44,7 @@
       "has": [
         {
           "type": "host",
-          "value": "oparax-chirp.vercel.app"
+          "value": "oparax.vercel.app"
         }
       ],
       "permanent": true,

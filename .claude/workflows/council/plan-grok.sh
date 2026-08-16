@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Council member: Grok (xAI grok-4.5, SuperGrok subscription). One-shot, read-only, schema-bound.
+# Council member: Grok (xAI grok-4.6, SuperGrok subscription). One-shot, read-only, schema-bound.
 # Usage: plan-grok.sh <prompt-file> <schema-file> <effort> <out-file>
-#   effort: low|medium|high  (ablation: low≈medium≈103s; high 163s; xhigh/max ERROR — never pass them)
+#   effort: low|medium|high|xhigh  (grok-4.6 adds xhigh; grok-4.5 rejected it. Default stays "high":
+#   the lens panel writes straight to one file with no internal adjudication, so the only judgment
+#   happening in this call is per-lens, not synthesis — high buys per-lens depth cheaply.)
 # grok auto-reads AGENTS.md; --json-schema returns a parsed .structuredOutput object.
 # Emits the plan JSON to <out-file>; exit 0 on success, 1 (+ GROK_FAILED) otherwise. Best-effort.
 set -uo pipefail
@@ -42,26 +44,25 @@ if [ -f "$PROFILE" ]; then PROFILE_ARG=(--agent "$PROFILE"); fi
 NO_INFRA_LIST="mcp__vercel__*,mcp__railway__*"
 
 WF="${COUNCIL_GROK_WORKFLOW:-1}"
-VK="${COUNCIL_GROK_VERIFY_K:-0}"
 CRITIQUE_WF="$REPO/.grok/workflows/critique.rhai"
 WF_MODE="diff"; case "$SCHEMA" in *plan-critique*) WF_MODE="plan";; esac
 if [ "$WF" = "1" ] && [ -f "$CRITIQUE_WF" ] && [ -n "${PROFILE_ARG[*]:-}" ]; then
   # WORKFLOW LANE (default; COUNCIL_GROK_WORKFLOW=0 falls back to the single-critic
-  # deep/simple path below). The orchestrator profile reads a control line (mode +
-  # verify_k), launches .grok/workflows/critique.rhai — a deterministic PARALLEL
-  # lens panel (concurrency, retry-idempotency, frame-attack, data-migration,
-  # spec-completeness, contract, security, coverage) — and projects complete()'s
-  # findings to the stage schema. COUNCIL_GROK_VERIFY_K>0 adds an adversarial refute
-  # pass over important+ findings. Lenses run `git diff` via execute capability, so
-  # NO run_terminal_cmd denial here.
+  # deep/simple path below). The orchestrator profile reads a control line (mode),
+  # launches .grok/workflows/critique.rhai — a deterministic PARALLEL 14-lens panel
+  # (concurrency, retry-idempotency, frame-attack, data-migration, spec-completeness,
+  # contract, security, coverage, plus one holistic lens) — and projects complete()'s
+  # findings to the stage schema verbatim: no in-lane adjudication, every per-lens
+  # finding survives untouched for the downstream adjudicator to see individually.
+  # Lenses run `git diff` via execute capability, so NO run_terminal_cmd denial here.
   wf_prompt="$(mktemp)"
-  { printf 'COUNCIL_CTRL mode=%s verify_k=%s\n' "$WF_MODE" "$VK"; cat "$PF"; } > "$wf_prompt"
+  { printf 'COUNCIL_CTRL mode=%s\n' "$WF_MODE"; cat "$PF"; } > "$wf_prompt"
   # Lenses inherit the SESSION effort. Default high for max per-lens depth
   # (~160s barrier); COUNCIL_GROK_EFFORT=medium (~100s) or =low trades depth for speed.
   GROK_SUBAGENTS=1 \
   grok --prompt-file "$wf_prompt" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
        "${PROFILE_ARG[@]}" --disallowed-tools "$NO_INFRA_LIST" \
-       --always-approve --effort "${COUNCIL_GROK_EFFORT:-high}" -m grok-4.5 --max-turns 150 \
+       --always-approve --effort "${COUNCIL_GROK_EFFORT:-high}" -m grok-4.6 --max-turns 150 \
        --output-format json > "$raw_out" 2> "$raw_err"
   rm -f "$wf_prompt"
 elif [ "$DEPTH" = "deep" ]; then
@@ -70,11 +71,11 @@ elif [ "$DEPTH" = "deep" ]; then
   GROK_SUBAGENTS="${GROK_SUBAGENTS:-1}" \
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
        "${PROFILE_ARG[@]}" --disallowed-tools "$NO_INFRA_LIST" \
-       --always-approve --effort "$EFF" -m grok-4.5 --max-turns 150 \
+       --always-approve --effort "$EFF" -m grok-4.6 --max-turns 150 \
        --output-format json > "$raw_out" 2> "$raw_err"
 else
   grok --prompt-file "$PF" --json-schema "$(cat "$SCHEMA")" --sandbox read-only --cwd "$REPO" \
-       "${PROFILE_ARG[@]}" --disallowed-tools "$NO_INFRA_LIST,run_terminal_cmd" --always-approve --effort "$EFF" -m grok-4.5 \
+       "${PROFILE_ARG[@]}" --disallowed-tools "$NO_INFRA_LIST,run_terminal_cmd" --always-approve --effort "$EFF" -m grok-4.6 \
        --output-format json > "$raw_out" 2> "$raw_err"
 fi
 if jq -e --arg k "$KEY" '

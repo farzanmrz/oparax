@@ -1,0 +1,203 @@
+cohort	name	x_handle	email	type	beat	status
+reporter_initial	Sami Mokbel	samimokbel_bbc		reporter	football	followup
+reporter_initial	Miguel Delaney	migueldelaney		reporter	football	followup
+reporter_initial	Keith Downie	skysports_keith		reporter	football	unreachable
+reporter_initial	Ekrem KONUR	ekremkonur		reporter	football	unreachable
+reporter_initial	Julien Laurens	laurensjulien		reporter	football	unreachable
+reporter_initial	Duncan Castles	duncancastles		reporter	football	followup
+reporter_initial	Sacha Tavolieri	sachatavolieri		reporter	football	followup
+reporter_initial	Jacob Steinberg	jacobsteinberg		reporter	football	followup
+reporter_initial	James Horncastle OSI	jameshorncastle		reporter	football	unreachable
+reporter_initial	Alex Crook	alex_crook		reporter	football	unreachable
+reporter_initial	James Benge	jamesbenge		reporter	football	followup
+reporter_initial	Dharmesh Sheth	skysports_sheth		reporter	football	followup
+reporter_initial	James Olley	jamesolley		reporter	football	unreachable
+reporter_initial	Adam Crafton	adamcrafton_		reporter	football	unreachable
+reporter_initial	Chris Bascombe	_chrisbascombe		reporter	football	unreachable
+reporter_initial	Jason Burt	jburttelegraph		reporter	football	unreachable
+reporter_initial	Carl Anka	ankaman616		reporter	football	unreachable
+reporter_initial	Tom Bogert	tombogert		reporter	football	followup
+reporter_initial	Jonathan Northcroft	jnorthcroft		reporter	football	unreachable
+reporter_initial	George Caulkin	georgecaulkin		reporter	football	unreachable
+reporter_initial	Pete O'Rourke	sportspeteo		reporter	football	followup
+reporter_initial	Dean Jones	deanjonessoccer		reporter	football	unreachable
+reporter_initial	Craig Hope	craighope_dm		reporter	football	followup
+reporter_initial	Alasdair Gold	alasdairgold		reporter	football	unreachable
+reporter_initial	John Percy	jpercytelegraph		reporter	football	unreachable
+reporter_initial	Luke Edwards	lukeedwardstele		reporter	football	unreachable
+reporter_initial	Lee Ryder	lee_ryder		reporter	football	unreachable
+reporter_initial	Rob Dawson	robdawsonespn		reporter	football	followup
+reporter_initial	Liam Twomey	liam_twomey		reporter	football	followup
+reporter_initial	Mario Cortegana	mariocortegana		reporter	football	followup
+reporter_initial	Chris Wheeler	chriswheelerdm		reporter	football	followup
+reporter_initial	Jack Gaughan	jack_gaughan		reporter	football	followup
+reporter_initial	Mike Keegan	mikekeegan_dm		reporter	football	unreachable
+reporter_initial	Phil Hay	philhay_		reporter	football	unreachable
+reporter_initial	Lyall Thomas	skysportslyall		reporter	football	unreachable
+reporter_initial	Sam Lee	samlee		reporter	football	followup
+reporter_initial	Neil Custis	ncustisthesun		reporter	football	unreachable
+reporter_initial	Ian Doyle	iandoylesport		reporter	football	followup
+reporter_initial	Matt Slater	mjshrimper		reporter	football	followup
+reporter_initial	Rob Harris	robharris		reporter	football	followup
+reporter_initial	Jim Boardman	jimboardman		reporter	football	unreachable
+reporter_initial	Dan Kilpatrick	dan_kp		reporter	football	followup
+reporter_initial	Keith Smith	keithsmithnba		reporter	nba	unreachable
+reporter_initial	Jake Fischer	jakelfischer		reporter	nba	unreachable
+reporter_initial	Alex Kennedy	alexkennedynba		reporter	nba	unreachable
+reporter_initial	K.C. Johnson	kcjhoop		reporter	nba	unreachable
+reporter_initial	Jon Krawczynski	jonkrawczynski		reporter	nba	followup
+reporter_initial	Nick Friedell	nickfriedell		reporter	nba	unreachable
+reporter_initial	Jay King	byjayking		reporter	nba	followup
+reporter_initial	Michael Scotto	mikeascotto		reporter	nba	unreachable
+reporter_initial	Eric Pincus	ericpincus		reporter	nba	misaligned
+reporter_initial	Chris Fedor	chrisfedor		reporter	nba	unreachable
+reporter_initial	Gary Washburn	gwashburnglobe		reporter	nba	unreachable
+reporter_initial	Brett Siegel	brettsiegelnba		reporter	nba	followup
+reporter_initial	Stefan Bondy	sbondynba		reporter	nba	followup
+reporter_initial	Jared Weiss	jaredweissnba		reporter	nba	followup
+reporter_initial	Grant Afseth	grantafseth		reporter	nba	followup
+reporter_initial	Joe Vardon	joevardon		reporter	nba	followup
+reporter_initial	James Ham	james_hamnba		reporter	nba	unreachable
+reporter_initial	Kelly Iko	kellyiko		reporter	nba	unreachable
+reporter_initial	Danny Leroux	dannyleroux		reporter	nba	followup
+reporter_initial	Steve Bulpett	stevebhoop		reporter	nba	followup
+reporter_initial	Ian Begley	ianbegley		reporter	nba	followup
+reporter_initial	Ira Winderman	iraheatbeat		reporter	nba	unreachable
+reporter_initial	Marcus Thompson II	thompsonscribe		reporter	nba	followup
+reporter_initial	Ohm Youngmisuk	notoriousohm		reporter	nba	unreachable
+reporter_initial	Baxter Holmes	baxter		reporter	nba	followup
+reporter_initial	Anthony Chiang	anthony_chiang		reporter	nba	unreachable
+reporter_initial	Dan Woike	danwoikesports		reporter	nba	unreachable
+reporter_initial	Tania Ganguli	taniaganguli		reporter	nba	unreachable
+reporter_initial	James L. Edwards III	jledwardsiii		reporter	nba	followup
+reporter_initial	Steve Kyler	stevekylernba		reporter	nba	unreachable
+reporter_initial	Tim Reynolds	bytimreynolds		reporter	nba	unreachable
+reporter_initial	Ben Golliver	bengolliver		reporter	nba	review
+reporter_initial	Tom Haberstroh	tomhaberstroh		reporter	nba	followup
+reporter_initial	Zach Harper	talkhoops		reporter	nba	followup
+reporter_initial	Frank Isola	thefrankisola		reporter	nba	unreachable
+reporter_initial	Michael C. Wright	mikecwright		reporter	nba	followup
+reporter_initial	Fred Katz	fredkatz		reporter	nba	unreachable
+reporter_initial	Josh Robbins	joshuabrobbins		reporter	nba	followup
+reporter_initial	Darnell Mayberry	darnellmayberry		reporter	nba	unreachable
+reporter_initial	Kristian Winfield	krisplashed		reporter	nba	followup
+reporter_initial	Duane Rankin	duanerankin		reporter	nba	unreachable
+reporter_initial	Jeff McDonald	jmcdonald_saen		reporter	nba	unreachable
+reporter_initial	Brad Townsend	townbrad		reporter	nba	unreachable
+reporter_initial	Jourdan Rodrigue	jourdanrodrigue		reporter	nfl	unreachable
+reporter_initial	Jeff Zrebiec	jeffzrebiec		reporter	nfl	unreachable
+reporter_initial	Kevin Seifert	seifertespn		reporter	nfl	unreachable
+reporter_initial	Courtney Cronin	courtneyrcronin		reporter	nfl	followup
+reporter_initial	Nick Wagoner	nwagoner		reporter	nfl	unreachable
+reporter_initial	Rich Cimini	richcimini		reporter	nfl	unreachable
+reporter_initial	Cameron Wolfe	cameronwolfe		reporter	nfl	followup
+reporter_initial	Manish Mehta	mmehtasports		reporter	nfl	followup
+reporter_initial	Marcel Louis-Jacques	marcel_lj		reporter	nfl	followup
+reporter_initial	Jenna Laine	jennalaineespn		reporter	nfl	followup
+reporter_initial	Katherine Terrell	kat_terrell		reporter	nfl	unreachable
+reporter_initial	Todd Archer	toddarcher		reporter	nfl	unreachable
+reporter_initial	Calvin Watkins	calvinwatkins		reporter	nfl	followup
+reporter_initial	Aaron Wilson	aaronwilson_nfl		reporter	nfl	unreachable
+reporter_initial	Ben Goessling	bengoessling		reporter	nfl	followup
+reporter_initial	Alaina Getzenberg	agetzenberg		reporter	nfl	followup
+reporter_initial	Brooke Pryor	bepryor		reporter	nfl	followup
+reporter_initial	Rob Demovsky	robdemovsky		reporter	nfl	followup
+reporter_initial	Turron Davenport	tdavenport_nfl		reporter	nfl	followup
+reporter_initial	Brady Henderson	bradyhenderson		reporter	nfl	unreachable
+reporter_initial	Adam Caplan	caplannfl		reporter	nfl	unreachable
+reporter_initial	Brad Biggs	bradbiggs		reporter	nfl	unreachable
+reporter_initial	Aaron Nagler	aaronnagler		reporter	nfl	unreachable
+reporter_initial	Mike Klis	mikeklis		reporter	nfl	followup
+reporter_initial	Mike Freeman	mikefreemannfl		reporter	nfl	unreachable
+reporter_initial	Omar Kelly	omarkelly		reporter	nfl	unreachable
+reporter_initial	Adam Teicher	adamteicher		reporter	nfl	unreachable
+reporter_initial	Joe Person	josephperson		reporter	nfl	unreachable
+reporter_initial	Nicki Jhabvala	nickijhabvala		reporter	nfl	followup
+reporter_initial	Michael DiRocco	espndirocco		reporter	nfl	followup
+reporter_initial	John Keim	john_keim		reporter	nfl	unreachable
+reporter_initial	Jamison Hensley	jamisonhensley		reporter	nfl	unreachable
+reporter_initial	Zac Jackson	akronjackson		reporter	nfl	followup
+reporter_initial	Alec Lewis	alec_lewis		reporter	nfl	followup
+reporter_initial	Dave Birkett	davebirkett		reporter	nfl	followup
+reporter_initial	Matt Maiocco	maiocconbcs		reporter	nfl	unreachable
+reporter_initial	Judy Battista	judybattista		reporter	nfl	unreachable
+reporter_initial	Jon Machota	jonmachota		reporter	nfl	unreachable
+reporter_initial	Clarence Hill Jr	clarencehilljr		reporter	nfl	followup
+reporter_initial	Joe Buscaglia	joebuscaglia		reporter	nfl	unreachable
+reporter_initial	Zach Berman	zberm		reporter	nfl	followup
+reporter_initial	Tim McManus	tim_mcmanus		reporter	nfl	unreachable
+reporter_initial	Jeff McLane	jeff_mclane		reporter	nfl	unreachable
+reporter_initial	David Lombardi	lombardihimself		reporter	nfl	unreachable
+reporter_initial	Matt Barrows	mattbarrows		reporter	nfl	unreachable
+reporter_initial	Dan Wiederer	danwiederer		reporter	nfl	unreachable
+reporter_initial	Jeff Howe	jeffphowe		reporter	nfl	unreachable
+reporter_initial	Shelby Talcott	shelbytalcott		reporter	politics	followup
+reporter_initial	Leigh Ann Caldwell	lacaldwelldc		reporter	politics	followup
+reporter_initial	Andrew Feinberg	andrewfeinberg		reporter	politics	followup
+reporter_initial	Olivia Beavers	olivia_beavers		reporter	politics	followup
+reporter_initial	Melanie Zanona	mzanona		reporter	politics	followup
+reporter_initial	Jessica Elgot	jessicaelgot		reporter	politics	followup
+reporter_initial	Aubrey Allegretti	breeallegretti		reporter	politics	followup
+reporter_initial	Reese Gorman	reesejgorman		reporter	politics	followup
+reporter_initial	Andrew Desiderio	andrewdesiderio		reporter	politics	followup
+reporter_initial	Andrew Solender	andrewsolender		reporter	politics	followup
+reporter_initial	Vaughn Hillyard	vaughnhillyard		reporter	politics	followup
+reporter_initial	Kellie Meyer	kelliemeyernews		reporter	politics	unreachable
+reporter_initial	Rachael Bade	rachaelmbade		reporter	politics	followup
+reporter_initial	Annie Karni	anniekarni		reporter	politics	unreachable
+reporter_initial	Sarah Ferris	sarahnferris		reporter	politics	followup
+reporter_initial	Marianna Sotomayor	mariannareports		reporter	politics	unreachable
+reporter_initial	Alex Isenstadt	axiosalex		reporter	politics	unreachable
+reporter_initial	Aaron Blake	aaronblake		reporter	politics	unreachable
+reporter_initial	Josh Wingrove	josh_wingrove		reporter	politics	followup
+reporter_initial	Sienna Rodgers	siennamarla		reporter	politics	unreachable
+reporter_initial	Jake Sherman	jakesherman		reporter	politics	followup
+reporter_initial	Burgess Everett	burgesevans		reporter	politics	unreachable
+reporter_initial	Alexander Burns	alexburnsnyt		reporter	politics	unreachable
+reporter_initial	Manu Raju	mkraju		reporter	politics	unreachable
+reporter_initial	Chad Pergram	chadpergram		reporter	politics	unreachable
+reporter_initial	Kasie Hunt	kasiehunt		reporter	politics	unreachable
+reporter_initial	Hugo Rifkind	hugorifkind		reporter	politics	followup
+reporter_initial	Pippa Crerar	pippacrerar		reporter	politics	followup
+reporter_initial	Beth Rigby	bethrigby		reporter	politics	unreachable
+reporter_initial	Robert Peston	robertpeston		reporter	politics	unreachable
+reporter_initial	Alex Thompson	alexthomp		reporter	politics	outreach
+reporter_initial	Kyle Cheney	kyledcheney		reporter	politics	outreach
+reporter_initial	Scott Wong	scottwongdc		reporter	politics	unreachable
+reporter_initial	Meridith McGraw	meridithmcgraw		reporter	politics	outreach
+reporter_initial	Myah Ward	myahward		reporter	politics	outreach
+reporter_initial	Florian Plettenberg	plettigoal		reporter	football	followup
+reporter_initial	Nicolò Schira	nicoschira		reporter	football	followup
+reporter_initial	Ben Jacobs	jacobsben		reporter	football	followup
+reporter_initial	Rudy Galetti	rudygaletti		reporter	football	followup
+reporter_initial	Mike McGrath	mcgrathmike		reporter	football	followup
+reporter_initial	Football Transfers	transferzone00		reporter	football	followup
+reporter_initial	Transfersthathappened	actualtransfers		reporter	football	followup
+reporter_initial	David Ornstein	david_ornstein		reporter	football	unreachable
+reporter_initial	Gianluca Di Marzio	dimarzio		reporter	football	unreachable
+reporter_initial	NBA Trade Report	nbatradereport		reporter	nba	review
+reporter_initial	Yueqi Yang	yueqi_yang		reporter	crypto	review
+	Reshad Rahman	reshadrahman		reporter	football (transfers)	testing
+creator_initial	Liam Ottley	ottleyai	coderliamottley@gmail.com	creator	ai	followup
+creator_initial	Nihan	codebynihan	codernihan@gmail.com	creator	ai	followup
+creator_initial	Dr Sania	iamsania_ai	hubsaniaai@gmail.com	creator	ai	misaligned
+creator_initial	How 2 AI	how2use_ai		creator	ai	waiting
+creator_initial	Radheshyam	aiwithradhe		creator	ai	followup
+creator_initial	Rouf	roufxguru	code999check@gmail.com	creator	ai	followup
+creator_initial	Sadia	sadiamalik182	sadlog182@gmail.com	creator	ai	waiting
+creator_initial	Nishan	liamcoderx	mdrubel980170@gmail.com	creator	ai	followup
+creator_initial	Grace	hey_gracewilson	weternal221@gmail.com	creator	ai	waiting
+creator_initial	AI Explorer	ai_explorer25	nehajaincollabs@gmail.com	creator	ai	uninterested
+creator_initial	Aiden Tech	aiden_tech_ai	aidentechai1@gmail.com	creator	ai	misaligned
+creator_initial	Jason Coder	jason_coder0	leocoder56@gmail.com	creator	ai	waiting
+creator_initial	Nesu Zen	nesu_ai_x		creator	ai	followup
+creator_initial	LAPTOP LIFESTYLE BLOGGER	monetizationdon		creator	ai	followup
+creator_initial	Oliver Prompts	oliviscusai		creator	ai	followup
+creator_initial	Ryan Blake	ryan_blake_ai		creator	ai	followup
+creator_initial	NexaGrowth	nexagrowthx		creator	ai	followup
+creator_initial	Marry	bipulhossa69692	bipulhossain2005@gmail.com	creator	ai	followup
+creator_initial	Pushpendra	pushpendratips	trippushpendra195@gmail.com	creator	ai	followup
+creator_initial	Abhay Giri	abhayaitech	abhaygoswami700@gmail.com	creator	ai	unresponsive
+creator_initial	Anya	anya_ai0	jessicaaitech0@gmail.com	creator	ai	followup
+creator_initial	Lucas Walker		lucaswa190@gmail.com	creator	ai	waiting
+creator_initial	Discover AI		discoverai024@gmail.com	creator	ai	followup

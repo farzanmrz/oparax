@@ -22,8 +22,7 @@ import {
 //   (`invoke_agent {functionId}`, `generate_content {model}`) honoring each call's
 //   `recordInputs`/`recordOutputs`. Two standing rules from that finding: every AI call must pass
 //   `experimental_telemetry.isEnabled: true` in production (per-call opt-in —
-//   lib/observability/ai-telemetry.ts builds it). Local development also registers AI SDK
-//   DevTools globally, which enables telemetry there without adding a second Sentry/OTel exporter.
+//   lib/observability/ai-telemetry.ts builds it).
 //   NEVER add a hand-rolled Sentry OpenTelemetry bridge alongside this subscriber — one was built
 //   here on the wrong belief that v7 was unsupported, and it double-counted every call (two spans,
 //   two model-name spellings, twice the tokens) until deleted.

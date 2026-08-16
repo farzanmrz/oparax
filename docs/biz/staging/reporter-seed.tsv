@@ -1,0 +1,179 @@
+cohort	name	x_handle	email	type	beat	status	reason
+r-initial	Sami Mokbel	@SamiMokbel_BBC		r	football	follow-up	
+r-initial	Miguel Delaney	@MiguelDelaney		r	football	follow-up	
+r-initial	Keith Downie	@SkySports_Keith		r	football	closed	x-unreachable
+r-initial	Ekrem KONUR	@Ekremkonur		r	football	closed	x-unreachable
+r-initial	Julien Laurens	@LaurensJulien		r	football	closed	x-unreachable
+r-initial	Duncan Castles	@DuncanCastles		r	football	follow-up	
+r-initial	Sacha Tavolieri	@sachatavolieri		r	football	engaged	
+r-initial	Jacob Steinberg	@JacobSteinberg		r	football	follow-up	
+r-initial	James Horncastle OSI	@JamesHorncastle		r	football	closed	x-unreachable
+r-initial	Alex Crook	@alex_crook		r	football	closed	x-unreachable
+r-initial	James Benge	@jamesbenge		r	football	follow-up	
+r-initial	Dharmesh Sheth	@skysports_sheth		r	football	follow-up	
+r-initial	James Olley	@JamesOlley		r	football	closed	x-unreachable
+r-initial	Adam Crafton	@AdamCrafton_		r	football	closed	x-unreachable
+r-initial	Chris Bascombe	@_ChrisBascombe		r	football	closed	x-unreachable
+r-initial	Jason Burt	@JBurtTelegraph		r	football	closed	x-unreachable
+r-initial	Carl Anka	@Ankaman616		r	football	closed	x-unreachable
+r-initial	Tom Bogert	@tombogert		r	football	follow-up	
+r-initial	Jonathan Northcroft	@JNorthcroft		r	football	closed	x-unreachable
+r-initial	George Caulkin	@GeorgeCaulkin		r	football	closed	x-unreachable
+r-initial	Pete O'Rourke	@SportsPeteO		r	football	follow-up	
+r-initial	Dean Jones	@DeanJonesSoccer		r	football	closed	x-unreachable
+r-initial	Craig Hope	@CraigHope_DM		r	football	follow-up	
+r-initial	Alasdair Gold	@AlasdairGold		r	football	closed	x-unreachable
+r-initial	John Percy	@JPercyTelegraph		r	football	closed	x-unreachable
+r-initial	Luke Edwards	@LukeEdwardsTele		r	football	closed	x-unreachable
+r-initial	Lee Ryder	@lee_ryder		r	football	closed	x-unreachable
+r-initial	Rob Dawson	@RobDawsonESPN		r	football	follow-up	
+r-initial	Liam Twomey	@liam_twomey		r	football	follow-up	
+r-initial	Mario Cortegana	@MarioCortegana		r	football	follow-up	
+r-initial	Chris Wheeler	@ChrisWheelerDM		r	football	follow-up	
+r-initial	Jack Gaughan	@Jack_Gaughan		r	football	follow-up	
+r-initial	Mike Keegan	@MikeKeegan_DM		r	football	closed	x-unreachable
+r-initial	Phil Hay	@PhilHay_		r	football	closed	x-unreachable
+r-initial	Lyall Thomas	@SkySportsLyall		r	football	closed	x-unreachable
+r-initial	Sam Lee	@SamLee		r	football	follow-up	
+r-initial	Neil Custis	@ncustisTheSun		r	football	closed	x-unreachable
+r-initial	Ian Doyle	@IanDoyleSport		r	football	follow-up	
+r-initial	Matt Slater	@mjshrimper		r	football	follow-up	
+r-initial	Rob Harris	@RobHarris		r	football	follow-up	
+r-initial	Jim Boardman	@JimBoardman		r	football	closed	x-unreachable
+r-initial	Dan Kilpatrick	@Dan_KP		r	football	follow-up	
+r-initial	Keith Smith	@KeithSmithNBA		r	nba	closed	x-unreachable
+r-initial	Jake Fischer	@JakeLFischer		r	nba	closed	x-unreachable
+r-initial	Alex Kennedy	@AlexKennedyNBA		r	nba	closed	x-unreachable
+r-initial	K.C. Johnson	@KCJHoop		r	nba	closed	x-unreachable
+r-initial	Jon Krawczynski	@JonKrawczynski		r	nba	follow-up	
+r-initial	Nick Friedell	@NickFriedell		r	nba	closed	x-unreachable
+r-initial	Jay King	@ByJayKing		r	nba	follow-up	
+r-initial	Michael Scotto	@MikeAScotto		r	nba	closed	x-unreachable
+r-initial	Eric Pincus	@EricPincus		r	nba	closed	not-a-fit
+r-initial	Chris Fedor	@ChrisFedor		r	nba	closed	x-unreachable
+r-initial	Gary Washburn	@GwashburnGlobe		r	nba	closed	x-unreachable
+r-initial	Brett Siegel	@BrettSiegelNBA		r	nba	follow-up	
+r-initial	Stefan Bondy	@SbondyNBA		r	nba	follow-up	
+r-initial	Jared Weiss	@JaredWeissNBA		r	nba	follow-up	
+r-initial	Grant Afseth	@GrantAfseth		r	nba	follow-up	
+r-initial	Joe Vardon	@joevardon		r	nba	follow-up	
+r-initial	James Ham	@James_HamNBA		r	nba	closed	x-unreachable
+r-initial	Kelly Iko	@KellyIko		r	nba	closed	x-unreachable
+r-initial	Danny Leroux	@DannyLeroux		r	nba	follow-up	
+r-initial	Steve Bulpett	@SteveBHoop		r	nba	follow-up	
+r-initial	Ian Begley	@IanBegley		r	nba	follow-up	
+r-initial	Ira Winderman	@IraHeatBeat		r	nba	closed	x-unreachable
+r-initial	Marcus Thompson II	@ThompsonScribe		r	nba	engaged	
+r-initial	Ohm Youngmisuk	@NotoriousOHM		r	nba	closed	x-unreachable
+r-initial	Baxter Holmes	@Baxter		r	nba	follow-up	
+r-initial	Anthony Chiang	@Anthony_Chiang		r	nba	closed	x-unreachable
+r-initial	Dan Woike	@DanWoikeSports		r	nba	closed	x-unreachable
+r-initial	Tania Ganguli	@taniaganguli		r	nba	closed	x-unreachable
+r-initial	James L. Edwards III	@JLEdwardsIII		r	nba	follow-up	
+r-initial	Steve Kyler	@stevekylerNBA		r	nba	closed	x-unreachable
+r-initial	Tim Reynolds	@ByTimReynolds		r	nba	closed	x-unreachable
+r-initial	Ben Golliver	@BenGolliver		r	nba	review	
+r-initial	Tom Haberstroh	@tomhaberstroh		r	nba	follow-up	
+r-initial	Zach Harper	@talkhoops		r	nba	follow-up	
+r-initial	Frank Isola	@TheFrankIsola		r	nba	closed	x-unreachable
+r-initial	Michael C. Wright	@mikecwright		r	nba	follow-up	
+r-initial	Fred Katz	@FredKatz		r	nba	closed	x-unreachable
+r-initial	Josh Robbins	@JoshuaBRobbins		r	nba	follow-up	
+r-initial	Darnell Mayberry	@DarnellMayberry		r	nba	closed	x-unreachable
+r-initial	Kristian Winfield	@Krisplashed		r	nba	follow-up	
+r-initial	Duane Rankin	@DuaneRankin		r	nba	closed	x-unreachable
+r-initial	Jeff McDonald	@JMcDonald_SAEN		r	nba	closed	x-unreachable
+r-initial	Brad Townsend	@townbrad		r	nba	closed	x-unreachable
+r-initial	Jourdan Rodrigue	@JourdanRodrigue		r	nfl	closed	x-unreachable
+r-initial	Jeff Zrebiec	@jeffzrebiec		r	nfl	closed	x-unreachable
+r-initial	Kevin Seifert	@SeifertESPN		r	nfl	closed	x-unreachable
+r-initial	Courtney Cronin	@CourtneyRCronin		r	nfl	follow-up	
+r-initial	Nick Wagoner	@nwagoner		r	nfl	closed	x-unreachable
+r-initial	Rich Cimini	@RichCimini		r	nfl	closed	x-unreachable
+r-initial	Cameron Wolfe	@CameronWolfe		r	nfl	follow-up	
+r-initial	Manish Mehta	@MMehtaSports		r	nfl	follow-up	
+r-initial	Marcel Louis-Jacques	@Marcel_LJ		r	nfl	follow-up	
+r-initial	Jenna Laine	@JennaLaineESPN		r	nfl	follow-up	
+r-initial	Katherine Terrell	@Kat_Terrell		r	nfl	closed	x-unreachable
+r-initial	Todd Archer	@toddarcher		r	nfl	closed	x-unreachable
+r-initial	Calvin Watkins	@calvinwatkins		r	nfl	follow-up	
+r-initial	Aaron Wilson	@AaronWilson_NFL		r	nfl	closed	x-unreachable
+r-initial	Ben Goessling	@BenGoessling		r	nfl	follow-up	
+r-initial	Alaina Getzenberg	@agetzenberg		r	nfl	follow-up	
+r-initial	Brooke Pryor	@bepryor		r	nfl	follow-up	
+r-initial	Rob Demovsky	@RobDemovsky		r	nfl	follow-up	
+r-initial	Turron Davenport	@TDavenport_NFL		r	nfl	follow-up	
+r-initial	Brady Henderson	@BradyHenderson		r	nfl	closed	x-unreachable
+r-initial	Adam Caplan	@caplannfl		r	nfl	closed	x-unreachable
+r-initial	Brad Biggs	@BradBiggs		r	nfl	closed	x-unreachable
+r-initial	Aaron Nagler	@AaronNagler		r	nfl	closed	x-unreachable
+r-initial	Mike Klis	@mikeklis		r	nfl	follow-up	
+r-initial	Mike Freeman	@mikefreemanNFL		r	nfl	closed	x-unreachable
+r-initial	Omar Kelly	@OmarKelly		r	nfl	closed	x-unreachable
+r-initial	Adam Teicher	@adamteicher		r	nfl	closed	x-unreachable
+r-initial	Joe Person	@josephperson		r	nfl	closed	x-unreachable
+r-initial	Nicki Jhabvala	@NickiJhabvala		r	nfl	follow-up	
+r-initial	Michael DiRocco	@ESPNdirocco		r	nfl	engaged	
+r-initial	John Keim	@john_keim		r	nfl	closed	x-unreachable
+r-initial	Jamison Hensley	@jamisonhensley		r	nfl	closed	x-unreachable
+r-initial	Zac Jackson	@AkronJackson		r	nfl	follow-up	
+r-initial	Alec Lewis	@alec_lewis		r	nfl	follow-up	
+r-initial	Dave Birkett	@davebirkett		r	nfl	follow-up	
+r-initial	Matt Maiocco	@MaioccoNBCS		r	nfl	closed	x-unreachable
+r-initial	Judy Battista	@judybattista		r	nfl	closed	x-unreachable
+r-initial	Jon Machota	@jonmachota		r	nfl	closed	x-unreachable
+r-initial	Clarence Hill Jr	@clarencehilljr		r	nfl	follow-up	
+r-initial	Joe Buscaglia	@JoeBuscaglia		r	nfl	closed	x-unreachable
+r-initial	Zach Berman	@ZBerm		r	nfl	follow-up	
+r-initial	Tim McManus	@Tim_McManus		r	nfl	closed	x-unreachable
+r-initial	Jeff McLane	@Jeff_McLane		r	nfl	closed	x-unreachable
+r-initial	David Lombardi	@LombardiHimself		r	nfl	closed	x-unreachable
+r-initial	Matt Barrows	@mattbarrows		r	nfl	closed	x-unreachable
+r-initial	Dan Wiederer	@danwiederer		r	nfl	closed	x-unreachable
+r-initial	Jeff Howe	@jeffphowe		r	nfl	closed	x-unreachable
+r-initial	Shelby Talcott	@ShelbyTalcott		r	politics	follow-up	
+r-initial	Leigh Ann Caldwell	@LACaldwellDC		r	politics	follow-up	
+r-initial	Andrew Feinberg	@AndrewFeinberg		r	politics	follow-up	
+r-initial	Olivia Beavers	@Olivia_Beavers		r	politics	follow-up	
+r-initial	Melanie Zanona	@MZanona		r	politics	follow-up	
+r-initial	Jessica Elgot	@jessicaelgot		r	politics	follow-up	
+r-initial	Aubrey Allegretti	@breeallegretti		r	politics	follow-up	
+r-initial	Reese Gorman	@reesejgorman		r	politics	follow-up	
+r-initial	Andrew Desiderio	@AndrewDesiderio		r	politics	follow-up	
+r-initial	Andrew Solender	@AndrewSolender		r	politics	follow-up	
+r-initial	Vaughn Hillyard	@VaughnHillyard		r	politics	follow-up	
+r-initial	Kellie Meyer	@KellieMeyerNews		r	politics	closed	x-unreachable
+r-initial	Rachael Bade	@rachaelmbade		r	politics	follow-up	
+r-initial	Annie Karni	@anniekarni		r	politics	closed	x-unreachable
+r-initial	Sarah Ferris	@sarahnferris		r	politics	follow-up	
+r-initial	Marianna Sotomayor	@MariannaReports		r	politics	closed	x-unreachable
+r-initial	Alex Isenstadt	@axiosalex		r	politics	closed	x-unreachable
+r-initial	Aaron Blake	@AaronBlake		r	politics	closed	x-unreachable
+r-initial	Josh Wingrove	@josh_wingrove		r	politics	follow-up	
+r-initial	Sienna Rodgers	@siennamarla		r	politics	closed	x-unreachable
+r-initial	Jake Sherman	@JakeSherman		r	politics	follow-up	
+r-initial	Burgess Everett	@BurgesEvans		r	politics	closed	x-unreachable
+r-initial	Alexander Burns	@alexburnsNYT		r	politics	closed	x-unreachable
+r-initial	Manu Raju	@mkraju		r	politics	closed	x-unreachable
+r-initial	Chad Pergram	@ChadPergram		r	politics	closed	x-unreachable
+r-initial	Kasie Hunt	@KasieHunt		r	politics	closed	x-unreachable
+r-initial	Hugo Rifkind	@hugorifkind		r	politics	follow-up	
+r-initial	Pippa Crerar	@PippaCrerar		r	politics	follow-up	
+r-initial	Beth Rigby	@BethRigby		r	politics	closed	x-unreachable
+r-initial	Robert Peston	@RobertPeston		r	politics	closed	x-unreachable
+r-initial	Alex Thompson	@AlexThomp		r	politics	outreach	
+r-initial	Kyle Cheney	@kyledcheney		r	politics	outreach	
+r-initial	Scott Wong	@scottwongDC		r	politics	closed	x-unreachable
+r-initial	Meridith McGraw	@meridithmcgraw		r	politics	outreach	
+r-initial	Myah Ward	@MyahWard		r	politics	outreach	
+r-initial	Florian Plettenberg	@Plettigoal		r	football	follow-up	
+r-initial	Nicolò Schira	@NicoSchira		r	football	follow-up	
+r-initial	Ben Jacobs	@JacobsBen		r	football	follow-up	
+r-initial	Rudy Galetti	@RudyGaletti		r	football	follow-up	
+r-initial	Mike McGrath	@mcgrathmike		r	football	follow-up	
+r-initial	Football Transfers	@Transferzone00		r	football	follow-up	
+r-initial	Transfersthathappened	@actualtransfers		r	football	follow-up	
+r-initial	David Ornstein	@David_Ornstein		r	football	closed	x-unreachable
+r-initial	Gianluca Di Marzio	@DiMarzio		r	football	closed	x-unreachable
+r-initial	NBA Trade Report	@NBATradeReport		r	nba	review	
+r-initial	Yueqi Yang	@Yueqi_Yang		r	crypto	review	
