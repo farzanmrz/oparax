@@ -48,13 +48,13 @@ Run it through the Workflow tool:
 - `scriptPath`: `.claude/workflows/ft-build-pipeline.js`
 - `args`: `{ issueNumber: <N>, spec }`
 
-This one call does all of: implement the detailed plan on this branch, run one post-build pass (simplify the diff, run the build/typecheck gates, fix mechanical red until green), run 4 parallel cross-model reviews of the actual diff, turn the accepted findings into fix briefs, apply the fixes, and run one reverify pass (gates + brief presence). Each stage is capped, build 8 min, QC lanes 5 min, fix 3 min; a capped-out build is surfaced, not retried. It takes a long time, likely tens of minutes; let it run to completion.
+This one call does all of: implement the detailed plan on this branch, run one post-build pass (simplify the diff, run the build/typecheck gates, fix mechanical red until green), run 4 parallel cross-model reviews of the actual diff, turn the accepted findings into fix briefs, apply the fixes, and run one reverify pass (gates + brief presence). No stage has a wall-time cap (owner decision 2026-08-17): each external lane runs to completion and reports its elapsed time in the workflow log, so model/effort get tuned from measured runs rather than pre-capped; the only stop is a 60-minute hung-process valve. It takes a long time, likely tens of minutes; let it run to completion.
 
 ## 4. Present the result plainly
 
 Translate the workflow's result into plain product language for the owner, no code terms, no raw tool dumps:
 
-- **Build too big:** if `buildTimedOut` is true, say plainly the slice did not finish inside the build cap and needs splitting; nothing else ran.
+- **Build failed or hung:** if `buildFailed` is true, say plainly what the build lane returned (a Codex failure, or the 60-minute hung-process valve firing) and that nothing else ran; a hung lane is a signal to look at the lane's own logs, not to retry blindly.
 - **What got built:** a short summary of the slice, from `buildSummary` (say what changed, not which files).
 - **Gate result:** GREEN or RED, in one line, from `postBuildResult`.
 - **Fixes applied:** the `ownerSummary` line from each entry in `fixBriefs`, never the file/line/fixShape detail.

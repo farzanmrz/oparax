@@ -122,6 +122,20 @@ const ADJUDICATE_SCHEMA = {
   required: ['revisedPlan', 'whatChanged', 'openQuestionsForOwner', 'deadLanes'],
 }
 
+
+// LANE PROTOCOL: how every external-CLI dispatcher runs its command. Written
+// once, spliced into each dispatcher prompt. Two-phase because a single Bash
+// call in this harness is capped at 10 minutes and, worse, a dispatcher that
+// returned "timeout" had its still-running CLI killed (2026-08-17: both the
+// codex and grok critique lanes died that way after 5 minutes of real work).
+// There is NO wall budget by owner decision: lanes run to completion, and
+// their elapsed time is reported so model/effort get tuned from measured
+// runs, never pre-capped. .claude/scripts/lane.sh holds the mechanics.
+const LANE_PROTOCOL = (laneName, failedMarker) => `LANE PROTOCOL (mandatory, exactly these steps, nothing else in between -- no ps, no peeking at partial output, no sleeping on your own):
+A. Using Bash with run_in_background: true and NO timeout, run: bash ${REPO}/.claude/scripts/lane.sh start ${laneName} -- <the exact CLI command and its arguments>. lane.sh captures stdout/stderr itself; do NOT add your own redirects.
+B. Then, in the FOREGROUND, run: bash ${REPO}/.claude/scripts/lane.sh wait ${laneName} with timeout: 600000. It prints ONE line: "DONE ...", "RUNNING ...", or "HUNG ...". If RUNNING, run that same wait command again, as many times as it takes -- there is no budget, the lane runs to completion, and you never return while it says RUNNING. If HUNG (over the 60-minute hung-process valve), run: bash ${REPO}/.claude/scripts/lane.sh kill ${laneName}, then continue to step C.
+C. Run: bash ${REPO}/.claude/scripts/lane.sh result ${laneName} ${failedMarker}. Your final answer is: the DONE/HUNG line from step B on its own first line, then everything that result printed, verbatim. If it printed the ${failedMarker} marker (non-zero exit, hung, or empty output), return that verbatim too -- it carries stderr and whatever partial output exists, and the adjudicator treats the marker as a dead lane.`
+
 phase('critique')
 log('Spec received via args (' + spec.length + ' chars), dispatching 4 critique lanes')
 
@@ -131,8 +145,10 @@ The 10 agent names (each is critique-<name> defined in .codex/agents/, already h
 
 Steps:
 1. Using Write, save the SPEC text below to a file under /tmp.
-2. Using Bash with timeout: 300000 (5 minutes), run: codex exec -s read-only -C ${REPO} -m gpt-5.6-terra -c model_reasoning_effort=high --json "<instruction>" redirecting stdout to an out file and stderr to an err file, where <instruction> tells codex to: read the spec at your file path; treat this as a PRE-IMPLEMENTATION plan review (there is no diff yet, only the spec claims and the current repo state); spawn every one of the 10 named subagents in parallel via its subagent tool, each with agent_type set to exactly critique-<name> for each of these names: ${CODEX_LENS_NAMES_CSV}; when agent_type is set, it must NOT use fork_turns "all" (that combination is rejected) -- use fork_turns none or omit fork_turns entirely; give every spawned agent the same spec content, the PRE-IMPLEMENTATION framing${SKILLS_LINE ? `, and this line verbatim: "${SKILLS_LINE}" (skills are invoked as $name exactly as written)` : ''} as its task message; wait for all 10 to return; then output ONE JSON array that is the flat concatenation of every single agent raw findings array, with no merging, deduping, or summarizing -- just every element from every agent concatenated into one array, printed as the final message and nothing else.
-3. Using Read, read the out file and return its full contents verbatim as your final answer. If it failed, return the err file contents plus the literal text CODEX_FIXED_LANE_FAILED. If the command timed out, return the literal text CODEX_FIXED_LANE_FAILED timeout instead (no out/err file may exist to read).
+2. Follow the LANE PROTOCOL below with this CLI command: codex exec -s read-only -C ${REPO} -m gpt-5.6-sol -c model_reasoning_effort=medium --json "<instruction>", where <instruction> tells codex to: read the spec at your file path; treat this as a PRE-IMPLEMENTATION plan review (there is no diff yet, only the spec claims and the current repo state); spawn every one of the 10 named subagents in parallel via its subagent tool, each with agent_type set to exactly critique-<name> for each of these names: ${CODEX_LENS_NAMES_CSV}; when agent_type is set, it must NOT use fork_turns "all" (that combination is rejected) -- use fork_turns none or omit fork_turns entirely; give every spawned agent the same spec content, the PRE-IMPLEMENTATION framing${SKILLS_LINE ? `, and this line verbatim: "${SKILLS_LINE}" (skills are invoked as $name exactly as written)` : ''} as its task message; wait for all 10 to return; then output ONE JSON array that is the flat concatenation of every single agent raw findings array, with no merging, deduping, or summarizing -- just every element from every agent concatenated into one array, printed as the final message and nothing else.
+3. Return per the LANE PROTOCOL.
+
+${LANE_PROTOCOL('critique-codex', 'CODEX_FIXED_LANE_FAILED')}
 
 SPEC:
 ${spec}`
@@ -152,8 +168,10 @@ Return ONLY a JSON array of finding objects, one per finding, each shaped exactl
 SPEC:
 (the spec text)"
 
-2. Using Bash with timeout: 300000 (5 minutes), run the grok CLI with exactly these arguments: --prompt-file pointing at your file; --sandbox read-only; --cwd ${REPO}; --disallowed-tools mcp__vercel__*,mcp__railway__*; --always-approve; --no-subagents; --effort high; -m grok-4.6; --max-turns 80; --output-format json. Redirect stdout and stderr to separate files. Do NOT pass --agent.
-3. Return the complete raw stdout verbatim as your final answer. If it fails, return stderr plus the literal text GROK_LANE_FAILED. If the command times out, return the literal text GROK_LANE_FAILED timeout instead (no stderr file may exist to read).
+2. Follow the LANE PROTOCOL below with this CLI command: grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools mcp__vercel__*,mcp__railway__* --always-approve --no-subagents --effort medium -m grok-4.6 --max-turns 40 --output-format json. Do NOT pass --agent. Do NOT add redirects.
+3. Return per the LANE PROTOCOL.
+
+${LANE_PROTOCOL('critique-grok', 'GROK_LANE_FAILED')}
 
 SPEC to substitute above:
 ${spec}`
@@ -163,7 +181,7 @@ const critiqueAgyPrompt = `You are a bridge dispatcher. Your ONLY job: run ONE r
 This is a single holistic critique pass, not a multi-lens fan-out. Do NOT pass --agent and do NOT ask agy to spawn or invoke any subagent itself -- the named-persona-plus-invoke_subagent path is unreliable in the current agy version (verified separately: a named --agent persona lacks the invoke_subagent tool by default and fails with a tool-not-found error) and must not be used here. The root/default persona (no --agent flag) is the one verified to work reliably headlessly.
 
 Steps:
-1. Using Bash with timeout: 300000 (5 minutes, this genuinely takes 1-2 minutes normally -- a shorter timeout will kill it), run the agy CLI with exactly these flags, each JOINED WITH = (NOT a bare flag followed by a separate space-delimited value -- passing the prompt as a trailing positional argument after other flags silently drops it in this CLI and returns an unrelated generic greeting instead, with no error): --model=gemini-3.1-pro-high --effort=high --output-format=json --dangerously-skip-permissions --print="<the full prompt text below, with the SPEC substituted in place of its marker>". Redirect stdout and stderr to separate files under /tmp.
+1. Follow the LANE PROTOCOL below with this CLI command: agy with exactly these flags, each JOINED WITH = (NOT a bare flag followed by a separate space-delimited value -- passing the prompt as a trailing positional argument after other flags silently drops it in this CLI and returns an unrelated generic greeting instead, with no error): --model=gemini-3.1-pro-high --effort=high --output-format=json --dangerously-skip-permissions --print="<the full prompt text below, with the SPEC substituted in place of its marker>". Do NOT add redirects.
 
 The prompt text to pass as --print's value:
 "You are a critic in oparax's cross-model review council, reviewing a PRE-IMPLEMENTATION SPEC (not yet built) for oparax ${featureTitle}. You have Read/Bash access to the real repo at ${REPO} -- ground every claim in the actual code, the spec is a hypothesis and the code is the evidence, cite real file:line where relevant. This is ONE holistic pass. Work through the whole spec considering AT LEAST these lens dimensions, plus anything else you judge applicable:
@@ -174,7 +192,9 @@ Weigh cost: say what a user would actually see. Return ONLY a JSON array of find
 SPEC:
 (the spec text, substituted below)"
 
-2. Read back the stdout file and return its full contents verbatim as your final answer. If it failed, return the stderr file contents plus the literal text AGY_LANE_FAILED. If the command timed out, return the literal text AGY_LANE_FAILED timeout instead (no stderr file may exist to read).
+2. Return per the LANE PROTOCOL.
+
+${LANE_PROTOCOL('critique-agy', 'AGY_LANE_FAILED')}
 
 SPEC to substitute above:
 ${spec}`
@@ -190,8 +210,11 @@ ${spec}`
 
 // critique-codex and critique-grok and critique-agy: cheap haiku bridge
 // dispatchers, the REAL work happens inside the external CLI they shell out
-// to (gpt-5.6-terra high x10 lenses; grok-4.6 high single-session;
-// gemini-3.1-pro-high single-session, tier fused into the slug).
+// to (gpt-5.6-sol MEDIUM x10 lenses and grok-4.6 MEDIUM 40 turns -- both
+// dialed down from terra-high / high-80 on 2026-08-17 after measuring 6-14
+// minute lane times; gemini-3.1-pro-high single-session, tier fused into the
+// slug). No lane has a wall budget; each reports its elapsed time (first line
+// of its raw output) so the next tuning decision is made from real numbers.
 // critique-claude: NO model/effort override -- inherits the SAME
 // session-inherited model/effort as the owner's /ft-plan conversation,
 // same as adjudicate below. This reverses an earlier pin to sonnet high:
@@ -205,6 +228,10 @@ const [critiqueCodexRaw, critiqueGrokRaw, critiqueClaudeOut, critiqueAgyRaw] = a
   () => agent(critiqueAgyPrompt, { model: 'haiku', label: 'critique-agy', phase: 'critique' }),
 ])
 
+const firstLine = (v) => (typeof v === 'string' ? v : JSON.stringify(v ?? '')).split('\n')[0].slice(0, 160)
+log('critique-codex: ' + firstLine(critiqueCodexRaw))
+log('critique-grok: ' + firstLine(critiqueGrokRaw))
+log('critique-agy: ' + firstLine(critiqueAgyRaw))
 log('All 4 critique lanes returned, dispatching adjudicate')
 
 phase('adjudicate')

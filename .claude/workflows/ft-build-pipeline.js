@@ -148,6 +148,20 @@ const REVERIFY_SCHEMA = {
 // ---------------------------------------------------------------------------
 // Phase: build
 // ---------------------------------------------------------------------------
+
+// LANE PROTOCOL: how every external-CLI dispatcher (build, qc-codex, qc-grok,
+// qc-agy, fix) runs its command. Two-phase because a single Bash call in this
+// harness is capped at 10 minutes and a dispatcher that returned "timeout" had
+// its still-running CLI killed (2026-08-17: the /feature codex and grok lanes
+// died that way after 5 minutes of real work; this file carried the same 5 min
+// / 8 min / 3 min caps). There is NO wall budget by owner decision: lanes run to
+// completion and report elapsed time, so model/effort get tuned from measured
+// runs, never pre-capped. .claude/scripts/lane.sh holds the mechanics.
+const LANE_PROTOCOL = (laneName, failedMarker) => `LANE PROTOCOL (mandatory, exactly these steps, nothing else in between -- no ps, no peeking at partial output, no sleeping on your own):
+A. Using Bash with run_in_background: true and NO timeout, run: bash ${REPO}/.claude/scripts/lane.sh start ${laneName} -- <the exact CLI command and its arguments>. lane.sh captures stdout/stderr itself; do NOT add your own redirects.
+B. Then, in the FOREGROUND, run: bash ${REPO}/.claude/scripts/lane.sh wait ${laneName} with timeout: 600000. It prints ONE line: "DONE ...", "RUNNING ...", or "HUNG ...". If RUNNING, run that same wait command again, as many times as it takes -- there is no budget, the lane runs to completion, and you never return while it says RUNNING. If HUNG (over the 60-minute hung-process valve), run: bash ${REPO}/.claude/scripts/lane.sh kill ${laneName}, then continue to step C.
+C. Run: bash ${REPO}/.claude/scripts/lane.sh result ${laneName} ${failedMarker}. Your final answer starts with the DONE/HUNG line from step B on its own first line, then everything that result printed, verbatim. If it printed the ${failedMarker} marker (non-zero exit, hung, or empty output), return that verbatim too -- it carries stderr and whatever partial output exists.`
+
 phase('build')
 log('Spec received via args (' + spec.length + ' chars), dispatching the build lane')
 
@@ -155,9 +169,11 @@ const buildPrompt = `You are a bridge dispatcher. Your ONLY job: run ONE real sh
 
 Steps:
 1. Using Write, save the SPEC text below to a file under /tmp.
-2. Using Bash with timeout: 480000 (a real build genuinely takes many minutes), run: codex exec -s workspace-write -C ${REPO} -m gpt-5.6-sol -c model_reasoning_effort=low --json "<instruction>" redirecting stdout to an out file and stderr to an err file, where <instruction> tells codex to: read the spec at your file path; implement it in full on the current branch, staying inside the spec's named files and build steps (escalating instead of improvising if reality diverges from the spec beyond nuance); invoke, per build step, exactly the skills that step names by $name, and invoke no other skill; write it simple: reuse an existing helper over adding a new one, no abstraction with a single caller, delete any code the change makes dead; commit as it completes each build step (checkpoint commits, not one giant commit); a dev server is always running on localhost:3000 owned by the machine, never start, stop, or restart one, and never run pnpm dev; do NOT run tsc or pnpm build after every step -- the gates phase runs both ONCE right after this lane returns, and any red goes through the fix round like any other finding; when done, print a summary of files touched and commits made as its final message.
-3. Using Bash, after codex finishes, run \`git log --oneline origin/beta...HEAD\` and \`git diff --stat origin/beta...HEAD\` in ${REPO} yourself.
-4. Using Read, read the out file. Return its full contents verbatim, followed by the git log and git diff --stat output from step 3, as your final answer. If codex failed, return the err file contents plus the literal text CODEX_BUILD_FAILED. If the Bash command in step 2 times out, return the literal text BUILD_LANE_TIMEOUT plus whatever partial summary is in the out file; do not retry.
+2. Follow the LANE PROTOCOL below with this CLI command: codex exec -s workspace-write -C ${REPO} -m gpt-5.6-sol -c model_reasoning_effort=low --json "<instruction>", where <instruction> tells codex to: read the spec at your file path; implement it in full on the current branch, staying inside the spec's named files and build steps (escalating instead of improvising if reality diverges from the spec beyond nuance); invoke, per build step, exactly the skills that step names by $name, and invoke no other skill; write it simple: reuse an existing helper over adding a new one, no abstraction with a single caller, delete any code the change makes dead; commit as it completes each build step (checkpoint commits, not one giant commit); a dev server is always running on localhost:3000 owned by the machine, never start, stop, or restart one, and never run pnpm dev; do NOT run tsc or pnpm build after every step -- the gates phase runs both ONCE right after this lane returns, and any red goes through the fix round like any other finding; when done, print a summary of files touched and commits made as its final message.
+3. Using Bash, after the lane is DONE, run \`git log --oneline origin/beta...HEAD\` and \`git diff --stat origin/beta...HEAD\` in ${REPO} yourself.
+4. Return per the LANE PROTOCOL, followed by the git log and git diff --stat output from step 3.
+
+${LANE_PROTOCOL('build', 'CODEX_BUILD_FAILED')}
 
 SPEC:
 ${spec}`
@@ -165,9 +181,10 @@ ${spec}`
 const buildSummary = await agent(buildPrompt, { model: 'haiku', label: 'build', phase: 'build' })
 log('Build lane returned (' + buildSummary.length + ' chars)')
 
-if (String(buildSummary).includes('BUILD_LANE_TIMEOUT')) {
-  log('Build lane hit its 8-minute cap: the slice is too big for one build round; surfacing instead of continuing.')
-  return { issueNumber, buildSummary, buildTimedOut: true }
+log('build lane: ' + String(buildSummary).split('\n')[0].slice(0, 160))
+if (String(buildSummary).includes('CODEX_BUILD_FAILED') || String(buildSummary).startsWith('HUNG')) {
+  log('Build lane failed or hung (no cap exists; a HUNG line means the 60-minute hung-process valve fired): surfacing instead of continuing.')
+  return { issueNumber, buildSummary, buildFailed: true }
 }
 
 // ---------------------------------------------------------------------------
@@ -209,8 +226,10 @@ const critiqueCodexPrompt = `You are a bridge dispatcher. Your ONLY job: run ONE
 The 10 agent names (each is qc-<name> defined in .codex/agents/, already has its own dimension baked into its profile -- you do not restate dimensions): ${CODEX_LENS_NAMES_CSV}
 
 Steps:
-1. Using Bash with timeout: 300000 (this genuinely takes minutes), run: codex exec -s read-only -C ${REPO} -m gpt-5.6-sol -c model_reasoning_effort=high --json "<instruction>" redirecting stdout to an out file and stderr to an err file, where <instruction> tells codex to: run \`git diff origin/beta...HEAD\` in the repo to get the real diff for oparax issue #${issueNumber} (this is a POST-IMPLEMENTATION review -- the diff is real, already-committed code, not a plan); spawn every one of the 10 named subagents in parallel via its subagent tool, each with agent_type set to exactly qc-<name> for each of these names: ${CODEX_LENS_NAMES_CSV}; when agent_type is set, it must NOT use fork_turns "all" (that combination is rejected) -- use fork_turns none or omit fork_turns entirely; give every spawned agent the same diff and POST-IMPLEMENTATION framing as its task message${SKILLS_LINE_CODEX ? ', plus this line so each spawned agent knows which skills to consult, invoked as $name exactly as written: ' + SKILLS_LINE_CODEX : ''}; wait for all 10 to return; then output ONE JSON array that is the flat concatenation of every single agent raw findings array, with no merging, deduping, or summarizing -- just every element from every agent concatenated into one array, printed as the final message and nothing else.
-2. Using Read, read the out file and return its full contents verbatim as your final answer. If it failed, return the err file contents plus the literal text CODEX_FIXED_LANE_FAILED. If the Bash command in step 1 times out, return the literal text CODEX_FIXED_LANE_FAILED timeout instead.`
+1. Follow the LANE PROTOCOL below with this CLI command: codex exec -s read-only -C ${REPO} -m gpt-5.6-sol -c model_reasoning_effort=high --json "<instruction>", where <instruction> tells codex to: run \`git diff origin/beta...HEAD\` in the repo to get the real diff for oparax issue #${issueNumber} (this is a POST-IMPLEMENTATION review -- the diff is real, already-committed code, not a plan); spawn every one of the 10 named subagents in parallel via its subagent tool, each with agent_type set to exactly qc-<name> for each of these names: ${CODEX_LENS_NAMES_CSV}; when agent_type is set, it must NOT use fork_turns "all" (that combination is rejected) -- use fork_turns none or omit fork_turns entirely; give every spawned agent the same diff and POST-IMPLEMENTATION framing as its task message${SKILLS_LINE_CODEX ? ', plus this line so each spawned agent knows which skills to consult, invoked as $name exactly as written: ' + SKILLS_LINE_CODEX : ''}; wait for all 10 to return; then output ONE JSON array that is the flat concatenation of every single agent raw findings array, with no merging, deduping, or summarizing -- just every element from every agent concatenated into one array, printed as the final message and nothing else.
+2. Return per the LANE PROTOCOL.
+
+${LANE_PROTOCOL('qc-codex', 'CODEX_FIXED_LANE_FAILED')}`
 
 const critiqueGrokPrompt = `You are a bridge dispatcher. Your ONLY job: run ONE real shell command against the real grok CLI, wait for it to finish, then return its raw stdout verbatim. Do not critique anything yourself, do not summarize, do not paraphrase.
 
@@ -225,15 +244,17 @@ ${SKILLS_LINE_GROK}
 
 Return ONLY a JSON array of finding objects, one per finding, each shaped exactly {\\"severity\\": \\"blocking|important|minor\\", \\"target\\": string, \\"critique\\": string, \\"suggestion\\": string or null}. No preamble, no commentary, no markdown fencing -- just the raw JSON array."
 
-2. Using Bash with timeout: 300000, run the grok CLI with exactly these arguments: --prompt-file pointing at your file; --sandbox read-only; --cwd ${REPO}; --disallowed-tools mcp__vercel__*,mcp__railway__*; --always-approve; --no-subagents; --effort high; -m grok-4.6; --max-turns 80; --output-format json. Redirect stdout and stderr to separate files. Do NOT pass --agent.
-3. Return the complete raw stdout verbatim as your final answer. If it fails, return stderr plus the literal text GROK_LANE_FAILED. If the Bash command in step 2 times out, return the literal text GROK_LANE_FAILED timeout instead.`
+2. Follow the LANE PROTOCOL below with this CLI command: grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools mcp__vercel__*,mcp__railway__* --always-approve --no-subagents --effort high -m grok-4.6 --max-turns 80 --output-format json. Do NOT pass --agent. Do NOT add redirects.
+3. Return per the LANE PROTOCOL.
+
+${LANE_PROTOCOL('qc-grok', 'GROK_LANE_FAILED')}`
 
 const critiqueAgyPrompt = `You are a bridge dispatcher. Your ONLY job: run ONE real shell command against the real agy (Antigravity) CLI, wait for it to finish, then return its raw stdout verbatim. Do not critique anything yourself, do not summarize, do not paraphrase.
 
 This is a single holistic critique pass, not a multi-lens fan-out. Do NOT pass --agent and do NOT ask agy to spawn or invoke any subagent itself -- the named-persona-plus-invoke_subagent path is unreliable in the current agy version and must not be used here. The root/default persona (no --agent flag) is the one verified to work reliably headlessly.
 
 Steps:
-1. Using Bash with timeout: 300000 (this genuinely takes 1-2 minutes, a shorter timeout will kill it), run the agy CLI with exactly these flags, each JOINED WITH = (NOT a bare flag followed by a separate space-delimited value -- passing the prompt as a trailing positional argument after other flags silently drops it in this CLI and returns an unrelated generic greeting instead, with no error): --model=gemini-3.1-pro-high --effort=high --output-format=json --dangerously-skip-permissions --print="<the full prompt text below>". Redirect stdout and stderr to separate files under /tmp.
+1. Follow the LANE PROTOCOL below with this CLI command: agy with exactly these flags, each JOINED WITH = (NOT a bare flag followed by a separate space-delimited value -- passing the prompt as a trailing positional argument after other flags silently drops it in this CLI and returns an unrelated generic greeting instead, with no error): --model=gemini-3.1-pro-high --effort=high --output-format=json --dangerously-skip-permissions --print="<the full prompt text below>". Do NOT add redirects.
 
 The prompt text to pass as --print's value:
 "You are a critic in oparax's cross-model review council, reviewing a POST-IMPLEMENTATION git diff (already built, on branch ft/${issueNumber}) for oparax issue #${issueNumber}. You have Read/Bash access to the real repo at ${REPO} -- run \\"git diff origin/beta...HEAD\\" yourself to get the real diff; ground every claim in the actual code, cite real file:line where relevant. This is ONE holistic pass. Work through the whole diff considering AT LEAST these lens dimensions, plus anything else you judge applicable:
@@ -242,7 +263,9 @@ ${SKILLS_LINE_AGY}
 
 Weigh cost: say what a user would actually see. Return ONLY a JSON array of finding objects, one per finding, each shaped exactly {\\"severity\\": \\"blocking|important|minor\\", \\"target\\": string, \\"critique\\": string, \\"suggestion\\": string or null}. No preamble, no commentary, no markdown fencing -- just the raw JSON array."
 
-2. Read back the stdout file and return its full contents verbatim as your final answer. If it failed, return the stderr file contents plus the literal text AGY_LANE_FAILED. If it timed out, return the stderr file contents plus the literal text AGY_LANE_FAILED timeout instead.`
+2. Return per the LANE PROTOCOL.
+
+${LANE_PROTOCOL('qc-agy', 'AGY_LANE_FAILED')}`
 
 const critiqueClaudePrompt = `You are a critic in oparax's cross-model review council, reviewing a POST-IMPLEMENTATION git diff (already built, on branch ft/${issueNumber}) for oparax issue #${issueNumber}. You have Read/Bash access to the real repo at ${REPO} -- run \`git diff origin/beta...HEAD\` yourself to get the real diff; ground every claim in the actual code, cite real file:line where relevant. This is ONE holistic pass in a single session: do not dispatch any agents. Work through the whole diff considering AT LEAST these lens dimensions, plus anything else you judge applicable:
 ${MINIMAL_LENSES_TEXT}
@@ -259,6 +282,10 @@ const [critiqueCodexRaw, critiqueGrokRaw, critiqueClaudeOut, critiqueAgyRaw] = a
   () => agent(critiqueClaudePrompt, { label: 'critique-claude', phase: 'qc', schema: FINDINGS_ARRAY_SCHEMA }),
   () => agent(critiqueAgyPrompt, { model: 'haiku', label: 'critique-agy', phase: 'qc' }),
 ])
+const firstLine = (v) => (typeof v === 'string' ? v : JSON.stringify(v ?? '')).split('\n')[0].slice(0, 160)
+log('qc-codex: ' + firstLine(critiqueCodexRaw))
+log('qc-grok: ' + firstLine(critiqueGrokRaw))
+log('qc-agy: ' + firstLine(critiqueAgyRaw))
 log('All 4 qc lanes returned, dispatching qc-adjudicate')
 
 // ---------------------------------------------------------------------------
@@ -308,9 +335,11 @@ async function runFix(briefs, round) {
 
 Steps:
 1. Using Write, save the FIX BRIEFS text below to a file under /tmp.
-2. Using Bash with timeout: 180000, run: codex exec -s workspace-write -C ${REPO} -m gpt-5.6-sol -c model_reasoning_effort=low --json "<instruction>" redirecting stdout to an out file and stderr to an err file, where <instruction> tells codex to: read the fix briefs at your file path; apply each one exactly as scoped (minimal correct fix, surrounding idiom, nothing beyond the brief's stated fix shape); invoke only a skill the brief names by $name, otherwise invoke none; if a brief cannot be applied as written because the file/line has changed, report that brief instead of guessing; commit when done; a dev server is always running on localhost:3000 owned by the machine, never start, stop, or restart one, and never run pnpm dev; do NOT run tsc or pnpm build yourself -- reverify runs the gates once after this lane returns; print a summary of which briefs were applied, which could not be applied and why, and the commits made, as its final message.
-3. Using Bash, after codex finishes, run \`git diff --stat origin/beta...HEAD\` in ${REPO} yourself.
-4. Using Read, read the out file. Return its full contents verbatim, followed by the git diff --stat output, as your final answer. If codex failed, return the err file contents plus the literal text CODEX_FIX_FAILED. If the Bash command in step 2 times out, return the literal text FIX_LANE_TIMEOUT plus whatever partial summary is in the out file.
+2. Follow the LANE PROTOCOL below with this CLI command: codex exec -s workspace-write -C ${REPO} -m gpt-5.6-sol -c model_reasoning_effort=low --json "<instruction>", where <instruction> tells codex to: read the fix briefs at your file path; apply each one exactly as scoped (minimal correct fix, surrounding idiom, nothing beyond the brief's stated fix shape); invoke only a skill the brief names by $name, otherwise invoke none; if a brief cannot be applied as written because the file/line has changed, report that brief instead of guessing; commit when done; a dev server is always running on localhost:3000 owned by the machine, never start, stop, or restart one, and never run pnpm dev; do NOT run tsc or pnpm build yourself -- reverify runs the gates once after this lane returns; print a summary of which briefs were applied, which could not be applied and why, and the commits made, as its final message.
+3. Using Bash, after the lane is DONE, run \`git diff --stat origin/beta...HEAD\` in ${REPO} yourself.
+4. Return per the LANE PROTOCOL, followed by the git diff --stat output.
+
+${LANE_PROTOCOL('fix-round-' + round, 'CODEX_FIX_FAILED')}
 
 FIX BRIEFS (round ${round} of ${MAX_FIX_ROUNDS}):
 ${fixBriefsText(briefs)}
