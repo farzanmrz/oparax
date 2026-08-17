@@ -233,7 +233,7 @@ ${LANE_PROTOCOL('qc-codex', 'CODEX_FIXED_LANE_FAILED')}`
 
 const critiqueGrokPrompt = `You are a bridge dispatcher. Your ONLY job: run ONE real shell command against the real grok CLI, wait for it to finish, then return its raw stdout verbatim. Do not critique anything yourself, do not summarize, do not paraphrase.
 
-This is a SINGLE-SESSION holistic pass: grok must NOT spawn any subagents (the command below disables them), and the lens card in the prompt steers its attention inside that one session -- it is not a fan-out plan.
+This is a SINGLE-SESSION holistic pass: grok must NOT spawn any subagents (the command below disables them; a fan-out has no cost or time knob, one session has model + effort), and the lens card in the prompt steers its attention inside that one session -- it is not a fan-out plan. No turn cap is passed: grok uses its own default (owner decision 2026-08-17: no caps, measure instead).
 
 Steps:
 1. Using Write, create a prompt file under /tmp with this exact content:
@@ -244,7 +244,7 @@ ${SKILLS_LINE_GROK}
 
 Return ONLY a JSON array of finding objects, one per finding, each shaped exactly {\\"severity\\": \\"blocking|important|minor\\", \\"target\\": string, \\"critique\\": string, \\"suggestion\\": string or null}. No preamble, no commentary, no markdown fencing -- just the raw JSON array."
 
-2. Follow the LANE PROTOCOL below with this CLI command: grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools mcp__vercel__*,mcp__railway__* --always-approve --no-subagents --effort high -m grok-4.6 --max-turns 80 --output-format json. Do NOT pass --agent. Do NOT add redirects.
+2. Follow the LANE PROTOCOL below with this CLI command, quoting exactly as written (the star-glob argument MUST be inside double quotes or the shell rejects the line before grok runs): grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools "mcp__vercel__*,mcp__railway__*" --always-approve --no-subagents --effort high -m grok-4.6 --output-format json. Do NOT pass --agent. Do NOT pass --max-turns. Do NOT add redirects.
 3. Return per the LANE PROTOCOL.
 
 ${LANE_PROTOCOL('qc-grok', 'GROK_LANE_FAILED')}`
@@ -305,7 +305,7 @@ ${spec}
 RAW QC LANE OUTPUT -- qc-codex (10 fanned-out lenses, gpt-5.6-sol high):
 ${critiqueCodexRaw}
 
-RAW QC LANE OUTPUT -- critique-grok (grok-4.6, high, single session):
+RAW QC LANE OUTPUT -- critique-grok (grok-4.6 high, single session, no subagents, no turn cap):
 ${critiqueGrokRaw}
 
 RAW QC LANE OUTPUT -- critique-claude (session-inherited model, single session):

@@ -155,7 +155,7 @@ ${spec}`
 
 const critiqueGrokPrompt = `You are a bridge dispatcher. Your ONLY job: run ONE real shell command against the real grok CLI on the SPEC below, wait for it to finish, then return its raw stdout verbatim. Do not critique anything yourself, do not summarize, do not paraphrase.
 
-This is a SINGLE-SESSION holistic pass: grok must NOT spawn any subagents (the command below disables them), and the lens card in the prompt steers its attention inside that one session -- it is not a fan-out plan.
+This is a SINGLE-SESSION holistic pass: grok must NOT spawn any subagents (the command below disables them; a fan-out has no cost or time knob, one session has model + effort), and the lens card in the prompt steers its attention inside that one session -- it is not a fan-out plan. No turn cap is passed: grok uses its own default (owner decision 2026-08-17: no caps, measure instead).
 
 Steps:
 1. Using Write, create a prompt file under /tmp with this exact content, substituting the SPEC where marked:
@@ -168,7 +168,7 @@ Return ONLY a JSON array of finding objects, one per finding, each shaped exactl
 SPEC:
 (the spec text)"
 
-2. Follow the LANE PROTOCOL below with this CLI command: grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools mcp__vercel__*,mcp__railway__* --always-approve --no-subagents --effort medium -m grok-4.6 --max-turns 40 --output-format json. Do NOT pass --agent. Do NOT add redirects.
+2. Follow the LANE PROTOCOL below with this CLI command, quoting exactly as written (the star-glob argument MUST be inside double quotes or the shell rejects the line before grok runs): grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools "mcp__vercel__*,mcp__railway__*" --always-approve --no-subagents --effort medium -m grok-4.6 --output-format json. Do NOT pass --agent. Do NOT pass --max-turns. Do NOT add redirects.
 3. Return per the LANE PROTOCOL.
 
 ${LANE_PROTOCOL('critique-grok', 'GROK_LANE_FAILED')}
@@ -210,10 +210,11 @@ ${spec}`
 
 // critique-codex and critique-grok and critique-agy: cheap haiku bridge
 // dispatchers, the REAL work happens inside the external CLI they shell out
-// to (gpt-5.6-sol MEDIUM x10 lenses and grok-4.6 MEDIUM 40 turns -- both
-// dialed down from terra-high / high-80 on 2026-08-17 after measuring 6-14
-// minute lane times; gemini-3.1-pro-high single-session, tier fused into the
-// slug). No lane has a wall budget; each reports its elapsed time (first line
+// to (gpt-5.6-sol MEDIUM x10 codex critique-* agents; grok-4.6 MEDIUM in ONE
+// session, no subagents, no turn cap -- one session is the deliberate choice
+// because a fan-out has no cost/time knob while a session has model + effort;
+// both dialed to medium on 2026-08-17 after measuring 6-14 minute lane times
+// at high; gemini-3.1-pro-high single-session, tier fused into the slug). No lane has a wall budget; each reports its elapsed time (first line
 // of its raw output) so the next tuning decision is made from real numbers.
 // critique-claude: NO model/effort override -- inherits the SAME
 // session-inherited model/effort as the owner's /ft-plan conversation,
@@ -254,7 +255,7 @@ Adjudication rules: a claim two or more independent lanes raised independently i
 RAW CRITIQUE LANE OUTPUT -- critique-codex (10 fanned-out lenses, gpt-5.6-terra high):
 ${critiqueCodexRaw}
 
-RAW CRITIQUE LANE OUTPUT -- critique-grok (grok-4.6, high, single session):
+RAW CRITIQUE LANE OUTPUT -- critique-grok (grok-4.6 medium, single session, no subagents, no turn cap):
 ${critiqueGrokRaw}
 
 RAW CRITIQUE LANE OUTPUT -- critique-claude (session-inherited model, single session):

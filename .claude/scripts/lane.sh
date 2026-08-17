@@ -63,6 +63,12 @@ case "$cmd" in
     max="${3:-540}"
     [ "$max" -le 540 ] || max=540
     t0=$(date +%s)
+    if [ ! -f "$base.start" ] && [ ! -f "$base.exit" ]; then
+      # The start command never ran lane.sh at all (shell quoting/glob error,
+      # bad path). Fail fast instead of polling a lane that does not exist.
+      echo "NOT_STARTED no start record for lane $name (the start command itself failed before lane.sh ran; check that command's own output)"
+      exit 5
+    fi
     until [ -f "$base.exit" ]; do
       started=$(cat "$base.start" 2>/dev/null || echo "$t0")
       if [ $(( $(date +%s) - started )) -ge "$LANE_HUNG_SECONDS" ]; then
