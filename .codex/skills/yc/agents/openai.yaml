@@ -1,0 +1,7 @@
+interface:
+  display_name: "YC Cofounder DMs"
+  short_description: "Write and send personalized YC cofounder DMs"
+  default_prompt: "Use $yc to review the selected YC cofounder profiles, draft personalized messages, and send only the messages I approve."
+
+policy:
+  allow_implicit_invocation: false
