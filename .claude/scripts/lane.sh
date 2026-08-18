@@ -25,10 +25,11 @@
 #   4. `lane.sh kill <name>`  only when the hung-process valve fires (a lane
 #      still RUNNING after LANE_HUNG_SECONDS, default 3600 = 60 min).
 #
-# State lives in $LANE_DIR (default /tmp/oparax-lanes): <name>.out/.err/.exit/.pid/.start
+# State lives in $LANE_DIR (default <repo>/.feature/lanes, gitignored): <name>.out/.err/.exit/.pid/.start.
+# Each `start` overwrites that lane's files, so the directory never needs manual cleanup.
 set -uo pipefail
 
-LANE_DIR="${LANE_DIR:-/tmp/oparax-lanes}"
+LANE_DIR="${LANE_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || pwd)/.feature/lanes}"
 LANE_HUNG_SECONDS="${LANE_HUNG_SECONDS:-3600}"
 mkdir -p "$LANE_DIR"
 
