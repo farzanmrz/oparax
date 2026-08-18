@@ -1,6 +1,6 @@
 ---
 name: yc
-description: "Research, shortlist, and invite potential cofounders on Y Combinator Startup School through the signed-in in-app Browser. Use only when the user explicitly invokes $yc for either a LinkedIn-audited save-only batch or a LinkedIn-audited analyze-and-invite batch, including removing rejected saved profiles, maintaining decision logs, drafting personalized outreach, and sending approved messages. Never invoke this skill automatically during development work or another workflow."
+description: "Research, shortlist, and invite potential cofounders on Y Combinator Startup School through the signed-in in-app Browser. Use only when the user explicitly invokes $yc for either a LinkedIn-audited save-only batch or a LinkedIn-audited analyze-and-invite batch, including removing rejected saved profiles, keeping decision context in chat, drafting personalized outreach, and sending approved messages. Never invoke this skill automatically during development work or another workflow."
 ---
 
 # YC Cofounder Matching
@@ -9,7 +9,7 @@ description: "Research, shortlist, and invite potential cofounders on Y Combinat
 
 Use this skill only for Farzan's cofounder-matching work on `startupschool.org` from his signed-in account.
 
-- **Allowed:** Analyze profiles, run a LinkedIn-audited save-only batch, run a LinkedIn-audited analyze-and-invite batch, skip non-qualifying profiles, audit saved profiles, log decisions, draft personalized DMs, send approved DMs, and verify each remote action. Unsave a named profile only after Farzan authorizes removal and confirms at action time.
+- **Allowed:** Analyze profiles, run a LinkedIn-audited save-only batch, run a LinkedIn-audited analyze-and-invite batch, skip non-qualifying profiles, audit saved profiles, retain decisions in the active chat, draft personalized DMs, send approved DMs, and verify each remote action. Unsave a named profile only after Farzan authorizes removal and confirms at action time.
 - **Excluded:** Edit Farzan's profile, change account settings or matching filters, contact people outside Startup School, or perform unrelated Startup School actions unless Farzan explicitly expands the task.
 - **Invocation:** Treat an explicit `$yc` invocation as permission to use the in-app Browser only for the requested YC workflow. Do not activate this skill implicitly or from a development command, automation, subagent, or another skill.
 - **Action scope:** Analysis alone does not authorize saving, skipping, unsaving, or messaging. A direct instruction to shortlist a number of profiles authorizes saving and skipping profiles under the criteria below until the requested number of new saves is verified. Before unsaving profiles or sending invitations, show the exact names and exact messages and obtain one grouped action-time confirmation.
@@ -18,13 +18,19 @@ Use this skill only for Farzan's cofounder-matching work on `startupschool.org` 
 
 Use only the workflow Farzan explicitly requests.
 
-- **Save-only:** Read the complete YC profile and the candidate-supplied LinkedIn before saving. Save verified passes, log and skip rejects, and stop when the requested number of new saves is verified. Do not draft or send invitations.
+- **Save-only:** Read the complete YC profile and the candidate-supplied LinkedIn before saving. Save verified passes, retain reject reasons in the active chat, and stop when the requested number of new saves is verified. Do not draft or send invitations.
 - **Analyze-and-invite:** Read the complete YC profile and candidate-supplied LinkedIn, classify the candidate as `Reject`, `Normal invite`, or `Screening invite`, save a passing profile when needed, and prepare a personalized message immediately. Accumulate the exact recipients and messages, obtain one grouped action-time confirmation, then send and verify each approved invitation.
 - **Saved-list cleanup and outreach:** Audit the exact visible saved set, prepare an exact removal list and exact invitation messages, obtain one grouped action-time confirmation, then unsave the removals and message the approved recipients.
 
 Never interpret “automate,” “in real time,” or a target count as permission to bypass the final confirmation required for remote deletions and representational messages.
 
-## 3. Browser Requirements
+## 3. Keep All Tracking in Chat
+
+Do not create, edit, append, or delete any repository or workspace file while running a YC browser workflow. This includes shortlist logs, outreach audits, candidate notes, draft files, temporary markdown, and progress files.
+
+Keep names, profile URLs, LinkedIn URLs, decision reasons, uncertainties, exact drafts, send results, and counters only in the active conversation state. Present requested summaries directly in chat. If conversation state is unavailable, reconstruct what is safe from the live YC interface and ask Farzan about any material gap rather than creating a tracking file or guessing.
+
+## 4. Browser Requirements
 
 Use the Browser plugin's `browser:control-in-app-browser` skill and follow its instructions completely before taking browser actions.
 
@@ -34,7 +40,7 @@ Use the Browser plugin's `browser:control-in-app-browser` skill and follow its i
 - **Viewport:** Use the in-app Browser as it is. Do not set a responsive viewport or override its dimensions unless Farzan explicitly asks.
 - **Navigation:** Keep normal workflow navigation on `startupschool.org`. Before saving or inviting, inspect the LinkedIn profile directly supplied by the candidate when accessible. For a borderline decision, open at most two other directly supplied personal-site, GitHub, product, demo, research, or portfolio links for read-only evidence. Do not follow unrelated links, submit information, or contact anyone outside Startup School. Stop if a popup or redirect points somewhere unexpected.
 
-## 4. Read the Whole Profile
+## 5. Read the Whole Profile
 
 Read all visible profile sections before deciding, including activity, introduction, accomplishments, education, employment, current startup, potential ideas, cofounder preferences, and interests.
 
@@ -45,7 +51,7 @@ Read all visible profile sections before deciding, including activity, introduct
 - **Location evidence:** Do not trust the YC card location by itself. Compare it with the profile introduction, employment, current startup, and LinkedIn location. YC asks for current city and cofounder location preferences, but it does not provide a willingness-to-relocate field. Prefer an explicit current-location statement over a platform header.
 - **Live facts:** Prefer the live profile over facts remembered from an earlier task.
 
-## 5. Shortlisting Gate
+## 6. Shortlisting Gate
 
 Require every saved profile to pass these gates unless Farzan explicitly overrides one for a named person.
 
@@ -58,7 +64,7 @@ Require every saved profile to pass these gates unless Farzan explicitly overrid
 - **Platform misuse:** Skip clear service selling, employee recruiting, agency promotion, or other use inconsistent with seeking a cofounder.
 - **Duplicates:** Do not save someone already saved, invited, or contacted unless Farzan explicitly asks.
 
-## 6. Require Technical-Founder Substance
+## 7. Require Technical-Founder Substance
 
 Require at least one strong anchor showing more than generic web implementation, IT work, agency work, a developer title, or enthusiasm for startups.
 
@@ -70,11 +76,11 @@ Require at least one strong anchor showing more than generic web implementation,
 
 Treat these as supporting evidence only, not sufficient anchors by themselves: years claimed as a full-stack developer, long technology lists, generic portfolio sites, motivational founder language, agency or marketing-site work, broad idea lists, and competitions described without a result or technical detail.
 
-For a borderline profile, inspect at most two directly supplied external links. Look for a working product, code, users, metrics, technical depth, specific ownership, or independent validation. Do not reward visual polish, confident language, or the number of projects. Record whether the links strengthened the case, added no substance, or contradicted the profile.
+For a borderline profile, inspect at most two directly supplied external links. Look for a working product, code, users, metrics, technical depth, specific ownership, or independent validation. Do not reward visual polish, confident language, or the number of projects. Retain in the active conversation whether the links strengthened the case, added no substance, or contradicted the profile.
 
-When evidence remains ambiguous, skip and log the profile for reconsideration. Limited invitations justify requiring affirmative evidence rather than saving on potential alone.
+When evidence remains ambiguous, skip the profile and retain the reason for the chat summary. Limited invitations justify requiring affirmative evidence rather than saving on potential alone.
 
-## 7. Ordered Preferences
+## 8. Ordered Preferences
 
 After the gates pass, apply these preferences in order. Do not force a numeric score when the evidence is clearer as a judgment.
 
@@ -86,7 +92,7 @@ After the gates pass, apply these preferences in order. Do not force a numeric s
 
 Do not score complementarity. Farzan has selected every functional responsibility on his profile, so overlap in Product, Engineering, Design, Operations, or Sales and marketing is not a negative signal.
 
-## 8. Interpret Domains Correctly
+## 9. Interpret Domains Correctly
 
 Separate what someone has done from what they insist on doing next.
 
@@ -97,7 +103,7 @@ Separate what someone has done from what they insist on doing next.
 - **Committed direction:** Treat a niche as disqualifying only when the person explicitly says they are building it, committed to it, or seeking a cofounder specifically for it, and that niche conflicts with Farzan's stated exclusions.
 - **Technical balance:** A founder with business education or business experience can pass when strong technical evidence outweighs it. A successful pure-business founder still fails the engineering gate.
 
-## 9. Calibration Examples
+## 10. Calibration Examples
 
 Use these examples to preserve Farzan's judgments without overfitting to names.
 
@@ -111,7 +117,7 @@ Use these examples to preserve Farzan's judgments without overfitting to names.
 
 When a new profile resembles more than one example, explain which evidence is controlling. Update the current judgment when Farzan corrects it, and preserve the general principle rather than memorizing only the name.
 
-## 10. Run a Save-Only Batch
+## 11. Run a Save-Only Batch
 
 When Farzan authorizes a target number of new saves, continue until that exact number is verified or the available pool is exhausted.
 
@@ -120,14 +126,14 @@ When Farzan authorizes a target number of new saves, continue until that exact n
 3. Read the full YC profile, then inspect the candidate-supplied LinkedIn before making the decision. Apply the shortlisting gate, substance gate, preferences, domain interpretation, and calibration examples. Investigate at most two other supplied links only when the evidence remains borderline.
 4. Classify the candidate using the reliability and outreach rules below. In save-only mode, save `Normal invite` and `Screening invite` candidates, but do not draft or send a message.
 5. For a save, click the favorite control once and verify the profile visibly changes to `Saved!` before incrementing the counter.
-6. For a skip, write the name, direct URL, exact reason, and any condition that could reverse the decision to `.codex/yc-shortlist-log.md` before clicking `Skip for now`.
+6. For a skip, retain the name, direct URL, exact reason, and any condition that could reverse the decision in the active conversation before clicking `Skip for now`.
 7. Never invent or guess a missing candidate URL. Write `Not captured` when it is genuinely unavailable.
 8. Navigate to the next profile only after the save or skip state is confirmed.
 9. Stop immediately when the verified-save counter reaches the authorized target.
 
-Keep a compact saved list in the same log with the strongest reason each person qualified. Preserve earlier entries and append new ones rather than replacing the file.
+Keep a compact saved list in the active conversation with the strongest reason each person qualified. Do not persist that list to a local file.
 
-## 11. Establish DM Recipients
+## 12. Establish DM Recipients
 
 Before reading profiles or preparing a messaging batch, identify the exact people Farzan wants to contact.
 
@@ -137,24 +143,24 @@ Before reading profiles or preparing a messaging batch, identify the exact peopl
 4. Stop and ask if two profiles have the same name or a recipient cannot be identified unambiguously.
 5. Check the inbox or conversation state before drafting. Do not send duplicate outreach unless Farzan explicitly requests a follow-up.
 
-## 12. Cross-Check Reliability and Outreach Fit
+## 13. Cross-Check Reliability and Outreach Fit
 
 Treat saving as a preliminary shortlist, not approval to spend an invitation.
 
 1. Capture the exact saved recipients and their YC candidate URLs before research.
 2. Re-read each complete YC profile and inspect the LinkedIn profile directly supplied by that candidate when accessible.
-3. Compare current city or country, current employment, startup status, dates, education, accomplishments, and role expectations across both sources. Record contradictions and stale or missing evidence.
+3. Compare current city or country, current employment, startup status, dates, education, accomplishments, and role expectations across both sources. Retain contradictions and stale or missing evidence in the active conversation.
 4. Treat the LinkedIn check as corroboration, not a mechanical truth source. A single mismatch can mean either profile is stale. Multiple contradictions in central claims, an explicit current location elsewhere with no move evidence, or a misleading present-tense founder or employment story make the profile unreliable.
 5. Do not treat a future move, Delaware incorporation, a preferred cofounder location, or the YC header as proof of current Bay Area presence. When location is unresolved, use a `Screening invite` only if the candidate's direct fit or technical-founder evidence is strong enough to justify spending an invitation.
 6. Distinguish a genuine equal-cofounder search from employee-like recruiting. Treat narrow stack requirements, fixed task ownership, low equity, an existing multi-founder team, or language such as `backend dev` as a strong negative even when the candidate is technical.
-7. Classify every candidate as one of these outcomes and record the decisive evidence:
+7. Classify every candidate as one of these outcomes and retain the decisive evidence in the active conversation:
    - **Reject:** Fails a hard gate, has unreliable central claims, is clearly elsewhere with no relocation evidence and only generic fit, or seeks an employee-like relationship. Skip or propose unsaving. Do not invite.
    - **Normal invite:** Strong fit with sufficiently coherent current location, work, availability, and founder intent. Draft a direct personalized invitation.
    - **Screening invite:** Strong or unusually direct fit, but one material fact such as location, current startup, employment, or availability is plausibly stale or unresolved. Draft a short message that names the uncertainty and asks the candidate to resolve it.
 8. Never position Farzan as a narrow employee or claim he identifies as a backend or frontend specialist. Describe him as a technical AI builder who can own full products and infrastructure. If a candidate's role framing is narrow but still worth screening, ask whether they are open to a broader equal-cofounder fit.
 9. Unsave a rejected profile only after Farzan approves the exact name and confirms the imminent browser action. Research or classification alone does not authorize clicking the star.
 
-## 13. Draft in Farzan's Voice
+## 14. Draft in Farzan's Voice
 
 Write a natural, direct message that sounds personally typed, not generated from a template.
 
@@ -169,18 +175,18 @@ Write a natural, direct message that sounds personally typed, not generated from
 - **Tone:** Keep it confident, warm, slightly informal, and specific. Avoid corporate phrasing, excessive praise, startup clichés, long lists of similarities, and generic lines that could be sent to anyone.
 - **Claims:** Do not mention funding, equity, commitment, relocation, or joining either startup unless Farzan explicitly asks for that point in the current message.
 
-## 14. Run an Analyze-and-Invite Batch
+## 15. Run an Analyze-and-Invite Batch
 
 1. Record the requested number of invitations or the exact visible saved set.
 2. For each candidate, capture the name and direct YC URL, read the complete YC profile, inspect the candidate-supplied LinkedIn, and investigate at most two other supplied links only when needed.
-3. Classify the candidate as `Reject`, `Normal invite`, or `Screening invite`. Log the reason and URLs before moving on.
+3. Classify the candidate as `Reject`, `Normal invite`, or `Screening invite`. Keep the reason and URLs in the active conversation before moving on.
 4. If the candidate passes and is not already saved, save once and verify `Saved!`. Saving is not sending.
 5. Draft the exact one-to-two-paragraph message immediately. For a screening invite, use the second paragraph to resolve the material uncertainty plainly.
 6. Continue through the authorized batch without pausing for ordinary judgment calls. Collect the exact removal names, recipients, and final message text.
 7. Present one grouped action-time confirmation that clearly separates profiles to unsave from invitations to send. Do not click an unsave control or a send control before that confirmation.
 8. After confirmation, execute only the displayed removals and messages. Ignore profiles added to the saved list after the captured set unless Farzan explicitly adds them.
 
-## 15. Approval Before Sending
+## 16. Approval Before Sending
 
 Sending a DM is an external action. Approval must cover both the exact recipient and exact final text.
 
@@ -190,7 +196,7 @@ Sending a DM is an external action. Approval must cover both the exact recipient
 4. If any text or recipient changes after approval, show the changed version and obtain fresh approval for that item.
 5. A grouped confirmation applies only to the exact displayed recipients, removal names, and message texts. Never extend it to a newly surfaced profile.
 
-## 16. Send and Verify
+## 17. Send and Verify
 
 After approval, send messages one recipient at a time.
 
@@ -200,12 +206,12 @@ After approval, send messages one recipient at a time.
 4. Enter the exact approved text without rewriting it in the composer.
 5. Send once.
 6. Verify the message appears in the conversation as sent from Farzan before continuing.
-7. Record the recipient as sent only after verification.
+7. Mark the recipient as sent in the active conversation only after verification.
 
 If the site reports an error, the action state is uncertain, a CAPTCHA appears, or the profile no longer matches, stop. Report the affected person and do not retry in a way that could create a duplicate.
 
 8. After the batch, read the invitation count directly from Startup School. Do not report only a calculated remainder.
 
-## 17. Completion Report
+## 18. Completion Report
 
-For shortlisting, report the verified saved names, the count saved, the number still needed, and a link to the skip log. For messaging, report sent, not sent, removed, any uncertain states, and the invitation count visibly remaining on Startup School.
+Report all results directly in chat. For shortlisting, include the verified saved names, the count saved, the number still needed, and a compact skipped-profile summary when requested. For messaging, include sent, not sent, removed, any uncertain states, and the invitation count visibly remaining on Startup School. Never create or update a local report for completion.
