@@ -134,7 +134,7 @@ const ADJUDICATE_SCHEMA = {
 const LANE_PROTOCOL = (laneName, failedMarker) => `LANE PROTOCOL (mandatory, exactly these steps, nothing else in between -- no ps, no peeking at partial output, no sleeping on your own):
 A. Using Bash with run_in_background: true and NO timeout, run: bash ${REPO}/.claude/scripts/lane.sh start ${laneName} -- <the exact CLI command and its arguments>. lane.sh captures stdout/stderr itself; do NOT add your own redirects.
 B. Then, in the FOREGROUND, run: bash ${REPO}/.claude/scripts/lane.sh wait ${laneName} with timeout: 600000. It prints ONE line: "DONE ...", "RUNNING ...", or "HUNG ...". If RUNNING, run that same wait command again, as many times as it takes -- there is no budget, the lane runs to completion, and you never return while it says RUNNING. If HUNG (over the 60-minute hung-process valve), run: bash ${REPO}/.claude/scripts/lane.sh kill ${laneName}, then continue to step C.
-C. Run: bash ${REPO}/.claude/scripts/lane.sh result ${laneName} ${failedMarker}. Your final answer is: the DONE/HUNG line from step B on its own first line, then everything that result printed, verbatim. If it printed the ${failedMarker} marker (non-zero exit, hung, or empty output), return that verbatim too -- it carries stderr and whatever partial output exists, and the adjudicator treats the marker as a dead lane.`
+C. Run: bash ${REPO}/.claude/scripts/lane.sh result ${laneName} ${failedMarker} > /dev/null; echo "rc=$?" (only the exit code is needed here -- do NOT print or read the output into your context; it can be tens of KB and re-typing it is pure wall time). Your final answer is EXACTLY these lines and nothing else: line 1, the DONE/HUNG line from step B; line 2, LANE_RESULT_FILE=/tmp/oparax-lanes/${laneName}.out ; line 3, LANE_ERR_FILE=/tmp/oparax-lanes/${laneName}.err ; and, ONLY if the rc printed was non-zero, line 4, the marker ${failedMarker} followed by the last 40 lines of the .err file (use tail -40) so the failure is legible. The consumer of this lane reads the result file itself.`
 
 phase('critique')
 log('Spec received via args (' + spec.length + ' chars), dispatching 4 critique lanes')
@@ -168,7 +168,7 @@ Return ONLY a JSON array of finding objects, one per finding, each shaped exactl
 SPEC:
 (the spec text)"
 
-2. Follow the LANE PROTOCOL below with this CLI command, quoting exactly as written (the star-glob argument MUST be inside double quotes or the shell rejects the line before grok runs): grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools "mcp__vercel__*,mcp__railway__*" --always-approve --no-subagents --effort medium -m grok-4.6 --output-format json. Do NOT pass --agent. Do NOT pass --max-turns. Do NOT add redirects.
+2. Follow the LANE PROTOCOL below with this CLI command, quoting exactly as written (the star-glob argument MUST be inside double quotes or the shell rejects the line before grok runs): grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools "mcp__vercel__*,mcp__railway__*" --always-approve --no-subagents --effort low -m grok-4.6 --output-format json. Do NOT pass --agent. Do NOT pass --max-turns. Do NOT add redirects.
 3. Return per the LANE PROTOCOL.
 
 ${LANE_PROTOCOL('critique-grok', 'GROK_LANE_FAILED')}
@@ -210,8 +210,9 @@ ${spec}`
 
 // critique-codex and critique-grok and critique-agy: cheap haiku bridge
 // dispatchers, the REAL work happens inside the external CLI they shell out
-// to (gpt-5.6-sol MEDIUM x10 codex critique-* agents; grok-4.6 MEDIUM in ONE
-// session, no subagents, no turn cap -- one session is the deliberate choice
+// to (gpt-5.6-sol MEDIUM x10 codex critique-* agents; grok-4.6 LOW in ONE
+// session, no subagents, no turn cap (medium measured 640s on 2026-08-17, owner
+// dialed to low) -- one session is the deliberate choice
 // because a fan-out has no cost/time knob while a session has model + effort;
 // both dialed to medium on 2026-08-17 after measuring 6-14 minute lane times
 // at high; gemini-3.1-pro-high single-session, tier fused into the slug). No lane has a wall budget; each reports its elapsed time (first line
@@ -250,12 +251,14 @@ ${spec}
 
 You have Read/Bash access to the real repo at ${REPO} -- spot-check any contentious or surprising critique claim directly against the code before trusting it.
 
+HOW TO READ THE EXTERNAL LANES: each of the codex/grok/agy entries below is a short POINTER, not the output itself: a DONE/HUNG line with the lane's elapsed time, then LANE_RESULT_FILE=<path> and LANE_ERR_FILE=<path>. Use Read on the LANE_RESULT_FILE path to get that lane's raw output (codex: JSONL events, the findings array is the text of the final agent message item; grok: a JSON envelope whose response/result text holds the findings array; agy: a JSON object whose response field holds the findings array). A pointer carrying a *_LANE_FAILED / CODEX_FIXED_LANE_FAILED marker, a HUNG line, or a result file that is empty or not findings-shaped means that lane is dead: record it in deadLanes. The claude lane is inline JSON, not a pointer.
+
 Adjudication rules: a claim two or more independent lanes raised independently is high confidence; merge duplicate/cosmetic findings into one; spot-read cited code where a finding is contentious or a citation seems fabricated; if a lane's raw output is empty, an error string, or clearly failed (look for CODEX_FIXED_LANE_FAILED / GROK_LANE_FAILED / AGY_LANE_FAILED or just garbage), record it in deadLanes -- report it as failed, never silently treat it as "nothing found". For every critique finding you accept as real, edit the corresponding section of the plan directly (in plain language, never code-level) and add one line to whatChanged describing the edit. Where a finding surfaces a genuine tradeoff only the owner can decide, put it in the plan's own Open questions section AND in openQuestionsForOwner, phrased as a plain question with the tradeoff stated in one sentence. Where nothing in a section changed, copy it into revisedPlan unmodified -- never drop a section, never invent one.
 
-RAW CRITIQUE LANE OUTPUT -- critique-codex (10 fanned-out lenses, gpt-5.6-terra high):
+RAW CRITIQUE LANE OUTPUT -- critique-codex (10 fanned-out lenses, gpt-5.6-sol medium):
 ${critiqueCodexRaw}
 
-RAW CRITIQUE LANE OUTPUT -- critique-grok (grok-4.6 medium, single session, no subagents, no turn cap):
+RAW CRITIQUE LANE OUTPUT -- critique-grok (grok-4.6 low, single session, no subagents, no turn cap):
 ${critiqueGrokRaw}
 
 RAW CRITIQUE LANE OUTPUT -- critique-claude (session-inherited model, single session):

@@ -160,7 +160,7 @@ const REVERIFY_SCHEMA = {
 const LANE_PROTOCOL = (laneName, failedMarker) => `LANE PROTOCOL (mandatory, exactly these steps, nothing else in between -- no ps, no peeking at partial output, no sleeping on your own):
 A. Using Bash with run_in_background: true and NO timeout, run: bash ${REPO}/.claude/scripts/lane.sh start ${laneName} -- <the exact CLI command and its arguments>. lane.sh captures stdout/stderr itself; do NOT add your own redirects.
 B. Then, in the FOREGROUND, run: bash ${REPO}/.claude/scripts/lane.sh wait ${laneName} with timeout: 600000. It prints ONE line: "DONE ...", "RUNNING ...", or "HUNG ...". If RUNNING, run that same wait command again, as many times as it takes -- there is no budget, the lane runs to completion, and you never return while it says RUNNING. If HUNG (over the 60-minute hung-process valve), run: bash ${REPO}/.claude/scripts/lane.sh kill ${laneName}, then continue to step C.
-C. Run: bash ${REPO}/.claude/scripts/lane.sh result ${laneName} ${failedMarker}. Your final answer starts with the DONE/HUNG line from step B on its own first line, then everything that result printed, verbatim. If it printed the ${failedMarker} marker (non-zero exit, hung, or empty output), return that verbatim too -- it carries stderr and whatever partial output exists.`
+C. Run: bash ${REPO}/.claude/scripts/lane.sh result ${laneName} ${failedMarker} > /dev/null; echo "rc=$?" (only the exit code is needed here -- do NOT print or read the output into your context; it can be tens of KB and re-typing it is pure wall time). Your final answer is EXACTLY these lines and nothing else: line 1, the DONE/HUNG line from step B; line 2, LANE_RESULT_FILE=/tmp/oparax-lanes/${laneName}.out ; line 3, LANE_ERR_FILE=/tmp/oparax-lanes/${laneName}.err ; and, ONLY if the rc printed was non-zero, line 4, the marker ${failedMarker} followed by the last 40 lines of the .err file (use tail -40) so the failure is legible. The consumer of this lane reads the result file itself.`
 
 phase('build')
 log('Spec received via args (' + spec.length + ' chars), dispatching the build lane')
@@ -244,7 +244,7 @@ ${SKILLS_LINE_GROK}
 
 Return ONLY a JSON array of finding objects, one per finding, each shaped exactly {\\"severity\\": \\"blocking|important|minor\\", \\"target\\": string, \\"critique\\": string, \\"suggestion\\": string or null}. No preamble, no commentary, no markdown fencing -- just the raw JSON array."
 
-2. Follow the LANE PROTOCOL below with this CLI command, quoting exactly as written (the star-glob argument MUST be inside double quotes or the shell rejects the line before grok runs): grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools "mcp__vercel__*,mcp__railway__*" --always-approve --no-subagents --effort high -m grok-4.6 --output-format json. Do NOT pass --agent. Do NOT pass --max-turns. Do NOT add redirects.
+2. Follow the LANE PROTOCOL below with this CLI command, quoting exactly as written (the star-glob argument MUST be inside double quotes or the shell rejects the line before grok runs): grok --prompt-file <your file> --sandbox read-only --cwd ${REPO} --disallowed-tools "mcp__vercel__*,mcp__railway__*" --always-approve --no-subagents --effort medium -m grok-4.6 --output-format json. Do NOT pass --agent. Do NOT pass --max-turns. Do NOT add redirects.
 3. Return per the LANE PROTOCOL.
 
 ${LANE_PROTOCOL('qc-grok', 'GROK_LANE_FAILED')}`
@@ -297,6 +297,8 @@ const adjudicatePrompt = `You are adjudicating cross-model QC findings for opara
 
 You have Read/Bash access to the real repo at ${REPO} -- run \`git diff origin/beta...HEAD\` yourself and spot-check any contentious or surprising finding directly against the code before trusting it.
 
+HOW TO READ THE EXTERNAL LANES: each of the codex/grok/agy entries below is a short POINTER, not the output itself: a DONE/HUNG line with the lane's elapsed time, then LANE_RESULT_FILE=<path> and LANE_ERR_FILE=<path>. Use Read on the LANE_RESULT_FILE path to get that lane's raw output (codex: JSONL events, the findings array is the text of the final agent message item; grok: a JSON envelope whose response/result text holds the findings array; agy: a JSON object whose response field holds the findings array). A pointer carrying a *_LANE_FAILED / CODEX_FIXED_LANE_FAILED marker, a HUNG line, or a result file that is empty or not findings-shaped means that lane is dead: record it in deadLanes. The claude lane is inline JSON, not a pointer.
+
 Adjudication rules: a claim two or more independent lanes raised independently is high confidence; merge duplicate/cosmetic findings into one; spot-read cited code where a finding is contentious or a citation seems fabricated; if a lane's raw output is empty, an error string, or clearly failed (look for CODEX_FIXED_LANE_FAILED / GROK_LANE_FAILED / AGY_LANE_FAILED or just garbage), record it in deadLanes -- report it as failed, never silently treat it as "nothing found". Nothing decision-shaped belongs in a fix brief: fold anything genuinely needing the owner's own call into openQuestionsForOwner instead, with the tradeoff in one plain sentence. A fix brief's fixShape is one or two lines, an approach plus a file:line anchor, never a full patch.
 
 SPEC (what the branch was supposed to build):
@@ -305,7 +307,7 @@ ${spec}
 RAW QC LANE OUTPUT -- qc-codex (10 fanned-out lenses, gpt-5.6-sol high):
 ${critiqueCodexRaw}
 
-RAW QC LANE OUTPUT -- critique-grok (grok-4.6 high, single session, no subagents, no turn cap):
+RAW QC LANE OUTPUT -- critique-grok (grok-4.6 medium, single session, no subagents, no turn cap):
 ${critiqueGrokRaw}
 
 RAW QC LANE OUTPUT -- critique-claude (session-inherited model, single session):
