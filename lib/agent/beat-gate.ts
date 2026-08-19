@@ -1,6 +1,5 @@
 import "server-only";
 
-import * as Sentry from "@sentry/nextjs";
 import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
@@ -55,7 +54,6 @@ async function insertBeatGateModelCall(
     if (meterError) throw meterError;
   } catch (error) {
     console.error("beat-gate: ledger insert failed", error);
-    Sentry.captureException(error);
   }
 }
 

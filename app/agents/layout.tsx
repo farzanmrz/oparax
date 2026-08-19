@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { PostHogUserContext } from "@/components/posthog-user-context";
 import { ScrollContainerProvider, ScrollRegion } from "@/components/scroll-container";
-import { SentryUserContext } from "@/components/sentry-user-context";
 import { SiteHeader } from "@/components/site-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -74,7 +74,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="op-app-shell relative flex h-dvh min-h-0 min-w-0 flex-col bg-background text-foreground">
-      <SentryUserContext email={user.email} id={user.id} />
+      <PostHogUserContext email={user.email} id={user.id} />
       <ScrollContainerProvider>
         <SiteHeader
           avatarKey={getAvatarKey(user)}

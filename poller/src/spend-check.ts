@@ -10,8 +10,7 @@ export const SPEND_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1_000;
 const SPEND_CHECK_TIMEOUT_MS = 60_000;
 
 /** Wall-clock of the last completed attempt, kept in memory. A worker restart re-runs the
- *  check early, which is harmless: the route is read-only and idempotent, and Sentry groups
- *  repeats of the same anomaly into one issue rather than a new alert each time. */
+ *  check early, which is harmless because the route is read-only and idempotent. */
 let lastRunAt = 0;
 
 export function spendCheckDue(now: number): boolean {

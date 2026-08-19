@@ -1,0 +1,7 @@
+interface:
+  display_name: "build"
+  short_description: "Build or fix an oparax ft/<N> branch from its issue"
+  default_prompt: "Use $build <N> to build the issue's detailed plan on ft/<N> (or apply the pending /qc fix list), commit once, and stop."
+
+policy:
+  allow_implicit_invocation: false

@@ -10,6 +10,9 @@ async function main(): Promise<void> {
   const client = createPollerClient(env.supabaseUrl, env.supabaseServiceRoleKey);
 
   const caches = new Map<string, ConditionalGetCache>();
+  // Exactly ONE poller instance is required for correctness, not just cost: delivery happens before the seen-mark, so two instances could deliver the same article twice.
+  // Do not raise numReplicas in poller/railway.json without first making the poller claim before delivering.
+  const seenKeys = new Map<string, Set<string>>();
 
   function fatal(reason: string): never {
     logger.fatal("fatal — exiting so Railway's restart policy can recover", { reason });
@@ -18,7 +21,7 @@ async function main(): Promise<void> {
 
   async function tickOnce(): Promise<void> {
     try {
-      await pollAllSources(client, env, caches);
+      await pollAllSources(client, env, caches, seenKeys);
     } catch (e) {
       // Only FatalIngestError propagates out of pollAllSources — every other per-source
       // failure is already caught and logged inside it.

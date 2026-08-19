@@ -45,22 +45,27 @@ export async function fetchActiveSourceConfigs(client: SupabaseClient): Promise<
   return (data ?? []) as SourceConfigRow[];
 }
 
-/** Read-only "have I delivered this before?" check. Split out from the mark so delivery can
- *  be attempted BEFORE the item is written off as seen — index.ts's in-flight guard keeps one
- *  tick running at a time, so the check and the mark can't interleave with another tick. */
-export async function hasSeenItem(
+/** Returns the item keys the database has not seen. The POST-bodied RPC safely carries long URLs
+ *  and reserved characters; chunks bound each request without changing the answer. */
+export async function fetchUnseenItemKeys(
   client: SupabaseClient,
   sourceConfigId: string,
-  itemKey: string,
-): Promise<boolean> {
-  const { data, error } = await client
-    .from("source_seen_items")
-    .select("id")
-    .eq("source_config_id", sourceConfigId)
-    .eq("item_key", itemKey)
-    .limit(1);
-  if (error) throw error;
-  return (data ?? []).length > 0;
+  itemKeys: string[],
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const unseen = new Set<string>();
+  for (let offset = 0; offset < itemKeys.length; offset += 500) {
+    const chunk = itemKeys.slice(offset, offset + 500);
+    const { data, error } = await client
+      .rpc("unseen_item_keys", {
+        p_source_config_id: sourceConfigId,
+        p_item_keys: chunk,
+      })
+      .abortSignal(signal ?? AbortSignal.timeout(15_000));
+    if (error) throw error;
+    for (const itemKey of (data ?? []) as string[]) unseen.add(itemKey);
+  }
+  return unseen;
 }
 
 /** Marks an item seen after its delivery has been processed. Also bumps

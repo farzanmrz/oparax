@@ -11,7 +11,6 @@
 // user pauses/resumes from a tab other than Feed — matches settings/actions.ts's precedent.
 "use server";
 
-import * as Sentry from "@sentry/nextjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -270,19 +269,16 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
       .eq("id", currentWinner.id)
       .select("id");
     if (restoreError || !restoredWinner?.length) {
-      Sentry.captureException(
-        restoreError ??
+      console.error("editDraft: model-call failure did not restore its previous winner", {
+        error:
+          restoreError ??
           new Error("editDraft model-call failure did not restore its previous winner"),
-        {
-          tags: {
-            scope: "edit_draft_winner_restore",
-            failure_leg: "model_call_insert",
-            draftId: currentWinner.id,
-            agentId: parentDraft.agent_id,
-          },
-          extra: { modelCallError: modelCallError?.message ?? "No model-call row returned" },
-        },
-      );
+        scope: "edit_draft_winner_restore",
+        failure_leg: "model_call_insert",
+        draftId: currentWinner.id,
+        agentId: parentDraft.agent_id,
+        modelCallError: modelCallError?.message ?? "No model-call row returned",
+      });
       return {
         ok: false,
         error:
@@ -324,18 +320,15 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
       .delete()
       .eq("id", modelCall.id);
     if (restoreError || !restoredWinner?.length) {
-      Sentry.captureException(
-        restoreError ?? new Error("editDraft insert failure did not restore its previous winner"),
-        {
-          tags: {
-            scope: "edit_draft_winner_restore",
-            failure_leg: "draft_insert",
-            draftId: currentWinner.id,
-            agentId: parentDraft.agent_id,
-          },
-          extra: { insertError: insertError?.message ?? "No draft row returned" },
-        },
-      );
+      console.error("editDraft: insert failure did not restore its previous winner", {
+        error:
+          restoreError ?? new Error("editDraft insert failure did not restore its previous winner"),
+        scope: "edit_draft_winner_restore",
+        failure_leg: "draft_insert",
+        draftId: currentWinner.id,
+        agentId: parentDraft.agent_id,
+        insertError: insertError?.message ?? "No draft row returned",
+      });
       return {
         ok: false,
         error:
@@ -343,12 +336,11 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
       };
     }
     if (deleteModelCallError) {
-      Sentry.captureException(deleteModelCallError, {
-        tags: {
-          scope: "edit_draft_model_call_rollback",
-          modelCallId: modelCall.id,
-          agentId: parentDraft.agent_id,
-        },
+      console.error("editDraft: model-call rollback failed", {
+        error: deleteModelCallError,
+        scope: "edit_draft_model_call_rollback",
+        modelCallId: modelCall.id,
+        agentId: parentDraft.agent_id,
       });
     }
     return { ok: false, error: "Could not save your edit. Please try again." };

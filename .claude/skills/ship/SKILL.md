@@ -1,16 +1,26 @@
 ---
 name: ship
 description: >-
-  The ship gate, standalone. Use when the user says /ship <N>, "ship it",
-  or "close the slice" on a finished branch. Harness-neutral: runs in
-  Claude Code or Codex. Ship does NOT close the issue; the owner closes it
-  after their production check.
+  The ship gate, standalone, same file in Claude Code (/ship <N>) and Codex ($ship <N>). Use when the user says /ship <N> or $ship <N>, "ship it",
+  or "close the slice" on a finished branch, after /qc's round marker
+  exists. Ship does NOT close the issue; the owner closes it after their
+  production check.
 argument-hint: "[issue#]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *) Skill
 model: inherit
 ---
 
 # Ship: minimal guard, deterministic mechanics, owner closes
+
+## 0. Meta and docs sweep (always, first, unconditional)
+
+Before any guard, sweep every process and documentation path into one commit on the CURRENT branch and push it, whether or not this session touched them: `.claude/`, `.codex/`, `.agents/`, `.grok/`, `.github/`, `docs/`, and root `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`. (`.feature/` is git-ignored wholesale by its own `.gitignore`, so there is never anything to commit there.)
+
+```bash
+for p in .claude .codex .agents .grok .github docs AGENTS.md CLAUDE.md DESIGN.md README.md; do [ -e "$p" ] && git add -A -- "$p"; done; git diff --cached --quiet || { git commit -m "meta: sweep before ship (#<N>)" && git push origin HEAD; }
+```
+
+(A pathspec that does not exist makes `git add` fail wholesale, hence the existence filter.) Nothing staged means nothing to do; move on. This commit touches meta paths only, so it never trips the staleness rule below.
 
 ## 1. Guard
 
@@ -21,12 +31,12 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   --jq '.[] | select(.body|startswith("## QC round")) | (.body|split("\n")[0])'
 ```
 
-* **Feature-path staleness:** commits after the latest done marker touching feature paths (`app/`, `lib/`, `components/`, `poller/`, `ingest/`, `supabase/`, `public/`, root config) mean the proven state is not the shipping state: STOP and route to a patch round. Meta-only commits (`.claude/`, `.agents/`, `.codex/`, `docs/`, root `*.md`) never trip this.
+* **Feature-path staleness:** commits after the latest done marker touching feature paths (`app/`, `lib/`, `components/`, `poller/`, `ingest/`, `supabase/`, `public/`, root config) mean the proven state is not the shipping state: STOP and route to another `/qc <N>` round. Meta-only commits (`.claude/`, `.agents/`, `.codex/`, `docs/`, root `*.md`) never trip this.
 * **Missing marker:** name it and STOP. **Owner override:** "ship anyway" is honored and recorded.
 
 ## 2. The gate ✋
 
-Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
+Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. Also read the local detailed plan `.feature/plan-<N>.md` (the issue carries only the plain plan) and, if it has a `## 4. Owner does at ship` part, list those items verbatim in plain words: they are the owner's own operations (Vercel env, Railway redeploys, dashboard toggles) and nothing in the flow executes them; the owner does them around this ship. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
 
 ## 3. Ship
 
@@ -43,6 +53,8 @@ The script owns the mechanics: inventory, staging, recovery snapshot, non-force 
 ```
 
 The push IS the job. Never check, poll, or watch a deployment; the owner looks at the live app themselves.
+
+Right after the push, delete the branch's scratch: `.feature/lanes/`, `.feature/*dispositions*.md`, `.feature/issue-body.md`, and any draft files. Keep only `.feature/plan-<N>*.md`, `.feature/amend-<N>-*.md`, and `.feature/fixes-<N>*.md` until finalize (below), which wipes the directory.
 
 ## 4. Stop: the owner closes
 

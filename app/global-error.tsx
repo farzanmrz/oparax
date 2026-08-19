@@ -6,8 +6,8 @@
 // cannot rely on anything the app normally provides. Only reached when an error escapes every
 // nested boundary — in practice a render failure in the root layout itself.
 //
-// Two jobs, in this order: report the error to Sentry (this is the only place a root-layout
-// failure is ever recorded — by definition no in-app surface survived to show it), then give the
+// Two jobs, in this order: report the error to PostHog (this is the only place a root-layout
+// failure is ever recorded because no in-app surface survived to show it), then give the
 // reporter a way out that isn't the browser's back button.
 //
 // The wizard shipped Next's built-in `NextError` here, which renders an unstyled "Application
@@ -15,8 +15,9 @@
 // and stays readable even if the stylesheet never loads — a page that only appears when
 // something is already badly wrong should not itself depend on much.
 
-import * as Sentry from "@sentry/nextjs";
+import posthog from "posthog-js";
 import { useEffect } from "react";
+import { initPostHog } from "@/lib/observability/posthog-client";
 
 export default function GlobalError({
   error,
@@ -26,7 +27,8 @@ export default function GlobalError({
   readonly reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    initPostHog();
+    if (posthog.__loaded) posthog.captureException(error);
   }, [error]);
 
   return (
@@ -51,7 +53,7 @@ export default function GlobalError({
               Back to your agents
             </a>
           </div>
-          {/* Sentry groups by digest — showing it lets a reporter quote the exact event. */}
+          {/* Showing Next's digest lets a reporter quote the exact failing request. */}
           {error.digest ? (
             <p className="font-mono text-muted-foreground text-xs">Reference: {error.digest}</p>
           ) : null}

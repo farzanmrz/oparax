@@ -3,6 +3,7 @@
 import { LogOutIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -38,6 +39,11 @@ export function AccountMenu({
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
+      try {
+        if (posthog.__loaded) posthog.reset();
+      } catch {
+        // Analytics cannot prevent a completed account sign-out from navigating away.
+      }
       router.push("/");
       // Invalidate the client router cache (incl. bfcache): without this, the
       // browser Back button can restore a signed-in dashboard payload with no

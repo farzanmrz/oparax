@@ -1,8 +1,7 @@
 {
-  "outputStyle": "Flow",
   "skillOverrides": {
     "feature": "name-only",
-    "build": "name-only",
+    "qc": "name-only",
     "ship": "name-only",
     "lint": "name-only",
     "ui-ux-pro-max": "name-only"

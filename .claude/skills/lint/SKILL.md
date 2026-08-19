@@ -3,8 +3,7 @@ name: lint
 description: >-
   Resolve residual Biome lint findings on a feature branch's changed files: the
   rules `biome check --write` can't safely auto-fix. Not a flow phase — a
-  standalone utility skill re-run by ft-ship's triage loop, also directly
-  runnable on any branch (/lint). NOT for formatting: the PostToolUse hook
+  standalone utility skill, runnable on any branch (/lint). NOT for formatting: the PostToolUse hook
   already does that on every write.
 argument-hint: "[base ref, default beta]"
 allowed-tools: Bash(git *) Bash(pnpm *)

@@ -5,13 +5,13 @@
 #
 # Gates (hard, exit 1 on failure): pnpm build · tsc --noEmit
 # Report-only (never fails the script): residual Biome findings on the
-# range's changed files — residual lint is ft-fix/-lint's job, not a gate.
+# range's changed files — residual lint is /lint's job, not a gate.
 #
 # The skill-mirror hygiene check (are .claude/skills and .agents/skills
 # symlinked correctly) was removed 2026-08-14: it checks repo tooling
 # hygiene, not this feature's correctness, and gating unrelated feature
 # QC on unrelated mirror drift was the wrong place for it. If mirror
-# drift needs catching again, it belongs in /ft-ship or its own periodic
+# drift needs catching again, it belongs in /ship or its own periodic
 # check, not blocking every QC round.
 #
 # Output contract: one "GATE <name>: PASS|FAIL" line per gate, failure
@@ -49,7 +49,7 @@ if [ -n "$changed" ]; then
     echo "LINT residual: none"
   else
     n="$(printf '%s\n' "$lint_out" | grep -cE "^::|lint/|format" || true)"
-    echo "LINT residual: findings present (~$n lines; not a gate — ft-fix/-lint owns them)"
+    echo "LINT residual: findings present (~$n lines; not a gate — /lint owns them)"
     printf '%s\n' "$lint_out" | tail -5
   fi
 else

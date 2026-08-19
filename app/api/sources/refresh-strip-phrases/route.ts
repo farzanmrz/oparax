@@ -1,5 +1,4 @@
 import { timingSafeEqual } from "node:crypto";
-import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { QWEN_DRAFT_MODEL } from "@/lib/agent/qwen-draft-config";
 import { onboardSource } from "@/lib/sources/onboard-source";
@@ -95,11 +94,10 @@ export async function POST(req: Request) {
       return new Response("give-up marker failed", { status: 500 });
     }
     const message = `refresh-strip-phrases: gave up on ${config.url} after ${MAX_REFRESH_ATTEMPTS} attempts`;
-    console.error(message);
-    Sentry.captureMessage(message, {
-      level: "warning",
-      tags: { area: "source_refresh", outcome: "attempts_exhausted" },
-      extra: { sourceConfigId: config.id, agentId: config.agent_id, attempts },
+    console.error(message, {
+      sourceConfigId: config.id,
+      agentId: config.agent_id,
+      attempts,
     });
     return new Response(null, { status: 204 });
   }

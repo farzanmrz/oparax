@@ -7,22 +7,22 @@
 #
 # --prefix bf lands on bf/<issue> for the bugfix flow (default ft). The bf
 # hotfix path (base main) does NOT use this script: it cuts from origin/main
-# directly (see bf-adj/SKILL.md).
+# directly.
 #
 # With no plan file (or "-"), the approved plan is read from stdin. stdout is one
 # machine-readable line: the issue number. All Git/GitHub chatter goes to stderr.
 #
 # Feature slices always run on ft/<issue#> (app code never lands directly on
 # beta — owner instruction-file micro-edits are the one carve-out; see
-# ft/SKILL.md) and there is no persisted run state. A slice is
+# ship/SKILL.md) and there is no persisted run state. A slice is
 # identified by its branch, which is the only marker QC needs
 # (`origin/beta...ft/<N>`). ship.sh always lands on beta; the terminal release
 # target (beta or main) lives only in the conversation and is applied by
-# ft-ship/SKILL.md's promotion step after ship.sh returns — it is never
+# ship/SKILL.md's promotion step after ship.sh returns — it is never
 # passed into this script or into ship.sh.
 #
 # ADOPTION-AWARE (2026-08-04): the owner routinely pre-cuts a branch and a stub
-# issue before /ft-spec, so create-only behavior sent every session into
+# issue before /feature, so create-only behavior sent every session into
 # workaround mode. Branch resolution now goes, in order: already on ft/N →
 # adopt in place; local or remote ft/N exists → switch to it; current branch is
 # ft/N-<anything> (cut for this issue, off-convention) → rename it to ft/N

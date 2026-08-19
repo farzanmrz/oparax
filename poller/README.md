@@ -1,84 +1,39 @@
 # oparax-poller
 
-The Railway worker for Oparax's website-source ingestion path (issue #101). Every
-`POLLER_TICK_INTERVAL_MS` (default 45s) it reads every `active` row in `source_configs` (the
-desks' onboarded website sources from #100), checks that source's sitemap, RSS feed, or listing page via
-conditional GET, finds items it has never delivered before, fetches each new item's body via
-the adaptive retrieval chain (#105 — see `fetch-body.ts` below), and POSTs a `"website"`-shaped
-delivery to the app's
-`POST /api/ingest`. No model call anywhere in this worker — deliberately dumb, per the issue's
-decision of record.
+The Railway worker for Oparax's website-source ingestion path (issue #101). Every `POLLER_TICK_INTERVAL_MS` (default 45s) it reads every `active` row in `source_configs` (the desks' onboarded website sources from #100), checks that source's sitemap, RSS feed, or listing page via conditional GET, finds items it has never delivered before, fetches each new item's body via the adaptive retrieval chain (#105, see `fetch-body.ts` below), and POSTs a `"website"`-shaped delivery to the app's `POST /api/ingest`. No model call anywhere in this worker, deliberately dumb per the issue's decision of record.
 
 ## Isolation
 
-Standalone Node/TypeScript package under `poller/**`, same shape as the sibling `ingest/`
-package:
+Standalone Node/TypeScript package under `poller/**`, same shape as the sibling `ingest/` package:
 
-- Own `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `biome.jsonc`, `pnpm-workspace.yaml`.
-  Not listed under the root repo's `pnpm-workspace.yaml` (no `packages:` globs there), so this
-  package's install/build never touches the app's.
-- **Zero imports from the app's `lib/`.** The sitemap/feed/listing parsing and SSRF-safety checks
-  #100 built in `lib/sources/*` are duplicated here in trimmed form rather than imported —
-  those modules use the Next.js `@/*` path alias (doesn't resolve outside the app's
-  `tsconfig.json`) and `ingest/`'s own README already establishes the "isolated package, zero
-  app `lib/` imports" convention this worker follows.
-- Runs via `tsx` (both `dev` and `start`), so `tsx` is an ordinary `dependency`, not a
-  `devDependency` — Railway's install must include it at runtime.
+- Own `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `biome.jsonc`, `pnpm-workspace.yaml`. Not listed under the root repo's `pnpm-workspace.yaml` (no `packages:` globs there), so this package's install/build never touches the app's.
+- **Zero imports from the app's `lib/`.** The sitemap/feed/listing parsing and SSRF-safety checks #100 built in `lib/sources/*` are duplicated here in trimmed form rather than imported, because those modules use the Next.js `@/*` path alias (doesn't resolve outside the app's `tsconfig.json`) and `ingest/`'s own README already establishes the "isolated package, zero app `lib/` imports" convention this worker follows.
+- Runs via `tsx` (both `dev` and `start`), so `tsx` is an ordinary `dependency`, not a `devDependency`. Railway's install must include it at runtime.
 
 ## Architecture (`src/`)
 
-- `env.ts` — validates required env vars at startup; missing/blank is fatal
-  (`process.exit(1)`), same posture as `ingest/src/env.ts`.
-- `logger.ts` / `errors.ts` / `backoff.ts` — copied verbatim from `ingest/src/` (structured
-  JSON logging, catch-value serialization, half-jitter exponential backoff).
-- `discovery-safety.ts` — `isPrivateHostname` / `isSafeDiscoveredUrl` (same-site required),
-  duplicated from #100's `lib/sources/discovery.ts`, plus `isSafePublicUrl` (#107, no
-  same-site requirement — for SERP-discovered candidates, which are expected to be a
-  different host). Every URL pulled out of a sitemap/feed/SERP result is untrusted
-  third-party content and gets checked before being fetched.
-- `sitemap.ts` / `feed.ts` / `listing.ts` — trimmed re-implementations of #100's sitemap/feed/listing parsing,
-  returning only `{ url, itemKey, title, publishedAt, bodyFromFeed }` per item, with
-  conditional-GET support (ETag + Last-Modified) so an unchanged feed short-circuits on a
-  `304` without re-parsing.
-- `fetch-body.ts` — `fetchArticleBody` is adaptive by default (#105): direct fetch first, then
-  Bright Data Web Unlocker if that fails or comes back suspiciously short and
-  `BRIGHTDATA_API_KEY`/`BRIGHTDATA_ZONE` are set, then (#107) a Bright Data SERP search for
-  the same story elsewhere if `BRIGHTDATA_SERP_ZONE` is also set — tried unconditionally on
-  any Tier 1+2 failure, no paywall/blocker classification — then a feed/sitemap-derived
-  teaser as the last resort. `source_configs.retrieval` is an optional operator override
-  (`"feed"` / `"none"` / `"unlocker"`) that skips straight to that tier — null (the default)
-  runs the full adaptive chain, SERP fallback included.
-  `source_configs.strip_phrases` is an optional, onboarding-measured JSON array of at most 12 non-blank verbatim boilerplate substrings (12–120 characters each). It is narrowed and ordered longest-first at fetch time; stripping itself adds no further global whitespace collapse beyond each extraction tier's normal representation. A configured strip that leaves less than usable article content throws so the item is retried rather than permanently marked seen. `null` is a legacy row awaiting automatic poller-triggered refresh; `[]` means that refresh measured a clean sample.
-- `db.ts` — the poller's own service-role Supabase client; reads `active` `source_configs`
-  rows, calls the `record_seen_item` RPC (atomic check-and-mark dedup).
-- `deliver.ts` / `types.ts` — `postDelivery` (adapted from `ingest/src/deliver.ts`'s
-  200/401/422/500 handling) and `buildExternalId` (`sha256(canonicalUrl + "\n" +
-  (publishedAt ?? ""))`, matching `/api/ingest`'s own schema comment — reused as both the
-  delivery's `external_id` and the seen-items dedup key).
-- `tick.ts` — `pollAllSources`, the per-tick orchestration: per-source try/catch (one feed
-  erroring never stalls another), prefilter, a one-time "priming" pass on a source's first
-  ever tick (seeds `source_seen_items` without delivering, so a freshly-onboarded source with
-  ~100 sampled URLs doesn't fire a delivery storm), steady-state new-item delivery capped at
-  `POLLER_MAX_NEW_ITEMS_PER_TICK`.
-- `index.ts` — wires it together: loads env, runs an initial tick, then `setInterval` on
-  `POLLER_TICK_INTERVAL_MS` (guarded so ticks never overlap). Handles `SIGTERM`/`SIGINT` for
-  clean shutdown on redeploy.
+- `env.ts`, validates required env vars at startup; missing/blank is fatal (`process.exit(1)`), same posture as `ingest/src/env.ts`.
+- `logger.ts` / `errors.ts` / `backoff.ts`, copied verbatim from `ingest/src/` (structured JSON logging, catch-value serialization, half-jitter exponential backoff).
+- `discovery-safety.ts`, `isPrivateHostname` / `isSafeDiscoveredUrl` (same-site required), duplicated from #100's `lib/sources/discovery.ts`, plus `isSafePublicUrl` (#107, no same-site requirement for SERP-discovered candidates, which are expected to be a different host). Every URL pulled out of a sitemap/feed/SERP result is untrusted third-party content and gets checked before being fetched.
+- `sitemap.ts` / `feed.ts` / `listing.ts`, trimmed re-implementations of #100's sitemap/feed/listing parsing, returning only `{ url, itemKey, title, publishedAt, bodyFromFeed }` per item, with conditional-GET support (ETag + Last-Modified) so an unchanged feed short-circuits on a `304` without re-parsing.
+- `fetch-body.ts`, `fetchArticleBody` is adaptive by default (#105): direct fetch first, then Bright Data Web Unlocker if that fails or comes back suspiciously short and `BRIGHTDATA_API_KEY`/`BRIGHTDATA_ZONE` are set, then (#107) a Bright Data SERP search for the same story elsewhere if `BRIGHTDATA_SERP_ZONE` is also set (tried unconditionally on any Tier 1+2 failure, with no paywall/blocker classification), then a feed/sitemap-derived teaser as the last resort. `source_configs.retrieval` is an optional operator override (`"feed"` / `"none"` / `"unlocker"`) that skips straight to that tier. Null (the default) runs the full adaptive chain, SERP fallback included. `source_configs.strip_phrases` is an optional, onboarding-measured JSON array of at most 12 non-blank verbatim boilerplate substrings (12–120 characters each). It is narrowed and ordered longest-first at fetch time; stripping itself adds no further global whitespace collapse beyond each extraction tier's normal representation. A configured strip that leaves less than usable article content throws so the item is retried rather than permanently marked seen. `null` is a legacy row awaiting automatic poller-triggered refresh; `[]` means that refresh measured a clean sample.
+- `db.ts`, the poller's own service-role Supabase client; reads `active` `source_configs`, asks the `unseen_item_keys` RPC for unseen links in batches of 500, and calls `record_seen_item` after delivery.
+- `deliver.ts` / `types.ts`, `postDelivery` (adapted from `ingest/src/deliver.ts`'s 200/401/422/500 handling) and `buildExternalId` (`sha256(canonicalUrl + "\n" + (publishedAt ?? ""))`, matching `/api/ingest`'s own schema comment), which supplies the delivery's `external_id` only. The seen-items dedup key is `itemKey` (the sitemap URL or feed guid) used by `unseen_item_keys` and `record_seen_item`.
+- `tick.ts`, `pollAllSources`, the per-tick orchestration: per-source isolation, one-time priming, an in-process memory of delivered or seeded links backed by the database's batched unseen check, and steady-state delivery capped at `POLLER_MAX_NEW_ITEMS_PER_TICK`.
+- `index.ts`, wires it together: loads env, runs an initial tick, then `setInterval` on `POLLER_TICK_INTERVAL_MS` (guarded so ticks never overlap). Handles `SIGTERM`/`SIGINT` for clean shutdown on redeploy.
 
 ## Fatal-exit boundary
 
-The worker exits (non-zero) on exactly two fatal states — everything else is caught per-source
-and logged:
+The worker exits (non-zero) on exactly two fatal states. Everything else is caught per-source and logged:
 
-1. **Bad env** (`env.ts`) — a required var missing/blank at startup.
-2. **401 from `/api/ingest`** (`deliver.ts`'s `FatalIngestError`) — a wrong `INGEST_SECRET` is
-   a config problem with no ambiguity.
+1. **Bad env** (`env.ts`), a required var missing/blank at startup.
+2. **401 from `/api/ingest`** (`deliver.ts`'s `FatalIngestError`), a wrong `INGEST_SECRET` is a config problem with no ambiguity.
 
-On any fatal exit, `process.exit(1)` — Railway's `restartPolicyType=ALWAYS` is the outer net.
+On any fatal exit, `process.exit(1)`. Railway's `restartPolicyType=ALWAYS` is the outer net.
 
 ## Env vars
 
-Read from `process.env`; never hardcoded, never committed (`.env.example` documents names
-only). Set them in Railway's variable UI/CLI, never in `railway.json`.
+Read from `process.env`; never hardcoded, never committed (`.env.example` documents names only). Set them in Railway's variable UI/CLI, never in `railway.json`.
 
 | Var | Required | Notes |
 | --- | --- | --- |
@@ -86,25 +41,19 @@ only). Set them in Railway's variable UI/CLI, never in `railway.json`.
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Service-role key for the same project. |
 | `INGEST_URL` | yes | The app's `/api/ingest` URL. |
 | `INGEST_SECRET` | yes | Must be byte-identical to the app's `INGEST_SECRET` (Vercel) and to `ingest/`'s own copy of the same value. |
-| `OPARAX_POLLER_USER_AGENT` | yes | e.g. `OparaxBot/0.1 (+https://oparax.ai/bot)` — a real, honest UA + contact URL, never a browser string. No default: a fabricated contact URL is worse than a required var. |
-| `BRIGHTDATA_API_KEY` | no | The adaptive chain's real Tier 2 fallback — used automatically whenever a direct fetch fails or looks blocked, for every source, not just ones with an explicit `retrieval` override. Unset means Tier 2 is skipped and a failed direct fetch falls straight to the teaser. |
+| `OPARAX_POLLER_USER_AGENT` | yes | e.g. `OparaxBot/0.1 (+https://oparax.ai/bot)`, a real, honest UA + contact URL, never a browser string. No default: a fabricated contact URL is worse than a required var. |
+| `BRIGHTDATA_API_KEY` | no | The adaptive chain's real Tier 2 fallback, used automatically whenever a direct fetch fails or looks blocked, for every source, not just ones with an explicit `retrieval` override. Unset means Tier 2 is skipped and a failed direct fetch falls straight to the teaser. |
 | `BRIGHTDATA_ZONE` | no | The Bright Data Web Unlocker zone name to request through. Required alongside `BRIGHTDATA_API_KEY` for Tier 2 to actually run. |
-| `BRIGHTDATA_SERP_ZONE` | no | The Bright Data SERP API zone name — a separate zone from `BRIGHTDATA_ZONE` (different product, same account/API key). Required alongside `BRIGHTDATA_API_KEY` for Tier 2b (#107) to actually run; unset means Tier 2b is skipped. |
+| `BRIGHTDATA_SERP_ZONE` | no | The Bright Data SERP API zone name, a separate zone from `BRIGHTDATA_ZONE` (different product, same account/API key). Required alongside `BRIGHTDATA_API_KEY` for Tier 2b (#107) to actually run; unset means Tier 2b is skipped. |
 | `POLLER_TICK_INTERVAL_MS` | no (default `45000`) | 30-60s window per the issue's amendment. |
 | `POLLER_MAX_NEW_ITEMS_PER_TICK` | no (default `20`) | Caps deliveries per source per tick; excess items are retried next tick. |
 
 ## Deploy checklist (operator)
 
-1. Railway → the existing "Oparax" workspace → New Service → point
-   `source.rootDirectory` at `/poller` — `poller/railway.json` then applies automatically:
-   `builder: RAILPACK`, `startCommand: pnpm start`, `restartPolicyType: ALWAYS`.
-2. Set `numReplicas = 1` (this worker's `source_seen_items` writes assume a single instance;
-   two replicas would double-process every tick), single production environment, no
-   `healthcheckPath` (no HTTP surface).
+1. Railway → the existing "Oparax" workspace → New Service → point `source.rootDirectory` at `/poller`. `poller/railway.json` then applies automatically: `builder: RAILPACK`, `startCommand: pnpm start`, `restartPolicyType: ALWAYS`.
+2. Set `numReplicas = 1`, single production environment, and no `healthcheckPath` (no HTTP surface). Exactly one instance is required for correctness, not just cost: delivery happens before `record_seen_item`, so two instances could deliver the same article twice, with `/api/ingest` deduplication as the only backstop. Do not raise the replica count until the poller claims items before delivery.
 3. Set the env vars above in Railway. `INGEST_SECRET` must match `ingest/`'s copy exactly.
-4. Deploy, then verify: `railway logs` should show periodic tick lines with source counts and
-   no `fatal` entries. Confirm a real onboarded source's next tick reaches `/api/ingest` (a
-   delivery log line + the corresponding `source_posts` row via the app's own observability).
+4. Deploy, then verify: `railway logs` should show periodic tick lines with source counts and no `fatal` entries. Confirm a real onboarded source's next tick reaches `/api/ingest` (a delivery log line + the corresponding `source_posts` row via the app's own observability).
 
 ## Local development
 
