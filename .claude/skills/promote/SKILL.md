@@ -13,7 +13,7 @@ model: inherit
 
 # Promote: one pull request, beta -> main, reviewed by the mentor
 
-Since 2026-08-18, `main` moves only through a pull request from `beta`, opened by this skill on the owner's word (about once a week) and reviewed by the owner's mentor, Haiguang Li (haiguang@deepintel.us). GitHub login for the review request: `HaiguangLiPRO` (set 2026-08-18; if the owner corrects it, change it here and nowhere else). `/ship` lands slices on `beta` and stops there; it never promotes.
+Since 2026-08-18, `main` moves only through a pull request from `beta`, opened by this skill on the owner's word (about once a week) and reviewed by the owner's mentor, Haiguang Li (haiguang@deepintel.us). GitHub login for the review request: `deepintel-admin` (resolved 2026-08-19 from the owner's email invite to haiguang@deepintel.us; if the owner corrects it, change it here and nowhere else). `/ship` lands slices on `beta` and stops there; it never promotes.
 
 ## 1. Preconditions, all with plain output
 
@@ -40,7 +40,7 @@ What shipped since the last promotion:
 
 Process and tooling: <k> commits (agent skills, workflow, docs); no product change.
 
-@HaiguangLiPRO this is the weekly training-plan review. Nothing to run or test: a comment or an approval is all that is needed. The owner merges after that.
+@deepintel-admin this is the weekly training-plan review. Nothing to run or test: a comment or an approval is all that is needed. The owner merges after that.
 ```
 
 No file names, no code, no commit hashes in the body. If there are no slice commits (only meta), say so plainly in the first list ("no product changes this week; process and tooling only").
@@ -48,7 +48,7 @@ No file names, no code, no commit hashes in the body. If there are no slice comm
 ## 3. Open it
 
 ```bash
-gh pr create --base main --head beta --title "Weekly promotion: beta -> main (<YYYY-MM-DD>)" --body-file .feature/promote-pr.md --reviewer HaiguangLiPRO
+gh pr create --base main --head beta --title "Weekly promotion: beta -> main (<YYYY-MM-DD>)" --body-file .feature/promote-pr.md --reviewer deepintel-admin
 ```
 
 If the reviewer request is rejected (the login is not a collaborator yet, or was changed), rerun without `--reviewer`; the `@` mention in the body still notifies him, and tell the owner in one line that the review request itself failed and why (add him as a collaborator: `gh api -X PUT repos/{owner}/{repo}/collaborators/<login> -f permission=pull`).
