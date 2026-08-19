@@ -1,0 +1,7 @@
+interface:
+  display_name: "promote"
+  short_description: "Weekly beta -> main pull request for mentor review"
+  default_prompt: "Use $promote to open this week's beta -> main pull request."
+
+policy:
+  allow_implicit_invocation: false

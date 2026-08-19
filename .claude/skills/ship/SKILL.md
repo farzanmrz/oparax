@@ -46,13 +46,9 @@ Show the complete `git status --short --untracked-files=all` (everything listed 
 
 The script owns the mechanics: inventory, staging, recovery snapshot, non-force push, one squash commit on `beta` with its trailers. On a conflict STOP: explain whether both intentions can coexist and offer exactly three resolutions (preserve both, prefer beta, prefer the feature); never a destructive reset.
 
-**Promotion to `main`:** immediately after the beta push,
+**No promotion to `main` here.** Since 2026-08-18 `main` moves only through the weekly pull request `/promote` (or `$promote` in Codex) opens from `beta` for the owner's mentor to review; ship never runs `promote.sh beta main` and never pushes `main`.
 
-```bash
-.claude/scripts/promote.sh beta main
-```
-
-The push IS the job. Never check, poll, or watch a deployment; the owner looks at the live app themselves.
+The beta push IS the job. Never check, poll, or watch a deployment; the owner looks at the live app themselves.
 
 Right after the push, delete the branch's scratch: `.feature/lanes/`, `.feature/*dispositions*.md`, `.feature/issue-body.md`, and any draft files. Keep only `.feature/plan-<N>*.md`, `.feature/amend-<N>-*.md`, and `.feature/fixes-<N>*.md` until finalize (below), which wipes the directory.
 
@@ -62,7 +58,7 @@ Do NOT run finalize and do NOT close the issue. End with:
 
 <exit-example>
 
-Shipped to beta (and promoted to main). Check production when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). Close the issue when satisfied, or tell me and I run the finalize sweep.
+Shipped to beta. Check beta.oparax.ai when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. Close the issue when satisfied, or tell me and I run the finalize sweep.
 
 </exit-example>
 
