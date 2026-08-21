@@ -1,7 +1,0 @@
-interface:
-  display_name: "YC Cofounder Matching"
-  short_description: "Audit, shortlist, and invite YC cofounders"
-  default_prompt: "Use $yc to LinkedIn-audit YC cofounder profiles, keep all tracking in chat, then save them or prepare and send personalized invitations I approve."
-
-policy:
-  allow_implicit_invocation: false
