@@ -15,14 +15,14 @@
 //      fire at fixed 50/75/100% of a *budget's* spend within a refresh period, not at an
 //      absolute remaining-credit figure.
 import { timingSafeEqual } from "node:crypto";
-import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const maxDuration = 60;
 
 /** Remaining AI Gateway credit, in dollars, at or below which this warns. Descending so the
- *  message names the tightest band crossed; each is a louder Sentry level than the last. */
+ *  message names the tightest band crossed and keeps the severity in the server log. */
 const CREDIT_THRESHOLDS: { atOrBelow: number; level: "warning" | "error" | "fatal" }[] = [
   { atOrBelow: 25, level: "fatal" },
   { atOrBelow: 50, level: "error" },
@@ -113,18 +113,15 @@ export async function POST(req: Request) {
 
   if (error) {
     console.error("spend-check: anomaly query failed", error);
-    Sentry.captureException(error, { tags: { area: "spend_watchdog" } });
+    reportServerLog("spend-check: anomaly query failed", { error, area: "spend_watchdog" });
     return new Response("anomaly query failed", { status: 500 });
   }
 
   const anomalies = (rows ?? []) as Anomaly[];
   for (const a of anomalies) {
-    // One Sentry issue per (stage, ref_id) rather than per detection, so a persistent runaway
-    // stays a single open issue that keeps incrementing instead of flooding the inbox.
-    Sentry.captureMessage(`spend anomaly: ${a.stage} ref=${a.ref_id}`, {
-      level: a.total_cost >= minCost * 4 ? "error" : "warning",
-      tags: { area: "spend_watchdog", stage: a.stage, outcome: "anomaly" },
-      extra: {
+    console.error(
+      `spend-check: ${a.stage} ref=${a.ref_id} calls=${a.calls} cost=$${a.total_cost} in ${windowHours}h`,
+      {
         refId: a.ref_id,
         calls: a.calls,
         totalCostUsd: a.total_cost,
@@ -132,9 +129,21 @@ export async function POST(req: Request) {
         firstCall: a.first_call,
         lastCall: a.last_call,
       },
-    });
-    console.error(
-      `spend-check: ${a.stage} ref=${a.ref_id} calls=${a.calls} cost=$${a.total_cost} in ${windowHours}h`,
+    );
+    // One issue per (stage, ref_id) rather than per detection, so a persistent runaway stays a
+    // single issue that keeps counting instead of flooding the inbox.
+    reportServerLog(
+      `spend anomaly: ${a.stage} ref=${a.ref_id}`,
+      {
+        area: "spend_watchdog",
+        stage: a.stage,
+        outcome: "anomaly",
+        refId: a.ref_id,
+        calls: a.calls,
+        totalCostUsd: a.total_cost,
+        windowHours,
+      },
+      { level: a.total_cost >= minCost * 4 ? "error" : "warning" },
     );
   }
 
@@ -145,20 +154,25 @@ export async function POST(req: Request) {
     )[0];
     if (crossed) {
       creditAlert = { balance: credit.balance, threshold: crossed.atOrBelow };
-      Sentry.captureMessage(
-        `AI Gateway credit low: $${credit.balance.toFixed(2)} remaining (at or below $${crossed.atOrBelow})`,
-        {
-          level: crossed.level,
-          tags: { area: "spend_watchdog", outcome: "credit_low" },
-          extra: {
-            balance: credit.balance,
-            totalUsed: credit.totalUsed,
-            threshold: crossed.atOrBelow,
-          },
-        },
-      );
       console.error(
         `spend-check: credit $${credit.balance.toFixed(2)} at or below $${crossed.atOrBelow}`,
+        {
+          balance: credit.balance,
+          totalUsed: credit.totalUsed,
+          threshold: crossed.atOrBelow,
+          level: crossed.level,
+        },
+      );
+      reportServerLog(
+        `AI Gateway credit low: at or below $${crossed.atOrBelow}`,
+        {
+          area: "spend_watchdog",
+          outcome: "credit_low",
+          balance: credit.balance,
+          totalUsed: credit.totalUsed,
+          threshold: crossed.atOrBelow,
+        },
+        { level: crossed.level },
       );
     }
   }

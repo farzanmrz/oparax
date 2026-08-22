@@ -18,7 +18,7 @@ ignoredBuiltDependencies:
 #   dompurify          <=3.4.12   detached-subtree XSS               (via mermaid, @streamdown/mermaid + streamdown)
 #   js-yaml            <4.3.1     quadratic CPU on !!omap            (via shadcn -> cosmiconfig, dev-only)
 #   mermaid            <11.16.1   DoS/prototype-pollution/CSS-inject (via @streamdown/mermaid + streamdown)
-#   fast-uri           <3.1.5     host confusion via backslash       (via @sentry/nextjs build tooling)
+#   fast-uri           <3.1.5     request smuggling                  (via shadcn -> @dotenvx/dotenvx and @modelcontextprotocol/sdk -> ajv, dev-only)
 # This is the file pnpm 10 reads them from — a `pnpm.overrides` block in package.json
 # is silently IGNORED (it warns on `pnpm audit`, not on install).
 # Drop an entry once its parent's own range clears the advisory — verify with `pnpm audit`.

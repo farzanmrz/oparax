@@ -25,6 +25,10 @@ export function ResetPasswordForm({
 
   return (
     <form action={formAction} className="space-y-4">
+      {/* Replay's session_recording.blockSelector blocks every hidden input and slimDOMOptions
+          drops script nodes, so token_hash cannot enter a snapshot through these fields or the
+          tokenHash hydration payload. If either token is moved off type="hidden" or rendered
+          visibly, that recording rule must follow it. */}
       {tokenHash && <input type="hidden" name="token_hash" value={tokenHash} />}
       {tokenType && <input type="hidden" name="type" value={tokenType} />}
       <div className="space-y-1.5">

@@ -1,10 +1,10 @@
 import "server-only";
 
-import * as Sentry from "@sentry/nextjs";
 import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { BEAT_GATE_PROMPT } from "@/lib/sysprompts";
@@ -55,7 +55,7 @@ async function insertBeatGateModelCall(
     if (meterError) throw meterError;
   } catch (error) {
     console.error("beat-gate: ledger insert failed", error);
-    Sentry.captureException(error);
+    reportServerLog("beat-gate: ledger insert failed", { error, scope: "beat_gate_ledger" });
   }
 }
 

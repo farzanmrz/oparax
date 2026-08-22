@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   fetchActiveSourceConfigs,
-  hasSeenItem,
+  fetchUnseenItemKeys,
   markItemSeen,
   markPrimed,
   type SourceConfigRow,
@@ -98,6 +98,7 @@ async function pollOneSource(
   env: PollerEnv,
   source: SourceConfigRow,
   caches: Map<string, ConditionalGetCache>,
+  seenKeys: Map<string, Set<string>>,
 ): Promise<void> {
   if (source.strip_phrases === null) {
     // Best-effort: a failed backfill (app-side outage, bad deploy) must not take the source's
@@ -120,6 +121,10 @@ async function pollOneSource(
   } = await fetchCandidateItems(source, env.userAgent, cache);
 
   let deliveredCount = 0;
+  // Best-effort process memory avoids asking the database about familiar keys on every tick.
+  // The database remains authoritative after a restart. Today all sets total only a few MB.
+  const sourceSeenKeys = seenKeys.get(source.id) ?? new Set<string>();
+  seenKeys.set(source.id, sourceSeenKeys);
 
   // A 304 means "nothing new since last tick" — the same thing zero deliveries means, so it
   // falls through to the staleness check below rather than returning early.
@@ -137,6 +142,7 @@ async function pollOneSource(
       // last_matched_at here, so a crash mid-loop resumes as a priming tick, not a storm.
       for (const item of candidates) {
         await seedSeenItem(client, source.id, item.itemKey);
+        sourceSeenKeys.add(item.itemKey);
       }
       await markPrimed(client, source.id);
       caches.set(source.id, nextCache);
@@ -149,10 +155,26 @@ async function pollOneSource(
 
     // Check seen status before applying the per-tick cap. Otherwise the same newest seen
     // entries consume the window on every tick and older unseen entries never reach delivery.
-    const unseen: FeedItem[] = [];
-    for (const item of byNewestFirst(candidates)) {
-      if (!(await hasSeenItem(client, source.id, item.itemKey))) unseen.push(item);
+    const orderedCandidates = byNewestFirst(candidates);
+    const unknownCandidates = orderedCandidates.filter((item) => !sourceSeenKeys.has(item.itemKey));
+    let unseenKeySet: Set<string>;
+    try {
+      unseenKeySet = await fetchUnseenItemKeys(
+        client,
+        source.id,
+        unknownCandidates.map((item) => item.itemKey),
+      );
+    } catch (e) {
+      logger.error("tick: unseen-key lookup failed", {
+        domain: source.domain,
+        error: describeError(e),
+      });
+      throw e;
     }
+    for (const item of unknownCandidates) {
+      if (!unseenKeySet.has(item.itemKey)) sourceSeenKeys.add(item.itemKey);
+    }
+    const unseen = orderedCandidates.filter((item) => unseenKeySet.has(item.itemKey));
     // Undated listing items retain extraction order under JavaScript's stable sort. If the cap
     // binds, later links wait for later ticks and can be lost if the page rotates first.
     const capped = unseen.slice(0, env.maxNewItemsPerSourceTick);
@@ -173,12 +195,13 @@ async function pollOneSource(
       // the next tick retries it — marking first would lose it permanently.
       await deliverNewItem(source, item, env);
       await markItemSeen(client, source.id, item.itemKey);
+      sourceSeenKeys.add(item.itemKey);
       deliveredCount++;
     }
 
     // Keep the prior validators while uncapped unseen entries remain. A 304 against the new
     // validator would otherwise hide the remainder forever; already-delivered entries are
-    // harmless on the refetch because hasSeenItem filters them above.
+    // harmless on the refetch because the seen-key memory filters them above.
     if (unseen.length <= env.maxNewItemsPerSourceTick) {
       caches.set(source.id, nextCache);
     }
@@ -197,6 +220,7 @@ export async function pollAllSources(
   client: SupabaseClient,
   env: PollerEnv,
   caches: Map<string, ConditionalGetCache>,
+  seenKeys: Map<string, Set<string>>,
 ): Promise<void> {
   // Cost observation, never a gate on delivery: this reads the ledger after the fact and
   // alerts. It runs before the poll loop only because that is the cheapest place to hang a
@@ -220,9 +244,17 @@ export async function pollAllSources(
   }
   logger.info("tick: starting", { sourceCount: sources.length });
 
+  const activeSourceIds = new Set(sources.map((source) => source.id));
+  for (const sourceId of caches.keys()) {
+    if (!activeSourceIds.has(sourceId)) caches.delete(sourceId);
+  }
+  for (const sourceId of seenKeys.keys()) {
+    if (!activeSourceIds.has(sourceId)) seenKeys.delete(sourceId);
+  }
+
   for (const source of sources) {
     try {
-      await pollOneSource(client, env, source, caches);
+      await pollOneSource(client, env, source, caches, seenKeys);
     } catch (e) {
       if (e instanceof FatalIngestError) throw e;
       logger.error("tick: source failed, continuing", {

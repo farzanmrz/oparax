@@ -19,10 +19,9 @@ export interface WebsiteDeliveryBody {
   raw?: unknown;
 }
 
-/** sha256(canonicalUrl + "\n" + (publishedAt ?? "")) — matches the literal comment on
- *  /api/ingest's zod schema ("sha256(canonicalUrl + \"\\n\" + publishedAtIso)"). Reused
- *  verbatim as source_seen_items.item_key too — one hash, two purposes (delivery
- *  idempotency key AND seen-item dedup key), no second hash function needed. */
+/** sha256(canonicalUrl + "\n" + (publishedAt ?? "")), matching the literal comment on
+ *  /api/ingest's zod schema ("sha256(canonicalUrl + \"\\n\" + publishedAtIso)"). This hash is
+ *  the delivery external_id only. The seen-items key is itemKey (sitemap URL or feed guid). */
 export function buildExternalId(canonicalUrl: string, publishedAt: string | null): string {
   return createHash("sha256")
     .update(`${canonicalUrl}\n${publishedAt ?? ""}`)

@@ -99,7 +99,8 @@ export async function POST(req: Request) {
     // forwarder's request is never held hostage to pricing, and inside this route's
     // maxDuration budget. Deliveries are the only place drafting spend originates, so
     // repairing here (each run also sweeps prior still-null rows, since the repair is idempotent
-    // over the newest 200) keeps the ledger converging without a cron.
+    // over the newest 200) keeps the ledger converging without a cron. Rows younger than 25s or
+    // whose gateway lookup gives no answer wait for a later delivery's sweep.
     //
     // The 25s sleep shares this SAME maxDuration budget as the already-awaited processDelivery
     // call above — a slow delivery (e.g. two full council runs) can return with very little of
@@ -134,8 +135,8 @@ export async function POST(req: Request) {
           console.log(`api/ingest: reconciled ${repaired} model_calls costs ($${totalUsd})`);
         }
       } catch (e) {
-        // Pricing repair must never look like a delivery failure — the rows keep their
-        // generation_id and the next delivery's sweep retries them.
+        // Pricing repair must never look like a delivery failure. Rows younger than 25s or whose
+        // gateway lookup gives no answer keep their generation_id for a later delivery's sweep.
         console.error("api/ingest: reconcileMissingCosts failed", e);
       }
     });

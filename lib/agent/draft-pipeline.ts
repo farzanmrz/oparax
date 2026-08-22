@@ -14,7 +14,6 @@
 // rows are written BEFORE the artifact rows (`drafts`) that point at them, so a failed
 // artifact write never loses the record of a call already paid for.
 import { randomUUID } from "node:crypto";
-import * as Sentry from "@sentry/nextjs";
 import { assignToStory } from "@/lib/agent/cluster";
 import { checkXPostable, resolveDeskTier } from "@/lib/agent/desk-config";
 import type { CouncilCall, SourceBrief } from "@/lib/agent/draft-council-run";
@@ -24,7 +23,7 @@ import { translateSourcePost } from "@/lib/agent/draft-translate";
 import { draftSourcePost } from "@/lib/agent/draft-write";
 import { normalizeWebsitePublisherMention } from "@/lib/agent/source-identity";
 import { validateSourceMedia } from "@/lib/agent/source-media";
-import { draftingConversationId } from "@/lib/observability/ai-conversation";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
@@ -290,8 +289,6 @@ async function draftForAgent(
   siteGuidance: { onBeat: string; offBeat: string } | null,
   options: { deadlineAt?: number; oversizedInput: boolean },
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
-  Sentry.setUser({ id: agent.owner_id });
-  Sentry.setConversationId(undefined);
   const { data: guide, error: guideError } = await admin
     .from("voice_guides")
     .select("guide_raw, guide_deploy, measured_facts")
@@ -341,10 +338,20 @@ async function draftForAgent(
         claimToken,
         OVERSIZED_EXCLUSION_REASON,
       );
-      Sentry.captureMessage("draft-pipeline: terminal oversized delivery", {
-        level: "warning",
-        tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized" },
+      console.warn("draft-pipeline: terminal oversized delivery", {
+        sourcePostId,
+        agentId: agent.id,
+        scope: "draft_oversized",
       });
+      reportServerLog(
+        "draft-pipeline: terminal oversized delivery",
+        {
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_oversized",
+        },
+        { distinctId: agent.owner_id },
+      );
       return {
         agentId: agent.id,
         winningModel: "",
@@ -447,10 +454,20 @@ async function draftForAgent(
         claimToken,
         SYNTHESIS_EXCLUSION_REASON,
       );
-      Sentry.captureMessage("draft-pipeline: terminal unusable synthesis", {
-        level: "warning",
-        tags: { sourcePostId, agentId: agent.id, scope: "draft_synthesis_unusable" },
+      console.warn("draft-pipeline: terminal unusable synthesis", {
+        sourcePostId,
+        agentId: agent.id,
+        scope: "draft_synthesis_unusable",
       });
+      reportServerLog(
+        "draft-pipeline: terminal unusable synthesis",
+        {
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_synthesis_unusable",
+        },
+        { distinctId: agent.owner_id },
+      );
       return {
         agentId: agent.id,
         winningModel: "",
@@ -530,8 +547,6 @@ async function draftForAgent(
       }
     }
 
-    Sentry.setConversationId(draftingConversationId(cluster.storyId));
-
     const { data: winningDraftId, error: winnerError } = await admin.rpc("insert_claimed_winner", {
       p_agent_id: agent.id,
       p_claim_token: claimToken,
@@ -554,9 +569,22 @@ async function draftForAgent(
           claimToken,
           SYNTHESIS_EXCLUSION_REASON,
         );
-        Sentry.captureException(winnerError, {
-          tags: { sourcePostId, agentId: agent.id, scope: "draft_synthesis_validation" },
+        console.error("draft-pipeline: synthesis validation failed", {
+          error: winnerError,
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_synthesis_validation",
         });
+        reportServerLog(
+          "draft-pipeline: synthesis validation failed",
+          {
+            error: winnerError,
+            sourcePostId,
+            agentId: agent.id,
+            scope: "draft_synthesis_validation",
+          },
+          { distinctId: agent.owner_id },
+        );
         return {
           agentId: agent.id,
           winningModel: "",
@@ -594,9 +622,22 @@ async function draftForAgent(
           claimToken,
           OVERSIZED_EXCLUSION_REASON,
         );
-        Sentry.captureException(err, {
-          tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized" },
+        console.error("draft-pipeline: oversized delivery", {
+          error: err,
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_oversized",
         });
+        reportServerLog(
+          "draft-pipeline: oversized delivery",
+          {
+            error: err,
+            sourcePostId,
+            agentId: agent.id,
+            scope: "draft_oversized",
+          },
+          { distinctId: agent.owner_id },
+        );
         return {
           agentId: agent.id,
           winningModel: "",
@@ -604,9 +645,22 @@ async function draftForAgent(
           skipped: completed ? "oversized" : "already_drafted",
         };
       } catch (completionError) {
-        Sentry.captureException(completionError, {
-          tags: { sourcePostId, agentId: agent.id, scope: "draft_oversized_completion" },
+        console.error("draft-pipeline: oversized completion failed", {
+          error: completionError,
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_oversized_completion",
         });
+        reportServerLog(
+          "draft-pipeline: oversized completion failed",
+          {
+            error: completionError,
+            sourcePostId,
+            agentId: agent.id,
+            scope: "draft_oversized_completion",
+          },
+          { distinctId: agent.owner_id },
+        );
       }
     }
     const { error: releaseError } = await admin
@@ -617,9 +671,22 @@ async function draftForAgent(
       .eq("claim_token", claimToken)
       .is("completed_at", null);
     if (releaseError) {
-      Sentry.captureException(releaseError, {
-        tags: { sourcePostId, agentId: agent.id, scope: "draft_claims_release" },
+      console.error("draft-pipeline: claim release failed", {
+        error: releaseError,
+        sourcePostId,
+        agentId: agent.id,
+        scope: "draft_claims_release",
       });
+      reportServerLog(
+        "draft-pipeline: claim release failed",
+        {
+          error: releaseError,
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_claims_release",
+        },
+        { distinctId: agent.owner_id },
+      );
     }
     if (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt) {
       throw new RetryableDeliveryError(

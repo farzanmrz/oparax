@@ -21,8 +21,8 @@ const GENERATION_URL = "https://ai-gateway.vercel.sh/v1/generation";
 // api-key or OIDC alike, so this raw fetch matches that contract rather than inventing its own.
 const GATEWAY_AUTH_METHOD_HEADER = "ai-gateway-auth-method";
 
-// Sentry captures errors on its own; this is a one-time, cheap signal for the specific "we can
-// never resolve a BYOK cost" gap below, logged at most once per server lifetime so a busy
+// This is a one-time, cheap server-log signal for the specific "we can never resolve a BYOK
+// cost" gap below, logged at most once per server lifetime so a busy
 // reconciliation loop doesn't spam stdout on every miss.
 let warnedNoAuth = false;
 
@@ -82,9 +82,11 @@ async function resolveGatewayAuth(): Promise<{
  * reading it alone would have recorded $0 for the entire council. Prefer a non-zero total_cost
  * (the non-BYOK path, where it is authoritative) and fall back to upstream.
  */
-async function fetchGenerationCost(generationId: string): Promise<number | null> {
+type GenerationCostAnswer = { answered: true; cost: number | null } | { answered: false };
+
+async function fetchGenerationCost(generationId: string): Promise<GenerationCostAnswer> {
   const auth = await resolveGatewayAuth();
-  if (!auth) return null;
+  if (!auth) return { answered: false };
   try {
     const res = await fetch(`${GENERATION_URL}?id=${encodeURIComponent(generationId)}`, {
       headers: {
@@ -93,15 +95,19 @@ async function fetchGenerationCost(generationId: string): Promise<number | null>
       },
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) return null;
+    if (res.status === 404) return { answered: true, cost: null };
+    if (!res.ok) return { answered: false };
     const body = (await res.json()) as {
       data?: { total_cost?: unknown; upstream_inference_cost?: unknown };
     };
     const total = toFiniteOrNull(body.data?.total_cost);
-    if (total != null && total > 0) return total;
-    return toFiniteOrNull(body.data?.upstream_inference_cost) ?? total;
+    if (total != null && total > 0) return { answered: true, cost: total };
+    return {
+      answered: true,
+      cost: toFiniteOrNull(body.data?.upstream_inference_cost) ?? total,
+    };
   } catch {
-    return null;
+    return { answered: false };
   }
 }
 
@@ -128,7 +134,8 @@ export async function resolveGatewayCost(result: {
   // this stays a single cheap attempt and the miss is repaired later by
   // `reconcileMissingCosts()`, which is what `model_calls.generation_id` is stored for.
   if ((costUsd == null || costUsd === 0) && generationId) {
-    costUsd = await fetchGenerationCost(generationId);
+    const answer = await fetchGenerationCost(generationId);
+    costUsd = answer.answered ? answer.cost : null;
   }
   return { costUsd, generationId };
 }
@@ -142,9 +149,10 @@ export async function resolveGatewayCost(result: {
  * cost null — and `generation_id` is the handle that makes it repairable. Anthropic and OpenAI
  * report cost in metadata and never need this.
  *
- * Idempotent and safe to run repeatedly: it only touches rows that still have no usable cost and
- * do have a generation id, and it leaves a row alone when the lookup still comes back empty
- * (a genuinely-free call, or one whose usage event has aged out).
+ * A pending row waits until it is at least 25 seconds old, then a later delivery's sweep checks it.
+ * The row remains pending when the gateway gives no answer, and stops retrying only after a 2xx or
+ * 404 answer. A row with `cost_checked_at` set and `cost_usd` null means the gateway answered but
+ * published no price.
  *
  * KNOWN GAP, investigated and deliberately NOT fixed here: this repairs `model_calls.cost_usd`
  * only. The matching `usage_events` row (the "kind": "clustering" | "drafting" row
@@ -174,6 +182,8 @@ export async function reconcileMissingCosts(
     .select("id, generation_id, cost_usd")
     .not("generation_id", "is", null)
     .or("cost_usd.is.null,cost_usd.eq.0")
+    .is("cost_checked_at", null)
+    .lt("created_at", new Date(Date.now() - 25_000).toISOString())
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -183,16 +193,37 @@ export async function reconcileMissingCosts(
   );
   let repaired = 0;
   let totalUsd = 0;
+  let unanswered = 0;
   for (const row of rows) {
-    const cost = await fetchGenerationCost(row.generation_id);
-    if (cost == null || cost === 0) continue;
+    const answer = await fetchGenerationCost(row.generation_id);
+    if (!answer.answered) {
+      unanswered += 1;
+      continue;
+    }
+    const { cost } = answer;
+    const checkedAt = new Date().toISOString();
     const { error: updateError } = await admin
       .from("model_calls")
-      .update({ cost_usd: cost })
+      .update(
+        cost != null && cost > 0
+          ? { cost_usd: cost, cost_checked_at: checkedAt }
+          : { cost_checked_at: checkedAt },
+      )
       .eq("id", row.id);
-    if (updateError) continue;
+    if (updateError) {
+      console.warn("gateway-cost: cost_checked_at update failed", {
+        id: row.id,
+        generationId: row.generation_id,
+        error: updateError.message,
+      });
+      continue;
+    }
+    if (cost == null || cost <= 0) continue;
     repaired += 1;
     totalUsd += cost;
+  }
+  if (unanswered > 0) {
+    console.log(`gateway-cost: ${unanswered} generation cost lookups received no answer`);
   }
   return { examined: rows.length, repaired, totalUsd };
 }

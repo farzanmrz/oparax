@@ -357,6 +357,7 @@ export type Database = {
       };
       model_calls: {
         Row: {
+          cost_checked_at: string | null;
           cost_usd: number | null;
           created_at: string;
           generation_id: string | null;
@@ -372,6 +373,7 @@ export type Database = {
           usage: Json | null;
         };
         Insert: {
+          cost_checked_at?: string | null;
           cost_usd?: number | null;
           created_at?: string;
           generation_id?: string | null;
@@ -387,6 +389,7 @@ export type Database = {
           usage?: Json | null;
         };
         Update: {
+          cost_checked_at?: string | null;
           cost_usd?: number | null;
           created_at?: string;
           generation_id?: string | null;
@@ -1036,6 +1039,10 @@ export type Database = {
           p_url: string;
         };
         Returns: string;
+      };
+      unseen_item_keys: {
+        Args: { p_item_keys: string[]; p_source_config_id: string };
+        Returns: string[];
       };
       upsert_claimed_exclusion: {
         Args: {

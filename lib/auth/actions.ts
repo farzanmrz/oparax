@@ -7,7 +7,6 @@
 // on failure, so the pages' useActionState forms can show feedback inline
 // without navigating away. Success paths still redirect().
 
-import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
 import { mapAuthError } from "@/lib/auth-errors";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -35,13 +34,9 @@ export interface AuthFormState {
 }
 
 /**
- * Graceful auth failures return form state, so they never reach Sentry's
- * unhandled-error hooks. Only operationally actionable failures become Sentry
- * events: an ordinary wrong password or duplicate signup is expected user
- * input, and reporting either as an error would page us on normal behavior.
- * Captured events remain deliberately generic: the operation + normalized
- * class are searchable, while passwords, emails, Supabase's raw message, and
- * session data never leave the action.
+ * Graceful auth failures return form state. Only operationally actionable failures are logged:
+ * an ordinary wrong password or duplicate signup is expected user input. Logs stay generic so
+ * passwords, emails, Supabase's raw message, and session data never leave the action.
  */
 function captureAuthFailure(operation: "login" | "signup", rawMessage: string) {
   const mappedMessage = mapAuthError(rawMessage);
@@ -54,16 +49,11 @@ function captureAuthFailure(operation: "login" | "signup", rawMessage: string) {
           ? "already_registered"
           : "unexpected";
 
-  Sentry.logger.warn("Authentication operation failed", { operation, failure_class: failureClass });
-
   if (failureClass === "invalid_credentials" || failureClass === "already_registered") return;
 
-  Sentry.withScope((scope) => {
-    scope.setLevel(failureClass === "rate_limited" ? "warning" : "error");
-    scope.setFingerprint(["oparax-auth-failure", operation, failureClass]);
-    scope.setTag("oparax.auth.operation", operation);
-    scope.setTag("oparax.auth.failure_class", failureClass);
-    Sentry.captureMessage("Oparax authentication operation failed");
+  console.warn("auth: operation failed", {
+    operation,
+    failure_class: failureClass,
   });
 }
 

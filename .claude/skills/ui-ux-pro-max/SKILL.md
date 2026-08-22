@@ -15,7 +15,7 @@ not found".
   caller, was retired with all in-flow browser runs; query this manually
   when reviewing UI.
 * **A source of rules to cite, not an aesthetic authority:** the binding
-  yardstick for any UI review in this repo is the spec's own stated design
+  yardstick for any UI review in this repo is the plan's own stated design
   intent plus root `DESIGN.md`.
 * **`--design-system` is inert; don't reach for it.** The design-generation
   corpus (fonts, colors, typography, styles, products, icons, charts, landing

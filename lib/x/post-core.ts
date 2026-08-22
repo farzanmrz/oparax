@@ -8,8 +8,9 @@
 // session, proves RLS ownership, then calls this; `lib/agent/draft-pipeline.ts`'s auto-post
 // path already resolves ownerId server-side with no user session available, and imports this
 // module directly — never through the Action surface.
-import * as Sentry from "@sentry/nextjs";
+
 import { checkXPostable, resolveDeskTier, xUnpostableMessage } from "@/lib/agent/desk-config";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createTweet, refreshTokens } from "@/lib/x/api";
 import { getXAccount, updateXTokens } from "@/lib/x/store";
@@ -160,12 +161,23 @@ export async function publishDraftToXForOwner(
     const status = httpStatusOf(error);
     if (status !== null && status >= 400 && status < 500) {
       await releaseClaim(admin, draftId);
-      // Definitive failure — release + surface + unsampled Sentry capture is the frozen
-      // three-leg protocol (AGENTS.md); error capture is unsampled regardless of
-      // tracesSampleRate, so this is always recorded, not subject to the 10% trace sample.
-      Sentry.captureException(error, {
-        tags: { draftId, ownerId, xStatus: status },
+      // Definitive failure: release the claim, log the context, and surface the response.
+      console.error("x-post: definitive create failure", {
+        error,
+        draftId,
+        ownerId,
+        xStatus: status,
       });
+      reportServerLog(
+        "x-post: definitive create failure",
+        {
+          error,
+          draftId,
+          ownerId,
+          xStatus: status,
+        },
+        { distinctId: ownerId },
+      );
       if (status === 401) {
         return {
           ok: false,
