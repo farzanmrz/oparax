@@ -1,9 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { resolveDeskTier } from "@/lib/agent/desk-config";
 import { insertModelCalls, stampUsageEvent } from "@/lib/agent/draft-pipeline";
 import { draftSourcePost } from "@/lib/agent/draft-write";
+import { reconcileMissingCosts } from "@/lib/agent/gateway-cost";
 import {
   GEMINI_WRITE_CLAIM_STALE_MS,
   GEMINI_WRITE_TIMEOUT_MS,
@@ -92,16 +94,11 @@ export async function draftStory(draftId: string): Promise<DraftStoryResult> {
   }
 
   const admin = createAdminClient();
-  const claimedAt = new Date().toISOString();
   const staleBefore = new Date(Date.now() - GEMINI_WRITE_CLAIM_STALE_MS).toISOString();
-  const { data: claimed, error: claimError } = await admin
-    .from("drafts")
-    .update({ draft_requested_at: claimedAt })
-    .eq("id", story.id)
-    .eq("is_winner", true)
-    .is("model_call_id", null)
-    .or(`draft_requested_at.is.null,draft_requested_at.lt.${staleBefore}`)
-    .select("id");
+  const { data: claimed, error: claimError } = await admin.rpc("claim_story_draft", {
+    p_draft_id: story.id,
+    p_stale_cutoff: staleBefore,
+  });
   if (claimError) {
     reportQueryError(claimError, "drafts.acquire_claim", {
       ...context,
@@ -109,7 +106,7 @@ export async function draftStory(draftId: string): Promise<DraftStoryResult> {
     });
     return { ok: false, error: GENERIC };
   }
-  if (!claimed?.length) {
+  if (claimed !== true) {
     return { ok: false, error: "This story is already being drafted." };
   }
 
@@ -255,6 +252,19 @@ export async function draftStory(draftId: string): Promise<DraftStoryResult> {
       return { ok: false, error: GENERIC };
     }
 
+    after(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 25_000));
+      try {
+        await reconcileMissingCosts(admin);
+      } catch (error) {
+        reportServerException(error, {
+          distinctId: user.id,
+          tags: { scope: "draft_button", operation: "reconcile_missing_costs" },
+          extra: { draftId: story.id, modelCallId },
+        });
+      }
+    });
+
     if (!written.verdict) {
       reportServerLog(
         "draft-actions: unusable draft",
@@ -272,13 +282,10 @@ export async function draftStory(draftId: string): Promise<DraftStoryResult> {
     }
 
     const text = written.call.output ?? written.verdict.draft;
-    const { data: attached, error: attachError } = await admin
-      .from("drafts")
-      .update({ model_call_id: modelCallId })
-      .eq("id", story.id)
-      .eq("is_winner", true)
-      .is("model_call_id", null)
-      .select("id");
+    const { data: attached, error: attachError } = await admin.rpc("attach_story_draft", {
+      p_draft_id: story.id,
+      p_model_call_id: modelCallId,
+    });
     if (attachError) {
       reportQueryError(attachError, "drafts.attach", {
         ...context,
@@ -288,7 +295,7 @@ export async function draftStory(draftId: string): Promise<DraftStoryResult> {
       await releaseClaim();
       return { ok: false, error: GENERIC };
     }
-    if (!attached?.length) {
+    if (attached !== true) {
       reportQueryError(new Error("Draft attach lost its compare-and-set"), "drafts.attach_lost", {
         ...context,
         agentId: story.agent_id,

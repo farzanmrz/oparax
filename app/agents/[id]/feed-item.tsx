@@ -149,7 +149,7 @@ export function FeedItemCard({
         postedAt: next.postedAt,
         postingClaimedAt: next.postingClaimedAt,
         postedUrl: next.postedUrl,
-        draftText: next.draftText,
+        draftText: next.draftText ?? current.draftText,
         body: next.body,
       };
     });

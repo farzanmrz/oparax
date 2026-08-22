@@ -61,10 +61,10 @@ export function DraftButton({
         ) : null}
       </div>
       {isPending ? (
-        <section className="animate-[op-skeleton_1.5s_ease-in-out_infinite] space-y-3 rounded-b-lg border-t border-[var(--draft-border-top)] bg-draft-bg px-[14px] py-4 desk:px-6">
-          <div className="h-4 w-11/12 rounded-md bg-white/10" />
-          <div className="h-4 w-3/4 rounded-md bg-white/10" />
-          <div className="h-4 w-2/5 rounded-md bg-white/10" />
+        <section className="space-y-3 rounded-b-lg border-t border-[var(--draft-border-top)] bg-draft-bg px-[14px] py-4 desk:px-6">
+          <div className="h-4 w-11/12 animate-[op-skeleton_1.5s_ease-in-out_infinite] rounded-md bg-white/10" />
+          <div className="h-4 w-3/4 animate-[op-skeleton_1.5s_ease-in-out_infinite] rounded-md bg-white/10" />
+          <div className="h-4 w-2/5 animate-[op-skeleton_1.5s_ease-in-out_infinite] rounded-md bg-white/10" />
         </section>
       ) : null}
       <div className="desk:hidden">

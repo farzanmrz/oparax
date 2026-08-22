@@ -968,6 +968,10 @@ export type Database = {
         };
         Returns: string;
       };
+      attach_story_draft: {
+        Args: { p_draft_id: string; p_model_call_id: string };
+        Returns: boolean;
+      };
       claim_draft: {
         Args: {
           p_agent_id: string;
@@ -975,6 +979,10 @@ export type Database = {
           p_source_post_id: string;
           p_stale_cutoff: string;
         };
+        Returns: boolean;
+      };
+      claim_story_draft: {
+        Args: { p_draft_id: string; p_stale_cutoff: string };
         Returns: boolean;
       };
       claim_strip_phrase_refresh_attempt: {
