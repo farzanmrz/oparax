@@ -2,8 +2,10 @@
 # Transactional feature/bugfix shipping. Lands ft/<issue> or bf/<issue> (the
 # prefix is taken from the branch HEAD sits on) onto beta by default, or onto
 # main with --onto main (the bf hotfix path), through a temporary detached
-# worktree. A separate --finalize invocation closes the issue and performs
-# conservative old-branch cleanup after the requested promotion has completed.
+# worktree. A separate --finalize invocation closes the issue and wipes the
+# .feature/ scratch after the requested promotion has completed. It never
+# deletes a branch: ft/<issue> and bf/<issue> branches are the owner's to remove,
+# locally and on the remote, whenever they choose.
 #
 # Usage:
 #   ship.sh [--onto beta|main] <issue-number> "<commit message>"
@@ -117,120 +119,13 @@ show_conflict_report() {
 
 # Trailer lookups intentionally walk only origin/beta. Pre-Phase-1 (issue #70)
 # ships recorded their Feature-Branch/Feature-Source-Tip trailers on origin/dev;
-# those are out of scope for --finalize and cleanup_old_feature_branches by
-# design — dev-only history predates the beta cutover and is not swept
-# automatically. Nothing open today has such history (see issue #70's own
-# branch-state check), so this costs no live recovery branch.
+# those are out of scope for --finalize by design — dev-only history predates
+# the beta cutover.
 find_recorded_tip() {
   recorded_branch="$1"
   git log --first-parent refs/remotes/origin/beta \
     --format='%H%x09%(trailers:key=Feature-Branch,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Source-Tip,valueonly,separator=%x2C)' \
     | awk -F '\t' -v wanted="$recorded_branch" '$2 == wanted && $3 != "" { print $3; exit }'
-}
-
-find_recorded_ship_commit() {
-  recorded_branch="$1"
-  recorded_issue="$2"
-  recorded_source_tip="$3"
-  git log --first-parent refs/remotes/origin/beta \
-    --format='%H%x09%(trailers:key=Feature-Issue,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Branch,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Source-Tip,valueonly,separator=%x2C)' \
-    | awk -F '\t' \
-      -v wanted_issue="#$recorded_issue" \
-      -v wanted_branch="$recorded_branch" \
-      -v wanted_tip="$recorded_source_tip" \
-      '$2 == wanted_issue && $3 == wanted_branch && $4 == wanted_tip { print $1; exit }'
-}
-
-branch_in_worktree() {
-  candidate="$1"
-  git worktree list --porcelain | grep -Fqx "branch refs/heads/$candidate"
-}
-
-cleanup_old_feature_branches() {
-  active_branch="$1"
-  echo "ship: checking older ft/<number> and bf/<number> recovery branches conservatively." >&2
-
-  git fetch --prune origin beta >&2
-  candidates="$({
-    git for-each-ref --format='%(refname:short)' refs/heads/ft/ refs/heads/bf/
-    git for-each-ref --format='%(refname:short)' refs/remotes/origin/ft/ refs/remotes/origin/bf/
-  } | sed 's#^origin/##' | grep -E '^(ft|bf)/[0-9]+$' | sort -u || true)"
-
-  [ -n "$candidates" ] || {
-    echo "ship: no older feature recovery branches found." >&2
-    return 0
-  }
-
-  while IFS= read -r candidate; do
-    [ -n "$candidate" ] || continue
-    if [ "$candidate" = "$active_branch" ]; then
-      echo "ship: retain $candidate (the just-shipped recovery generation)." >&2
-      continue
-    fi
-    case "$candidate" in
-      main | dev | beta)
-        echo "ship: skip protected branch name $candidate." >&2
-        continue
-        ;;
-    esac
-    if branch_in_worktree "$candidate"; then
-      echo "ship: skip $candidate (checked out in a worktree)." >&2
-      continue
-    fi
-
-    candidate_issue="${candidate#*/}"
-    if ! issue_state="$(gh issue view "$candidate_issue" --json state --jq .state 2>/dev/null)"; then
-      echo "ship: skip $candidate (could not verify GitHub issue state)." >&2
-      continue
-    fi
-    if [ "$issue_state" != "CLOSED" ]; then
-      echo "ship: skip $candidate (issue #$candidate_issue is not closed)." >&2
-      continue
-    fi
-
-    recorded_tip="$(find_recorded_tip "$candidate" || true)"
-    if [ -z "$recorded_tip" ]; then
-      echo "ship: skip $candidate (origin/beta has no matching Feature-Branch and Feature-Source-Tip trailers)." >&2
-      continue
-    fi
-
-    local_tip="$(git rev-parse --verify --quiet "refs/heads/$candidate" 2>/dev/null || true)"
-    if ! remote_tip="$(remote_ref_sha origin "refs/heads/$candidate")"; then
-      echo "ship: skip $candidate (could not query its live remote ref)." >&2
-      continue
-    fi
-    if [ -n "$local_tip" ] && [ -n "$remote_tip" ] && [ "$local_tip" != "$remote_tip" ]; then
-      echo "ship: skip $candidate (local and remote tips differ)." >&2
-      continue
-    fi
-    actual_tip="${remote_tip:-$local_tip}"
-    if [ -z "$actual_tip" ]; then
-      echo "ship: skip $candidate (only a stale tracking ref remains)." >&2
-      continue
-    fi
-    if [ "$actual_tip" != "$recorded_tip" ]; then
-      echo "ship: skip $candidate (its tip changed after the recorded ship)." >&2
-      continue
-    fi
-
-    # Delete the remote first with an exact lease so a concurrent branch update
-    # turns cleanup into a harmless rejection rather than lost work.
-    if [ -n "$remote_tip" ]; then
-      if ! git push --force-with-lease="refs/heads/$candidate:$remote_tip" origin ":refs/heads/$candidate" >&2; then
-        echo "ship: skip local deletion of $candidate (leased remote deletion was rejected)." >&2
-        continue
-      fi
-    fi
-    if [ -n "$local_tip" ]; then
-      if ! git update-ref -d "refs/heads/$candidate" "$local_tip"; then
-        echo "ship: local $candidate moved during cleanup; its ref was retained." >&2
-        continue
-      fi
-    fi
-    echo "ship: removed verified old recovery branch $candidate." >&2
-  done <<EOF
-$candidates
-EOF
 }
 
 if [ "$finalize" = "true" ]; then
@@ -255,8 +150,6 @@ if [ "$finalize" = "true" ]; then
   }
   gh issue close "$issue" --comment "Shipped to beta and completed the authorized release path." >&2
 
-  cleanup_old_feature_branches "$branch"
-
   # Wipe the scratch contents but KEEP the tracked .feature/.gitignore: that one
   # file is what hides every scratch artifact from git. Deleting it here meant
   # the next feature's .feature/ landed as an untracked directory, tripping
@@ -266,7 +159,7 @@ if [ "$finalize" = "true" ]; then
   fi
   rm -rf .superpowers
   rmdir .claude/worktrees 2>/dev/null || true
-  echo "Finalized $branch; retained it as the current recovery generation."
+  echo "Finalized $branch; every ft/<issue> and bf/<issue> branch is left in place — delete them yourself when you want them gone."
   exit 0
 fi
 

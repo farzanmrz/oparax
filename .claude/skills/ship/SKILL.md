@@ -62,9 +62,10 @@ Shipped to beta. Check it on localhost when you get a chance; slices touching th
 
 </exit-example>
 
-On the owner's word (or their issue-close), run `.claude/scripts/ship.sh --finalize <issue#>`: it proves the recovery tips still match `origin/beta`, closes the issue if still open, and sweeps `.feature/`.
+On the owner's word (or their issue-close), run `.claude/scripts/ship.sh --finalize <issue#>`: it proves the recovery tips still match `origin/beta`, closes the issue if still open, and sweeps `.feature/`. It deletes no branch.
 
 ## Hard rules
 
 * Feature slices always run on `ft/<issue#>`; app code never lands directly on `beta` or `main`. One carve-out: owner-directed micro-edits to instruction files and docs (`.claude/**`, `AGENTS.md`, `docs/**`) land on `beta` directly.
 * `main` moves only through the ordered beta-to-main promotion; never force-push protected branches.
+* **No stage of this flow ever deletes a branch.** Ship ships; finalize closes the issue and sweeps `.feature/`. Every `ft/<issue#>` and `bf/<issue#>` branch stays until the owner removes it themselves, locally and on the remote. Old branches accumulating is the intended state, never a condition to tidy up: do not add a sweep, do not offer one, and do not delete a branch as a side effect of any other command.
