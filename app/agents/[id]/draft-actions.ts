@@ -113,22 +113,25 @@ export async function draftStory(draftId: string): Promise<DraftStoryResult> {
     return { ok: false, error: "This story is already being drafted." };
   }
 
+  // Hoisted function declarations do not keep the null-narrowing on `story`; bind the ids first.
+  const claimedStoryId = story.id;
+  const claimedAgentId = story.agent_id;
   async function releaseClaim() {
     try {
       const { error } = await admin
         .from("drafts")
         .update({ draft_requested_at: null })
-        .eq("id", story.id)
+        .eq("id", claimedStoryId)
         .is("model_call_id", null);
       if (!error) return;
       reportQueryError(error, "drafts.release_claim", {
         ...context,
-        agentId: story.agent_id,
+        agentId: claimedAgentId,
       });
     } catch (error) {
       reportQueryError(error, "drafts.release_claim", {
         ...context,
-        agentId: story.agent_id,
+        agentId: claimedAgentId,
       });
     }
   }
