@@ -16,6 +16,7 @@
 //      absolute remaining-credit figure.
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const maxDuration = 60;
@@ -112,6 +113,7 @@ export async function POST(req: Request) {
 
   if (error) {
     console.error("spend-check: anomaly query failed", error);
+    reportServerLog("spend-check: anomaly query failed", { error, area: "spend_watchdog" });
     return new Response("anomaly query failed", { status: 500 });
   }
 
@@ -127,6 +129,21 @@ export async function POST(req: Request) {
         firstCall: a.first_call,
         lastCall: a.last_call,
       },
+    );
+    // One issue per (stage, ref_id) rather than per detection, so a persistent runaway stays a
+    // single issue that keeps counting instead of flooding the inbox.
+    reportServerLog(
+      `spend anomaly: ${a.stage} ref=${a.ref_id}`,
+      {
+        area: "spend_watchdog",
+        stage: a.stage,
+        outcome: "anomaly",
+        refId: a.ref_id,
+        calls: a.calls,
+        totalCostUsd: a.total_cost,
+        windowHours,
+      },
+      { level: a.total_cost >= minCost * 4 ? "error" : "warning" },
     );
   }
 
@@ -145,6 +162,17 @@ export async function POST(req: Request) {
           threshold: crossed.atOrBelow,
           level: crossed.level,
         },
+      );
+      reportServerLog(
+        `AI Gateway credit low: at or below $${crossed.atOrBelow}`,
+        {
+          area: "spend_watchdog",
+          outcome: "credit_low",
+          balance: credit.balance,
+          totalUsed: credit.totalUsed,
+          threshold: crossed.atOrBelow,
+        },
+        { level: crossed.level },
       );
     }
   }

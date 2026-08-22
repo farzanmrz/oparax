@@ -18,6 +18,7 @@
 // spend claim, and a 5-lookups-per-handle-per-day pre-flight cap) was deleted outright: it
 // optimized a case that does not occur, and it cost four pipeline gates, a table, and a failure
 // mode that could not be diagnosed after the fact.
+import { reportServerException, reportServerMessage } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeHandle, X_HANDLE_RE } from "@/lib/x/handle";
@@ -344,6 +345,11 @@ async function runExtractionSpendPhaseInner(
         corpusError,
         { agentId },
       );
+      reportServerException(corpusError, {
+        tags: { stage: "voice_extraction", error_code: "corpus_failed" },
+        extra: { agentId, handle: reporterHandle },
+        distinctId: ownerId,
+      });
       await finishRun(agentId, { status: "failed", errorCode: "corpus_failed" });
       return { status: "corpus_failed" };
     }
@@ -362,6 +368,11 @@ async function runExtractionSpendPhaseInner(
         `runExtractionSpendPhase: @${reporterHandle}'s corpus has ${corpus.length} raw posts ` +
           `but zero with usable text — refusing to bill a malformed extraction`,
       );
+      reportServerMessage("voice extraction: empty representative corpus", {
+        tags: { stage: "voice_extraction", error_code: "empty_corpus" },
+        extra: { agentId, handle: reporterHandle, rawPosts: corpus.length },
+        distinctId: ownerId,
+      });
       await finishRun(agentId, { status: "failed", errorCode: "empty_corpus" });
       return { status: "corpus_failed" };
     }
@@ -376,6 +387,11 @@ async function runExtractionSpendPhaseInner(
         corpusStoreError,
         { agentId },
       );
+      reportServerException(corpusStoreError, {
+        tags: { stage: "voice_extraction", error_code: "corpus_store_failed" },
+        extra: { agentId, handle: reporterHandle },
+        distinctId: ownerId,
+      });
     }
 
     try {
@@ -416,6 +432,11 @@ async function runExtractionSpendPhaseInner(
         tierError,
         { agentId },
       );
+      reportServerException(tierError, {
+        tags: { stage: "voice_extraction", error_code: "tier_store_failed" },
+        extra: { agentId, handle: reporterHandle },
+        distinctId: ownerId,
+      });
     }
 
     // The model reads the corpus and decides scope BEFORE it writes anything, so the run row
@@ -443,6 +464,11 @@ async function runExtractionSpendPhaseInner(
               exclusionError,
               { agentId },
             );
+            reportServerException(exclusionError, {
+              tags: { stage: "voice_extraction", error_code: "corpus_exclusion_store_failed" },
+              extra: { agentId, handle: reporterHandle },
+              distinctId: ownerId,
+            });
           }
         }
       };
@@ -487,6 +513,12 @@ async function runExtractionSpendPhaseInner(
           handle: reporterHandle,
           costUsd: ext.costUsd ?? null,
           finishReason: ext.finishReason ?? null,
+        });
+        reportServerException(ext.streamError, {
+          tags: { stage: "voice_extraction", error_code: "extraction_stream_retried" },
+          extra: { agentId, handle: reporterHandle, costUsd: ext.costUsd ?? null },
+          distinctId: ownerId,
+          level: "warning",
         });
         const remainingMs = ROUTE_BUDGET_MS - RETRY_BUFFER_MS - (Date.now() - requestStartedAtMs);
         if (remainingMs >= RETRY_FLOOR_MS) {
@@ -595,6 +627,21 @@ async function runExtractionSpendPhaseInner(
         thinkingTokens: ext?.thinkingTokens ?? null,
         streamError: ext?.streamError !== undefined ? describeStreamError(ext.streamError) : null,
       });
+      // This phase never throws to its caller by design, so without an explicit report the single
+      // most expensive failure in the product (a billed extraction that produced nothing) would be
+      // a log line with no grouping. costUsd rides along: "how much has this cost" is question one.
+      reportServerException(e, {
+        tags: { stage: "voice_extraction", error_code: "extraction_failed" },
+        extra: {
+          agentId,
+          handle: reporterHandle,
+          costUsd: ext?.costUsd ?? null,
+          finishReason: ext?.finishReason ?? null,
+          guideChars: ext?.guideRaw.length ?? null,
+          streamError: ext?.streamError !== undefined ? describeStreamError(ext.streamError) : null,
+        },
+        distinctId: ownerId,
+      });
       await finishRun(agentId, {
         status: "failed",
         costUsd: ext?.costUsd ?? null,
@@ -604,6 +651,11 @@ async function runExtractionSpendPhaseInner(
     }
   } catch (e) {
     console.error(`runExtractionSpendPhase: failed for @${reporterHandle}`, e, { agentId });
+    reportServerException(e, {
+      tags: { stage: "voice_extraction", error_code: "internal_error" },
+      extra: { agentId, handle: reporterHandle },
+      distinctId: ownerId,
+    });
     await finishRun(agentId, { status: "failed", errorCode: "internal_error" });
     return { status: "failed" };
   }

@@ -23,6 +23,7 @@ import { translateSourcePost } from "@/lib/agent/draft-translate";
 import { draftSourcePost } from "@/lib/agent/draft-write";
 import { normalizeWebsitePublisherMention } from "@/lib/agent/source-identity";
 import { validateSourceMedia } from "@/lib/agent/source-media";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
@@ -342,6 +343,15 @@ async function draftForAgent(
         agentId: agent.id,
         scope: "draft_oversized",
       });
+      reportServerLog(
+        "draft-pipeline: terminal oversized delivery",
+        {
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_oversized",
+        },
+        { distinctId: agent.owner_id },
+      );
       return {
         agentId: agent.id,
         winningModel: "",
@@ -449,6 +459,15 @@ async function draftForAgent(
         agentId: agent.id,
         scope: "draft_synthesis_unusable",
       });
+      reportServerLog(
+        "draft-pipeline: terminal unusable synthesis",
+        {
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_synthesis_unusable",
+        },
+        { distinctId: agent.owner_id },
+      );
       return {
         agentId: agent.id,
         winningModel: "",
@@ -556,6 +575,16 @@ async function draftForAgent(
           agentId: agent.id,
           scope: "draft_synthesis_validation",
         });
+        reportServerLog(
+          "draft-pipeline: synthesis validation failed",
+          {
+            error: winnerError,
+            sourcePostId,
+            agentId: agent.id,
+            scope: "draft_synthesis_validation",
+          },
+          { distinctId: agent.owner_id },
+        );
         return {
           agentId: agent.id,
           winningModel: "",
@@ -599,6 +628,16 @@ async function draftForAgent(
           agentId: agent.id,
           scope: "draft_oversized",
         });
+        reportServerLog(
+          "draft-pipeline: oversized delivery",
+          {
+            error: err,
+            sourcePostId,
+            agentId: agent.id,
+            scope: "draft_oversized",
+          },
+          { distinctId: agent.owner_id },
+        );
         return {
           agentId: agent.id,
           winningModel: "",
@@ -612,6 +651,16 @@ async function draftForAgent(
           agentId: agent.id,
           scope: "draft_oversized_completion",
         });
+        reportServerLog(
+          "draft-pipeline: oversized completion failed",
+          {
+            error: completionError,
+            sourcePostId,
+            agentId: agent.id,
+            scope: "draft_oversized_completion",
+          },
+          { distinctId: agent.owner_id },
+        );
       }
     }
     const { error: releaseError } = await admin
@@ -628,6 +677,16 @@ async function draftForAgent(
         agentId: agent.id,
         scope: "draft_claims_release",
       });
+      reportServerLog(
+        "draft-pipeline: claim release failed",
+        {
+          error: releaseError,
+          sourcePostId,
+          agentId: agent.id,
+          scope: "draft_claims_release",
+        },
+        { distinctId: agent.owner_id },
+      );
     }
     if (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt) {
       throw new RetryableDeliveryError(

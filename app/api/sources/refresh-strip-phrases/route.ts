@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { QWEN_DRAFT_MODEL } from "@/lib/agent/qwen-draft-config";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { onboardSource } from "@/lib/sources/onboard-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeSourceUrl } from "@/lib/websites";
@@ -97,6 +98,14 @@ export async function POST(req: Request) {
     console.error(message, {
       sourceConfigId: config.id,
       agentId: config.agent_id,
+      attempts,
+    });
+    reportServerLog("refresh-strip-phrases: attempts exhausted", {
+      area: "source_refresh",
+      outcome: "attempts_exhausted",
+      sourceConfigId: config.id,
+      agentId: config.agent_id,
+      url: config.url,
       attempts,
     });
     return new Response(null, { status: 204 });

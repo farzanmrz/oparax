@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { checkXPostable, resolveDeskTier, xUnpostableMessage } from "@/lib/agent/desk-config";
+import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_TRACKED_HANDLES, normalizeHandle, normalizeValidHandle } from "@/lib/x/handle";
@@ -279,6 +280,16 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
         agentId: parentDraft.agent_id,
         modelCallError: modelCallError?.message ?? "No model-call row returned",
       });
+      reportServerLog("editDraft: model-call failure did not restore its previous winner", {
+        error:
+          restoreError ??
+          new Error("editDraft model-call failure did not restore its previous winner"),
+        scope: "edit_draft_winner_restore",
+        failure_leg: "model_call_insert",
+        draftId: currentWinner.id,
+        agentId: parentDraft.agent_id,
+        modelCallError: modelCallError?.message ?? "No model-call row returned",
+      });
       return {
         ok: false,
         error:
@@ -329,6 +340,15 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
         agentId: parentDraft.agent_id,
         insertError: insertError?.message ?? "No draft row returned",
       });
+      reportServerLog("editDraft: insert failure did not restore its previous winner", {
+        error:
+          restoreError ?? new Error("editDraft insert failure did not restore its previous winner"),
+        scope: "edit_draft_winner_restore",
+        failure_leg: "draft_insert",
+        draftId: currentWinner.id,
+        agentId: parentDraft.agent_id,
+        insertError: insertError?.message ?? "No draft row returned",
+      });
       return {
         ok: false,
         error:
@@ -337,6 +357,12 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
     }
     if (deleteModelCallError) {
       console.error("editDraft: model-call rollback failed", {
+        error: deleteModelCallError,
+        scope: "edit_draft_model_call_rollback",
+        modelCallId: modelCall.id,
+        agentId: parentDraft.agent_id,
+      });
+      reportServerLog("editDraft: model-call rollback failed", {
         error: deleteModelCallError,
         scope: "edit_draft_model_call_rollback",
         modelCallId: modelCall.id,
