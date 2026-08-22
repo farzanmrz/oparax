@@ -128,27 +128,18 @@ find_recorded_tip() {
     | awk -F '\t' -v wanted="$recorded_branch" '$2 == wanted && $3 != "" { print $3; exit }'
 }
 
+# --finalize is now only the local scratch sweep: ship itself closes the issue
+# and no stage deletes branches. The one gate left asks the one question that
+# still matters — did this branch actually reach beta — because wiping the plan
+# files for something that never shipped loses work. Deliberately NOT gated on
+# tip equality: a meta commit landing on the branch after the ship is normal and
+# must not block a sweep that only removes local, git-ignored scratch.
 if [ "$finalize" = "true" ]; then
   git fetch --prune origin beta >&2
-  shipped_tip="$(find_recorded_tip "$branch" || true)"
-  [ -n "$shipped_tip" ] || {
-    echo "ship: cannot finalize $branch — origin/beta lacks its ship trailers." >&2
+  [ -n "$(find_recorded_tip "$branch" || true)" ] || {
+    echo "ship: cannot finalize $branch — origin/beta has no ship commit for it, so its plan files are still live work." >&2
     exit 1
   }
-  current_tip="$(git rev-parse HEAD)"
-  [ "$current_tip" = "$shipped_tip" ] || {
-    echo "ship: cannot finalize $branch — its local tip changed after the recorded ship." >&2
-    exit 1
-  }
-  live_feature="$(remote_ref_sha origin "refs/heads/$branch")" || {
-    echo "ship: cannot finalize $branch — its live remote ref could not be queried." >&2
-    exit 1
-  }
-  [ -n "$live_feature" ] && [ "$live_feature" = "$shipped_tip" ] || {
-    echo "ship: cannot finalize $branch — its live remote tip no longer matches the recorded Feature-Source-Tip." >&2
-    exit 1
-  }
-  gh issue close "$issue" --comment "Shipped to beta and completed the authorized release path." >&2
 
   # Wipe the scratch contents but KEEP the tracked .feature/.gitignore: that one
   # file is what hides every scratch artifact from git. Deleting it here meant
@@ -252,5 +243,15 @@ live_beta="$(remote_ref_sha origin "refs/heads/${onto}")" || {
 git worktree remove "$integration_dir" >&2
 integration_dir=""
 trap - EXIT
+
+# The slice is on ${onto} and verified, so the issue is done — close it here
+# rather than deferring to a separate step. Never fatal: the push already
+# succeeded and nothing about a failed gh call can un-ship it, so a hiccup
+# prints the manual fallback instead of making a good ship look like a failure.
+if gh issue close "$issue" --comment "Shipped to ${onto} as ${beta_commit}." >&2; then
+  echo "ship: closed issue #$issue." >&2
+else
+  echo "ship: WARNING — ${onto} has the slice but issue #$issue could not be closed. Close it yourself: gh issue close $issue" >&2
+fi
 
 echo "Shipped $branch -> ${onto}. ${onto}_sha=$beta_commit recovery_tip=$source_tip"
