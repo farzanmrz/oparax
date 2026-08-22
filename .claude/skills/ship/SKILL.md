@@ -58,7 +58,7 @@ Do NOT run finalize and do NOT close the issue. End with:
 
 <exit-example>
 
-Shipped to beta. Check beta.oparax.ai when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. Close the issue when satisfied, or tell me and I run the finalize sweep.
+Shipped to beta. Check it on localhost when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. Close the issue when satisfied, or tell me and I run the finalize sweep.
 
 </exit-example>
 
