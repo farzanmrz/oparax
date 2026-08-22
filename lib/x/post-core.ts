@@ -73,6 +73,9 @@ export async function publishDraftToXForOwner(
     .eq("id", draftId)
     .maybeSingle();
   if (draftError || !draft) return { ok: false, error: "That draft could not be found." };
+  if (draft.model_call_id === null) {
+    return { ok: false, error: "This story has no draft yet." };
+  }
   const [{ data: agent, error: agentError }, { data: modelCall, error: modelCallError }] =
     await Promise.all([
       admin.from("agents").select("owner_id, reporter_tier").eq("id", draft.agent_id).maybeSingle(),

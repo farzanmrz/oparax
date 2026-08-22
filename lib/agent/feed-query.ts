@@ -44,7 +44,7 @@ type WinnerRow = {
   posting_claimed_at: string | null;
   posted_url: string | null;
   created_at: string;
-  model_call_id: string;
+  model_call_id: string | null;
   news_title: string | null;
   news_synthesis: string | null;
   news_points: Json | null;
@@ -250,7 +250,9 @@ async function hydrate(
   const assignments = (assignmentResult.data ?? []) as unknown as AssignmentRow[];
   const winnerRows = (winnerResult.data ?? []) as unknown as WinnerRow[];
   const modelCalls = new Map<string, { output: string | null }>();
-  for (const part of chunks(winnerRows.map((row) => row.model_call_id))) {
+  for (const part of chunks(
+    winnerRows.map((row) => row.model_call_id).filter((id): id is string => id !== null),
+  )) {
     if (!part.length) continue;
     const { data, error } = await supabase.from("model_calls").select("id, output").in("id", part);
     if (error) throw error;
@@ -310,12 +312,12 @@ async function hydrate(
       ...(winners.get(row.story_id) ?? {}),
       [row.platform]: {
         draftId: row.id,
-        draftText: modelCalls.get(row.model_call_id)?.output ?? "",
+        draftText: row.model_call_id ? (modelCalls.get(row.model_call_id)?.output ?? "") : null,
         postedAt: row.posted_at,
         postingClaimedAt: row.posting_claimed_at,
         postedUrl: row.posted_url,
         body: storyBodyOf(row.news_points, row.news_synthesis),
-        versionCount: versionCount(row.id),
+        versionCount: row.model_call_id ? versionCount(row.id) : 0,
       },
     });
   }
@@ -396,8 +398,7 @@ export async function fetchFeedPage(
 ): Promise<FeedPage> {
   const limit = Math.max(1, Math.min(opts.limit ?? FEED_PAGE_SIZE, FEED_REFRESH_CHUNK));
   const cursor = isFeedCursor(opts.cursor) ? opts.cursor : null;
-  // A card exists only once drafting is complete (design delta §5): the feed walks stories and
-  // keeps only those with a winner draft, so undrafted/off-beat stories never render.
+  // A card exists once an on-beat story has landed as a winner row, drafted or not.
   const winners = await winnerIds(supabase, agentId);
 
   let cursorValue: FeedCursor | null = cursor;

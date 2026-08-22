@@ -9,6 +9,10 @@ import { FeedAutoRefresh } from "./feed-auto-refresh";
 import { FeedEmptyState, type FeedReadiness } from "./feed-item";
 import { FeedList } from "./feed-list";
 
+// Mirrors app/agents/[id]/sources/page.tsx's maxDuration. Server actions run under this
+// segment's lifetime, while the interactive writer keeps its own 30-second guard.
+export const maxDuration = 800;
+
 export default async function FeedPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();

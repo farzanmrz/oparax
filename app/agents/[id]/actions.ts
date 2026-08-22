@@ -166,7 +166,7 @@ const editDraftIdSchema = z.string().uuid();
  * Replace the current winner with a human-edited winner while preserving its metadata and
  * lineage. The owner-scoped client proves ownership and inserts the replacement; the admin
  * client performs the compare-and-set dethrone and creates the zero-cost human-edit ledger row
- * required by drafts.model_call_id.
+ * that every edit row still carries, even though undrafted story rows may leave model_call_id null.
  */
 export async function editDraft(draftId: string, newText: string): Promise<EditDraftResult> {
   const parsedId = editDraftIdSchema.safeParse(draftId);
@@ -183,11 +183,14 @@ export async function editDraft(draftId: string, newText: string): Promise<EditD
   const { data: parentDraft, error: parentError } = await supabase
     .from("drafts")
     .select(
-      "id, source_post_id, agent_id, story_id, platform, news_title, news_synthesis, translation",
+      "id, source_post_id, agent_id, story_id, platform, news_title, news_synthesis, translation, model_call_id",
     )
     .eq("id", parsedId.data)
     .maybeSingle();
   if (parentError || !parentDraft) return { ok: false, error: "That draft could not be found." };
+  if (parentDraft.model_call_id === null) {
+    return { ok: false, error: "This story has no draft yet." };
+  }
 
   const { data: currentWinner, error: currentWinnerError } = await supabase
     .from("drafts")

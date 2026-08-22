@@ -3,32 +3,26 @@
 // SERVER-ONLY — transitively imports lib/sysprompts via draft-council-run.ts (which loads
 // its prompts at module scope); never importable from a client component.
 //
-// Owns ALL persistence and metering for the drafting path. The council
-// (draft-council-run.ts) is pure and deliberately touches neither the DB nor the ledger —
+// Owns persistence and metering for the story-landing path. The model stages
+// are pure and deliberately touch neither the DB nor the ledger.
 // this module is where both cross-cutting invariants are actually satisfied (AGENTS.md's
 // metering + model-call rules):
 //   - every element of a council's `calls` array becomes exactly one `model_calls` row,
 //     carrying `output`, `reasoning`, and `usage` (including `reasoningWithheldByProvider`).
 //   - every touch point stamps `usage_events` — the inbound delivery, each model call.
 // Ledger-first ordering throughout, the same discipline the extraction path uses: `model_calls`
-// rows are written BEFORE the artifact rows (`drafts`) that point at them, so a failed
-// artifact write never loses the record of a call already paid for.
+// rows are written before the story card rows that depend on their results.
 import { randomUUID } from "node:crypto";
 import { assignToStory } from "@/lib/agent/cluster";
-import { checkXPostable, resolveDeskTier } from "@/lib/agent/desk-config";
 import type { CouncilCall, SourceBrief } from "@/lib/agent/draft-council-run";
 import { filterSourcePost } from "@/lib/agent/draft-filter";
 import { synthesizeSourcePost } from "@/lib/agent/draft-synthesize";
 import { translateSourcePost } from "@/lib/agent/draft-translate";
-import { draftSourcePost } from "@/lib/agent/draft-write";
-import { normalizeWebsitePublisherMention } from "@/lib/agent/source-identity";
 import { validateSourceMedia } from "@/lib/agent/source-media";
 import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { extractBeatSpec } from "@/lib/voice/deploy-guide";
-import { listVoiceRules, resolveDraftingPrompt } from "@/lib/voice/rules";
-import { getXAccount } from "@/lib/x/store";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -204,7 +198,7 @@ async function fetchSiteGuidance(
  *  batched) so the returned ids are guaranteed aligned with `calls` BY INDEX — a batched
  *  insert's returned order is not a contract PostgREST makes, and a misaligned join would
  *  silently attribute a draft to the wrong model. */
-async function insertModelCalls(
+export async function insertModelCalls(
   admin: AdminClient,
   ownerId: string,
   calls: CouncilCall[],
@@ -248,7 +242,7 @@ async function insertModelCalls(
   return ids;
 }
 
-async function stampUsageEvent(
+export async function stampUsageEvent(
   admin: AdminClient,
   row: { owner_id: string; kind: string; units: number; cost_usd: number | null; ref_id: string },
 ): Promise<void> {
@@ -476,56 +470,6 @@ async function draftForAgent(
       };
     }
 
-    // Voice-rule composition is intentionally deferred until the story is known on-beat.
-    const voiceGuidance = resolveDraftingPrompt(
-      await listVoiceRules(agent.id),
-      guide.measured_facts,
-      guide.guide_deploy,
-    );
-    const xAccount = await getXAccount(agent.owner_id);
-    const accountTier = resolveDeskTier(agent.reporter_tier, xAccount?.tier);
-    const written = await draftSourcePost({
-      identity: brief.identity,
-      newsTitle: synthesized.verdict.newsTitle,
-      newsPoints: synthesized.verdict.newsPoints,
-      voiceGuidance,
-      platform: "x",
-      accountTier,
-      deadlineAt: options.deadlineAt,
-    });
-    if (!written.verdict) {
-      await insertModelCalls(admin, agent.owner_id, [written.call], sourcePostId);
-      await stampUsageEvent(admin, {
-        owner_id: agent.owner_id,
-        kind: "drafting",
-        units: 1,
-        cost_usd: written.call.costUsd,
-        ref_id: sourcePostId,
-      });
-      throw new Error(`draft-pipeline: drafter verdict unusable for source post ${sourcePostId}`);
-    }
-    const draftText = normalizeWebsitePublisherMention(written.verdict.draft, brief.identity);
-    written.call.output = draftText;
-    const [drafterCallId] = await insertModelCalls(
-      admin,
-      agent.owner_id,
-      [written.call],
-      sourcePostId,
-    );
-    await stampUsageEvent(admin, {
-      owner_id: agent.owner_id,
-      kind: "drafting",
-      units: 1,
-      cost_usd: written.call.costUsd,
-      ref_id: sourcePostId,
-    });
-    const fit = checkXPostable(draftText, accountTier);
-    if (!fit.ok) {
-      console.error(
-        `draft-pipeline: drafter output fails the X gate (${fit.reason}) for source post ${sourcePostId}; persisting for manual trim`,
-      );
-    }
-
     const cluster = await assignToStory({
       agentId: agent.id,
       sourcePostId,
@@ -550,7 +494,8 @@ async function draftForAgent(
     const { data: winningDraftId, error: winnerError } = await admin.rpc("insert_claimed_winner", {
       p_agent_id: agent.id,
       p_claim_token: claimToken,
-      p_model_call_id: drafterCallId,
+      // Landing creates the story card only. The reporter's Draft press attaches the model call.
+      p_model_call_id: null as unknown as string,
       p_news_points: synthesized.verdict.newsPoints as unknown as Json,
       p_news_synthesis: null as unknown as string,
       p_news_title: synthesized.verdict.newsTitle,
@@ -609,7 +554,8 @@ async function draftForAgent(
 
     return {
       agentId: agent.id,
-      winningModel: written.call.model,
+      // Landing deliberately performs no write-model call.
+      winningModel: "",
       degraded: false,
     };
   } catch (err) {
