@@ -2,6 +2,24 @@
  * never X handles. */
 export type SourceIdentity = { kind: "x"; handle: string } | { kind: "website"; publisher: string };
 
+function hostnameOf(url: string | null): string {
+  try {
+    return url ? new URL(url).hostname.toLowerCase().replace(/^www\./, "") : "";
+  } catch {
+    return "";
+  }
+}
+
+export function sourceIdentityOf(post: {
+  source: string;
+  author_handle: string | null;
+  url: string | null;
+}): SourceIdentity {
+  return post.source === "x"
+    ? { kind: "x", handle: post.author_handle ?? "" }
+    : { kind: "website", publisher: hostnameOf(post.url) };
+}
+
 export function formatSourceIdentity(identity: SourceIdentity): string {
   return identity.kind === "x" ? `@${identity.handle}` : identity.publisher;
 }

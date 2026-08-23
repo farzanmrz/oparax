@@ -212,12 +212,13 @@ export type Database = {
         Row: {
           agent_id: string;
           created_at: string;
+          draft_requested_at: string | null;
           feedback: string | null;
           id: string;
           is_winner: boolean;
           judge_review: Json | null;
           judge_verdict: Json | null;
-          model_call_id: string;
+          model_call_id: string | null;
           news_points: Json | null;
           news_synthesis: string | null;
           news_title: string | null;
@@ -235,12 +236,13 @@ export type Database = {
         Insert: {
           agent_id: string;
           created_at?: string;
+          draft_requested_at?: string | null;
           feedback?: string | null;
           id?: string;
           is_winner?: boolean;
           judge_review?: Json | null;
           judge_verdict?: Json | null;
-          model_call_id: string;
+          model_call_id?: string | null;
           news_points?: Json | null;
           news_synthesis?: string | null;
           news_title?: string | null;
@@ -258,12 +260,13 @@ export type Database = {
         Update: {
           agent_id?: string;
           created_at?: string;
+          draft_requested_at?: string | null;
           feedback?: string | null;
           id?: string;
           is_winner?: boolean;
           judge_review?: Json | null;
           judge_verdict?: Json | null;
-          model_call_id?: string;
+          model_call_id?: string | null;
           news_points?: Json | null;
           news_synthesis?: string | null;
           news_title?: string | null;
@@ -965,6 +968,10 @@ export type Database = {
         };
         Returns: string;
       };
+      attach_story_draft: {
+        Args: { p_draft_id: string; p_model_call_id: string };
+        Returns: boolean;
+      };
       claim_draft: {
         Args: {
           p_agent_id: string;
@@ -972,6 +979,10 @@ export type Database = {
           p_source_post_id: string;
           p_stale_cutoff: string;
         };
+        Returns: boolean;
+      };
+      claim_story_draft: {
+        Args: { p_draft_id: string; p_stale_cutoff: string };
         Returns: boolean;
       };
       claim_strip_phrase_refresh_attempt: {

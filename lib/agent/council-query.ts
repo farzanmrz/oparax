@@ -82,7 +82,7 @@ export async function queryDraftHistory(
   const modelCallsById = await fetchModelCalls(supabase, modelCallIds);
   const rows: HistoryRow[] = draftRows.map((row) => ({
     ...row,
-    model_calls: modelCallsById.get(row.model_call_id) ?? null,
+    model_calls: row.model_call_id ? (modelCallsById.get(row.model_call_id) ?? null) : null,
   }));
   const byId = new Map(rows.map((r) => [r.id, r]));
 

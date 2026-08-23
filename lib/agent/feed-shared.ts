@@ -16,7 +16,8 @@ export type FeedStoryBody =
   | { kind: "unavailable"; sourceAvailable: boolean };
 export type FeedDraft = {
   draftId: string;
-  draftText: string;
+  /** Null means the story has landed but the reporter has not pressed Draft yet. */
+  draftText: string | null;
   postedAt: string | null;
   postingClaimedAt: string | null;
   postedUrl: string | null;
