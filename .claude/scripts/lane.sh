@@ -165,9 +165,17 @@ case "$cmd" in
     # Pull ONLY the findings JSON array out of the lane's raw .out into
     # <lane>.findings.json, so a consumer never has to read a codex --json
     # lane's full JSONL event stream (hundreds of KB) to get the few KB of
-    # actual findings. See lane-findings.py for the per-lane-shape logic.
+    # actual findings, and print the lane's STATE line (OK / NO_FINDINGS /
+    # INVALID / FAILED / TIMED_OUT). See lane-findings.py for the logic.
+    # `findings <name> --timed-out` is for a lane killed at the wall cap: a
+    # killed-from-outside lane often has no exit code, and without the flag
+    # that reads as INVALID instead of TIMED_OUT (found live 2026-08-23).
     dest="$base.findings.json"
-    python3 "$(dirname "$0")/lane-findings.py" "$base.out" "$name" "$dest"
+    if [ "${3:-}" = "--timed-out" ]; then
+      python3 "$(dirname "$0")/lane-findings.py" --timed-out "$base.out" "$name" "$dest"
+    else
+      python3 "$(dirname "$0")/lane-findings.py" "$base.out" "$name" "$dest"
+    fi
     ;;
   status)
     if [ -f "$base.exit" ]; then echo "DONE exit=$(cat "$base.exit")"; else echo "RUNNING pid=$(cat "$base.pid" 2>/dev/null || echo ?)"; fi

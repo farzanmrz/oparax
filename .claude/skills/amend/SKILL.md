@@ -22,6 +22,13 @@ model: inherit
 
 One session, start to finish. This skill never builds, never runs QC; it ends by naming `$build <N>` for the owner to run in Codex.
 
+## Working style, every step of this command
+
+- **When you have enough information to act, act.** Do not re-derive what the plan files and this conversation already establish, re-litigate a decision the owner has already made, or narrate options you will not pursue. A choice that is yours, make and record with its reason; a choice that is genuinely the owner's becomes a "What needs your call" line.
+- **End a turn only at this command's named stops** (the step-2 slice agreement, the step-3 HARD STOP, a step-4 "What needs your call" answer). Anywhere else, before ending a turn, reread your last paragraph: if it is a plan, a question you could answer yourself, or a promise about work not yet done ("I'll..."), do that work now with tool calls instead of ending on it.
+- **Claim only what you can point to.** Every statement of progress rests on a tool result from this session: a file read, a command's output, a lane's state line. Anything not yet verified is said to be unverified, plainly.
+- **The owner reads product language, not a terminal.** Every owner-facing message leads with the outcome in complete plain sentences; no arrow chains, no shorthand invented mid-session, no vocabulary from the working thread. Short versus clear, choose clear.
+
 ## Hard rules for the planning stage
 
 - **Planning never runs the app.** Never start or attach to a dev server, never run `pnpm dev` or the poller, never open a browser or use any browser, preview, or computer-use tool, never execute code in a page. Only the owner runs the app. This binds the command while it runs; if the owner asks in their own words in the chat to run the app or open a browser, that wins immediately (AGENTS.md).
@@ -53,8 +60,7 @@ Exactly like `/feature` step 1, scoped as a delta on top of what is already agre
 The talk-through message has a fixed shape and a cap, because the owner is a vibe coder who reads product language only, and an open-ended message here turns into a wall of code findings (2026-08-18: a 5,000-character first message the owner could not parse, then a 1,500-character retry that worked; send the retry the first time). Exactly three short parts, no more:
 1. **What you asked for, in one or two sentences**, restated in the plan's plain voice (what users get, what stays hidden, what does not change).
 2. **Anything I found that changes it**, at most three lines, one each, each in the form "what it means for you, what I'll do about it"; no file names, no option names, no mechanism talk. If nothing changes, say "nothing" and skip.
-3. **The question**: one line, a yes/no on the slice plus the bundles (and the UI checkpoint if it applies).
-Then END YOUR TURN. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
+3. **The question**: one line, a yes/no on the slice plus the bundles (and the UI checkpoint if it applies). Then END YOUR TURN. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
 
 ## 3. Write the plain amendment and get it approved
 

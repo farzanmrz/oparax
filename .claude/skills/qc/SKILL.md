@@ -18,6 +18,13 @@ model: inherit
 
 One session, start to finish. Every step below runs on its own; the owner types nothing between `/qc <N>` and the final message. This skill never builds, never applies findings, never runs journeys; it ends by naming `$build <N>` (fix mode) or `/ship <N>`.
 
+## Working style, every step of this command
+
+- **This run is autonomous.** The owner is not answering questions mid-run, so never end a turn to ask one; the only mid-run stops are the STOP conditions written into the steps below (wrong branch, unapplied fixes, a missing or half-built step, a non-mechanical red gate), each of which ends the run with a plain blocker. Before ending any turn, reread your last paragraph: if it is a plan, an analysis, or a promise about work not yet done ("I'll..."), do that work now with tool calls. End only on a STOP or on the step-8 final message.
+- **Claim only what you can point to.** Every statement in the final message rests on a tool result from this run: the diff you read, a gate's output, a lane's state line. If tests or gates failed, say so with what they printed; if something was skipped or is unverified, say that; what is done and verified is stated plainly without hedging.
+- **The fix list stays minimal.** A fix item corrects exactly what its finding names: no surrounding cleanup, no refactors, no abstractions or defenses for scenarios that cannot happen. The simplest change that resolves the finding is the fix.
+- **The owner reads product language, not a terminal.** The step-8 message leads with the outcome in complete plain sentences; no arrow chains, no shorthand or names invented mid-run, no vocabulary from the working thread. Short versus clear, choose clear.
+
 ## 1. Confirm the branch
 
 ```bash
@@ -101,13 +108,25 @@ Never start a dev server, never run pnpm dev or the poller, never touch env file
    - `qc-codex-terra`: the same command with `-m gpt-5.6-terra` (effort high).
    - `qc-grok`: first write `.feature/lanes/qc-grok.prompt`: "You have a hard cap of 20 turns (one turn = one round of thinking plus tool calls) and about 5 minutes. Read the contract and the diff first; do not chase side quests; never read a package's built or minified output; by turn 15 stop reading and write your findings JSON, because an answer that never arrives is worth nothing." followed by "Read $PWD/.feature/lanes/qc.brief and follow it exactly." Then: `grok --prompt-file "$PWD/.feature/lanes/qc-grok.prompt" --sandbox read-only --cwd "$PWD" --disallowed-tools "mcp__vercel__*,mcp__railway__*" --always-approve --no-subagents --effort medium -m grok-4.6 --max-turns 20 --output-format json`. Do NOT pass `--agent`; the `--disallowed-tools` value stays inside double quotes exactly as written.
 
-   Then arm three separate background waits, one Bash call each with `run_in_background: true`: `bash .claude/scripts/lane.sh waitall qc-codex-sol`, then the same for `qc-codex-terra`, `qc-grok`. Do not wait on any of them in the foreground; the session is re-invoked as each exits. Never edit `lane.sh` while a wait runs.
+   Then arm three separate background waits, one Bash call each with `run_in_background: true`: `LANE_HUNG_SECONDS=900 bash .claude/scripts/lane.sh waitall qc-codex-sol`, then the same for `qc-codex-terra`, `qc-grok`. `LANE_HUNG_SECONDS=900` is the 15-minute terminal wall cap (owner decision 2026-08-23): a lane still running at 15 minutes makes its wait print `HUNG`, which the state table below turns into a kill, a `--timed-out` extraction, and at most one resume attempt. Do not wait on any of them in the foreground; the session is re-invoked as each exits. Never edit `lane.sh` while a wait runs.
 
 3. **Your own review, while the lanes run.** Read the diff under the same lens card and the same finality rule, in the same holistic way, reading whatever real code the diff touches, under the same reading ceiling as the brief: a package's `.d.ts` types and shipped docs under `node_modules` when a claim depends on an exact name or shape, never its built or minified output, never a runtime trace. Write your findings to `.feature/lanes/qc-claude.findings.json` in the same shape as the lane contract above, so every lane sits on equal footing and is auditable. This is the review that most often catches "the plan asked for X and X quietly did not land"; do not skimp on it because other readers are also looking. Finish it before the first lane returns where you can; once it is written, the remaining time is only waiting.
 
 ## 6. Fold every lane into the fix list
 
-As each background wait returns, run `bash .claude/scripts/lane.sh findings <lane>` for that lane (writes `.feature/lanes/<lane>.findings.json`, findings only, never the raw event stream; `EMPTY` or a `HUNG`/`DIED` line means that lane is dead: run `lane.sh kill <lane>` if HUNG, record it, never invent findings for it, never treat it as "nothing found") and disposition that lane's findings right away in `.feature/qc-dispositions.md`, one section per lane. Do not wait for all three to be in before starting; the fix list is written once, after the last lane is in (or dead). A lane past 9 minutes is killed and recorded dead; the run never stalls on one reader.
+As each background wait returns, run `bash .claude/scripts/lane.sh findings <lane>` for that lane (writes `.feature/lanes/<lane>.findings.json`, findings only, never the raw event stream) and disposition that lane's findings right away in `.feature/qc-dispositions.md`, one section per lane. `lane.sh findings` prints exactly one state line, and that line, not the file's contents, classifies the lane:
+
+| State | What happened | What this session does |
+| --- | --- | --- |
+| `OK count=N` | the review came back with N findings | disposition all N |
+| `NO_FINDINGS count=0` | the review came back and found nothing wrong: HEALTHY, the lane worked | record "no findings" for that lane, report its elapsed seconds normally, and NEVER call it dead or say the pass did not come back |
+| `INVALID` | finished but produced no usable findings payload | if the line carries `resume_id=`, make ONE bounded resume attempt (below); otherwise dead |
+| `FAILED exit=N` | the lane's process died (the agy CLI's fatal-tool-error bug lands here) | same: one resume attempt if `resume_id=` is present, otherwise dead |
+| `TIMED_OUT` | killed at the wall cap with nothing valid emitted | one resume attempt if `resume_id=` is present, otherwise dead |
+
+Never invent findings for a dead lane, and never read prose, partial output, or a reasoning trace as findings. The ONE legitimate recovery is resuming the lane's own stored session so the model finishes its own answer: `grok --resume <resume_id>` or `agy --conversation <resume_id>`, same sandbox and denials as the original launch, at most 5 turns, told to investigate nothing, use the work already in context, and emit only the findings JSON (`[]` is a valid answer). Run it at most once per lane per round; a second invalid result makes the lane dead. Classify the resumed output with the same table.
+
+Do not wait for all lanes to be in before starting; the fix list is written once, after the last lane is in (or dead). A lane still running at 15 minutes is killed (`lane.sh kill <lane>`) and its findings extracted with `--timed-out` before classification, so work it already emitted is kept; a `HUNG` or `DIED` wait line is handled the same way. The run never stalls on one reader.
 
 Adjudicate in this session, all lanes and your own review on equal standing (your own findings get no bonus for being yours):
 
@@ -158,7 +177,7 @@ No code terms, no raw findings, no file paths, no finding counts, no drop counts
 - **Gates:** GREEN in one line (mention if mechanical fixes were committed).
 - **Fixes queued for Codex:** one line per item, the `owner` line only, or "none".
 - **Open questions:** each as a plain question with its tradeoff in one sentence.
-- **One closing line:** each lane's elapsed seconds from its DONE line, and "the <lane> review pass did not come back" for any dead lane; a dead lane never stops the run. If the owner asks what was dropped, read `.feature/qc-dispositions.md` and answer in plain words; never volunteer it.
+- **One closing line:** each lane's elapsed seconds from its DONE line, and "the <lane> review pass did not come back" for any dead lane (a lane whose state was `INVALID`, `FAILED`, or `TIMED_OUT` and whose resume attempt did not produce a valid payload). A `NO_FINDINGS` lane came back and found nothing: report it like any other working lane and never use the did-not-come-back wording for it. A dead lane never stops the run. If the owner asks what was dropped, read `.feature/qc-dispositions.md` and answer in plain words; never volunteer it.
 
 ## 9. End: name the next command
 
