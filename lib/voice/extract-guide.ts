@@ -13,7 +13,8 @@ import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost, toFiniteOrNull } from "@/lib/agent/gateway-cost";
 import { resolveImageMediaType } from "@/lib/agent/source-media";
-import { aiTelemetry } from "@/lib/observability/ai-telemetry";
+import { aiContentAllowed, aiTelemetry } from "@/lib/observability/ai-telemetry";
+import type { TelemetryMessage } from "@/lib/observability/posthog-ai";
 import { VOICE_EXTRACT_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import type {
@@ -125,7 +126,8 @@ export type VoiceExtraction = {
   /** The MEASURED STYLE FACTS block exactly as the model saw it — store this, don't recompute. */
   measuredFactsBlock: string;
   /**
-   * The reasoning **summary**, persisted to `model_calls.reasoning` (AGENTS.md's model-call rule).
+   * The reasoning summary, retained in memory only long enough to classify whether the provider
+   * returned it. New rows deliberately keep `model_calls.reasoning` null.
    *
    * Claude never returns its raw chain of thought — that is permanent. What is available is a
    * readable summary, gated on `thinking.display`, which defaults to `"omitted"` on this
@@ -142,6 +144,9 @@ export type VoiceExtraction = {
   costUsd: number | null;
   usage: unknown;
   generationId: string | null;
+  latencyMs: number;
+  telemetryInput: TelemetryMessage[] | null;
+  steps: ExtractionStep[];
   /** Why the model stopped. Carried because an EMPTY guide is meaningless without it: `"length"`
    *  means a ceiling clipped the answer, `"stop"` means the model chose to end having written
    *  nothing, and those two failures need opposite fixes. */
@@ -381,9 +386,12 @@ function buildExtractionContent(
 /** One step of this call's multi-step run, narrowed to only what `reconstructFromSteps` needs —
  *  matches both `generateText`'s and `streamText`'s step shape (`DefaultStepResult` in the
  *  installed `ai@7.0.14`) without importing an SDK-internal type. */
-type ExtractionStep = {
+export type ExtractionStep = {
   text: string;
   reasoningText: string | undefined;
+  usage: unknown;
+  toolCalls: ReadonlyArray<{ toolName: string }>;
+  toolResults: ReadonlyArray<{ toolName: string }>;
   providerMetadata?: Record<string, unknown>;
 };
 
@@ -524,7 +532,27 @@ export async function extractVoiceGuideStreaming(
 ): Promise<VoiceExtraction> {
   const { facts, content } = buildExtractionContent(handle, posts, beat);
   const scope = buildScopeTool(handle, posts, onScope);
+  const mediaCount = content.filter((part) => part.type === "file").length;
+  const telemetryInput: TelemetryMessage[] | null = aiContentAllowed("voice_extraction")
+    ? [
+        { role: "system", content: VOICE_EXTRACT_PROMPT },
+        {
+          role: "user",
+          content: [
+            content
+              .filter(
+                (part): part is Extract<ExtractionContentPart, { type: "text" }> =>
+                  part.type === "text",
+              )
+              .map((part) => part.text)
+              .join("\n"),
+            ...(mediaCount > 0 ? [`[media: ${mediaCount} items]`] : []),
+          ].join("\n"),
+        },
+      ]
+    : null;
 
+  const requestStartedAtMs = Date.now();
   const result = streamText({
     model: EXTRACTION_MODEL,
     system: VOICE_EXTRACT_PROMPT,
@@ -673,6 +701,7 @@ export async function extractVoiceGuideStreaming(
   const usage = usageResult.status === "fulfilled" ? usageResult.value : null;
   const finishReason =
     finishReasonResult.status === "fulfilled" ? finishReasonResult.value : streamedFinishReason;
+  const latencyMs = Date.now() - requestStartedAtMs;
   const { text, reasoning, thinkingTokens, costUsd, generationId } =
     await reconstructFromSteps(steps);
 
@@ -694,6 +723,9 @@ export async function extractVoiceGuideStreaming(
     costUsd,
     usage,
     generationId,
+    latencyMs,
+    telemetryInput,
+    steps,
     finishReason: finishReason ?? null,
     streamError,
   };

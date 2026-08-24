@@ -123,7 +123,10 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
           edited,
         };
       }
-      if (reasoningTraceState(call.reasoning, call.usage) === "withheld") withheld = true;
+      const traceState = reasoningTraceState(call.reasoning, call.usage);
+      if (traceState === "withheld") withheld = true;
+      // "discarded" follows the same reporter-facing path as "none": the provider is not blamed
+      // when the product deliberately kept the trace text out of storage.
     }
     cursor = draft.parent_draft_id;
   }

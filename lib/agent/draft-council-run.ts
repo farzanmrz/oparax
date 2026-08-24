@@ -9,6 +9,8 @@
 // `output`, `reasoning`, and an explicitly stamped `reasoningWithheldByProvider`. An element
 // missing from that array is a call whose trace is lost, which every stage's own module (this
 // one, draft-translate.ts, draft-write.ts) exists to prevent.
+
+import type { TelemetryMessage } from "../observability/posthog-ai";
 import type { DraftConstruction } from "./draft-construction";
 import type { SourceIdentity } from "./source-identity";
 
@@ -55,6 +57,8 @@ export type CouncilCall = {
   usage: unknown;
   costUsd: number | null;
   generationId: string | null;
+  latencyMs: number | null;
+  telemetryInput: TelemetryMessage[] | null;
   /** Present only for the live draft call: the model's structured editorial account, not
    * proof or chain-of-thought. Historic and human-originated calls may lack it. */
   draftConstruction?: DraftConstruction | null;

@@ -2,10 +2,8 @@
 //
 // ONE shared implementation of the derived-metadata trio every `CouncilCall` builder needs:
 // `costUsd`/`generationId` via `resolveGatewayCost`, and `reasoningWithheldByProvider` via
-// `reasoningTraceState(...) === "withheld"`. `cluster.ts`'s `buildClusterCall` calls this.
-// `draft-council-run.ts`'s `toCouncilCall` still computes the same trio inline for correction
-// revisions. The duplication is a known, tracked leftover, not an oversight; a future pass can
-// point `toCouncilCall` at this helper once that risk has passed.
+// `reasoningTraceState(...) === "withheld"`. The four live callers are draft-write,
+// draft-filter, draft-synthesize, and draft-translate.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
@@ -24,6 +22,8 @@ export async function resolveCallMeta(params: {
   reasoning: string | null;
   usage: unknown;
   providerMetadata?: Record<string, unknown>;
+  latencyMs?: number | null;
+  telemetryInput?: CouncilCall["telemetryInput"];
   draftConstruction?: CouncilCall["draftConstruction"];
   draftOnBeatReason?: CouncilCall["draftOnBeatReason"];
 }): Promise<CouncilCall> {
@@ -41,6 +41,8 @@ export async function resolveCallMeta(params: {
     usage: params.usage,
     costUsd,
     generationId,
+    latencyMs: params.latencyMs ?? null,
+    telemetryInput: params.telemetryInput ?? null,
     ...(params.draftConstruction === undefined
       ? {}
       : { draftConstruction: params.draftConstruction }),

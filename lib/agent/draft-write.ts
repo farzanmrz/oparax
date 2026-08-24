@@ -3,7 +3,8 @@
 import type { GenerateTextStepEndEvent } from "ai";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { aiTelemetry } from "@/lib/observability/ai-telemetry";
+import { aiContentAllowed, aiTelemetry } from "@/lib/observability/ai-telemetry";
+import type { TelemetryMessage } from "@/lib/observability/posthog-ai";
 import { DRAFT_COUNCIL_CONTRACT, DRAFT_WRITE_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { resolveCallMeta } from "./call-meta";
@@ -86,6 +87,21 @@ export async function draftSourcePost(input: {
 }): Promise<DraftWriteResult> {
   const ceiling = X_CHAR_LIMITS[input.accountTier];
   const completedStepRef: { value: GenerateTextStepEndEvent | null } = { value: null };
+  const systemPrompt = `${DRAFT_WRITE_PROMPT}\n\n<draft_contract>\n${DRAFT_COUNCIL_CONTRACT}\n</draft_contract>\n\n<voice_guide>\n${input.voiceGuidance.trim()}\n</voice_guide>`;
+  const userPrompt = buildContent({
+    identity: input.identity,
+    newsTitle: input.newsTitle,
+    newsPoints: input.newsPoints,
+    platform: input.platform,
+    ceiling,
+  });
+  const telemetryInput: TelemetryMessage[] | null = aiContentAllowed("drafting")
+    ? [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ]
+    : null;
+  const requestStartedAtMs = Date.now();
 
   try {
     const result = await generateText({
@@ -97,19 +113,8 @@ export async function draftSourcePost(input: {
       // abort signal keeps an uncapped structured generation inside the route budget.
       abortSignal: geminiStageAbortSignal(GEMINI_WRITE_TIMEOUT_MS, input.deadlineAt),
       output: Output.object({ name: "DraftVerdict", schema: draftVerdictSchema }),
-      system: `${DRAFT_WRITE_PROMPT}\n\n<draft_contract>\n${DRAFT_COUNCIL_CONTRACT}\n</draft_contract>\n\n<voice_guide>\n${input.voiceGuidance.trim()}\n</voice_guide>`,
-      messages: [
-        {
-          role: "user",
-          content: buildContent({
-            identity: input.identity,
-            newsTitle: input.newsTitle,
-            newsPoints: input.newsPoints,
-            platform: input.platform,
-            ceiling,
-          }),
-        },
-      ],
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
       onStepEnd: (event) => {
         completedStepRef.value = event;
       },
@@ -126,6 +131,8 @@ export async function draftSourcePost(input: {
       reasoning: result.reasoningText ?? null,
       usage: result.usage,
       providerMetadata: result.providerMetadata,
+      latencyMs: Date.now() - requestStartedAtMs,
+      telemetryInput,
       draftConstruction: verdict?.construction ?? null,
     });
     if (!verdict) {
@@ -145,6 +152,8 @@ export async function draftSourcePost(input: {
         reasoning: step?.reasoningText ?? null,
         usage: step?.usage ?? error.usage,
         providerMetadata: step?.providerMetadata,
+        latencyMs: Date.now() - requestStartedAtMs,
+        telemetryInput,
       });
       return { call, verdict: null };
     }

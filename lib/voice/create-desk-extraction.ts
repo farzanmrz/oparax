@@ -18,6 +18,8 @@
 // spend claim, and a 5-lookups-per-handle-per-day pre-flight cap) was deleted outright: it
 // optimized a case that does not occur, and it cost four pipeline gates, a table, and a failure
 // mode that could not be diagnosed after the fact.
+import { randomUUID } from "node:crypto";
+import { captureAiGeneration, type TelemetryMessage } from "@/lib/observability/posthog-ai";
 import { reportServerException, reportServerMessage } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
@@ -113,6 +115,20 @@ async function insertExtractionModelCall(
   agentId: string,
   ext: VoiceExtraction,
 ): Promise<string> {
+  const usage =
+    ext.usage !== null && typeof ext.usage === "object"
+      ? (ext.usage as Record<string, unknown>)
+      : {};
+  const outputTokenDetails =
+    usage.outputTokenDetails !== null && typeof usage.outputTokenDetails === "object"
+      ? (usage.outputTokenDetails as Record<string, unknown>)
+      : {};
+  const finiteToken = (value: unknown) =>
+    typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  const inputTokens = finiteToken(usage.inputTokens);
+  const outputTokens = finiteToken(usage.outputTokens);
+  const totalTokens = finiteToken(usage.totalTokens);
+  const reasoningTokens = finiteToken(outputTokenDetails.reasoningTokens);
   const { data, error } = await admin
     .from("model_calls")
     .insert({
@@ -121,11 +137,16 @@ async function insertExtractionModelCall(
       role: "primary",
       model: EXTRACTION_MODEL,
       output: ext.guideRaw,
-      reasoning: ext.reasoning,
+      reasoning: null,
       // reasoningWithheldByProvider distinguishes "the provider gave us no trace" from "we
       // forgot to capture one" (AGENTS.md's model-call rule) — a null reasoning column alone can't.
       usage: {
-        ...(ext.usage as object),
+        ...(inputTokens === undefined ? {} : { inputTokens }),
+        ...(outputTokens === undefined ? {} : { outputTokens }),
+        ...(totalTokens === undefined ? {} : { totalTokens }),
+        outputTokenDetails: {
+          ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+        },
         thinkingTokens: ext.thinkingTokens,
         // Same semantic as lib/agent/reasoning-trace.ts (which classifies the drafting
         // stages): "withheld" means tokens were SPENT thinking and no trace came back —
@@ -159,9 +180,50 @@ async function recordExtractionAttempt(
   ownerId: string,
   agentId: string,
   reporterHandle: string,
+  traceId: string,
   ext: VoiceExtraction,
 ): Promise<string> {
   const modelCallId = await insertExtractionModelCall(admin, ownerId, agentId, ext);
+  if (ext.steps.length === 0) {
+    captureAiGeneration({
+      distinctId: ownerId,
+      traceId,
+      spanId: modelCallId,
+      stage: "voice_extraction",
+      model: EXTRACTION_MODEL,
+      usage: ext.usage,
+      latencyMs: ext.latencyMs,
+      streamed: true,
+      generationId: ext.generationId,
+      inputMessages: ext.telemetryInput,
+      outputText: ext.guideRaw,
+      properties: { agent_id: agentId },
+    });
+  } else {
+    ext.steps.forEach((step, index) => {
+      const toolCallNames = step.toolCalls.map((call) => call.toolName);
+      const inputMessages: TelemetryMessage[] | null =
+        index === 0
+          ? ext.telemetryInput
+          : toolCallNames.length > 0
+            ? [{ role: "tool", content: `tool ${toolCallNames.join(", ")}: completed` }]
+            : null;
+      captureAiGeneration({
+        distinctId: ownerId,
+        traceId,
+        spanId: `${modelCallId}:${index}`,
+        stage: "voice_extraction",
+        model: EXTRACTION_MODEL,
+        usage: step.usage,
+        latencyMs: index === ext.steps.length - 1 ? ext.latencyMs : null,
+        streamed: true,
+        generationId: index === ext.steps.length - 1 ? ext.generationId : null,
+        inputMessages,
+        outputText: step.text,
+        properties: { agent_id: agentId, tool_call_names: toolCallNames },
+      });
+    });
+  }
   const { error } = await admin.from("usage_events").insert({
     owner_id: ownerId,
     kind: "voice_extraction",
@@ -294,6 +356,7 @@ async function runExtractionSpendPhaseInner(
   ownerId: string,
   requestStartedAtMs: number,
 ): Promise<ExtractionOutcome> {
+  const traceId = randomUUID();
   try {
     const admin = createAdminClient();
 
@@ -496,7 +559,14 @@ async function runExtractionSpendPhaseInner(
       // which is strictly worse than an honest failed state with a Retry button.
       if (isTransientStreamDeath(ext)) {
         try {
-          modelCallId = await recordExtractionAttempt(admin, ownerId, agentId, reporterHandle, ext);
+          modelCallId = await recordExtractionAttempt(
+            admin,
+            ownerId,
+            agentId,
+            reporterHandle,
+            traceId,
+            ext,
+          );
         } catch (ledgerError) {
           console.error(
             `runExtractionSpendPhase: failed to ledger or meter dead first attempt for @${reporterHandle}`,
@@ -544,7 +614,14 @@ async function runExtractionSpendPhaseInner(
         }
       }
 
-      modelCallId ??= await recordExtractionAttempt(admin, ownerId, agentId, reporterHandle, ext);
+      modelCallId ??= await recordExtractionAttempt(
+        admin,
+        ownerId,
+        agentId,
+        reporterHandle,
+        traceId,
+        ext,
+      );
 
       // An extraction can finish cleanly and produce NOTHING. Observed live once, 2026-07-25: a
       // run returned `finishReason: "stop"`, 9,443 thinking tokens, 7,365 characters of reasoning,

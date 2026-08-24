@@ -11,6 +11,7 @@
 //
 // SERVER-ONLY (transitively imports lib/sysprompts via readFileSync at module scope, and
 // writes via the admin client) — never importable from a client component.
+import { randomUUID } from "node:crypto";
 import type { GenerateObjectStepEndEvent } from "ai";
 import {
   gateway,
@@ -24,6 +25,7 @@ import {
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { QWEN_DRAFT_PROVIDER_OPTIONS } from "@/lib/agent/qwen-draft-config";
+import { captureAiGeneration, type TelemetryMessage } from "@/lib/observability/posthog-ai";
 import {
   checkOriginReachable,
   discoverChangeDetection,
@@ -260,6 +262,29 @@ function buildOnboardingPrompt(input: {
  *  this new stage name and would not compile. `model_calls.stage` itself is a plain text
  *  column with no check constraint, so this is purely a TS-typing workaround, not a schema
  *  one. */
+function slimTokenUsage(value: unknown): Record<string, unknown> {
+  const usage =
+    value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const outputTokenDetails =
+    usage.outputTokenDetails !== null && typeof usage.outputTokenDetails === "object"
+      ? (usage.outputTokenDetails as Record<string, unknown>)
+      : {};
+  const finiteToken = (token: unknown) =>
+    typeof token === "number" && Number.isFinite(token) ? token : undefined;
+  const inputTokens = finiteToken(usage.inputTokens);
+  const outputTokens = finiteToken(usage.outputTokens);
+  const totalTokens = finiteToken(usage.totalTokens);
+  const reasoningTokens = finiteToken(outputTokenDetails.reasoningTokens);
+  return {
+    ...(inputTokens === undefined ? {} : { inputTokens }),
+    ...(outputTokens === undefined ? {} : { outputTokens }),
+    ...(totalTokens === undefined ? {} : { totalTokens }),
+    outputTokenDetails: {
+      ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+    },
+  };
+}
+
 async function insertOnboardingModelCall(
   admin: ReturnType<typeof createAdminClient>,
   ownerId: string,
@@ -268,13 +293,13 @@ async function insertOnboardingModelCall(
     stage?: "source_onboarding" | "source_narrowing";
     model: string;
     output: string | null;
-    reasoning: string | null;
     usage: unknown;
+    persistedUsage?: unknown;
     providerMetadata?: Record<string, unknown>;
     resolvedCostUsd?: number | null;
     resolvedGenerationId?: string | null;
   },
-): Promise<string> {
+): Promise<{ id: string; costUsd: number | null; generationId: string | null }> {
   const resolved = await resolveGatewayCost({
     providerMetadata: result.providerMetadata,
   });
@@ -289,8 +314,8 @@ async function insertOnboardingModelCall(
       role: "primary",
       model: result.model,
       output: result.output,
-      reasoning: result.reasoning,
-      usage: result.usage as unknown as Json,
+      reasoning: null,
+      usage: (result.persistedUsage ?? slimTokenUsage(result.usage)) as unknown as Json,
       cost_usd: costUsd,
       generation_id: generationId,
       ref_kind: "agent",
@@ -309,7 +334,7 @@ async function insertOnboardingModelCall(
   });
   if (meterError) console.error("onboardSource: usage_events stamp failed", meterError);
 
-  return data.id;
+  return { id: data.id, costUsd, generationId };
 }
 
 /** Fetches one sample entry's article body, giving BOTH a code-computed `full`/`teaser`
@@ -469,6 +494,7 @@ async function resolveBeatSection(
   admin: ReturnType<typeof createAdminClient>,
   ownerId: string,
   agentId: string,
+  traceId: string,
   configId: string,
   typedUrl: URL,
   resolvedUrl: URL,
@@ -648,6 +674,7 @@ async function resolveBeatSection(
   ].join("\n");
   const abortSignal = AbortSignal.timeout(NARROWING_BUDGET_MS);
   let thrown: unknown;
+  const resolverStartedAtMs = Date.now();
   try {
     await generateText({
       model: SONNET_ONBOARDING_MODEL,
@@ -691,6 +718,7 @@ async function resolveBeatSection(
   } catch (error) {
     thrown = error;
   }
+  const resolverLatencyMs = Date.now() - resolverStartedAtMs;
 
   searchCallsSeen = Math.max(
     searchCallsSeen,
@@ -699,54 +727,82 @@ async function resolveBeatSection(
   );
 
   if (stepsRef.length > 0) {
-    const providerReasoning = stepsRef
-      .map((step) => step.reasoningText?.trim())
-      .filter((reasoning): reasoning is string => Boolean(reasoning))
-      .join("\n\n");
-    const termination = finished
-      ? "The resolver completed with a finish result."
+    const termination:
+      | "finish"
+      | "deadline"
+      | "cancelled"
+      | "catch_all"
+      | "step_cap"
+      | "search_cap"
+      | "error" = finished
+      ? "finish"
       : abortSignal.aborted
-        ? "The resolver was aborted after these completed steps when its deadline elapsed."
+        ? "deadline"
         : cancelled
-          ? "The resolver stopped after these completed steps because the pending source was cancelled."
+          ? "cancelled"
           : catchAllTripped
-            ? "The resolver stopped after these completed steps because the catch-all listing safeguard tripped."
+            ? "catch_all"
             : stepsRef.length >= RESOLVER_MAX_STEPS
-              ? "The resolver reached its step cap without a finish result."
+              ? "step_cap"
               : searchCallsSeen >= RESOLVER_MAX_SEARCHES + 1
-                ? "The resolver reached its search-call cap without a finish result."
-                : thrown
-                  ? "The resolver ended with an error after these completed steps."
-                  : "The resolver completed these steps without a finish result.";
-    const operationalTrace = [
-      "Operational resolver trace (observable step metadata):",
-      ...stepsRef.map((step, index) => {
-        const calls = step.toolCalls.map((call) => call.toolName).join(", ") || "none";
-        const results = step.toolResults.map((result) => result.toolName).join(", ") || "none";
-        return `Step ${index + 1}: tool calls: ${calls}; tool results: ${results}; finish reason: ${step.finishReason}.`;
-      }),
-      termination,
-    ].join("\n");
+                ? "search_cap"
+                : "error";
     let costUsd: number | null = null;
     let generationId: string | null = null;
+    const resolvedSteps: Array<{ costUsd: number | null; generationId: string | null }> = [];
     for (const step of stepsRef) {
       const resolved = await resolveGatewayCost(step);
+      resolvedSteps.push(resolved);
       if (resolved.generationId) generationId = resolved.generationId;
       if (resolved.costUsd !== null) costUsd = (costUsd ?? 0) + resolved.costUsd;
     }
     try {
-      await insertOnboardingModelCall(admin, ownerId, agentId, {
+      const inserted = await insertOnboardingModelCall(admin, ownerId, agentId, {
         stage: "source_narrowing",
         model: SONNET_ONBOARDING_MODEL,
         output: finished
           ? JSON.stringify(finished)
           : JSON.stringify(stepsRef.map((step) => step.toolCalls.map((call) => call.toolName))),
-        reasoning: providerReasoning
-          ? `${providerReasoning}\n\n${operationalTrace}`
-          : operationalTrace,
         usage: { steps: stepsRef.map((step) => step.usage), searchCalls: searchCallsSeen },
+        persistedUsage: {
+          steps: stepsRef.map((step) => slimTokenUsage(step.usage)),
+          searchCalls: searchCallsSeen,
+          termination,
+        },
         resolvedCostUsd: costUsd,
         resolvedGenerationId: generationId,
+      });
+      stepsRef.forEach((step, index) => {
+        const toolCallNames = step.toolCalls.map((call) => call.toolName);
+        const toolResultNames = step.toolResults.map((result) => result.toolName);
+        const inputMessages: TelemetryMessage[] | null =
+          index === 0
+            ? [
+                { role: "system", content: SOURCE_RESOLVER_PROMPT },
+                { role: "user", content: context },
+              ]
+            : toolCallNames.length > 0
+              ? [
+                  {
+                    role: "tool",
+                    content: `tool ${toolCallNames.join(", ")}: completed`,
+                  },
+                ]
+              : null;
+        captureAiGeneration({
+          distinctId: ownerId,
+          traceId,
+          spanId: `${inserted.id}:${index}`,
+          stage: "source_narrowing",
+          model: SONNET_ONBOARDING_MODEL,
+          usage: step.usage,
+          latencyMs: index === stepsRef.length - 1 ? resolverLatencyMs : null,
+          streamed: false,
+          generationId: resolvedSteps[index]?.generationId ?? null,
+          inputMessages,
+          outputText: `tool ${toolCallNames.join(", ") || "none"}: results ${toolResultNames.join(", ") || "none"}; finish ${step.finishReason}`,
+          properties: { agent_id: agentId, tool_call_names: toolCallNames },
+        });
       });
     } catch (ledgerError) {
       if (!thrown) throw ledgerError;
@@ -879,6 +935,7 @@ export async function onboardSource(
   mode: OnboardingMode = "full",
 ): Promise<OnboardOutcome> {
   const admin = createAdminClient();
+  const traceId = randomUUID();
   if (!(await checkOriginReachable(inputUrl))) {
     await failOnboarding(admin, mode, agentId, configId, "unreachable");
     return { status: "unreachable" };
@@ -925,6 +982,7 @@ export async function onboardSource(
       admin,
       ownerId,
       agentId,
+      traceId,
       configId,
       inputUrl,
       new URL(detection.resolvedUrl),
@@ -966,8 +1024,22 @@ export async function onboardSource(
     : QWEN_DRAFT_PROVIDER_OPTIONS;
 
   const stepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
+  const onboardingPrompt = buildOnboardingPrompt({
+    beat,
+    inputUrl,
+    sample,
+    mechanism: finalMechanism,
+    fullTextVerdict,
+    narrowedUrl,
+    sampleArticleText,
+  });
+  const inputMessages: TelemetryMessage[] = [
+    { role: "system", content: SOURCE_ONBOARDING_PROMPT },
+    { role: "user", content: onboardingPrompt },
+  ];
   let verdict: SourceOnboardingVerdict;
   let modelCallId: string;
+  const requestStartedAtMs = Date.now();
   try {
     const result = await generateObject({
       model,
@@ -979,26 +1051,33 @@ export async function onboardSource(
       maxOutputTokens: isSonnet ? SONNET_ONBOARDING_MAX_OUTPUT_TOKENS : undefined,
       schema: sourceOnboardingSchema,
       system: SOURCE_ONBOARDING_PROMPT,
-      prompt: buildOnboardingPrompt({
-        beat,
-        inputUrl,
-        sample,
-        mechanism: finalMechanism,
-        fullTextVerdict,
-        narrowedUrl,
-        sampleArticleText,
-      }),
+      prompt: onboardingPrompt,
       onStepEnd: (event) => {
         stepRef.value = event;
       },
       abortSignal: AbortSignal.timeout(ONBOARDING_TIMEOUT_MS),
     });
-    modelCallId = await insertOnboardingModelCall(admin, ownerId, agentId, {
+    const output = JSON.stringify(result.object);
+    const inserted = await insertOnboardingModelCall(admin, ownerId, agentId, {
       model,
-      output: JSON.stringify(result.object),
-      reasoning: result.reasoning ?? null,
+      output,
       usage: result.usage,
       providerMetadata: result.providerMetadata,
+    });
+    modelCallId = inserted.id;
+    captureAiGeneration({
+      distinctId: ownerId,
+      traceId,
+      spanId: inserted.id,
+      stage: "source_onboarding",
+      model,
+      usage: result.usage,
+      latencyMs: Date.now() - requestStartedAtMs,
+      streamed: false,
+      generationId: inserted.generationId,
+      inputMessages,
+      outputText: output,
+      properties: { agent_id: agentId },
     });
     verdict = result.object;
   } catch (err) {
@@ -1006,12 +1085,27 @@ export async function onboardSource(
       // The call BILLED, so it still gets a ledgerable row (AGENTS.md's model-call rule) —
       // captured from the onStepEnd event before zod rejected the JSON, same pattern as
       // `completedStepRef` in lib/agent/draft-translate.ts and lib/agent/draft-write.ts.
-      const failedCallId = await insertOnboardingModelCall(admin, ownerId, agentId, {
+      const output = stepRef.value?.objectText ?? err.text ?? null;
+      const usage = stepRef.value?.usage ?? err.usage;
+      const failedCall = await insertOnboardingModelCall(admin, ownerId, agentId, {
         model,
-        output: stepRef.value?.objectText ?? err.text ?? null,
-        reasoning: stepRef.value?.reasoning ?? null,
-        usage: stepRef.value?.usage ?? err.usage,
+        output,
+        usage,
         providerMetadata: stepRef.value?.providerMetadata,
+      });
+      captureAiGeneration({
+        distinctId: ownerId,
+        traceId,
+        spanId: failedCall.id,
+        stage: "source_onboarding",
+        model,
+        usage,
+        latencyMs: Date.now() - requestStartedAtMs,
+        streamed: false,
+        generationId: failedCall.generationId,
+        inputMessages,
+        outputText: output,
+        properties: { agent_id: agentId },
       });
       await failOnboarding(
         admin,
@@ -1019,7 +1113,7 @@ export async function onboardSource(
         agentId,
         configId,
         "schema_validation_failed",
-        failedCallId,
+        failedCall.id,
       );
       return { status: "failed", errorCode: "schema_validation_failed" };
     }
