@@ -1057,6 +1057,7 @@ export async function onboardSource(
       },
       abortSignal: AbortSignal.timeout(ONBOARDING_TIMEOUT_MS),
     });
+    const latencyMs = Date.now() - requestStartedAtMs;
     const output = JSON.stringify(result.object);
     const inserted = await insertOnboardingModelCall(admin, ownerId, agentId, {
       model,
@@ -1072,7 +1073,7 @@ export async function onboardSource(
       stage: "source_onboarding",
       model,
       usage: result.usage,
-      latencyMs: Date.now() - requestStartedAtMs,
+      latencyMs,
       streamed: false,
       generationId: inserted.generationId,
       inputMessages,
@@ -1082,6 +1083,7 @@ export async function onboardSource(
     verdict = result.object;
   } catch (err) {
     if (NoObjectGeneratedError.isInstance(err)) {
+      const latencyMs = Date.now() - requestStartedAtMs;
       // The call BILLED, so it still gets a ledgerable row (AGENTS.md's model-call rule) —
       // captured from the onStepEnd event before zod rejected the JSON, same pattern as
       // `completedStepRef` in lib/agent/draft-translate.ts and lib/agent/draft-write.ts.
@@ -1100,7 +1102,7 @@ export async function onboardSource(
         stage: "source_onboarding",
         model,
         usage,
-        latencyMs: Date.now() - requestStartedAtMs,
+        latencyMs,
         streamed: false,
         generationId: failedCall.generationId,
         inputMessages,
