@@ -223,7 +223,13 @@ export async function draftStory(draftId: string): Promise<DraftStoryResult> {
     }
     let modelCallId: string;
     try {
-      const ids = await insertModelCalls(admin, user.id, [written.call], story.source_post_id);
+      const ids = await insertModelCalls(
+        admin,
+        user.id,
+        story.agent_id,
+        [written.call],
+        story.source_post_id,
+      );
       if (!ids[0]) throw new Error("Model call insert returned no id");
       modelCallId = ids[0];
     } catch (error) {

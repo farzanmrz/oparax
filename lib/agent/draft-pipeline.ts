@@ -19,6 +19,7 @@ import { filterSourcePost } from "@/lib/agent/draft-filter";
 import { synthesizeSourcePost } from "@/lib/agent/draft-synthesize";
 import { translateSourcePost } from "@/lib/agent/draft-translate";
 import { validateSourceMedia } from "@/lib/agent/source-media";
+import { captureAiGeneration } from "@/lib/observability/posthog-ai";
 import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
@@ -201,11 +202,26 @@ async function fetchSiteGuidance(
 export async function insertModelCalls(
   admin: AdminClient,
   ownerId: string,
+  agentId: string,
   calls: CouncilCall[],
   sourcePostId: string,
 ): Promise<string[]> {
   const ids: string[] = [];
   for (const call of calls) {
+    const usage =
+      call.usage !== null && typeof call.usage === "object"
+        ? (call.usage as Record<string, unknown>)
+        : {};
+    const outputTokenDetails =
+      usage.outputTokenDetails !== null && typeof usage.outputTokenDetails === "object"
+        ? (usage.outputTokenDetails as Record<string, unknown>)
+        : {};
+    const finiteToken = (value: unknown) =>
+      typeof value === "number" && Number.isFinite(value) ? value : undefined;
+    const inputTokens = finiteToken(usage.inputTokens);
+    const outputTokens = finiteToken(usage.outputTokens);
+    const totalTokens = finiteToken(usage.totalTokens);
+    const reasoningTokens = finiteToken(outputTokenDetails.reasoningTokens);
     const { data, error } = await admin
       .from("model_calls")
       .insert({
@@ -214,9 +230,14 @@ export async function insertModelCalls(
         role: call.role,
         model: call.model,
         output: call.output,
-        reasoning: call.reasoning,
+        reasoning: null,
         usage: {
-          ...(call.usage as object),
+          ...(inputTokens === undefined ? {} : { inputTokens }),
+          ...(outputTokens === undefined ? {} : { outputTokens }),
+          ...(totalTokens === undefined ? {} : { totalTokens }),
+          outputTokenDetails: {
+            ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+          },
           reasoningWithheldByProvider: call.reasoningWithheldByProvider,
           // This model-produced editorial account is reporter-facing provenance, not proof or
           // chain-of-thought. Only live drafts carry it; historic, revision, and human calls do not.
@@ -238,6 +259,20 @@ export async function insertModelCalls(
       .single();
     if (error) throw error;
     ids.push(data.id);
+    captureAiGeneration({
+      distinctId: ownerId,
+      traceId: `${agentId}:${sourcePostId}`,
+      spanId: data.id,
+      stage: call.stage,
+      model: call.model,
+      usage: call.usage,
+      latencyMs: call.latencyMs,
+      streamed: call.stage === "translation",
+      generationId: call.generationId,
+      inputMessages: call.telemetryInput,
+      outputText: call.output,
+      properties: { agent_id: agentId, source_post_id: sourcePostId },
+    });
   }
   return ids;
 }
@@ -362,7 +397,7 @@ async function draftForAgent(
       siteGuidance,
       deadlineAt: options.deadlineAt,
     });
-    await insertModelCalls(admin, agent.owner_id, [filtered.call], sourcePostId);
+    await insertModelCalls(admin, agent.owner_id, agent.id, [filtered.call], sourcePostId);
     await stampUsageEvent(admin, {
       owner_id: agent.owner_id,
       kind: "filtering",
@@ -409,7 +444,7 @@ async function draftForAgent(
     if (!DIRECT_SYNTHESIS_ENABLED) {
       const translated = await translateSourcePost({ brief, deadlineAt: options.deadlineAt });
       if (translated.call) {
-        await insertModelCalls(admin, agent.owner_id, [translated.call], sourcePostId);
+        await insertModelCalls(admin, agent.owner_id, agent.id, [translated.call], sourcePostId);
         await stampUsageEvent(admin, {
           owner_id: agent.owner_id,
           kind: "translation",
@@ -432,7 +467,7 @@ async function draftForAgent(
       sourceTitle: synthesisSourceTitle,
       deadlineAt: options.deadlineAt,
     });
-    await insertModelCalls(admin, agent.owner_id, [synthesized.call], sourcePostId);
+    await insertModelCalls(admin, agent.owner_id, agent.id, [synthesized.call], sourcePostId);
     await stampUsageEvent(admin, {
       owner_id: agent.owner_id,
       kind: "synthesis",
@@ -479,7 +514,7 @@ async function draftForAgent(
     if (cluster.calls.length > 0) {
       // Ledger-first, same ordering discipline as every other CouncilCall producer here —
       // this insert happens BEFORE the platform fan-out's own ledger-first inserts.
-      await insertModelCalls(admin, agent.owner_id, cluster.calls, sourcePostId);
+      await insertModelCalls(admin, agent.owner_id, agent.id, cluster.calls, sourcePostId);
       for (const call of cluster.calls) {
         await stampUsageEvent(admin, {
           owner_id: agent.owner_id,

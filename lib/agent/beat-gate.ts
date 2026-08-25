@@ -1,9 +1,11 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import type { GenerateObjectStepEndEvent } from "ai";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
+import { captureAiGeneration, type TelemetryMessage } from "@/lib/observability/posthog-ai";
 import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
@@ -19,9 +21,11 @@ const SONNET_BEAT_GATE_PROVIDER_OPTIONS = {
 
 async function insertBeatGateModelCall(
   ownerId: string,
+  traceId: string,
+  latencyMs: number,
+  inputMessages: TelemetryMessage[],
   result: {
     output: string | null;
-    reasoning: string | null;
     usage: unknown;
     providerMetadata?: Record<string, unknown>;
   },
@@ -31,20 +35,59 @@ async function insertBeatGateModelCall(
     const { costUsd, generationId } = await resolveGatewayCost({
       providerMetadata: result.providerMetadata,
     });
-    const { error } = await admin.from("model_calls").insert({
-      owner_id: ownerId,
-      stage: "beat_gate",
-      role: "primary",
-      model: MODEL,
-      output: result.output,
-      reasoning: result.reasoning,
-      usage: result.usage as Json,
-      cost_usd: costUsd,
-      generation_id: generationId,
-      ref_kind: "owner",
-      ref_id: ownerId,
-    });
+    const usage =
+      result.usage !== null && typeof result.usage === "object"
+        ? (result.usage as Record<string, unknown>)
+        : {};
+    const outputTokenDetails =
+      usage.outputTokenDetails !== null && typeof usage.outputTokenDetails === "object"
+        ? (usage.outputTokenDetails as Record<string, unknown>)
+        : {};
+    const finiteToken = (value: unknown) =>
+      typeof value === "number" && Number.isFinite(value) ? value : undefined;
+    const inputTokens = finiteToken(usage.inputTokens);
+    const outputTokens = finiteToken(usage.outputTokens);
+    const totalTokens = finiteToken(usage.totalTokens);
+    const reasoningTokens = finiteToken(outputTokenDetails.reasoningTokens);
+    const { data, error } = await admin
+      .from("model_calls")
+      .insert({
+        owner_id: ownerId,
+        stage: "beat_gate",
+        role: "primary",
+        model: MODEL,
+        output: result.output,
+        reasoning: null,
+        usage: {
+          ...(inputTokens === undefined ? {} : { inputTokens }),
+          ...(outputTokens === undefined ? {} : { outputTokens }),
+          ...(totalTokens === undefined ? {} : { totalTokens }),
+          outputTokenDetails: {
+            ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+          },
+        } as Json,
+        cost_usd: costUsd,
+        generation_id: generationId,
+        ref_kind: "owner",
+        ref_id: ownerId,
+      })
+      .select("id")
+      .single();
     if (error) throw error;
+    captureAiGeneration({
+      distinctId: ownerId,
+      traceId,
+      spanId: data.id,
+      stage: "beat_gate",
+      model: MODEL,
+      usage: result.usage,
+      latencyMs,
+      streamed: false,
+      generationId,
+      inputMessages,
+      outputText: result.output,
+      properties: { owner_id: ownerId },
+    });
     const { error: meterError } = await admin.from("usage_events").insert({
       owner_id: ownerId,
       kind: "beat_gate",
@@ -64,6 +107,12 @@ export async function checkBeatIntelligible(
   ownerId: string,
 ): Promise<{ pass: boolean }> {
   const stepRef: { value: GenerateObjectStepEndEvent | null } = { value: null };
+  const traceId = randomUUID();
+  const inputMessages: TelemetryMessage[] = [
+    { role: "system", content: BEAT_GATE_PROMPT },
+    { role: "user", content: beat },
+  ];
+  const requestStartedAtMs = Date.now();
   try {
     const result = await generateObject({
       model: MODEL,
@@ -78,30 +127,45 @@ export async function checkBeatIntelligible(
       },
       abortSignal: AbortSignal.timeout(15_000),
     });
-    await insertBeatGateModelCall(ownerId, {
-      output: JSON.stringify(result.object),
-      reasoning: stepRef.value?.reasoning ?? null,
-      usage: result.usage,
-      providerMetadata: result.providerMetadata,
-    });
+    await insertBeatGateModelCall(
+      ownerId,
+      traceId,
+      Date.now() - requestStartedAtMs,
+      inputMessages,
+      {
+        output: JSON.stringify(result.object),
+        usage: result.usage,
+        providerMetadata: result.providerMetadata,
+      },
+    );
     return { pass: result.object.interpretable };
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {
-      await insertBeatGateModelCall(ownerId, {
-        output: stepRef.value?.objectText ?? error.text ?? null,
-        reasoning: stepRef.value?.reasoning ?? null,
-        usage: stepRef.value?.usage ?? error.usage,
-        providerMetadata: stepRef.value?.providerMetadata,
-      });
+      await insertBeatGateModelCall(
+        ownerId,
+        traceId,
+        Date.now() - requestStartedAtMs,
+        inputMessages,
+        {
+          output: stepRef.value?.objectText ?? error.text ?? null,
+          usage: stepRef.value?.usage ?? error.usage,
+          providerMetadata: stepRef.value?.providerMetadata,
+        },
+      );
     } else if (stepRef.value) {
       // A timeout can arrive after the provider completed a billed step. Preserve its captured
       // usage even though no object was returned to this request.
-      await insertBeatGateModelCall(ownerId, {
-        output: stepRef.value.objectText ?? null,
-        reasoning: stepRef.value.reasoning ?? null,
-        usage: stepRef.value.usage,
-        providerMetadata: stepRef.value.providerMetadata,
-      });
+      await insertBeatGateModelCall(
+        ownerId,
+        traceId,
+        Date.now() - requestStartedAtMs,
+        inputMessages,
+        {
+          output: stepRef.value.objectText ?? null,
+          usage: stepRef.value.usage,
+          providerMetadata: stepRef.value.providerMetadata,
+        },
+      );
     }
     return { pass: true };
   }

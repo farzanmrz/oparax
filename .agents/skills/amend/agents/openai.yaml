@@ -1,0 +1,7 @@
+interface:
+  display_name: "Amend"
+  short_description: "Add scope to an in-flight oparax issue on its existing branch"
+  default_prompt: "Use $amend <N> to add scope to issue N's plan on its existing branch, critique it, and append it to the issue on approval."
+
+policy:
+  allow_implicit_invocation: false

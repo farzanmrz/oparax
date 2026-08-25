@@ -1,0 +1,7 @@
+interface:
+  display_name: "QC"
+  short_description: "Review a built oparax branch and hand back a fix list"
+  default_prompt: "Use $qc <N> to check plan coverage, run the gates, launch the review lanes, and hand back a fix list for $build's fix mode."
+
+policy:
+  allow_implicit_invocation: false

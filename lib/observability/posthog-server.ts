@@ -17,7 +17,7 @@ const DISTINCT_ID = "server";
 
 let client: PostHog | null | undefined;
 
-function getClient(): PostHog | null {
+export function getPostHogServerClient(): PostHog | null {
   if (client !== undefined) return client;
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   if (!token) {
@@ -49,7 +49,7 @@ export type ServerErrorContext = {
 
 /** Report a caught error as a PostHog exception. Never throws; a sink failure is logged only. */
 export function reportServerException(error: unknown, context: ServerErrorContext = {}): void {
-  const ph = getClient();
+  const ph = getPostHogServerClient();
   if (!ph) return;
   try {
     ph.captureException(

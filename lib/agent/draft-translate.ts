@@ -2,7 +2,8 @@
 // component.
 
 import { streamText } from "ai";
-import { aiTelemetry } from "@/lib/observability/ai-telemetry";
+import { aiContentAllowed, aiTelemetry } from "@/lib/observability/ai-telemetry";
+import type { TelemetryMessage } from "@/lib/observability/posthog-ai";
 import { DRAFT_TRANSLATE_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlText } from "@/lib/xml";
 import { resolveCallMeta } from "./call-meta";
@@ -68,6 +69,14 @@ export async function translateSourcePost(input: {
     );
   };
 
+  const userPrompt = `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>${input.brief.title ? `\n<source_title>\n${escapeXmlText(input.brief.title)}\n</source_title>` : ""}\n<source_post>\n${escapeXmlText(input.brief.text)}\n</source_post>`;
+  const telemetryInput: TelemetryMessage[] | null = aiContentAllowed("translation")
+    ? [
+        { role: "system", content: DRAFT_TRANSLATE_PROMPT },
+        { role: "user", content: userPrompt },
+      ]
+    : null;
+  const requestStartedAtMs = Date.now();
   const result = streamText({
     model: QWEN_DRAFT_MODEL,
     providerOptions: QWEN_DRAFT_PROVIDER_OPTIONS,
@@ -89,7 +98,7 @@ export async function translateSourcePost(input: {
     messages: [
       {
         role: "user",
-        content: `<source_language>${isUndeterminedLanguage(primary) ? "und" : input.brief.lang}</source_language>${input.brief.title ? `\n<source_title>\n${escapeXmlText(input.brief.title)}\n</source_title>` : ""}\n<source_post>\n${escapeXmlText(input.brief.text)}\n</source_post>`,
+        content: userPrompt,
       },
     ],
     experimental_telemetry: aiTelemetry("draft_translate", "draft-translate-qwen"),
@@ -123,7 +132,13 @@ export async function translateSourcePost(input: {
       }
     }
     if (timeoutError) throw timeoutError;
-    const [text, finishReason] = await Promise.all([result.text, result.finishReason]);
+    const [text, finishReason, reasoningText, usage, providerMetadata] = await Promise.all([
+      result.text,
+      result.finishReason,
+      result.reasoningText,
+      result.usage,
+      result.providerMetadata,
+    ]);
     if (timeoutError) throw timeoutError;
     if (finishReason !== "stop") {
       throw new Error(`Translation stream ended with finish reason: ${finishReason}`);
@@ -136,9 +151,11 @@ export async function translateSourcePost(input: {
       role: "translation",
       model: QWEN_DRAFT_MODEL,
       output: translation ?? NULL_TRANSLATION_OUTPUT,
-      reasoning: (await result.reasoningText) ?? null,
-      usage: await result.usage,
-      providerMetadata: await result.providerMetadata,
+      reasoning: reasoningText ?? null,
+      usage,
+      providerMetadata,
+      latencyMs: Date.now() - requestStartedAtMs,
+      telemetryInput,
     });
     return {
       call,
