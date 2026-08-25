@@ -1,5 +1,5 @@
 interface:
-  display_name: "ship"
+  display_name: "Ship"
   short_description: "Ship an oparax ft/<N> branch to beta after QC"
   default_prompt: "Use $ship <N> to squash the finished ft/<N> branch to beta after the owner's localhost walk."
 

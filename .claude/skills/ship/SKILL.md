@@ -8,6 +8,7 @@ description: >-
 argument-hint: "[issue#]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *) Skill
 model: inherit
+disable-model-invocation: true
 ---
 
 # Ship: minimal guard, deterministic mechanics, owner closes

@@ -1,25 +1,26 @@
 ---
 name: feature
 description: >-
-  The whole plan side of feature work, CLAUDE CODE ONLY (it loads skill
-  bundles with the Skill tool and runs the critique lanes with Bash):
-  talk through the idea with the owner, write the owner-facing plan,
-  load the slice's skill bundles in this session and check the plan
-  against them, agree the plan with the owner, write the detailed plan
-  for build, run a five-lane holistic cross-model critique directly in
-  this session plus adjudication, present the revised plan, and on
-  approval create the GitHub issue and cut the branch. Use when
+  The whole plan side of feature work, same behavior in either host
+  (it loads skill bundles with the Skill tool and runs the critique
+  lanes with Bash): talk through the idea with the owner, write the
+  owner-facing plan, load the slice's skill bundles in this session and
+  check the plan against them, agree the plan with the owner, write the
+  detailed plan for build, run a five-lane holistic cross-model critique
+  directly in this session plus adjudication, present the revised plan,
+  and on approval create the GitHub issue and cut the branch. Use when
   the user says /feature, "let's plan a feature", or brings a new
   capability idea to talk through. Bugs use it too, starting from the
-  repro. Not for building ($build <N> in Codex comes after this skill
-  ends).
+  repro. Not for building ($build <N> in Codex, or /build <N> in Claude
+  Code, comes after this skill ends).
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Skill
 model: inherit
+disable-model-invocation: true
 ---
 
 # Feature: talk, plan (owner-facing then detailed), skill bundles, critique, issue + branch
 
-One session, start to finish. Nothing here auto-dispatches the next stage of the overall flow: this skill ends by naming `$build <N>` for the owner to run themselves in Codex.
+One session, start to finish. Nothing here auto-dispatches the next stage of the overall flow: this skill ends by naming `$build <N>` for the owner to run themselves, in Codex or as `/build <N>` in Claude Code.
 
 ## Working style, every step of this command
 
@@ -85,7 +86,7 @@ Show the owner this document, then END YOUR TURN and wait. They read it, push ba
 
 ## 5. Write the detailed plan (technical, inline, owner never reads it)
 
-After approval, write the detailed version of the same plan directly in this conversation. It is for the build stage (`$build <N>` in Codex) and the critique lanes only; the owner is never shown it and never asked to approve it. Ground it in the real code (real paths, real names) and flag missing information instead of guessing. No code, no snippets: build writes all of that once, from this document.
+After approval, write the detailed version of the same plan directly in this conversation. It is for the build stage (`$build <N>` in Codex, or `/build <N>` in Claude Code) and the critique lanes only; the owner is never shown it and never asked to approve it. Ground it in the real code (real paths, real names) and flag missing information instead of guessing. No code, no snippets: build writes all of that once, from this document.
 
 It has EXACTLY these parts, in this order, with these headings, because each later stage reads specific parts and nothing else:
 
@@ -207,16 +208,12 @@ Once the owner says yes to the revised plan:
 
 ## 9. End: name the next command
 
-The last act before the closing message: run `git branch --show-current` and confirm it prints `ft/<N>` (or `bf/<N>`); if anything in this session left the tree parked elsewhere, switch back now. Codex reads skills and plans from the checked-out branch, so a handoff that names `$build <N>` while the repo sits on another branch hands Codex the wrong world (happened 2026-08-23: a mid-session detour left the repo on beta at handoff).
+The last act before the closing message: run `git branch --show-current` and confirm it prints `ft/<N>` (or `bf/<N>`); if anything in this session left the tree parked elsewhere, switch back now. The build stage reads skills and plans from the checked-out branch, so a handoff that names `$build <N>` (or `/build <N>`) while the repo sits on another branch hands it the wrong world (happened 2026-08-23: a mid-session detour left the repo on beta at handoff).
 
-Do not dispatch, build, or run anything else. Close with a short summary (issue number, branch, one line on what changed in the critique round) and tell the owner the next command is `$build <N>`, run in Codex on this repo.
+Do not dispatch, build, or run anything else. Close with a short summary (issue number, branch, one line on what changed in the critique round) and tell the owner the next command is `$build <N>` in Codex or `/build <N>` in Claude Code, on this repo.
 
 <exit-example>
 
-Issue #123 created, `ft/123` cut. The critique round tightened the retry cap and added an owner decision about batching. When you're ready, in Codex:
-
-```
-$build 123
-```
+Issue #123 created, `ft/123` cut. The critique round tightened the retry cap and added an owner decision about batching. When you're ready: `$build 123` in Codex, or `/build 123` in Claude Code.
 
 </exit-example>

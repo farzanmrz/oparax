@@ -1,5 +1,5 @@
 interface:
-  display_name: "promote"
+  display_name: "Promote"
   short_description: "Weekly beta -> main pull request for mentor review"
   default_prompt: "Use $promote to open this week's beta -> main pull request."
 
