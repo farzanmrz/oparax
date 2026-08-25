@@ -97,10 +97,10 @@ export async function POST(req: Request) {
     // call sat at cost NULL forever; the first real end-to-end draft is what surfaced that. The
     // 25s pause is the lag plus margin, and it runs in `after()` — post-response, so the
     // forwarder's request is never held hostage to pricing, and inside this route's
-    // maxDuration budget. Deliveries are the only place drafting spend originates, so
-    // repairing here (each run also sweeps prior still-null rows, since the repair is idempotent
-    // over the newest 200) keeps the ledger converging without a cron. Rows younger than 25s or
-    // whose gateway lookup gives no answer wait for a later delivery's sweep.
+    // maxDuration budget. A Draft press in app/agents/[id]/draft-actions.ts also schedules this
+    // sweep because it is another origin of drafting spend. Each run sweeps prior still-null rows,
+    // so the ledger converges without a cron. Rows younger than 25s or whose gateway lookup gives
+    // no answer wait for a later sweep.
     //
     // The 25s sleep shares this SAME maxDuration budget as the already-awaited processDelivery
     // call above — a slow delivery (e.g. two full council runs) can return with very little of

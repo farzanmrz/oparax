@@ -3,7 +3,8 @@
 import type { GenerateTextStepEndEvent } from "ai";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { aiTelemetry } from "@/lib/observability/ai-telemetry";
+import { aiContentAllowed, aiTelemetry } from "@/lib/observability/ai-telemetry";
+import type { TelemetryMessage } from "@/lib/observability/posthog-ai";
 import { DRAFT_SYNTHESIZE_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { resolveCallMeta } from "./call-meta";
@@ -101,6 +102,27 @@ export async function synthesizeSourcePost(input: {
   deadlineAt?: number;
 }): Promise<DraftSynthesizeResult> {
   const completedStepRef: { value: GenerateTextStepEndEvent | null } = { value: null };
+  const content = buildContent(input);
+  const mediaCount = content.filter((part) => part.type === "file").length;
+  const telemetryInput: TelemetryMessage[] | null = aiContentAllowed("synthesis")
+    ? [
+        { role: "system", content: DRAFT_SYNTHESIZE_PROMPT },
+        {
+          role: "user",
+          content: [
+            content
+              .filter(
+                (part): part is Extract<SynthesisContentPart, { type: "text" }> =>
+                  part.type === "text",
+              )
+              .map((part) => part.text)
+              .join("\n"),
+            ...(mediaCount > 0 ? [`[media: ${mediaCount} items]`] : []),
+          ].join("\n"),
+        },
+      ]
+    : null;
+  const requestStartedAtMs = Date.now();
   try {
     const result = await generateText({
       model: QWEN_DRAFT_MODEL,
@@ -110,7 +132,7 @@ export async function synthesizeSourcePost(input: {
       abortSignal: qwenStageAbortSignal(QWEN_SYNTHESIZE_TIMEOUT_MS, input.deadlineAt),
       output: Output.object({ name: "SynthesisVerdict", schema: synthesisSchema }),
       system: DRAFT_SYNTHESIZE_PROMPT,
-      messages: [{ role: "user", content: buildContent(input) }],
+      messages: [{ role: "user", content }],
       onStepEnd: (event) => {
         completedStepRef.value = event;
       },
@@ -132,6 +154,8 @@ export async function synthesizeSourcePost(input: {
       reasoning: result.reasoningText ?? null,
       usage: result.usage,
       providerMetadata: result.providerMetadata,
+      latencyMs: Date.now() - requestStartedAtMs,
+      telemetryInput,
     });
     return { call, verdict };
   } catch (error) {
@@ -146,6 +170,8 @@ export async function synthesizeSourcePost(input: {
         reasoning: step?.reasoningText ?? null,
         usage: step?.usage ?? error.usage,
         providerMetadata: step?.providerMetadata,
+        latencyMs: Date.now() - requestStartedAtMs,
+        telemetryInput,
       });
       return { call, verdict: null };
     }

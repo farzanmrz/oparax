@@ -2,8 +2,8 @@
 //
 // The `experimental_telemetry` block every AI SDK call in this repo passes, defined ONCE.
 //
-// No telemetry consumer is currently registered. This helper stays as the stable per-stage
-// privacy policy and a ready contract for a future consumer.
+// The manual PostHog AI consumer uses the ledger-stage policy below. This AI SDK block remains
+// the stable per-stage privacy contract for any SDK telemetry integration registered later.
 import type { TelemetryOptions } from "ai";
 
 /** Every AI stage in the product. Deliberately mirrors `model_calls.stage`. */
@@ -42,6 +42,18 @@ const RECORDS_CONTENT: Record<AiStage, boolean> = {
   draft_council: DRAFT_CONTENT_ALLOWED,
   draft_write: DRAFT_CONTENT_ALLOWED,
 };
+
+const PUBLIC_LEDGER_STAGES = new Set([
+  "beat_gate",
+  "source_onboarding",
+  "source_narrowing",
+  "voice_extraction",
+]);
+
+/** Content policy for model_calls.stage names. Unknown stages stay closed in production. */
+export function aiContentAllowed(ledgerStage: string): boolean {
+  return PUBLIC_LEDGER_STAGES.has(ledgerStage) || DRAFT_CONTENT_ALLOWED;
+}
 
 export function aiTelemetry(stage: AiStage, functionId: string): TelemetryOptions {
   const recordsContent = RECORDS_CONTENT[stage];

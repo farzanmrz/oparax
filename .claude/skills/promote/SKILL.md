@@ -9,6 +9,7 @@ description: >-
 argument-hint: ""
 allowed-tools: Bash(git *) Bash(gh *) Bash(date *)
 model: inherit
+disable-model-invocation: true
 ---
 
 # Promote: one pull request, beta -> main, reviewed by the mentor

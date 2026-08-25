@@ -2,8 +2,8 @@
 name: amend
 description: >-
   Add or change functionality on an in-flight oparax issue N without a new
-  issue or branch, CLAUDE CODE ONLY (it loads skill bundles with the Skill
-  tool and runs the same four-lane critique as /feature
+  issue or branch, same behavior in either host (it loads skill bundles
+  with the Skill tool and runs the same five-lane critique as /feature
   directly in this session): confirm the branch, read the issue's plans,
   talk through the addition as a delta, write the amendment as two separate
   local files (a two-part plain one the owner approves, a detailed one the
@@ -16,11 +16,19 @@ description: >-
 argument-hint: "[issue # | plain description of the addition]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Skill
 model: inherit
+disable-model-invocation: true
 ---
 
 # Amend: add scope to an in-flight issue, same branch, same loop
 
-One session, start to finish. This skill never builds, never runs QC; it ends by naming `$build <N>` for the owner to run in Codex.
+One session, start to finish. This skill never builds, never runs QC; it ends by naming `$build <N>` for the owner to run, in Codex or as `/build <N>` in Claude Code.
+
+## Working style, every step of this command
+
+- **When you have enough information to act, act.** Do not re-derive what the plan files and this conversation already establish, re-litigate a decision the owner has already made, or narrate options you will not pursue. A choice that is yours, make and record with its reason; a choice that is genuinely the owner's becomes a "What needs your call" line.
+- **End a turn only at this command's named stops** (the step-2 slice agreement, the step-3 HARD STOP, a step-4 "What needs your call" answer). Anywhere else, before ending a turn, reread your last paragraph: if it is a plan, a question you could answer yourself, or a promise about work not yet done ("I'll..."), do that work now with tool calls instead of ending on it.
+- **Claim only what you can point to.** Every statement of progress rests on a tool result from this session: a file read, a command's output, a lane's state line. Anything not yet verified is said to be unverified, plainly.
+- **The owner reads product language, not a terminal.** Every owner-facing message leads with the outcome in complete plain sentences; no arrow chains, no shorthand invented mid-session, no vocabulary from the working thread. Short versus clear, choose clear.
 
 ## Hard rules for the planning stage
 
@@ -53,8 +61,7 @@ Exactly like `/feature` step 1, scoped as a delta on top of what is already agre
 The talk-through message has a fixed shape and a cap, because the owner is a vibe coder who reads product language only, and an open-ended message here turns into a wall of code findings (2026-08-18: a 5,000-character first message the owner could not parse, then a 1,500-character retry that worked; send the retry the first time). Exactly three short parts, no more:
 1. **What you asked for, in one or two sentences**, restated in the plan's plain voice (what users get, what stays hidden, what does not change).
 2. **Anything I found that changes it**, at most three lines, one each, each in the form "what it means for you, what I'll do about it"; no file names, no option names, no mechanism talk. If nothing changes, say "nothing" and skip.
-3. **The question**: one line, a yes/no on the slice plus the bundles (and the UI checkpoint if it applies).
-Then END YOUR TURN. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
+3. **The question**: one line, a yes/no on the slice plus the bundles (and the UI checkpoint if it applies). Then END YOUR TURN. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
 
 ## 3. Write the plain amendment and get it approved
 
@@ -99,7 +106,7 @@ Skills: <bare skill names this amendment's steps rest on, same form as the plan'
 <only the journeys this amendment adds or changes, in the plan's part-3 style; $build turns them into the owner's walk-through and /qc checks them>
 ```
 
-Then run the critique exactly as `/feature` step 6: the same four lanes, the same shared `.feature/lanes/critique.brief`, the same four per-lane background waits with each lane's findings extracted and dispositioned as it returns, the same in-session adjudication (dispositions file first, then edits by hunk, never re-emitting text), with these differences in the brief: the files under review are `.feature/amend-<N>-<R>.md` (the detailed amendment, the thing to attack) and `.feature/amend-<N>-<R>-owner.md` (the plain amendment, whose decisions are final); `.feature/plan-<N>.md`, every earlier `.feature/amend-<N>-*.md`, and every `.feature/fixes-<N>*.md` are context that is already built and out of scope; attack only this amendment and how it wires into what exists. Accepted findings land as, or inside, a `## Step` in the detailed file; a finding that needs the owner's judgment becomes a "What needs your call" line in the plain file.
+Then run the critique exactly as `/feature` step 6: the same five lanes, the same shared `.feature/lanes/critique.brief`, the same five per-lane background waits with each lane's findings extracted and dispositioned as it returns, the same in-session adjudication (dispositions file first, then edits by hunk, never re-emitting text), with these differences in the brief: the files under review are `.feature/amend-<N>-<R>.md` (the detailed amendment, the thing to attack) and `.feature/amend-<N>-<R>-owner.md` (the plain amendment, whose decisions are final); `.feature/plan-<N>.md`, every earlier `.feature/amend-<N>-*.md`, and every `.feature/fixes-<N>*.md` are context that is already built and out of scope; attack only this amendment and how it wires into what exists. Accepted findings land as, or inside, a `## Step` in the detailed file; a finding that needs the owner's judgment becomes a "What needs your call" line in the plain file.
 
 Present as `/feature` step 7 with one difference: `cat` the plain amendment file only, whole, after one line saying whether the critique changed anything the owner would notice (usually "nothing you'd notice; the build steps got tighter"). Never the detailed file, never the plan. If "What needs your call" gained a line, END YOUR TURN and wait for the owner's answer, then edit the plain file by hunk and go on.
 
@@ -126,14 +133,10 @@ Do NOT rename, archive, or edit `.feature/amend-<N>-<R>.md`; `$build` reads it (
 
 ## 6. End: name the next command
 
-Close with one line (amendment number, what it adds in the owner's words) and tell the owner the next command is `$build <N>`, run in Codex on this repo. Never build, never run QC yourself.
+Close with one line (amendment number, what it adds in the owner's words) and tell the owner the next command is `$build <N>` in Codex or `/build <N>` in Claude Code, on this repo. Never build, never run QC yourself.
 
 <exit-example>
 
-Amendment 1 on issue #123 is in place: the plan now also drafts a weekly digest. When you're ready, in Codex:
-
-```
-$build 123
-```
+Amendment 1 on issue #123 is in place: the plan now also drafts a weekly digest. When you're ready: `$build 123` in Codex, or `/build 123` in Claude Code.
 
 </exit-example>

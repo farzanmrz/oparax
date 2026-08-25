@@ -1,6 +1,6 @@
 // lib/agent/qwen-draft-config.ts
 //
-// The one Qwen 3.7 Flash config shared by translation, drafting, and the cheaper support paths
+// The one Qwen 3.7 Flash config shared by translation and the cheaper support paths
 // (correction revision and dormant clustering). Qwen 3.7 Flash is
 // vision-capable, so callers with source media must pass the original attachments rather than a
 // text-only description produced by another model.
@@ -8,8 +8,8 @@ export const QWEN_DRAFT_MODEL = "alibaba/qwen3.7-flash";
 export const QWEN_DRAFT_PROVIDER_OPTIONS = { gateway: { sort: "ttft" } };
 
 /** Stuck-call guard, NOT a latency budget — and load-bearing precisely because these calls carry
- *  no `maxOutputTokens`. It guards the non-streaming calls that share this config: the drafter
- *  and dormant clustering. Onboarding is uncapped for the same reason but carries its own
+ *  no `maxOutputTokens`. It guards dormant clustering. Onboarding is uncapped for the same
+ *  reason but carries its own
  *  equivalent abort (`ONBOARDING_TIMEOUT_MS`, lib/sources/onboard-source.ts). It exists for the same reason
  *  extract-guide.ts's abort does: an abort THROWS, so `draftForAgent`'s catch runs and RELEASES
  *  the `draft_claims` row; a platform kill at `app/api/ingest/route.ts`'s `maxDuration` is not a
@@ -21,7 +21,7 @@ export const QWEN_DRAFT_PROVIDER_OPTIONS = { gateway: { sort: "ttft" } };
  *  inactivity-reset abort instead, because a flowing stream makes silence, not elapsed time, the
  *  true death signal.
  *
- *  120s is ~40x a normal drafting call, so it only ever fires on a genuinely stuck generation.
+ *  120s is far beyond a normal support call, so it only ever fires on a genuinely stuck generation.
  *  It bounds ONE call: `processDelivery` still loops desks serially, so many desks on one delivery
  *  can outrun the route's budget in aggregate — that predates the uncapped output and is
  *  unchanged here. */

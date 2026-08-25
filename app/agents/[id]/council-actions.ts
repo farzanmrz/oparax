@@ -85,11 +85,14 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
     .eq("agent_id", base.agent_id);
   if (draftsError) throw draftsError;
 
-  const callIds = [...new Set((drafts ?? []).map((draft) => draft.model_call_id))];
-  const { data: calls, error: callsError } = await supabase
-    .from("model_calls")
-    .select("id, model, reasoning, usage")
-    .in("id", callIds);
+  const callIds = [
+    ...new Set(
+      (drafts ?? []).map((draft) => draft.model_call_id).filter((id): id is string => id !== null),
+    ),
+  ];
+  const { data: calls, error: callsError } = callIds.length
+    ? await supabase.from("model_calls").select("id, model, reasoning, usage").in("id", callIds)
+    : { data: [], error: null };
   if (callsError) throw callsError;
 
   const draftsById = new Map((drafts ?? []).map((draft) => [draft.id, draft]));
@@ -103,7 +106,7 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
     visited.add(cursor);
     const draft = draftsById.get(cursor);
     if (!draft) break;
-    const call = callsById.get(draft.model_call_id);
+    const call = draft.model_call_id ? callsById.get(draft.model_call_id) : undefined;
     if (call?.model === "human-edit") {
       edited = true;
     } else if (call) {
@@ -120,7 +123,10 @@ export async function getDraftReasoning(draftId: string): Promise<DraftReasoning
           edited,
         };
       }
-      if (reasoningTraceState(call.reasoning, call.usage) === "withheld") withheld = true;
+      const traceState = reasoningTraceState(call.reasoning, call.usage);
+      if (traceState === "withheld") withheld = true;
+      // "discarded" follows the same reporter-facing path as "none": the provider is not blamed
+      // when the product deliberately kept the trace text out of storage.
     }
     cursor = draft.parent_draft_id;
   }

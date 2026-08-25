@@ -41,8 +41,10 @@ export function DraftBox({
   xLinked: boolean;
 }) {
   const router = useRouter();
-  const [text, setText] = useState(draft.draftText);
-  const [baseline, setBaseline] = useState(draft.draftText);
+  // FeedItemCard never mounts DraftBox for an undrafted story.
+  const draftText = draft.draftText ?? "";
+  const [text, setText] = useState(draftText);
+  const [baseline, setBaseline] = useState(draftText);
   const [error, setError] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
   const [optimisticallyEdited, setOptimisticallyEdited] = useState(false);
@@ -56,8 +58,8 @@ export function DraftBox({
   useEffect(() => {
     if (syncedDraftId.current === draft.draftId || dirty || committing) return;
     syncedDraftId.current = draft.draftId;
-    setText(draft.draftText);
-    setBaseline(draft.draftText);
+    setText(draft.draftText ?? "");
+    setBaseline(draft.draftText ?? "");
     setError(null);
     setOptimisticallyEdited(false);
   }, [committing, dirty, draft]);

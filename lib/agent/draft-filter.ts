@@ -3,7 +3,8 @@
 import type { GenerateTextStepEndEvent } from "ai";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
-import { aiTelemetry } from "@/lib/observability/ai-telemetry";
+import { aiContentAllowed, aiTelemetry } from "@/lib/observability/ai-telemetry";
+import type { TelemetryMessage } from "@/lib/observability/posthog-ai";
 import { DRAFT_FILTER_PROMPT } from "@/lib/sysprompts";
 import { escapeXmlAttribute, escapeXmlText } from "@/lib/xml";
 import { MAX_SITE_GUIDANCE_CHARS } from "../sources/site-guidance";
@@ -114,6 +115,27 @@ export async function filterSourcePost(input: {
   deadlineAt?: number;
 }): Promise<DraftFilterResult> {
   const completedStepRef: { value: GenerateTextStepEndEvent | null } = { value: null };
+  const content = buildContent(input);
+  const mediaCount = content.filter((part) => part.type === "file").length;
+  const telemetryInput: TelemetryMessage[] | null = aiContentAllowed("filtering")
+    ? [
+        { role: "system", content: DRAFT_FILTER_PROMPT },
+        {
+          role: "user",
+          content: [
+            content
+              .filter(
+                (part): part is Extract<FilterContentPart, { type: "text" }> =>
+                  part.type === "text",
+              )
+              .map((part) => part.text)
+              .join("\n"),
+            ...(mediaCount > 0 ? [`[media: ${mediaCount} items]`] : []),
+          ].join("\n"),
+        },
+      ]
+    : null;
+  const requestStartedAtMs = Date.now();
   try {
     const result = await generateText({
       model: QWEN_DRAFT_MODEL,
@@ -126,7 +148,7 @@ export async function filterSourcePost(input: {
       messages: [
         {
           role: "user",
-          content: buildContent(input),
+          content,
         },
       ],
       onStepEnd: (event) => {
@@ -144,6 +166,8 @@ export async function filterSourcePost(input: {
       reasoning: result.reasoningText ?? null,
       usage: result.usage,
       providerMetadata: result.providerMetadata,
+      latencyMs: Date.now() - requestStartedAtMs,
+      telemetryInput,
     });
     return { call, verdict };
   } catch (error) {
@@ -158,6 +182,8 @@ export async function filterSourcePost(input: {
         reasoning: step?.reasoningText ?? null,
         usage: step?.usage ?? error.usage,
         providerMetadata: step?.providerMetadata,
+        latencyMs: Date.now() - requestStartedAtMs,
+        telemetryInput,
       });
       return { call, verdict: null };
     }

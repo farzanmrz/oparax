@@ -16,6 +16,7 @@ import type { FeedDraft, FeedItem } from "@/lib/agent/feed-shared";
 import { cn } from "@/lib/utils";
 import type { ExtractionProgressState } from "@/lib/voice/use-extraction-progress";
 import { DraftBox } from "./draft-box";
+import { DraftButton } from "./draft-button";
 import { DraftMenu } from "./draft-menu";
 import { RelativeTime } from "./relative-time";
 import { SetupProgressCard } from "./setup-progress-card";
@@ -115,7 +116,7 @@ function SourceStrip({
       <span className="min-w-0 flex-1" />
       {source.gone ? <SourceDeletedAlert /> : null}
       <DraftMenu
-        canRevert={!postPending && !(draft.postedAt && draft.postedUrl)}
+        canRevert={draft.draftText !== null && !postPending && !(draft.postedAt && draft.postedUrl)}
         draftId={draft.draftId}
         onDraftReplaced={onDraftReplaced}
         sourceGone={source.gone}
@@ -148,6 +149,7 @@ export function FeedItemCard({
         postedAt: next.postedAt,
         postingClaimedAt: next.postingClaimedAt,
         postedUrl: next.postedUrl,
+        draftText: next.draftText ?? current.draftText,
         body: next.body,
       };
     });
@@ -171,6 +173,10 @@ export function FeedItemCard({
     );
   }
 
+  function finishDraft(draftId: string, text: string) {
+    setActiveDraft((current) => (current ? { ...current, draftId, draftText: text } : current));
+  }
+
   return (
     <article
       className={cn(
@@ -185,21 +191,30 @@ export function FeedItemCard({
         postPending={postPending}
         source={item.source}
       />
-      <div className="px-[14px] pt-4 pb-[17px] desk:px-6 desk:pb-[19px]">
+      <div
+        className={cn(
+          "px-[14px] pt-4 desk:px-6",
+          activeDraft.draftText === null ? "pb-[17px] desk:pb-0" : "pb-[17px] desk:pb-[19px]",
+        )}
+      >
         <h2 className="text-pretty text-[17.5px] leading-[1.3] font-semibold tracking-[-0.017em] text-text-title desk:text-[20px]">
           {item.newsTitle}
         </h2>
         <StoryBody body={activeDraft.body} />
       </div>
-      <DraftBox
-        charLimit={charLimit}
-        draft={activeDraft}
-        edited={activeDraft.versionCount > 0}
-        onDraftReplaced={replaceDraft}
-        onPostPendingChange={setPostPending}
-        postPending={postPending}
-        xLinked={xLinked}
-      />
+      {activeDraft.draftText === null ? (
+        <DraftButton draftId={activeDraft.draftId} onDrafted={finishDraft} />
+      ) : (
+        <DraftBox
+          charLimit={charLimit}
+          draft={activeDraft}
+          edited={activeDraft.versionCount > 0}
+          onDraftReplaced={replaceDraft}
+          onPostPendingChange={setPostPending}
+          postPending={postPending}
+          xLinked={xLinked}
+        />
+      )}
     </article>
   );
 }
@@ -260,21 +275,21 @@ const EMPTY: Record<
 > = {
   ready: {
     title: "Your Guide Is Ready",
-    body: "You can review it in Guide. New stories and drafts will appear here as soon as your agent finds something on-beat.",
+    body: "You can review it in Guide. New stories will land here as soon as your agent finds something on-beat; press Draft on a story to write the post.",
   },
   paused: {
     title: "Your Agent Is Paused",
-    body: "It won't create new drafts until you resume it from the agent controls.",
+    body: "It won't land new stories until you resume it from the agent controls.",
   },
   no_sources: {
-    title: "Add a Source to Get Drafts",
+    title: "Add a Source to Get Stories",
     body: "Your agent needs at least one tracked X account before it can watch for on-beat posts.",
     actionLabel: "Add sources",
     actionHref: "/sources",
   },
   extraction_missing: {
     title: "Finish Setting Up Your Agent",
-    body: "Your agent still needs to complete its writing guide before it can create drafts.",
+    body: "Your agent still needs to complete its writing guide before it can draft posts.",
     actionLabel: "Go to Guide",
     actionHref: "/voice",
   },

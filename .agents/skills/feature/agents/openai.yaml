@@ -1,0 +1,7 @@
+interface:
+  display_name: "Feature"
+  short_description: "Plan an oparax feature or bug fix slice, then issue and branch it"
+  default_prompt: "Use $feature to talk through a new oparax slice, write and critique the plan, and open the issue and branch on approval."
+
+policy:
+  allow_implicit_invocation: false

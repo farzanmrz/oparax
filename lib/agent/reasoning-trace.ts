@@ -8,9 +8,9 @@
 // as a model that cannot expose one is simply false.
 //
 // The discriminator is the reasoning-token count the AI SDK already records on every call
-// (`LanguageModelUsage.outputTokenDetails.reasoningTokens`, persisted verbatim inside
-// `model_calls.usage`): tokens spent with no readable text back means the provider withheld the
-// trace; zero tokens means the call did no reasoning to begin with. That count is already on
+// (`LanguageModelUsage.outputTokenDetails.reasoningTokens`, retained in the slim
+// `model_calls.usage` shape): tokens spent with no readable text back means the provider withheld
+// the trace; zero tokens means the call did no reasoning to begin with. That count is already on
 // every row ever written, so this classification is retroactive — it needs no new column and no
 // backfill.
 //
@@ -24,6 +24,8 @@ export type ReasoningTraceState =
   | "present"
   /** The model spent reasoning tokens but returned no readable trace — the provider withheld it. */
   | "withheld"
+  /** The provider returned a trace, but the product deliberately did not persist its text. */
+  | "discarded"
   /** The call did no reasoning at all (zero reasoning tokens) — e.g. a `reasoning: "none"` call. */
   | "none"
   /** The call reported no reasoning-token count, so neither of the above is provable. */
@@ -39,6 +41,13 @@ function reasoningTokensOf(usage: unknown): number | null {
   return typeof tokens === "number" ? tokens : null;
 }
 
+function reasoningWasCaptured(usage: unknown): boolean {
+  return (
+    (usage as { reasoningWithheldByProvider?: unknown } | null)?.reasoningWithheldByProvider ===
+    false
+  );
+}
+
 /** Classifies why a call does or doesn't carry a reasoning trace. An empty-string trace counts
  *  as absent: a provider that returns a reasoning envelope with no text inside looks exactly
  *  like one that returned nothing, so the token count decides both cases the same way. */
@@ -49,5 +58,6 @@ export function reasoningTraceState(
   if (reasoning != null && reasoning.length > 0) return "present";
   const tokens = reasoningTokensOf(usage);
   if (tokens === null) return "unknown";
+  if (tokens > 0 && reasoningWasCaptured(usage)) return "discarded";
   return tokens > 0 ? "withheld" : "none";
 }
