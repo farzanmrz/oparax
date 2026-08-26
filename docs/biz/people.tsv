@@ -1,0 +1,203 @@
+cohort	name	x_handle	email	type	beat	stage	note
+reporter_initial	Sami Mokbel	samimokbel_bbc		reporter	football	contacted	
+reporter_initial	Miguel Delaney	migueldelaney		reporter	football	contacted	
+reporter_initial	Keith Downie	skysports_keith		reporter	football	contacted	no contact path
+reporter_initial	Ekrem KONUR	ekremkonur		reporter	football	contacted	no contact path
+reporter_initial	Julien Laurens	laurensjulien		reporter	football	contacted	no contact path
+reporter_initial	Duncan Castles	duncancastles		reporter	football	contacted	
+reporter_initial	Sacha Tavolieri	sachatavolieri		reporter	football	conversed	best-fit lead, never sent a demo
+reporter_initial	Jacob Steinberg	jacobsteinberg		reporter	football	contacted	
+reporter_initial	James Horncastle OSI	jameshorncastle		reporter	football	contacted	no contact path
+reporter_initial	Alex Crook	alex_crook		reporter	football	contacted	no contact path
+reporter_initial	James Benge	jamesbenge		reporter	football	contacted	
+reporter_initial	Dharmesh Sheth	skysports_sheth		reporter	football	contacted	
+reporter_initial	James Olley	jamesolley		reporter	football	contacted	no contact path
+reporter_initial	Adam Crafton	adamcrafton_		reporter	football	contacted	no contact path
+reporter_initial	Chris Bascombe	_chrisbascombe		reporter	football	contacted	no contact path
+reporter_initial	Jason Burt	jburttelegraph		reporter	football	contacted	no contact path
+reporter_initial	Carl Anka	ankaman616		reporter	football	contacted	no contact path
+reporter_initial	Tom Bogert	tombogert		reporter	football	contacted	
+reporter_initial	Jonathan Northcroft	jnorthcroft		reporter	football	contacted	no contact path
+reporter_initial	George Caulkin	georgecaulkin		reporter	football	contacted	no contact path
+reporter_initial	Pete O'Rourke	sportspeteo		reporter	football	contacted	
+reporter_initial	Dean Jones	deanjonessoccer		reporter	football	contacted	no contact path
+reporter_initial	Craig Hope	craighope_dm		reporter	football	contacted	
+reporter_initial	Alasdair Gold	alasdairgold		reporter	football	contacted	no contact path
+reporter_initial	John Percy	jpercytelegraph		reporter	football	contacted	no contact path
+reporter_initial	Luke Edwards	lukeedwardstele		reporter	football	contacted	no contact path
+reporter_initial	Lee Ryder	lee_ryder		reporter	football	contacted	no contact path
+reporter_initial	Rob Dawson	robdawsonespn		reporter	football	contacted	
+reporter_initial	Liam Twomey	liam_twomey		reporter	football	contacted	
+reporter_initial	Mario Cortegana	mariocortegana		reporter	football	contacted	
+reporter_initial	Chris Wheeler	chriswheelerdm		reporter	football	contacted	
+reporter_initial	Jack Gaughan	jack_gaughan		reporter	football	contacted	
+reporter_initial	Mike Keegan	mikekeegan_dm		reporter	football	contacted	no contact path
+reporter_initial	Phil Hay	philhay_		reporter	football	contacted	no contact path
+reporter_initial	Lyall Thomas	skysportslyall		reporter	football	contacted	no contact path
+reporter_initial	Sam Lee	samlee		reporter	football	contacted	
+reporter_initial	Neil Custis	ncustisthesun		reporter	football	contacted	no contact path
+reporter_initial	Ian Doyle	iandoylesport		reporter	football	contacted	
+reporter_initial	Matt Slater	mjshrimper		reporter	football	contacted	
+reporter_initial	Rob Harris	robharris		reporter	football	contacted	
+reporter_initial	Jim Boardman	jimboardman		reporter	football	contacted	no contact path
+reporter_initial	Dan Kilpatrick	dan_kp		reporter	football	contacted	
+reporter_initial	Keith Smith	keithsmithnba		reporter	nba	contacted	no contact path
+reporter_initial	Jake Fischer	jakelfischer		reporter	nba	contacted	no contact path
+reporter_initial	Alex Kennedy	alexkennedynba		reporter	nba	contacted	no contact path
+reporter_initial	K.C. Johnson	kcjhoop		reporter	nba	contacted	no contact path
+reporter_initial	Jon Krawczynski	jonkrawczynski		reporter	nba	contacted	
+reporter_initial	Nick Friedell	nickfriedell		reporter	nba	contacted	no contact path
+reporter_initial	Jay King	byjayking		reporter	nba	contacted	
+reporter_initial	Michael Scotto	mikeascotto		reporter	nba	contacted	no contact path
+reporter_initial	Eric Pincus	ericpincus		reporter	nba	replied	gets news from private sources, closed
+reporter_initial	Chris Fedor	chrisfedor		reporter	nba	contacted	no contact path
+reporter_initial	Gary Washburn	gwashburnglobe		reporter	nba	contacted	no contact path
+reporter_initial	Brett Siegel	brettsiegelnba		reporter	nba	contacted	
+reporter_initial	Stefan Bondy	sbondynba		reporter	nba	contacted	
+reporter_initial	Jared Weiss	jaredweissnba		reporter	nba	contacted	
+reporter_initial	Grant Afseth	grantafseth		reporter	nba	contacted	
+reporter_initial	Joe Vardon	joevardon		reporter	nba	contacted	
+reporter_initial	James Ham	james_hamnba		reporter	nba	contacted	no contact path
+reporter_initial	Kelly Iko	kellyiko		reporter	nba	contacted	no contact path
+reporter_initial	Danny Leroux	dannyleroux		reporter	nba	contacted	
+reporter_initial	Steve Bulpett	stevebhoop		reporter	nba	contacted	
+reporter_initial	Ian Begley	ianbegley		reporter	nba	contacted	
+reporter_initial	Ira Winderman	iraheatbeat		reporter	nba	contacted	no contact path
+reporter_initial	Marcus Thompson II	thompsonscribe		reporter	nba	conversed	challenged premise, sources beat social media
+reporter_initial	Ohm Youngmisuk	notoriousohm		reporter	nba	contacted	no contact path
+reporter_initial	Baxter Holmes	baxter		reporter	nba	contacted	
+reporter_initial	Anthony Chiang	anthony_chiang		reporter	nba	contacted	no contact path
+reporter_initial	Dan Woike	danwoikesports		reporter	nba	contacted	no contact path
+reporter_initial	Tania Ganguli	taniaganguli		reporter	nba	contacted	no contact path
+reporter_initial	James L. Edwards III	jledwardsiii		reporter	nba	contacted	
+reporter_initial	Steve Kyler	stevekylernba		reporter	nba	contacted	no contact path
+reporter_initial	Tim Reynolds	bytimreynolds		reporter	nba	contacted	no contact path
+reporter_initial	Ben Golliver	bengolliver		reporter	nba	contacted	
+reporter_initial	Tom Haberstroh	tomhaberstroh		reporter	nba	contacted	
+reporter_initial	Zach Harper	talkhoops		reporter	nba	contacted	
+reporter_initial	Frank Isola	thefrankisola		reporter	nba	contacted	no contact path
+reporter_initial	Michael C. Wright	mikecwright		reporter	nba	contacted	
+reporter_initial	Fred Katz	fredkatz		reporter	nba	contacted	no contact path
+reporter_initial	Josh Robbins	joshuabrobbins		reporter	nba	contacted	
+reporter_initial	Darnell Mayberry	darnellmayberry		reporter	nba	contacted	no contact path
+reporter_initial	Kristian Winfield	krisplashed		reporter	nba	contacted	
+reporter_initial	Duane Rankin	duanerankin		reporter	nba	contacted	no contact path
+reporter_initial	Jeff McDonald	jmcdonald_saen		reporter	nba	contacted	no contact path
+reporter_initial	Brad Townsend	townbrad		reporter	nba	contacted	no contact path
+reporter_initial	Jourdan Rodrigue	jourdanrodrigue		reporter	nfl	contacted	no contact path
+reporter_initial	Jeff Zrebiec	jeffzrebiec		reporter	nfl	contacted	no contact path
+reporter_initial	Kevin Seifert	seifertespn		reporter	nfl	contacted	no contact path
+reporter_initial	Courtney Cronin	courtneyrcronin		reporter	nfl	contacted	
+reporter_initial	Nick Wagoner	nwagoner		reporter	nfl	contacted	no contact path
+reporter_initial	Rich Cimini	richcimini		reporter	nfl	contacted	no contact path
+reporter_initial	Cameron Wolfe	cameronwolfe		reporter	nfl	contacted	
+reporter_initial	Manish Mehta	mmehtasports		reporter	nfl	contacted	
+reporter_initial	Marcel Louis-Jacques	marcel_lj		reporter	nfl	contacted	
+reporter_initial	Jenna Laine	jennalaineespn		reporter	nfl	contacted	
+reporter_initial	Katherine Terrell	kat_terrell		reporter	nfl	contacted	no contact path
+reporter_initial	Todd Archer	toddarcher		reporter	nfl	contacted	no contact path
+reporter_initial	Calvin Watkins	calvinwatkins		reporter	nfl	contacted	
+reporter_initial	Aaron Wilson	aaronwilson_nfl		reporter	nfl	contacted	no contact path
+reporter_initial	Ben Goessling	bengoessling		reporter	nfl	contacted	
+reporter_initial	Alaina Getzenberg	agetzenberg		reporter	nfl	contacted	
+reporter_initial	Brooke Pryor	bepryor		reporter	nfl	contacted	
+reporter_initial	Rob Demovsky	robdemovsky		reporter	nfl	contacted	
+reporter_initial	Turron Davenport	tdavenport_nfl		reporter	nfl	contacted	
+reporter_initial	Brady Henderson	bradyhenderson		reporter	nfl	contacted	no contact path
+reporter_initial	Adam Caplan	caplannfl		reporter	nfl	contacted	no contact path
+reporter_initial	Brad Biggs	bradbiggs		reporter	nfl	contacted	no contact path
+reporter_initial	Aaron Nagler	aaronnagler		reporter	nfl	contacted	no contact path
+reporter_initial	Mike Klis	mikeklis		reporter	nfl	contacted	
+reporter_initial	Mike Freeman	mikefreemannfl		reporter	nfl	contacted	no contact path
+reporter_initial	Omar Kelly	omarkelly		reporter	nfl	contacted	no contact path
+reporter_initial	Adam Teicher	adamteicher		reporter	nfl	contacted	no contact path
+reporter_initial	Joe Person	josephperson		reporter	nfl	contacted	no contact path
+reporter_initial	Nicki Jhabvala	nickijhabvala		reporter	nfl	contacted	
+reporter_initial	Michael DiRocco	espndirocco		reporter	nfl	conversed	misses breaks only about twice a year, open to re-contact
+reporter_initial	John Keim	john_keim		reporter	nfl	contacted	no contact path
+reporter_initial	Jamison Hensley	jamisonhensley		reporter	nfl	contacted	no contact path
+reporter_initial	Zac Jackson	akronjackson		reporter	nfl	contacted	
+reporter_initial	Alec Lewis	alec_lewis		reporter	nfl	contacted	
+reporter_initial	Dave Birkett	davebirkett		reporter	nfl	contacted	
+reporter_initial	Matt Maiocco	maiocconbcs		reporter	nfl	contacted	no contact path
+reporter_initial	Judy Battista	judybattista		reporter	nfl	contacted	no contact path
+reporter_initial	Jon Machota	jonmachota		reporter	nfl	contacted	no contact path
+reporter_initial	Clarence Hill Jr	clarencehilljr		reporter	nfl	contacted	
+reporter_initial	Joe Buscaglia	joebuscaglia		reporter	nfl	contacted	no contact path
+reporter_initial	Zach Berman	zberm		reporter	nfl	contacted	
+reporter_initial	Tim McManus	tim_mcmanus		reporter	nfl	contacted	no contact path
+reporter_initial	Jeff McLane	jeff_mclane		reporter	nfl	contacted	no contact path
+reporter_initial	David Lombardi	lombardihimself		reporter	nfl	contacted	no contact path
+reporter_initial	Matt Barrows	mattbarrows		reporter	nfl	contacted	no contact path
+reporter_initial	Dan Wiederer	danwiederer		reporter	nfl	contacted	no contact path
+reporter_initial	Jeff Howe	jeffphowe		reporter	nfl	contacted	no contact path
+reporter_initial	Shelby Talcott	shelbytalcott		reporter	politics	contacted	
+reporter_initial	Leigh Ann Caldwell	lacaldwelldc		reporter	politics	contacted	
+reporter_initial	Andrew Feinberg	andrewfeinberg		reporter	politics	contacted	
+reporter_initial	Olivia Beavers	olivia_beavers		reporter	politics	contacted	
+reporter_initial	Melanie Zanona	mzanona		reporter	politics	contacted	
+reporter_initial	Jessica Elgot	jessicaelgot		reporter	politics	contacted	
+reporter_initial	Aubrey Allegretti	breeallegretti		reporter	politics	contacted	
+reporter_initial	Reese Gorman	reesejgorman		reporter	politics	contacted	
+reporter_initial	Andrew Desiderio	andrewdesiderio		reporter	politics	contacted	
+reporter_initial	Andrew Solender	andrewsolender		reporter	politics	contacted	
+reporter_initial	Vaughn Hillyard	vaughnhillyard		reporter	politics	contacted	
+reporter_initial	Kellie Meyer	kelliemeyernews		reporter	politics	contacted	no contact path
+reporter_initial	Rachael Bade	rachaelmbade		reporter	politics	contacted	
+reporter_initial	Annie Karni	anniekarni		reporter	politics	contacted	no contact path
+reporter_initial	Sarah Ferris	sarahnferris		reporter	politics	contacted	
+reporter_initial	Marianna Sotomayor	mariannareports		reporter	politics	contacted	no contact path
+reporter_initial	Alex Isenstadt	axiosalex		reporter	politics	contacted	no contact path
+reporter_initial	Aaron Blake	aaronblake		reporter	politics	contacted	no contact path
+reporter_initial	Josh Wingrove	josh_wingrove		reporter	politics	contacted	
+reporter_initial	Sienna Rodgers	siennamarla		reporter	politics	contacted	no contact path
+reporter_initial	Jake Sherman	jakesherman		reporter	politics	contacted	
+reporter_initial	Burgess Everett	burgesevans		reporter	politics	contacted	no contact path
+reporter_initial	Alexander Burns	alexburnsnyt		reporter	politics	contacted	no contact path
+reporter_initial	Manu Raju	mkraju		reporter	politics	contacted	no contact path
+reporter_initial	Chad Pergram	chadpergram		reporter	politics	contacted	no contact path
+reporter_initial	Kasie Hunt	kasiehunt		reporter	politics	contacted	no contact path
+reporter_initial	Hugo Rifkind	hugorifkind		reporter	politics	contacted	
+reporter_initial	Pippa Crerar	pippacrerar		reporter	politics	contacted	
+reporter_initial	Beth Rigby	bethrigby		reporter	politics	contacted	no contact path
+reporter_initial	Robert Peston	robertpeston		reporter	politics	contacted	no contact path
+reporter_initial	Alex Thompson	alexthomp		reporter	politics	contacted	
+reporter_initial	Kyle Cheney	kyledcheney		reporter	politics	contacted	
+reporter_initial	Scott Wong	scottwongdc		reporter	politics	contacted	no contact path
+reporter_initial	Meridith McGraw	meridithmcgraw		reporter	politics	contacted	
+reporter_initial	Myah Ward	myahward		reporter	politics	contacted	
+reporter_initial	Florian Plettenberg	plettigoal		reporter	football	contacted	
+reporter_initial	Nicolò Schira	nicoschira		reporter	football	contacted	
+reporter_initial	Ben Jacobs	jacobsben		reporter	football	contacted	
+reporter_initial	Rudy Galetti	rudygaletti		reporter	football	contacted	
+reporter_initial	Mike McGrath	mcgrathmike		reporter	football	contacted	
+reporter_initial	Football Transfers	transferzone00		reporter	football	contacted	
+reporter_initial	Transfersthathappened	actualtransfers		reporter	football	contacted	
+reporter_initial	David Ornstein	david_ornstein		reporter	football	contacted	no contact path
+reporter_initial	Gianluca Di Marzio	dimarzio		reporter	football	contacted	no contact path
+reporter_initial	NBA Trade Report	nbatradereport		reporter	nba	contacted	
+reporter_initial	Yueqi Yang	yueqi_yang		reporter	crypto	contacted	
+	Reshad Rahman	reshadrahman		reporter	football (transfers)	activated	family, the one real user
+creator_initial	Liam Ottley	ottleyai	coderliamottley@gmail.com	creator	ai	demoed	engaged, explicitly not buying
+creator_initial	Nihan	codebynihan	codernihan@gmail.com	creator	ai	demoed	gave the decision-to-post insight, silent since activation ask
+creator_initial	Dr Sania	iamsania_ai	hubsaniaai@gmail.com	creator	ai	conversed	wanted paid promo, closed cleanly
+creator_initial	How 2 AI	how2use_ai		creator	ai	conversed	agreed to test, silent on real questions
+creator_initial	Radheshyam	aiwithradhe		creator	ai	contacted	
+creator_initial	Rouf	roufxguru	code999check@gmail.com	creator	ai	contacted	
+creator_initial	Sadia	sadiamalik182	sadlog182@gmail.com	creator	ai	contacted	
+creator_initial	Nishan	liamcoderx	mdrubel980170@gmail.com	creator	ai	contacted	
+creator_initial	Grace	hey_gracewilson	weternal221@gmail.com	creator	ai	replied	agreed to a call, then silence
+creator_initial	AI Explorer	ai_explorer25	nehajaincollabs@gmail.com	creator	ai	replied	clean decline, open to later
+creator_initial	Aiden Tech	aiden_tech_ai	aidentechai1@gmail.com	creator	ai	replied	paid collab only, declined
+creator_initial	Jason Coder	jason_coder0	leocoder56@gmail.com	creator	ai	replied	one-line interest, no follow-through
+creator_initial	Nesu Zen	nesu_ai_x		creator	ai	contacted	
+creator_initial	LAPTOP LIFESTYLE BLOGGER	monetizationdon		creator	ai	conversed	asked about money, then faded
+creator_initial	Oliver Prompts	oliviscusai		creator	ai	contacted	
+creator_initial	Ryan Blake	ryan_blake_ai		creator	ai	contacted	
+creator_initial	NexaGrowth	nexagrowthx		creator	ai	contacted	
+creator_initial	Marry	bipulhossa69692	bipulhossain2005@gmail.com	creator	ai	contacted	
+creator_initial	Pushpendra	pushpendratips	trippushpendra195@gmail.com	creator	ai	contacted	
+creator_initial	Abhay Giri	abhayaitech	abhaygoswami700@gmail.com	creator	ai	conversed	no-showed twice, timezone and invite chaos
+creator_initial	Anya	anya_ai0	jessicaaitech0@gmail.com	creator	ai	contacted	
+creator_initial	Lucas Walker		lucaswa190@gmail.com	creator	ai	conversed	paid-collab ask, no reply to call offer
+creator_initial	Discover AI		discoverai024@gmail.com	creator	ai	contacted	
