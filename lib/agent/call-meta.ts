@@ -2,8 +2,8 @@
 //
 // ONE shared implementation of the derived-metadata trio every `CouncilCall` builder needs:
 // `costUsd`/`generationId` via `resolveGatewayCost`, and `reasoningWithheldByProvider` via
-// `reasoningTraceState(...) === "withheld"`. The four live callers are draft-write,
-// draft-filter, draft-synthesize, and draft-translate.
+// `reasoningTraceState(...) === "withheld"`. The live callers are draft-filter,
+// draft-synthesize, and the story-grouping judge.
 import type { CouncilCall } from "@/lib/agent/draft-council-run";
 import { resolveGatewayCost } from "@/lib/agent/gateway-cost";
 import { reasoningTraceState } from "@/lib/agent/reasoning-trace";
@@ -24,8 +24,6 @@ export async function resolveCallMeta(params: {
   providerMetadata?: Record<string, unknown>;
   latencyMs?: number | null;
   telemetryInput?: CouncilCall["telemetryInput"];
-  draftConstruction?: CouncilCall["draftConstruction"];
-  draftOnBeatReason?: CouncilCall["draftOnBeatReason"];
 }): Promise<CouncilCall> {
   const { costUsd, generationId } = await resolveGatewayCost({
     providerMetadata: params.providerMetadata,
@@ -43,11 +41,5 @@ export async function resolveCallMeta(params: {
     generationId,
     latencyMs: params.latencyMs ?? null,
     telemetryInput: params.telemetryInput ?? null,
-    ...(params.draftConstruction === undefined
-      ? {}
-      : { draftConstruction: params.draftConstruction }),
-    ...(params.draftOnBeatReason === undefined
-      ? {}
-      : { draftOnBeatReason: params.draftOnBeatReason }),
   };
 }

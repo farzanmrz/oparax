@@ -1,7 +1,6 @@
-// THE one URL→media-type resolver for source attachments, shared by the drafter
-// (lib/agent/draft-write.ts) and voice extraction (lib/voice/extract-guide.ts). Both carried their
-// own copy of this logic until the query-string read below was added to one of them; deduping is
-// what stops a future upgrade landing on one caller and not the other. One copy now.
+// THE one URL→media-type resolver for source attachments, shared by the pipeline's model
+// stages (filter, synthesis). One copy, so a future upgrade can never land on one caller and
+// not the other.
 //
 // This answers ONLY "how should the API decode these bytes". Whether the attachment was a photo,
 // a video or an animated GIF is a separate axis carried by the caller's `kind` — and for video

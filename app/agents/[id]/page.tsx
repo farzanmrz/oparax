@@ -1,16 +1,13 @@
 import { notFound } from "next/navigation";
-import { getOwnedExtractionProgress } from "@/app/agents/[id]/voice/get-extraction-progress";
-import { resolveDeskTier, X_CHAR_LIMITS } from "@/lib/agent/desk-config";
 import { fetchFeedCounts, fetchFeedPage } from "@/lib/agent/feed-query";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getXLinkState } from "@/lib/x/link-state";
 import { FeedAutoRefresh } from "./feed-auto-refresh";
 import { FeedEmptyState, type FeedReadiness } from "./feed-item";
 import { FeedList } from "./feed-list";
 
 // Mirrors app/agents/[id]/sources/page.tsx's maxDuration. Server actions run under this
-// segment's lifetime, while the interactive writer keeps its own 30-second guard.
+// segment's lifetime.
 export const maxDuration = 800;
 
 export default async function FeedPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,39 +17,16 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
   // rendering, but do not prove this server component has not already started an admin read.
   const { data: agent, error: agentError } = await supabase
     .from("agents")
-    .select("reporter_handle, reporter_tier, status, tracked_handles")
+    .select("status, tracked_handles")
     .eq("id", id)
     .maybeSingle();
   if (agentError || !agent) notFound();
   const admin = createAdminClient();
-  const [page, counts, xLink, voiceGuideResult] = await Promise.all([
-    fetchFeedPage(admin, id),
-    fetchFeedCounts(admin, id),
-    getXLinkState(),
-    supabase.from("voice_guides").select("agent_id").eq("agent_id", id).limit(1).maybeSingle(),
-  ]);
-  if (voiceGuideResult.error) throw new Error("Failed to load the agent. Please try again.");
+  const [page, counts] = await Promise.all([fetchFeedPage(admin, id), fetchFeedCounts(admin, id)]);
   const hasSources = (agent.tracked_handles?.length ?? 0) > 0;
-  const deskHasGuide = Boolean(voiceGuideResult.data);
-  let readiness: FeedReadiness = deskHasGuide ? { kind: "ready" } : { kind: "extraction_missing" };
+  let readiness: FeedReadiness = { kind: "ready" };
   if (agent.status !== "active") readiness = { kind: "paused" };
   else if (!hasSources) readiness = { kind: "no_sources" };
-  else if (counts.totalStories === 0) {
-    const extraction = await getOwnedExtractionProgress(id);
-    if (!extraction.ok) throw new Error("Failed to load the agent. Please try again.");
-    if (extraction.status === "running" || extraction.status === "failed")
-      readiness = {
-        kind: extraction.status === "running" ? "extraction_running" : "extraction_failed",
-        initial: {
-          stage: extraction.stage,
-          status: extraction.status,
-          errorCode: extraction.errorCode,
-          corpusPostCount: extraction.corpusPostCount,
-          scopeExcludedCount: extraction.scopeExcludedCount,
-        },
-      };
-  }
-  const charLimit = X_CHAR_LIMITS[resolveDeskTier(agent.reporter_tier, xLink.tier)];
   return (
     <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-[var(--page-rhythm-mobile)] py-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)] desk:py-[var(--page-rhythm-web)]">
       <FeedAutoRefresh />
@@ -61,11 +35,9 @@ export default async function FeedPage({ params }: { params: Promise<{ id: strin
       ) : (
         <FeedList
           agentId={id}
-          charLimit={charLimit}
           fetchedAt={Date.now()}
           initialCursor={page.nextCursor}
           initialItems={page.items}
-          xLinked={xLink.linked}
         />
       )}
     </div>

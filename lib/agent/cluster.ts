@@ -1,29 +1,35 @@
 // lib/agent/cluster.ts
 //
-// Story creation — attaches a delivered source post to its own new story, atomically. The
-// shipped flow is deliberately post-per-story: a tracked X post arrives, gets drafted, and is
-// its own story on the feed. `stories` and `story_assignments` remain load-bearing (every
-// draft still needs a `story_id` for the feed to group and render it); only the many-posts-
-// into-one-story classifier that used to run here was never switched on and has been removed.
+// Story grouping — files a delivered source post under the desk's existing story for the same
+// news when there is one, and creates a new story otherwise (Part B2 of #131; the shipped flow
+// before this was deliberately post-per-story). `stories` and `story_assignments` remain the
+// feed's grouping spine; the same-story judgment lives in lib/agent/story-group.ts and the
+// atomic mutation in the attach_or_create_story RPC (per-desk advisory lock + the "unseen"
+// handshake that stops two parallel posts of one new story from double-creating).
 //
-// PURE-ish orchestration in the same shape as draft-council-run.ts: this module owns its own
-// story-table writes (creation + the atomic claim below). It makes no model call, so it has no
-// ledger row of its own to hand back — the caller's CouncilCall array is always empty.
-// SERVER-ONLY (transitively reads fs via lib/sysprompts, which loads its prompts at module
-// scope) — never importable from a client component.
-import type { CouncilCall } from "@/lib/agent/draft-council-run";
-import type { SourceIdentity } from "@/lib/agent/source-identity";
+// SERVER-ONLY (transitively reads fs via lib/sysprompts through story-group.ts) — never
+// importable from a client component.
+import type { CouncilCall, NewsPoint } from "@/lib/agent/draft-council-run";
+import { judgeSameStory, type StoryCandidate } from "@/lib/agent/story-group";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-// Zero-call summary length — first ~80 chars of the post text, the only summary source now that
-// there is no classifier to generate a contextual one-line label.
+// Zero-call summary length — first ~80 chars of the post text; the winner's headline is the
+// display title, this is only the stories.summary fallback.
 const DETERMINISTIC_SUMMARY_LENGTH = 80;
+/** How many recent stories the judge compares against. */
+const GROUPING_WINDOW_HOURS = 24;
+const GROUPING_CANDIDATE_CAP = 30;
+/** Bounded convergence for the unseen-stories handshake. */
+const MAX_GROUPING_ROUNDS = 4;
 
 export type ClusterResult = {
   storyId: string;
-  calls: CouncilCall[]; // always empty — story creation makes no model call.
+  /** True when the post was filed under an existing story — the caller must NOT insert a
+   *  second winner and must terminate the claim via complete_claimed_attachment. */
+  attached: boolean;
+  calls: CouncilCall[];
 };
 
 function deterministicSummary(text: string): string {
@@ -33,98 +39,149 @@ function deterministicSummary(text: string): string {
     : trimmed;
 }
 
-async function createStory(admin: AdminClient, agentId: string, summary: string): Promise<string> {
+function pointsOf(newsPoints: unknown): string[] {
+  if (!Array.isArray(newsPoints)) return [];
+  return newsPoints.flatMap((entry) => {
+    const point =
+      entry !== null && typeof entry === "object" ? (entry as Record<string, unknown>).point : null;
+    return typeof point === "string" && point.trim() ? [point] : [];
+  });
+}
+
+async function hydrateStoryCandidates(
+  admin: AdminClient,
+  agentId: string,
+  storyIds: string[],
+): Promise<StoryCandidate[]> {
+  if (!storyIds.length) return [];
+  const [storiesResult, winnersResult] = await Promise.all([
+    admin.from("stories").select("id, summary, created_at").in("id", storyIds),
+    admin
+      .from("drafts")
+      .select("story_id, news_title, news_points")
+      .eq("agent_id", agentId)
+      .eq("is_winner", true)
+      .in("story_id", storyIds),
+  ]);
+  if (storiesResult.error) throw storiesResult.error;
+  if (winnersResult.error) throw winnersResult.error;
+  const winnersByStory = new Map(
+    (winnersResult.data ?? []).map((row) => [row.story_id, row] as const),
+  );
+  return (storiesResult.data ?? []).map((story) => {
+    const winner = winnersByStory.get(story.id);
+    return {
+      storyId: story.id,
+      title: winner?.news_title?.trim() || story.summary,
+      points: pointsOf(winner?.news_points),
+    };
+  });
+}
+
+async function fetchRecentStoryIds(admin: AdminClient, agentId: string): Promise<string[]> {
+  const since = new Date(Date.now() - GROUPING_WINDOW_HOURS * 3_600_000).toISOString();
   const { data, error } = await admin
     .from("stories")
-    .insert({ agent_id: agentId, summary })
     .select("id")
-    .single();
-  if (error) throw error;
-  return data.id;
-}
-
-/** The atomic claim (D16 rail) — story_assignments carries UNIQUE(source_post_id,
- *  agent_id), so this insert IS the race guarantee, not the caller's own logic.
- *  Scoped per desk, not just per post: `source_posts` dedupes GLOBALLY (L4 — shared stream
- *  rules mean overlapping tracking across desks), so the same post reaches
- *  `draftForAgent` independently for every desk that tracks its author. Each desk claims
- *  it into its OWN story; a global UNIQUE(source_post_id) would let desk B's claim collide
- *  with desk A's on the shared post and silently inherit A's story_id (fixed post-QC — see
- *  supabase/migrations/20260724010000_story_assignments_scope_per_desk.sql). Mirrors
- *  draft-pipeline.ts's `draftForAgent` insert-then-branch-on-23505 shape. On a 23505
- *  unique-violation, another concurrent delivery of this exact (sourcePostId, agentId)
- *  pair already won the claim — read ITS story_id back rather than the one this call attempted
- *  (the race-loser path). This function alone never knows whether the `storyId` it was handed
- *  was just freshly created, so it does not attempt cleanup itself — `createAndClaimNewStory`
- *  below, the only caller, deletes its own orphan when it loses here. */
-async function claimStoryAssignment(
-  admin: AdminClient,
-  sourcePostId: string,
-  agentId: string,
-  storyId: string,
-): Promise<string> {
-  const { error } = await admin
-    .from("story_assignments")
-    .insert({ source_post_id: sourcePostId, agent_id: agentId, story_id: storyId })
-    .select("id");
-  if (!error) return storyId;
-  if (error.code !== "23505") throw error;
-
-  const { data: winner, error: winnerError } = await admin
-    .from("story_assignments")
-    .select("story_id")
-    .eq("source_post_id", sourcePostId)
     .eq("agent_id", agentId)
-    .single();
-  if (winnerError) throw winnerError;
-  return winner.story_id;
+    .gt("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(GROUPING_CANDIDATE_CAP);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.id);
 }
 
-async function createAndClaimNewStory(
-  admin: AdminClient,
-  agentId: string,
-  sourcePostId: string,
-  summary: string,
-): Promise<string> {
-  const storyId = await createStory(admin, agentId, summary);
-  const winnerId = await claimStoryAssignment(admin, sourcePostId, agentId, storyId);
-  if (winnerId !== storyId) {
-    // Lost the race: another concurrent delivery of this exact (sourcePostId, agentId)
-    // pair already claimed a story before our insert landed (the retry-after-later-failure case
-    // this comment documents — the SAME sourcePostId reaching draftForAgent a second time
-    // after a downstream failure released draft_claims). The story row created just above is now
-    // orphaned — no story_assignments row will ever point at it, since the claim went to the
-    // race winner's story instead — so delete it here rather than leaving dead weight that
-    // fetchFeedPage would still surface as a card with nothing to show. Best-effort: a failed
-    // delete is non-fatal (the winner's story_id below is still correct to return), just logged
-    // so an undeleted orphan stays visible rather than silently swallowed.
-    const { error: cleanupError } = await admin.from("stories").delete().eq("id", storyId);
-    if (cleanupError) {
-      console.error("cluster: failed to delete orphaned story after losing the claim race", {
-        storyId,
-        error: cleanupError,
-      });
-    }
+type AttachOrCreateOutcome =
+  | { outcome: "attached"; story_id: string }
+  | { outcome: "created"; story_id: string }
+  | { outcome: "unseen"; story_ids: string[] };
+
+function parseRpcOutcome(value: unknown): AttachOrCreateOutcome {
+  const record =
+    value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  if (record.outcome === "unseen" && Array.isArray(record.story_ids)) {
+    return {
+      outcome: "unseen",
+      story_ids: record.story_ids.filter((id): id is string => typeof id === "string"),
+    };
   }
-  return winnerId;
+  if (
+    (record.outcome === "attached" || record.outcome === "created") &&
+    typeof record.story_id === "string"
+  ) {
+    return { outcome: record.outcome, story_id: record.story_id };
+  }
+  throw new Error(`cluster: unexpected attach_or_create_story outcome ${JSON.stringify(value)}`);
 }
 
-/** Attach sourcePostId to its own new story, atomically. The caller (draft-pipeline.ts's
- *  draftForAgent) is responsible for handling any error this function throws (a non-billing
- *  DB error propagates normally; do not swallow it here). */
-export async function assignToStory(input: {
+/**
+ * File `sourcePostId` under the same story as the desk's existing coverage when the judge says
+ * it IS the same story, else create its own story — atomically, per desk. Every judge call is
+ * returned in `calls` for the pipeline to ledger.
+ */
+export async function matchOrCreateStory(input: {
   agentId: string;
   sourcePostId: string;
-  sourceIdentity: SourceIdentity;
   text: string;
+  candidateTitle: string;
+  candidatePoints: NewsPoint[];
+  deadlineAt?: number;
 }): Promise<ClusterResult> {
-  const { agentId, sourcePostId, text } = input;
   const admin = createAdminClient();
-  const storyId = await createAndClaimNewStory(
-    admin,
-    agentId,
-    sourcePostId,
-    deterministicSummary(text),
-  );
-  return { storyId, calls: [] };
+  const calls: CouncilCall[] = [];
+  const summary = deterministicSummary(input.text);
+
+  const knownStoryIds = new Set<string>(await fetchRecentStoryIds(admin, input.agentId));
+  let judgeSet = await hydrateStoryCandidates(admin, input.agentId, [...knownStoryIds]);
+  let matchStoryId: string | null = null;
+
+  for (let round = 0; round < MAX_GROUPING_ROUNDS; round++) {
+    if (judgeSet.length > 0) {
+      const judged = await judgeSameStory({
+        candidateTitle: input.candidateTitle,
+        candidatePoints: input.candidatePoints,
+        stories: judgeSet,
+        deadlineAt: input.deadlineAt,
+      });
+      calls.push(judged.call);
+      if (judged.matchStoryId) matchStoryId = judged.matchStoryId;
+    }
+
+    const { data, error } = await admin.rpc("attach_or_create_story", {
+      p_agent_id: input.agentId,
+      p_source_post_id: input.sourcePostId,
+      p_summary: summary,
+      p_match_story_id: matchStoryId as unknown as string,
+      p_known_story_ids: [...knownStoryIds],
+    });
+    if (error) throw error;
+    const outcome = parseRpcOutcome(data);
+    if (outcome.outcome === "attached") {
+      return { storyId: outcome.story_id, attached: true, calls };
+    }
+    if (outcome.outcome === "created") {
+      return { storyId: outcome.story_id, attached: false, calls };
+    }
+    // Unseen stories appeared since the fetch (a parallel post of the same breaking news is
+    // the whole point of this handshake): judge the candidate against exactly those.
+    for (const id of outcome.story_ids) knownStoryIds.add(id);
+    judgeSet = await hydrateStoryCandidates(admin, input.agentId, outcome.story_ids);
+  }
+
+  // Rounds exhausted under sustained story churn — create rather than drop the post: a
+  // duplicate story is redundant, a lost post is missing news. The known set now covers
+  // everything seen, so the RPC will create.
+  const { data, error } = await admin.rpc("attach_or_create_story", {
+    p_agent_id: input.agentId,
+    p_source_post_id: input.sourcePostId,
+    p_summary: summary,
+    p_match_story_id: matchStoryId as unknown as string,
+    p_known_story_ids: [...knownStoryIds],
+  });
+  if (error) throw error;
+  const outcome = parseRpcOutcome(data);
+  if (outcome.outcome === "unseen") {
+    throw new Error("cluster: attach_or_create_story kept returning unseen stories");
+  }
+  return { storyId: outcome.story_id, attached: outcome.outcome === "attached", calls };
 }

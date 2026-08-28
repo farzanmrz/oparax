@@ -4,26 +4,21 @@
 // its prompts at module scope); never importable from a client component.
 //
 // Owns persistence and metering for the story-landing path. The model stages
-// are pure and deliberately touch neither the DB nor the ledger.
-// this module is where both cross-cutting invariants are actually satisfied (AGENTS.md's
-// metering + model-call rules):
-//   - every element of a council's `calls` array becomes exactly one `model_calls` row,
-//     carrying `output`, `reasoning`, and `usage` (including `reasoningWithheldByProvider`).
-//   - every touch point stamps `usage_events` — the inbound delivery, each model call.
-// Ledger-first ordering throughout, the same discipline the extraction path uses: `model_calls`
-// rows are written before the story card rows that depend on their results.
+// are pure and deliberately touch neither the DB nor the ledger. The ledger writers
+// themselves (insertModelCalls, stampUsageEvent) live in lib/agent/ledger.ts so the alert
+// flow can share them without an import cycle; this module keeps the ledger-first ordering:
+// `model_calls` rows are written before the story card rows that depend on their results.
 import { randomUUID } from "node:crypto";
-import { assignToStory } from "@/lib/agent/cluster";
-import type { CouncilCall, SourceBrief } from "@/lib/agent/draft-council-run";
+import { matchOrCreateStory } from "@/lib/agent/cluster";
+import type { SourceBrief } from "@/lib/agent/draft-council-run";
 import { filterSourcePost } from "@/lib/agent/draft-filter";
 import { synthesizeSourcePost } from "@/lib/agent/draft-synthesize";
-import { translateSourcePost } from "@/lib/agent/draft-translate";
+import { insertModelCalls, type LedgerAttribution, stampUsageEvent } from "@/lib/agent/ledger";
 import { validateSourceMedia } from "@/lib/agent/source-media";
-import { captureAiGeneration } from "@/lib/observability/posthog-ai";
+import { maybeSendAlert } from "@/lib/alerts/send";
 import { reportServerLog } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import { extractBeatSpec } from "@/lib/voice/deploy-guide";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -64,7 +59,7 @@ export type ProcessDeliveryResult = {
     agentId: string;
     winningModel: string;
     degraded: boolean;
-    skipped?: "already_drafted" | "no_guide" | "off_beat" | "oversized" | "synthesis_unusable";
+    skipped?: "already_drafted" | "no_beat" | "off_beat" | "oversized" | "synthesis_unusable";
   }>;
 };
 
@@ -76,10 +71,11 @@ export class RetryableDeliveryError extends Error {
 }
 
 const MIN_NEXT_CLAIM_BUDGET_MS = 30_000;
-const DIRECT_SYNTHESIS_ENABLED = true;
 const OVERSIZED_EXCLUSION_REASON = "This delivery was too large to process and was skipped.";
 const SYNTHESIS_EXCLUSION_REASON =
   "This story couldn't be turned into news points and was skipped.";
+const NO_BEAT_EXCLUSION_REASON =
+  "This desk has no beat description yet, so stories can't be filtered onto it.";
 
 /** A post whose text carries nothing to write FROM. The drafting models receive text only —
  *  never media — so "🌟 https://t.co/…" hands them an emoji and an opaque link, and the
@@ -148,10 +144,25 @@ type MatchedAgent = {
   id: string;
   owner_id: string;
   reporter_handle: string;
-  reporter_tier: string | null;
   beat: string;
   status: string;
+  public_handle: string | null;
+  trial_started_at: string | null;
+  plan: string | null;
 };
+
+/** AI-generation attribution: the pilot person (`x:<handle>`) when the desk has a public
+ *  feed, else the owning user (Part G's attribution fix). */
+function attributionOf(agent: MatchedAgent): LedgerAttribution {
+  return agent.public_handle
+    ? { distinctId: `x:${agent.public_handle.toLowerCase()}`, pilotHandle: agent.public_handle }
+    : {};
+}
+
+function firstPhotoOf(brief: SourceBrief): string | null {
+  const photo = brief.media.find((item) => item.kind === "photo" || item.kind === "image");
+  return photo?.imageUrl ?? null;
+}
 
 /** Best-effort publisher extraction. A website hostname is provenance, never an X handle. */
 function hostnameOf(url: string): string {
@@ -195,103 +206,6 @@ async function fetchSiteGuidance(
   }
 }
 
-/** The ONE place a `CouncilCall` becomes a `model_calls` row. Inserted one row at a time (not
- *  batched) so the returned ids are guaranteed aligned with `calls` BY INDEX — a batched
- *  insert's returned order is not a contract PostgREST makes, and a misaligned join would
- *  silently attribute a draft to the wrong model. */
-export async function insertModelCalls(
-  admin: AdminClient,
-  ownerId: string,
-  agentId: string,
-  calls: CouncilCall[],
-  sourcePostId: string,
-): Promise<string[]> {
-  const ids: string[] = [];
-  for (const call of calls) {
-    const usage =
-      call.usage !== null && typeof call.usage === "object"
-        ? (call.usage as Record<string, unknown>)
-        : {};
-    const outputTokenDetails =
-      usage.outputTokenDetails !== null && typeof usage.outputTokenDetails === "object"
-        ? (usage.outputTokenDetails as Record<string, unknown>)
-        : {};
-    const finiteToken = (value: unknown) =>
-      typeof value === "number" && Number.isFinite(value) ? value : undefined;
-    const inputTokens = finiteToken(usage.inputTokens);
-    const outputTokens = finiteToken(usage.outputTokens);
-    const totalTokens = finiteToken(usage.totalTokens);
-    const reasoningTokens = finiteToken(outputTokenDetails.reasoningTokens);
-    const { data, error } = await admin
-      .from("model_calls")
-      .insert({
-        owner_id: ownerId,
-        stage: call.stage,
-        role: call.role,
-        model: call.model,
-        output: call.output,
-        reasoning: null,
-        usage: {
-          ...(inputTokens === undefined ? {} : { inputTokens }),
-          ...(outputTokens === undefined ? {} : { outputTokens }),
-          ...(totalTokens === undefined ? {} : { totalTokens }),
-          outputTokenDetails: {
-            ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
-          },
-          reasoningWithheldByProvider: call.reasoningWithheldByProvider,
-          // This model-produced editorial account is reporter-facing provenance, not proof or
-          // chain-of-thought. Only live drafts carry it; historic, revision, and human calls do not.
-          ...(call.draftConstruction === null || call.draftConstruction === undefined
-            ? {}
-            : { draftConstruction: call.draftConstruction }),
-          // Persist the normalized verdict field separately from raw provider reasoning. The
-          // reporter-facing sheet must never derive its beat explanation by parsing that trace.
-          ...(call.draftOnBeatReason === null || call.draftOnBeatReason === undefined
-            ? {}
-            : { draftOnBeatReason: call.draftOnBeatReason }),
-        } as unknown as Json,
-        cost_usd: call.costUsd,
-        generation_id: call.generationId,
-        ref_kind: "source_post",
-        ref_id: sourcePostId,
-      })
-      .select("id")
-      .single();
-    if (error) throw error;
-    ids.push(data.id);
-    captureAiGeneration({
-      distinctId: ownerId,
-      traceId: `${agentId}:${sourcePostId}`,
-      spanId: data.id,
-      stage: call.stage,
-      model: call.model,
-      usage: call.usage,
-      latencyMs: call.latencyMs,
-      streamed: call.stage === "translation",
-      generationId: call.generationId,
-      inputMessages: call.telemetryInput,
-      outputText: call.output,
-      properties: { agent_id: agentId, source_post_id: sourcePostId },
-    });
-  }
-  return ids;
-}
-
-export async function stampUsageEvent(
-  admin: AdminClient,
-  row: { owner_id: string; kind: string; units: number; cost_usd: number | null; ref_id: string },
-): Promise<void> {
-  const { error } = await admin.from("usage_events").insert(row);
-  // stream_delivery is idempotent on (owner_id, ref_id) in the database. A lost ingest
-  // response can redeliver the same source post; that duplicate is success, while every other
-  // ledger error remains fatal.
-  const isDuplicateStreamDelivery =
-    row.kind === "stream_delivery" &&
-    error?.code === "23505" &&
-    error.details?.includes("Key (owner_id, ref_id)=");
-  if (error && !isDuplicateStreamDelivery) throw error;
-}
-
 async function completeClaimWithExclusion(
   admin: AdminClient,
   agentId: string,
@@ -318,27 +232,14 @@ async function draftForAgent(
   siteGuidance: { onBeat: string; offBeat: string } | null,
   options: { deadlineAt?: number; oversizedInput: boolean },
 ): Promise<ProcessDeliveryResult["drafted"][number]> {
-  const { data: guide, error: guideError } = await admin
-    .from("voice_guides")
-    .select("guide_raw, guide_deploy, measured_facts")
-    .eq("agent_id", agent.id)
-    .maybeSingle();
-  if (guideError) throw guideError;
-  if (!guide) {
-    return { agentId: agent.id, winningModel: "", degraded: false, skipped: "no_guide" };
-  }
-  // bf-124: both, never one or the other. `agents.beat` is the reporter's own sentence and is
-  // the boundary; the guide's `## Beat & Scope` section is corpus-derived precision INSIDE that
-  // boundary. The old `extractBeatSpec(...) ?? agent.beat` made the generated section win
-  // outright on every desk that had one -- which is every desk -- so the typed beat never
-  // reached the filter at all, and a section narrower than the typed beat silently shrank the
-  // desk. Passing both lets the filter prefer the reporter's words when the two disagree.
-  const generatedBeat = extractBeatSpec(guide.guide_raw);
+  // The beat filter runs from the desk's own beat description alone — voice guides are gone.
+  // A desk with no typed beat is NOT an early return: it still takes the claim and lands in
+  // Skipped accounting below (excluded_posts is the only thing the Skipped tab reads), so the
+  // owner can see the delivery arrived and why nothing came of it.
   const statedBeat = agent.beat?.trim() ?? "";
-  // A desk whose reporter never typed a beat has no stated boundary to govern, so the generated
-  // section is the only boundary there is -- the pre-bf-124 behavior, kept for exactly that case.
-  const beatSpec = statedBeat || (generatedBeat ?? "");
-  const beatDetail = statedBeat ? generatedBeat : null;
+  const beatSpec = statedBeat;
+  const beatDetail = null;
+  const attribution = attributionOf(agent);
 
   requireTimeBudget(options.deadlineAt, true);
   const claimToken = randomUUID();
@@ -359,6 +260,22 @@ async function draftForAgent(
   }
 
   try {
+    if (!statedBeat) {
+      const completed = await completeClaimWithExclusion(
+        admin,
+        agent.id,
+        sourcePostId,
+        claimToken,
+        NO_BEAT_EXCLUSION_REASON,
+      );
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+        skipped: completed ? "no_beat" : "already_drafted",
+      };
+    }
+
     if (options.oversizedInput) {
       const completed = await completeClaimWithExclusion(
         admin,
@@ -397,7 +314,14 @@ async function draftForAgent(
       siteGuidance,
       deadlineAt: options.deadlineAt,
     });
-    await insertModelCalls(admin, agent.owner_id, agent.id, [filtered.call], sourcePostId);
+    await insertModelCalls(
+      admin,
+      agent.owner_id,
+      agent.id,
+      [filtered.call],
+      sourcePostId,
+      attribution,
+    );
     await stampUsageEvent(admin, {
       owner_id: agent.owner_id,
       kind: "filtering",
@@ -438,36 +362,20 @@ async function draftForAgent(
     }
 
     requireTimeBudget(options.deadlineAt);
-    let translation: string | null = null;
-    let synthesisSourceText = brief.text;
-    let synthesisSourceTitle = brief.title;
-    if (!DIRECT_SYNTHESIS_ENABLED) {
-      const translated = await translateSourcePost({ brief, deadlineAt: options.deadlineAt });
-      if (translated.call) {
-        await insertModelCalls(admin, agent.owner_id, agent.id, [translated.call], sourcePostId);
-        await stampUsageEvent(admin, {
-          owner_id: agent.owner_id,
-          kind: "translation",
-          units: 1,
-          cost_usd: translated.call.costUsd,
-          ref_id: sourcePostId,
-        });
-      }
-      if (!translated.usable || !translated.englishSourceText?.trim()) {
-        throw new Error(`draft-pipeline: translation unusable for source post ${sourcePostId}`);
-      }
-      translation = translated.translation;
-      synthesisSourceText = translated.englishSourceText;
-      synthesisSourceTitle = undefined;
-    }
-
     const synthesized = await synthesizeSourcePost({
       brief,
-      sourceText: synthesisSourceText,
-      sourceTitle: synthesisSourceTitle,
+      sourceText: brief.text,
+      sourceTitle: brief.title,
       deadlineAt: options.deadlineAt,
     });
-    await insertModelCalls(admin, agent.owner_id, agent.id, [synthesized.call], sourcePostId);
+    await insertModelCalls(
+      admin,
+      agent.owner_id,
+      agent.id,
+      [synthesized.call],
+      sourcePostId,
+      attribution,
+    );
     await stampUsageEvent(admin, {
       owner_id: agent.owner_id,
       kind: "synthesis",
@@ -505,20 +413,29 @@ async function draftForAgent(
       };
     }
 
-    const cluster = await assignToStory({
+    // The grouping stage (Part B2): same-story judgment against the desk's recent coverage,
+    // then attach-or-create atomically. Ledger-first, like every other CouncilCall producer.
+    const grouped = await matchOrCreateStory({
       agentId: agent.id,
       sourcePostId,
-      sourceIdentity: brief.identity,
       text: brief.text,
+      candidateTitle: synthesized.verdict.newsTitle,
+      candidatePoints: synthesized.verdict.newsPoints,
+      deadlineAt: options.deadlineAt,
     });
-    if (cluster.calls.length > 0) {
-      // Ledger-first, same ordering discipline as every other CouncilCall producer here —
-      // this insert happens BEFORE the platform fan-out's own ledger-first inserts.
-      await insertModelCalls(admin, agent.owner_id, agent.id, cluster.calls, sourcePostId);
-      for (const call of cluster.calls) {
+    if (grouped.calls.length > 0) {
+      await insertModelCalls(
+        admin,
+        agent.owner_id,
+        agent.id,
+        grouped.calls,
+        sourcePostId,
+        attribution,
+      );
+      for (const call of grouped.calls) {
         await stampUsageEvent(admin, {
           owner_id: agent.owner_id,
-          kind: "clustering",
+          kind: "story_group",
           units: 1,
           cost_usd: call.costUsd,
           ref_id: sourcePostId,
@@ -526,19 +443,66 @@ async function draftForAgent(
       }
     }
 
+    if (grouped.attached) {
+      // The post joined an existing story: no second winner, but the claim must still
+      // terminate — complete_claimed_attachment settles it under the claim_token fence.
+      // NEVER write upsert_claimed_exclusion here (it would poison claim_draft's settled
+      // check and miscount Skipped).
+      const { data: attachmentCompleted, error: attachError } = await admin.rpc(
+        "complete_claimed_attachment",
+        {
+          p_agent_id: agent.id,
+          p_claim_token: claimToken,
+          p_source_post_id: sourcePostId,
+          p_story_id: grouped.storyId,
+        },
+      );
+      if (attachError) throw attachError;
+      if (!attachmentCompleted) {
+        return {
+          agentId: agent.id,
+          winningModel: "",
+          degraded: false,
+          skipped: "already_drafted",
+        };
+      }
+      // A grouped story re-alerts only through the same alert gate — the echo judgment
+      // decides duplicate echo vs genuinely new facts. The story keeps its first winner's
+      // synthesis; the alert judges THIS post's own synthesis.
+      await maybeSendAlert(admin, {
+        agent: {
+          id: agent.id,
+          ownerId: agent.owner_id,
+          beat: agent.beat,
+          publicHandle: agent.public_handle,
+          trialStartedAt: agent.trial_started_at,
+          plan: agent.plan,
+        },
+        storyId: grouped.storyId,
+        sourcePostId,
+        draftId: null,
+        newsTitle: synthesized.verdict.newsTitle,
+        newsPoints: synthesized.verdict.newsPoints,
+        firstPhotoUrl: firstPhotoOf(brief),
+        deadlineAt: options.deadlineAt,
+      });
+      return {
+        agentId: agent.id,
+        winningModel: "",
+        degraded: false,
+      };
+    }
+
     const { data: winningDraftId, error: winnerError } = await admin.rpc("insert_claimed_winner", {
       p_agent_id: agent.id,
       p_claim_token: claimToken,
-      // Landing creates the story card only. The reporter's Draft press attaches the model call.
-      p_model_call_id: null as unknown as string,
       p_news_points: synthesized.verdict.newsPoints as unknown as Json,
       p_news_synthesis: null as unknown as string,
       p_news_title: synthesized.verdict.newsTitle,
       p_on_beat_reason: filtered.verdict.onBeatReason,
       p_platform: "x",
       p_source_post_id: sourcePostId,
-      p_story_id: cluster.storyId,
-      p_translation: translation as unknown as string,
+      p_story_id: grouped.storyId,
     });
     if (winnerError) {
       if (isNewsPointsValidationError(winnerError)) {
@@ -586,6 +550,26 @@ async function draftForAgent(
         skipped: "already_drafted",
       };
     }
+
+    // The story landed: fire the alert gates (worthiness, 30-min window, trial, caps).
+    // maybeSendAlert never throws — an alert failure must not fail the delivery.
+    await maybeSendAlert(admin, {
+      agent: {
+        id: agent.id,
+        ownerId: agent.owner_id,
+        beat: agent.beat,
+        publicHandle: agent.public_handle,
+        trialStartedAt: agent.trial_started_at,
+        plan: agent.plan,
+      },
+      storyId: grouped.storyId,
+      sourcePostId,
+      draftId: winningDraftId,
+      newsTitle: synthesized.verdict.newsTitle,
+      newsPoints: synthesized.verdict.newsPoints,
+      firstPhotoUrl: firstPhotoOf(brief),
+      deadlineAt: options.deadlineAt,
+    });
 
     return {
       agentId: agent.id,
@@ -792,7 +776,7 @@ export async function processDelivery(
   const { data: allAgents, error: agentsError } = await admin
     .from("agents")
     .select(
-      "id, owner_id, reporter_handle, reporter_tier, beat, tracked_handles, websites, status",
+      "id, owner_id, reporter_handle, beat, tracked_handles, websites, status, public_handle, trial_started_at, plan",
     );
   if (agentsError) throw agentsError;
   let websiteSourceAgentId: string | null = null;

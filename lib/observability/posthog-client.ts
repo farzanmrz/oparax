@@ -93,7 +93,15 @@ export function initPostHog(): void {
   if (posthog.__loaded) return;
 
   posthog.init(token, {
+    // Set NEXT_PUBLIC_POSTHOG_HOST to https://oparax.ai/ingest in production so events ride
+    // the first-party proxy (next.config.ts rewrites); ui_host keeps toolbar/app links
+    // pointing at PostHog itself rather than the proxy.
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+    ui_host: "https://us.posthog.com",
+    // Pin the SDK's dated default preset (reference init parity); every explicit option below
+    // still wins over the preset.
+    defaults: "2026-01-30",
+    debug: process.env.NODE_ENV === "development",
     capture_exceptions: true,
     capture_pageview: "history_change",
     // The recorder loads separately, so place it in the head where React hydration keeps it.

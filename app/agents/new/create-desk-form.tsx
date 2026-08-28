@@ -15,7 +15,6 @@ import { splitList } from "@/lib/split-list";
 import { displaySourceUrl, MAX_WEBSITES, normalizeSourceUrl } from "@/lib/websites";
 import { MAX_TRACKED_HANDLES as MAX_TRACKED, normalizeValidHandle } from "@/lib/x/handle";
 import { mergeHandles } from "@/lib/x/handle-input";
-import { startExtraction } from "../[id]/voice/actions";
 import { createDesk, startWebsiteOnboardingAtCreation } from "./actions";
 
 const DRAFT_KEY = "oparax:new-agent-draft";
@@ -78,10 +77,8 @@ function FieldLabel({
 
 export function CreateDeskForm({
   xLinkState,
-  canOverrideHandle,
 }: {
   xLinkState: { linked: boolean; handle: string | null };
-  canOverrideHandle: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -95,11 +92,6 @@ export function CreateDeskForm({
   const [websiteFieldError, setWebsiteFieldError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [createdDeskId, setCreatedDeskId] = useState<string | null>(null);
-  // Admin sessions default the voice-override field to the standing test reporter; everyone
-  // else never sees the field and their connected handle flows through it untouched.
-  const [extractFrom, setExtractFrom] = useState(
-    canOverrideHandle ? "ReshadRahman" : (xLinkState.handle ?? ""),
-  );
 
   useEffect(() => {
     const raw = window.sessionStorage.getItem(DRAFT_KEY);
@@ -259,9 +251,6 @@ export function CreateDeskForm({
         name,
         beat,
         trackedHandles: finalHandles,
-        ...(canOverrideHandle && extractFrom.trim() && extractFrom.trim() !== xLinkState.handle
-          ? { extractFromHandle: extractFrom }
-          : {}),
       });
       if (result.error || !result.id) {
         setFormError(result.error ?? "Could not create your agent. Please try again.");
@@ -297,14 +286,8 @@ export function CreateDeskForm({
         }
       }
 
-      try {
-        const extraction = await startExtraction(deskId);
-        if (!extraction.ok) toast.error(extraction.message);
-      } finally {
-        // A created agent is recoverable from Feed/Guide even if extraction start fails.
-        // Feed is the landing page because setup progress renders there immediately.
-        router.replace(`/agents/${deskId}`);
-      }
+      // Feed is the landing page — new stories render there as they land.
+      router.replace(`/agents/${deskId}`);
     });
   }
 
@@ -327,7 +310,7 @@ export function CreateDeskForm({
         <BandCard className="h-full" icon={<UserRoundIcon />} title="Identity">
           <div className="flex h-full flex-col gap-5">
             <div className="flex flex-col gap-1.5">
-              <FieldLabel help="Oparax needs your X account connected so it can learn your writing style from your posts and post approved drafts on your behalf.">
+              <FieldLabel help="Oparax needs your X account connected so this agent is tied to a verified identity.">
                 Your X Account
               </FieldLabel>
               {xLinkState.linked && xLinkState.handle ? (
@@ -386,20 +369,6 @@ export function CreateDeskForm({
                 value={beat}
               />
             </div>
-
-            {canOverrideHandle && xLinkState.linked ? (
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel htmlFor="extract-voice-from">Extract Voice From</FieldLabel>
-                <Input
-                  id="extract-voice-from"
-                  className="h-11 rounded-md bg-[var(--input-bg)] desk:h-9"
-                  disabled={isPending || createdDeskId !== null}
-                  onChange={(event) => setExtractFrom(event.target.value)}
-                  placeholder="handle without the @"
-                  value={extractFrom}
-                />
-              </div>
-            ) : null}
           </div>
         </BandCard>
 

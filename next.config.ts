@@ -5,24 +5,37 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@hugeicons/react", "@hugeicons/core-free-icons", "radix-ui"],
   },
+  // First-party PostHog proxy: analytics ride our own domain so ad blockers don't erase the
+  // pilot's numbers. ORDER MATTERS — rewrites match in array order, and the wildcard first
+  // would send the static script request to the wrong host.
+  async rewrites() {
+    return [
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
+    ];
+  },
   // The sysprompt markdown is read via readFileSync(process.cwd()/lib/sysprompts/...) at
   // module load — trace it into every serverless function that transitively imports
-  // lib/sysprompts (the delivery interface, via draft-pipeline.ts -> draft-council-run.ts;
-  // the legacy strip-phrases refresh route and the new-desk create action, both via
-  // lib/sources/onboard-source.ts / lib/voice/extract-guide.ts; and /agents/[id]/voice's
-  // retryExtraction action, which reaches the same lib/voice/extract-guide.ts path via
-  // runExtractionSpendPhase on a manual retry). The per-minute cron dispatcher this list once
-  // traced (/api/cron/tick) was deleted with the retired scan/draft pipeline (D15), the
-  // /api/chat entry it once traced was deleted with the create-desk chat assistant
-  // (create-agent v2 continuation, the deleted create-desk assistant), and the inbound-email
-  // webhook entry was deleted with the whole dormant email-correction path — do not re-add any
-  // without a route to match. See .claude/rules/agent.md's "Bundling the prompts for deploy".
+  // lib/sysprompts (the two delivery interfaces /api/ingest and /api/x/webhook plus the
+  // reconcile sweep's reprocessing path, via draft-pipeline.ts; the strip-phrases refresh
+  // route and the new-desk create action, via lib/sources/onboard-source.ts; and the landing
+  // page's pilot onboarding action, which onboards website sources through the same module).
+  // The voice-extraction entry died with lib/voice — do not re-add entries without a route to
+  // match. See .claude/rules/agent.md's "Bundling the prompts for deploy".
   outputFileTracingIncludes: {
     "/api/ingest": ["./lib/sysprompts/*.md"],
+    "/api/x/webhook": ["./lib/sysprompts/*.md"],
+    "/api/x/reconcile": ["./lib/sysprompts/*.md"],
     "/api/sources/refresh-strip-phrases": ["./lib/sysprompts/*.md"],
     "/agents/new": ["./lib/sysprompts/*.md"],
-    "/agents/[id]/voice": ["./lib/sysprompts/*.md"],
     "/agents/[id]/sources": ["./lib/sysprompts/*.md"],
+    "/": ["./lib/sysprompts/*.md"],
   },
 };
 

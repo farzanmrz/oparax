@@ -2,20 +2,20 @@
 //
 // Validation here is a SECURITY boundary, not cosmetics: a persisted handle flows into the
 // ingestion worker's globally-shared X filtered-stream rule (`(from:h1 OR from:h2 …)`), built by
-// string interpolation. An unvalidated handle containing stream operators — e.g.
-// `a) OR from:someoneelse -is:retweet OR (from:a` — would break or hijack the rule set for EVERY
-// tenant, not just its author. So every write path validates against X's handle shape before
-// storing, and the worker re-validates defensively (it can't import this file — `ingest/` is an
-// isolated package — so it re-declares the same regex).
+// string interpolation historically, and now into XAA per-handle subscriptions. An unvalidated
+// handle could break or hijack requests made on its behalf, so every write path validates
+// against X's handle shape before storing.
 //
 // Pure + dependency-free: safe to import from client and server alike.
 
 /** X handles are `[A-Za-z0-9_]`, 1–15 chars. */
 export const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 
-/** Max tracked X accounts per desk. Enforced client-side (create-desk form + Sources card) and
- *  re-enforced server-side (createDesk + addTrackedHandle(s)). Well under the worker's stream
- *  capacity (5 rules × 40 handles = 200 across ALL desks). */
+/** Max tracked X accounts per desk on the SIGNED-IN app path only. Enforced client-side
+ *  (create-desk form + Sources card) and re-enforced server-side (createDesk +
+ *  addTrackedHandle(s)). The pilot onboarding path deliberately does not apply it to
+ *  user-demonstrated sources — the constant guarded the dead 200-handle stream; XAA
+ *  subscriptions scale to 1,500. */
 export const MAX_TRACKED_HANDLES = 20;
 
 /**

@@ -31,8 +31,8 @@ function EmptyState() {
           Start your first news agent
         </h2>
         <p className="mx-auto max-w-lg text-base leading-relaxed text-pretty text-muted-foreground">
-          An agent watches a beat around the clock — aggregating atomic news items, surfacing
-          developing stories, and drafting posts in your voice.
+          An agent watches a beat around the clock — aggregating atomic news items and surfacing
+          developing stories the moment they land.
         </p>
       </div>
       <Button asChild className="h-12 px-6 text-base" size="lg">

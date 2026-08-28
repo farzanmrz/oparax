@@ -29,8 +29,12 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - ingest (the first-party PostHog proxy — analytics calls need no session work)
+     * - api/x (X webhooks/crons — machine callers, no session)
+     * - api/stripe (Stripe webhooks — machine callers, no session)
+     * - l (alert short links — a redirect hop that should stay fast)
      * - public image files (svg, png, jpg, etc.)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|ingest|api/x|api/stripe|l/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

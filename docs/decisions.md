@@ -3,7 +3,7 @@
 This file is the single record of Oparax's standing product decisions. Each entry states what something was, what it is now, and why. It deliberately omits metrics and implementation detail. Statuses are Built (verifiable in the product today), Removed (built, then deleted), Rejected (decided against, never built), plus a Direction section for committed plans not yet started.
 
 ## Direction
-- **Monitoring pivot:** It is planned to strip Oparax down toward a monitoring and alert service. Not started yet.
+- **Monitoring pivot:** Oparax is being stripped down to a monitoring and alert service. Started with issue #131: drafting and voice are deleted, X ingestion moves to push, every pilot person gets a public feed page, alerts arrive as X DMs with a free trial and a three-door payment ask, and an onboarding agent builds a desk from a typed handle on the landing page.
 - **Business development pipeline:** An upcoming pipeline will package each current product iteration into explicit experiments. Not created yet.
 
 ## Built

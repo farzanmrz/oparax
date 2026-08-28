@@ -41,11 +41,9 @@ export async function upsertXAccount(
     .maybeSingle();
   if (selectError) throw selectError;
 
-  // A different X account must never inherit the old account's inferred tier — relinking to a
-  // standard account while a stale `premium` row survives would draft/post to a 25,000-char
-  // ceiling the new account can't actually publish at. Null lets the next extraction re-infer
-  // (resolveXTier(null) falls back to the safe standard ceiling meanwhile). Same account
-  // relinking or no prior row: leave `tier` untouched, as before.
+  // A different X account must never inherit the old account's stored tier. Null it so the
+  // stale value can't be mistaken for the new account's. Same account relinking or no prior
+  // row: leave `tier` untouched, as before.
   const isDifferentAccount = existing !== null && existing.x_user_id !== data.xUserId;
 
   const { error } = await admin.from("x_accounts").upsert({
@@ -59,42 +57,6 @@ export async function upsertXAccount(
     updated_at: new Date().toISOString(),
     ...(isDifferentAccount ? { tier: null } : {}),
   });
-  if (error) throw error;
-}
-
-/** Update just the rotated token set after a refresh. */
-export async function updateXTokens(
-  userId: string,
-  data: {
-    accessToken: string;
-    refreshToken: string;
-    tokenExpiresAt: string; // ISO timestamptz
-  },
-): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("x_accounts")
-    .update({
-      access_token: data.accessToken,
-      refresh_token: data.refreshToken,
-      token_expires_at: data.tokenExpiresAt,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
-  if (error) throw error;
-}
-
-export async function updateXAccountTier(
-  userId: string,
-  xUserId: string,
-  tier: "standard" | "premium",
-): Promise<void> {
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("x_accounts")
-    .update({ tier, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("x_user_id", xUserId);
   if (error) throw error;
 }
 

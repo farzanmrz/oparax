@@ -97,8 +97,8 @@ export async function POST(req: Request) {
     // call sat at cost NULL forever; the first real end-to-end draft is what surfaced that. The
     // 25s pause is the lag plus margin, and it runs in `after()` — post-response, so the
     // forwarder's request is never held hostage to pricing, and inside this route's
-    // maxDuration budget. A Draft press in app/agents/[id]/draft-actions.ts also schedules this
-    // sweep because it is another origin of drafting spend. Each run sweeps prior still-null rows,
+    // maxDuration budget. The X webhook route schedules this same sweep because it is another
+    // origin of pipeline spend. Each run sweeps prior still-null rows,
     // so the ledger converges without a cron. Rows younger than 25s or whose gateway lookup gives
     // no answer wait for a later sweep.
     //

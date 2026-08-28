@@ -33,8 +33,6 @@ type XTokenResponse = {
 
 type XMeResponse = { data: { id: string; username: string; name: string } };
 
-type XCreateTweetResponse = { data: { id: string; text: string } };
-
 /** Reads X_CLIENT_ID / X_CLIENT_SECRET and returns the Basic auth header value for
  *  the confidential-client (Web App) token/revoke endpoints. */
 function xBasicAuth(): { clientId: string; header: string } {
@@ -114,15 +112,6 @@ export function exchangeCode(params: {
   );
 }
 
-export function refreshTokens(refreshToken: string): Promise<XTokenSet> {
-  return tokenRequest(
-    new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    }),
-  );
-}
-
 export async function revokeToken(token: string): Promise<void> {
   const { header } = xBasicAuth();
   const body = new URLSearchParams({ token }).toString();
@@ -146,18 +135,4 @@ export async function fetchMe(accessToken: string): Promise<{ id: string; userna
   await assertOk("/2/users/me", res);
   const json = (await res.json()) as XMeResponse;
   return { id: json.data.id, username: json.data.username };
-}
-
-export async function createTweet(accessToken: string, text: string): Promise<{ id: string }> {
-  const res = await xFetch("/2/tweets", `${X_API}/tweets`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ text }),
-  });
-  await assertOk("/2/tweets", res);
-  const json = (await res.json()) as XCreateTweetResponse;
-  return { id: json.data.id };
 }

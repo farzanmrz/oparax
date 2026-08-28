@@ -23,15 +23,11 @@ export function FeedList({
   initialItems,
   initialCursor,
   fetchedAt,
-  charLimit,
-  xLinked,
 }: {
   agentId: string;
   initialItems: FeedItem[];
   initialCursor: FeedCursor | null;
   fetchedAt: number;
-  charLimit: number;
-  xLinked: boolean;
 }) {
   const [state, setState] = useState<State>({ items: initialItems, nextCursor: initialCursor });
   const [loading, setLoading] = useState(false);
@@ -140,7 +136,7 @@ export function FeedList({
   return (
     <div className="flex flex-col gap-[var(--page-rhythm-mobile)] desk:gap-[var(--page-rhythm-web)]">
       {state.items.map((item) => (
-        <FeedItemCard charLimit={charLimit} item={item} key={item.storyId} xLinked={xLinked} />
+        <FeedItemCard item={item} key={item.storyId} />
       ))}
       <div ref={sentinel} />
       {loading ? (

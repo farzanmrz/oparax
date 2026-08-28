@@ -1,8 +1,7 @@
 import { FeedCardSkeleton } from "./feed-item";
 
-/** Route-level loading UI must remain neutral: this route can resolve to an existing feed, an
- * empty ready feed, or a live extraction. Story/draft skeletons falsely promise rows while a new
- * agent is still being set up. */
+/** Route-level loading UI must remain neutral: this route can resolve to an existing feed or an
+ * empty ready feed. Story skeletons falsely promise rows while a new agent has nothing yet. */
 export default function FeedLoading() {
   const skeletonRows = ["loading-1", "loading-2"];
 

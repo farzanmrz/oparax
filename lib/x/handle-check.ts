@@ -116,6 +116,48 @@ export async function checkHandlesExist(
   }
 }
 
+/**
+ * Resolve handles to numeric X user ids through the same x_handle_checks cache the existence
+ * check maintains (the old timeline resolver died with drafting). Cache hits cost nothing; the
+ * misses go through one batched /2/users/by lookup and land back in the cache via storeLookup.
+ * Returns a map keyed by LOWERCASE handle; handles that do not resolve are simply absent.
+ */
+export async function resolveXUserIds(
+  handles: string[],
+  ownerId: string,
+): Promise<Map<string, string>> {
+  const requested = new Map(handles.map((handle) => [handle.toLowerCase(), handle]));
+  const resolved = new Map<string, string>();
+  const lowers = [...requested.keys()];
+  if (!lowers.length) return resolved;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("x_handle_checks")
+    .select("handle_lower, status, x_user_id")
+    .in("handle_lower", lowers);
+  if (error) {
+    console.error("handle-check: resolver cache read failed", error);
+    return resolved;
+  }
+  for (const row of data ?? []) {
+    if (row.status === "valid" && row.x_user_id) resolved.set(row.handle_lower, row.x_user_id);
+  }
+  // A cached "valid" row from before ids were stored can carry a null x_user_id — those count
+  // as missing too, so they get re-looked-up and their id lands in the cache this time.
+  const missing = lowers.filter((lower) => !resolved.has(lower));
+  if (!missing.length) return resolved;
+  const lookupMap = new Map(missing.map((lower) => [lower, requested.get(lower) ?? lower]));
+  try {
+    const lookup = await lookupHandles([...lookupMap.values()]);
+    const invalid = classifiedErrors(lookup.errors, lookupMap);
+    await storeLookup(ownerId, lookupMap, lookup.users, invalid);
+    for (const user of lookup.users) resolved.set(user.username.toLowerCase(), user.id);
+  } catch (error) {
+    console.error("handle-check: resolver lookup failed", error);
+  }
+  return resolved;
+}
+
 export async function refreshStaleHandleChecks(ownerId: string): Promise<void> {
   try {
     const admin = createAdminClient();

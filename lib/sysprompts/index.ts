@@ -8,12 +8,11 @@ import { join } from "node:path";
 
 const load = (name: string) => readFileSync(join(process.cwd(), "lib/sysprompts", name), "utf8");
 
-export const VOICE_EXTRACT_PROMPT = load("voice-extract.md");
-export const DRAFT_COUNCIL_CONTRACT = load("draft-council-contract.md");
 export const DRAFT_FILTER_PROMPT = load("draft-filter.md");
 export const DRAFT_SYNTHESIZE_PROMPT = load("draft-synthesize.md");
-export const DRAFT_TRANSLATE_PROMPT = load("draft-translate.md");
-export const DRAFT_WRITE_PROMPT = load("draft-write.md");
+export const STORY_GROUP_PROMPT = load("story-group.md");
+export const ALERT_JUDGE_PROMPT = load("alert-judge.md");
+export const ALERT_ECHO_PROMPT = load("alert-echo.md");
 export const SOURCE_ONBOARDING_PROMPT = load("source-onboarding.md");
 export const SOURCE_RESOLVER_PROMPT = load("source-resolver.md");
 export const BEAT_GATE_PROMPT = load("beat-gate.md");

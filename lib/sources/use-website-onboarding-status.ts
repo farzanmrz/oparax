@@ -4,7 +4,7 @@
 //
 // Polls getWebsiteOnboardingStatus(deskId) on a fixed interval while any site added this
 // session hasn't resolved yet (#106) — same 2000ms cadence as
-// lib/voice/use-extraction-progress.ts, deliberately simpler: each poll's result is the full,
+// the old extraction-progress hook, deliberately simpler: each poll's result is the full,
 // current set of source_configs status rows for this desk, so it fully replaces local
 // state rather than merging (there's no streamed sub-state to preserve across polls, unlike
 // voice extraction's reasoning/tool-activity accumulation).

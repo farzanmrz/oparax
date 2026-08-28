@@ -16,13 +16,7 @@ export type FeedStoryBody =
   | { kind: "unavailable"; sourceAvailable: boolean };
 export type FeedDraft = {
   draftId: string;
-  /** Null means the story has landed but the reporter has not pressed Draft yet. */
-  draftText: string | null;
-  postedAt: string | null;
-  postingClaimedAt: string | null;
-  postedUrl: string | null;
   body: FeedStoryBody;
-  versionCount: number;
 };
 export type FeedSourceView = {
   kind: "x" | "article" | "headline";

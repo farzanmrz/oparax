@@ -28,7 +28,7 @@ export default async function SettingsPage() {
       <BandCard icon={<TriangleAlertIcon />} title="Danger Zone" variant="danger">
         <div className="flex flex-col items-start justify-between gap-4 desk:flex-row desk:items-center">
           <p className="max-w-2xl text-sm text-text-body">
-            Permanently delete your account, every agent, and all of their drafts and source
+            Permanently delete your account, every agent, and all of their stories and source
             history. This cannot be undone.
           </p>
           <DeleteAccountButton />

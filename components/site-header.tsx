@@ -16,14 +16,12 @@ export type HeaderDesk = {
   name: string | null;
   beat: string;
   status: string;
-  needsReviewCount: number;
-  controlsState: "hidden" | "delete-only" | "full";
 };
 
 /**
  * The single always-on site chrome for every /agents/* page: one sticky 56px topbar. Left: the
  * Oparax mark, the desk switcher (current desk name + live/paused dot), and — when on a desk —
- * the pause/delete controls. Center (desktop): the Feed/Skipped/Guide/Sources tabs for the current desk.
+ * the pause/delete controls. Center (desktop): the Feed/Skipped/Sources tabs for the current desk.
  * Right: the account menu.
  *
  * This is a client component so it can read `usePathname` and render the desk-scoped bits
@@ -63,11 +61,7 @@ export function SiteHeader({
           <Separator className="hidden h-4 desk:block" orientation="vertical" />
           <DeskSwitcher desks={desks} />
           {currentDesk ? (
-            <DeskControls
-              controlsState={currentDesk.controlsState}
-              deskId={currentDesk.id}
-              status={currentDesk.status}
-            />
+            <DeskControls deskId={currentDesk.id} status={currentDesk.status} />
           ) : null}
         </div>
 
@@ -75,7 +69,7 @@ export function SiteHeader({
             the left cluster (a long desk name + controls) is wider than the right. */}
         {currentDesk ? (
           <div className="-translate-x-1/2 absolute left-1/2 hidden desk:block">
-            <DeskTabs deskId={currentDesk.id} needsReviewCount={currentDesk.needsReviewCount} />
+            <DeskTabs deskId={currentDesk.id} />
           </div>
         ) : null}
 
@@ -83,9 +77,7 @@ export function SiteHeader({
           <AccountMenu avatarKey={avatarKey} username={username} />
         </div>
       </header>
-      {currentDesk ? (
-        <MobileDeskTabs deskId={currentDesk.id} needsReviewCount={currentDesk.needsReviewCount} />
-      ) : null}
+      {currentDesk ? <MobileDeskTabs deskId={currentDesk.id} /> : null}
     </div>
   );
 }

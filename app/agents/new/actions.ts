@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { checkBeatIntelligible } from "@/lib/agent/beat-gate";
-import { isOverrideOwner } from "@/lib/owner-allowlist";
 import {
   markPendingSourceFailed,
   onboardSource,
@@ -35,23 +34,16 @@ function describeInvalidHandles(invalid: HandleCheckFailure[]): string {
 }
 
 /**
- * Create a desk (an `agents` row) as the signed-in reporter. The client starts voice extraction
- * after this action returns, so a pre-flight failure never rolls back the newly created desk (see
- * lib/voice/create-desk-extraction.ts for the full order-of-operations + ledger contract).
+ * Create a desk (an `agents` row) as the signed-in reporter.
  *
- * Identity now comes from the linked X account, never from client-supplied form state — the
- * old typed-handle field is gone (D14's post-create verify gate is superseded: OAuth already
- * proves the handle at creation time, so `reporter_verified_at` is stamped here, immediately,
- * instead of a later separate verify step).
+ * Identity comes from the linked X account, never from client-supplied form state — the
+ * old typed-handle field is gone (OAuth already proves the handle at creation time, so
+ * `reporter_verified_at` is stamped here, immediately).
  */
 export async function createDesk(input: {
   name: string;
   beat: string;
   trackedHandles: string[];
-  /** Owner-only override — the handle whose VOICE this agent drafts in, when it isn't the
-   *  creator's own. Ignored unless the signed-in email is in `lib/owner-allowlist.ts`; that
-   *  check is re-run below rather than trusted from whichever client set this. */
-  extractFromHandle?: string;
 }): Promise<CreateDeskResult> {
   const name = input.name.trim();
   if (!name) return { error: "Name this agent." };
@@ -93,35 +85,12 @@ export async function createDesk(input: {
 
   // Re-verified here, server-side, on every create — never trusted from the client. A desk's
   // identity-critical field can't come from anything a browser caller could have forged.
-  // Connect X still gates creation for EVERY caller, override or not: the owner needs a linked
-  // account to post from regardless of whose voice the agent drafts in.
   const { linked, handle } = await getXLinkState();
   const connectedHandle = linked && handle ? normalizeValidHandle(handle) : null;
   if (!connectedHandle) {
     return { error: "Connect your X account before creating an agent." };
   }
-
-  // Owner-only: extract from a handle the caller hasn't authenticated as. The allowlist is
-  // re-checked HERE rather than trusted from the client — a server action is a reachable
-  // endpoint by ID, so "the form didn't render the field" proves nothing about the caller.
-  // A non-allowlisted caller passing this field is silently ignored (not rejected): their
-  // agent is created on their own handle, which is the behavior they'd get anyway.
-  //
-  // The override sets `reporter_handle` — it does NOT keep the agent on the owner's handle
-  // while pulling someone else's corpus. `reporter_handle` is what the corpus is pulled for,
-  // and `voice_guides`/`voice_rules` are keyed by this desk's `agent_id`, not by handle —
-  // so the other direction (extracting the owner's own voice while labeling the desk for
-  // someone else) would just mislabel whose voice the desk claims to be drafting in.
-  let reporterHandle = connectedHandle;
-  if (input.extractFromHandle?.trim() && isOverrideOwner(user.email)) {
-    const override = normalizeValidHandle(input.extractFromHandle);
-    if (!override) {
-      return {
-        error: `"${input.extractFromHandle.trim()}" isn't a valid X handle — letters, numbers, and underscores, up to 15.`,
-      };
-    }
-    reporterHandle = override;
-  }
+  const reporterHandle = connectedHandle;
 
   // OAuth proves the linked account exists, including when it is also tracked. Keep its typed
   // casing in `trackedHandles`, but compare identity case-insensitively because X handles are.
@@ -129,7 +98,6 @@ export async function createDesk(input: {
   const existenceTargets = trackedHandles.filter(
     (tracked) => tracked.toLowerCase() !== connectedHandleKey,
   );
-  if (reporterHandle.toLowerCase() !== connectedHandleKey) existenceTargets.push(reporterHandle);
   const existence = await checkHandlesExist(existenceTargets, user.id);
   if (existence.ok && existence.invalid.length > 0) {
     return { error: describeInvalidHandles(existence.invalid) };
@@ -151,11 +119,7 @@ export async function createDesk(input: {
       reporter_handle: reporterHandle,
       tracked_handles: trackedHandles,
       // Identity is proven by the linked X account at this exact moment, not typed and
-      // verified later — verification is immediate now, not a separate step. Stamped on the
-      // owner-override path too, even though `voice_guides`' SELECT policy no longer conditions
-      // on this column (it checks only `e.id = voice_guides.agent_id and e.owner_id =
-      // auth.uid()`) — so this is a record of how identity was proven at creation, not an RLS
-      // gate. On the override path the allowlist is the verification.
+      // verified later — verification is immediate, not a separate step.
       reporter_verified_at: new Date().toISOString(),
     })
     .select("id")
@@ -164,19 +128,6 @@ export async function createDesk(input: {
   if (error || !data) {
     return { error: "Could not create your agent. Please try again." };
   }
-
-  // Extraction is NOT fired here any more. It used to run as
-  // `after(() => attemptVoiceExtraction(...))`, whose return value nothing could read — so the
-  // four pre-flight gates ran invisibly and a rejection reached the reporter as a spinner that
-  // never resolved. After `createDesk` returns, the client calls `startExtraction`
-  // (app/agents/[id]/voice/actions.ts), awaits its free ownership/shape gate and durable run claim,
-  // then replaces to Feed. That action hands the billable phase to its own `after()`, while Feed
-  // and Voice poll the durable run row.
-  //
-  // The consequence is deliberate: a desk whose creator closes the tab before the pre-flight
-  // returns is created WITHOUT extraction having started. That is a valid, working agent — its
-  // sources are tracked and the worker picks them up; only drafting waits — and the Voice tab's
-  // retry is the recovery surface, same as for any other extraction failure.
 
   // Refresh the /agents layout so the site header's desk switcher includes this new desk
   // immediately — without this the switcher renders its stale list and falls back to "Desks".

@@ -40,11 +40,7 @@ type WinnerRow = {
   id: string;
   story_id: string | null;
   platform: string;
-  posted_at: string | null;
-  posting_claimed_at: string | null;
-  posted_url: string | null;
   created_at: string;
-  model_call_id: string | null;
   news_title: string | null;
   news_synthesis: string | null;
   news_points: Json | null;
@@ -68,12 +64,6 @@ function storyBodyOf(newsPoints: Json | null, synthesis: string | null): FeedSto
   if (synthesis?.trim()) return { kind: "legacy", synthesis };
   return { kind: "unavailable", sourceAvailable: false };
 }
-
-type LineageRow = {
-  id: string;
-  parent_draft_id: string | null;
-  source_post_id: string;
-};
 
 function chunks<T>(values: T[]): T[][] {
   return Array.from({ length: Math.ceil(values.length / FEED_ID_CHUNK) }, (_, i) =>
@@ -173,21 +163,6 @@ async function getCachedTweet(id: string): Promise<TweetLookup> {
   }
 }
 
-async function confirmedIds(supabase: Client, agentId: string) {
-  const rows = await pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
-    supabase
-      .from("drafts")
-      .select("story_id")
-      .eq("agent_id", agentId)
-      .eq("is_winner", true)
-      .eq("platform", "x")
-      .not("posted_at", "is", null)
-      .not("posted_url", "is", null)
-      .order("id", { ascending: true })
-      .range(from, to),
-  );
-  return new Set(rows.map((row) => row.story_id).filter((id): id is string => Boolean(id)));
-}
 async function winnerIds(supabase: Client, agentId: string) {
   const rows = await pagedRows<{ story_id: string | null }>(agentId, (from, to) =>
     supabase
@@ -237,9 +212,7 @@ async function hydrate(
       .order("created_at", { ascending: true }),
     supabase
       .from("drafts")
-      .select(
-        "id, story_id, platform, posted_at, posting_claimed_at, posted_url, model_call_id, news_title, news_synthesis, news_points",
-      )
+      .select("id, story_id, platform, news_title, news_synthesis, news_points")
       .eq("agent_id", agentId)
       .in("story_id", storyIds)
       .eq("is_winner", true)
@@ -249,15 +222,6 @@ async function hydrate(
     throw assignmentResult.error ?? winnerResult.error;
   const assignments = (assignmentResult.data ?? []) as unknown as AssignmentRow[];
   const winnerRows = (winnerResult.data ?? []) as unknown as WinnerRow[];
-  const modelCalls = new Map<string, { output: string | null }>();
-  for (const part of chunks(
-    winnerRows.map((row) => row.model_call_id).filter((id): id is string => id !== null),
-  )) {
-    if (!part.length) continue;
-    const { data, error } = await supabase.from("model_calls").select("id, output").in("id", part);
-    if (error) throw error;
-    for (const call of data ?? []) modelCalls.set(call.id, call);
-  }
   const sourcePosts = new Map<string, SourcePost>();
   for (const part of chunks(assignments.map((row) => row.source_post_id))) {
     if (!part.length) continue;
@@ -267,33 +231,6 @@ async function hydrate(
       .in("id", part);
     if (error) throw error;
     for (const post of data ?? []) sourcePosts.set(post.id, post);
-  }
-  const lineageById = new Map<string, LineageRow>();
-  for (const part of chunks([...new Set(assignments.map((row) => row.source_post_id))])) {
-    if (!part.length) continue;
-    const rows = await pagedRows<LineageRow>(agentId, (from, to) =>
-      supabase
-        .from("drafts")
-        .select("id, parent_draft_id, source_post_id")
-        .eq("agent_id", agentId)
-        .in("source_post_id", part)
-        .order("id", { ascending: true })
-        .range(from, to),
-    );
-    for (const row of rows) lineageById.set(row.id, row);
-  }
-  function versionCount(winningDraftId: string): number {
-    const visited = new Set<string>();
-    let cursor: string | null = winningDraftId;
-    let count = 0;
-    while (cursor && !visited.has(cursor)) {
-      visited.add(cursor);
-      const parentDraftId: string | null = lineageById.get(cursor)?.parent_draft_id ?? null;
-      if (!parentDraftId) break;
-      count++;
-      cursor = parentDraftId;
-    }
-    return count;
   }
   const sources = new Map<string, SourcePost[]>();
   for (const assignment of assignments) {
@@ -312,12 +249,7 @@ async function hydrate(
       ...(winners.get(row.story_id) ?? {}),
       [row.platform]: {
         draftId: row.id,
-        draftText: row.model_call_id ? (modelCalls.get(row.model_call_id)?.output ?? "") : null,
-        postedAt: row.posted_at,
-        postingClaimedAt: row.posting_claimed_at,
-        postedUrl: row.posted_url,
         body: storyBodyOf(row.news_points, row.news_synthesis),
-        versionCount: row.model_call_id ? versionCount(row.id) : 0,
       },
     });
   }
@@ -426,14 +358,10 @@ export async function fetchFeedPage(
 }
 
 export async function fetchFeedCounts(supabase: Client, agentId: string) {
-  const [{ count, error }, winners, confirmed] = await Promise.all([
-    supabase.from("stories").select("id", { count: "exact", head: true }).eq("agent_id", agentId),
-    winnerIds(supabase, agentId),
-    confirmedIds(supabase, agentId),
-  ]);
+  const { count, error } = await supabase
+    .from("stories")
+    .select("id", { count: "exact", head: true })
+    .eq("agent_id", agentId);
   if (error) throw error;
-  return {
-    totalStories: count ?? 0,
-    readyToReview: [...winners].filter((id) => !confirmed.has(id)).length,
-  };
+  return { totalStories: count ?? 0 };
 }

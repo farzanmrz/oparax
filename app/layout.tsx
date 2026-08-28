@@ -33,7 +33,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Oparax — AI agent for news reporters",
   description:
-    "Oparax watches the accounts and sources you can't keep up with, surfaces breaking stories the moment they land, and drafts posts in your voice.",
+    "Oparax watches the accounts and sources you can't keep up with and surfaces breaking stories the moment they land.",
 };
 
 export const viewport: Viewport = {

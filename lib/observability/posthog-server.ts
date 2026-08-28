@@ -47,6 +47,36 @@ export type ServerErrorContext = {
   readonly level?: ServerErrorLevel;
 };
 
+/**
+ * Capture one server-side product event (alert_sent, dm_consented, onboard_completed, ...).
+ * Fire-and-forget: a sink failure is logged, never thrown. Pass `set` to attach `$set` person
+ * properties (handle, cohort) to the pilot identity.
+ */
+export function captureServerEvent(
+  event: string,
+  options: {
+    readonly distinctId: string;
+    readonly properties?: Readonly<Record<string, unknown>>;
+    readonly set?: Readonly<Record<string, unknown>>;
+  },
+): void {
+  const ph = getPostHogServerClient();
+  if (!ph) return;
+  try {
+    ph.capture({
+      distinctId: options.distinctId,
+      event,
+      properties: {
+        ...options.properties,
+        source: "server",
+        ...(options.set ? { $set: options.set } : {}),
+      },
+    });
+  } catch (sinkError) {
+    console.error("posthog-server: capture failed", sinkError);
+  }
+}
+
 /** Report a caught error as a PostHog exception. Never throws; a sink failure is logged only. */
 export function reportServerException(error: unknown, context: ServerErrorContext = {}): void {
   const ph = getPostHogServerClient();

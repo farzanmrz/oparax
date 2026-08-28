@@ -5,9 +5,8 @@
 // (source_configs + agents.websites, via the add_source_config RPC). discoverChangeDetection
 // may read robots.txt now (#108, discovery only) — retrieval itself is still left null
 // regardless (the poller decides adaptively, per fetch, never declared up front here; #105's
-// retrieval-tier decision is untouched). Mirrors lib/voice/create-desk-extraction.ts's
-// ExtractionOutcome shape — every failure, including an internal one, comes back as a typed
-// value; never throws except on a genuine transport failure that never billed.
+// retrieval-tier decision is untouched). Every failure, including an internal one, comes
+// back as a typed value; never throws except on a genuine transport failure that never billed.
 //
 // SERVER-ONLY (transitively imports lib/sysprompts via readFileSync at module scope, and
 // writes via the admin client) — never importable from a client component.
@@ -71,8 +70,8 @@ const MIN_STRIP_PHRASE_LENGTH = 12;
 const MAX_STRIP_PHRASES = 12;
 const MAX_STRIP_PHRASE_LENGTH = 120;
 
-/** Found live (2026-08-06), the same class of risk the drafting stages guard with
- *  QWEN_DRAFT_TIMEOUT_MS (lib/agent/draft-write.ts): with no bound here, a stalled
+/** Found live (2026-08-06), the same class of risk the pipeline stages guard with
+ *  QWEN_DRAFT_TIMEOUT_MS (lib/agent/qwen-draft-config.ts): with no bound here, a stalled
  *  provider/gateway connection can hang this call indefinitely. Matched to the drafter's 120s
  *  rather than derived independently — onboarding carries a WEBSITE_SAMPLE_LIMIT-entry prompt
  *  against one article, so it is the same order of work. */
@@ -1086,7 +1085,7 @@ export async function onboardSource(
       const latencyMs = Date.now() - requestStartedAtMs;
       // The call BILLED, so it still gets a ledgerable row (AGENTS.md's model-call rule) —
       // captured from the onStepEnd event before zod rejected the JSON, same pattern as
-      // `completedStepRef` in lib/agent/draft-translate.ts and lib/agent/draft-write.ts.
+      // `completedStepRef` in lib/agent/draft-filter.ts and lib/agent/draft-synthesize.ts.
       const output = stepRef.value?.objectText ?? err.text ?? null;
       const usage = stepRef.value?.usage ?? err.usage;
       const failedCall = await insertOnboardingModelCall(admin, ownerId, agentId, {
