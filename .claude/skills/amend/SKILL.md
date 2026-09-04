@@ -3,7 +3,7 @@ name: amend
 description: >-
   Add or change functionality on an in-flight oparax issue N without a new
   issue or branch, same behavior in either host (it loads skill bundles
-  with the Skill tool and runs the same five-lane critique as /feature
+  with the Skill tool and runs the same six-lane critique as /feature
   directly in this session): confirm the branch, read the issue's plans,
   talk through the addition as a delta, write the amendment as two separate
   local files (a two-part plain one the owner approves, a detailed one the
@@ -106,7 +106,7 @@ Skills: <bare skill names this amendment's steps rest on, same form as the plan'
 <only the journeys this amendment adds or changes, in the plan's part-3 style; $build turns them into the owner's walk-through and /qc checks them>
 ```
 
-Then run the critique exactly as `/feature` step 6: the same five lanes, the same shared `.feature/lanes/critique.brief`, the same five per-lane background waits with each lane's findings extracted and dispositioned as it returns, the same in-session adjudication (dispositions file first, then edits by hunk, never re-emitting text), with these differences in the brief: the files under review are `.feature/amend-<N>-<R>.md` (the detailed amendment, the thing to attack) and `.feature/amend-<N>-<R>-owner.md` (the plain amendment, whose decisions are final); `.feature/plan-<N>.md`, every earlier `.feature/amend-<N>-*.md`, and every `.feature/fixes-<N>*.md` are context that is already built and out of scope; attack only this amendment and how it wires into what exists. Accepted findings land as, or inside, a `## Step` in the detailed file; a finding that needs the owner's judgment becomes a "What needs your call" line in the plain file.
+Then run the critique exactly as `/feature` step 6: the same six lanes, the same shared `.feature/lanes/critique.brief`, the same six per-lane background waits with each lane's findings extracted and dispositioned as it returns, the same in-session adjudication (dispositions file first, then edits by hunk, never re-emitting text), with these differences in the brief: the files under review are `.feature/amend-<N>-<R>.md` (the detailed amendment, the thing to attack) and `.feature/amend-<N>-<R>-owner.md` (the plain amendment, whose decisions are final); `.feature/plan-<N>.md`, every earlier `.feature/amend-<N>-*.md`, and every `.feature/fixes-<N>*.md` are context that is already built and out of scope; attack only this amendment and how it wires into what exists. Accepted findings land as, or inside, a `## Step` in the detailed file; a finding that needs the owner's judgment becomes a "What needs your call" line in the plain file.
 
 Present as `/feature` step 7 with one difference: `cat` the plain amendment file only, whole, after one line saying whether the critique changed anything the owner would notice (usually "nothing you'd notice; the build steps got tighter"). Never the detailed file, never the plan. If "What needs your call" gained a line, END YOUR TURN and wait for the owner's answer, then edit the plain file by hunk and go on.
 

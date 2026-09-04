@@ -1,6 +1,6 @@
 ---
 name: feature
-description: "Plan an oparax feature or bug fix slice: talk through the idea with the owner, write the plain plan, load the slice's skill bundles, run the five-lane cross-model critique, and on approval open the GitHub issue and cut the branch. Use only when the owner explicitly types $feature in Codex. Never invoke automatically during other work."
+description: "Plan an oparax feature or bug fix slice: talk through the idea with the owner, write the plain plan, load the slice's skill bundles, run the six-lane cross-model critique, and on approval open the GitHub issue and cut the branch. Use only when the owner explicitly types $feature in Codex. Never invoke automatically during other work."
 ---
 
 # Feature (Codex entry point)
