@@ -18,6 +18,7 @@ X also provides a Register chat keys dialog. It generates encryption keys, store
 
 ## Remaining external setup
 
+- Regular X account/Premium: Chrome currently displays Premium at $8/month and Premium+ at $40/month, billed monthly and automatically renewing. Nothing purchased. Handle Marketplace is on Premium+, not ordinary Premium; the new account must also satisfy X's age/activity requirements. Account creation is waiting for the owner's chosen email, and the subscription target is unconfirmed.
 - X Ads: Oparax Ads project exists on Ads Starter, MCP-only, with no connected apps. The x-ads MCP server is registered in Codex and Claude Code; authorization remains unverified. Codex previously rejected the provider's OAuth origin metadata. No campaign has been launched.
 - Payments: Stripe is the proposed provider in exp1.md. Merchant readiness, product/price creation and credentials are not verified. Integration and webhook delivery require the new application endpoints.
 - PostHog: the experiment's event contract is in exp1.md. Project access, dashboards and live instrumentation still need verification for the fresh build.
