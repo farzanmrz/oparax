@@ -44,6 +44,10 @@ The documented `/2/bots` lifecycle endpoints use the project's **app bearer toke
 - OAuth 1 permissions reduced to **Read**. No personal OAuth 1 access token was generated. This does not set the scopes the application requests in OAuth 2. Review those separately during the new feature.
 - App bearer and OAuth 2 client secret rotated. Client ID retained. Required values installed in Vercel Production, Preview and Development.
 
+## Required sender identity
+
+The owner's final instruction is that the **bot itself must be `@oparax`**. The current `@oparax_bot` is an existing placeholder, not an accepted final handle. A separate brand account linking to it does not satisfy this requirement. No bot rename or Marketplace transfer has been attempted after that correction. The last action only reopened the app before the owner paused overnight. Inspect the supported bot username/transfer path next; do not assume a regular account can be attached to this bot or change the personal account's handle.
+
 ## Bot identity and encryption
 
 [Chat bots in the console](https://console.x.com/accounts/2019899171617300480/bots).
