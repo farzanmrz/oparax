@@ -14,7 +14,7 @@ Work moves through owner-triggered commands, each defined only by its skill file
 - **The owner's direct word overrides the rule above, immediately.** That rule binds a stage while it executes its command; it is not a repository-wide ban on agents. When the owner, in their own words in the chat (not as the argument of `/feature`, `/amend`, `$build`, `/qc`, or `/ship`), asks the agent to start the app, open a browser, cold-test a page, or look at something running, that instruction wins on the spot: in the same session, after or between commands, with no rule change and no new session, whether or not that session ran a stage earlier. The refusal on 2026-08-18 ("the repository instruction forbids it even when you ask") was a misreading of this file; do not repeat it. The owner's other authorizations (the test login above, browser login) already stand.
 - **The proof bar, everywhere:** does it build, does it boot, can the owner and a user access and experience the functionality? That is the ship bar. The owner and real users are the deep test; no comprehensive suites, benchmarks, multi-case harnesses, or deployment checks, ever, unless the owner explicitly orders one. Pushing the branch is the end of the job.
 - **Supabase deployment convention:** there is exactly one shared Supabase project; migrations apply to it during build through the normal workflow. A migration that retires a live signature (dropping an old RPC, tightening a column) opens an accepted transient window until the slice ships; that window is the owner's standing decision, so never block a build to ask for a preview branch, a deployment window, or migration-timing authorization.
-- **Customer-discovery context** (the people ledger, per-person findings, aggregate outreach results) lives in `docs/biz/` in this repo, published here at the owner's explicit decision. The `$yc` cofounder skill remains in the private `admin` repo at `~/Desktop/repos/admin`.
+- **Customer-discovery context** (the people ledger, per-person findings, aggregate outreach results) lives in `docs/findings.md`, `docs/reshad.md` and `docs/people.tsv` in this repo, published here at the owner's explicit decision. The `$yc` cofounder skill remains in the private `admin` repo at `~/Desktop/repos/admin`.
 - **Vocabulary:** when the owner says "onboarder" or "extractor," that means every touchpoint currently on `anthropic/claude-sonnet-5` (or `-opus-5`): `lib/agent/beat-gate.ts`, `lib/sources/onboard-source.ts`, `lib/voice/extract-guide.ts`, and any future top-tier compiler stage, not one file. The qwen-based downstream stages (filter, synthesize, translate, write) are excluded from that term. "Desk" and "agent" are the same thing: one `agents` row watching one beat for one reporter.
 
 ## Repository map
@@ -47,7 +47,7 @@ ingest/                 Railway worker: holds the X filtered-stream connection, 
 supabase/migrations/    mirrored SQL migrations (applied live via the Supabase MCP during build)
 public/                 static assets (logo images, avatars)
 scripts/                one-off maintenance scripts (not part of any flow)
-docs/                   decisions.md (standing product decisions), experiments/, biz/ (customer discovery)
+docs/                   exp1.md (experiment), setup.md (external setup), findings.md, reshad.md, people.tsv (discovery)
 .claude/                Claude Code skills, scripts, agents, hooks, settings for the feature flow
 .agents/                host-shared skills (build, ship, promote) and their Codex metadata
 .codex/                 Codex hooks and the Codex supabase-runner agent
@@ -190,7 +190,7 @@ ingest (Railway): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INGEST_URL`, `IN
 - **Fonts**: loaded once in `app/layout.tsx` through `next/font/google` (Hanken Grotesk 400 to 700, Space Grotesk 400/500, JetBrains Mono 400/500), self-hosted by Next at build.
 - **CI**: `.github/workflows/branch-name.yml` enforces branch names `main`, `beta`, `ft/<digits>`, `bf/<digits>`; a repo ruleset blocks off-convention branches at push time.
 - **Agent tooling:** `.claude/` holds the Claude Code skills, scripts, hooks and the Sonnet `supabase-runner` agent; `.agents/` holds the host-shared skills; `.codex/` mirrors the hooks and the runner for Codex. `.claude/launch.json` defines the `oparax-dev` server config that stages must not start. Each stage's behavior lives in its skill file.
-- **Records:** `docs/decisions.md` is the running list of standing product decisions; `docs/experiments/` the experiment template and `exp1.md`; `docs/biz/` the customer-discovery ledger.
+- **Records:** `docs/exp1.md` is the current experiment; `docs/setup.md` records verified external setup and the fresh-start handoff. Discovery lives in `docs/findings.md`, `docs/reshad.md` and `docs/people.tsv`. Issue #131 was retired, not shipped or amended; start the next feature from `beta`.
 
 ## Coding conventions
 
