@@ -6,6 +6,8 @@ Verified in the logged-in X Developer Console on September 11, 2026 (Pacific). T
 
 X publishes an official [agent skill](https://docs.x.com/skill.md). Its [Agent Resources](https://docs.x.com/tools/ai) describes the skill, Docs MCP, API MCP and OpenAPI specification as distinct resources. The Codex `x_docs` and Claude Code `x-docs` agents on this machine are configured to consult `https://docs.x.com/mcp`. Use that agent for X platform documentation; use the separate xAI agent for Grok model API documentation.
 
+Both local agent definitions were updated on September 11 to explicitly route X Chat, bots, XDK and key-recovery questions to the canonical pages below, distinguish bot lifecycle authentication from chat runtime authentication, and inspect endpoint references before declaring documentation missing. Files: `/Users/farzanm4/.codex/agents/x-docs.toml` and `/Users/farzanm4/.claude/agents/x-docs.md`. Their model choices and read-only research remit were retained.
+
 The official X Chat pages are accessible and document project bots, encryption, key handling, conversations, sending and receiving. A prior research pass stopped too early and incorrectly described those areas as undocumented. Start with:
 
 - [X Chat introduction](https://docs.x.com/xchat/introduction) and [getting started](https://docs.x.com/xchat/getting-started).
@@ -92,3 +94,5 @@ X Ads is separate. The owner explicitly prohibited ad setup or campaigns during 
 ## Handle lookup
 
 On September 11, 2026, an authenticated `GET /2/users/by/username/oparaxAI` returned an X `resource-not-found` error (inside an HTTP 200 response). No public account was returned for `@oparaxAI`. This is not proof that X allows the handle to be claimed; the creation/change flow can reserve or reject handles that do not resolve publicly. No handle was claimed and the existing bot was not renamed.
+
+The signed-in [Handle Marketplace search for @oparax](https://handles.x.com/search/oparax) subsequently offered a **Priority handle request**. The personal-use route requires Premium+ and replaces the requesting account's current handle, retaining its followers/content. The screen says one Priority handle request is allowed in the account's lifetime, the previous handle is reserved, and canceling the subscription reverts it. Selecting **For my business** displayed **Upgrade to Full Access Premium Business to request this handle for business use**. It states no additional transfer cost beyond maintaining the required subscription. This establishes that a request route exists, not an approved transfer or ordinary signup availability. No request or upgrade was submitted: the signed-in account is the owner's personal `@farzanmrz`, not a separate company account.
