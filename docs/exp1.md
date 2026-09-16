@@ -1,3 +1,5 @@
+> **Superseded, September 16, 2026.** This is the September 11 experiment design. The plan that replaces it is [roadmap.md](roadmap.md); where the two disagree (the feed page address, DM alerts as the floor, the cold cohort of ten, GitHub and Product Hunt parked, the five gates), the roadmap wins. Kept for its event vocabulary, its source research (GitHub, Product Hunt, X, web) and its measurement rules, which the roadmap cites.
+
 # Experiment 1: Personalized news delivery
 
 Oparax monitors the world for each person. This experiment tests one offer: relevant news gathered across X and the web, selected for the individual, consolidated into a feed and optionally delivered by the Oparax bot.
