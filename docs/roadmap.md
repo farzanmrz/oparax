@@ -14,7 +14,7 @@ Naming (owner, September 16): the thing a person creates is a **monitor**. "Desk
 
 ## Assistant proposals, not owner decisions (marked September 16 at the owner's request)
 
-The following appear in this document as if settled. They are the assistant's proposals or carry-overs from the August build record, and the owner has not confirmed any of them: a second judgment on whether a story is worth a DM (the August 28 record had a Qwen "DM-worthiness" step; never approved); the echo check that suppresses repeat alerts (same origin); a per-monitor daily item budget; ordering the monitor page activity sources first and table entries last; a share link on the monitor page; per-person preference sentences read by the filter; the source-type attribute; the Jev-based per-item judgment, the Jev table matcher and the Jev questions inside the checker (section 3.9); the pricing arithmetic and any tier shape in section 8; the "internet X does not show you" positioning is the owner's, its copy variants are the assistant's. Each stays a proposal until the owner writes "decided" against it.
+The following appear in this document as if settled. They are the assistant's proposals or carry-overs from the August build record, and the owner has not confirmed any of them: a second judgment on whether a story is worth a DM (the August 28 record had a Qwen "DM-worthiness" step; never approved); the echo check that suppresses repeat alerts (same origin); a per-monitor daily item budget; ordering the monitor page activity sources first and table entries last; a share link on the monitor page; per-person preference sentences read by the filter; the source-type attribute; the pricing arithmetic and any tier shape in section 8; the "internet X does not show you" positioning is the owner's, its copy variants are the assistant's. Each stays a proposal until the owner writes "decided" against it.
 
 ## 1. What we are building
 
@@ -144,14 +144,6 @@ Not yet decided by the owner: whether this is in the first build or comes after 
 
 **Owner's framing, September 17,** after the pivot statement "I'll monitor the internet, GitHub and Product Hunt for you outside of X and give you that info on X": the base algorithm does not change in shape, but GitHub and Product Hunt bring a second kind of event. Feeds only ever produce "a new item appeared"; a repo passing 3,000 stars or a launch passing 200 votes is "a number on something we already know crossed a line", seen only by sampling. The owner's stated concern is that a person should be able to steer all of it in plain words ("this sort of news I like, this sort I don't", "monitor it at 2.5k stars, bring it to me at 3k") rather than through per-source setup screens. Assistant proposal, not decided: every source kind runs fetch, then rules (numeric conditions on structured fields, in code, free), then the on-beat judgment on what survives, then the card; feeds have an empty rules step. The person's words are compiled once at save time into judge sentences and rule rows, and the page reads the compiled version back in plain words. No threshold or topic screens until someone types a number.
 
-### 3.9 TypeSafe Jev (researched September 16; every use below is an assistant proposal pending the owner's test)
-
-The owner was approved for TypeSafe AI's Jev the day after its public launch (September 15). What it is, verified in its docs: one endpoint, a state (the facts for one decision) plus a map of typed questions, answered in parallel in about 100 milliseconds. Noul returns the probability of yes; Choice picks one of up to 255 options with a probability each and a confidence; Score rates against 2 to 10 described levels. About 32,000 tokens of state plus questions per call. It writes nothing, searches nothing, calls no tools, explains nothing. No price page exists; the cookbooks imply about $0.042 per million input tokens with output free, which would make a three-question judgment on a 600-character item about $0.00002 against Qwen's measured $0.000116. Its own 711-case benchmark, reported by a third party, has it at 67.8 percent against 74.1 for the best frontier model, so it is cheaper and faster, not more accurate. Spanish and Catalan are documented nowhere. Rate limits, SLA and an API commercial-use clause are unpublished; the terms carry a $100 liability cap.
-
-Where it could fit, as proposals: the per-item on-beat judgment in monitoring (a probability instead of a yes, threshold in code, Qwen kept as fallback, Qwen still writes the story card); the shared-table matcher at onboarding (one call per person, one yes/no question per known row, rows above a threshold go to Grok ranked, which is the alternative to both "whole table in the prompt" and embeddings, and holds to about 200 rows per call); two typed questions inside the checker over its sample articles (on this beat; section, article or aggregator). Never the reader of the person, never the searcher, never the writer of reasons, never a tool Grok calls.
-
-The test, under $2 on existing data, before any of it enters the build: the 245 sample article excerpts and 107 posts from the September 15 run, cross-assigned to both beats; the owner labels 60 to 80 pairs on-beat or off-beat (half Spanish); one Jev call per pair with the on-beat question; the same pairs through the existing Qwen filter; the 93-row table through one fanned-out call per person. Switch only if Jev matches the owner's labels at least as well as Qwen, no worse on Spanish, is calibrated (9 of 10 above 0.85 truly on-beat, 9 of 10 below 0.15 truly off), survives 50 concurrent calls without rate-limit errors, and the console bill confirms the cost; and only with written confirmation from TypeSafe that commercial API use is permitted.
-
 ## 4. Monitoring: what runs after onboarding
 
 My understanding of the loop, assembled from the August 28 build (issue #131, archived as tag `archive/ft-131-monitoring-pivot`) and the September 14 plan. Nothing in this section is built today: the Railway workers were deleted September 12 and the Supabase tables are empty.
@@ -212,7 +204,6 @@ PostHog project 563049 is the one dashboard (owner). Today it receives only auto
 ## 12. Costs and guards
 
 - Verified prices (September 16, official pages): X Activity API $0.005 per delivered post; X DM send $0.015 per request; qwen3.7-flash $0.03 per million input tokens and $0.13 per million output; grok-4.6 $2 in and $6 out per million; X search $5 per thousand calls until September 21, then per post and per profile. Per monitor per month at the 30-minute cadence: about $20 for a 20-source monitor with an even mix, about $90 for 90 sources, $14 if all feeds and sites, $240 to $405 if all X accounts. X delivery is 8 to 9 times the model cost at every size; the X-account share is the lever.
-- TypeSafe Jev: no price page; cookbook-implied $0.042 per million input tokens and free output, unverified for the current model; no published rate limit or SLA; a direct key outside the Gateway budget alert, so its console spend joins the daily spend check if adopted.
 - Onboarding: $0.97 (Reshad) and $1.06 (Liam) per clean pass; $0.13 to $0.18 to read the person, $0.22 for Grok's X searches, $0.55 to $0.59 for the loop, $0.02 extraction. Target under $0.50 by trimming payloads and batching; the shared table already removes most web searching on repeat beats.
 - Guards on the box: one build per handle (a repeat visit opens the built desk), a daily spend ceiling with a visible "full for today" state, an invisible anti-abuse check.
 - Guards on spend: AI Gateway budget alert; per-handle X subscriptions shared across desks; DM sends batched under the app cap; the seven fixed reads and batches at smaller limits after September 21.
@@ -266,13 +257,16 @@ Ads creative, targeting and a paused campaign are prepared from slice 1 onward t
 - PostHog as the one dashboard.
 - No Qwen in onboarding; no clock; no more discovery experiments.
 
-### Four answers slice one needs before it is planned
+### Answered by the owner, September 17
 
-1. The five open their monitor from the link with no login (a public read route; only the box is behind login). Yes or no.
-2. Day zero stories are the checker's sample articles shown as recent cards. Enough for the five to react to, or must the live feed be in this slice (which pushes it past the week).
-3. The X API balance is negative and reads return 402. Slice one skips the handle-existence check and relies on Grok's X search, or you top up first.
-4. Ship on the current DESIGN.md tokens with no new palette board. Yes or no.
-5. Whether to run the under-$2 Jev test (section 3.9) before slice one, which needs your TypeSafe key in .env.local and 60 to 80 labels from you, or to ship slice one on Qwen and test Jev after the five react.
+- The five open their monitor from its link with no account. Sign-up is needed only to edit the sources. In slice 1 the owner creates the five monitors himself.
+- Day zero is a backfill, not the checker's samples: for every feed and site set up, pull the most recent items (at least the three most recent, or the last day), run them through the judgment and show them in the feed.
+- Filtering and clustering are being redesigned together (many items about one story become one card); that redesign is its own slice.
+- No X API handle check. The handle is read once through Grok's X search to learn the person; if nothing comes back the handle is wrong.
+- The current DESIGN.md aesthetic stays; no new palette board. The pages themselves will look very different and are designed with Claude Design or through the feature flow's design path.
+- DMing the bot keeps the feed alive past day three, not past day seven. Day seven blocks without payment.
+- The seven-day clock starts at bot activation or sign-up, whichever comes first.
+- A stranger opening someone else's page is not a concern for now.
 
 ### Open, for the owner, each explained
 
