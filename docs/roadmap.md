@@ -64,7 +64,7 @@ Decided: free build, sign-up at the first edit; one page with two states; the la
 
 ## 3. Onboarding: the algorithm
 
-Final shape, settled September 15 after four generations of experiments. Runner: `scripts/discovery-comparison/onboarding-v4.mjs` (throwaway; the product version is built from this description). Run record: `.monitoring-lab-runs/onboarding-v4-20260915`, page at localhost:3000.
+Final shape, settled September 15 after four generations of experiments. The exact specification (prompts verbatim, request shapes, the checker, the run record, the 93-row seed table) is [onboarding-algorithm.md](onboarding-algorithm.md); the build ports that file. The scripts and run records that produced it were deleted September 17.
 
 ### 3.1 The steps
 
@@ -207,7 +207,7 @@ PostHog project 563049 is the one dashboard (owner). Today it receives only auto
 | PostHog | live, automatic events only |
 | Stripe | nothing |
 | Landing page live | the drafting-era page from September 6 |
-| Experiment code | `scripts/discovery-comparison/`, `scripts/monitoring-lab/`, `.monitoring-lab-runs/`; throwaway; delete when the onboarding slice is planned |
+| Experiment code | deleted September 17; the algorithm lives in [onboarding-algorithm.md](onboarding-algorithm.md) |
 
 ## 12. Costs and guards
 

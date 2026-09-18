@@ -6,7 +6,7 @@ Oparax watches the internet and X for one person and shows them only what belong
 
 ## The plan
 
-Oparax is being rebuilt as a monitoring-only product: onboarding by X handle and beat sentence with no account, a per-handle page, alerts through the bot `@oparax_ai`, sign-up to customize, payment after seven days, X ads for acquisition. The one document for all of it, every feature, algorithm, decision and open question, is [docs/roadmap.md](docs/roadmap.md). Read it before planning anything. The onboarding algorithm is settled (roadmap section 3); the experiment scripts under `scripts/discovery-comparison/`, `scripts/monitoring-lab/` and `.monitoring-lab-runs/` are throwaway and are removed when the onboarding slice is planned. No paid discovery run is pending or authorized. Everything below this section describes the legacy implementation as it exists in the checkout; the drafting, voice and posting parts of it are not part of the product going forward.
+Oparax is being rebuilt as a monitoring-only product: onboarding by X handle and beat sentence with no account, a per-handle page, alerts through the bot `@oparax_ai`, sign-up to customize, payment after seven days, X ads for acquisition. The one document for all of it, every feature, algorithm, decision and open question, is [docs/roadmap.md](docs/roadmap.md). Read it before planning anything. The onboarding algorithm is settled: roadmap section 3 is the plain account, [docs/onboarding-algorithm.md](docs/onboarding-algorithm.md) is the exact specification (prompts verbatim, request shapes, the checker, the seed table) that the build ports; the experiment scripts that ran it were deleted September 17. No paid discovery run is pending or authorized. Everything below this section describes the legacy implementation as it exists in the checkout; the drafting, voice and posting parts of it are not part of the product going forward.
 
 ## How work moves
 
@@ -51,7 +51,7 @@ ingest/                 Railway worker: holds the X filtered-stream connection, 
 supabase/migrations/    mirrored SQL migrations (applied live via the Supabase MCP during build)
 public/                 static assets (logo images, avatars)
 scripts/                one-off maintenance scripts (not part of any flow)
-docs/                   exp1.md (experiment), setup.md (external setup), findings.md, reshad.md, people.tsv (discovery)
+docs/                   roadmap.md (the plan), onboarding-algorithm.md (the algorithm), exp1.md (experiment), setup.md (external setup), findings.md, reshad.md, people.tsv (discovery)
 .claude/                Claude Code skills, scripts, agents, hooks, settings for the feature flow
 .agents/                host-shared skills (build, ship, promote) and their Codex metadata
 .codex/                 Codex hooks and the Codex supabase-runner agent
@@ -194,7 +194,7 @@ ingest (Railway): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INGEST_URL`, `IN
 - **Fonts**: loaded once in `app/layout.tsx` through `next/font/google` (Hanken Grotesk 400 to 700, Space Grotesk 400/500, JetBrains Mono 400/500), self-hosted by Next at build.
 - **CI**: `.github/workflows/branch-name.yml` enforces branch names `main`, `beta`, `ft/<digits>`, `bf/<digits>`; a repo ruleset blocks off-convention branches at push time.
 - **Agent tooling:** `.claude/` holds the Claude Code skills, scripts, hooks and the Sonnet `supabase-runner` agent; `.agents/` holds the host-shared skills; `.codex/` mirrors the hooks and the runner for Codex. `.claude/launch.json` defines the `oparax-dev` server config that stages must not start. Each stage's behavior lives in its skill file.
-- **Records:** `docs/roadmap.md` is the plan. `docs/exp1.md` is the experiment design; `docs/setup.md` records verified external setup. Customer discovery lives in `docs/findings.md`, `docs/reshad.md` and `docs/people.tsv`. Issue #131 was retired, not shipped or amended, and survives only as the local tag `archive/ft-131-monitoring-pivot`; start the next feature from `beta`.
+- **Records:** `docs/roadmap.md` is the plan; `docs/onboarding-algorithm.md` is the onboarding specification. `docs/exp1.md` is the experiment design; `docs/setup.md` records verified external setup. Customer discovery lives in `docs/findings.md`, `docs/reshad.md` and `docs/people.tsv`. Issue #131 was retired, not shipped or amended, and survives only as the local tag `archive/ft-131-monitoring-pivot`; start the next feature from `beta`.
 
 ## Coding conventions
 

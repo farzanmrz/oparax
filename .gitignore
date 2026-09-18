@@ -20,8 +20,6 @@ next-env.d.ts
 
 # Local scratch data (regenerable)
 data/
-.monitoring-lab-runs/
-.discovery-comparison-runs/
 # Canonical UI handoff bundle remains local; only copied production assets ship.
 design_handoff_oparax_ui/
 
