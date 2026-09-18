@@ -32,7 +32,7 @@ The current **draft operating choices**, to confirm rather than present as alrea
 - Proposed ceiling $500: $200 ads, $250 operation, $50 reserve. Target recurring provision below $10/user/month, counting retrieval, models, delivery and allocated infrastructure, plus setup/acquisition separately. Unknown costs remain unknown. These draft allocations do not authorize Ads actions or a new paid plan. Standard account-DM price examples are not verified X Chat bot tariffs.
 - PostHog measures entry/signup, deliberate story use/feedback, preference changes, optional bot subscriptions, notification attempts/results/interactions, trial/payment/refund/cancellation, monitoring failures and model traces/costs. Interviews provide concrete benefit evidence. Neither sent DMs nor an AI judge prove customer value. Exact events and denominators remain in exp1.md.
 
-The [competition memo](research-monitoring.md) is saved. Alternatives validate that the job exists, not that Oparax wins. The trial must establish a useful advantage over participants' existing routines.
+The competition memo of September 11 was deleted on September 17 (git history keeps it). Alternatives validate that the job exists, not that Oparax wins. The trial must establish a useful advantage over participants' existing routines.
 
 ## Remaining admin and access work
 

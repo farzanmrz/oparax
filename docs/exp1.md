@@ -1,4 +1,4 @@
-> **Superseded, September 16, 2026.** This is the September 11 experiment design. The plan that replaces it is [roadmap.md](roadmap.md); where the two disagree (the feed page address, DM alerts as the floor, the cold cohort of ten, GitHub and Product Hunt parked, the five gates), the roadmap wins. Kept for its event vocabulary, its source research (GitHub, Product Hunt, X, web) and its measurement rules, which the roadmap cites.
+> **Superseded, September 16, 2026; pivot stated September 17.** This is the September 11 experiment design. The offer has since changed to: Oparax watches the internet, GitHub and Product Hunt for you, outside X, and gives you that information on X. The plan that replaces this file is [roadmap.md](roadmap.md); where the two disagree (the offer, the feed page address, DM alerts as the floor, the cold cohort of ten, GitHub and Product Hunt, the five gates), the roadmap wins. Kept for its event vocabulary, its source research (GitHub, Product Hunt, X, web) and its measurement rules, which the roadmap cites.
 
 # Experiment 1: Personalized news delivery
 
