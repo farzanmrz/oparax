@@ -6,11 +6,11 @@ Naming (owner, September 16): the thing a person gets is a **monitor**. "Desk" a
 
 ## 1. The product
 
-A person types their X handle and one sentence about what they cover. Oparax reads their recent X activity once to learn what they actually follow, recommends at most ten websites and feeds that publish it, and builds them a page at oparax.ai/<handle>. From then on it watches those sources, judges every new item against their beat, folds items about one story into one card in English, fills the page, and alerts them in their X DMs through the Oparax bot. For people whose beat is tools and launches it also sends a daily digest of GitHub repos and Product Hunt launches that fit. X accounts are suggested, not watched.
+A person types their X handle and one sentence about what they cover. Oparax reads their recent X activity once to learn what they actually follow, recommends at most ten websites and feeds that publish it, and builds them a page at oparax.ai/<handle>. From then on it watches those sources, judges every new item against their beat, folds items about one story into one card in English, fills the page, and alerts them in their X DMs through the Oparax bot. It recommends at least five X accounts and watches up to five of them. Later, a person can add a daily digest of GitHub repos and Product Hunt launches that fit.
 
 In the owner's words (September 16 and 17): "You already live on X, you already see X. What about the wide internet that you don't see on X? Oparax brings it to you." and "I'll monitor the internet, GitHub and Product Hunt for you outside of X and give you that info on X."
 
-X is used for two things only: learning what the person cares about, and reaching them. Drafting, voice guides and posting are gone (owner, August 26 and September 14).
+X is used for three things: learning what the person cares about, reaching them, and watching up to five accounts they choose. Drafting, voice guides and posting are gone (owner, August 26 and September 14).
 
 Who it is for, as recorded: people who follow a beat and publish about it. AI content creators first (owner, August 27), and among them the creator still building an audience is the one the GitHub and Product Hunt digest is a bet on (owner, September 19); reporters second; Reshad, the football reporter, is the test of whether it holds for someone whose news breaks on X first. The first cohort is five people the owner knows: Farzan, Kush, Liam, Nihan, Reshad. The owner builds their monitors himself and sends each a link.
 
@@ -73,7 +73,7 @@ Day seven, Stripe hosted checkout through the Vercel marketplace (it supplies th
 
 The price is not decided. With X accounts not watched, a monitor costs little to run: fetching is free, judging and writing about $1 to $8 a month by volume, alerts $2 to $22 by what gets alerted, onboarding under 50 cents once. Anchors: Reshad said $4 a month, Brieflet charges $12 for similar personalization, the owner floated $5, $20 and $100 in August.
 
-Open and affects price: whether to offer watching a handful of X accounts. Asked by the owner on September 19. X charges half a cent per delivered post, so the bill follows how much the accounts post, not how many there are: five company or founder accounts are about $5 to $10 a month; five transfer journalists and outlets are $22 to $45. A watched account is billed once however many people watch it, so cost falls where users overlap, and football is where everyone watches the same ten people. The honest lever is a monthly allowance of delivered posts with each account's usual volume shown when it is picked. Unknown: whether replies and reposts are delivered and billed; X's self-serve limit is 1,500 watched accounts in total.
+Decided September 19: up to five watched X accounts per monitor. What it does to the price: X charges half a cent per delivered post, so the bill follows how much the accounts post, not how many there are: five company or founder accounts are about $5 to $10 a month; five transfer journalists and outlets are $22 to $45. A watched account is billed once however many people watch it, so cost falls where users overlap, and football is where everyone watches the same ten people. The honest lever is a monthly allowance of delivered posts with each account's usual volume shown when it is picked. Unknown: whether replies and reposts are delivered and billed; X's self-serve limit is 1,500 watched accounts in total.
 
 ## 10. The public door: landing page, guards, ads
 
@@ -114,19 +114,20 @@ One slice at a time through the flow: `/feature <issue>` plans it from the issue
 | 2 | [#134](https://github.com/farzanmrz/oparax/issues/134) The feed: judging, grouping, cards | Items from a monitor's sources become cards on the page, many items about one story as one card |
 | 3 | [#135](https://github.com/farzanmrz/oparax/issues/135) Keeping it moving | New items appear on their own within minutes, and a monitor nobody claimed stops at day three |
 | 4 | [#137](https://github.com/farzanmrz/oparax/issues/137) The bot | A person activates alerts from their page and receives them in their X DMs |
-| 5 | [#138](https://github.com/farzanmrz/oparax/issues/138) Sign-up in place, and editing a monitor | A person claims their page, adds and removes sources, and says in words what they want more or less of |
-| 6 | [#139](https://github.com/farzanmrz/oparax/issues/139) Payment | Day seven asks for payment and a paid monitor keeps running |
-| 7 | [#140](https://github.com/farzanmrz/oparax/issues/140) The public door | A stranger builds a monitor from the landing page, guarded, and every step is counted; ads go live |
-| 8 | [#136](https://github.com/farzanmrz/oparax/issues/136) GitHub and Product Hunt digests | A person adds a GitHub or Product Hunt digest to their running monitor by hand, and gets a daily digest that fits them |
+| 5 | [#141](https://github.com/farzanmrz/oparax/issues/141) Watching up to five X accounts | A person picks up to five X accounts and their posts arrive on the page like any other item |
+| 6 | [#138](https://github.com/farzanmrz/oparax/issues/138) Sign-up in place, and editing a monitor | A person claims their page, adds and removes sources, and says in words what they want more or less of |
+| 7 | [#139](https://github.com/farzanmrz/oparax/issues/139) Payment | Day seven asks for payment and a paid monitor keeps running |
+| 8 | [#140](https://github.com/farzanmrz/oparax/issues/140) The public door | A stranger builds a monitor from the landing page, guarded, and every step is counted; ads go live |
+| 9 | [#136](https://github.com/farzanmrz/oparax/issues/136) GitHub and Product Hunt digests | A person adds a GitHub or Product Hunt digest to their running monitor by hand, and gets a daily digest that fits them |
 
-The five get links after slice 1 and again as each later slice changes what they see. Experiment 1 is fully running when the public door (slice 7) ships. The GitHub and Product Hunt digest is a later addition and blocks nothing (owner, September 19): something a person adds to a running monitor by hand.
+The five get links after slice 1 and again as each later slice changes what they see. Experiment 1 is fully running when the public door (slice 8) ships. The GitHub and Product Hunt digest is a later addition and blocks nothing (owner, September 19): something a person adds to a running monitor by hand.
 
 ## 14. Decisions
 
 Made by the owner:
 
 - Monitoring only. AI content creators first; Reshad as the test of a beat that breaks on X.
-- X accounts are not watched; they are suggested (September 16). Whether to offer watching a few is open (section 9).
+- Up to five X accounts watched per monitor, and at least five recommended at onboarding (September 19, reversing the September 16 position that accounts are only suggested). Priced by what the accounts post, half a cent per delivered post, billed once per account however many people watch it.
 - Free build with no account; one page with a building state and a monitor state; sign-up in place at the first change with X, Google or email; messaging the bot extends to day seven; day seven blocks without payment; the clock starts at bot activation or sign-up, whichever first.
 - The five open their page from a link with no account, and the owner builds their monitors himself.
 - The onboarding algorithm of section 3, including: at most ten sites and feeds shown to a new person, the strongest ticked, activity-backed sources preferred and Grok deciding that; anything Jev scores under 0.35 is dropped; replies and thread reads dropped as noise; X search removed from Grok's pass; the table row as kind, target, publisher, focus, language and a fuller description true for anyone; no Qwen in onboarding; no handle lookup against X's API.
