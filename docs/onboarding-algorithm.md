@@ -252,7 +252,7 @@ xAI bills X search per post fetched from September 21, 2026 (half a cent), which
 - Grok through the Gateway returns a placeholder when tools and a strict output schema share one request. Structured answers come from text formats parsed by code.
 - Grok obeys literal prescribed queries exactly, and narrates unless the format forbids it.
 - X search results never appear in the raw response; Grok has to echo them.
-- TypeSafe's response carries no cost and no request id; Noul carries no separate confidence; its rate limits are stated as adjusting; English performs best by its own documentation, though Spanish rows ranked correctly for Reshad.
+- TypeSafe's response carries no cost and no request id; Noul carries no separate confidence; its rate limits are stated as adjusting; English performs best by its own documentation, though Spanish rows ranked correctly for Reshad, and a quick check on September 19 found Catalan and Spanish items judged in their own language as well as their English translations (roadmap section 4).
 
 ## 12. How it got here, and what was rejected
 
