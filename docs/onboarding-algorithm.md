@@ -8,7 +8,7 @@ Every quoted string handed to a model (the beat, posts, table rows, tool results
 
 Answer one question cheaply: what does this person actually follow, and which websites and feeds publish it. Then show a page where the person sees what Oparax recommends and picks for themselves. The owner's test for every part of it (September 18): "What do we need to understand? What this user is monitoring. We just need to know what all they talk about and make sense of it."
 
-X accounts are never monitored at onboarding; they are shown as suggestions (owner, September 16). GitHub and Product Hunt are source kinds with their own digest block (section 8).
+X accounts are never monitored at onboarding; they are shown as suggestions (owner, September 16). Onboarding does not surface GitHub or Product Hunt at all (owner, September 19): it recommends sites and feeds, and the digest of section 8 is a feature of a running monitor, switched on afterwards.
 
 ## 2. The shape, in four steps
 
@@ -17,7 +17,7 @@ X accounts are never monitored at onboarding; they are shown as suggestions (own
 | 1. Read the person | Grok fetches, code makes sense of it | Fixed X searches on their handle; code pulls links, accounts and hashtags out of the posts | 6 to 12 cents, 40 to 100 seconds |
 | 2. Rank what we know | Jev, in code | One yes or no probability per table row against the beat plus the posts | under a tenth of a cent, under a second |
 | 3. Pick, and search only where there is a gap | Grok, one bounded pass | Picks the final ten from the top of the ranking, names what the beat still lacks, searches the web once for that only | 1 cent when nothing is missing, about 13 cents when it searches |
-| 4. The page | code | At most ten sites and feeds, strongest ticked, plus X suggestions and, when the beat calls for it, the GitHub and Product Hunt block | free |
+| 4. The page | code | At most ten sites and feeds, strongest ticked, plus X suggestions | free |
 
 New sources found in step 3 are checked, described and added to the shared table, so the next person with a similar beat gets them from step 2 for nothing.
 
@@ -36,15 +36,13 @@ Step 1 of onboarding: collect @<handle>'s own recent X activity as data. Run exa
 2. query: from:<h> filter:quote -filter:replies since:<since>   limit: 6   mode: Latest   (what they amplify)
 3. query: from:<h> filter:links -filter:replies since:<since>   limit: 8   mode: Top   (what they link)
 4. query: from:<h> filter:mentions -filter:replies since:<since>   limit: 6   mode: Latest   (whom they mention)
-5. query: from:<h> github since:<since>   limit: 4   mode: Top   (whether they cover repos)
-6. query: from:<h> "product hunt" OR producthunt since:<since>   limit: 3   mode: Top   (whether they cover launches)
 
 Output only JSON lines, one per post, no prose before or after:
 {"n": <search number>, "url": "...", "id": "...", "date": "YYYY-MM-DD", "kind": "original|quote|reply|thread", "text": "<verbatim>", "quoted_account": "@... or null", "links": ["..."]}
 Never invent a post. If a search returns nothing, move on. A post may appear under two searches; output it under the first. Complete in this one response.
 ```
 
-Searches 1 to 4 ran on September 19. Searches 5 and 6 were added after a browser check of Liam's timeline found a weekly "GitHub Gems" series that the recency-ordered reads never saw; they have not been run. They exist so the page knows whether to show the GitHub and Product Hunt block at all.
+These four ran on September 19. Two more searches, for the person's own posts about GitHub and about Product Hunt, were drafted after a look at Liam's timeline found a weekly repo series the recency-ordered reads never saw; the owner ruled the same day that onboarding does not surface GitHub or Product Hunt, so they are not part of the read. If the digest ever needs to know whether a person covers repos, that check belongs to the digest's own setup.
 
 Then, in code, free:
 
@@ -53,7 +51,7 @@ Then, in code, free:
 3. Normalize to hosts and count them as linked sites. The person's own X posts and social profile hosts (x.com, twitter.com, t.co, instagram.com, facebook.com, tiktok.com, linkedin.com, YouTube channel pages) are counted as dropped and excluded.
 4. Count quoted accounts (from the quoted account field) and mentioned accounts (the @ signs in text) separately. A mention is not a credit: tagging a friend and attributing a story are different things, and code cannot tell them apart. Counts are evidence for Grok, not an answer.
 5. Count hashtags. For Reshad they were the cleanest signal there was (#FCB 13 times, #Transfers 12) and they cost nothing.
-6. GitHub repo links and Product Hunt links found in any post are kept as "repos and launches you have covered".
+6. GitHub repo links found in any post are kept on the monitor's record; the digest of section 8 uses them later as "repos you have covered". They are not shown at onboarding.
 
 What the two real people showed: their strongest signal is a different one. Reshad links nothing but his own Instagram; his beat is in his own posts, his hashtags and whom he mentions. Liam's is in what he links and whom he quotes. One fixed set of reads serves both only because code then extracts every signal from it.
 
@@ -219,13 +217,13 @@ What reaches the person. Whatever survives the numbers is judged against their b
 
 Releases are the separate, simpler job: every repo has a free releases feed the ordinary poller reads, for repos the person has covered or ticked, surfaced only for a major version or when judged notable.
 
-On the page this is its own block outside the ten sites, shown only when searches 5 and 6 or the linked repos show interest: "Repos you have covered, watch for releases", ticked, and one switch each for the daily repo digest and the daily launches digest. Reshad never sees it.
+It is not part of onboarding. On a running monitor it is a block of its own, outside the ten sites: one switch each for the daily repo digest and the daily launches digest, and "Repos you have covered, watch for releases". For the first five the owner switches it on for Liam and Nihan. Whether a person can switch it on themselves, and whether it is offered by default to tool-focused beats, is settled in its slice.
 
 Facts the build carries: one server-side GitHub token reads every public repo, no app registration; search is 30 requests a minute and conditional requests that return "not modified" are free; Product Hunt's API gives launches by topic and date with votes at 6,250 points per 15 minutes, and its terms require emailing hello@producthunt.com before commercial use; its public feed of launches needs no key. Parked: star-threshold alerts ("tell me at 3,000 stars"), which nothing in anyone's behaviour asks for, and the person's plain words becoming rules and judge sentences, which belongs with the judgment redesign.
 
 ## 9. The page
 
-What they monitor, in Grok's few sentences. At most ten sites and feeds as cards: "publisher · focus", the description, a reason from real evidence ("you linked openai.com twice", "you cite this outlet"), a language tag only when not English, a recent headline or two, a link to the human page. Strong ones ticked, possible ones unticked; the person chooses. The X suggestions strip, marked not monitored. The GitHub and Product Hunt block when it applies. One note: replies and the later posts of threads were not read, so if something they follow is missing they should add it. Sources Grok proposed that failed the checker are listed with the plain reason; nothing disappears silently.
+What they monitor, in Grok's few sentences. At most ten sites and feeds as cards: "publisher · focus", the description, a reason from real evidence ("you linked openai.com twice", "you cite this outlet"), a language tag only when not English, a recent headline or two, a link to the human page. Strong ones ticked, possible ones unticked; the person chooses. The X suggestions strip, marked not monitored. One note: replies and the later posts of threads were not read, so if something they follow is missing they should add it. Sources Grok proposed that failed the checker are listed with the plain reason; nothing disappears silently.
 
 ## 10. What it costs
 
