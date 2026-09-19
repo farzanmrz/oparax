@@ -110,14 +110,14 @@ One slice at a time through the flow: `/feature <issue>` plans it from the issue
 
 | Order | Slice | Done when |
 | --- | --- | --- |
-| 1 | Build a monitor and show its page | The owner types a handle and a sentence behind his login, watches the build, and the person opens their page from a link with no account |
-| 2 | The feed: judging, grouping, cards | Items from a monitor's sources become cards on the page, many items about one story as one card |
-| 3 | Keeping it moving | New items appear on their own within minutes, and a monitor nobody claimed stops at day three |
-| 4 | GitHub and Product Hunt digests | Liam's and Nihan's pages carry a daily digest of repos and launches that fit them |
-| 5 | The bot | A person activates alerts from their page and receives them in their X DMs |
-| 6 | Sign-up in place, and editing a monitor | A person claims their page, adds and removes sources, and says in words what they want more or less of |
-| 7 | Payment | Day seven asks for payment and a paid monitor keeps running |
-| 8 | The public door | A stranger builds a monitor from the landing page, guarded, and every step is counted; ads go live |
+| 1 | [#133](https://github.com/farzanmrz/oparax/issues/133) Build a monitor and show its page | The owner types a handle and a sentence behind his login, watches the build, and the person opens their page from a link with no account |
+| 2 | [#134](https://github.com/farzanmrz/oparax/issues/134) The feed: judging, grouping, cards | Items from a monitor's sources become cards on the page, many items about one story as one card |
+| 3 | [#135](https://github.com/farzanmrz/oparax/issues/135) Keeping it moving | New items appear on their own within minutes, and a monitor nobody claimed stops at day three |
+| 4 | [#136](https://github.com/farzanmrz/oparax/issues/136) GitHub and Product Hunt digests | Liam's and Nihan's pages carry a daily digest of repos and launches that fit them |
+| 5 | [#137](https://github.com/farzanmrz/oparax/issues/137) The bot | A person activates alerts from their page and receives them in their X DMs |
+| 6 | [#138](https://github.com/farzanmrz/oparax/issues/138) Sign-up in place, and editing a monitor | A person claims their page, adds and removes sources, and says in words what they want more or less of |
+| 7 | [#139](https://github.com/farzanmrz/oparax/issues/139) Payment | Day seven asks for payment and a paid monitor keeps running |
+| 8 | [#140](https://github.com/farzanmrz/oparax/issues/140) The public door | A stranger builds a monitor from the landing page, guarded, and every step is counted; ads go live |
 
 The five get links after slice 1 and again as each later slice changes what they see. Experiment 1 is fully running when slice 8 ships.
 
