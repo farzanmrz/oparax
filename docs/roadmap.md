@@ -55,7 +55,7 @@ Feeds and sections are polled every one to five minutes with conditional request
 
 ## 6. GitHub and Product Hunt
 
-Decided September 19 (owner: "that defines the product"). Not part of onboarding, which recommends sites and feeds only (owner, the same day): a feature of a running monitor, switched on afterwards, by the owner for Liam and Nihan among the first five. A daily digest, separate from the ten sites, for people whose beat is tools and launches: new and fast-rising repos in their interest areas, the day's Product Hunt launches that fit, each as a card with the name, a why-now line and two lines on what it does; a weekly pass of large established repos they have not covered; and releases of repos they have covered. Interest areas come from the beat and posts, numbers qualify candidates in code for free, and the beat judgment makes it personal. The mechanics and the evidence behind it are in [onboarding-algorithm.md](onboarding-algorithm.md) section 8. It is a bet: Liam said GitHub would be "useful eventually", runs a weekly repo series by hand, and never mentions Product Hunt; Nihan touches both only in paid posts. The test is whether anything either of them posts came from the digest. Before any paying customer sees Product Hunt data, its terms require an email to them about commercial use.
+Decided September 19 (owner: "that defines the product"). Not part of onboarding, which recommends sites and feeds only, and not blocking anything (owner, the same day): a later addition that a person adds to a running monitor by hand. A daily digest, separate from the ten sites, for people whose beat is tools and launches: new and fast-rising repos in their interest areas, the day's Product Hunt launches that fit, each as a card with the name, a why-now line and two lines on what it does; a weekly pass of large established repos they have not covered; and releases of repos they have covered. Interest areas come from the beat and posts, numbers qualify candidates in code for free, and the beat judgment makes it personal. The mechanics and the evidence behind it are in [onboarding-algorithm.md](onboarding-algorithm.md) section 8. It is a bet: Liam said GitHub would be "useful eventually", runs a weekly repo series by hand, and never mentions Product Hunt; Nihan touches both only in paid posts. The test is whether anything either of them posts came from the digest. Before any paying customer sees Product Hunt data, its terms require an email to them about commercial use.
 
 ## 7. The bot
 
@@ -113,13 +113,13 @@ One slice at a time through the flow: `/feature <issue>` plans it from the issue
 | 1 | [#133](https://github.com/farzanmrz/oparax/issues/133) Build a monitor and show its page | The owner types a handle and a sentence behind his login, watches the build, and the person opens their page from a link with no account |
 | 2 | [#134](https://github.com/farzanmrz/oparax/issues/134) The feed: judging, grouping, cards | Items from a monitor's sources become cards on the page, many items about one story as one card |
 | 3 | [#135](https://github.com/farzanmrz/oparax/issues/135) Keeping it moving | New items appear on their own within minutes, and a monitor nobody claimed stops at day three |
-| 4 | [#136](https://github.com/farzanmrz/oparax/issues/136) GitHub and Product Hunt digests | Liam's and Nihan's pages carry a daily digest of repos and launches that fit them |
-| 5 | [#137](https://github.com/farzanmrz/oparax/issues/137) The bot | A person activates alerts from their page and receives them in their X DMs |
-| 6 | [#138](https://github.com/farzanmrz/oparax/issues/138) Sign-up in place, and editing a monitor | A person claims their page, adds and removes sources, and says in words what they want more or less of |
-| 7 | [#139](https://github.com/farzanmrz/oparax/issues/139) Payment | Day seven asks for payment and a paid monitor keeps running |
-| 8 | [#140](https://github.com/farzanmrz/oparax/issues/140) The public door | A stranger builds a monitor from the landing page, guarded, and every step is counted; ads go live |
+| 4 | [#137](https://github.com/farzanmrz/oparax/issues/137) The bot | A person activates alerts from their page and receives them in their X DMs |
+| 5 | [#138](https://github.com/farzanmrz/oparax/issues/138) Sign-up in place, and editing a monitor | A person claims their page, adds and removes sources, and says in words what they want more or less of |
+| 6 | [#139](https://github.com/farzanmrz/oparax/issues/139) Payment | Day seven asks for payment and a paid monitor keeps running |
+| 7 | [#140](https://github.com/farzanmrz/oparax/issues/140) The public door | A stranger builds a monitor from the landing page, guarded, and every step is counted; ads go live |
+| 8 | [#136](https://github.com/farzanmrz/oparax/issues/136) GitHub and Product Hunt digests | A person adds a GitHub or Product Hunt digest to their running monitor by hand, and gets a daily digest that fits them |
 
-The five get links after slice 1 and again as each later slice changes what they see. Experiment 1 is fully running when slice 8 ships.
+The five get links after slice 1 and again as each later slice changes what they see. Experiment 1 is fully running when the public door (slice 7) ships. The GitHub and Product Hunt digest is a later addition and blocks nothing (owner, September 19): something a person adds to a running monitor by hand.
 
 ## 14. Decisions
 

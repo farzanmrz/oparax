@@ -77,7 +77,7 @@ The same ranking applies to account rows (section 7) and to GitHub and Product H
 
 ## 5. Step 3: pick, and search only where there is a gap
 
-One AI SDK `ToolLoopAgent` on `gateway("spacexai/grok-4.6")`, at most six steps, reasoning effort medium, `temperature` 0, `maxRetries` 0. Two tools: the Gateway's Perplexity search (`gateway.tools.perplexitySearch`, removed after its first call so there is exactly one search of three to five queries) and `check_source`, the product's own checker. No X search.
+One AI SDK `ToolLoopAgent` on `gateway("spacexai/grok-4.6")`, at most six steps, reasoning effort medium as it ran (the read stays at low because Grok only fetches there; this pass is where every judgment is made, its cost is mostly re-reading search results rather than thinking, so high is to be tried on the first real builds and kept if the picks are visibly better), `temperature` 0, `maxRetries` 0. Two tools: the Gateway's Perplexity search (`gateway.tools.perplexitySearch`, removed after its first call so there is exactly one search of three to five queries) and `check_source`, the product's own checker. No X search.
 
 Input: the beat, the non-excluded posts, the evidence lists from step 1, and the ranked rows above the possible line as "publisher · focus: first sentence of the description" with their scores.
 
@@ -217,7 +217,7 @@ What reaches the person. Whatever survives the numbers is judged against their b
 
 Releases are the separate, simpler job: every repo has a free releases feed the ordinary poller reads, for repos the person has covered or ticked, surfaced only for a major version or when judged notable.
 
-It is not part of onboarding. On a running monitor it is a block of its own, outside the ten sites: one switch each for the daily repo digest and the daily launches digest, and "Repos you have covered, watch for releases". For the first five the owner switches it on for Liam and Nihan. Whether a person can switch it on themselves, and whether it is offered by default to tool-focused beats, is settled in its slice.
+It is not part of onboarding and it blocks nothing: it is a later addition (owner, September 19), something a person adds to a running monitor by hand. There it is a block of its own, outside the ten sites: a daily repo digest, a daily launches digest, and "watch this repo for releases".
 
 Facts the build carries: one server-side GitHub token reads every public repo, no app registration; search is 30 requests a minute and conditional requests that return "not modified" are free; Product Hunt's API gives launches by topic and date with votes at 6,250 points per 15 minutes, and its terms require emailing hello@producthunt.com before commercial use; its public feed of launches needs no key. Parked: star-threshold alerts ("tell me at 3,000 stars"), which nothing in anyone's behaviour asks for, and the person's plain words becoming rules and judge sentences, which belongs with the judgment redesign.
 
