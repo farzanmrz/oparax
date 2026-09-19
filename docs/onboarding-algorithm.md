@@ -8,7 +8,7 @@ Every quoted string handed to a model (the beat, posts, table rows, tool results
 
 Answer one question cheaply: what does this person actually follow, and which websites and feeds publish it. Then show a page where the person sees what Oparax recommends and picks for themselves. The owner's test for every part of it (September 18): "What do we need to understand? What this user is monitoring. We just need to know what all they talk about and make sense of it."
 
-Onboarding also recommends at least five X accounts. A person may have up to five X accounts watched (owner, September 19, reversing the September 16 position that accounts are only ever suggested); the rest stay suggestions. Onboarding does not surface GitHub or Product Hunt at all (owner, September 19): it recommends sites and feeds, and the digest of section 8 is a feature of a running monitor, switched on afterwards.
+Onboarding also recommends at least five X accounts. A person may have X accounts watched (owner, September 19, reversing the September 16 position that accounts are only ever suggested), limited by a monthly pool of watched posts rather than a number of accounts (roadmap section 9). Onboarding does not surface GitHub or Product Hunt at all (owner, September 19): it recommends sites and feeds, and the digest of section 8 is a feature of a running monitor, switched on afterwards.
 
 ## 2. The shape, in four steps
 
@@ -198,7 +198,7 @@ Decided by the owner on September 15 and verified on two sites: when a page has 
 
 ## 7. X accounts
 
-Onboarding recommends at least five X accounts, and a person may have up to five watched (owner, September 19). Watching is priced by what the account posts, not by the count: X charges half a cent per delivered post, so five company or founder accounts cost about $5 to $10 a month and five transfer journalists $22 to $45; an account is billed once however many people watch it. The watching itself (X's Activity API, one subscription per account shared by everyone who watches it, delivered by webhook) is its own slice.
+Onboarding recommends at least five X accounts, and a person may have accounts watched (owner, September 19). The limit is a monthly pool of watched posts, not a number of accounts (owner, September 19), because X charges half a cent per delivered post: five company or founder accounts cost about $5 to $10 a month and five transfer journalists $22 to $45; an account is billed once however many people watch it. Each recommended account therefore shows its usual posts per day. The watching itself is its own slice; how posts are received (X's Activity API bills replies and reposts and cannot leave them out, the filtered stream can) is recorded in roadmap section 9.
 
 Where the recommendations come from, in this order, all written up by Grok in its one pass with a reason each:
 
