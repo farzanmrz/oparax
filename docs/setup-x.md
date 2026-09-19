@@ -46,7 +46,7 @@ The documented `/2/bots` lifecycle endpoints use the project's **app bearer toke
 
 ## Required sender identity
 
-The owner's final instruction is that the **bot itself must be `@oparax`**. The current `@oparax_bot` is an existing placeholder, not an accepted final handle. A separate brand account linking to it does not satisfy this requirement. No bot rename or Marketplace transfer has been attempted after that correction. The last action only reopened the app before the owner paused overnight. Inspect the supported bot username/transfer path next; do not assume a regular account can be attached to this bot or change the personal account's handle.
+Correction, September 19, 2026: the owner says he never gave the instruction recorded in this paragraph. He will first create an X account under farzan@oparax.ai and see whether `@oparax` can be set up; what it would be used for is undecided. The paragraph as written on September 11: The owner's final instruction is that the **bot itself must be `@oparax`**. The current `@oparax_bot` is an existing placeholder, not an accepted final handle. A separate brand account linking to it does not satisfy this requirement. No bot rename or Marketplace transfer has been attempted after that correction. The last action only reopened the app before the owner paused overnight. Inspect the supported bot username/transfer path next; do not assume a regular account can be attached to this bot or change the personal account's handle.
 
 ## Bot identity and encryption
 
