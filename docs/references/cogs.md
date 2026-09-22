@@ -27,7 +27,7 @@ Started September 19, 2026.
 | GitHub API | reads of public data | free | the limit is request rate (search 30 a minute), not money |
 | Product Hunt API and feed | reads | free | the limit is 6,250 points per 15 minutes; commercial use needs their permission by email |
 | Bright Data | one unlocked fetch | $0.0015 | verified; left out of the first build |
-| Stripe | per successful card payment | unknown here | its standard published rate has not been checked for this file |
+| Stripe | per successful card payment | 2.9% plus $0.30 per domestic card charge, plus 0.7% Stripe Billing on subscriptions (about $1.38 on a $30 charge); +1.5% international cards, +1% currency conversion | verified from Stripe's pricing page, September 22 |
 | Vercel, Supabase, PostHog, Gmail | fixed monthly bills | unknown here | amounts not recorded; they do not change per person at this size |
 | X ads | acquisition | set by the owner per campaign | not a serving cost; tracked apart |
 
@@ -101,7 +101,6 @@ With alerts once a day, before payment fees and fixed bills:
 ## 5. Unknown, and what would settle each
 
 - Whether the filtered stream's price per delivered post is the same $0.005 (X's pricing page did not state it separately). One delivered post on a real rule settles it.
-- Stripe's fee on a real payment. The first sandbox payment shows it.
 - What Perplexity charges per search through the Gateway as a unit. The Gateway response of the next real build shows it.
 - The fixed monthly bills (Vercel, Supabase, PostHog, Gmail). The owner's invoices.
 - Judging and writing cost on the new product's real volume. The first week of a live monitor.
