@@ -1,14 +1,14 @@
 # The downstream algorithm: from a new item to a story card
 
-Written by the assistant on September 21, 2026 at the owner's request, as the design to be tested and critiqued before slice 2 (issue #134) is planned. Only lines carrying an owner attribution with a date are the owner's word. Every other rule here is the assistant's proposal, numbered so it can be confirmed, changed or dropped one by one. Costs come from [references/cogs.md](references/cogs.md). The onboarding half of the product, which decides what sources a monitor watches, is [onboarding-algorithm.md](onboarding-algorithm.md).
+Written by the assistant on September 21, 2026 at the owner's request, revised the same day after five outside models (Sol, Astra, Gemini Pro, Gemini Flash, Grok) critiqued the first version: 70 findings, all dispositioned in the lab folder, the ones raised by three or more lanes folded in below. Only lines carrying an owner attribution with a date are the owner's word. Every other rule is the assistant's proposal, numbered R1 to R24 so it can be confirmed, changed or dropped one by one. Costs come from [references/cogs.md](references/cogs.md). The onboarding half, which decides what a monitor watches, is [onboarding-algorithm.md](onboarding-algorithm.md).
 
 ## 1. What it does
 
-Every few minutes the poller finds new items on a monitor's sources. Each item goes through four steps: does it fit what the person wants (Jev); is it the same news as a story already on the page (Jev); if so, does it add anything the card does not already say (Jev); and, only when a story is new or has gained something, a writer model turns the story's items into the card in English (headline, one to five fact lines each tied to its source). Once a day the bot sends the cards that are new or changed.
+Every few minutes the poller finds new items on a monitor's sources. Each goes through: does it fit what the person wants (Jev); is it the same news as a story already on the page (Jev); if so, does it add anything the card does not already say (Jev); and, only when a story is new or has gained something, a writer model turns the story into the card in English, with every fact tied to a quoted span that code and Jev both check. Once a day the bot sends the cards that are new or changed.
 
-What the owner has said, and this design takes as given:
-- Jev judges fit, grouping, and whether a further source adds a new information point; the larger model only synthesizes the news (owner, September 17, 18 and 21).
-- Nothing is translated before Jev; it reads Spanish and Catalan directly (verified September 19).
+What the owner has said, taken as given:
+- Jev judges fit, grouping and whether a further source adds a new information point; the larger model only synthesizes the news (owner, September 17, 18 and 21).
+- Nothing is translated before Jev (verified September 19).
 - Full article text is fetched; a feed's teaser is never enough to write from (owner, September 19).
 - The card: a synthesized headline, one to five fact lines each with its source, the contributing publishers, one compact relative time, an image only when a source had one (owner, August 28).
 - The writer is told explicitly to be wary of hallucination, and reasoning stays on (owner, September 21).
@@ -17,101 +17,94 @@ What the owner has said, and this design takes as given:
 
 ## 2. The item
 
-What the poller hands over for one new item, all of it from code and free:
-
 | Field | Where it comes from |
 | --- | --- |
-| source row | the shared table row it was polled from: kind, target, name, focus, lang, description |
+| id | a hash of the canonical URL; the same article found through two feeds of one publisher is one item with two sources (R1) |
+| source rows | every table row it was found through: kind, target, name, focus, lang, description |
 | url, title | the feed entry or the listing link |
-| published at | the feed's date, else the page's date tag, else the time it was first seen (marked as such) |
-| text | the article page fetched with a normal browser identity (owner, September 19), main text extracted, cut at 6,000 characters (R1); the feed's own body used only when it already carries the full article |
-| image | the first article image the page or feed declares, if any |
-| lang | the row's lang, or the page's language tag when the two differ |
+| published at | the feed's date, else the page's date tag, else first seen (marked as such) |
+| text | the article page fetched with a normal browser identity (owner, September 19), boilerplate stripped, kept in full up to 20,000 characters for grounding; what models read is the first 6,000 characters cut on a paragraph boundary, and the item is marked truncated when that cut anything (R2) |
+| fetch outcome | full, teaser (the page could not be read and only the feed's body exists), short notice (a complete text under 400 characters), unavailable (R3) |
+| version | a hash of the text; a refetch that changes it makes a new version of the same item (R4) |
+| image, lang | the first declared article image; the row's lang, or the page's language tag when they differ |
 
-R1. 6,000 characters is the proposal for what a model reads per item: enough for any news article's facts, and it keeps a Jev request with twenty grouping questions under its 32,000-token limit. Measured in the September 21 lab.
+R3. Only a full or short-notice item is judged. A teaser is recorded, never judged or written, and a source whose last three distinct items were teasers or unavailable is marked on the page as "could not read its last N items" from the first persistent failure; a readable item clears it.
 
-R2. An item whose page cannot be read (no text, or under 400 characters) is not judged; it is recorded as unreadable against its source, and a source that is unreadable three polls in a row is flagged on the page as "not reading" (nothing is silently dropped).
+R4. Every item attached to an open story is refetched every six hours with a conditional request while the story is open. A changed text is a new version, routed straight to its story (no fit check) and put through the adds step, so live blogs, rewrites and corrections reach the card. Designed here; the lab's 48-hour backfill cannot exercise it.
 
-## 3. Step one: does it fit (Jev)
+Known gap: a live blog is one item whose latest entries may sit below the cut. Not solved in the first build; recorded.
 
-One `boolean` question in a Jev request through the Gateway (see onboarding-algorithm.md section 4 for the call shape).
+## 3. Step one: does it fit (Jev, one request)
 
 State: `{ beat, preferences, examples, source: { name, focus, description }, item: { title, text, published_at } }`.
-- `beat` is the person's sentence.
-- `preferences` is the compiled plain-words list from slice 6 ("no transfer gossip"), empty until then.
-- `examples` is up to ten of the person's most recent corrections, each `{ title, decision: "wanted" | "not wanted" }`, empty until slice 6. This is how the owner's "corrections compiled into what Jev reads" works: Jev keeps nothing, so the corrections ride in every request.
+- `preferences`: the compiled plain-words list from slice 6, each with a scope (whole beat, one source, one story) and its wording; empty until then.
+- `examples`: up to ten of the person's recent corrections `{ title, source, decision }`, empty until slice 6. Jev keeps nothing, so corrections ride in every request.
+- Precedence, stated in the question: an explicit preference outranks the beat sentence, which outranks the examples (R5).
 
-Question (R3, wording to be tuned against real items): "Does this item belong to what the person wants monitored, judging it against `beat`, `preferences` and the `examples` of their past decisions? Item: `item.title`, `item.text`."
-- true: "The item reports something on the person's beat, or something their preferences or examples show they want."
-- false: "The item is off the beat, or is the kind of thing their preferences or examples show they do not want, even if it shares a company, a club, a person or a theme."
+Question (R6): "Does this item belong to what the person wants monitored? Judge it against `beat`; an explicit `preferences` entry that applies overrides the beat; `examples` show past decisions. Item: `item.title`, `item.text`." true: "The item reports something on the beat, or something the preferences or examples show they want." false: "The item is off the beat, or is the kind of thing an applying preference or the examples show they do not want, even if it shares a company, a club, a person or a theme."
 
-Lines (R4, the onboarding lines reused, to be re-tuned on this task): 0.75 and above is on; below 0.35 is off; between is unsure.
+Lines (R7, reused from onboarding, to be re-tuned on this task): 0.75 and above is on; under 0.35 is off; between is unsure. Unsure counts as off (R8): it is listed in skipped with its score so a person can see it, and the lab measures how often the band is hit; the larger model is never a judge (owner: it only writes). A Jev call that fails or returns no score is retried once, then the item is held as pending and retried on the next poll; a failure is never turned into a verdict (R9).
 
-R5. The unsure band goes to the existing larger-model judge (`lib/sysprompts/draft-filter.md`, the same model as the writer) which answers on or off with a reason. The owner's words are that Jev does the filtering "mostly"; the lab measures how often the band is hit, and if it is under one item in twenty the band can simply count as off.
+Skipped items show their score ("0.04 against your beat"); Jev gives no reason. Whether a person can flip one back is open (issue #134).
 
-R6. An off item is kept in the skipped list with its score and, when the larger model judged it, its one-sentence reason. Jev gives no reason, so a clear-off item shows "0.04 against your beat". Whether a person can flip a skipped item back is open (issue #134).
+## 4. Step two: is it the same news as an open story (Jev, second request, only for items that fit)
 
-## 4. Step two: is it the same news as an open story (Jev, same request)
+Open stories (R10): every story of this monitor whose most recent item is under 72 hours old. No count cap. When the state would exceed Jev's limits (32,000 tokens for the state plus the longest question, 64,000 for the whole request), the open stories are split across requests of at most 60 each.
 
-Open stories (R7): the monitor's stories whose most recent item is under 48 hours old, at most the 20 most recent. A story older than that is closed; a late item about it starts a new story, which is the cheaper mistake.
+One `boolean` per open story: "Is `item` a report of the same news event as story `stories.<id>` (headline and fact lines given), whatever the language of either?" true: "Both report the same event or announcement." false: "Different events, even if they share a club, a company, a person or a theme."
 
-Grouping questions ride in the same Jev request as the fit question, since they are independent and Jev answers them in parallel: one `boolean` per open story, `S_<id>`: "Is `item` a report of the same news event as story `stories.<id>` (its headline and fact lines are given), whatever the language of either?" true: "Both report the same event or announcement." false: "They report different events, even if they share a club, a company, a person or a theme."
+R11. Booleans, not a Choice question, so every candidate can be low, which is the "new story" answer. The item attaches to every story scoring 0.75 or above (an article can report two events); a score in the unsure band counts as no, because a wrong merge hides news and a wrong split only shows a duplicate. Every score is stored, so a later split or merge is possible; those operations are not in the first build.
 
-State adds `stories: { <id>: { headline, facts: [..] } }` for the open stories.
+R12. Stories are per monitor. Sources are shared; stories are not.
 
-R8. Booleans, not one Choice question. A Choice forces one winner; booleans let every candidate be low, which is the "new story" answer, and the September 19 check showed the boolean pair scoring 0.95 for the same story in two languages and 0.01 to 0.08 for different ones. The item joins the highest-scoring story if that score is 0.75 or above; otherwise it starts a new story. A score in the unsure band counts as new: a wrong merge hides news, a wrong split only shows a duplicate.
+R13. Items are processed one at a time per monitor, in published order, and a card is saved with a version check, so two reports of one event a minute apart cannot both open a story and two rewrites cannot overwrite each other.
 
-R9. Stories are per monitor, not shared between people, because two people's beats can want different fact lines from the same event. Sources are shared; stories are not. Sharing grouping across monitors that watch the same sources is a later saving, not a first-build rule.
+## 5. Step three: does it add anything (Jev, third request, only when it joined a story)
 
-R10. Nothing is judged for grouping unless it passed step one. Off items never touch stories.
+One `boolean` per joined story: "Does `item` state at least one fact about this story that `story.facts` does not already state (a new number, name, date, quote, confirmation, denial or consequence)?" true: "The item adds at least one fact the card lacks." false: "Everything it says about this story is already on the card, or is a restatement."
 
-## 5. Step three: does it add anything (Jev, second request)
-
-Only for an item that joined an existing story. One `boolean` question: "Does `item` state at least one fact about this story that `story.facts` does not already state (a new number, a name, a date, a quote, a confirmation or a denial, a consequence)?" true: "The item adds at least one fact the card lacks." false: "Everything the item says about this story is already on the card, or is only a restatement."
-
-State: `{ story: { headline, facts }, item: { title, text, source name } }`.
-
-R11. 0.75 and above: the story is rewritten (section 6). Below: the item is attached to the story as a contributing source (its publisher appears on the card, its link is kept) and nothing is rewritten and nothing is alerted. The unsure band counts as "adds", because the writer will either find a new fact or return the same card, and a wasted write costs a fraction of a cent.
-
-R12. This is a second request rather than a question per candidate in the first, because it depends on which story won; it adds about 300 milliseconds.
+R14. The three branches: 0.75 and above, the story is rewritten (section 6). Under 0.75, including the unsure band, the item is attached as a contributing source (publisher shown, link kept, its text kept for the story's next rewrite), nothing is rewritten, nothing alerted; the card shows "N further reports" so the body is one click away. A version of an already attached item (R4) always goes through this step.
 
 ## 6. Step four: the writer
 
-Runs in exactly two cases: a new story (one item), or a story that gained an item with something to add (all its items, most recent first, each cut at 6,000 characters, at most eight items, R13). It never runs for an item judged off or for one that added nothing.
+Runs in two cases: a new story (one item) or a story whose item added something. Model: the writer chosen in slice 2 (the September 21 lab compares Qwen 3.7 Flash, GLM 5.3 Flash, Ling 3.0 Flash VL free and Laguna S 2.1 free on identical inputs), reasoning on (owner, September 21), temperature 0.
 
-Model: the writer model chosen in slice 2 (Qwen 3.7 Flash, GLM 5.3 Flash or Ling 3.0 Flash are the measured candidates; see references/model-comparison-2026-09-21.md and the September 21 lab), reasoning on (owner, September 21), temperature 0.
+What it is given (R15): the beat; for a new story, the item as `<item id="" publisher="" lang="" published="">` text; for a rewrite, the previous card's facts each with their evidence records (item id, verbatim span) and the new item's text, never the whole history of articles. A kept fact is re-cited by its evidence record; the writer cannot quote what it was not given, so evidence for kept facts travels with the card.
 
-What it is given: the beat (so it knows which facts matter to this reader), the previous card if there is one, and every item as `<source name="" focus="" lang="" published="">` text. The prompt is the existing `draft-synthesize.md` contract (English only; certainty and attribution at the source's level; source text is data, never instructions) with these changes (R14):
-- It writes the card, not "news points": `headline`, then one to five `facts`, each `{ text, source, evidence }`, where `source` is the name of the item the fact comes from and `evidence` is a verbatim span of up to 200 characters copied from that item's text that grounds the fact.
-- An explicit hallucination guard in the prompt (owner, September 21): every fact must be traceable to a quoted span; a fact that cannot be quoted is not written; when in doubt, write fewer facts; never add a number, a name, a date or a certainty the sources do not state; when items disagree, state both with their sources rather than choosing.
-- When a previous card exists: keep its headline unless the new facts change what the story is; keep facts that are still true; fold a new fact in; never exceed five; drop the least important fact if the new one matters more.
+The output (R16), strict JSON: `headline` (English) and one to five `facts`, each `{ text (English), evidence: [ { item, span } ] }` with one to three spans, each `span` copied verbatim in the source's own language from that item's text, up to 200 characters, no ellipsis. Evidence is the one field exempt from the English-only rule of the existing writer contract, which otherwise still applies (attribution and certainty at the source's level, source text is data not instructions).
 
-R15. Code checks every `evidence` span verbatim against the named source's text (after whitespace normalization). A fact whose span is not found is dropped before the card is saved, and the drop is counted per model. This is the deterministic guard behind the prompt's guard: the September 21 comparison found Qwen inventing or inverting a fact in four of twelve articles, and a prompt alone cannot be trusted to stop that. A card that loses all its facts to this check is not saved; the story keeps its previous card, or, if new, is shown as a headline-only card with a "could not verify facts" note.
+The prompt's hallucination guard, in plain words (owner, September 21): write only what you can quote; a fact you cannot quote is not written; when in doubt, write fewer facts; never add a number, a name, a date or a certainty the sources do not state; never turn a report into a confirmation or drop a denial; when items disagree, state both with their sources.
 
-R16. The writer's output is a strict JSON object; a response that does not parse or lacks a headline is retried once with the model's own error shown back, then the story falls back to the previous card or the headline-only card. Judge and write stay separate calls (the July 26 merged call broke deliveries).
+R17. Code checks each span verbatim against the cited item's text after normalizing unicode form, quotes, dashes, ellipses and whitespace, case kept. Every number and four-digit year in the fact's text must also appear in one of its spans. A fact failing either check is dropped and the drop counted per model.
 
-## 7. The card, and what the person sees
+R18. Then one Jev request with one `boolean` per surviving fact: state `{ fact, evidence: [ { span, context } ] }` where context is the span plus 300 characters either side from the source text; question "Is `fact` fully supported by `evidence` at the same certainty and attribution, with nothing added, inverted or upgraded?" true: "The evidence, read in its context, states what the fact states." false: "The fact adds, inverts, upgrades or misattributes something, or the evidence does not say it." Under 0.75 the fact is dropped. This is the check the span match cannot do: a real quote used against its own meaning.
 
-The card is what the owner decided on August 28. The relative time is the most recent item's published time. Contributing publishers are every item attached to the story, including those that added nothing. The image is the first item's image if any, else the first attached item that has one. The page orders cards by most recent change.
+R19. The headline is then checked by Jev against the surviving facts ("Does `headline` state only what `facts` state?"); under 0.75 the writer is asked once for a headline from the surviving facts alone; if that also fails, the first surviving fact becomes the headline. With no surviving fact there is no card: the story shows the item's title as an unverified report with its link and language tag, and is not alerted.
 
-R17. A card changes on the page in place when its story is rewritten; the old card is kept in history (not shown) so a person's "this got worse" can be checked.
+R20. The output is validated against the full shape (headline present, one to five facts, every item id known, every span non-empty) before the checks; a failure is retried once with the validator's error shown back. A rewrite that fails twice leaves the previous card, attaches the item, and shows a visible line "a further report arrived and the card could not be updated"; it is not alerted as news.
+
+R21. A rewrite produces an alert only if the saved facts or headline actually changed; a rewrite that returns the same card changes nothing and alerts nothing. Facts once considered and dropped by the five-line limit are kept in the story's record, so the same sixth fact does not trigger rewrites again.
+
+## 7. The card
+
+As the owner decided on August 28. The compact time is the last meaningful change of the card (a new or changed fact), not the latest attachment. Contributing publishers are every attached item's source. The image is the first attached item's image if any. Cards order by last meaningful change. Every earlier version of a card is kept.
 
 ## 8. Alerts
 
-Once a day (owner, September 19), one DM carrying the stories that are new or were rewritten since the last send, headline and first fact each, with the page link. Items that only attached a publisher do not trigger anything. Nothing is sent when nothing changed. Cost in references/cogs.md.
+Once a day (owner, September 19), one DM built from a fixed set of saved card revisions that are new or changed since the last confirmed send, headline and first fact each, with the page link; a revision saved after the cut goes in the next day's message; nothing is sent when nothing changed; delivery state is recorded per revision so a retry cannot double-send.
 
 ## 9. Day zero
 
-Open (issue #134). For the September 21 lab the runner backfills the last 48 hours from each picked source so there is something to judge; that is a lab choice, not a decision.
+Open (issue #134). The lab backfills the last 48 hours; that is a lab choice.
 
-## 10. Cost per item and per person
+## 10. Cost, provisional until measured
 
-Jev: one request per item passing step one with about 1,800 tokens for the item plus about 150 per open story, so 2,000 to 5,000 tokens, under a fiftieth of a cent; a second request of about 2,500 tokens when it joins a story. Writer: one call per new story or real update; with reasoning on the September 21 lab measures the cost per card per model. At 2,000 items a month judged and about 300 stories written or rewritten, the whole pipeline is under a dollar a person a month on any of the three candidate writers; the exact figures are recorded in references/cogs.md after the lab.
+Per item: one Jev fit request (about 1,800 tokens, every item); for the one in three or four that fits, a grouping request of item plus open stories; for a joined item, an adds request; per written card, one writer call with reasoning, one Jev support request of one question per fact, one Jev headline question. The September 21 lab replaces this paragraph with measured figures per model and writes them to references/cogs.md. Jev's own list price is $0.042 per million input tokens; every Jev figure so far has been charged at $0.
 
 ## 11. What the September 21 lab measures
 
-Two real people, Liam ("AI developments and practical tools", his sentence) and Nihan (the assistant's sentence from his words in findings.md: "new AI tools, product launches and practical AI updates worth sharing with a creator audience"); ten sources each chosen by Jev's ranking of the 76-row seed (no Grok read, no X activity, no posts pulled); the last 48 hours of items from those sources; every step above run and shown step by step on a local page; the writer run three ways on every story (Qwen 3.7 Flash, GLM 5.3 Flash, Ling 3.0 Flash VL free), reasoning on, the same hallucination guard, with the evidence check applied to each; per model: cards written, facts dropped by the check, JSON failures, latency, cost. Budget: $4 (owner, September 21); expected well under $1.
+Two people, Liam ("AI developments and practical tools", his sentence) and Nihan (the assistant's sentence from his words in findings.md); ten sources each by Jev's ranking of the 76-row seed (already run and saved; no X activity, no posts pulled); the last 48 hours of items from those sources; every step above, with every score recorded; the writer run four ways on every story that needs writing, identical prompts, reasoning on, the same guard, R17 to R19 applied to each; per model: cards, facts dropped by the span check, by the number check and by the Jev support check, headline failures, JSON failures, latency, tokens, cost; the unsure-band frequency at each step; truncation frequency. Shown step by step on a local page the owner opens himself. Budget $4 (owner, September 21).
 
 ## 12. Decision points, in one list
 
-R1 text cut at 6,000 characters. R2 unreadable items recorded, sources flagged after three. R3 the fit question's wording. R4 the 0.75 and 0.35 lines. R5 the unsure band goes to the larger-model judge. R6 skipped items show score, and a reason only when the larger model judged. R7 a story stays open 48 quiet hours, at most 20 open stories judged. R8 booleans per story, join at 0.75, unsure counts as new. R9 stories per monitor. R10 off items never touch stories. R11 "adds" at 0.75, unsure counts as adds. R12 "adds" as a second request. R13 rewrite from all items, at most eight. R14 the card prompt with evidence spans and the hallucination guard. R15 code verifies every evidence span, drops what it cannot find. R16 strict JSON, one retry, fallback to the previous card. R17 cards change in place, history kept.
+R1 item identity by canonical URL. R2 full text kept, model input cut at 6,000 on a paragraph, marked truncated. R3 fetch outcomes, teasers never judged, source health on the page. R4 six-hourly refetch of open-story items, versions routed to their story. R5 precedence of preferences over beat over examples. R6 the fit question. R7 the 0.75 and 0.35 lines. R8 unsure counts as off, shown in skipped. R9 Jev failure retried then pending. R10 72-hour window, no count cap, batched requests. R11 booleans, attach to every story at 0.75, unsure is new. R12 stories per monitor. R13 serial per monitor, versioned saves. R14 adds at 0.75, else attach only. R15 the writer's input. R16 the output shape with verbatim spans in the source language. R17 the code checks. R18 the Jev support check. R19 the headline check and the no-card outcome. R20 validation, one retry, visible failure. R21 alert only on real change. R22 (section 7) card time is last meaningful change. R23 (section 8) digest from saved revisions with delivery state. R24 (section 2) live blogs recorded as a gap.
