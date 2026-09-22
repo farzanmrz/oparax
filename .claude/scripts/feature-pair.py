@@ -20,12 +20,12 @@ import uuid
 
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
           "required": ["answer"], "additionalProperties": False}
-MODELS = {'fable': 'claude-fable-5', 'sol': 'gpt-5.6-sol', 'astra': 'gpt-6-astra'}
+MODELS = {'fable': 'claude-fable-5', 'sol': 'gpt-6-sol', 'astra': 'gpt-6-astra'}
 PHASES = {'scope': 'sol', 'plain': 'sol', 'detail': 'astra',
           'design-review': 'sol', 'adjudication': 'sol', 'redesign': 'astra'}
 RESEARCH_PHASES = {'scope', 'plain', 'design-review'}
-RULES = """You are the independent peer in /feature, not its coordinator.
-Do only the assignment below. Do not invoke /feature or another workflow.
+RULES = """You are the independent planning peer in /feature or /amend, not its coordinator.
+Do only the assignment below. Do not invoke /feature, /amend or another workflow.
 Read repository source as needed, but do not change repository files, git,
 external services or product data.
 Do not run the product app, tests or builds. No subagents or external writes.
@@ -163,7 +163,7 @@ def report(state):
                        'error', 'deadline')}))
 
 
-def peer_for(host, phase, pair_model='sol'):
+def peer_for(host, phase, pair_model='astra'):
     codex_partner = 'astra' if PHASES[phase] == 'astra' else pair_model
     if host == 'fable':
         return codex_partner
@@ -197,7 +197,7 @@ def command(run, state):
         else:
             cmd += ['-s', 'read-only', '-C', state['repo']]
         # Resume inherits the original sandbox and working directory.
-        cmd += ['-m', MODELS[state['peer']], '-c', 'model_reasoning_effort="high"',
+        cmd += ['-m', state['model'], '-c', 'model_reasoning_effort="high"',
                 '--json', '--output-schema', str(run / 'schema.json')]
         if state['phase'] in RESEARCH_PHASES:
             cmd += ['-c', 'web_search="live"']
@@ -327,7 +327,7 @@ def main():
     start.add_argument('--host-draft', required=True)
     start.add_argument('--host', choices=list(MODELS), required=True)
     start.add_argument('--phase', choices=list(PHASES), required=True)
-    start.add_argument('--pair-model', type=str.lower, choices=['sol', 'astra'], required=True)
+    start.add_argument('--pair-model', type=str.lower, choices=['sol', 'astra'], default='astra')
     start.add_argument('--image', action='append', default=[])
     start.add_argument('--reason', help='Required for a substantial post-critique redesign')
     start.add_argument('--timeout', type=int, default=900)

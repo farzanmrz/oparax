@@ -11,7 +11,7 @@ import sys
 import time
 import uuid
 
-MODELS = {'sol': 'gpt-5.6-sol', 'astra': 'gpt-6-astra', 'terra': 'gpt-5.6-terra'}
+MODELS = {'sol': 'gpt-6-sol', 'astra': 'gpt-6-astra', 'terra': 'gpt-5.6-terra'}
 ACTIVE = {'STARTING', 'RUNNING'}
 # Tool configuration written mid-flow (Codex or Claude settings, hooks, skills) is committed and
 # pushed on the current branch instead of refusing the launch (owner decision 2026-09-06, after

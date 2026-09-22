@@ -1,7 +1,7 @@
 ---
 name: qc
-description: "Review an oparax ft/<N> branch that $build has already built and committed: check plan coverage, run the gates, launch six review lanes plus a holistic pass in this session, and fold every finding into one fix list, launch $build after owner approval (or clear the round for $ship). Use only when the owner explicitly types $qc <N> in Codex. Never invoke automatically during other work."
-argument-hint: "[issue #]"
+description: "Review an oparax ft/<N> branch that $build has already built and committed: check plan coverage, run the gates, launch six review lanes plus a holistic pass in this session, and fold every finding into one fix list, automatically launch $build for queued fixes (or clear the round for $ship). Use only when the owner explicitly types $qc <N> in Codex. Never invoke automatically during other work."
+argument-hint: "[issue #] [sol|astra|terra]"
 ---
 
 # QC (Codex entry point)
