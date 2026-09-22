@@ -21,8 +21,10 @@ import uuid
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
           "required": ["answer"], "additionalProperties": False}
 MODELS = {'fable': 'claude-fable-5', 'sol': 'gpt-6-sol', 'astra': 'gpt-6-astra'}
-PHASES = {'scope': 'sol', 'plain': 'sol', 'detail': 'astra',
-          'design-review': 'sol', 'adjudication': 'sol', 'redesign': 'astra'}
+# The default partner is Astra. Routine phases honor an explicit Sol override;
+# only detail and redesign are always Astra.
+PHASES = {'scope': 'routine', 'plain': 'routine', 'detail': 'astra',
+          'design-review': 'routine', 'adjudication': 'routine', 'redesign': 'astra'}
 RESEARCH_PHASES = {'scope', 'plain', 'design-review'}
 RULES = """You are the independent planning peer in /feature or /amend, not its coordinator.
 Do only the assignment below. Do not invoke /feature, /amend or another workflow.
