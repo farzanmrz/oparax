@@ -13,6 +13,7 @@ Started September 19, 2026.
 | X API | one post read or delivered (including each post a watched account makes) | $0.005 | verified, X pricing page, September 19 |
 | X API | one user lookup | $0.010 | verified, same |
 | X API | one counts request (how many posts match, without fetching them) | $0.005 | verified, same; used September 19 |
+| X API | one post created that contains a URL (a promoted post with a link, for instance) | $0.200 | verified, X pricing page, September 21; a DM with a link is still a DM send |
 | X API | one DM sent | $0.015 | verified from X's documentation, September 17 |
 | X API | one DM event received (the person replies to the bot) | $0.010 | verified, September 19 |
 | X API | the same post billed twice in one UTC day | not charged again | verified, September 19 |
