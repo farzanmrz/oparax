@@ -33,7 +33,7 @@ Messaging the bot keeps the feed alive past day three but not past day seven. Th
 
 ## 3. Onboarding
 
-Settled September 19. Four steps: read the person (Grok fetches fixed X searches, code pulls links, accounts and hashtags from the posts); rank every known source against them (Jev, in code, under a second, under a cent; strong at 0.75, possible at 0.35, below that dropped); Grok picks at most ten for the page, preferring what the person's own activity points to, and searches the web only for parts of the beat nothing covers; the page. New sources it finds are checked, given a written description and added to the shared table for the next person. Measured: 8 cents and a minute for Reshad, 26 cents and four minutes for Liam, against about $1 each on September 15.
+Settled September 19. Four steps: read the person (Grok fetches fixed X searches, code pulls links, accounts and hashtags from the posts); rank every known source against them (Jev, in code, under a second, under a cent; strong at 0.75, possible at 0.35, below that dropped); Grok picks at most ten for the page, preferring what the person's own activity points to, and searches the web only for parts of the beat nothing covers; the page. New sources it finds are checked, given a written description and added to the shared table for the next person. Measured: 8 cents and a minute for Reshad, 26 cents and four minutes for Liam, against about $1 each on September 15 (on grok-4.6; at grok-4.7's price, the model since September 21, the same runs come to about 5 and 16 cents, see [references/cogs.md](references/cogs.md)).
 
 The shared table is the asset: one row per recurring stream, read by a person as "Mundo Deportivo · FC Barcelona" with a plain-English description of who publishes it and what that stream actually posts, plus its language, how we fetch it, and how often it publishes. 76 verified rows seed it ([source-table-seed.json](source-table-seed.json)). We do not crawl sites or index the web: a publisher's own feed or section page is already the index of its new content, a rented search finds streams we have never heard of, and the table remembers them so no one pays to find them twice.
 
@@ -104,9 +104,9 @@ PostHog project 563049 is the one dashboard (owner). It receives only automatic 
 | X Ads | Account exists, no campaign, connector connected |
 | PostHog | Live, automatic events only |
 | Stripe | Nothing |
-| TypeSafe | Key on the owner's machine; commercial-use terms unpublished |
+| TypeSafe | Jev is reached through the Vercel AI Gateway as `typesafe-ai/jev` (owner, September 21), so the Gateway key covers it and no TypeSafe key is needed; commercial-use terms unpublished |
 
-Verified prices: grok-4.6 $2 in and $6 out per million tokens; qwen3.7-flash $0.03 and $0.13; Jev $0.042 per million input tokens by its documentation, output free; X search half a cent per call until September 21, 2026, then half a cent per post fetched and a cent per profile; X Activity API half a cent per delivered post; X DM $0.015 a send; Bright Data $1.50 per thousand requests; GitHub's public reads and Product Hunt's feed free.
+Verified prices: grok-4.7 $1.20 in and $3.60 out per million tokens (the onboarding model since September 21, owner; the September 19 runs were measured on grok-4.6 at $2 and $6); qwen3.7-flash $0.03 and $0.13 (under comparison since September 21, at the owner's request, against GLM 5.3 Flash and the two Ling 3.0 Flash models, one of them free; prices and the result in [references/cogs.md](references/cogs.md)); Jev $0.042 per million input tokens, output free, now called through the Gateway (owner, September 21) which reports its cost in dollars; X search half a cent per call until September 21, 2026, then half a cent per post fetched and a cent per profile; X Activity API half a cent per delivered post; X DM $0.015 a send; Bright Data $1.50 per thousand requests; GitHub's public reads and Product Hunt's feed free.
 
 ## 13. Build order
 

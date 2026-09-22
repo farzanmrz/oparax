@@ -12,7 +12,7 @@ Exactly these nine names were recreated for **Production, Preview and Developmen
 - `X_CLIENT_ID`: retained OAuth 2 application identifier.
 - `X_CLIENT_SECRET`: rotated OAuth 2 secret.
 - `X_BEARER_TOKEN`: rotated app-level X API token.
-- `AI_GATEWAY_API_KEY`: new Vercel Gateway key, named `oparax-experiment-1`.
+- `AI_GATEWAY_API_KEY`: new Vercel Gateway key, named `oparax-experiment-1`. It also carries the calls to TypeSafe Jev, which go through the Gateway as `typesafe-ai/jev` (owner, September 21), so no separate TypeSafe key (`TYPESAFE_KEY`) is needed or configured.
 - `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`: rotated project token.
 - `NEXT_PUBLIC_POSTHOG_HOST`: `https://us.i.posthog.com`.
 
@@ -40,7 +40,7 @@ The separate bot token and chat PIN are documented in [setup-x.md](setup-x.md) a
 
 Stripe, new scheduler credentials and webhook secrets belong to the feature that defines their endpoints. Add their exact names when that code exists. Do not invent placeholder credentials or reuse one webhook secret across unrelated endpoints.
 
-The owner's initial model choice is Grok 4.6 through Vercel Gateway, with bounded X API evidence. The public catalog identifier observed during research was `spacexai/grok-4.6`; availability and tool support still need a bounded generation check during implementation. No direct xAI credential is required for the current starting approach.
+The owner's model choice for onboarding is Grok 4.7 through Vercel Gateway (owner, September 21, replacing the initial Grok 4.6), with bounded X API evidence. The Gateway catalog identifier is `spacexai/grok-4.7`. A bounded generation check on September 21 confirmed it answers both request shapes the onboarding algorithm uses (the raw responses request with X search declared, and the AI SDK tool loop) and that the Gateway reports a cost per call. No direct xAI credential is required for the current starting approach.
 
 ## Recovery and source of truth
 

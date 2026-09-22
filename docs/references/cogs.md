@@ -18,9 +18,10 @@ Started September 19, 2026.
 | X API | one DM event received (the person replies to the bot) | $0.010 | verified, September 19 |
 | X API | the same post billed twice in one UTC day | not charged again | verified, September 19 |
 | xAI X search inside Grok | until September 21, 2026: per search call; after: per post fetched and per profile | $0.005 a call, then $0.005 a post and $0.010 a profile | verified from xAI's pricing page, September 11 |
-| Grok 4.6 through the Vercel AI Gateway | tokens | $2 in, $6 out per million | verified, roadmap section 12 |
-| Qwen 3.7 Flash through the Gateway | tokens | $0.03 in, $0.13 out per million | verified, same |
-| Jev (TypeSafe) | input tokens; output free | $0.042 per million | from its documentation; its responses report tokens only, so every Jev cost is an estimate |
+| Grok 4.7 through the Vercel AI Gateway | tokens | $1.20 in, $3.60 out, $0.30 cached input read, per million | verified from the Gateway catalog, September 21; the onboarding model since that day (owner, September 21), replacing Grok 4.6 at $2 in and $6 out |
+| Qwen 3.7 Flash through the Gateway (`alibaba/qwen3.7-flash`, the judging and writing model today) | tokens | $0.03 in, $0.13 out per million | verified from the Gateway catalog, September 21; retention none, no training |
+| Candidates for judging and writing, under comparison September 21 (owner's request; result pending) | tokens | GLM 5.3 Flash (`zai/glm-5.3-flash`): catalog $0.15 in / $0.50 out, Vercel's public model page $0.075 / $0.25, the billed figure decides; Ling 3.0 Flash (`inclusionai/ling-3.0-flash`): $0.021 / $0.063; Ling 3.0 Flash VL free (`inclusionai/ling-3.0-flash-vl-free`): $0 / $0 | verified from the catalog, September 21; the Ling models carry no retention promise and may train on inputs, which for public articles and posts is a small concern |
+| Jev (TypeSafe) through the Gateway as `typesafe-ai/jev` | input tokens; output free | $0.042 per million | verified from the Gateway catalog, September 21; the Gateway response now reports the dollar figure per call (`providerMetadata.gateway.cost` charged, `marketCost` at list), so Jev's cost is read, not estimated. The September 21 test call (3,336 tokens) reported marketCost $0.000140 and cost $0 charged; the direct TypeSafe API, the previous path, reported tokens only |
 | Perplexity search through the Gateway | per search | read from the Gateway response per call | not recorded as a unit price |
 | Websites and feeds | fetching | free | conditional requests that return "not changed" cost nothing |
 | GitHub API | reads of public data | free | the limit is request rate (search 30 a minute), not money |
@@ -34,7 +35,7 @@ Started September 19, 2026.
 
 | What | Result | When |
 | --- | --- | --- |
-| Onboarding one person (read, rank, pick, write rows) | $0.076 for Reshad, $0.256 for Liam | September 19 |
+| Onboarding one person (read, rank, pick, write rows), on Grok 4.6 | $0.076 for Reshad, $0.256 for Liam; at Grok 4.7's price the same runs come to about $0.054 and $0.164 (Grok's token share times 0.6; the X search fees, 2 cents a person, and Jev unchanged; Liam's one Perplexity search assumed at half a cent, its price never read) | September 19, recomputed September 21 |
 | The same before the algorithm was simplified | $0.97 and $1.06 | September 15 |
 | The read step once xAI bills per post | adds roughly $0.10 to $0.15 | estimate from the post limits |
 | Judging one item (Qwen) | $0.000116 | August |
@@ -78,7 +79,7 @@ On X's Activity API a watched account's replies, quotes and reposts are all deli
 
 **Judging and writing.** Every new item from every source is judged ($0.000116); items on the beat are also written ($0.00025). A monitor seeing 2,000 items a month of which a quarter are on beat: 2,000 × $0.000116 + 500 × $0.00025 = about $0.36. Jev as the first pass costs less than a tenth of a cent a month at that volume. Earlier estimates of $1 to $8 a month came from busier monitors and have not been re-measured on the new product.
 
-**Onboarding.** Once per person: $0.08 to $0.26 measured, plus $0.10 to $0.15 when xAI's per-post billing starts. A new source found during onboarding is saved to the shared table, so the next person with that beat does not pay to find it again.
+**Onboarding.** Once per person: $0.08 to $0.26 measured on Grok 4.6 (about $0.05 to $0.16 at Grok 4.7's price), plus $0.10 to $0.15 when xAI's per-post billing starts. A new source found during onboarding is saved to the shared table, so the next person with that beat does not pay to find it again.
 
 **Fetching.** Free. Each source is fetched once for everyone who watches it, so this does not grow with the number of people.
 
