@@ -99,9 +99,13 @@ Open (issue #134). The lab backfills the last 48 hours; that is a lab choice.
 
 ## 10. Cost, provisional until measured
 
-Per item: one Jev fit request (about 1,800 tokens, every item); for the one in three or four that fits, a grouping request of item plus open stories; for a joined item, an adds request; per written card, one writer call with reasoning, one Jev support request of one question per fact, one Jev headline question. The September 21 lab replaces this paragraph with measured figures per model and writes them to references/cogs.md. Jev's own list price is $0.042 per million input tokens; every Jev figure so far has been charged at $0.
+Per item: one Jev fit request (about 1,800 tokens, every item); for the one in three or four that fits, a grouping request of item plus open stories; for a joined item, an adds request; per written card, one writer call with reasoning, one Jev support request of one question per fact, one Jev headline question. The September 21 lab replaces this paragraph with measured figures per model and writes them to references/cogs.md. Jev's own list price is $0.042 per million input tokens; every Jev figure so far has been charged at $0. Measured September 21 (references/downstream-lab-2026-09-21.md): a fit request averages 1,270 tokens; at 2,000 items and 300 writes a month the whole pipeline is under $0.40 a person on a paid writer and under $0.25 on a free one.
 
-## 11. What the September 21 lab measures
+## 11. What the September 21 lab measured
+
+The run happened; the results are in [references/downstream-lab-2026-09-21.md](references/downstream-lab-2026-09-21.md). In short: grouping (R11) found the one true duplicate at 0.90 and scored every other pair under 0.10; the fit line of 0.75 (R7, R8) would skip a third of Nihan's items, several plainly relevant; the support check (R18) at 0.75 rejected about half of correct paraphrases while the embellished facts scored 0.25 to 0.40, so its line and wording need changing; the headline check (R19) at 0.75 replaced most headlines; the whole lab cost 3 cents. No rule has been changed on the strength of this yet; the owner rules on the lines.
+
+What it was set up to measure:
 
 Two people, Liam ("AI developments and practical tools", his sentence) and Nihan (the assistant's sentence from his words in findings.md); ten sources each by Jev's ranking of the 76-row seed (already run and saved; no X activity, no posts pulled); the last 48 hours of items from those sources; every step above, with every score recorded; the writer run four ways on every story that needs writing, identical prompts, reasoning on, the same guard, R17 to R19 applied to each; per model: cards, facts dropped by the span check, by the number check and by the Jev support check, headline failures, JSON failures, latency, tokens, cost; the unsure-band frequency at each step; truncation frequency. Shown step by step on a local page the owner opens himself. Budget $4 (owner, September 21).
 

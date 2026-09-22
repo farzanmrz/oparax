@@ -41,6 +41,7 @@ Started September 19, 2026.
 | Judging one item (Qwen) | $0.000116 | August |
 | Writing one item into English headline and fact lines (Qwen) | $0.00025 | August |
 | Jev judging 24 items twice plus 8 pairs twice | about $0.0004 in total | September 19 |
+| The downstream lab end to end, two people, 47 items, four writers with reasoning on (downstream-lab-2026-09-21.md) | $0.030 for everything; per writer for 32 cards: Qwen $0.016, GLM $0.013, Ling and Laguna $0; a Jev fit request 1,270 tokens, $0.000053 at list, charged $0 | September 21 |
 | Reading a person's full following list | $39.64 for five people; never again | September 13 |
 | One source stuck in a loop for three days | $69 | August; the reason a daily spend watchdog exists |
 
@@ -77,7 +78,7 @@ On X's Activity API a watched account's replies, quotes and reposts are all deli
 | Hourly | 720 | $10.80 |
 | Every story the moment it lands, busy monitor | 450 to 1,500 | $7 to $22 |
 
-**Judging and writing.** Every new item from every source is judged ($0.000116); items on the beat are also written ($0.00025). A monitor seeing 2,000 items a month of which a quarter are on beat: 2,000 × $0.000116 + 500 × $0.00025 = about $0.36. Jev as the first pass costs less than a tenth of a cent a month at that volume. Earlier estimates of $1 to $8 a month came from busier monitors and have not been re-measured on the new product.
+**Judging and writing.** Every new item from every source is judged ($0.000116); items on the beat are also written ($0.00025). A monitor seeing 2,000 items a month of which a quarter are on beat: 2,000 × $0.000116 + 500 × $0.00025 = about $0.36. Jev as the first pass costs less than a tenth of a cent a month at that volume. Earlier estimates of $1 to $8 a month came from busier monitors. Measured on the new design September 21 with reasoning on: under $0.40 a person a month on a paid writer (Qwen or GLM at 300 cards), under $0.25 on a free one, Jev included at list price.
 
 **Onboarding.** Once per person: $0.08 to $0.26 measured on Grok 4.6 (about $0.05 to $0.16 at Grok 4.7's price), plus $0.10 to $0.15 when xAI's per-post billing starts. A new source found during onboarding is saved to the shared table, so the next person with that beat does not pay to find it again.
 
