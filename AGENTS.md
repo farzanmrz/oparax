@@ -53,7 +53,7 @@ public/                 static assets (logo images, avatars)
 scripts/                one-off maintenance scripts (not part of any flow)
 docs/                   references/cogs.md (every cost of serving a person: unit prices, measurements, the arithmetic), roadmap.md (the plan), onboarding-algorithm.md (the algorithm), source-table-seed.json (the shared table's seed), exp1.md (experiment), setup.md (external setup), findings.md, reshad.md, people.tsv (discovery)
 .claude/                Claude Code skills, scripts, agents, hooks, settings for the feature flow
-.agents/                host-shared skills (build, ship, promote) and their Codex metadata
+.agents/                Codex entries for feature, amend, build, QC, ship and promote
 .codex/                 Codex hooks and the Codex supabase-runner agent
 .github/workflows/      branch-name.yml, the only CI check
 .feature/               git-ignored working files of the current slice (plans, lanes, pair runs)
@@ -194,6 +194,8 @@ ingest (Railway): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INGEST_URL`, `IN
 - **Fonts**: loaded once in `app/layout.tsx` through `next/font/google` (Hanken Grotesk 400 to 700, Space Grotesk 400/500, JetBrains Mono 400/500), self-hosted by Next at build.
 - **CI**: `.github/workflows/branch-name.yml` enforces branch names `main`, `beta`, `ft/<digits>`, `bf/<digits>`; a repo ruleset blocks off-convention branches at push time.
 - **Agent tooling:** `.claude/` holds the Claude Code skills, scripts, hooks and the Sonnet `supabase-runner` agent; `.agents/` holds the host-shared skills; `.codex/` mirrors the hooks and the runner for Codex. `.claude/launch.json` defines the `oparax-dev` server config that stages must not start. Each stage's behavior lives in its skill file.
+- **Global external critique:** `/critique` in Claude Code and `$critique` in Codex request independent reviews of any supplied prompt, plan, decision, writing or code. The shared instructions and reusable runner live in [the global critique skill](/Users/farzanm4/.agents/skills/critique/SKILL.md); [the Claude entry point](/Users/farzanm4/.claude/skills/critique/SKILL.md) loads that same source. Read it when the owner explicitly invokes the command instead of writing a throwaway lane script. That skill defines its five default models and efforts, accepts selected lanes and exact model/effort overrides, and returns critiques without applying them. It is user-invoked only, never launched automatically. Feature/amend critique and QC retain the review steps defined by their project skills; they do not automatically invoke this global command. These global files are installed on this machine, outside the repository.
+- **Shared project instructions:** Claude Code 2.1.278 loads this `AGENTS.md` natively through its default AGENTS fallback when no project `CLAUDE.md` is present; nested instructions such as `docs/AGENTS.md` apply within their directories. The former `CLAUDE.md` contained only `@AGENTS.md` and was removed. Keep project guidance here instead of recreating a duplicate wrapper.
 - **Records:** `docs/roadmap.md` is the plan; `docs/onboarding-algorithm.md` is the onboarding specification. `docs/exp1.md` is the experiment design; `docs/setup.md` records verified external setup. Customer discovery lives in `docs/findings.md`, `docs/reshad.md` and `docs/people.tsv`. Issue #131 was retired, not shipped or amended, and survives only as the local tag `archive/ft-131-monitoring-pivot`; start the next feature from `beta`.
 
 ## Coding conventions
