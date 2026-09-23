@@ -44,15 +44,21 @@ Rulings that matter now: topics 4, 5 and 6 below, and the two Jev questions from
 
 ## 4. Sign-in: Supabase Auth or Clerk
 
-**Where it stands.** Slice 6. Decided by you on September 14: Continue with X, Google or email. The tool was assumed to be Supabase; you asked whether Clerk is better.
+**Where it stands.** Slice 6. Decided by you on September 14: Continue with X, Google or email. Open: which tool. Your points: Supabase is already set up; Clerk looks more native to Vercel and has its own skill.
 
-**What was verified.** Both join two sign-in methods only on a matching confirmed email, and both would have refused the August case for the same reason: your X account carries farzanmrz@gmail.com, which already belonged to your email account, and the system refused to hand one person's identity to another. That was correct behaviour; the fix was to sign in with X as yourself. Both cost $0 at 5, 100 and 1,000 people (each includes 50,000). Clerk needs the same "create an X app, paste its secret" work in production; its shared credentials are for development only. This codebase already runs on Supabase Auth in 22 files, eleven migrations and four foreign keys; switching to Clerk is roughly a full slice of rewriting for no saving. Google brand verification is your job either way (domain proof, privacy policy, homepage; minutes automated, two to three business days if reviewed).
+**What "native to Vercel" actually buys with Clerk.** Clerk is installed from Vercel's marketplace: its keys are written into the Vercel project for you, its bill lands on the Vercel invoice, and the `vercel:auth` skill guides the setup. It also ships ready-made sign-in and account screens (buttons, forms, an account page where a person links a second method), and it handles bot protection on sign-up. Supabase has its own skill too (`supabase`, plus the Supabase connection this session already uses), and it is connected to our Vercel project by hand-pasted keys, not through the marketplace. So both have a skill; Clerk's advantage is the ready-made screens and the one-click install.
 
-**What only you can do.** In the X app: turn on "request email", paste Supabase's callback; paste the X client id and secret into Supabase; create the Google OAuth client and consent screen; submit brand verification.
+**What it costs.** The real difference is where "who is this person" lives. With Supabase Auth, the signed-in person is the database's own user, so the database's access rules ("only the owner of this monitor can see it") read that user directly. With Clerk, identity lives at Clerk, and Supabase is told to trust Clerk's token: every access rule reads Clerk's id instead, and deleting an account means deleting it in two places. Both cost $0 at 5, 100 and 1,000 people. Both need the same "create an X app, paste its secret" work in production (Clerk's shared keys are for development only).
 
-**Recommendation.** Stay on Supabase Auth; enable X and Google; turn on manual linking so a person can attach a second method from settings; an X account that returns no email becomes an X-only account.
+**A correction to the research note.** It said switching would cost roughly a whole slice because 22 files and eleven migrations use Supabase Auth. That overstates it: the database is empty and a clean slate, and most of those files are the old drafting product, which the new product replaces anyway. What would genuinely be thrown away is the working email sign-up, confirm and reset-password flow, and the session refresh on every page. So the choice is closer than the note said.
 
-**Your ruling.** Supabase Auth or Clerk. This can wait for slice 6, but ruling it now ends the nag.
+**The August collision** would have happened with either tool. Both join two sign-in methods into one account only when they share a confirmed email, and both refuse to attach an identity whose email already belongs to a different account. Your X account carries farzanmrz@gmail.com, which was already a separate account. That refusal is a security rule, not a bug.
+
+**Recommendation (a lean, not a strong one).** Supabase Auth: one system holds both the people and their data, and the email flows already work; we add two buttons. Choose Clerk if the ready-made sign-in and account screens matter more to you than keeping one system.
+
+**What only you can do, either way.** Create the X app settings (callback, "request email"), create the Google OAuth client and submit Google's brand verification (domain proof, privacy policy, homepage; minutes automated, two to three business days if reviewed).
+
+**Your ruling.** Supabase Auth or Clerk, by slice 6.
 
 ## 5. Vercel: the pipeline and what tells you something broke
 
@@ -80,21 +86,21 @@ Rulings that matter now: topics 4, 5 and 6 below, and the two Jev questions from
 
 ## 7. Railway, and how the stack connects
 
-**Where it stands.** Railway was deleted on September 12 and has no role today. The intended stack is six services: Vercel (app, scheduled polling, webhooks), Supabase (data, sign-in, the cost ledger), the AI Gateway (every model), the X API, Stripe, PostHog. The one open question belongs to slice 5: how watched X posts arrive.
+**Where it stands.** Nothing runs on Railway today: the project was deleted on September 12 and nothing is billed. The worker code is still in the repo. Railway may come back in slice 5, for one job only.
 
-**What was verified.** The only job that wants an always-on process is X's filtered stream (one connection, held open all day). Vercel cannot hold it (functions stop at 800 seconds). Options: (a) Railway again at $5 a month flat, a second platform to run; (b) X's Activity API on Vercel, no worker, but replies and reposts are billed: about $6.15 a month more for one argue-in-replies founder account, about $0.15 more for a transfer journalist, once per account however many people watch it. Costs per person live in the code's own ledger; PostHog can show that ledger beside behaviour by syncing it.
+**Why a worker might be needed at all.** Everything else runs when something happens (a page is opened, a scheduled tick fires, a webhook arrives), which Vercel handles. The exception is X's filtered stream, which delivers watched accounts' posts over a connection that stays open all day, like a phone line left off the hook. Vercel functions hang up after at most 800 seconds and cannot hold that line, so something that runs continuously must; that is what Railway did.
 
-Note: on September 21 the assistant recommended the filtered stream to avoid the reply bill; today's note recommends the Activity API to avoid the worker. Both are assistant positions; the numbers above are what decides, and they depend on which accounts people actually watch.
+**The two options for watched X accounts, with numbers.** (a) The filtered stream on a small Railway service, about $5 a month flat; its rules can leave out replies and reposts before X bills them. (b) X's Activity API, which pushes each post to a Vercel address with no worker, but delivers and bills replies and reposts too: about $6.15 a month extra for one founder who argues in replies (49 posts a day raw against 8), about $0.15 for a transfer journalist (34 against 33), billed once per account however many people watch it. The bot's incoming DMs arrive through the Activity API anyway, so that address is built regardless.
 
-**Recommendation.** Start on Vercel with the Activity API (it is needed for the bot's incoming DMs anyway); bring Railway back only when reply-heavy accounts cost more than $5 a month between them.
+**Recommendation.** Start with (b) and bring Railway back when the reply-heavy accounts people actually watch cost more than about $5 a month between them. On September 21 the assistant leaned the other way, towards the stream, to avoid the reply bill; both are assistant positions and the numbers above decide.
 
-**Your ruling.** In slice 5. Nothing now.
+**Your ruling.** In slice 5.
 
 ## 8. Pricing and Stripe
 
 **Where it stands.** Slice 7. Decided: pay at day seven; only watched X posts are metered, as a monthly pool; the bot alerts once a day. Open: the price, the tiers, the pool sizes (roadmap section 9 has the logic for finding the number; the experiment tests it).
 
-**What was verified.** The Vercel marketplace Stripe integration provisions a sandbox and two keys and nothing else; the webhook, its signing secret, the checkout, the portal and the paid-through logic are ours (the roadmap's "three keys" was wrong; corrected). No Stripe skill is installed; Stripe's official plugin exists and adds guidance, not code. The pool is best modelled as an allowance inside a flat monthly price counted by our ledger, not Stripe's metered billing (Stripe now steers that to a separate platform and its portal cannot change it). Fees: 2.9% plus 30 cents per charge, plus 0.7% for subscriptions, about $1.38 on a $30 charge; cogs.md updated. Keep our seven-day clock over Stripe's trial.
+**What was verified.** The Vercel marketplace Stripe integration provisions a sandbox and two keys and nothing else; the webhook, its signing secret, the checkout, the portal and the paid-through logic are ours (the roadmap's "three keys" was wrong; corrected). No Stripe skill is installed; Stripe's official plugin, `stripe@claude-plugins-official`, exists: ten skills plus a live-account connection; it adds guidance, not code (topic 10). The pool is best modelled as an allowance inside a flat monthly price counted by our ledger, not Stripe's metered billing (Stripe now steers that to a separate platform and its portal cannot change it). Fees: 2.9% plus 30 cents per charge, plus 0.7% for subscriptions, about $1.38 on a $30 charge; cogs.md updated. Keep our seven-day clock over Stripe's trial.
 
 **What only you can do.** Create and activate the Stripe account (legal entity, bank, tax), install the marketplace integration, register the webhook and paste its secret into Vercel, configure the portal, decide the price.
 
@@ -102,23 +108,36 @@ Note: on September 21 the assistant recommended the filtered stream to avoid the
 
 ## 9. Notifications: X DM, email, Slack
 
-**Where it stands.** Decided by your own promise (September 16 and 17): "give you that info on X". The bot is slice 4.
+**Where it stands.** Your promise (September 16 and 17): "give you that info on X". The bot is slice 4. Your question: Slack is free and Resend is cheap; should they be routes too?
 
-**What was verified.** With a handle-only onboarding, X DM is the only route that can reach a person: their first message to the bot is the address we collect. Email needs an address onboarding promised not to ask for; Resend is free for 5 people, $20 a month at 100 or 1,000. Slack cannot reach a stranger at any price: an app can only message people in a workspace where it was installed. X DM costs $2.25 a month for 5 people, $45 for 100, $450 for 1,000, and at 1,000 a second daily message no longer fits X's per-app cap.
+**What each route needs from the person, and costs.**
+- **X DM:** the person messages the bot once (a button on their page), and that message is how we can reach them. $0.015 a send: once a day is $2.25 a month for 5 people, $45 for 100, $450 for 1,000. X allows 1,440 sends per app per day, so at about 1,000 people a second daily message no longer fits.
+- **Email through Resend:** your figures are right (free: 3,000 a month, 100 a day; Pro: $20 for 50,000, no daily cap). It needs the person's email address and a sending domain set up on oparax.ai. Anyone who signs up with Google or email (slice 6) has already given us an address, so for them email needs no extra ask.
+- **Slack:** a correction to what I wrote. A stranger can use it: they click "Add to Slack" on their page, approve our app into a workspace they belong to, and the bot can then message them there. Free for us. It needs a workspace where they are allowed to install apps (a free workspace allows up to ten), and an extra step after the handle. The `vercel:chat-sdk` skill covers exactly this kind of Slack bot, so it would fit if Slack is added.
 
-**Recommendation.** X DM first, prove one real send. Email later as an opt-in on the page, never an onboarding field. No Slack.
+**The trade.** X DM is the only route that works with nothing but a handle, and it is the promise. It is also the most expensive per message by far: at 100 people X DM costs $45 a month where email or Slack cost $0 to $20. So offering email and Slack as cheaper choices on the page is a sound cost idea, not a distraction. The cost is building and maintaining three delivery routes instead of one before anyone has reacted to the first.
 
-**Your ruling.** None now.
+**Recommendation.** Build X DM first and prove one real send. Then add email as a choice for people who signed up (they already gave an address), and Slack as a choice for people who want it; both are a page setting, never an onboarding field.
+
+**Your ruling.** Whether to add email and Slack as choices, and when: with the bot (slice 4), or after the five react.
 
 ## 10. Which skills belong where
 
 **Where it stands.** Open, small. Codex has finished its changes to the feature flow, so the skill files can be edited again.
 
-**What was verified.** The feature flow loads skills in fixed bundles; `typesafe-ai` sits in none, so it only enters by name. Per slice: the AI bundle plus `typesafe-ai` for slices 1, 2 and 9; `vercel-functions` for cron and raw-body webhooks in slices 3, 4 and 7; `vercel:marketplace` for payment; the full UI bundle and `vercel-firewall` for the public door; Supabase Auth, not `vercel:auth`, for sign-up. Do not fit: `ai-elements` (chat interfaces), `vercel:chat-sdk` and the Slack bundle (X is not a supported platform), `build-agents` and `eve` (agent frameworks; Oparax is a fixed pipeline), `use-railway` unless slice 5 revives the worker. Gaps: no Stripe skill before slice 7; X platform knowledge lives only in the `x-docs` agent. The lab pattern (a runner plus a local results page, built from scratch twice) would pay for a small project skill holding the viewer shell and the spend file, run only at your word.
+**How skills get loaded.** The feature flow picks skills in fixed bundles (web, UI, data, AI, Slack, workers) plus named extras. `typesafe-ai`, the Jev skill, is in no bundle, so it is only loaded if someone names it; that is why it should join the AI bundle.
 
-**Recommendation.** Put `typesafe-ai` in the AI bundle; drop `ai-elements` and the Slack bundle; install Stripe's plugin before slice 7; make the lab skill.
+**The ones you asked about, with reasons.**
+- **`vercel:build-agents` and `vercel:eve`:** these are for agents, meaning programs where the model decides what to do next, calls tools, and may run for minutes or days with saved progress. Most of Oparax is fixed steps where code decides the order (fetch, Jev scores, writer writes), which needs the plain AI SDK, not an agent framework. But onboarding's third step is a small agent: Grok runs up to six steps with a web search and a source checker, and Liam's build took four minutes, close to the time a single Vercel function is allowed. So load `build-agents` when planning slice 1, to decide whether onboarding needs a durable workflow that survives past that limit. My earlier "doesn't fit" was wrong for onboarding.
+- **`vercel:ai-sdk` and `vercel:ai-gateway`:** every model call goes through them; they belong in slices 1, 2 and 9.
+- **`vercel:chat-sdk`:** it builds bots for Slack, Teams, Discord and similar, not for X. It fits only if Slack alerts are added (topic 9).
+- **`ai-elements`:** ready-made chat screens (message bubbles, a prompt box). No page in the plan is a chat, so it has nothing to do; the onboarding "building" screen is a list of steps.
+- **`vercel:vercel-connect`:** it gets tokens on behalf of each user (for example, a person connecting their own GitHub). The digest uses one server token of ours, so it does not apply.
+- **Stripe:** no Stripe skill is installed, and the fix is the one you meant: Stripe's official plugin, `stripe@claude-plugins-official`, which brings ten skills (subscriptions, Checkout, webhooks, the customer portal, usage billing) plus a connection to the live Stripe account. Install it before slice 7. It gives guidance and account access; our day-seven freeze logic is still ours to write.
+- **PostHog:** only the four `posthog:instrument-*` skills belong in building slices; the rest of the plugin is for running the product once it is live.
+- **The lab:** twice now a test runner plus a local results page was built from scratch. A small project skill holding the page shell and the spend tracking would make the next one faster and comparable, run only at your word.
 
-**Your ruling.** Bundle changes yes or no; lab skill yes or no.
+**Your ruling.** Bundle changes (Jev skill into the AI bundle; `build-agents` into slice 1's planning), yes or no; install the Stripe plugin now or at slice 7; lab skill, yes or no.
 
 ## Also recorded
 
