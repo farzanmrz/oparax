@@ -7,6 +7,7 @@ import { DeskSwitcher } from "@/components/desk-switcher";
 import { useScrollHeaderStage } from "@/components/hooks/use-scroll-header-stage";
 import { OparaxMark } from "@/components/logo";
 import { MobileDeskTabs } from "@/components/mobile-desk-tabs";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import type { AvatarKey } from "@/lib/user";
 import { cn } from "@/lib/utils";
@@ -79,7 +80,8 @@ export function SiteHeader({
           </div>
         ) : null}
 
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
           <AccountMenu avatarKey={avatarKey} username={username} />
         </div>
       </header>

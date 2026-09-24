@@ -1,5 +1,6 @@
 import { LandingCta } from "@/components/landing/landing-cta";
 import { OparaxMark } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { landingContent } from "@/lib/landing/content";
 
 export function LandingHeader() {
@@ -11,6 +12,7 @@ export function LandingHeader() {
           {landingContent.brand}
         </span>
         <nav className="flex items-center gap-2">
+          <ThemeToggle />
           <LandingCta cta="log_in" placement="header" />
           <LandingCta cta="sign_up" placement="header" />
         </nav>

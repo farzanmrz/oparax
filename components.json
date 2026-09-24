@@ -8,16 +8,18 @@
     "utils": "@/lib/utils"
   },
   "iconLibrary": "hugeicons",
-  "registries": {},
   "rsc": true,
   "rtl": false,
   "style": "radix-nova",
   "tailwind": {
-    "baseColor": "gray",
+    "baseColor": "zinc",
     "config": "",
     "css": "app/globals.css",
     "cssVariables": true,
     "prefix": ""
   },
-  "tsx": true
+  "tsx": true,
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
 }

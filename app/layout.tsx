@@ -3,7 +3,8 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { landingContent } from "@/lib/landing/content";
@@ -20,13 +21,6 @@ const hankenGrotesk = Hanken_Grotesk({
 // JetBrains Mono backs --font-mono: handles, counts, timestamps, money.
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
-
-// Space Grotesk is reserved for draft/post text (--font-draft).
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["400", "500"],
 });
@@ -57,7 +51,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#121214",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#18181b" },
+  ],
 };
 
 export default function RootLayout({
@@ -66,12 +63,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark bg-background">
-      <body
-        className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} antialiased`}
-      >
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster />
+    <html lang="en" className="bg-background" suppressHydrationWarning>
+      <body className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
+        {/* Dark by default; the person can switch to light (owner, September 23). */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
         <SpeedInsights />
         <Analytics />
       </body>
