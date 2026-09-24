@@ -1,4 +1,6 @@
-# docs
+# docs/discovery
+
+Customer-discovery evidence and the experiment design, kept out of the build's way (moved here September 23). These rules apply inside this folder.
 
 - `findings.md`: discovery evidence and outreach numbers, backed by exchanges.
 - `reshad.md`: Reshad's record, read separately as a family comparator.
