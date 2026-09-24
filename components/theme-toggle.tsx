@@ -2,6 +2,8 @@
 
 // One switch between dark (the default) and light. Owner, September 23.
 
+import { Moon02Icon, Sun02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +23,7 @@ export function ThemeToggle() {
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={() => setTheme(dark ? "light" : "dark")}
     >
-      <span aria-hidden="true">{dark ? "\u2600" : "\u263D"}</span>
+      <HugeiconsIcon icon={dark ? Sun02Icon : Moon02Icon} strokeWidth={2} />
     </Button>
   );
 }
