@@ -16,6 +16,10 @@ CRITIQUE = (
     ("agy-pro", "agy", "gemini-3.1-pro-high"),
     ("agy-flash", "agy", "gemini-3.8-flash-high"),
     ("grok", "grok", "grok-4.7-build-fast"),
+    # Owner, 2026-09-23: models outside the other vendors, run on his Cursor Pro+ pool.
+    ("cursor-kimi", "cursor", "kimi-k3-high"),
+    ("cursor-glm", "cursor", "glm-5.2-high"),
+    ("cursor-muse", "cursor", "muse-spark-1.3-high"),
 )
 PROFILES = {
     "critique": CRITIQUE,

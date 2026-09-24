@@ -1,6 +1,6 @@
 ---
 name: amend
-description: "Add scope to an in-flight oparax issue N on its existing branch, no new issue or branch: use the same Fable and Astra independent planning and mutual review as feature, scoped to the addition, get the plain amendment approved, run the same five-lane critique, and append the approved amendment to the issue. Use only when the owner explicitly types $amend <N> (or $amend <plain description> while on the issue's branch) in Codex. Never invoke automatically during other work."
+description: "Add scope to an in-flight oparax issue N on its existing branch, no new issue or branch: use the same Fable and Astra independent planning and mutual review as feature, scoped to the addition, get the plain amendment approved, run the same eight-lane critique plus the Claude Opus lane, and append the approved amendment to the issue. Use only when the owner explicitly types $amend <N> (or $amend <plain description> while on the issue's branch) in Codex. Never invoke automatically during other work."
 argument-hint: "[issue # | plain description of the addition]"
 ---
 

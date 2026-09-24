@@ -6,10 +6,10 @@ The stage owns the review brief. The runner owns provider delivery and recovery:
 
 | Stage | Profile | Original lanes |
 | --- | --- | --- |
-| Feature or amend critique | `critique` | `critique-codex-sol`, `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok` |
-| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-codex-terra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok` |
+| Feature or amend critique | `critique` | `critique-codex-sol`, `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-glm`, `critique-cursor-muse` |
+| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-codex-terra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-glm`, `qc-cursor-muse` |
 
-The `critique` profile is Sol 6, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, and Grok 4.7 Build Fast. The `qc` profile adds preserved Terra 5.6. Every fixed lane runs at high effort. Do not add or remove a lane.
+The `critique` profile is Sol 6, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, and three Cursor lanes on the owner's Pro+ pool: Kimi K3, GLM 5.2 and Muse Spark 1.3 (owner, September 23). The `qc` profile adds preserved Terra 5.6. Every fixed lane runs at high effort. Do not add or remove a runner lane. When Claude Code hosts the stage, one more lane runs outside the runner: the Claude Opus lane below.
 
 ## Start a round
 
@@ -46,4 +46,8 @@ For `INVALID`, `EMPTY_RESULT`, `FAILED`, or `TIMED_OUT`, run exactly one resume 
 python3 .claude/scripts/review-lanes.py resume --run-dir "$run_dir" --lane critique-grok-resume --source-lane critique-grok
 ```
 
-Collect and extract the resume lane in the same bounded way. A usable resume finding file stands in for its original lane. `RESUME_UNAVAILABLE` means that original lane is dead, with no fresh fallback. Otherwise, that original lane has no findings. Never promote raw, partial, or reasoning output. Codex lanes do not resume. Grok resumes are capped at five turns. agy resumes are told to use no more than five turns because its CLI has no turn-cap flag. Both retain the same 15-minute ceiling.
+Collect and extract the resume lane in the same bounded way. A usable resume finding file stands in for its original lane. `RESUME_UNAVAILABLE` means that original lane is dead, with no fresh fallback. Otherwise, that original lane has no findings. Never promote raw, partial, or reasoning output. Codex lanes do not resume. Cursor lanes resume their own session. Grok resumes are capped at five turns. agy resumes are told to use no more than five turns because its CLI has no turn-cap flag. Both retain the same 15-minute ceiling.
+
+## The Claude Opus lane
+
+Owner, September 23: Opus 5.5 reviews beside the runner lanes as a Claude subagent, not through a script. When Claude Code hosts the stage, right after starting the runner, dispatch one background subagent with the Agent tool (`subagent_type: general-purpose`, `model: opus`), whose whole prompt is: "Read <the stage's brief path> and follow it exactly. You are one independent review lane. Read-only: never edit a file, run the app, start a server or open a browser. Your final message is only the JSON array the brief asks for." When it returns, write its final message to `<run-dir>/<profile>-claude-opus.findings.json` only if it parses as a JSON array of the brief's finding shape; otherwise record the lane as `INVALID`. It has no resume. Its findings are dispositioned like any lane's, under the lane name `<profile>-claude-opus`. When Codex hosts the stage, this lane does not run; say so in the closing line.
