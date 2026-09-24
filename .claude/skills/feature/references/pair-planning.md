@@ -80,7 +80,7 @@ The first reply automatically includes the sealed host draft, so the peer now se
 
 ## Exchange and convergence
 
-Use one cross-review round, then one verification of the proposed combined result. A third follow-up is available only to settle a specific remaining objection; the helper refuses further turns. Optional design review instead follows the tighter budget in [design exploration](design-exploration.md), with at most two follow-ups. This is a maximum, never a quota to fill.
+Use one cross-review round, then one verification of the proposed combined result. A third follow-up is available only to settle a specific remaining objection; the helper refuses further turns. A new screen comes from the owner's Claude Design export, per feature step 1.1. This is a maximum, never a quota to fill.
 
 1. **Cross-review:** The host reads the peer's independent draft, writes its objections, and asks the peer to review the host's sealed draft and respond. Preserve both originals. Do not attach a supposedly settled combined candidate to this first cross-review: hear the peer's objections before declaring the resolution. Do not maintain two revised plans.
 2. **Combined proposal:** After the peer replies, the host writes one candidate result and a short decision record: each material disagreement, the chosen resolution, its evidence/reason, and any unresolved owner choice. Send the exact candidate text and decision record to the peer. Ask it to confirm the resolution is faithfully represented or identify a specific remaining objection. The host must also check it; writing it is not approval.
