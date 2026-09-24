@@ -25,6 +25,18 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/feature-flow.sh",
+            "timeout": 5,
+            "statusMessage": "Defining feature flow"
+          }
+        ]
+      }
     ]
   }
 }

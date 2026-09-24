@@ -194,7 +194,7 @@ def main():
     launch.add_argument('issue', type=int)
     launch.add_argument('--repo', default='.')
     launch.add_argument('--source', choices=['feature', 'qc'], required=True)
-    launch.add_argument('--model', type=str.lower, choices=list(MODELS), default='sol')
+    launch.add_argument('--model', type=str.lower, choices=list(MODELS), default='astra')
     for name in ['status', 'watch', '_run']:
         sub = subs.add_parser(name)
         sub.add_argument('job')

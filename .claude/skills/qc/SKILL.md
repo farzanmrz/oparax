@@ -8,11 +8,11 @@ description: >-
   in the background (three Codex, two agy, grok), does its own holistic review of
   the real diff while they run, then folds every set of findings into one fix list written to
   .feature/fixes-<N>.md for build's fix mode, tells the owner what is queued, and launches the
-  Codex fix build itself without waiting: Sol High by default, Astra or Terra when the /qc
+  Codex fix build itself without waiting, on Astra High
   invocation names one. No Workflow tool, no subagents. Use when the user says /qc <N>
   (optionally /qc <N> astra or /qc <N> terra). Not for building or fixing; both are $build in
   Codex or /build in Claude Code.
-argument-hint: "[issue #] [sol|astra|terra]"
+argument-hint: "[issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Bash(python3 *) Monitor Write Read Edit Grep Glob
 model: inherit
 disable-model-invocation: true
@@ -20,7 +20,7 @@ disable-model-invocation: true
 
 # QC: review what build built, hand the fix list back to build
 
-One session, start to finish. Every step below runs on its own; the owner types nothing between `/qc <N>` and the final message. This skill never builds, never applies findings, never runs journeys; when fixes exist it writes them, tells the owner what is queued, launches the Codex fix build in the same breath (no approval stop; owner decision 2026-09-06) and stops; with no fixes it names `/ship <N>`. The fix build runs on Sol High unless the `/qc` invocation itself named Astra or Terra (`/qc 132 astra`); the owner chooses the model when they trigger QC, never in a question afterwards.
+One session, start to finish. Every step below runs on its own; the owner types nothing between `/qc <N>` and the final message. This skill never builds, never applies findings, never runs journeys; when fixes exist it writes them, tells the owner what is queued, launches the Codex fix build in the same breath (no approval stop; owner decision 2026-09-06) and stops; with no fixes it names `/ship <N>`. The fix build runs on Astra High, always (owner, September 24); there is no model argument and no model question.
 
 ## Working style, every step of this command
 
@@ -112,7 +112,7 @@ The QC session then reviews the images itself with `design-review` and `accessib
      - principles: anything that breaks a rule in AGENTS.md "Engineering principles"; cite the rule by name.
      - security-trust: authz and ownership at point of use, untrusted content reaching rendered surfaces, data leaving the trust boundary carrying more than the consumer needs.
      - silent-failure: states where something vanishes or degrades with no trace, no operator signal, and no user-facing reason.
-   - Two skills consult lines built from the plan's `Skills:` line: one for the three Codex lanes in Codex form (`$vercel:<name>`, `$supabase:<name>`, `$posthog:<name>`, `$use-railway`, and `$<name>` for the global skills `frontend-design`, `web-design-guidelines`, `accessibility`, `beautiful-shadows`, `emil-design-eng`, `design-review` and `ai-elements`), phrased "Codex lanes: consult these skills where a finding rests on a rule they cover, and cite the rule: ..."; one for grok, agy and the Cursor lanes in bare names, phrased "Grok, agy and Cursor lanes: these are rules to weigh, not skills you can invoke: ...".
+   - Two skills consult lines built from the plan's `Skills:` line: one for the three Codex lanes in Codex form (`$vercel:<name>`, `$supabase:<name>`, `$posthog:<name>`, and `$<name>` for the global skills `frontend-design`, `web-design-guidelines`, `accessibility`, `beautiful-shadows`, `emil-design-eng`, `design-review` and `ai-elements`), phrased "Codex lanes: consult these skills where a finding rests on a rule they cover, and cite the rule: ..."; one for grok, agy and the Cursor lanes in bare names, phrased "Grok, agy and Cursor lanes: these are rules to weigh, not skills you can invoke: ...".
    - The findings output contract: return ONLY a JSON array of finding objects, each shaped exactly `{"severity": "blocking|important|minor", "file": string, "line": number or null, "critique": string, "suggestion": string or null, "evidence": string}`, as the final message and nothing else. `evidence` is the investigation behind the finding, not a restatement: the exact file:line trail the lane verified, and for anything about execution (a repair pass, a callback, a sweep), who runs it, when, in which request or process, and what data is in scope there. A `suggestion` states inside `evidence` whether it was verified against the code (with its own trail) or is an unverified idea.
 
 2. Follow [the shared fixed review-lane procedure](../feature/references/review-lanes.md) with the `qc` profile and `.feature/lanes/qc.brief`. It starts exactly nine fixed high-effort lanes, including preserved Terra, collects each with bounded waits, extracts only its findings JSON, and permits at most one bounded resume where the runner reports a real resume ID. Each lane invocation has the runner’s 15-minute deadline. The nine runner readers are Sol, Astra, Terra, Gemini Pro, Gemini Flash, Grok, Kimi K3, GLM 5.2 and Muse Spark; when Claude Code hosts, the Claude Opus lane from the same procedure runs beside them (owner, September 23).
@@ -186,7 +186,7 @@ No code terms, no raw findings, no file paths, no finding counts, no drop counts
 
 ## 9. Launch the fix build, then stop
 
-With fixes queued, do not wait for approval (owner decision 2026-09-06: the `/qc <N>` invocation is the standing approval to apply whatever the round queues). Finish the step-8 presentation with one line naming the model about to run, then in the same turn follow [the build handoff](../feature/references/build-handoff.md) with `--source qc` and `--model <m>`, where `<m>` is `astra` or `terra` only when the `/qc` invocation's second argument named it (case-insensitively), and `sol` (Sol High) otherwise. Never inherit the feature planning model or an earlier build's override, and never ask a model question. The same `$build <N>` command picks FIX or AMEND mode using its existing rules.
+With fixes queued, do not wait for approval (owner decision 2026-09-06: the `/qc <N>` invocation is the standing approval to apply whatever the round queues). Finish the step-8 presentation with one line naming the model about to run, then in the same turn follow [the build handoff](../feature/references/build-handoff.md) with `--source qc --model astra`. Never ask a model question. The same `$build <N>` command picks FIX or AMEND mode using its existing rules.
 
 Launch once, register the background completion watcher where available, tell the owner which model started, and STOP. Claude does not apply the fixes itself or poll progress. On completion, relay the actual result and the build skill's walkthrough/next command, then stop; do not auto-launch another QC round or ship. If the launcher refuses (wrong branch, another build running, uncommitted files outside `.claude/` and `.codex/`), report that refusal as the blocker in plain words and stop; the fix list stays pending for a manual `$build <N>`.
 

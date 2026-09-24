@@ -20,7 +20,7 @@ disable-model-invocation: true
 
 # Feature: talk, plan (owner-facing then detailed), skill bundles, critique, issue + branch
 
-One planning session. After the owner approves the final revised plan, create the issue and branch, launch `$build <N>` through Codex CLI, and stop. The launch defaults to Sol High unless the owner selects Astra or Terra for that build. Earlier scope, design and plain-plan approvals do not launch build.
+One planning session. After the owner approves the final revised plan, create the issue and branch, launch `$build <N>` through Codex CLI on Astra High, and stop (owner, September 24: Astra is the build model; no model question). Earlier scope, design and plain-plan approvals do not launch build.
 
 ## Fable and Astra participation
 
@@ -53,7 +53,7 @@ First preserve the owner's original messages and references, including uncertain
 
 **UI direction (owner, September 23):** screens are designed in Claude Design on the web, by the owner, from a design brief this step writes; the flow no longer generates designs. Establish which of three cases applies: the owner supplied a Claude Design export (the normal case for a slice with a new screen), the slice changes only small UI inside the existing look (no brief needed), or the screen has not been designed yet. In the third case write the design brief in step 1.1, then END YOUR TURN so the owner can design; planning resumes when the export arrives. Record the design source in the plan's decisions.
 
-At the end of this step, pick the skill bundles this slice touches from the table in step 3: web, ui, data, ai, slack, workers (web and data apply to almost every slice; web carries the PostHog instrumentation skills for analytics, error tracking, and feature flags, ai carries PostHog LLM analytics). There is also ONE `free` bundle for a skill this slice needs that should not be loaded globally (an env-hygiene task wanting `vercel:env-vars`, say): name the exact skill names for it, checked against `ListSkills` so nothing is invented, at most a handful. Say the bundles (and the free skills, if any) to the owner in one line; the owner may veto or add. Do not move to writing the plan until one slice and its bundles are agreed.
+At the end of this step, pick the skill bundles this slice touches from the table in step 3: web, ui, data, ai, slack (web and data apply to almost every slice; web carries the PostHog instrumentation skills for analytics, error tracking, and feature flags, ai carries PostHog LLM analytics). There is also ONE `free` bundle for a skill this slice needs that should not be loaded globally (an env-hygiene task wanting `vercel:env-vars`, say): name the exact skill names for it, checked against `ListSkills` so nothing is invented, at most a handful. Say the bundles (and the free skills, if any) to the owner in one line; the owner may veto or add. Do not move to writing the plan until one slice and its bundles are agreed.
 
 ### 1.1 The design brief for Claude Design
 
@@ -82,7 +82,6 @@ This happens in this session, with the Skill tool: no subagent, no workflow, no 
 | data | `supabase`, `supabase-postgres-best-practices` | |
 | ai | `vercel:ai-sdk`, `vercel:ai-gateway`, `posthog:instrument-llm-analytics` | |
 | slack | `vercel:chat-sdk`, `slack:block-kit`, `slack:slack-api`, `slack:slack-messaging` | |
-| workers | `railway:use-railway` | only when `poller/` or `ingest/` is touched |
 | free | the exact names agreed in step 1 | |
 
 Procedure, deterministic, no judgment about which skills "seem relevant":
@@ -106,9 +105,9 @@ It has EXACTLY these parts, in this order, with these headings, because each lat
 
 1. **`Skills:` line** at the very top: the picked bundles and the flat list of their skill names, BARE (no `vercel:`/`slack:`/`posthog:` prefixes), e.g. `Skills: web, data (nextjs, vercel-functions, routing-middleware, instrument-integration, supabase, supabase-postgres-best-practices)`; every later stage reads this line and maps each name to its own harness's prefix. Free-bundle skills are listed the same way. Only list a bundle's skills that this slice actually leans on; a bundle loads several, the plan names the ones that matter here.
 2. **`## 1. Files and contracts`**: the files it touches, the contracts (inputs, outputs, failure states, exact user-facing copy for graceful failures), the input classes each entry point admits, the migrations (as SQL intent, not SQL).
-3. **`## 2. Build steps`**: the ordered code changes, each naming the Codex skills that step invokes by `$name` in Codex's own form (Vercel plugin skills as `$vercel:<name>`, Supabase ones as `$supabase:<name>`, PostHog ones as `$posthog:<name>`, Railway as `$use-railway`) so the build invokes exactly those and nothing else. Code changes and migrations ONLY. A build step NEVER contains: running or proving a journey, running gates/typecheck/lint/build, starting or restarting a server or the poller, editing env files, Vercel/Railway/dashboard operations, or anything phrased "ask the owner". Those belong in parts 3 and 4; if one lands in a build step the build agent will execute it, which is exactly the failure this structure exists to prevent.
+3. **`## 2. Build steps`**: the ordered code changes, each naming the Codex skills that step invokes by `$name` in Codex's own form (Vercel plugin skills as `$vercel:<name>`, Supabase ones as `$supabase:<name>`, PostHog ones as `$posthog:<name>`) so the build invokes exactly those and nothing else. Code changes and migrations ONLY. A build step NEVER contains: running or proving a journey, running gates/typecheck/lint/build, starting or restarting a server or the poller, editing env files, Vercel/Railway/dashboard operations, or anything phrased "ask the owner". Those belong in parts 3 and 4; if one lands in a build step the build agent will execute it, which is exactly the failure this structure exists to prevent.
 4. **`## 3. Acceptance journeys`**: the journeys with real inputs, written for the OWNER to walk on localhost after `/qc`. Never referenced from a build step. `/qc` reads them only to judge whether the build covered what they need.
-5. **`## 4. Owner does at ship`**: every operation that needs the owner's own hand or account: Vercel env changes, Railway redeploys, dashboard toggles, account deletions. `/ship` shows this list to the owner; nothing in the flow executes it.
+5. **`## 4. Owner does at ship`**: every operation that needs the owner's own hand or account: Vercel env changes, dashboard toggles, account deletions. `/ship` shows this list to the owner; nothing in the flow executes it.
 
 After both partners verify the combined plan, write that combined result to `.feature/plan-draft.md` once (a single Write, not a draft-then-redo). Preserve the two independent drafts in the pair working directory; downstream stages read only the combined result. A killed session can resume from what's already written instead of starting over, and every step after this one edits the file by targeted hunk rather than re-authoring it.
 
@@ -141,7 +140,7 @@ Once the detailed plan is complete, the session itself runs the critique with th
      - security-trust: authz and ownership at point of use, untrusted content reaching rendered/escaped surfaces, data leaving the trust boundary carrying more than the consumer needs.
      - silent-failure: states where something vanishes or degrades with no trace, no operator signal, and no user-facing reason.
    - The line: "The owner's plan decisions and any owner-provided UI are final; attack how they are wired in, never relitigate them."
-   - Two skills consult lines, both built from the `Skills:` line at the top of the detailed plan: one for the Codex lanes (Sol and Astra), mapping each bare skill name to Codex's own invocation form (`$vercel:<name>`, `$supabase:<name>`, `$posthog:<name>`, `$use-railway`, and `$<name>` for the global skills `frontend-design`, `web-design-guidelines`, `accessibility`, `beautiful-shadows`, `emil-design-eng`, `design-review` and `ai-elements`, which are installed for Codex too), phrased "Codex lanes: consult these skills where a finding rests on a rule they cover, and cite the rule: ..."; one for grok and agy, in bare names with no prefix, phrased "Grok, agy and Cursor lanes: these are rules to weigh, not skills you can invoke: ...".
+   - Two skills consult lines, both built from the `Skills:` line at the top of the detailed plan: one for the Codex lanes (Sol and Astra), mapping each bare skill name to Codex's own invocation form (`$vercel:<name>`, `$supabase:<name>`, `$posthog:<name>`, and `$<name>` for the global skills `frontend-design`, `web-design-guidelines`, `accessibility`, `beautiful-shadows`, `emil-design-eng`, `design-review` and `ai-elements`, which are installed for Codex too), phrased "Codex lanes: consult these skills where a finding rests on a rule they cover, and cite the rule: ..."; one for grok and agy, in bare names with no prefix, phrased "Grok, agy and Cursor lanes: these are rules to weigh, not skills you can invoke: ...".
    - The findings output contract: return ONLY a JSON array of finding objects, each shaped exactly `{"severity": "blocking|important|minor", "target": string, "critique": string, "suggestion": string or null, "evidence": string}`, as the final message and nothing else. `evidence` is the investigation behind the finding, not a restatement of it: the exact file:line trail the lane verified, and for anything about execution (a repair pass, a callback, a sweep), who runs it, when, in which request or process, and what data is in scope there. A `suggestion` states inside `evidence` whether it was verified against the code (with its own trail) or is an unverified idea; an unverified suggestion is still welcome, but it must say so. The lanes do the investigation once; this field is how that work reaches adjudication instead of being thrown away with the summary. (Added 2026-08-23: a lane's compressed suggestion was adopted at adjudication while another lane's discarded detail held the fact that killed it; the build bounced on the contradiction.)
 
 2. Follow [the shared fixed review-lane procedure](references/review-lanes.md) with the `critique` profile and `.feature/lanes/critique.brief`. It starts exactly eight fixed high-effort lanes plus the Claude Opus lane, collects each with bounded waits, extracts only its findings JSON, and permits at most one bounded resume where the runner reports a real resume ID. As each lane becomes terminal, write its disposition lines into `.feature/critique-dispositions.md`, marked with the lane name. Do not edit either plan file yet: the plan is edited exactly once, after the last lane is in, so findings raised independently are recognized as high-confidence, duplicates are merged, and there is a single hunk pass.
@@ -171,7 +170,7 @@ Show the owner, in this order, and nothing else:
 1. Read `.feature/plan-owner.md` fresh off disk and paste it whole, verbatim, as the very first thing in the message, before any remark about the run. This is the only re-emission of the plan anywhere in this skill.
 2. The **`whatChanged`** list, as Added/Changed/Removed one-liners, each with its reason.
 3. Any **`openQuestionsForOwner`**, each phrased as a plain question with the tradeoff in one sentence.
-4. Build handoff: "Approve this plan to create the issue and start the build with Sol High. Say Astra or Terra if you prefer, or tell me to leave the build for you to launch." This is part of the final plan approval, not another question afterward.
+4. Build handoff: "Approve this plan to create the issue and start the build, or tell me to leave the build for you to launch." The build runs on Astra High; never offer a model choice (owner, September 24). This is part of the final plan approval, not another question afterward.
 5. One closing line: each lane's elapsed seconds from the shared runner and any dead lane named plainly. A lane that returned `NO_FINDINGS` is reported like any other lane that worked ("nothing found"), never as a lane that did not come back. Nothing else about lanes, counts, findings, or drops belongs in this message.
 
 If the owner asks what was dropped, read `.feature/critique-dispositions.md` and answer in plain words; never volunteer it unasked.
@@ -209,12 +208,12 @@ Once the owner says yes to the revised plan:
 
 ## 9. Launch the approved build, then stop
 
-Follow [the build handoff](references/build-handoff.md). Verify that `start.sh` left the checkout on `ft/<N>` or `bf/<N>` and that the final local plan files exist. Honor the build model explicitly requested with approval; otherwise use Sol High, regardless of the planning partner. If the owner asked to launch manually or later, simply name `$build <N>` and stop.
+Follow [the build handoff](references/build-handoff.md). Verify that `start.sh` left the checkout on `ft/<N>` or `bf/<N>` and that the final local plan files exist. The build runs on Astra High; there is no model to honor or ask (owner, September 24). If the owner asked to launch manually or later, simply name `$build <N>` and stop.
 
 Otherwise launch once, register the background completion watcher where available, report the real launch status, and STOP. No polling or further planning work while build runs. The completion callback only relays the build result and its next command; it never launches QC or ship.
 
 <exit-example>
 
-Issue #123 created on `ft/123`. The approved build has started with Sol High. I'll report its result when it finishes.
+Issue #123 created on `ft/123`. The approved build has started on Astra High. I'll report its result when it finishes.
 
 </exit-example>
