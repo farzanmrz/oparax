@@ -5,7 +5,7 @@ export function LandingHero() {
   const { hero } = landingContent;
   return (
     <section className="bg-[radial-gradient(900px_360px_at_50%_0%,oklch(0.62_0.15_245/0.14),transparent_70%)] pt-16 pb-5 text-center">
-      <div className="mx-auto max-w-[1240px] px-4 desk:px-10">
+      <div className="mx-auto max-w-[1356px] px-4">
         <p className="flex items-center justify-center gap-2 text-[13px] font-medium tracking-[0.02em] text-text-muted">
           <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
           {hero.eyebrow}

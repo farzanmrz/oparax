@@ -5,7 +5,7 @@ export function LandingClose() {
   const { close } = landingContent;
   return (
     <section className="bg-[radial-gradient(640px_300px_at_50%_100%,oklch(0.62_0.15_245/0.14),transparent_70%)] pt-[72px] pb-16 text-center">
-      <div className="mx-auto max-w-[1240px] px-4 desk:px-10">
+      <div className="mx-auto max-w-[1356px] px-4">
         <h2 className="text-[36px] leading-[1.1] font-bold tracking-[-0.025em] text-balance">
           {close.heading}
         </h2>

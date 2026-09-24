@@ -6,7 +6,7 @@ import { landingContent } from "@/lib/landing/content";
 export function LandingHeader() {
   return (
     <header className="sticky top-0 z-20 h-14 border-b border-border bg-[var(--header-bg)]">
-      <div className="mx-auto flex h-full max-w-[1240px] items-center justify-between px-4 desk:px-10">
+      <div className="mx-auto flex h-full max-w-[1356px] items-center justify-between px-4">
         <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em]">
           <OparaxMark className="size-5" />
           {landingContent.brand}

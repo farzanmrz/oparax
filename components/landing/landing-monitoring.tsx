@@ -5,7 +5,7 @@ export function LandingMonitoring() {
   const { monitoring } = landingContent;
   return (
     <section id="how-it-works" className="scroll-mt-[72px] pt-14 pb-[72px]">
-      <div className="mx-auto max-w-[1240px] px-4 desk:px-10">
+      <div className="mx-auto max-w-[1356px] px-4">
         <div className="flex max-w-[46em] flex-col gap-3 pb-8">
           <h2 className="text-[36px] leading-[1.1] font-bold tracking-[-0.025em] text-balance desk:text-[44px]">
             {monitoring.heading}

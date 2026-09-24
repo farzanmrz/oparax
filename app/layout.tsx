@@ -3,7 +3,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, JetBrains_Mono, Manrope } from "next/font/google";
+import { JetBrains_Mono, Nunito_Sans, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,10 +11,10 @@ import { landingContent } from "@/lib/landing/content";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-// The fonts are the preset's (DESIGN.md): Manrope for headings, IBM Plex Sans for text.
-const manropeHeading = Manrope({ subsets: ["latin"], variable: "--font-heading" });
+// The fonts are the preset's (DESIGN.md, owner September 24): Nunito Sans for headings, Source Sans 3 for text.
+const nunitoSansHeading = Nunito_Sans({ subsets: ["latin"], variable: "--font-heading" });
 
-const ibmPlexSans = IBM_Plex_Sans({ subsets: ["latin"], variable: "--font-sans" });
+const sourceSans3 = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans" });
 
 // JetBrains Mono backs --font-mono: handles, counts, timestamps, money.
 const jetbrainsMono = JetBrains_Mono({
@@ -63,7 +63,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("bg-background font-sans", ibmPlexSans.variable, manropeHeading.variable)}
+      className={cn("bg-background font-sans", nunitoSansHeading.variable, sourceSans3.variable)}
       suppressHydrationWarning
     >
       <body className={`${jetbrainsMono.variable} antialiased`}>
