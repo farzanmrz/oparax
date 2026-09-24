@@ -1,4 +1,4 @@
-// Root layout — wraps every page in the app. Loads fonts and global CSS.
+// Root layout: wraps every page in the app. Loads fonts and global CSS.
 
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
