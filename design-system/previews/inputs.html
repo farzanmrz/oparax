@@ -1,0 +1,21 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:var(--font-sans);font-size:15px;line-height:1.5;display:grid;grid-template-columns:1fr 1fr;min-height:100vh}
+.pane{padding:24px;background:var(--background);color:var(--foreground)} .pane.dark{color-scheme:dark}
+h1,h2,h3{font-family:var(--font-heading);font-weight:400;letter-spacing:-0.01em;margin:0} h1{font-size:34px;line-height:1.15} h2{font-size:20px} h3{font-size:16px}
+.mono{font-family:var(--font-mono);font-size:13px;color:var(--muted-foreground)} .muted{color:var(--muted-foreground)} .label{font-size:12px;color:var(--muted-foreground);margin:16px 0 8px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--radius-md);border:1px solid transparent;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer}
+.btn.primary{background:var(--primary);color:var(--primary-foreground)} .btn.secondary{background:var(--secondary);color:var(--secondary-foreground)} .btn.outline{background:transparent;border-color:var(--border);color:var(--foreground)} .btn.ghost{background:transparent;color:var(--foreground)} .btn.destructive{background:var(--destructive);color:#fff} .btn.sm{height:28px;font-size:13px}
+.card{background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;box-shadow:0px 0px 0px 1px rgba(0,0,0,0.06),0px 1px 1px -0.5px rgba(0,0,0,0.06),0px 3px 3px -1.5px rgba(0,0,0,0.06),0px 6px 6px -3px rgba(0,0,0,0.06),0px 12px 12px -6px rgba(0,0,0,0.06),0px 24px 24px -12px rgba(0,0,0,0.06)}
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;border:1px solid transparent}
+.badge.default{background:var(--primary);color:var(--primary-foreground)} .badge.secondary{background:var(--secondary);color:var(--secondary-foreground)} .badge.outline{border-color:var(--border);color:var(--foreground)} .badge.destructive{background:var(--destructive);color:#fff}
+.input{height:36px;width:100%;padding:0 12px;border-radius:var(--radius-md);border:1px solid var(--input);background:transparent;color:var(--foreground);font:inherit;font-size:14px} .input::placeholder{color:var(--muted-foreground)} .input:focus{outline:2px solid var(--ring);outline-offset:1px}
+.switch{width:32px;height:18px;border-radius:999px;background:var(--input);position:relative;display:inline-block} .switch.on{background:var(--primary)} .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--background)} .switch.on::after{left:16px}
+.swatch{display:flex;gap:10px;align-items:center;margin:6px 0} .chip{width:36px;height:36px;border-radius:var(--radius-md);border:1px solid var(--border)}
+.header{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;border-bottom:1px solid var(--border);margin:-24px -24px 20px}
+.brand{display:flex;align-items:center;gap:8px;font-size:17px}
+.mark{width:20px;height:20px}
+</style></head><body><div class="pane"><p class="label">Inputs</p><div style="display:grid;gap:10px;max-width:520px"><input class="input" placeholder="@handle" aria-label="X handle"><input class="input" placeholder="what you follow, in one sentence" aria-label="Your beat"></div><p class="label">Switch</p><p><span class="switch on"></span> <span class="switch"></span></p></div><div class="pane dark"><p class="label">Inputs</p><div style="display:grid;gap:10px;max-width:520px"><input class="input" placeholder="@handle" aria-label="X handle"><input class="input" placeholder="what you follow, in one sentence" aria-label="Your beat"></div><p class="label">Switch</p><p><span class="switch on"></span> <span class="switch"></span></p></div></body></html>

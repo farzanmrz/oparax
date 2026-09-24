@@ -76,6 +76,7 @@ ingest/                 Railway worker: holds the X filtered-stream connection, 
 supabase/migrations/    mirrored SQL migrations (applied live via the Supabase MCP during build)
 public/                 static assets (logo images, avatars)
 scripts/                one-off maintenance scripts (not part of any flow)
+design-system/          the Claude Design sync bundle: tokens.css exported from app/globals.css, light-and-dark preview cards, README (re-export after any change to DESIGN.md)
 docs/                   roadmap.md (the plan), onboarding-algorithm.md and downstream-algorithm.md (the two algorithms), source-table-seed.json (the shared table's seed), setup.md (every external account and key), references/ (cogs.md costs, decisions.md ledger, state.md handoff, two lab reports), discovery/ (findings.md, reshad.md, people.tsv, exp1.md)
 .claude/                Claude Code skills, scripts, agents, hooks, settings for the feature flow
 .agents/                Codex entries for feature, amend, build, QC, ship and promote
