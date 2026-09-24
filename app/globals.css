@@ -5,10 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans:
-    var(--font-hanken-grotesk, "Hanken Grotesk"), "Hanken Grotesk", ui-sans-serif, system-ui,
-    sans-serif;
+  --font-heading: var(--font-heading);
+  --font-sans: var(--font-sans);
   --font-draft: var(--font-sans);
   --font-mono:
     var(--font-jetbrains-mono, "JetBrains Mono"), "JetBrains Mono", ui-monospace, monospace;
@@ -107,9 +105,7 @@
   --text-count: oklch(0.55 0.02 250);
   --text-handle-x: oklch(0.94 0.004 95);
   --text-handle-news: oklch(0.9 0.03 88);
-  --font-ui:
-    var(--font-hanken-grotesk, "Hanken Grotesk"), "Hanken Grotesk", ui-sans-serif, system-ui,
-    sans-serif;
+  --font-ui: var(--font-sans);
   --font-draft: var(--font-sans);
   --font-mono:
     var(--font-jetbrains-mono, "JetBrains Mono"), "JetBrains Mono", ui-monospace, monospace;
@@ -171,8 +167,6 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
 }
 
 @keyframes op-pulse {

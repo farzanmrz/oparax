@@ -4,7 +4,7 @@ The look is stock shadcn/ui, applied from a preset, dark by default with a light
 
 ## The preset and why each choice
 
-Preset code `bzq0WEyKe` (ui.shadcn.com/create), applied with `npx shadcn@latest apply bzq0WEyKe --only theme`. Re-apply and re-sync when the look changes; the repo is the source of truth, Claude Design is the copy.
+Preset code `b69Wtf60bA` (resolved from this project with `npx shadcn@latest preset resolve`; the owner's original pick was `bzq0WEyKe`, with the fonts changed on September 23). Applied with `npx shadcn@latest apply <code> --only theme,font`; the components themselves were not re-installed in the Mira style yet (the repo's hugeicons imports would break), which is the one remaining step if Mira's component shapes are wanted. Re-apply and re-sync when the look changes; the repo is the source of truth, Claude Design is the copy.
 
 | Choice | Value | Reason (from the design skills) |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ Preset code `bzq0WEyKe` (ui.shadcn.com/create), applied with `npx shadcn@latest 
 | Chart color | Cyan | the preset's value; there are no charts yet |
 | Radius | default | Mira's rounded rectangles for cards, controls and chips; circles only for avatars and status dots |
 | Icons | hugeicons | kept from before; the preset's lucide value is not applied (`components.json` stays `hugeicons`) |
-| Fonts | Hanken Grotesk for all text, JetBrains Mono for handles, counts and times | one text family chosen on purpose plus one clearly distinct mono, per `frontend-design`; the preset's Nunito Sans and IBM Plex Sans were not applied, and Space Grotesk (drafts only) is gone |
+| Fonts | Manrope for headings, IBM Plex Sans for text, JetBrains Mono for handles, counts and times | all three are in shadcn's own font registry, so the preset carries them and Claude Design loads them without a manual upload (owner, September 23: no font the registry does not know). IBM Plex Sans reads well in dense text and lines up numbers; Manrope is modern and compact and clearly different from Plex; Hanken Grotesk, Space Grotesk, Nunito Sans are gone (`frontend-design`, `accessibility`) |
 | Mode | dark by default, light available | `next-themes` with the `dark` class; the toggle sits in the header |
 
 ## Rules that stay

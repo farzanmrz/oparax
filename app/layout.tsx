@@ -3,20 +3,18 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Sans, JetBrains_Mono, Manrope } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { landingContent } from "@/lib/landing/content";
 import "./globals.css";
+import { cn } from "@/lib/utils";
 
-// Hanken Grotesk is the design system's UI font family (--font-sans).
-const hankenGrotesk = Hanken_Grotesk({
-  variable: "--font-hanken-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-});
+// The fonts are the preset's (DESIGN.md): Manrope for headings, IBM Plex Sans for text.
+const manropeHeading = Manrope({ subsets: ["latin"], variable: "--font-heading" });
+
+const ibmPlexSans = IBM_Plex_Sans({ subsets: ["latin"], variable: "--font-sans" });
 
 // JetBrains Mono backs --font-mono: handles, counts, timestamps, money.
 const jetbrainsMono = JetBrains_Mono({
@@ -63,8 +61,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="bg-background" suppressHydrationWarning>
-      <body className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
+    <html
+      lang="en"
+      className={cn("bg-background font-sans", ibmPlexSans.variable, manropeHeading.variable)}
+      suppressHydrationWarning
+    >
+      <body className={`${jetbrainsMono.variable} antialiased`}>
         {/* Dark by default; the person can switch to light (owner, September 23). */}
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <TooltipProvider>{children}</TooltipProvider>
