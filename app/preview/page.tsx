@@ -27,9 +27,9 @@ export default function PreviewPage() {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <span className="flex items-center gap-2 font-heading text-[15px] font-semibold tracking-tight">
-            <OparaxMark className="size-5 text-primary" />
+        <div className="mx-auto flex h-14 max-w-[1356px] items-center justify-between px-4 desk:px-6">
+          <span className="flex items-center gap-2 font-heading text-[17px] font-bold tracking-tight">
+            <OparaxMark className="size-5 text-foreground" />
             Oparax
           </span>
           <nav className="flex items-center gap-2">
@@ -42,7 +42,7 @@ export default function PreviewPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-14">
+      <main className="mx-auto max-w-[1356px] px-4 py-14 desk:px-6">
         <section className="max-w-2xl">
           <h1 className="font-heading text-4xl font-semibold tracking-tight desk:text-5xl">
             The internet, watched for one person.
