@@ -48,8 +48,8 @@ export default async function FontsPage({
   const sp = await searchParams;
   const h = key(sp.h, "public-sans");
   const b = key(sp.b, "source-sans-3");
-  const headingFamily = `var(${fonts[h].font.variable})`;
-  const bodyFamily = `var(${fonts[b].font.variable})`;
+  const headingFamily = fonts[h].css;
+  const bodyFamily = fonts[b].css;
   const showPair = "h" in sp || "b" in sp;
 
   return (
@@ -57,8 +57,8 @@ export default async function FontsPage({
       <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1356px] items-center justify-between px-4 desk:px-6">
           <span
-            className="flex items-center gap-2 text-[17px] font-bold tracking-tight"
-            style={{ fontFamily: headingFamily }}
+            className="flex items-center gap-2 text-[17px] tracking-tight"
+            style={{ fontFamily: bodyFamily }}
           >
             <OparaxMark className="size-5 text-foreground" />
             Oparax
@@ -104,7 +104,7 @@ export default async function FontsPage({
           <>
             <section className="mt-12 max-w-3xl">
               <h1
-                className="text-4xl font-bold tracking-tight desk:text-5xl"
+                className="text-4xl tracking-tight desk:text-5xl"
                 style={{ fontFamily: headingFamily }}
               >
                 The internet, watched for one person.
@@ -120,10 +120,7 @@ export default async function FontsPage({
               </form>
             </section>
             <section className="mt-14">
-              <h2
-                className="text-xl font-bold tracking-tight"
-                style={{ fontFamily: headingFamily }}
-              >
+              <h2 className="text-xl tracking-tight" style={{ fontFamily: headingFamily }}>
                 Your sources
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -156,10 +153,10 @@ export default async function FontsPage({
         ) : (
           <section className="mt-10 grid gap-6 desk:grid-cols-2">
             {fontKeys.map((k) => (
-              <Card key={k} style={{ fontFamily: `var(${fonts[k].font.variable})` }}>
+              <Card key={k} style={{ fontFamily: fonts[k].css }}>
                 <CardHeader>
                   <CardDescription className="font-mono">{fonts[k].label}</CardDescription>
-                  <CardTitle className="text-3xl font-bold tracking-tight">
+                  <CardTitle className="text-3xl tracking-tight">
                     Alibaba releases Qwen-Image-2.1, a 7B open-weight image model
                   </CardTitle>
                 </CardHeader>

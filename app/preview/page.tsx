@@ -28,7 +28,7 @@ export default function PreviewPage() {
     <div className="min-h-dvh bg-background text-foreground">
       <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1356px] items-center justify-between px-4 desk:px-6">
-          <span className="flex items-center gap-2 font-heading text-[17px] font-bold tracking-tight">
+          <span className="flex items-center gap-2 text-[17px] tracking-tight">
             <OparaxMark className="size-5 text-foreground" />
             Oparax
           </span>
@@ -44,7 +44,7 @@ export default function PreviewPage() {
 
       <main className="mx-auto max-w-[1356px] px-4 py-14 desk:px-6">
         <section className="max-w-2xl">
-          <h1 className="font-heading text-4xl font-semibold tracking-tight desk:text-5xl">
+          <h1 className="font-heading text-4xl tracking-tight desk:text-5xl">
             The internet, watched for one person.
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -59,7 +59,7 @@ export default function PreviewPage() {
         </section>
 
         <section className="mt-16">
-          <h2 className="font-heading text-xl font-semibold tracking-tight">Your sources</h2>
+          <h2 className="font-heading text-xl tracking-tight">Your sources</h2>
           <p className="mt-1 text-sm text-muted-foreground">Strong matches are on by default.</p>
           <div className="mt-6 grid gap-4 desk:grid-cols-3">
             {sources.map((s) => (
@@ -78,7 +78,7 @@ export default function PreviewPage() {
         </section>
 
         <section className="mt-16">
-          <h2 className="font-heading text-xl font-semibold tracking-tight">States</h2>
+          <h2 className="font-heading text-xl tracking-tight">States</h2>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge>Watching</Badge>
             <Badge variant="secondary">Building</Badge>

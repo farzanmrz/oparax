@@ -1,4 +1,5 @@
-// Font candidates for the scratch comparison page (owner, September 24). Every family here is in
+// Font candidates for the scratch comparison page (owner, September 24). `font.variable` is the class
+// that defines the variable; `css` is the var() to put in a style. Every family here is in
 // shadcn's own font registry, so whichever pair wins can go into the preset and into Claude Design.
 
 import {
@@ -72,17 +73,21 @@ const manrope = Manrope({
 });
 
 export const fonts = {
-  "source-sans-3": { label: "Source Sans 3", font: sourceSans3 },
-  "noto-sans": { label: "Noto Sans", font: notoSans },
-  "public-sans": { label: "Public Sans", font: publicSans },
-  roboto: { label: "Roboto", font: roboto },
-  "nunito-sans": { label: "Nunito Sans", font: nunitoSans },
-  "instrument-sans": { label: "Instrument Sans", font: instrumentSans },
-  figtree: { label: "Figtree", font: figtree },
-  "dm-sans": { label: "DM Sans", font: dmSans },
-  inter: { label: "Inter", font: inter },
-  "ibm-plex-sans": { label: "IBM Plex Sans", font: ibmPlexSans },
-  manrope: { label: "Manrope", font: manrope },
+  "source-sans-3": { label: "Source Sans 3", font: sourceSans3, css: "var(--f-source-sans-3)" },
+  "noto-sans": { label: "Noto Sans", font: notoSans, css: "var(--f-noto-sans)" },
+  "public-sans": { label: "Public Sans", font: publicSans, css: "var(--f-public-sans)" },
+  roboto: { label: "Roboto", font: roboto, css: "var(--f-roboto)" },
+  "nunito-sans": { label: "Nunito Sans", font: nunitoSans, css: "var(--f-nunito-sans)" },
+  "instrument-sans": {
+    label: "Instrument Sans",
+    font: instrumentSans,
+    css: "var(--f-instrument-sans)",
+  },
+  figtree: { label: "Figtree", font: figtree, css: "var(--f-figtree)" },
+  "dm-sans": { label: "DM Sans", font: dmSans, css: "var(--f-dm-sans)" },
+  inter: { label: "Inter", font: inter, css: "var(--f-inter)" },
+  "ibm-plex-sans": { label: "IBM Plex Sans", font: ibmPlexSans, css: "var(--f-ibm-plex-sans)" },
+  manrope: { label: "Manrope", font: manrope, css: "var(--f-manrope)" },
 } as const;
 
 export type FontKey = keyof typeof fonts;
