@@ -13,7 +13,7 @@ The `critique` profile is Sol 6, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok
 
 ## Start a round
 
-Create one unique run directory under `.feature/lanes/`. The brief remains the stage’s normal brief file. Preview the fixed profile first, then start it:
+Create one unique run directory under `.feature/lanes/`. The brief remains the stage’s normal brief file. Remove an old run directory by its exact name, never with a wildcard on the profile prefix: the brief (`critique.brief`, `qc.brief`) shares that prefix, and a `critique.*` glob deleted it on September 24 and stalled a lane. Preview the fixed profile first, then start it:
 
 ```bash
 mkdir -p .feature/lanes
