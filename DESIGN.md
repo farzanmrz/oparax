@@ -1,6 +1,6 @@
 # Oparax Design System
 
-The look is stock shadcn/ui, applied from a preset, dark by default with a light mode the person can switch to (owner, September 23, replacing the custom dark system that described the retired drafting product). This file is the whole contract; `app/globals.css` holds the tokens the preset wrote. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (`/design-sync` after any change here), and built from the export with shadcn blocks and ai-elements.
+The look is stock shadcn/ui, applied from a preset, dark by default with a light mode the person can switch to (owner, September 23, replacing the custom dark system that described the retired drafting product). This file is the whole contract; `app/globals.css` holds the tokens the preset wrote. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (`/design-sync` after any change here), and built from the export with shadcn blocks.
 
 ## The preset and why each choice
 
@@ -26,7 +26,3 @@ Preset code `bzonVbKXA` (resolved from this project with `npx shadcn@latest pres
 - **Motion.** Only where it answers an action or shows a live step (the onboarding build); nothing animates that a person does a hundred times a day (`emil-design-eng`).
 - **Logo.** `public/oparax-logo-dark.png` and `public/email-logo.png`; the mark in `components/logo.tsx`.
 - **Layout.** Content at most 1356px wide with 16px side gutters at every width (owner, September 24: no wide margins). Responsive gates use `desk:`, never `md:`.
-
-## Legacy
-
-The `:root` block in `app/globals.css` still carries the retired drafting screens' tokens (`--page-bg`, `--card-grad-*`, `--draft-*`, the `--text-*` set). They leave with those screens and are not used by anything new.

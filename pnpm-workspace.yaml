@@ -15,9 +15,7 @@ ignoredBuiltDependencies:
 #   sharp              <0.35.0    inherited libvips CVEs             (via next)
 #   nanoid             <3.3.17    indefinite loop on size 0          (via postcss, dedupes to the direct ^6.0.0 dep)
 #   hono               <4.12.34   SSR memo() cross-user data leak + DoS  (via shadcn -> @modelcontextprotocol/sdk, dev-only)
-#   dompurify          <=3.4.12   detached-subtree XSS               (via mermaid, @streamdown/mermaid + streamdown)
 #   js-yaml            <4.3.1     quadratic CPU on !!omap            (via shadcn -> cosmiconfig, dev-only)
-#   mermaid            <11.16.1   DoS/prototype-pollution/CSS-inject (via @streamdown/mermaid + streamdown)
 #   fast-uri           <3.1.5     request smuggling                  (via shadcn -> @dotenvx/dotenvx and @modelcontextprotocol/sdk -> ajv, dev-only)
 # This is the file pnpm 10 reads them from — a `pnpm.overrides` block in package.json
 # is silently IGNORED (it warns on `pnpm audit`, not on install).
@@ -29,7 +27,5 @@ overrides:
   sharp: "^0.35.3"
   nanoid: ">=3.3.17"
   hono: ">=4.12.34"
-  dompurify: ">=3.4.13"
   js-yaml: ">=4.3.1"
-  mermaid: ">=11.16.1"
   fast-uri: ">=3.1.5"

@@ -55,8 +55,7 @@ export default async function Image() {
           fontWeight: 700,
         }}
       >
-        <span>{landingContent.hero.headline[0]}</span>
-        <span style={{ color: "#50b2f6" }}>{landingContent.hero.headline[1]}</span>
+        <span>{landingContent.sharing.headline}</span>
       </div>
       <div
         style={{

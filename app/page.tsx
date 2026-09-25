@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { LandingPage } from "@/components/landing/landing-page";
+import { PostHogUserContext } from "@/components/posthog-user-context";
 import { landingContent } from "@/lib/landing/content";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,7 +21,10 @@ export default async function RootPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/agents");
-
-  return <LandingPage />;
+  return (
+    <>
+      <PostHogUserContext id={user?.id ?? null} email={user?.email} />
+      <LandingPage signedIn={Boolean(user)} />
+    </>
+  );
 }

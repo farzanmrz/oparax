@@ -84,7 +84,7 @@ export async function loginAction(
     };
   }
 
-  redirect("/agents");
+  redirect("/");
 }
 
 export async function signupAction(
@@ -104,8 +104,8 @@ export async function signupAction(
   const { data, error } = await supabase.auth.signUp({
     email: validated.email,
     password: validated.password,
-    // Seed a username from the email's local part. Stored in user_metadata;
-    // shown in the sidebar and editable later in settings (lib/user.ts).
+    // Seed a username from the email's local part so every account has a stable
+    // starting value before its future profile experience is built.
     options: {
       data: {
         username: deriveUsernameFromEmail(validated.email),
@@ -130,7 +130,7 @@ export async function signupAction(
   }
 
   if (data.session) {
-    redirect("/agents");
+    redirect("/");
   }
 
   // No session yet — email confirmation pending. The signup form swaps to a

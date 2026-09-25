@@ -1,21 +1,13 @@
-import { LandingClose } from "@/components/landing/landing-close";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHeader } from "@/components/landing/landing-header";
 import { LandingHero } from "@/components/landing/landing-hero";
-import { LandingMonitoring } from "@/components/landing/landing-monitoring";
-import { LandingRoadmap } from "@/components/landing/landing-roadmap";
-import { LandingVoice } from "@/components/landing/landing-voice";
 
-export function LandingPage() {
+export function LandingPage({ signedIn }: { readonly signedIn: boolean }) {
   return (
-    <div className="ph-no-autocapture min-h-dvh bg-background text-text-title">
-      <LandingHeader />
+    <div className="min-h-dvh bg-background text-foreground">
+      <LandingHeader signedIn={signedIn} />
       <main>
-        <LandingHero />
-        <LandingMonitoring />
-        <LandingVoice />
-        <LandingRoadmap />
-        <LandingClose />
+        <LandingHero signedIn={signedIn} />
       </main>
       <LandingFooter />
     </div>

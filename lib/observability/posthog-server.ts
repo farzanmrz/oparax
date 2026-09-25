@@ -4,13 +4,8 @@ import { waitUntil } from "@vercel/functions";
 import { PostHog } from "posthog-node";
 
 /**
- * Server-side PostHog error sink. The only thing the Sentry removal (#124) left on the server
- * was `console.error`, which lands in short-lived Vercel logs that nobody reads. Every site that
- * used to call `Sentry.captureException` / `Sentry.captureMessage` now calls one of the two
- * helpers below, so paid work that fails (a voice extraction, a drafting run, a watchdog
- * detection) still becomes a grouped, alertable issue in PostHog Error Tracking.
- *
- * No token (local dev without PostHog configured) means every call is a no-op.
+ * Server errors become grouped, alertable issues instead of disappearing into short-lived logs.
+ * No token (local development without PostHog configured) keeps capture a no-op.
  */
 
 const DISTINCT_ID = "server";

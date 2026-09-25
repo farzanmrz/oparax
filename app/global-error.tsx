@@ -49,8 +49,8 @@ export default function GlobalError({
             >
               Try again
             </button>
-            <a className="text-muted-foreground text-sm underline" href="/agents">
-              Back to your agents
+            <a className="text-muted-foreground text-sm underline" href="/">
+              Back home
             </a>
           </div>
           {/* Showing Next's digest lets a reporter quote the exact failing request. */}

@@ -8,15 +8,14 @@
   --radius: 0.625rem; /* cards */
   --radius-md: 6px;   /* controls and inputs */
   --radius-sm: 5px;   /* tags */
-  --content-max: 1356px;
-  --gutter: 16px;
 }
 
 /* Light */
 :root {
+  --accent: oklch(0.967 0.001 286.375);
+  --radius-badge: 4px;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
-  --accent: oklch(0.967 0.001 286.375);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
