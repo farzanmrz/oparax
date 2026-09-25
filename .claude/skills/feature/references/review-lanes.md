@@ -7,9 +7,9 @@ The stage owns the review brief. The runner owns provider delivery and recovery:
 | Stage | Profile | Original lanes |
 | --- | --- | --- |
 | Feature or amend critique | `critique` | `critique-codex-sol`, `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-glm`, `critique-cursor-muse` |
-| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-codex-terra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-glm`, `qc-cursor-muse` |
+| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-glm`, `qc-cursor-muse` |
 
-The `critique` profile is Sol 6, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, and three Cursor lanes on the owner's Pro+ pool: Kimi K3, GLM 5.2 and Muse Spark 1.3 (owner, September 23). The `qc` profile adds preserved Terra 5.6. Every fixed lane runs at high effort. Do not add or remove a runner lane. When Claude Code hosts the stage, one more lane runs outside the runner: the Claude Opus lane below.
+The `critique` profile is Sol 6, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, and three Cursor lanes on the owner's Pro+ pool: Kimi K3, GLM 5.2 and Muse Spark 1.3 (owner, September 23). The `qc` profile runs the same eight lanes (Terra removed, owner, September 24). Every fixed lane runs at high effort. Do not add or remove a runner lane. When Claude Code hosts the stage, one more lane runs outside the runner: the Claude Opus lane below.
 
 ## Start a round
 

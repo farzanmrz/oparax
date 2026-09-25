@@ -4,13 +4,12 @@ description: >-
   The review side of feature work, same behavior in either host: on a
   branch that build ($build in Codex, or /build in Claude Code) has
   already built and committed, this session itself
-  checks plan coverage and runs the gates, launches nine review lanes plus the Claude Opus lane
-  in the background (three Codex, two agy, grok), does its own holistic review of
+  checks plan coverage and runs the gates, launches eight review lanes plus the Claude Opus lane
+  in the background (two Codex, two agy, Grok, three Cursor), does its own holistic review of
   the real diff while they run, then folds every set of findings into one fix list written to
   .feature/fixes-<N>.md for build's fix mode, tells the owner what is queued, and launches the
-  Codex fix build itself without waiting, on Astra High
-  invocation names one. No Workflow tool, no subagents. Use when the user says /qc <N>
-  (optionally /qc <N> astra or /qc <N> terra). Not for building or fixing; both are $build in
+  Codex fix build itself without waiting, on Astra High. No Workflow tool, no subagents.
+  Use when the user says /qc <N>. Not for building or fixing; both are $build in
   Codex or /build in Claude Code.
 argument-hint: "[issue #]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Bash(python3 *) Monitor Write Read Edit Grep Glob
@@ -115,7 +114,7 @@ The QC session then reviews the images itself with `design-review` and `accessib
    - Two skills consult lines built from the plan's `Skills:` line: one for the three Codex lanes in Codex form (`$vercel:<name>`, `$supabase:<name>`, `$posthog:<name>`, and `$<name>` for the global skills `frontend-design`, `web-design-guidelines`, `accessibility`, `beautiful-shadows`, `emil-design-eng`, `design-review` and `ai-elements`), phrased "Codex lanes: consult these skills where a finding rests on a rule they cover, and cite the rule: ..."; one for grok, agy and the Cursor lanes in bare names, phrased "Grok, agy and Cursor lanes: these are rules to weigh, not skills you can invoke: ...".
    - The findings output contract: return ONLY a JSON array of finding objects, each shaped exactly `{"severity": "blocking|important|minor", "file": string, "line": number or null, "critique": string, "suggestion": string or null, "evidence": string}`, as the final message and nothing else. `evidence` is the investigation behind the finding, not a restatement: the exact file:line trail the lane verified, and for anything about execution (a repair pass, a callback, a sweep), who runs it, when, in which request or process, and what data is in scope there. A `suggestion` states inside `evidence` whether it was verified against the code (with its own trail) or is an unverified idea.
 
-2. Follow [the shared fixed review-lane procedure](../feature/references/review-lanes.md) with the `qc` profile and `.feature/lanes/qc.brief`. It starts exactly nine fixed high-effort lanes, including preserved Terra, collects each with bounded waits, extracts only its findings JSON, and permits at most one bounded resume where the runner reports a real resume ID. Each lane invocation has the runner’s 15-minute deadline. The nine runner readers are Sol, Astra, Terra, Gemini Pro, Gemini Flash, Grok, Kimi K3, GLM 5.2 and Muse Spark; when Claude Code hosts, the Claude Opus lane from the same procedure runs beside them (owner, September 23).
+2. Follow [the shared fixed review-lane procedure](../feature/references/review-lanes.md) with the `qc` profile and `.feature/lanes/qc.brief`. It starts exactly eight fixed high-effort lanes, the same as critique, collects each with bounded waits, extracts only its findings JSON, and permits at most one bounded resume where the runner reports a real resume ID. Each lane invocation has the runner’s 15-minute deadline. The eight runner readers are Sol, Astra, Gemini Pro, Gemini Flash, Grok, Kimi K3, GLM 5.2 and Muse Spark; when Claude Code hosts, the Claude Opus lane from the same procedure runs beside them (owner, September 23).
 
 3. **Your own review, while the lanes run.** Read the diff under the same lens card and the same finality rule, in the same holistic way, reading whatever real code the diff touches, under the same reading ceiling as the brief: a package's `.d.ts` types and shipped docs under `node_modules` when a claim depends on an exact name or shape, never its built or minified output, never a runtime trace. Write your findings to `.feature/lanes/qc-claude.findings.json` in the same shape as the lane contract above, so every lane sits on equal footing and is auditable. This is the review that most often catches "the plan asked for X and X quietly did not land"; do not skimp on it because other readers are also looking. Finish it before the first lane returns where you can; once it is written, the remaining time is only waiting.
 

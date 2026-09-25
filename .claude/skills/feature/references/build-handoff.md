@@ -12,7 +12,7 @@ Run in a foreground Bash call:
 python3 .claude/scripts/build-launch.py start <N> --source feature --model astra
 ```
 
-Use `--source qc` after approval of QC fixes. Substitute `astra` or `terra` only when requested. The output includes the exact job directory, branch, model, status and, once available, Codex session ID. `RUNNING` confirms the process launched, not that the build succeeded. Never issue a second start while that build is running.
+Use `--source qc` after approval of QC fixes. Every build runs on Astra (owner, September 24); `--model sol` exists only for an explicit owner request. The output includes the exact job directory, branch, model, status and, once available, Codex session ID. `RUNNING` confirms the process launched, not that the build succeeded. Never issue a second start while that build is running.
 
 Register one completion watcher using the returned absolute job path:
 

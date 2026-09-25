@@ -27,7 +27,7 @@ CRITIQUE = (
 )
 PROFILES = {
     "critique": CRITIQUE,
-    "qc": CRITIQUE[:2] + (("codex-terra", "terra"),) + CRITIQUE[2:],
+    "qc": CRITIQUE,
 }
 
 
