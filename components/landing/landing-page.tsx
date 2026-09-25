@@ -4,9 +4,9 @@ import { LandingHero } from "@/components/landing/landing-hero";
 
 export function LandingPage({ signedIn }: { readonly signedIn: boolean }) {
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <LandingHeader signedIn={signedIn} />
-      <main>
+      <main className="flex-1">
         <LandingHero signedIn={signedIn} />
       </main>
       <LandingFooter />

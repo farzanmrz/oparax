@@ -30,7 +30,7 @@ export default async function LoginPage({
     <>
       <PostHogUserContext id={null} email={undefined} />
       <AuthShell
-        title="Log in"
+        title="Log In"
         subtitle={landingContent.auth.loginSubtitle}
         footer={
           <>

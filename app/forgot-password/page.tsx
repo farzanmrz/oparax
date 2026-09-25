@@ -31,7 +31,7 @@ export default async function ForgotPasswordPage({
     <>
       <PostHogUserContext id={null} email={undefined} />
       <AuthShell
-        title="Forgot password"
+        title="Forgot Password"
         subtitle={"We'll email you a link to reset it."}
         footer={
           <p>

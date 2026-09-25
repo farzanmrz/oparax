@@ -28,7 +28,7 @@ export default async function SignupPage({
     <>
       <PostHogUserContext id={null} email={undefined} />
       <AuthShell
-        title="Sign up"
+        title="Sign Up"
         subtitle={landingContent.auth.signupSubtitle}
         footer={
           <p>

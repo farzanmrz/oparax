@@ -35,7 +35,7 @@ export default function GlobalError({
     <html lang="en">
       <body>
         <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-8">
-          <h1 className="font-semibold text-xl">Something went wrong</h1>
+          <h1 className="font-heading font-normal text-xl">Something went wrong</h1>
           <p className="text-muted-foreground text-sm">
             The page couldn&apos;t load. The error has been reported — trying again often works.
           </p>

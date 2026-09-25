@@ -7,10 +7,10 @@
     "ui": "@/components/ui",
     "utils": "@/lib/utils"
   },
-  "iconLibrary": "hugeicons",
+  "iconLibrary": "lucide",
   "rsc": true,
   "rtl": false,
-  "style": "radix-nova",
+  "style": "radix-mira",
   "tailwind": {
     "baseColor": "zinc",
     "config": "",

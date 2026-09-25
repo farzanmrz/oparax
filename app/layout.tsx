@@ -11,7 +11,7 @@ import { landingContent } from "@/lib/landing/content";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-// The fonts are the preset's (DESIGN.md, owner September 24): Nunito Sans for headings, Source Sans 3 for text.
+// Nunito Sans for headings (the preset's) and Source Sans 3 for text (the owner's override); DESIGN.md.
 const nunitoSansHeading = Nunito_Sans({ subsets: ["latin"], variable: "--font-heading" });
 
 const sourceSans3 = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans" });
@@ -63,7 +63,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("bg-background font-sans", nunitoSansHeading.variable, sourceSans3.variable)}
+      className={cn("font-sans", sourceSans3.variable, nunitoSansHeading.variable)}
       suppressHydrationWarning
     >
       <body className={`${jetbrainsMono.variable} antialiased`}>
