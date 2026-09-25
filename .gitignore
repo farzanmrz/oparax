@@ -36,3 +36,4 @@ supabase/.temp/
 # Local lab and lane state (regenerable, never committed)
 .feature/
 .lab/
+.env*
