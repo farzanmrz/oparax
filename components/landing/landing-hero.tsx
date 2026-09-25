@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { LandingCta } from "@/components/landing/landing-cta";
 import { landingContent } from "@/lib/landing/content";
 
 export function LandingHero({ signedIn }: { readonly signedIn: boolean }) {
-  const { hero } = landingContent;
+  const { hero, account } = landingContent;
   return (
     <section className="bg-[radial-gradient(900px_360px_at_50%_0%,oklch(0.62_0.15_245/0.14),transparent_70%)] pt-16 pb-5 text-center">
       <div className="mx-auto max-w-[1356px] px-4">
@@ -17,6 +18,12 @@ export function LandingHero({ signedIn }: { readonly signedIn: boolean }) {
             <LandingCta cta="sign_up" placement="hero" />
           </div>
         )}
+        <p className="mx-auto mt-8 max-w-[36em] text-[15px] leading-normal text-pretty text-muted-foreground">
+          {account.text}{" "}
+          <Link href={account.href} className="underline underline-offset-4 hover:text-foreground">
+            {account.link}
+          </Link>
+        </p>
       </div>
     </section>
   );
