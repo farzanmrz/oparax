@@ -4,6 +4,8 @@ Read this first in any new session, before the roadmap. Written September 23, 20
 
 The owner's standing instruction for every explanation: plain product terms, reasons with every recommendation, no em dashes, nothing invented and presented as his decision, whole-picture answers rather than literal answers to one sentence, and no new documents for him to read (files are for the agents; he reads chat).
 
+September 24 account-setup update: use `../setup.md` for current external-service facts, overriding the older snapshots below. Google and X OAuth 2.0 are enabled in Supabase; Google's Oparax client is External and In production. GitHub public-read access (no expiration), Product Hunt, the X bot, PostHog source-map upload credentials, and Stripe sandbox keys are installed in Vercel and pulled locally. All fifteen variables have exactly one readable Config entry each, with all three environments selected together, at the owner's explicit direction. `.env.bot.local` and stale local-only keys are removed after verification. Domains are retained, Railway shows an expired trial, and production remains paused. Website sign-up, bot delivery, Stripe webhooks and source-map uploader code are still feature work; temporary policy links still need actual documents. No request was sent to Claude.
+
 If the app's conversation rewind has undone files in the working tree, restore them first: `git status --short`, then `git checkout -- .` puts back what is committed. Everything below is committed and pushed on `beta`.
 
 ## 1. Done and committed (nothing here needs re-doing)

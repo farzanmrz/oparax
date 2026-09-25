@@ -4,7 +4,7 @@ Every external account and key this project uses, what state it is in, and when 
 
 ## Vercel
 
-Verified September 11, 2026. Plan: Pro. The `oparax` project deploys to production from the `main` branch only; every other branch, including `beta`, only ever produces a preview. Production has been paused since September 11, so `oparax.ai` currently shows Vercel's paused page. Verified again September 24: exactly these nine environment variables are installed across Production, Preview and Development (no drift), and a copy sits in the local `.env.local` file:
+Verified September 11, 2026. Plan: Pro. The `oparax` project deploys to production from the `main` branch only; every other branch, including `beta`, only ever produces a preview. Production has been paused since September 11, so `oparax.ai` currently shows Vercel's paused page. Before the September 24 setup pass, these nine environment variables were installed across Production, Preview and Development, with a copy in `.env.local`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
@@ -16,17 +16,29 @@ Verified September 11, 2026. Plan: Pro. The `oparax` project deploys to producti
 - `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`
 - `NEXT_PUBLIC_POSTHOG_HOST`
 
-No spend limit or budget alert has been set up on the Vercel account yet. September 24: no marketplace integrations are installed; production is still paused; fourteen domains are attached to the project (oparax.ai plus oparax.com, .net, .xyz, .info, .store, their www variants and two vercel.app aliases), which the owner is reviewing. The Vercel CLI is a global install (under the nvm Node 24) and was upgraded to the current release on September 24.
+No spend limit or budget alert has been set up on the Vercel account yet. September 24: no marketplace integrations are installed; production is still paused; fourteen domains are recorded as attached to the project (oparax.ai plus oparax.com, .net, .xyz, .info, .store, their www variants and two vercel.app aliases). The owner confirmed the domains are intentional, so none were removed. The Vercel CLI is a global install (under the nvm Node 24) and was upgraded to the current release on September 24.
 
-Keys the owner is adding on September 24 (names only; each goes into Vercel as a Sensitive variable in all three environments, then `vercel env pull` refreshes `.env.local`): `X_BOT_BEARER_TOKEN` (moves out of `.env.bot.local`), `PRODUCT_HUNT_TOKEN`, `GITHUB_TOKEN` (fine-grained, public repositories read-only, note the expiry), `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` (test mode), optionally `POSTHOG_PERSONAL_API_KEY` for source-map upload.
+Completed September 24, 2026: the nine original variables plus `X_BOT_BEARER_TOKEN`, `PRODUCT_HUNT_TOKEN`, `GITHUB_TOKEN`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `POSTHOG_PERSONAL_API_KEY` are installed. All fifteen use readable Config storage, with exactly one entry per variable and Production, Preview and Development selected together (All Environments), at the owner's explicit instruction. Separate exports from all three environments were compared with `.env.local`: every value matched, with no duplicate environment assignments or Sensitive entries. Production remains paused; no deployment was triggered. All existing domains are retained because the owner confirmed ownership and intent.
+
+The CLI's `env add --force` selected an existing entry by name rather than reliably replacing each target when several entries shared a name. Obsolete duplicates were removed by exact environment-variable ID only after all replacement values were verified. The owner corrected the remaining per-environment layout: all matching-value entries were consolidated to one entry per name with all three targets selected. For future updates, update that single entry by its ID; never create separate rows for Development, Preview and Production when the value is shared.
 
 ## Supabase
 
 Verified September 11, 2026. One shared project, ref `pcgvpypzfwuchyfwdlwe`, on a direct Supabase account (not connected through the Vercel marketplace) on the free plan. Its keys were generated in the Supabase dashboard and pasted by hand into Vercel, not linked through an integration. The database currently holds no product data (September 24: twenty tables in `public`, every one empty). It still carries two unused columns, `agents.stripe_customer_id` and `agents.stripe_subscription_id`, and five whole tables (`x_webhook_events`, `dm_connections`, `alerts`, `dm_send_ledger`, `onboard_attempts`, plus the `publisher_claim_kind` enum), all left over from the retired issue #131 branch and applied live before it was retired. The owner ruled on September 24 that the legacy schema is wiped with the legacy code (the clear-the-ground pass), so none of this survives. Login providers for issue 4 (owner, September 24): email, Google and X through Supabase Auth; the dashboard steps are in the September 24 click list the owner holds.
 
+## Google and X sign-in setup
+
+Configured and verified September 24, 2026 for issue #146. Google Cloud project `oparax` (number `306527649526`) has a Web application client named `Supabase`. Its authorized JavaScript origin is `https://oparax.ai`, and its redirect URI is `https://pcgvpypzfwuchyfwdlwe.supabase.co/auth/v1/callback`. Google Auth Platform is External and In production, with only `openid`, `userinfo.email` and `userinfo.profile` declared. Support email is `farzanmrz@gmail.com`, the available account in the selector; developer contact is `farzan@oparax.ai`. The client ID and secret are saved in Supabase's Google provider. No extra Google CLI login was needed.
+
+Supabase has Email, Google and X / Twitter (OAuth 2.0) enabled; deprecated Twitter remains disabled. The existing X OAuth 2.0 client ID and secret were reused without regeneration. The X app requests email and retains both earlier callbacks (`http://localhost:3000/auth/x/callback` and `https://oparax.ai/auth/x/callback`) alongside the Supabase callback. Nonce checks remain enabled for Google, and both providers retain the setting requiring an email.
+
+Supabase's Site URL was already `https://oparax.ai`, with `http://localhost:3000/**` and `https://oparax.ai/**` already allowed. Those settings were verified and retained. Auth API checks returned HTTP 302 to `accounts.google.com` and `x.com` with the correct Supabase callback. This verifies provider handoff, not a completed user sign-in: the new website sign-up flow is still built in #146 and production remains paused.
+
+The owner authorized `https://oparax.ai` as a temporary privacy-policy and terms-of-service URL. It is currently entered in both Google branding and X authentication settings; actual policy and terms pages remain to be published and these links updated. Google's policy acceptance was explicitly approved by the owner.
+
 ## Vercel AI Gateway
 
-Verified September 11 to 21, 2026. The Gateway key is named `oparax-experiment-1`. Every model call the product makes, including the Jev ranking model (`typesafe-ai/jev`) and Grok (`spacexai/grok-4.7`), goes through this one Gateway key instead of a separate key per model provider. Two other keys sit unused in the local `.env.local` file: `TYPESAFE_KEY` and `BRIGHTDATA_API_KEY`.
+Verified September 11 to 21, 2026. The Gateway key is named `oparax-experiment-1`. Every model call the product makes, including the Jev ranking model (`typesafe-ai/jev`) and Grok (`spacexai/grok-4.7`), goes through this one Gateway key instead of a separate key per model provider. The unused local-only `TYPESAFE_KEY` and `BRIGHTDATA_API_KEY` entries were removed during the September 24 setup cleanup.
 
 ## X developer app
 
@@ -36,6 +48,8 @@ September 24 (owner): the plain account under `farzan@oparax.ai` is not created;
 
 Still unproven for direct messages: an actual owner-authorized send or reply has never been tested, and opt-in, opt-out, retry and incoming delivery are not built.
 
+September 24 setup pass: the developer console shows the existing `@oparax_ai` bot Active, issued under Oparax, with `dm.write`, `users.read`, `tweet.read`, and `dm.read`, and Everyone allowed to message it. No handle change, token rotation or DM send was performed. Its existing bearer token is now in Vercel as `X_BOT_BEARER_TOKEN`.
+
 ## X Ads
 
 Verified September 22, 2026. A separate X Ads project. Its connector is connected in Claude Code and Codex. No ad campaign exists. Only the owner may create, change or launch a campaign.
@@ -44,29 +58,33 @@ Verified September 22, 2026. A separate X Ads project. Its connector is connecte
 
 Verified September 11 to 22, 2026. Project id `563049`. Its project token is installed in Vercel. A Slack channel has been connected to PostHog since August 18 with zero alerts configured so far.
 
+September 24: created personal key `oparax source maps`, restricted to project `563049` (display name `Default project`) and `error_tracking:write`. Saved as `POSTHOG_PERSONAL_API_KEY` in all three Vercel environments and pulled locally. This is credential preparation only: `next.config.ts` currently has no source-map upload integration, so the key alone does not enable readable production stack traces.
+
 ## Email
 
 Verified September 11, 2026. Supabase's authentication email (signup confirmation, password reset) sends through Google Workspace SMTP as **Oparax <no-reply@oparax.ai>**. A test password-reset email was proven to arrive on September 11. Resend, the alternative email service considered for future alerts, is not installed.
 
 ## Railway
 
-Out of the stack (owner, September 24). The project and its two worker services were deleted on September 12; the CLI is still logged in and lists no project; whether the account subscription was also cancelled is unconfirmed (the owner checks the billing page). On September 24 the Railway plugin was uninstalled, the global `use-railway` skill deleted, and the `workers` bundle row removed from the feature skill. Website polling runs on a Vercel cron and X delivery arrives by webhook, so nothing needs a worker.
+Out of the stack (owner, September 24). The project and its two worker services were deleted on September 12; the CLI is still logged in and lists no project. On September 24 the Railway plugin was uninstalled, the global `use-railway` skill deleted, and the `workers` bundle row removed from the feature skill. Website polling runs on a Vercel cron and X delivery arrives by webhook, so nothing needs a worker.
+
+Billing verified in Chrome September 24: the Oparax workspace shows Trial, with Trial expired, rather than an active Hobby or Pro subscription. No billing settings were changed.
 
 ## Bright Data
 
-A Bright Data API key is on file, but its zones are not configured, and it is not used in the first build of the product; most seed sources (66 of 76) can be read directly without it.
+Bright Data is not used in the first build of the product; its zones are not configured and its unused local key was removed in the September 24 cleanup. Most seed sources (66 of 76) can be read directly without it.
 
 ## Stripe
 
-Nothing is set up. One attempt exists in the project's history: on August 28, installing Stripe through the Vercel marketplace stalled at a browser terms-acceptance step and was abandoned.
+September 24: the owner created a direct Stripe account with `farzan@oparax.ai`. Its Oparax sandbox is `acct_1T5QSeEnXImHVwy0`. Existing sandbox keys are installed as `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` in all three Vercel environments and pulled locally. A read-only balance request returned HTTP 200 with `livemode: false`. No live-mode setup, charges, products, prices or subscriptions were created. The webhook endpoint and signing secret remain part of #147 when its route exists.
 
 ## GitHub and Product Hunt
 
-The owner is creating both tokens on September 24 (a fine-grained GitHub token scoped to public repositories, a Product Hunt developer token that does not expire), stored in Vercel as `GITHUB_TOKEN` and `PRODUCT_HUNT_TOKEN`; the digest feature (#136) uses them when it is planned. Until the product has its first paying user, the owner uses Product Hunt's API in his personal capacity; once someone pays, he emails Product Hunt directly.
+Created September 24: GitHub fine-grained token `oparax-digest`, resource owner `farzanmrz`, public repositories read-only, no additional account permissions, and no expiration at the owner's request. An authenticated read of another owner's public repository (`vercel/next.js`) returned HTTP 200. Product Hunt application `Oparax` (id `300256`) uses the Confidential client type and redirect `https://oparax.ai`; its developer token has no expiration. A public-feed GraphQL read returned HTTP 200 without errors. Tokens are stored as `GITHUB_TOKEN` and `PRODUCT_HUNT_TOKEN` in all three Vercel environments and pulled locally; the digest feature (#136) uses them when built. The owner's stated plan remains personal use until the first paying user, at which point he contacts Product Hunt about business use; no commercial permission has been obtained by this setup.
 
 ## Local env files
 
-`.env.local` is a local copy of the variables installed in Vercel, refreshed with `vercel env pull`; nothing is hand-edited locally (owner, September 24: Vercel is the only place keys are typed). `.env.bot.local` holds only the X bot token and is deleted as soon as that token is in Vercel. The two local-only names `TYPESAFE_KEY` and `BRIGHTDATA_API_KEY` are dead (TypeSafe and xAI are registered on the Gateway as bring-your-own-key providers) and disappear at the next pull. The `poller` and `ingest` worker folders each keep an `.env.example` file that lists variable names only, no values.
+`.env.local` is a local copy of the variables installed in Vercel, refreshed with `vercel env pull`; nothing is hand-edited locally (owner, September 24: Vercel is the source of truth). September 24: the bot token was uploaded and its downloaded value compared with `.env.bot.local` before that obsolete file was deleted. A clean Vercel export replaced `.env.local` with file permissions `0600`, removing the dead local-only `TYPESAFE_KEY` and `BRIGHTDATA_API_KEY`. Pulling over an existing file can preserve stale local entries, so use a fresh ignored export and verify before replacing it when cleaning obsolete variables. The `poller` and `ingest` worker folders each keep an `.env.example` file that lists variable names only, no values.
 
 ## Claude Design
 
