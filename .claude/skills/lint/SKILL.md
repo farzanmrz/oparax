@@ -2,7 +2,7 @@
 name: lint
 description: >-
   Resolve residual Biome lint findings on a feature branch's changed files: the
-  rules `biome check --write` can't safely auto-fix. Not a flow phase — a
+  rules `biome check --write` can't safely auto-fix. Not a flow phase, a
   standalone utility skill, runnable on any branch (/lint). NOT for formatting: the PostToolUse hook
   already does that on every write.
 argument-hint: "[base ref, default beta]"
@@ -76,4 +76,3 @@ Return a compact summary: findings resolved per file, anything still unresolved,
 
 * **Scope:** every changed file, and only changed files. Cover all of them, and never fix pre-existing findings in untouched code: that's scope creep; surface them to the user instead of fixing them here.
 * **The safe pass is NOT this skill's job:** the `PostToolUse` hook owns it, continuously. Never re-run `biome check --write` in bulk here: that would put formatting churn back into the QC diff, which is exactly what moving it to the hook removed.
-* **This is the single place `pnpm build` runs in the feature workflow.**

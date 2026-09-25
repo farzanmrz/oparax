@@ -16,7 +16,7 @@ description: >-
   and /qc do those).
 argument-hint: "[issue # | plain description of the addition]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Bash(python3 *) Skill Read Write Edit WebFetch WebSearch Monitor
-model: claude-fable-5
+model: fable
 disable-model-invocation: true
 ---
 
@@ -26,7 +26,7 @@ One session, start to finish. This skill never builds, never runs QC; it ends by
 
 ## Same planning collaboration as feature
 
-Read [the shared pair-planning protocol](../feature/references/pair-planning.md). Amend is feature planning for an addition: Fable and Astra (`gpt-6-astra`) use the same independent drafts, cross-review, combined-plan verification, optional design review, five critique lanes and paired adjudication. Fable hosts in Claude Code; Astra hosts in Codex, at high effort. Use a fresh pair working directory for this amendment. Existing approved plans, earlier amendments and applied fixes are settled context; only the requested addition is open for design. Keep the amendment formats and existing issue/branch defined below. The manual build handoff remains step 6.
+Read [the shared pair-planning protocol](../feature/references/pair-planning.md). Amend is feature planning for an addition: Fable and Astra (`gpt-6-astra`) use the same independent drafts, cross-review, combined-plan verification, optional design review, the same eight critique lanes and paired adjudication. Fable hosts in Claude Code; Astra hosts in Codex, at high effort. Use a fresh pair working directory for this amendment. Existing approved plans, earlier amendments and applied fixes are settled context; only the requested addition is open for design. Keep the amendment formats and existing issue/branch defined below. The manual build handoff remains step 6.
 
 ## Working style, every step of this command
 

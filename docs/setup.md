@@ -47,7 +47,7 @@ Supabase's auth email (sign-up confirmation, password reset) sends through Googl
 
 ## Stripe
 
-Direct account under `farzan@oparax.ai`; sandbox `Oparax sandbox`, `acct_1T5QSeEnXImHVwy0`, test mode. Test keys are `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY`. The Stripe connector is connected in Claude and Codex. Nothing is created in the account (no products, prices or live mode). The webhook endpoint and its signing secret come with issue 5 (#147).
+Direct account under `farzan@oparax.ai`; sandbox `Oparax sandbox`, `acct_1T5QSeEnXImHVwy0`, test mode. Test keys are `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY`. The Stripe plugin is installed and signed in in Claude Code; Codex has its own Stripe plugin. The sandbox is the only Stripe account. Nothing is created in the account (no products, prices or live mode). The webhook endpoint and its signing secret come with issue 5 (#147).
 
 ## GitHub and Product Hunt
 
@@ -59,7 +59,7 @@ Direct account under `farzan@oparax.ai`; sandbox `Oparax sandbox`, `acct_1T5QSeE
 
 ## Claude Design
 
-Design-system project **Oparax** (id `14526a56-d87c-4973-b4fc-123c0a668ec6`) holds a synced copy of `design-system/`. The repo is the source of truth; re-sync after any change to DESIGN.md.
+Design-system project **Oparax** (id `14526a56-d87c-4973-b4fc-123c0a668ec6`) holds a synced copy of `design-system/`. The repo is the source of truth; the design-sync hook (`.claude/hooks/design-sync.sh`) makes Claude re-sync whenever DESIGN.md, the theme tokens or `design-system/` change.
 
 ## Not used
 

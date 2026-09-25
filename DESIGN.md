@@ -2,6 +2,8 @@
 
 The look is stock shadcn/ui in the Mira style, dark by default with a light mode the person can switch to (owner, September 23; rebuilt on Mira September 24). This file is the whole contract; `app/globals.css` holds the tokens. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (a Claude Code hook makes Claude re-sync it whenever this file, the theme or `design-system/` change; owner, September 24), and built from the export with shadcn components.
 
+This file and the theme tokens in `app/globals.css` change only when the owner explicitly approves the change in the session he is working in ("this is good, change the design system"; owner, September 24). No stage, build, background Codex or Claude session or subagent edits them on its own, and adding a shadcn component never requires changing them. When an approved change lands, the design-sync hook (`.claude/hooks/design-sync.sh`) makes Claude re-sync Claude Design.
+
 ## How it fits together
 
 Three layers. The theme (the named colors, the radius and the fonts in `app/globals.css`) is set once. The style (Mira) is the shape of each component, and each component's variants (default, secondary, outline, ghost, link, destructive) are wired to the theme's colors, so changing a color changes every component at once.

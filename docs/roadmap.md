@@ -2,7 +2,7 @@
 
 Rewritten September 19, 2026, when the product was defined and the experiments ended. This is the one plan: what is being built, in what order, every decision made and by whom, what is still open, and how it got here. The exact onboarding specification, with every rejected direction and why, is [onboarding-algorithm.md](onboarding-algorithm.md). The experiment it serves is [discovery/exp1.md](discovery/exp1.md). Every slice below is a GitHub issue whose body is the brief its `/feature` session starts from.
 
-Naming (owner, September 16): the thing a person gets is a **monitor**. "Desk" and "agent" are the legacy names for the same row in the code.
+Naming (owner, September 16): the thing a person gets is a **monitor**. "Desk" and "agent" are retired names for the same thing.
 
 ## 1. The product
 
@@ -81,7 +81,7 @@ How the price gets found (assistant's account, September 19; the number is the o
 
 ## 10. The public door: landing page, guards, ads
 
-The live site is a placeholder homepage with the privacy and terms pages. The new landing page shows the product working, carries the box, and sends a submit straight to oparax.ai/<handle> in its building state. References from September 16: v0.app, granola.ai, f5bot.com; Motion is already in the repo; no embed tools. The look stays on the current design tokens; the pages are designed fresh through Claude Design or the feature flow's design step (owner, September 17).
+The live site is a placeholder homepage with the privacy and terms pages. The new landing page shows the product working, carries the box, and sends a submit straight to oparax.ai/<handle> in its building state. References from September 16: v0.app, granola.ai, f5bot.com; no embed tools. The look is DESIGN.md (stock shadcn Mira, rebuilt September 24); the owner designs the pages in Claude Design and the export is the plan's visual contract (owner, September 23).
 
 Guards for a free box: one build per handle (a repeat opens the built page); a daily spend ceiling counted from the cost ledger, which exists so a viral link or a script cannot spend without limit, with a "full for today, leave your handle" message (the number is open; $25 is the proposal); Vercel's free invisible bot check. The only abuse guard ever written was an in-memory limiter on the retired August branch.
 
@@ -121,7 +121,7 @@ One slice at a time through the flow: `/feature <issue>` plans it from the issue
 | 5 | [#147](https://github.com/farzanmrz/oparax/issues/147) After sign-up | A signed-up person edits sources, turns on alerts and picks their cadence and channel, watches X accounts within the allowance, and pays on day seven |
 | tabled | [#136](https://github.com/farzanmrz/oparax/issues/136) GitHub and Product Hunt digests; the grouped view (no issue yet); ads | Untouched until the owner brings them back |
 
-Five issues, the owner's structure (September 23): "I would want to understand the onboarding algorithm and create the onboarding page. The feed page itself, with which comes the downstream algorithm. Once that's set up, we go back to the landing page to figure out how the whole flow would go, then on the feed page, how we are getting the sign-up... If you sign up, that in and of itself becomes the fifth issue." The five were written fresh on September 24 (owner: "fuck the existing issues, create issues anew with the correct ordering and information"); the earlier issues (#133 to #142) are closed and point at their replacements. The design-system reset was applied directly on `beta` on September 23 (stock shadcn from the preset, dark by default with a light switch, Nunito Sans headings, Source Sans 3 text, JetBrains Mono for handles and counts; see `DESIGN.md`), so slice 1 starts in the new look. Supabase, Vercel and PostHog are not issues; each plan names what it touches. The five get links after issue 1 and again as each later issue changes what they see. Experiment 1 is fully running when issue 3 ships.
+Five issues, the owner's structure (September 23): "I would want to understand the onboarding algorithm and create the onboarding page. The feed page itself, with which comes the downstream algorithm. Once that's set up, we go back to the landing page to figure out how the whole flow would go, then on the feed page, how we are getting the sign-up... If you sign up, that in and of itself becomes the fifth issue." The five were written fresh on September 24 (owner: "fuck the existing issues, create issues anew with the correct ordering and information"); the earlier issues (#133 to #142) are closed and point at their replacements. The design system was reset directly on `beta` on September 23 and rebuilt on stock shadcn Mira on September 24 (see `DESIGN.md`), so issue 1 starts in the new look. Supabase, Vercel and PostHog are not issues; each plan names what it touches. The five get links after issue 1 and again as each later issue changes what they see. Experiment 1 is fully running when issue 3 ships.
 
 ## 14. Decisions
 
@@ -136,12 +136,12 @@ Made by the owner:
 - Jev is in, behind a test, in the two roles of sections 3 and 4 (removed September 17, restored September 18).
 - GitHub and Product Hunt as daily digests (September 19).
 - Judging and grouping are redesigned together as their own slice.
-- The current look stays; pages are designed fresh through Claude Design or the flow's design step. No new palette board.
+- The look is DESIGN.md (stock shadcn Mira, September 24); pages are designed in Claude Design. DESIGN.md and the theme change only on his explicit approval (September 24).
 - Ads in scope, prepared early, run through the connector, launched by the owner. PostHog is the one dashboard.
 - No more experiments. The experiment scripts, run folders and working documents are deleted; what they taught is written down.
 - Agents may use a browser for their own checks but never on the owner's screen.
 
-Open, each settled inside the slice that needs it: day-zero stories (2); how a story closes and a card updates (2); where polling runs and how often (3); what gets alerted and the bot's transport (4); who may claim a page and account linking (6); the price, the tiers, the size of each pool and how alerts are counted inside a plan (7); the daily ceiling, the ads handle, and whether Farzan and Kush are paying seats or test seats (8).
+Open, each settled inside the issue that needs it: day-zero stories and where polling runs and how often (issue 2); how a story closes and a card updates (the grouped view, tabled); the daily ceiling and the ads handle (issue 3); who may claim a page and account linking (issue 4); what gets alerted, the bot's transport, the price, the tiers, the size of each pool, how alerts are counted inside a plan, and whether Farzan and Kush are paying seats or test seats (issue 5).
 
 Assistant proposals the owner has not approved, marked so they are never mistaken for decisions: a second judgment on whether a story is worth a DM; a per-monitor daily item budget; demoting a source whose items are never on the beat; a share link on the page. Not on this list because the owner did ask for them: no duplicate items sent to a person (September 16), and the monthly pool of watched posts (September 19).
 
