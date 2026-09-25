@@ -1,6 +1,6 @@
 # Oparax Design System
 
-The look is stock shadcn/ui in the Mira style, dark by default with a light mode the person can switch to (owner, September 23; rebuilt on Mira September 24). This file is the whole contract; `app/globals.css` holds the tokens. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (a Claude Code hook makes Claude re-sync it whenever this file, the theme, the components or `design-system/` change; owner, September 24), and built from the export with shadcn components.
+The look is stock shadcn/ui in the Mira style, dark by default with a light mode the person can switch to (owner, September 23; rebuilt on Mira September 24). This file is the whole contract; `app/globals.css` holds the tokens. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (a Claude Code hook makes Claude re-sync it whenever this file, the theme or `design-system/` change; owner, September 24), and built from the export with shadcn components.
 
 ## How it fits together
 
@@ -24,7 +24,7 @@ The owner's preset code is `bzq0WEyKe` (Mira, Zinc, Blue, Cyan charts, lucide, I
 ## Components
 
 - **Stock Mira, never hand-edited.** Screens compose the components in `components/ui/` with Tailwind classes; the files themselves stay as shadcn wrote them, so a reinstall never loses work.
-- **Add and delete, nothing else.** A missing component is added with `pnpm dlx shadcn add <name>` and arrives in Mira, colored by the theme; one nothing uses is deleted. Current set: button, dialog, input, label, sonner, spinner, textarea, tooltip.
+- **Add and delete, nothing else.** A missing component is added with `pnpm dlx shadcn add <name>` and arrives in Mira, colored by the theme, so adding one never changes this file; one nothing uses is deleted. This file changes only when the look itself is deliberately changed.
 - **Controls use Mira's defaults with no additions.** Buttons, inputs and textareas keep the resting look and focus ring shadcn generates (owner, September 24): no theme-wide shadow or focus override, and no one-off glow, outline or wash on a single screen. Every Sign up button is the same stock button.
 - **Touch targets.** At least 44px below the `desk` breakpoint (700px) and 24px above. Mira's default controls are compact (28px), so screens enlarge them on phones.
 
