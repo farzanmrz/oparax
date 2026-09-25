@@ -22,6 +22,8 @@ Completed September 24, 2026: the nine original variables plus `X_BOT_BEARER_TOK
 
 The CLI's `env add --force` selected an existing entry by name rather than reliably replacing each target when several entries shared a name. Obsolete duplicates were removed by exact environment-variable ID only after all replacement values were verified. The owner corrected the remaining per-environment layout: all matching-value entries were consolidated to one entry per name with all three targets selected. For future updates, update that single entry by its ID; never create separate rows for Development, Preview and Production when the value is shared.
 
+September 24 follow-up: the owner also requested storage of Product Hunt's application credentials. Added `PRODUCT_HUNT_API_KEY` and `PRODUCT_HUNT_API_SECRET`, bringing the current total to seventeen variables. Each has one readable Config entry targeting Production, Preview and Development together. Readback verified the stored values; a fresh `.env.local` export matches all seventeen, with the previous fifteen values unchanged and file permissions `0600`.
+
 ## Supabase
 
 Verified September 11, 2026. One shared project, ref `pcgvpypzfwuchyfwdlwe`, on a direct Supabase account (not connected through the Vercel marketplace) on the free plan. Its keys were generated in the Supabase dashboard and pasted by hand into Vercel, not linked through an integration. The database currently holds no product data (September 24: twenty tables in `public`, every one empty). It still carries two unused columns, `agents.stripe_customer_id` and `agents.stripe_subscription_id`, and five whole tables (`x_webhook_events`, `dm_connections`, `alerts`, `dm_send_ledger`, `onboard_attempts`, plus the `publisher_claim_kind` enum), all left over from the retired issue #131 branch and applied live before it was retired. The owner ruled on September 24 that the legacy schema is wiped with the legacy code (the clear-the-ground pass), so none of this survives. Login providers for issue 4 (owner, September 24): email, Google and X through Supabase Auth; the dashboard steps are in the September 24 click list the owner holds.
@@ -35,6 +37,34 @@ Supabase has Email, Google and X / Twitter (OAuth 2.0) enabled; deprecated Twitt
 Supabase's Site URL was already `https://oparax.ai`, with `http://localhost:3000/**` and `https://oparax.ai/**` already allowed. Those settings were verified and retained. Auth API checks returned HTTP 302 to `accounts.google.com` and `x.com` with the correct Supabase callback. This verifies provider handoff, not a completed user sign-in: the new website sign-up flow is still built in #146 and production remains paused.
 
 The owner authorized `https://oparax.ai` as a temporary privacy-policy and terms-of-service URL. It is currently entered in both Google branding and X authentication settings; actual policy and terms pages remain to be published and these links updated. Google's policy acceptance was explicitly approved by the owner.
+
+### Google branding verification follow-up
+
+Read September 24, 2026 from Google Auth Platform's Branding verification issues panel for project `oparax`, after the owner uploaded the logo. Google reported six findings from the previous verification attempt:
+
+| Finding reported by Google | Work required before resubmission |
+| --- | --- |
+| The homepage at `https://oparax.ai` was unresponsive. | Make the production homepage publicly reachable. Production was intentionally paused during setup; changing that remains separate launch work. |
+| Google could not verify that the homepage belongs to the owner. | Verify domain ownership with Google for the account associated with the Cloud project. Owning the domain and attaching it in Vercel do not alone establish Google's ownership verification. |
+| The homepage did not link to a privacy policy. | Add a visible link on the public homepage to the actual privacy page. |
+| The privacy-policy URL was unresponsive. | Publish a publicly reachable privacy page, with no login required. |
+| The privacy page did not sufficiently explain data collection and use. | Write Oparax-specific content describing how Google user data is accessed, used, stored and shared. The temporary homepage is not a privacy policy. |
+| The privacy-policy address was identical to the homepage address. | Give the policy its own URL and update Google branding to point to it. |
+
+No logo-specific rejection appeared in this panel. The findings concern the submitted website and privacy policy; they are not proof that the OAuth client credentials are wrong. The temporary links permitted initial setup but did not satisfy branding verification. Record these as unresolved, not fixed: no re-verification request was submitted in this follow-up. Once the pages and ownership are ready, check all six findings and then request re-verification. Google's guidance: [homepage requirements](https://support.google.com/cloud/answer/13807376) and [privacy-policy requirements](https://support.google.com/cloud/answer/13806988).
+
+Separate owner-requested branding follow-up: change the user-facing support email to `farzan@oparax.ai` when it is available in Google's selector. The currently recorded Gmail support address can be shown to users; developer contact information is where Google contacts the maintainer and does not replace that user-facing address. Actual terms pages and their final Google/X links are also pending. These follow-ups do not require adding localhost as an authorized Google domain: Google returns to the hosted Supabase callback, and Supabase's allowed return URLs already include localhost.
+
+Concrete completion checklist, following the panel's Learn more links and Google's [domain verification instructions](https://support.google.com/cloud/answer/13804266):
+
+- [ ] In Google Search Console, use the Google account that owns the Oparax Cloud project (currently `farzanmrz@gmail.com`). Add a **Domain** property for `oparax.ai`, not a URL-prefix property. Add Google's supplied TXT record at the domain's DNS host, then verify it in Search Console. Confirm the verifying account has Project Owner access in Cloud; merely attaching a domain in Vercel is insufficient.
+- [ ] Publish the real homepage at `https://oparax.ai`, accessible without signing in and without a paused/deployment-protection screen. Identify Oparax, explain what it does and why it requests Google identity information. Keep the submitted URL consistent with the page users actually reach.
+- [ ] Publish a dedicated HTML privacy page on the verified domain, proposed path `/privacy`, and link it visibly from the homepage and relevant app screens. Name Oparax/OPARAX AI INC. Describe the Google identity data actually received, its purpose, storage and protection, recipients/processors, retention and how users request deletion. Ground every claim in implemented behavior; do not publish generic template promises or invented retention periods. A PDF or embedded document is not the required web page.
+- [ ] Update Google branding with the real homepage and distinct privacy URL. Set the user-facing support address to the Oparax address once selectable. Publish the terms page and replace the temporary terms link too; terms were a known setup follow-up, not one of the six reported findings. Keep the Supabase OAuth callback intact.
+- [ ] Check the public pages while signed out: both load, the privacy link works, names match the consent screen, and the policy reflects the actual basic identity/email/profile access and data handling. Confirm domain verification in Search Console. These checks must be against the public domain, not only localhost.
+- [ ] After every finding is resolved, choose the fixed-issues option in Google Auth Platform and request re-verification. If Google's existing review email asks for a reply, provide the completed URLs and ownership confirmation in that review thread. Approval is Google's decision; record the returned status rather than assuming submission means approval.
+
+This checklist is recorded work, not a claim the pages, DNS verification or resubmission are complete. The September 24 follow-up changed credentials and documentation only; it did not unpause production or deploy the unfinished rebuild.
 
 ## Vercel AI Gateway
 
@@ -60,6 +90,8 @@ Verified September 11 to 22, 2026. Project id `563049`. Its project token is ins
 
 September 24: created personal key `oparax source maps`, restricted to project `563049` (display name `Default project`) and `error_tracking:write`. Saved as `POSTHOG_PERSONAL_API_KEY` in all three Vercel environments and pulled locally. This is credential preparation only: `next.config.ts` currently has no source-map upload integration, so the key alone does not enable readable production stack traces.
 
+Source-map implementation follow-up: configure the build to generate and upload the maps matching each release automatically, using this key. Maps translate an error's location in compressed website code back to the original file and line. They are generated artifacts, not files the owner writes or updates by hand. Every changed build needs its own matching maps; automating that as part of the build removes routine manual work. Verify the integration with an error from a known release resolving to its original source location. This follow-up records the requirement only; no uploader code was added during account setup.
+
 ## Email
 
 Verified September 11, 2026. Supabase's authentication email (signup confirmation, password reset) sends through Google Workspace SMTP as **Oparax <no-reply@oparax.ai>**. A test password-reset email was proven to arrive on September 11. Resend, the alternative email service considered for future alerts, is not installed.
@@ -78,9 +110,13 @@ Bright Data is not used in the first build of the product; its zones are not con
 
 September 24: the owner created a direct Stripe account with `farzan@oparax.ai`. Its Oparax sandbox is `acct_1T5QSeEnXImHVwy0`. Existing sandbox keys are installed as `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` in all three Vercel environments and pulled locally. A read-only balance request returned HTTP 200 with `livemode: false`. No live-mode setup, charges, products, prices or subscriptions were created. The webhook endpoint and signing secret remain part of #147 when its route exists.
 
+September 24 connector follow-up: the Stripe plugin in this Codex session lists `Oparax sandbox`, account `acct_1T5QSeEnXImHVwy0`, with `livemode: false`, matching the application's test keys. Both read and write tools are exposed. The account-list response does not report the complete permission grant, so this confirms the connected sandbox without claiming every write operation has been tested. No transaction or test mutation was performed merely to prove access. The owner reports authorizing the connection; Claude's separate connection was not inspected.
+
 ## GitHub and Product Hunt
 
 Created September 24: GitHub fine-grained token `oparax-digest`, resource owner `farzanmrz`, public repositories read-only, no additional account permissions, and no expiration at the owner's request. An authenticated read of another owner's public repository (`vercel/next.js`) returned HTTP 200. Product Hunt application `Oparax` (id `300256`) uses the Confidential client type and redirect `https://oparax.ai`; its developer token has no expiration. A public-feed GraphQL read returned HTTP 200 without errors. Tokens are stored as `GITHUB_TOKEN` and `PRODUCT_HUNT_TOKEN` in all three Vercel environments and pulled locally; the digest feature (#136) uses them when built. The owner's stated plan remains personal use until the first paying user, at which point he contacts Product Hunt about business use; no commercial permission has been obtained by this setup.
+
+September 24 follow-up (owner): Product Hunt's existing application key and secret are also stored as `PRODUCT_HUNT_API_KEY` and `PRODUCT_HUNT_API_SECRET` in Vercel, one entry each shared across all three environments, and in the fresh local export. They identify/authenticate the application when obtaining access tokens; the existing `PRODUCT_HUNT_TOKEN` remains sufficient for the current planned public-feed reads. Saving the application credentials does not implement a new authorization flow or require users to connect Product Hunt accounts. No credential was regenerated, and no secret value belongs in this document.
 
 ## Local env files
 
