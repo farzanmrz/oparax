@@ -20,8 +20,8 @@ export function AuthShell({
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <div className="mx-auto flex h-14 w-full max-w-[1356px] items-center px-4">
+          <Link href="/" className="flex items-center gap-2 font-medium tracking-tight">
             <OparaxMark className="size-5" />
             Oparax
           </Link>
@@ -30,7 +30,9 @@ export function AuthShell({
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm">
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm md:p-8">
-            <h1 className="text-xl font-semibold tracking-tight text-balance">{title}</h1>
+            <h1 className="font-heading text-xl font-normal tracking-tight text-balance">
+              {title}
+            </h1>
             {subtitle ? (
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
             ) : null}

@@ -18,7 +18,7 @@ export default async function ResetPasswordPage({
 
   return (
     <AuthShell
-      title="Set a new password"
+      title="Set a New Password"
       subtitle="Choose a new password for your account."
       footer={
         <p>

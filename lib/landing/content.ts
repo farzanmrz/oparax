@@ -22,12 +22,17 @@ export const landingContent = {
       "Oparax watches the internet, GitHub and Product Hunt for you, and brings what matters to you on X.",
     description: "Monitoring is being rebuilt. Existing accounts can still sign in.",
   },
-  account: {
-    text: "When you sign in with Google or X, Oparax receives your name, email address and profile picture and uses them only to create and secure your account.",
-    link: "Read the privacy policy",
-    href: "/privacy",
+  contact: {
+    trigger: "Contact",
+    title: "Contact Us",
+    description: "Tell us what you think of Oparax, what you want it to watch, or what went wrong.",
+    label: "Message",
+    placeholder: "Your feedback",
+    empty: "Write a message before sending.",
+    send: "Send",
+    thanks: "Thanks for reaching out.",
+    close: "Close",
   },
-  footer: "Monitoring is being rebuilt.",
   sharing: {
     title: "Oparax",
     headline: "Monitoring your beat",

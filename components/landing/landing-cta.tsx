@@ -30,11 +30,7 @@ export function LandingCta({
       className={
         placement === "header"
           ? "h-11 min-w-11 px-3 desk:h-8"
-          : `h-11 min-w-11 w-full px-[18px] text-[15px] desk:h-10 desk:w-auto ${
-              cta === "sign_up"
-                ? "shadow-[0_0_0_1px_oklch(0.62_0.15_245/0.35),0_14px_40px_oklch(0.62_0.15_245/0.35)]"
-                : ""
-            }`
+          : "h-11 min-w-11 w-full px-[18px] text-[15px] desk:h-10 desk:w-auto"
       }
     >
       <Link href={destination} onClick={captureActivation}>
