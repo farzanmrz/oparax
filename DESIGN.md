@@ -1,6 +1,6 @@
 # Oparax Design System
 
-The look is stock shadcn/ui in the Mira style, dark by default with a light mode the person can switch to (owner, September 23; rebuilt on Mira September 24). This file is the whole contract; `app/globals.css` holds the tokens. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (the owner runs `/design-sync` after any change here), and built from the export with shadcn components.
+The look is stock shadcn/ui in the Mira style, dark by default with a light mode the person can switch to (owner, September 23; rebuilt on Mira September 24). This file is the whole contract; `app/globals.css` holds the tokens. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (a Claude Code hook makes Claude re-sync it whenever this file, the theme, the components or `design-system/` change; owner, September 24), and built from the export with shadcn components.
 
 ## How it fits together
 
