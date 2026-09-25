@@ -1,29 +1,33 @@
 #!/usr/bin/env python3
-"""Fixed Oparax review profiles using the global critique skill's runner."""
+"""Fixed Oparax review profiles using the global counsel skill's lane runner."""
 
 import argparse
 from pathlib import Path
 import subprocess
 import sys
 
+SCRIPTS = Path.home() / ".agents/skills/counsel/scripts"
+sys.path.insert(0, str(SCRIPTS))
+from providers import MODELS  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-RUNNER = Path.home() / ".agents/skills/critique/scripts/critique-lanes.py"
-# These profiles are shared by the Claude and Codex workflow entry points.
+RUNNER = SCRIPTS / "lanes.py"
+# These profiles are shared by the Claude and Codex workflow entry points: (lane, counsel name).
+# Model ids live in providers.py, so a model bump is made there once.
 CRITIQUE = (
-    ("codex-sol", "codex", "gpt-6-sol"),
-    ("codex-astra", "codex", "gpt-6-astra"),
-    ("agy-pro", "agy", "gemini-3.1-pro-high"),
-    ("agy-flash", "agy", "gemini-3.8-flash-high"),
-    ("grok", "grok", "grok-4.7-build-fast"),
+    ("codex-sol", "sol"),
+    ("codex-astra", "astra"),
+    ("agy-pro", "pro"),
+    ("agy-flash", "flash"),
+    ("grok", "grok"),
     # Owner, 2026-09-23: models outside the other vendors, run on his Cursor Pro+ pool.
-    ("cursor-kimi", "cursor", "kimi-k3-high"),
-    ("cursor-glm", "cursor", "glm-5.2-high"),
-    ("cursor-muse", "cursor", "muse-spark-1.3-high"),
+    ("cursor-kimi", "kimi"),
+    ("cursor-glm", "glm"),
+    ("cursor-muse", "muse"),
 )
 PROFILES = {
     "critique": CRITIQUE,
-    "qc": CRITIQUE[:2] + (("codex-terra", "codex", "gpt-5.6-terra"),) + CRITIQUE[2:],
+    "qc": CRITIQUE[:2] + (("codex-terra", "terra"),) + CRITIQUE[2:],
 }
 
 
@@ -45,7 +49,7 @@ def main():
             command.add_argument("--source-lane", required=True)
     args = parser.parse_args()
     if not RUNNER.is_file():
-        parser.error(f"Global critique runner is missing: {RUNNER}. Restore the installed skill; do not substitute a lane script.")
+        parser.error(f"Global counsel lane runner is missing: {RUNNER}. Restore the installed skill; do not substitute a lane script.")
     run_dir = Path(args.run_dir).expanduser().resolve()
     base = [sys.executable, str(RUNNER), args.command, "--run-dir", str(run_dir)]
     if args.command in ("preview", "start"):
@@ -54,10 +58,11 @@ def main():
             parser.error(f"Review brief is missing: {brief}")
         lanes = PROFILES[args.profile]
         if args.command == "start":
-            existing = [name for name, _, _ in lanes if (run_dir / f"{args.profile}-{name}.json").exists()]
+            existing = [name for name, _ in lanes if (run_dir / f"{args.profile}-{name}.json").exists()]
             if existing:
                 parser.error("This review already has lane records. Continue it or choose a fresh run directory.")
-        for name, provider, model in lanes:
+        for name, counsel_name in lanes:
+            provider, model, _ = MODELS[counsel_name]
             subprocess.run(
                 base + [
                     "--lane", f"{args.profile}-{name}", "--provider", provider,

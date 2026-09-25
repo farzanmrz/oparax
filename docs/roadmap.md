@@ -69,7 +69,7 @@ Continue with X, Continue with Google, or email, through Supabase Auth (owner, S
 
 ## 9. Payment
 
-Day seven, Stripe hosted checkout through the Vercel marketplace (it supplies the keys and starts sandboxed; going live is a reconnect), one product with a monthly and a yearly price, no Stripe-side trial because our clock is the trial, the customer portal for cancelling, refunds by hand, payment attached to the account. Four events matter: first payment, renewal paid, payment failed, subscription ended; each updates paid-through and status, and the webhook must verify Stripe's signature against the unparsed request. Nothing is built.
+Day seven, Stripe hosted checkout on the direct Stripe account the owner created on September 24 (its Oparax sandbox keys are in Vercel; going live swaps in live keys), one product with a monthly and a yearly price, no Stripe-side trial because our clock is the trial, the customer portal for cancelling, refunds by hand, payment attached to the account. Four events matter: first payment, renewal paid, payment failed, subscription ended; each updates paid-through and status, and the webhook must verify Stripe's signature against the unparsed request. Nothing is built.
 
 The price is not decided. Every cost, with its source and the arithmetic per person, lives in [references/cogs.md](references/cogs.md): fetching is free, judging and writing are well under a dollar to a few dollars a month by volume, a daily alert is 45 cents a month, onboarding is under 50 cents once, and watched X posts are half a cent each. Anchors: Reshad said $4 a month, Brieflet charges $12 for similar personalization, the owner floated $5, $20 and $100 in August.
 

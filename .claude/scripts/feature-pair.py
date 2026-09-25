@@ -18,9 +18,13 @@ import sys
 import time
 import uuid
 
+sys.path.insert(0, str(Path.home() / '.agents/skills/counsel/scripts'))
+# Model ids and CLI launch commands are shared with the counsel skill's runner.
+from providers import MODELS as COUNSEL_MODELS, claude_command, codex_command  # noqa: E402
+
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
           "required": ["answer"], "additionalProperties": False}
-MODELS = {'fable': 'claude-fable-5', 'sol': 'gpt-6-sol', 'astra': 'gpt-6-astra'}
+MODELS = {name: COUNSEL_MODELS[name][1] for name in ('fable', 'sol', 'astra')}
 # The default partner is Astra. Routine phases honor an explicit Sol override;
 # only detail and redesign are always Astra.
 PHASES = {'scope': 'routine', 'plain': 'routine', 'detail': 'astra',
@@ -192,32 +196,14 @@ def launch(run, state, prompt):
 
 def command(run, state):
     session = state.get('session_id')
+    research = state['phase'] in RESEARCH_PHASES
     if state['peer'] in ('astra', 'sol'):
-        cmd = ['codex', 'exec']
-        if session:
-            cmd += ['resume', session]
-        else:
-            cmd += ['-s', 'read-only', '-C', state['repo']]
-        # Resume inherits the original sandbox and working directory.
-        cmd += ['-m', state['model'], '-c', 'model_reasoning_effort="high"',
-                '--json', '--output-schema', str(run / 'schema.json')]
-        if state['phase'] in RESEARCH_PHASES:
-            cmd += ['-c', 'web_search="live"']
-        for name in state.get('images', []):
-            cmd += ['--image', str(run / name)]
-        cmd += ['--', '-']
-        return cmd
-    read_tools = 'Read,Glob,Grep'
-    if state['phase'] in RESEARCH_PHASES:
-        read_tools += ',WebFetch,WebSearch'
-    cmd = ['claude', '--print', '--model', 'claude-fable-5', '--effort', 'high',
-           '--output-format', 'json', '--json-schema', json.dumps(SCHEMA),
-           '--permission-mode', 'dontAsk', '--tools', read_tools,
-           '--allowedTools', read_tools, '--strict-mcp-config',
-           '--mcp-config', '{"mcpServers":{}}', '--no-chrome']
-    if session:
-        cmd += ['--resume', session]
-    return cmd
+        return codex_command(state['model'], 'high', cwd=state['repo'], resume=session,
+                             schema=str(run / 'schema.json'), web=research,
+                             images=tuple(str(run / name) for name in state.get('images', [])))
+    tools = ('Read', 'Glob', 'Grep') + (('WebFetch', 'WebSearch') if research else ())
+    return claude_command(state['model'], 'high', tools=tools, schema=json.dumps(SCHEMA),
+                          resume=session)
 
 
 def parse_output(peer, raw):
