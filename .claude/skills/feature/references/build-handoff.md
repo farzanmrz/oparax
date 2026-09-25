@@ -2,17 +2,17 @@
 
 Use only after the owner approves the final feature plan, or from `/qc` once it has written a fix list (owner decision 2026-09-06: the `/qc <N>` invocation is the approval for that round's fixes; QC never stops to ask). Planning/design approval at an earlier checkpoint is not this approval. The host launches Codex CLI in the same local checkout, then stops working. Manual `$build <N>` remains available if the owner prefers it.
 
-- **Model:** Default to `sol`, high effort. For a feature build, an explicit request at the final approval checkpoint selects `astra` or `terra` instead, case-insensitively; state the default and alternatives there, then honor the reply, and do not dispatch if the owner says to wait or launch manually. For a QC fix build, the model comes from the `/qc` invocation's second argument (`/qc 132 astra`, `/qc 132 terra`); anything else means `sol`. This selection is separate from `/feature Astra`, the planning partner, and any earlier build model. Never ask a separate model question.
+- **Model:** Astra High (`astra`), always, for feature builds and QC fix builds alike (owner, September 24: no model question at either launch). The launcher keeps its `--model` flag for a manual `$build` the owner runs himself; no stage passes anything but `astra`, and no stage asks. Do not dispatch if the owner says to wait or launch manually.
 - **Branch and inputs:** The feature start script already checks out `ft/<N>` or `bf/<N>`. Finish issue creation and plan-file renaming first. For QC, write the pending fix list first. Verify the branch, and if necessary switch to that existing branch without discarding or stashing work. Never create a branch from the build launcher. The launcher itself commits and pushes any uncommitted files under `.claude/` or `.codex/` on the branch (tool configuration never blocks a launch); it still refuses a wrong branch, a missing plan, uncommitted files anywhere else, or another detached build in the same checkout. Do not absorb unrelated edits outside those two directories just to clear that check.
-- **Scope:** Launch the literal `$build <N>` with the selected model and high effort, allowing useful subagents. Let the build skill choose BUILD, AMEND or FIX. Do not paste the planning discussion into the build prompt or preselect its mode. Normal Codex configuration and authentication apply; `--approve-for-me` uses automatic approval review with the workspace sandbox, not a permission bypass. Report any rejected operation or unavailable credential as a blocker, not success.
+- **Scope:** Launch the literal `$build <N>` on Astra High, telling the build to use subagents as it sees fit within the approved scope (the build skill's own subagent rules apply). Let the build skill choose BUILD, AMEND or FIX. Do not paste the planning discussion into the build prompt or preselect its mode. Normal Codex configuration and authentication apply; `--approve-for-me` uses automatic approval review with the workspace sandbox, not a permission bypass. Report any rejected operation or unavailable credential as a blocker, not success.
 
 Run in a foreground Bash call:
 
 ```bash
-python3 .claude/scripts/build-launch.py start <N> --source feature --model sol
+python3 .claude/scripts/build-launch.py start <N> --source feature --model astra
 ```
 
-Use `--source qc` after approval of QC fixes. Substitute `astra` or `terra` only when requested. The output includes the exact job directory, branch, model, status and, once available, Codex session ID. `RUNNING` confirms the process launched, not that the build succeeded. Never issue a second start while that build is running.
+Use `--source qc` after approval of QC fixes. Every build runs on Astra (owner, September 24); `--model sol` exists only for an explicit owner request. The output includes the exact job directory, branch, model, status and, once available, Codex session ID. `RUNNING` confirms the process launched, not that the build succeeded. Never issue a second start while that build is running.
 
 Register one completion watcher using the returned absolute job path:
 

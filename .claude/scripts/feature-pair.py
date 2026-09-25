@@ -18,14 +18,20 @@ import sys
 import time
 import uuid
 
+sys.path.insert(0, str(Path.home() / '.agents/skills/counsel/scripts'))
+# Model ids and CLI launch commands are shared with the counsel skill's runner.
+from providers import MODELS as COUNSEL_MODELS, claude_command, codex_command  # noqa: E402
+
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
           "required": ["answer"], "additionalProperties": False}
-MODELS = {'fable': 'claude-fable-5', 'sol': 'gpt-5.6-sol', 'astra': 'gpt-6-astra'}
-PHASES = {'scope': 'sol', 'plain': 'sol', 'detail': 'astra',
-          'design-review': 'sol', 'adjudication': 'sol', 'redesign': 'astra'}
+MODELS = {name: COUNSEL_MODELS[name][1] for name in ('fable', 'sol', 'astra')}
+# The default partner is Astra. Routine phases honor an explicit Sol override;
+# only detail and redesign are always Astra.
+PHASES = {'scope': 'routine', 'plain': 'routine', 'detail': 'astra',
+          'design-review': 'routine', 'adjudication': 'routine', 'redesign': 'astra'}
 RESEARCH_PHASES = {'scope', 'plain', 'design-review'}
-RULES = """You are the independent peer in /feature, not its coordinator.
-Do only the assignment below. Do not invoke /feature or another workflow.
+RULES = """You are the independent planning peer in /feature or /amend, not its coordinator.
+Do only the assignment below. Do not invoke /feature, /amend or another workflow.
 Read repository source as needed, but do not change repository files, git,
 external services or product data.
 Do not run the product app, tests or builds. No subagents or external writes.
@@ -163,7 +169,7 @@ def report(state):
                        'error', 'deadline')}))
 
 
-def peer_for(host, phase, pair_model='sol'):
+def peer_for(host, phase, pair_model='astra'):
     codex_partner = 'astra' if PHASES[phase] == 'astra' else pair_model
     if host == 'fable':
         return codex_partner
@@ -190,32 +196,14 @@ def launch(run, state, prompt):
 
 def command(run, state):
     session = state.get('session_id')
+    research = state['phase'] in RESEARCH_PHASES
     if state['peer'] in ('astra', 'sol'):
-        cmd = ['codex', 'exec']
-        if session:
-            cmd += ['resume', session]
-        else:
-            cmd += ['-s', 'read-only', '-C', state['repo']]
-        # Resume inherits the original sandbox and working directory.
-        cmd += ['-m', MODELS[state['peer']], '-c', 'model_reasoning_effort="high"',
-                '--json', '--output-schema', str(run / 'schema.json')]
-        if state['phase'] in RESEARCH_PHASES:
-            cmd += ['-c', 'web_search="live"']
-        for name in state.get('images', []):
-            cmd += ['--image', str(run / name)]
-        cmd += ['--', '-']
-        return cmd
-    read_tools = 'Read,Glob,Grep'
-    if state['phase'] in RESEARCH_PHASES:
-        read_tools += ',WebFetch,WebSearch'
-    cmd = ['claude', '--print', '--model', 'claude-fable-5', '--effort', 'high',
-           '--output-format', 'json', '--json-schema', json.dumps(SCHEMA),
-           '--permission-mode', 'dontAsk', '--tools', read_tools,
-           '--allowedTools', read_tools, '--strict-mcp-config',
-           '--mcp-config', '{"mcpServers":{}}', '--no-chrome']
-    if session:
-        cmd += ['--resume', session]
-    return cmd
+        return codex_command(state['model'], 'high', cwd=state['repo'], resume=session,
+                             schema=str(run / 'schema.json'), web=research,
+                             images=tuple(str(run / name) for name in state.get('images', [])))
+    tools = ('Read', 'Glob', 'Grep') + (('WebFetch', 'WebSearch') if research else ())
+    return claude_command(state['model'], 'high', tools=tools, schema=json.dumps(SCHEMA),
+                          resume=session)
 
 
 def parse_output(peer, raw):
@@ -327,7 +315,7 @@ def main():
     start.add_argument('--host-draft', required=True)
     start.add_argument('--host', choices=list(MODELS), required=True)
     start.add_argument('--phase', choices=list(PHASES), required=True)
-    start.add_argument('--pair-model', type=str.lower, choices=['sol', 'astra'], required=True)
+    start.add_argument('--pair-model', type=str.lower, choices=['sol', 'astra'], default='astra')
     start.add_argument('--image', action='append', default=[])
     start.add_argument('--reason', help='Required for a substantial post-critique redesign')
     start.add_argument('--timeout', type=int, default=900)

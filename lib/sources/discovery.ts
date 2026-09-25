@@ -1,12 +1,8 @@
 // lib/sources/discovery.ts
 //
-// Discovers how to detect new articles on a site (sitemap primary, RSS fallback). robots.txt
-// is read for ONE purpose only — as a source of candidate sitemap URLs when a site declares
-// one there instead of (or in addition to) a conventional path (#108) — never as a retrieval
-// decision: fetching stays adaptive, decided per fetch at the poller, never declared up front
-// here (#105). robots.txt is a politeness signal, not an access mechanism, and this codebase
-// still never uses it to gate what the fetcher is willing to do. Pure I/O module: no
-// Supabase, no React.
+// Discovers sitemap, RSS, and listing sources from a public site. robots.txt is read only for
+// candidate sitemap URLs and never decides whether the site can be fetched. Pure I/O module:
+// no Supabase, no React.
 
 import type { LookupAddress } from "node:dns";
 import { lookup } from "node:dns/promises";
@@ -29,7 +25,6 @@ const LISTING_SAMPLE_LIMIT = 50;
 const NON_ARTICLE_EXT_RE =
   /\.(svg|png|jpe?g|gif|webp|ico|css|js|json|xml|woff2?|ttf|otf|pdf|mp4|webm)$/i;
 const MAX_HTML_LENGTH = 5_000_000;
-const RESOLVER_SUMMARY_MAX_SERIALIZED_LENGTH = 4_096;
 
 /** Same bound as sitemap.ts's NO_LASTMOD_CANDIDATE_CAP — a robots.txt declaring dozens of
  *  sitemaps (goal.com: 35 locale variants) can't turn one onboarding attempt into dozens of
@@ -45,7 +40,7 @@ export async function fetchSafeSource(
   return (await fetchSafeSourceWithFinalUrl(endpoint, url, expectedHostname, signal)).res;
 }
 
-async function fetchSafeSourceWithFinalUrl(
+export async function fetchSafeSourceWithFinalUrl(
   endpoint: string,
   url: string,
   expectedHostname: string,
@@ -332,10 +327,8 @@ function isPublicIpAddress(address: string): boolean {
   );
 }
 
-/** Exported so `onboardSource` can reject a reporter-pasted URL that names a private/
- *  loopback/link-local address directly — `isSafeDiscoveredUrl`'s same-site check doesn't
- *  apply to the reporter's own input (it IS the site being onboarded by definition), so
- *  this is the standalone guard for that entry point. */
+/** Exported so `extractListingSample` and `isSafeDiscoveredUrl` can reject private,
+ *  loopback and link-local hosts before a fetch. */
 export function isPrivateHostname(hostname: string): boolean {
   // URL.hostname keeps IPv6 literals bracketed; strip so the prefix tests below apply. Also
   // strip a trailing FQDN dot — found in QC review (#110): "localhost." (a valid absolute
@@ -376,14 +369,6 @@ export function isSafeDiscoveredUrl(candidate: string, expectedHostname: string)
   return !isPrivateHostname(host);
 }
 
-/** Resolver-only host boundary. Unlike the sitemap safety floor, this never admits a parent
- * domain of the publication the reporter supplied. */
-export function isResolverAllowedHost(candidateHost: string, resolvedHost: string): boolean {
-  const candidate = candidateHost.toLowerCase().replace(/^www\./, "");
-  const resolved = resolvedHost.toLowerCase().replace(/^www\./, "");
-  return candidate === resolved || candidate.endsWith(`.${resolved}`);
-}
-
 /** True unless the response explicitly declares itself HTML. A soft-404 or SPA catch-all
  *  answers 200 with `text/html`, which would otherwise be read as a working sitemap/feed,
  *  parse to zero entries, and permanently skip the remaining fallbacks. A response with no
@@ -404,15 +389,15 @@ async function urlExists(url: string): Promise<boolean> {
   }
 }
 
-/** Any response at all counts as reachable — even a 404 means the network layer worked.
+/** Any response at all counts as reachable, even a 404 means the network layer worked.
  *  Only a genuine transport-level error (DNS/connection failure) counts as unreachable. Found
- *  live (2026-08-06): `sport.es` (bare apex) is unreachable outright — `fetch` throws before
- *  any HTTP response exists — while `www.sport.es`, the exact same site, resolves fine. #109.
+ *  live (2026-08-06): `sport.es` (bare apex) is unreachable outright (`fetch` throws before
+ *  any HTTP response exists) while `www.sport.es`, the exact same site, resolves fine. #109.
  *
- *  A 15s timeout is NOT treated as unreachable — a slow response still means something is
- *  there. Found in QC review: `fetchWithTimeout` (lib/http-fetch.ts) rethrows a timeout as a
+ *  A 15s timeout is NOT treated as unreachable because a slow response still means something is
+ *  there. Found in QC review: the fetcher rethrows a timeout as a
  *  plain `Error` with the message `"... timed out after 15s"`, indistinguishable from a real
- *  connection failure by `.name` alone once caught here — a slow-but-real apex site would
+ *  connection failure by `.name` alone once caught here. A slow-but-real apex site would
  *  otherwise get misdiverted to a `www.` host that may not even exist, the opposite of what
  *  this function exists to prevent. */
 async function isOriginReachable(origin: string): Promise<boolean> {
@@ -423,18 +408,6 @@ async function isOriginReachable(origin: string): Promise<boolean> {
     if (err instanceof Error && err.message.includes("timed out after")) return true;
     return false;
   }
-}
-
-export async function checkOriginReachable(inputUrl: URL): Promise<boolean> {
-  if (await isOriginReachable(inputUrl.origin)) return true;
-  const toggledHostname = inputUrl.hostname.startsWith("www.")
-    ? inputUrl.hostname.slice(4)
-    : `www.${inputUrl.hostname}`;
-  if (!toggledHostname) return false;
-  const toggledUrl = new URL(inputUrl.toString());
-  toggledUrl.hostname = toggledHostname;
-  if (toggledUrl.hostname !== toggledHostname) return false;
-  return isOriginReachable(toggledUrl.origin);
 }
 
 /** Extracts `<link rel="alternate" type="application/rss+xml" href="...">` from an HTML
@@ -529,7 +502,7 @@ export async function readHtmlWithinLimit(res: Response, endpoint: string): Prom
 
 /** Extracts same-host anchors from server-rendered HTML with a forward-only tag scan. Nested
  *  anchor markup is tag-stripped and can occasionally produce a lossy title. */
-function extractListingSample(html: string, finalUrl: string): SourceSampleEntry[] {
+export function extractListingSample(html: string, finalUrl: string): SourceSampleEntry[] {
   const listingUrl = new URL(finalUrl);
   listingUrl.hash = "";
   listingUrl.search = "";
@@ -571,186 +544,6 @@ function extractListingSample(html: string, finalUrl: string): SourceSampleEntry
     return [];
   }
   return articleShaped.slice(0, LISTING_SAMPLE_LIMIT);
-}
-
-function isFeedShapedPath(pathname: string): boolean {
-  const normalized = pathname.replace(/\/+$/, "").toLowerCase() || "/";
-  return (
-    FEED_PATHS.some((path) => normalized === path || normalized.endsWith(path)) ||
-    /\/(?:feed|rss|atom\.xml|rss\.xml)$/.test(normalized)
-  );
-}
-
-function cleanResolverText(value: string, maxLength: number): string {
-  return Array.from(value, (character) => {
-    const code = character.charCodeAt(0);
-    return code < 32 || (code >= 127 && code <= 159) ? " " : character;
-  })
-    .join("")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, maxLength);
-}
-
-export function summarizePageForResolver(
-  html: string,
-  finalUrl: string,
-): { navPaths: string[]; articleLinkCount: number; sampleTitles: string[] } {
-  const navPaths = new Set<string>();
-  const sampleTitles: string[] = [];
-  let articleLinkCount = 0;
-  const pageHostname = new URL(finalUrl).hostname;
-  const fitsSerializedSummary = (nextNavPaths: string[], nextSampleTitles: string[]) =>
-    JSON.stringify({
-      navPaths: nextNavPaths,
-      articleLinkCount,
-      sampleTitles: nextSampleTitles,
-    }).length <= RESOLVER_SUMMARY_MAX_SERIALIZED_LENGTH;
-  for (const anchor of extractAnchors(html)) {
-    let candidate: URL;
-    try {
-      candidate = new URL(anchor.href, finalUrl);
-    } catch {
-      continue;
-    }
-    if (candidate.protocol !== "http:" && candidate.protocol !== "https:") continue;
-    if (comparableHostname(candidate.hostname) !== comparableHostname(pageHostname)) continue;
-    const path = `${candidate.pathname}${candidate.search}`;
-    if (isArticleShapedPath(candidate.pathname)) {
-      articleLinkCount += 1;
-      const title = cleanResolverText(anchor.text, 120);
-      if (
-        title &&
-        sampleTitles.length < 10 &&
-        !sampleTitles.includes(title) &&
-        fitsSerializedSummary([...navPaths], [...sampleTitles, title])
-      )
-        sampleTitles.push(title);
-    } else if (navPaths.size < 40) {
-      const cleanPath = cleanResolverText(path, 200);
-      if (
-        cleanPath &&
-        !navPaths.has(cleanPath) &&
-        fitsSerializedSummary([...navPaths, cleanPath], sampleTitles)
-      ) {
-        navPaths.add(cleanPath);
-      }
-    }
-  }
-  const boundedNavPaths = [...navPaths].filter(Boolean);
-  while (
-    JSON.stringify({ navPaths: boundedNavPaths, articleLinkCount, sampleTitles }).length >
-    RESOLVER_SUMMARY_MAX_SERIALIZED_LENGTH
-  ) {
-    if (sampleTitles.length > 0) sampleTitles.pop();
-    else boundedNavPaths.pop();
-  }
-  return { navPaths: boundedNavPaths, articleLinkCount, sampleTitles };
-}
-
-export async function validateSectionCandidate(
-  candidateUrl: string,
-  expectedHostname: string,
-  signal?: AbortSignal,
-  onFetchStart?: () => void,
-): Promise<{ finalUrl: string; listingSample: SourceSampleEntry[] } | null> {
-  let candidate: URL;
-  try {
-    candidate = new URL(candidateUrl);
-  } catch {
-    return null;
-  }
-  if (
-    !isResolverAllowedHost(candidate.hostname, expectedHostname) ||
-    !isSafeDiscoveredUrl(candidate.toString(), expectedHostname) ||
-    isFeedShapedPath(candidate.pathname) ||
-    isArticleShapedPath(candidate.pathname)
-  ) {
-    return null;
-  }
-  try {
-    onFetchStart?.();
-    const { res, finalUrl } = await fetchSafeSourceWithFinalUrl(
-      "Resolver section",
-      candidate.toString(),
-      expectedHostname,
-      signal,
-    );
-    if (
-      !res.ok ||
-      !/^\s*(?:text|application)\/x?html\b/i.test(res.headers.get("content-type") ?? "text/html")
-    ) {
-      await res.body?.cancel();
-      return null;
-    }
-    const final = new URL(finalUrl);
-    if (
-      !isResolverAllowedHost(final.hostname, expectedHostname) ||
-      isFeedShapedPath(final.pathname) ||
-      isArticleShapedPath(final.pathname)
-    ) {
-      await res.body?.cancel();
-      return null;
-    }
-    const html = await readHtmlWithinLimit(res, "Resolver section");
-    const listingSample = extractListingSample(html, finalUrl);
-    return listingSample.length > 0 ? { finalUrl, listingSample } : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function fetchPageForResolver(
-  url: string,
-  expectedHostname: string,
-  signal?: AbortSignal,
-): Promise<
-  | { ok: true; finalUrl: string; summary: ReturnType<typeof summarizePageForResolver> }
-  | { ok: false; reason: "off_site" | "article_page" | "unreachable" | "not_html" }
-> {
-  let candidate: URL;
-  try {
-    candidate = new URL(url);
-  } catch {
-    return { ok: false, reason: "off_site" };
-  }
-  if (
-    !isResolverAllowedHost(candidate.hostname, expectedHostname) ||
-    !isSafeDiscoveredUrl(candidate.toString(), expectedHostname)
-  ) {
-    return { ok: false, reason: "off_site" };
-  }
-  if (isArticleShapedPath(candidate.pathname)) return { ok: false, reason: "article_page" };
-  try {
-    const { res, finalUrl } = await fetchSafeSourceWithFinalUrl(
-      "Resolver page",
-      candidate.toString(),
-      expectedHostname,
-      signal,
-    );
-    if (!res.ok) {
-      await res.body?.cancel();
-      return { ok: false, reason: "unreachable" };
-    }
-    const contentType = res.headers.get("content-type");
-    if (contentType && !/^\s*(?:text|application)\/x?html\b/i.test(contentType)) {
-      await res.body?.cancel();
-      return { ok: false, reason: "not_html" };
-    }
-    const final = new URL(finalUrl);
-    if (!isResolverAllowedHost(final.hostname, expectedHostname)) {
-      await res.body?.cancel();
-      return { ok: false, reason: "off_site" };
-    }
-    if (isArticleShapedPath(final.pathname)) {
-      await res.body?.cancel();
-      return { ok: false, reason: "article_page" };
-    }
-    const html = await readHtmlWithinLimit(res, "Resolver page");
-    return { ok: true, finalUrl, summary: summarizePageForResolver(html, finalUrl) };
-  } catch {
-    return { ok: false, reason: "unreachable" };
-  }
 }
 
 /** Checks the given page for an RSS `<link rel="alternate">` tag, returning its resolved
@@ -841,10 +634,8 @@ async function discoverFromRobots(
   }
 
   for (const raw of candidates) {
-    // robots.txt text controls the scheme too — upgrade a same-host http: candidate to https:
-    // before validating it, matching lib/websites.ts's normalizeSourceUrl always preferring
-    // https for reporter input. A candidate that's genuinely http-only still fails urlExists
-    // here and is simply skipped, same as any other non-existent candidate.
+    // Prefer HTTPS for same-host robots.txt candidates before validating them. A genuinely
+    // HTTP-only candidate fails the probe and is skipped.
     const candidate = raw.startsWith("http://") ? raw.replace(/^http:/, "https:") : raw;
     if (!isSafeDiscoveredUrl(candidate, expectedHostname)) continue;
     if (await hasSitemapEntries(candidate)) {

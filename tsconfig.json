@@ -23,7 +23,7 @@
     "strict": true,
     "target": "ES2024"
   },
-  "exclude": ["node_modules", "poller"],
+  "exclude": ["node_modules"],
   "include": [
     "next-env.d.ts",
     "**/*.ts",

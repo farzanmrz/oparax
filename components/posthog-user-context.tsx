@@ -5,21 +5,25 @@ import { useEffect } from "react";
 import { initPostHog } from "@/lib/observability/posthog-client";
 
 /**
- * Identifies the reporter on mount. Reset lives only on the explicit sign-out click path in
- * components/account-menu.tsx, never in this effect. If a session expires, is forced signed out,
- * or closes without that click, the browser remains identified as the last reporter until the
- * next explicit sign-out or identify.
+ * Identifies the signed-in person on mount. The home page and the three auth pages mount it
+ * with a null id so an identity left behind by a password reset or email confirmation is cleared.
  */
 export function PostHogUserContext({
   email,
   id,
 }: {
   readonly email: string | undefined;
-  readonly id: string;
+  readonly id: string | null;
 }) {
   useEffect(() => {
     initPostHog();
     if (!posthog.__loaded) return;
+
+    if (id === null) {
+      if (posthog.get_property("$user_id")) posthog.reset();
+      return;
+    }
+
     posthog.identify(id, { email });
   }, [email, id]);
 

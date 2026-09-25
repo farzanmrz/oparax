@@ -32,12 +32,12 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
   --jq '.[] | select(.body|startswith("## QC round")) | (.body|split("\n")[0])'
 ```
 
-* **Feature-path staleness:** commits after the latest done marker touching feature paths (`app/`, `lib/`, `components/`, `poller/`, `ingest/`, `supabase/`, `public/`, root config) mean the proven state is not the shipping state: STOP and route to another `/qc <N>` round. Meta-only commits (`.claude/`, `.agents/`, `.codex/`, `docs/`, root `*.md`) never trip this.
+* **Feature-path staleness:** commits after the latest done marker touching feature paths (`app/`, `lib/`, `components/`, `supabase/`, `public/`, root config) mean the proven state is not the shipping state: STOP and route to another `/qc <N>` round. Meta-only commits (`.claude/`, `.agents/`, `.codex/`, `docs/`, root `*.md`) never trip this.
 * **Missing marker:** name it and STOP. **Owner override:** "ship anyway" is honored and recorded.
 
 ## 2. The gate ✋
 
-Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. Also read the local detailed plan `.feature/plan-<N>.md` (the issue carries only the plain plan) and, if it has a `## 4. Owner does at ship` part, list those items verbatim in plain words: they are the owner's own operations (Vercel env, Railway redeploys, dashboard toggles) and nothing in the flow executes them; the owner does them around this ship. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
+Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. Also read the local detailed plan `.feature/plan-<N>.md` (the issue carries only the plain plan) and, if it has a `## 4. Owner does at ship` part, list those items verbatim in plain words: they are the owner's own operations (Vercel env and dashboard toggles) and nothing in the flow executes them; the owner does them around this ship. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
 
 ## 3. Ship
 

@@ -1,32 +1,24 @@
-// Root layout — wraps every page in the app. Loads fonts and global CSS.
+// Root layout: wraps every page in the app. Loads fonts and global CSS.
 
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { JetBrains_Mono, Nunito_Sans, Source_Sans_3 } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { landingContent } from "@/lib/landing/content";
 import "./globals.css";
+import { cn } from "@/lib/utils";
 
-// Hanken Grotesk is the design system's UI font family (--font-sans).
-const hankenGrotesk = Hanken_Grotesk({
-  variable: "--font-hanken-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-});
+// The fonts are the preset's (DESIGN.md, owner September 24): Nunito Sans for headings, Source Sans 3 for text.
+const nunitoSansHeading = Nunito_Sans({ subsets: ["latin"], variable: "--font-heading" });
+
+const sourceSans3 = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans" });
 
 // JetBrains Mono backs --font-mono: handles, counts, timestamps, money.
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
-
-// Space Grotesk is reserved for draft/post text (--font-draft).
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["400", "500"],
 });
@@ -57,7 +49,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#121214",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#18181b" },
+  ],
 };
 
 export default function RootLayout({
@@ -66,12 +61,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark bg-background">
-      <body
-        className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} antialiased`}
-      >
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster />
+    <html
+      lang="en"
+      className={cn("bg-background font-sans", nunitoSansHeading.variable, sourceSans3.variable)}
+      suppressHydrationWarning
+    >
+      <body className={`${jetbrainsMono.variable} antialiased`}>
+        {/* Dark by default; the person can switch to light (owner, September 23). */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
         <SpeedInsights />
         <Analytics />
       </body>

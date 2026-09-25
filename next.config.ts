@@ -5,25 +5,14 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@hugeicons/react", "@hugeicons/core-free-icons", "radix-ui"],
   },
-  // The sysprompt markdown is read via readFileSync(process.cwd()/lib/sysprompts/...) at
-  // module load — trace it into every serverless function that transitively imports
-  // lib/sysprompts (the delivery interface, via draft-pipeline.ts -> draft-council-run.ts;
-  // the legacy strip-phrases refresh route and the new-desk create action, both via
-  // lib/sources/onboard-source.ts / lib/voice/extract-guide.ts; and /agents/[id]/voice's
-  // retryExtraction action, which reaches the same lib/voice/extract-guide.ts path via
-  // runExtractionSpendPhase on a manual retry). The per-minute cron dispatcher this list once
-  // traced (/api/cron/tick) was deleted with the retired scan/draft pipeline (D15), the
-  // /api/chat entry it once traced was deleted with the create-desk chat assistant
-  // (create-agent v2 continuation, the deleted create-desk assistant), and the inbound-email
-  // webhook entry was deleted with the whole dormant email-correction path — do not re-add any
-  // without a route to match. See .claude/rules/agent.md's "Bundling the prompts for deploy".
+  async redirects() {
+    return [
+      { source: "/agents", destination: "/", permanent: true },
+      { source: "/agents/:path*", destination: "/", permanent: true },
+    ];
+  },
   outputFileTracingIncludes: {
     "/opengraph-image": ["./assets/fonts/*.ttf"],
-    "/api/ingest": ["./lib/sysprompts/*.md"],
-    "/api/sources/refresh-strip-phrases": ["./lib/sysprompts/*.md"],
-    "/agents/new": ["./lib/sysprompts/*.md"],
-    "/agents/[id]/voice": ["./lib/sysprompts/*.md"],
-    "/agents/[id]/sources": ["./lib/sysprompts/*.md"],
   },
 };
 

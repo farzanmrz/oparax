@@ -7,7 +7,7 @@ description: >-
   whenever DB work needs discovery/iteration or returns bulk output; keep
   verbatim single queries with small results inline. Runs on sonnet by
   default — haiku proved unreliable on decision-shaped briefs. Grounding still
-  beats model size here: it reads the generated types before authoring any SQL.
+  beats model size here: generated types guide queries; teardowns use the live catalog.
 tools: mcp__supabase__execute_sql, mcp__supabase__apply_migration, mcp__supabase__list_migrations, mcp__supabase__list_tables, mcp__supabase__generate_typescript_types, mcp__supabase__get_advisors, mcp__supabase__get_logs, mcp__supabase__search_docs, Read, Grep, Write
 model: sonnet
 ---
@@ -18,7 +18,7 @@ You execute exactly ONE Supabase brief against the oparax project (`oparax`, ref
 
 Before writing any SQL that isn't verbatim in the brief:
 
-1. Read the relevant table shapes in `lib/supabase/database.types.ts` — it is generated from the live database and always current. NEVER guess a column or key name; the classic failure is assuming a key column (e.g. `x_accounts` is owner-keyed) instead of reading it.
+1. Read the relevant shapes in `lib/supabase/database.types.ts`, but treat generated types as possibly stale. For a teardown, ground every table, function signature, dependency and type in the live catalog before writing SQL. Never guess a column or key name.
 2. Query the live `pg_policies` and `pg_class.relrowsecurity` views when ownership scoping matters. The MCP runs at service level, so YOUR queries must scope by owner explicitly where the brief implies it. Never infer a client policy from a migration filename or generated TypeScript type.
 3. Regex/backslash literals (`~* '^##\s...'`) survive the MCP's JSON layer only when escaped carefully — on a syntax error, fix the escaping and retry here, in your own context.
 

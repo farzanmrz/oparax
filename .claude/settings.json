@@ -3,8 +3,7 @@
     "feature": "name-only",
     "qc": "name-only",
     "ship": "name-only",
-    "lint": "name-only",
-    "ui-ux-pro-max": "name-only"
+    "lint": "name-only"
   },
   "permissions": {
     "allow": [
@@ -25,6 +24,17 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/biome-write.sh\"",
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/feature-flow.sh\"",
+            "timeout": 5
           }
         ]
       }

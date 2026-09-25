@@ -1,0 +1,1142 @@
+[
+ {
+  "id": "google-ai-news-and-product-updates",
+  "kind": "rss",
+  "target": "https://blog.google/innovation-and-ai/technology/ai/rss/",
+  "name": "Google",
+  "focus": "AI news and product updates",
+  "lang": "en",
+  "description": "Google is the technology company behind Search, Android and the Gemini AI models. This is its AI section on the official company blog: model and product launches such as Gemini app features, research collaborations on data and science, AI safety and societal impact pieces, developer tools like Antigravity, and roundups of the month's AI announcements. It does not cover Google's non AI product lines such as hardware or ads.",
+  "itemsPerWeek": 6.2,
+  "recentTitles": [
+   "New experts join Google's AI & Economy team",
+   "Co-creating the future of fashion with Google",
+   "Making global data easier to explore"
+  ]
+ },
+ {
+  "id": "sam-altman-personal-blog",
+  "kind": "rss",
+  "target": "https://blog.samaltman.com/posts.atom",
+  "name": "Sam Altman",
+  "focus": "Personal blog",
+  "lang": "en",
+  "description": "Sam Altman is the chief executive of OpenAI. This is the feed of his personal blog: essays on AI progress and the path toward superintelligence, product moments such as Sora 2 and GPT-4o, notes on Helion fusion, and personal reflections on founders and friends. It is opinion and personal writing, not official OpenAI product announcements.",
+  "itemsPerWeek": 1.2,
+  "recentTitles": [
+   "Reflections",
+   "Sora 2",
+   "What I Wish Someone Had Told Me"
+  ]
+ },
+ {
+  "id": "bolt-new-product-and-customer-stories",
+  "kind": "website",
+  "target": "https://bolt.new/blog",
+  "name": "Bolt.new",
+  "focus": "Product and customer stories",
+  "lang": "en",
+  "description": "Bolt.new is an AI powered web app builder. This is its blog: customer stories about people and companies building products on Bolt, feature explainers like Bolt Forge, and how to guides comparing AI, low code and no code app building. It does not cover general AI industry news unrelated to Bolt's own product.",
+  "itemsPerWeek": 12.8,
+  "recentTitles": [
+   "Writers deserve receipts. A filmmaker built them on Bolt.new.",
+   "Flag football is having a moment. FlagStat is keeping score",
+   "What is Bolt Forge?"
+  ]
+ },
+ {
+  "id": "hugging-face-community-ml-research-blog",
+  "kind": "rss",
+  "target": "https://huggingface.co/blog/feed.xml",
+  "name": "Hugging Face",
+  "focus": "Community ML research blog",
+  "lang": "en",
+  "description": "Hugging Face is the open platform and company behind the Transformers library and model hub. This is its blog feed: mostly community authored posts on training and fine tuning techniques, new open models and benchmarks, agent and coding tools, and Gradio app tutorials. Posts come from Hugging Face staff and outside researchers publishing through the platform, not just the company itself.",
+  "itemsPerWeek": 4.8,
+  "recentTitles": [
+   "Your Agent Aced the Task. Will It Do It Again?",
+   "Async GRPO with LoRA across HF Jobs: a bucket, a proxy, and no NCCL",
+   "Rebuilding AUTOMATIC1111 with Gradio Workflow"
+  ]
+ },
+ {
+  "id": "openai-official-news",
+  "kind": "rss",
+  "target": "https://openai.com/news/rss.xml",
+  "name": "OpenAI",
+  "focus": "Official news",
+  "lang": "en",
+  "description": "OpenAI is the AI lab behind ChatGPT. This is its official news feed: model and product launches such as GPT-6 Astra, customer case studies with companies like Cooley and Hex, safety and alignment framework updates, and new ChatGPT features for work, legal and financial services. Research papers and developer changelogs are published elsewhere.",
+  "itemsPerWeek": 14.6,
+  "recentTitles": [
+   "How Cooley is accelerating IPO work with ChatGPT",
+   "Introducing Astra for Law",
+   "Helping older adults use AI in everyday life"
+  ]
+ },
+ {
+  "id": "simon-willison-personal-tech-blog",
+  "kind": "rss",
+  "target": "https://simonwillison.net/atom/everything/",
+  "name": "Simon Willison",
+  "focus": "Personal tech blog",
+  "lang": "en",
+  "description": "Simon Willison is an independent software developer and creator of Datasette. This is the full feed of his personal blog: commentary on new AI models and coding agents, quoted excerpts from other writers on AI and security, his own Datasette release notes, and short running notes on whatever he is working on. It does not cover topics unrelated to software, AI or his own projects.",
+  "itemsPerWeek": 23.9,
+  "recentTitles": [
+   "Gemini Hacked Three Companies in First Known Breakout by Google's AI",
+   "Note on 18th September 2026",
+   "Quoting Thariq Shihipar"
+  ]
+ },
+ {
+  "id": "techcrunch-ai-industry-news",
+  "kind": "rss",
+  "target": "https://techcrunch.com/category/artificial-intelligence/feed/",
+  "name": "TechCrunch",
+  "focus": "AI industry news",
+  "lang": "en",
+  "description": "TechCrunch is a technology news outlet covering startups and the tech industry. This is its artificial intelligence section: model and product launches from labs like Anthropic and OpenAI, funding rounds for AI startups, safety incidents and security research, and analysis of AI company strategy. It does not cover TechCrunch's non AI beats such as fintech or transportation except where AI is the story.",
+  "itemsPerWeek": 267.7,
+  "recentTitles": [
+   "A startup that builds other startups raised $100M, and is all-in on physical AI",
+   "Anthropic is operating a lab that conducts biology experiments",
+   "AI hallucination nearly triggers US military operation"
+  ]
+ },
+ {
+  "id": "techcrunch-startup-and-technology-news",
+  "kind": "rss",
+  "target": "https://techcrunch.com/feed/",
+  "name": "TechCrunch",
+  "focus": "Startup and technology news",
+  "lang": "en",
+  "description": "TechCrunch is a technology news outlet covering startups and the broader tech industry. This is its site wide feed: funding rounds across sectors, product launches, company leadership changes, and consumer technology stories, alongside a heavy share of AI coverage on labs, models and agents. It does not filter to any single beat, it mixes AI with fintech, mobility, gadgets and general startup news.",
+  "itemsPerWeek": 339.8,
+  "recentTitles": [
+   "A startup that builds other startups raised $100M, and is all-in on physical AI",
+   "Anthropic is operating a lab that conducts biology experiments",
+   "AI hallucination nearly triggers US military operation"
+  ]
+ },
+ {
+  "id": "tim-urban-personal-essays-blog",
+  "kind": "rss",
+  "target": "https://waitbutwhy.com/feed",
+  "name": "Tim Urban",
+  "focus": "Personal essays blog",
+  "lang": "en",
+  "description": "Tim Urban is the writer behind the Wait But Why blog. This is its feed: long personal essays and illustrated posts on travel, parenting, technology and his own life, such as trips to Bhutan, becoming a father, and trying the Vision Pro headset. It is personal long form writing, not news, and does not follow current events.",
+  "itemsPerWeek": 0,
+  "recentTitles": [
+   "The sights and sounds of Bhutan",
+   "Tales from Toddlerhood",
+   "All My Thoughts After 40 Hours in the Vision Pro"
+  ]
+ },
+ {
+  "id": "google-google-workspace-product-updates",
+  "kind": "website",
+  "target": "https://workspaceupdates.googleblog.com/",
+  "name": "Google",
+  "focus": "Google Workspace product updates",
+  "lang": "en",
+  "description": "Google is the technology company behind Google Workspace, including Gmail, Docs and Gemini productivity tools. This is the Workspace Updates blog: recap posts summarizing recent changes, new Gemini Notebook features for schools and organizations, and workflow automation additions to Workspace Studio. It does not cover Google products outside Workspace, such as Search or Android.",
+  "itemsPerWeek": 35,
+  "recentTitles": [
+   "Google Workspace Weekly Recap - September 18, 2026",
+   "New back-to-school features and learning tools available in Gemini Notebook",
+   "Notebooks in Gemini: a dedicated workspace for focused, organized work, now for schools and organizations"
+  ]
+ },
+ {
+  "id": "anthropic-company-announcements",
+  "kind": "website",
+  "target": "https://www.anthropic.com/news",
+  "name": "Anthropic",
+  "focus": "Company announcements",
+  "lang": "en",
+  "description": "Anthropic is an AI safety and research company that makes the Claude models. This is its newsroom: safety and alignment updates such as its work with METR, partnerships like the one with Accenture on embedded evaluation, new safeguard and verification programs for enterprise and life sciences customers, and executive hires. It does not cover Claude model release notes or developer documentation in detail.",
+  "itemsPerWeek": 1.6,
+  "recentTitles": [
+   "Partnering with Accenture on embedded evaluation",
+   "Introducing the Life Sciences Verification Program",
+   "Improving our alignment and security efforts"
+  ]
+ },
+ {
+  "id": "melty-labs-changelog",
+  "kind": "rss",
+  "target": "https://www.conductor.build/changelog/rss.xml",
+  "name": "Melty Labs",
+  "focus": "Changelog",
+  "lang": "en",
+  "description": "Melty Labs is the Y Combinator backed company that makes Conductor, a tool for running teams of coding agents in the cloud. This is its changelog feed: version by version release notes covering new coding models added such as GPT-6 Astra and Claude Fable 5.1, cloud workspace features, and interface changes like search and sidebar sections. It does not cover company news or customer stories.",
+  "itemsPerWeek": 1.8,
+  "recentTitles": [
+   "Conductor 0.87.0: Search across files, OpenCode 2.0",
+   "Conductor 0.86.0: Share your loadouts",
+   "Conductor 0.85.0: Sections, routines, and a new model picker"
+  ]
+ },
+ {
+  "id": "fc-barcelona-first-team-news",
+  "kind": "website",
+  "target": "https://www.fcbarcelona.com/en/football/first-team/news",
+  "name": "FC Barcelona",
+  "focus": "First team news",
+  "lang": "en",
+  "description": "FC Barcelona is the Spanish football club's official channel. This is its first team news section: match previews and reports, player interviews and quotes such as with Raphinha and Lamine Yamal, squad and injury updates, and club record and milestone posts. It does not cover the club's other sports sections such as basketball or handball, or transfer rumours from outside sources.",
+  "itemsPerWeek": 52.5,
+  "recentTitles": [
+   "Barça players called up for international duty",
+   "When and where to watch Sevilla v Barça",
+   "Flick: 'We're focused on our own job'"
+  ]
+ },
+ {
+  "id": "latent-space-ai-engineering-newsletter-and-podcast",
+  "kind": "rss",
+  "target": "https://www.latent.space/feed",
+  "name": "Latent Space",
+  "focus": "AI engineering newsletter and podcast",
+  "lang": "en",
+  "description": "Latent Space is an AI engineer newsletter and technical podcast. This is its feed: daily AI news roundups, interviews with founders and researchers such as at AIUC and Recursive, and deep dives on topics like forward deployed engineering and frontier model launches. It does not cover general consumer tech, it stays focused on how AI labs and engineers actually build.",
+  "itemsPerWeek": 7.5,
+  "recentTitles": [
+   "[AINews] not much happened today",
+   "[AINews] Reality Checks on AI News (Yegge shuts down Gas Town, Databricks' +60% Astra cost)",
+   "Underwriting Superintelligence: Backing Agents you can Sue - Rune Kvist, AIUC"
+  ]
+ },
+ {
+  "id": "lesswrong-rationalist-community-blog",
+  "kind": "rss",
+  "target": "https://www.lesswrong.com/feed.xml",
+  "name": "LessWrong",
+  "focus": "Rationalist community blog",
+  "lang": "en",
+  "description": "LessWrong is a community blog devoted to rationality and AI safety discussion. This is its main feed: member written posts on AI control and alignment research, existential risk debates, personal essays on decision making, and the occasional technical paper. Anyone can publish here, so posts vary widely in topic and are not limited to official announcements from any single organization.",
+  "itemsPerWeek": 195.9,
+  "recentTitles": [
+   "My Current Model of What Happened to Elon Musk",
+   "You Should Apply to Inkhaven",
+   "Pretraining data, not verifiability, is why LLMs are especially good at math (and coding)"
+  ]
+ },
+ {
+  "id": "mundo-deportivo-fc-barcelona",
+  "kind": "rss",
+  "target": "https://www.mundodeportivo.com/feed/rss/futbol/fc-barcelona",
+  "name": "Mundo Deportivo",
+  "focus": "FC Barcelona",
+  "lang": "es",
+  "description": "Mundo Deportivo is a Barcelona based sports daily. This is its FC Barcelona feed: first team match reports and quotes from players like Raphinha and Lamine Yamal, plus coverage of the club's women's football and futsal sections, referee assignments and club assembly and stadium news. It does not cover other clubs except as Barça's opponents or rivals.",
+  "itemsPerWeek": 253.6,
+  "recentTitles": [
+   "6-1: Barça treats itself to a feast at the Palau",
+   "Raphinha: 'I plan to renew and hopefully finish my career at Barça'",
+   "Romeu highlights the 'huge ease Pina has to load up her shot'"
+  ]
+ },
+ {
+  "id": "mundo-deportivo-transfer-market",
+  "kind": "rss",
+  "target": "https://www.mundodeportivo.com/feed/rss/futbol/fichajes",
+  "name": "Mundo Deportivo",
+  "focus": "Transfer market",
+  "lang": "es",
+  "description": "Mundo Deportivo is a Barcelona based sports daily. This is its transfer market feed: player moves and rumours across Spanish and international football, such as Messi signing a coach for his club Eldense and James Rodriguez returning to Colombian football, plus coaching changes and contract renewals. It does not cover match results or on field action, it stays focused on signings and transfer speculation.",
+  "itemsPerWeek": 14.4,
+  "recentTitles": [
+   "Messi signs his first coach for Eldense",
+   "James Rodriguez, the end of the road",
+   "The Premier League champion who could change teams"
+  ]
+ },
+ {
+  "id": "sport-fc-barcelona-club-news",
+  "kind": "website",
+  "target": "https://www.sport.es/es/barca/",
+  "name": "Sport",
+  "focus": "FC Barcelona club news",
+  "lang": "es",
+  "description": "Sport is a Barcelona-based sports daily. This is its FC Barcelona hub: first-team news and player quotes, the women's team in Liga F, and La Masia academy prospects, alongside transfer talk and squad updates. Recent items cover Raphinha discussing the Ballon d'Or race, a newly chosen artist for the Clasico shirt, and a Liga F match report against Alaves. It spans every part of the club, not a single beat such as transfers or match results alone.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "Raphinha: It's unfair that Pedri and I aren't up for the Ballon d'Or",
+   "Barca already has an artist for the Clasico shirt",
+   "The Camp Nou that wasn't in the plans"
+  ]
+ },
+ {
+  "id": "sport-fc-barcelona-transfer-market",
+  "kind": "website",
+  "target": "https://www.sport.es/es/temas/fichajes-fc-barcelona-19851",
+  "name": "Sport",
+  "focus": "FC Barcelona transfer market",
+  "lang": "es",
+  "description": "Sport is a Barcelona-based sports daily. This is its FC Barcelona transfer tag: confirmed signings and rumours involving the club, recently covering Gabriel Jesus joining as a forward, Rodri's move from Manchester City, and talks over Julian Alvarez. It also tracks youth scouting, including a Norwegian teenager. It does not cover match reports or league results.",
+  "itemsPerWeek": 6.9,
+  "recentTitles": [
+   "Barcelona scouted Bo Hegland, another great Norwegian talent",
+   "Official: Barcelona sign young Italian scorer Giulia Galli",
+   "Gabriel Jesus and his move to FC Barcelona"
+  ]
+ },
+ {
+  "id": "the-verge-ai-news",
+  "kind": "rss",
+  "target": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+  "name": "The Verge",
+  "focus": "AI news",
+  "lang": "en",
+  "description": "The Verge is a technology and culture publication founded in 2011. This is its AI section: model and product launches, legal disputes such as the New York Times case against OpenAI and Microsoft, government moves like a proposed California AI kill switch, and safety debates including a hack on OpenAI carried out with Claude. It also covers how Hollywood is reacting to AI. General Verge coverage outside AI sits elsewhere on the site.",
+  "itemsPerWeek": 54,
+  "recentTitles": [
+   "OpenAI and Microsoft knew they were starting a doom loop for the web",
+   "Virginia governor creates an AI task force and moves to restrain data centers",
+   "Gavin Newsom is pushing for an AI kill switch"
+  ]
+ },
+ {
+  "id": "the-verge-general-tech-news",
+  "kind": "rss",
+  "target": "https://www.theverge.com/rss/index.xml",
+  "name": "The Verge",
+  "focus": "General tech news",
+  "lang": "en",
+  "description": "The Verge is a technology and culture publication founded in 2011. This is its main feed: breaking tech and policy news, gadget reviews and deals, entertainment stories, and podcast episodes, spanning AI safety debates, Disney naming its first chief technology officer, iPhone camera design, and handheld gaming devices. It is the full breadth of Verge coverage, not one narrow beat.",
+  "itemsPerWeek": 261.1,
+  "recentTitles": [
+   "OpenAI and Microsoft knew they were starting a doom loop for the web",
+   "Disney's first CTO is Character.AI's former CEO",
+   "Gavin Newsom is pushing for an AI kill switch"
+  ]
+ },
+ {
+  "id": "wired-ai-news-and-policy",
+  "kind": "rss",
+  "target": "https://www.wired.com/feed/tag/ai/latest/rss",
+  "name": "Wired",
+  "focus": "AI news and policy",
+  "lang": "en",
+  "description": "Wired is a technology and culture magazine owned by Conde Nast. This is its AI feed: policy and safety stories such as proposals to slow AI development, PAC spending tied to AI labs in a Senate race, and debate over an industry-wide AI pause, alongside pieces on AI bioweapon risk and an AI clone of teachers from a revived Napster. It leans toward AI's political and safety angles over product reviews.",
+  "itemsPerWeek": 68.2,
+  "recentTitles": [
+   "Here's How an AI Slowdown Could Actually Be Enforced",
+   "AI PACs Have Dumped Nearly $1 Million Into an Obscure Senate Race",
+   "If the AI Industry Followed Its Own Research, It Might Have Paused Already"
+  ]
+ },
+ {
+  "id": "marca-fc-barcelona-news",
+  "kind": "rss",
+  "target": "https://www.marca.com/rss/googlenews/futbol/barcelona.xml",
+  "name": "Marca",
+  "focus": "FC Barcelona news",
+  "lang": "es",
+  "description": "Marca is a Madrid-based sports daily. This is its automated Barcelona news feed: match previews and reports, press-conference quotes from Hansi Flick and opposing coaches, injury updates such as goalkeeper Joan Garcia's knee problem, and player interviews touching on the Ballon d'Or race. It occasionally pulls in rival-club angles. It covers the club broadly, not one single beat such as transfers alone.",
+  "itemsPerWeek": 104.5,
+  "recentTitles": [
+   "Baena: Lamine is the best in the world, I see him training and doing things no teammate does",
+   "Sevilla - Barca: the unbeaten side go for a clean sweep before the break",
+   "Raphinha: I don't understand what Atletico did to Julian"
+  ]
+ },
+ {
+  "id": "barca-universal-fc-barcelona-news",
+  "kind": "rss",
+  "target": "https://barcauniversal.com/barca-news/feed/",
+  "name": "Barca Universal",
+  "focus": "FC Barcelona news",
+  "lang": "en",
+  "description": "Barca Universal is an independent news site covering FC Barcelona, not affiliated with the club. This is its main news stream: player interviews with figures such as Lamine Yamal and Raphinha, transfer stories including a Manchester United youngster's visit to Barcelona, and reactions from opposing managers ahead of league matches. It focuses entirely on Barcelona, not other clubs.",
+  "itemsPerWeek": 249.5,
+  "recentTitles": [
+   "Lamine Yamal clear about his career ambitions",
+   "Confirmed: Barcelona starlet receives maiden national team call-up",
+   "Just in: Real Madrid target in Barcelona over potential move as Man United exit nears"
+  ]
+ },
+ {
+  "id": "barca-blaugranes-fc-barcelona-news",
+  "kind": "rss",
+  "target": "https://www.barcablaugranes.com/rss/index.xml",
+  "name": "Barca Blaugranes",
+  "focus": "FC Barcelona news",
+  "lang": "en",
+  "description": "Barca Blaugranes is an independent news site covering FC Barcelona, not affiliated with the club. This is its main news stream: player interviews with Lamine Yamal and Raphinha, transfer news such as a Manchester United academy player arriving in Barcelona, injury updates, and opinion pieces ranking the club's great teams. It focuses solely on Barcelona, not other clubs.",
+  "itemsPerWeek": 140,
+  "recentTitles": [
+   "Reminds me of Pedri - Xavi Espart hailed by Spain boss",
+   "JJ Gabriel arrives in Barcelona after asking to leave Man Utd",
+   "Lamine Yamal reveals Barcelona's Champions League weak points"
+  ]
+ },
+ {
+  "id": "fc-barcelona-noticias-fc-barcelona-news",
+  "kind": "rss",
+  "target": "https://www.fcbarcelonanoticias.com/feed/",
+  "name": "FC Barcelona Noticias",
+  "focus": "FC Barcelona news",
+  "lang": "es",
+  "description": "FC Barcelona Noticias is an independent news site covering the club, not an official channel. This is its main stream: transfer coverage such as Gabriel Jesus's arrival after a failed Julian Alvarez deal, financial fair play limits on winter spending, and match reports including wins over Rayo Vallecano and Athletic Club. It occasionally covers the basketball section too.",
+  "itemsPerWeek": 4.4,
+  "recentTitles": [
+   "New Barca signings: ambition and flair to excite the fans",
+   "Financial fair play at FC Barcelona: Deco's real margin for the winter market",
+   "Gabriel Jesus arrives at FC Barcelona after the failed Julian Alvarez signing"
+  ]
+ },
+ {
+  "id": "fc-barcelona-confirmed-transfers",
+  "kind": "website",
+  "target": "https://www.fcbarcelona.com/en/transfer-market",
+  "name": "FC Barcelona",
+  "focus": "Confirmed transfers",
+  "lang": "en",
+  "description": "FC Barcelona is the football and multi-sport club based in Barcelona. This is the official site's transfer market page: confirmed first-team signings such as Rodri, Gabriel Jesus, Dominik Livakovic and Joao Cancelo, and departures such as Ferran Torres, Ansu Fati and several La Masia graduates sent on transfer or loan. It lists only finalised moves, not rumours or ongoing negotiations.",
+  "itemsPerWeek": 3.8,
+  "recentTitles": [
+   "Gabriel Jesus signs for Barca",
+   "Rodri signs for Barca",
+   "Cancelo back with Barca"
+  ]
+ },
+ {
+  "id": "supermemory-company-engineering-blog",
+  "kind": "rss",
+  "target": "https://supermemory.ai/blog/rss.xml",
+  "name": "Supermemory",
+  "focus": "Company engineering blog",
+  "lang": "en",
+  "description": "Supermemory is a startup building a memory layer for AI agents and applications. This is its engineering blog: product announcements such as a new Context Cloud pricing tier and a Dynamic Dreaming feature, technical write-ups on search precision and retrieval costs, and posts about integrations with coding agents and Claude Code. It is written by the founding team, mixing engineering detail with product news.",
+  "itemsPerWeek": 0.3,
+  "recentTitles": [
+   "An update to supermemory",
+   "Scaling Conversations: How Adapta Grew Usage Without Losing Context",
+   "How Chatarmin Ditched RAG and Went Memory-Only with Supermemory"
+  ]
+ },
+ {
+  "id": "openrouter-company-blog",
+  "kind": "rss",
+  "target": "https://openrouter.ai/blog/feed.xml",
+  "name": "OpenRouter",
+  "focus": "Company blog",
+  "lang": "en",
+  "description": "OpenRouter is a unified API and marketplace for large language models. This is its blog: tutorials for building tool-calling agents and using text-to-speech or image endpoints, insight pieces comparing model pricing such as DeepSeek V4's vision support, case studies like Descript's model-evaluation workflow, and announcements such as in-region data routing. It does not cover unrelated consumer technology news.",
+  "itemsPerWeek": 4.4,
+  "recentTitles": [
+   "Image Generation Models Compared: Cost, Edit, Quality",
+   "Build a Reliable Tool-Calling Agent Loop on OpenRouter",
+   "Does DeepSeek V4 Have Vision?"
+  ]
+ },
+ {
+  "id": "sarthak-rastogi-ai-agent-engineering",
+  "kind": "rss",
+  "target": "https://sarthakai.substack.com/feed",
+  "name": "Sarthak Rastogi",
+  "focus": "AI agent engineering",
+  "lang": "en",
+  "description": "Sarthak Rastogi is an AI engineer writing the newsletter AI Agent Engineering. This is his main stream: tutorials with code for making agents observable and production-ready, essays on harness, graph and loop engineering, comparisons of retrieval-augmented generation against fine-tuning, and guides to chunking strategies. It is practical, code-backed writing about building and deploying AI agents.",
+  "itemsPerWeek": 0.3,
+  "recentTitles": [
+   "Making AI Agents Observable, Monitorable, and Production-Ready",
+   "Harness, Graph, and Loop Engineering",
+   "Making AI Agents Production-Ready with CI/CD Pipelines"
+  ]
+ },
+ {
+  "id": "ai-engineering-insider-ai-interview-prep-guides",
+  "kind": "rss",
+  "target": "https://aiengineeringinsider.substack.com/feed",
+  "name": "AI Engineering Insider",
+  "focus": "AI interview prep guides",
+  "lang": "en",
+  "description": "AI Engineering Insider is a newsletter aimed at AI engineers preparing for technical interviews. This is its main stream: long guides on reinforcement learning from human feedback, agentic evaluation systems, distributed LLM inference and model compression, each paired with interview questions on the same topic. Nearly every post doubles as an interview-prep handbook rather than general AI news.",
+  "itemsPerWeek": 2.9,
+  "recentTitles": [
+   "Complete Roadmap: Reinforcement Learning from Human Feedback (RLHF)",
+   "Agentic Evals System Design using DeepEval, Ragas, Langsmith, and Trulens",
+   "Everything You Need to Prepare for a Hugging Face Interview"
+  ]
+ },
+ {
+  "id": "hugo-bowne-anderson-ai-engineering-podcast",
+  "kind": "rss",
+  "target": "https://api.substack.com/feed/podcast/2632531.rss",
+  "name": "Hugo Bowne-Anderson",
+  "focus": "AI engineering podcast",
+  "lang": "en",
+  "description": "Vanishing Gradients is a podcast hosted by Hugo Bowne-Anderson. This is its main feed: long-form interviews with people building AI systems, covering coding agents, AI evals, healthcare AI deployments, and durable agent architecture, with guests including Hamel Husain and Sebastian Raschka. Episodes lean toward the practical side of shipping AI products rather than research theory alone.",
+  "itemsPerWeek": 0.5,
+  "recentTitles": [
+   "How to Build a Coding Agent with Nico (Amp Code)",
+   "The Rise of the AI Scientist",
+   "If Developers Build on Chinese Open-Weight Models, Who Leads AI?"
+  ]
+ },
+ {
+  "id": "nathan-lambert-ai-research-podcast",
+  "kind": "rss",
+  "target": "https://api.substack.com/feed/podcast/48206.rss",
+  "name": "Nathan Lambert",
+  "focus": "AI research podcast",
+  "lang": "en",
+  "description": "Interconnects is a newsletter and podcast written by Nathan Lambert, a former Allen Institute for AI researcher. This is its main feed: audio essays and interviews on model releases such as Kimi K3 and GLM-5.2, the open versus closed AI model debate, and post-training techniques, plus commentary on AI safety incidents. It leans toward technical analysis of frontier model training, not general AI business news.",
+  "itemsPerWeek": 0.8,
+  "recentTitles": [
+   "One resignation turned the embers of AI fear into a wildfire",
+   "When will average people feel AI's impact?",
+   "I wrote an AI textbook, how long until AI can do it better?"
+  ]
+ },
+ {
+  "id": "builder-io-company-blog",
+  "kind": "rss",
+  "target": "https://www.builder.io/blog/feed/atom",
+  "name": "Builder.io",
+  "focus": "Company blog",
+  "lang": "en",
+  "description": "Builder.io is a company building AI-native development and content tools. This is its blog: product announcements such as Agent-Native Analytics and a Figma-style design tool, essays on why coding agents outperform typical AI tools, and comparison guides covering alternatives to Gmail, PowerPoint and Google Forms. It focuses on building software with AI agents rather than general programming tutorials.",
+  "itemsPerWeek": 2.1,
+  "recentTitles": [
+   "The Real Reason Coding Agents Get More Done",
+   "How to De-Slop an AI-Generated Codebase",
+   "Introducing Agent Native Analytics"
+  ]
+ },
+ {
+  "id": "llm-gateway-company-blog",
+  "kind": "website",
+  "target": "https://llmgateway.io/blog",
+  "name": "LLM Gateway",
+  "focus": "Company blog",
+  "lang": "en",
+  "description": "LLM Gateway is a company providing a unified API for routing requests across AI models. This is its blog: tutorials on model routing, caching and cost tracking, comparisons of AI coding plans and gateway competitors such as Vercel AI Gateway, Helicone and Portkey, news on model releases like Kimi K3 and GLM-5.2, and compliance guidance on GDPR and data retention. It mixes practical guides with company product announcements. It does not cover general consumer AI news.",
+  "itemsPerWeek": 3.9,
+  "recentTitles": [
+   "Cheap vs Flagship AI Models: $0.10 vs $198",
+   "How to Get Your LLM API Listed on an AI Gateway",
+   "How LLM Routing Picks a Provider: A Carrier's Guide"
+  ]
+ },
+ {
+  "id": "mem0-ai-agent-memory",
+  "kind": "website",
+  "target": "https://mem0.ai/blog",
+  "name": "Mem0",
+  "focus": "AI agent memory",
+  "lang": "en",
+  "description": "Mem0 is a company building a memory layer for AI agents. This is its blog: product announcements such as joining the Vercel Marketplace and a memory consolidation feature called Dream, engineering write-ups on cutting vector search latency and reducing Claude Code's memory footprint, and comparisons against OpenAI Memory and LangMem. It focuses on agent memory rather than general AI news.",
+  "itemsPerWeek": 1.6,
+  "recentTitles": [
+   "Mem0 joins Vercel Marketplace",
+   "Give Every Agent Exactly The Tools It Needs",
+   "What Is Memory Staleness in AI? Causes, Risks and Solutions"
+  ]
+ },
+ {
+  "id": "microsoft-microsoft-365-and-copilot-news",
+  "kind": "rss",
+  "target": "https://www.microsoft.com/en-us/microsoft-365/blog/feed/",
+  "name": "Microsoft",
+  "focus": "Microsoft 365 and Copilot news",
+  "lang": "en",
+  "description": "Microsoft is the technology company behind Windows, Office and Azure. This is its Microsoft 365 blog: Copilot feature launches such as Microsoft Scout and new Work IQ APIs, enterprise and government product tiers including Microsoft 365 G7, conference announcements for events like ESPC 2026, and updates on Copilot adoption figures and pricing for small businesses. It focuses on Microsoft 365 and Copilot specifically, not Windows, Xbox or other Microsoft product lines.",
+  "itemsPerWeek": 0.6,
+  "recentTitles": [
+   "Introducing Microsoft 365 G7: Intelligence + Trust for the mission ahead",
+   "ESPC 2026 is coming to Amsterdam",
+   "Build apps in Copilot Cowork and Copilot Studio"
+  ]
+ },
+ {
+  "id": "microsoft-ai-ai-model-announcements",
+  "kind": "website",
+  "target": "https://microsoft.ai/blog/",
+  "name": "Microsoft AI",
+  "focus": "AI model announcements",
+  "lang": "en",
+  "description": "Microsoft AI is Microsoft's product and research group behind the MAI family of models. This is its blog: launches of MAI models such as MAI-Image, MAI-Voice, MAI-Transcribe and MAI-Thinking, claims about their cost and quality against rivals on Arena leaderboards, and posts on responsible AI practices and Copilot Health features. It does not cover Microsoft's wider corporate news outside this model line.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "Humanist AI in practice: A public consultation on our Code of Conduct for MAI Models",
+   "Pushing the quality-cost frontier with MAI-Image-2.6",
+   "MAI-Transcribe-2 is the fastest, most accurate and cheapest speech recognition model in the world"
+  ]
+ },
+ {
+  "id": "productdirs-daily-ai-tool-launches",
+  "kind": "website",
+  "target": "https://productdirs.com/blog",
+  "name": "ProductDirs",
+  "focus": "Daily AI tool launches",
+  "lang": "en",
+  "description": "ProductDirs runs an AI tools launch directory and product discovery platform. This is its blog: short roundup posts naming the AI tools that launched on a given day, spanning categories such as coding assistants, marketing tools and productivity apps, each with a one line description and a link to its listing. It does not review or rank the tools in depth; entries are launch summaries rather than analysis.",
+  "itemsPerWeek": 2.8,
+  "recentTitles": [
+   "Yesterday's Top Launches: 5 Tools from September 16, 2026",
+   "Yesterday's Top Launches: 5 Tools from September 15, 2026",
+   "Yesterday's Top Launches: 5 Tools from September 14, 2026"
+  ]
+ },
+ {
+  "id": "microsoft-cowork-feature-changelog",
+  "kind": "website",
+  "target": "https://learn.microsoft.com/en-us/microsoft-365/copilot/cowork/whats-new",
+  "name": "Microsoft",
+  "focus": "Cowork feature changelog",
+  "lang": "en",
+  "description": "Microsoft is the company behind Microsoft 365 Copilot Cowork. This is its official changelog page: dated entries listing new features and enhancements, including new model options such as Claude Fable and GPT 6 Astra, plugin and skill management, event driven automations, mobile app support and usage based billing changes. It does not cover other Copilot products outside the Cowork agent experience.",
+  "itemsPerWeek": 1.1,
+  "recentTitles": [
+   "App skill (Frontier)",
+   "Claude Fable 5.1 model",
+   "GPT 6 Astra model"
+  ]
+ },
+ {
+  "id": "ars-technica-ai-news",
+  "kind": "rss",
+  "target": "https://arstechnica.com/ai/feed",
+  "name": "Ars Technica",
+  "focus": "AI news",
+  "lang": "en",
+  "description": "Ars Technica is a technology news and analysis publication founded in 1998. This is its AI section feed: coverage of AI safety incidents and misuse, government and military AI deployments, model releases from major labs, AI hardware and infrastructure, and disputes between AI companies and content publishers. It does not cover Ars Technica's other beats such as gaming, space or general consumer tech.",
+  "itemsPerWeek": 26,
+  "recentTitles": [
+   "AI hallucination of Chinese nuclear components almost led to US military attack",
+   "FAA tees up $875M AI tool to help manage air traffic congestion",
+   "US government website used Chinese model the FBI called \"malicious\""
+  ]
+ },
+ {
+  "id": "jack-clark-ai-newsletter",
+  "kind": "rss",
+  "target": "https://importai.substack.com/feed",
+  "name": "Jack Clark",
+  "focus": "AI newsletter",
+  "lang": "en",
+  "description": "Jack Clark is a co-founder of Anthropic who writes Import AI in a personal capacity. This is his newsletter: analysis of new AI research papers, frontier model releases and reasoning capabilities, self improving AI and safety risks, and commentary on AI policy fights over export controls and open model access. It focuses on frontier research and its implications rather than day to day product news.",
+  "itemsPerWeek": 1,
+  "recentTitles": [
+   "Import AI 472: DeepMind's cheating math agents; populist AI policies; and Forethought theorizes a nightwatchman",
+   "Import AI 471: Why Hugging Face worries me; space mining; Five Eyes on AI",
+   "Import AI 470: No rights for machines; automating environment generation with SPADE; and building better GPU kernels with Hawkeye"
+  ]
+ },
+ {
+  "id": "nathan-lambert-open-model-analysis",
+  "kind": "rss",
+  "target": "https://www.interconnects.ai/feed",
+  "name": "Nathan Lambert",
+  "focus": "Open model analysis",
+  "lang": "en",
+  "description": "Nathan Lambert is an AI researcher who writes Interconnects. This is his newsletter: deep analysis of open weight model releases such as GLM, Kimi and Motif, reinforcement learning and post training methods, and commentary on the balance of power between open and closed AI labs. It also covers his own post training textbook and reading lists rather than general AI news.",
+  "itemsPerWeek": 1.4,
+  "recentTitles": [
+   "Open-Source AI & Open Models Reading List",
+   "One resignation turned the embers of AI fear into a wildfire",
+   "When will average people feel AI's impact?"
+  ]
+ },
+ {
+  "id": "sebastian-raschka-llm-research-explainer",
+  "kind": "rss",
+  "target": "https://magazine.sebastianraschka.com/feed",
+  "name": "Sebastian Raschka",
+  "focus": "LLM research explainer",
+  "lang": "en",
+  "description": "Sebastian Raschka is a machine learning researcher and educator. This is his newsletter Ahead of AI: technical explainers on large language model architectures, reasoning and inference time scaling, and how coding agents are built, plus curated roundups of notable research papers each year. It focuses on how these systems work rather than on company or product announcements.",
+  "itemsPerWeek": 0.4,
+  "recentTitles": [
+   "GPT-6 Astra, Looped Transformers, and Hidden Reasoning",
+   "How Claude Watermarks AI-Generated Text",
+   "Building an AI Text Detector From Scratch"
+  ]
+ },
+ {
+  "id": "alex-volkov-weekly-ai-news-podcast",
+  "kind": "rss",
+  "target": "https://sub.thursdai.news/feed",
+  "name": "Alex Volkov",
+  "focus": "Weekly AI news podcast",
+  "lang": "en",
+  "description": "Alex Volkov is an AI evangelist at Weights and Biases who hosts ThursdAI. This is his newsletter and podcast: roundups of frontier model releases from OpenAI, Google, Meta and Chinese labs, open weights developments, and interviews with guests from AI companies and research teams. It covers the past week's biggest AI stories broadly rather than any single company or product.",
+  "itemsPerWeek": 1.2,
+  "recentTitles": [
+   "ThursdAI - Sep 17 - TypeSafe's Jev is a ChatGPT moment for decisions, Pace the Frontier splits the labs & more",
+   "OpenAI solves Navier-Stokes, Meta's Muse a free AI agent that's really good, DeepSeek V4.1 shrinks KV cache, and one doomer post causes OpenAI to consider pausing training + more AI news",
+   "Welcome to AGI - our GPT-6 deep coverage, vibe check and demoes - part 2 of this insane week"
+  ]
+ },
+ {
+  "id": "nvidia-corporate-news",
+  "kind": "rss",
+  "target": "https://blogs.nvidia.com/feed/",
+  "name": "NVIDIA",
+  "focus": "Corporate news",
+  "lang": "en",
+  "description": "NVIDIA is the chipmaker whose GPUs power much of modern AI. This is its blog: product and partnership announcements for AI factories and data centers, physical AI and robotics deployments, gaming and GeForce NOW updates, and appearances by executives such as CEO Jensen Huang at industry events. It spans NVIDIA's full business rather than only its AI research.",
+  "itemsPerWeek": 7.6,
+  "recentTitles": [
+   "Cute Critters Come to the Cloud: 'Aniimo' Launches on GeForce NOW",
+   "NVIDIA Vera Rubin NVL72 Delivers Leading Performance in MLPerf Inference v6.1 Debut",
+   "Emerald AI, Google and NVIDIA Launch Alliance to Advance Flexible AI Data Centers"
+  ]
+ },
+ {
+  "id": "mistral-ai-company-news",
+  "kind": "rss",
+  "target": "https://mistral.ai/rss.xml",
+  "name": "Mistral AI",
+  "focus": "Company news",
+  "lang": "en",
+  "description": "Mistral AI is a French artificial intelligence lab that builds open weight language models. This is its blog: model and product launches, enterprise and government partnerships, funding announcements, and posts on sovereign and open AI infrastructure in Europe. It carries Mistral's own announcements rather than independent research analysis or outside commentary.",
+  "itemsPerWeek": 0.9,
+  "recentTitles": [
+   "Mistral and Mozilla are bringing open, private and multilingual AI to your web browser",
+   "Cloudera and Mistral Partner to Bring Specialized, Sovereign Intelligence to Enterprise Data",
+   "Modernizing complex legacy code with AI agents."
+  ]
+ },
+ {
+  "id": "chip-huyen-personal-blog",
+  "kind": "rss",
+  "target": "https://huyenchip.com/feed.xml",
+  "name": "Chip Huyen",
+  "focus": "Personal blog",
+  "lang": "en",
+  "description": "Chip Huyen is a machine learning engineer and writer who works on bringing AI into production. This is her personal blog: long technical essays on generative AI system design, agents, evaluation and model routing, plus occasional posts on open source AI tooling and personal reflections on growth. Posts are technical deep dives rather than timely news coverage.",
+  "itemsPerWeek": 0.1,
+  "recentTitles": [
+   "Common pitfalls when building generative AI applications",
+   "Agents",
+   "Building A Generative AI Platform"
+  ]
+ },
+ {
+  "id": "cursor-product-and-customer-stories",
+  "kind": "website",
+  "target": "https://cursor.com/blog",
+  "name": "Cursor",
+  "focus": "Product and customer stories",
+  "lang": "en",
+  "description": "Cursor is an AI coding assistant and code editor company. This is its blog: customer case studies on teams adopting Cursor, new model integrations such as Grok 4.6, security certifications, infrastructure projects like its open source GPU kernel work, and company milestones. It carries only Cursor's own posts, not independent tutorials or third party coverage of the product.",
+  "itemsPerWeek": 1.5,
+  "recentTitles": [
+   "Introducing Cursor Start",
+   "Git at any scale",
+   "How Basis builds long-horizon accounting agents with Cursor"
+  ]
+ },
+ {
+  "id": "lovable-product-guides",
+  "kind": "website",
+  "target": "https://lovable.dev/en/guides",
+  "name": "Lovable",
+  "focus": "Product guides",
+  "lang": "en",
+  "description": "Lovable is an AI app building platform that turns natural language prompts into working software. This is its guides section: how to articles on running design intake, beta programmes and product roadmaps inside Lovable, plus comparisons against tools such as Base44, Vercel, Replit and Cursor. It teaches workflows for building with Lovable rather than reporting general company news.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "How to Manage Design Requests: Intake, Triage, and a Visible Queue in One Build",
+   "Design Intake Forms vs Slack Requests: How to Choose (and When to Build Your Own)",
+   "Best Design System Tools for Small Teams and Startups"
+  ]
+ },
+ {
+  "id": "vercel-product-and-platform-news",
+  "kind": "rss",
+  "target": "https://vercel.com/atom",
+  "name": "Vercel",
+  "focus": "Product and platform news",
+  "lang": "en",
+  "description": "Vercel is a cloud platform for building and deploying web applications. This is its news feed: near constant updates on new AI Gateway model additions, deployment and build performance improvements, developer tooling such as the CLI and Sandbox, and infrastructure changes across its platform. It covers Vercel's own product changes rather than general AI industry news.",
+  "itemsPerWeek": 49.4,
+  "recentTitles": [
+   "Spend Management expands to Enterprise Flexible Commitment plans",
+   "WebMCP support now available in mcp-handler",
+   "v0 now reads npm credentials from shared environment variables"
+  ]
+ },
+ {
+  "id": "captain-s-meta-ai-side-hustle-guides",
+  "kind": "rss",
+  "target": "https://captainsmeta.com/rss.xml",
+  "name": "Captain's Meta",
+  "focus": "AI side hustle guides",
+  "lang": "en",
+  "description": "Captain's Meta publishes step by step guides for building and scaling businesses with AI and automation. This is its feed: frequent how-to posts on niche AI services and products such as pet portraits, podcast editing, grant writing and real estate photo enhancement, plus roundups of AI tools for specific professions. It focuses on practical business playbooks rather than AI research or product news.",
+  "itemsPerWeek": 105,
+  "recentTitles": [
+   "AI Custom Avatars and PFPs: Personal Art at Scale",
+   "AI T-Shirt Graphics: Designs That Sell (and Print) Without a Design Degree",
+   "AI Podcast Production Service: The Editing Grind Nobody Wants to Do"
+  ]
+ },
+ {
+  "id": "the-decoder-ai-industry-news",
+  "kind": "rss",
+  "target": "https://the-decoder.com/feed/",
+  "name": "The Decoder",
+  "focus": "AI industry news",
+  "lang": "en",
+  "description": "The Decoder is an independent AI news site covering the industry as a whole. This is its main feed: model and product launches from OpenAI, Anthropic and Google DeepMind, safety and policy moves such as executive orders and expert warning letters, research claims like progress on hard math problems, and stories about AI's effect on copyright and labor. It spans many companies rather than focusing on any single lab.",
+  "itemsPerWeek": 72.5,
+  "recentTitles": [
+   "California Governor Newsom signs executive order demanding \"kill switch\" for AI models",
+   "Security researchers used Anthropic's Claude to hack OpenAI's internal systems in under 72 hours",
+   "AI training built on fair use looks shaky when the companies' own people call it \"astonishing theft\""
+  ]
+ },
+ {
+  "id": "marktechpost-ai-research-news",
+  "kind": "rss",
+  "target": "https://www.marktechpost.com/category/technology/artificial-intelligence/feed/",
+  "name": "MarkTechPost",
+  "focus": "AI research news",
+  "lang": "en",
+  "description": "MarkTechPost is an AI research and technology news platform. This is its Artificial Intelligence category feed: new model and tool releases from labs and startups such as Jina AI, Alibaba's Qwen team, Microsoft and Google Research, open source model drops, benchmark comparisons, and plain language summaries of academic papers on language and vision models. It covers technical releases and papers rather than company business or funding news.",
+  "itemsPerWeek": 35,
+  "recentTitles": [
+   "Jina AI Releases jina-ocr-v1: A 3.4B MoE Document Parser With Built-In Speculative Decoding for Low-Budget GPUs",
+   "PrismML Releases Ternary Bonsai 2 27B: A 5.9 GB Apache 2.0 Model Retaining 98.2% of Qwen3.8 27B Performance",
+   "Alibaba Qwen Releases Qwen3.8-Omni-Flash: A 1M-Context Omni-Modal Model Built Around Agentic Audio-Video Understanding and Tool Use"
+  ]
+ },
+ {
+  "id": "aimodels-fyi-ai-research-digest",
+  "kind": "rss",
+  "target": "https://aimodels.substack.com/feed",
+  "name": "AIModels.fyi",
+  "focus": "AI research digest",
+  "lang": "en",
+  "description": "AIModels.fyi is a newsletter that digests new AI research papers and model releases. This is its main feed: plain language write ups explaining what a single paper or model does, covering topics such as agent training, memory systems, model efficiency, tool use and reasoning, plus periodic highlights of specific new open models. It explains individual papers and models rather than reporting general AI company or industry news.",
+  "itemsPerWeek": 0.9,
+  "recentTitles": [
+   "OpenAI launches GPT-6 Astra",
+   "Transcripts aren't memory",
+   "Can evolutionary search train long-horizon agents without the usual GPU-heavy RL machinery?"
+  ]
+ },
+ {
+  "id": "google-research-blog",
+  "kind": "rss",
+  "target": "https://research.google/blog/rss/",
+  "name": "Google",
+  "focus": "Research blog",
+  "lang": "en",
+  "description": "Google is the technology company behind Search, Android and its Gemini AI models. This is its research blog: posts on machine learning methods and generative AI tools for education, algorithms for logistics and search ranking, and applied science work spanning genomics, connectomics, climate monitoring and health sensing such as glucose and cardiometabolic risk. It covers Google's research output broadly rather than consumer product launches or business news.",
+  "itemsPerWeek": 2.8,
+  "recentTitles": [
+   "MilleMiglia: A realistic instance generator for middle-mile logistics",
+   "The future of practice: Enabling teachers to create learning interactives with generative UI",
+   "Bypassing inference bottlenecks: Accelerating complex AI search with Retrieve-for-Train"
+  ]
+ },
+ {
+  "id": "cognition-devin-product-updates",
+  "kind": "rss",
+  "target": "https://devin.ai/rss.xml",
+  "name": "Cognition",
+  "focus": "Devin product updates",
+  "lang": "en",
+  "description": "Cognition is the company that builds the AI coding agent Devin. This is its blog: product launches such as code scanning and macOS support, new model availability inside Devin from providers including OpenAI, Anthropic, Google and xAI, pricing changes, enterprise features like managed plugins, and engineering write ups on how Devin's own tooling is built. It does not cover AI news outside Cognition's own product and models it integrates.",
+  "itemsPerWeek": 1.8,
+  "recentTitles": [
+   "Introducing Code Scans",
+   "Bringing macOS to Devin",
+   "Governing AI agents at scale with BlackRock"
+  ]
+ },
+ {
+  "id": "nvidia-developer-technical-blog",
+  "kind": "rss",
+  "target": "https://developer.nvidia.com/blog/feed",
+  "name": "NVIDIA",
+  "focus": "Developer technical blog",
+  "lang": "en",
+  "description": "NVIDIA is the company behind CUDA and the GPUs widely used for AI computing. This is its technical blog for developers, data scientists and IT admins: tutorials and deep dives on CUDA and TensorRT, inference benchmarking tools, model architecture comparisons such as dense versus mixture of experts designs, federated learning setups, and hardware topics like NVLink and edge deployment on Jetson. It is engineering and tooling content, not company press announcements.",
+  "itemsPerWeek": 7.6,
+  "recentTitles": [
+   "Benchmarking LLM Inference at Scale with AIPerf",
+   "How to Use AI Agents to Prepare 3D Scenes for Simulation",
+   "TensorRT Edge-LLM Completes the MLPerf Edge Agentic Benchmark 6.4x Faster on Jetson AGX Thor"
+  ]
+ },
+ {
+  "id": "nvidia-company-newsroom",
+  "kind": "rss",
+  "target": "https://nvidianews.nvidia.com/rss.xml",
+  "name": "NVIDIA",
+  "focus": "Company newsroom",
+  "lang": "en",
+  "description": "NVIDIA is the company behind CUDA and the GPUs widely used for AI computing. This is its official newsroom feed: product and partnership announcements, executive appearances such as Jensen Huang's keynotes, data center and AI factory infrastructure stories, gaming updates for GeForce NOW, and features on customers using NVIDIA technology in robotics, healthcare and supply chains. It is company press coverage rather than developer tutorials or technical how to guides.",
+  "itemsPerWeek": 14.6,
+  "recentTitles": [
+   "Cute Critters Come to the Cloud: 'Aniimo' Launches on GeForce NOW",
+   "NVIDIA Vera Rubin NVL72 Delivers Leading Performance in MLPerf Inference v6.1 Debut",
+   "Emerald AI, Google and NVIDIA Launch Alliance to Advance Flexible AI Data Centers"
+  ]
+ },
+ {
+  "id": "langchain-product-and-engineering-blog",
+  "kind": "website",
+  "target": "https://www.langchain.com/blog",
+  "name": "LangChain",
+  "focus": "Product and engineering blog",
+  "lang": "en",
+  "description": "LangChain is the company behind the LangChain and LangGraph frameworks for building AI agents. This is its blog: product updates to LangSmith and its agent tooling, engineering write ups on building multi-agent systems, memory and context handling, and case studies of companies such as Toyota, Vodafone, Schneider Electric and Included Health deploying agents built with its tools. It covers LangChain's own products and customers rather than general AI industry news.",
+  "itemsPerWeek": 4.4,
+  "recentTitles": [
+   "Building a Harness with Jev",
+   "Building an Agent Harness for Life Sciences: Introducing Deep Life Sci",
+   "How Included Health Built Federated Agents for Healthcare Navigation with Deep Agents and LangGraph"
+  ]
+ },
+ {
+  "id": "ethan-mollick-personal-ai-newsletter",
+  "kind": "rss",
+  "target": "https://www.oneusefulthing.org/feed",
+  "name": "Ethan Mollick",
+  "focus": "Personal AI newsletter",
+  "lang": "en",
+  "description": "Ethan Mollick is a Wharton professor who writes about AI's practical effects on work and life. This is his newsletter: essays on how AI agents and chatbots are changing jobs, education and everyday habits, opinionated guides to choosing between tools like Claude and GPT, and reflections on what new model releases mean for how people work. It is personal analysis and opinion, not company announcements or product news.",
+  "itemsPerWeek": 0.3,
+  "recentTitles": [
+   "The Overhang",
+   "Agency and Agents",
+   "An opinionated guide to which AI to use to do stuff"
+  ]
+ },
+ {
+  "id": "jack-clark-ai-research-newsletter",
+  "kind": "rss",
+  "target": "https://jack-clark.net/feed/",
+  "name": "Jack Clark",
+  "focus": "AI research newsletter",
+  "lang": "en",
+  "description": "Jack Clark is a co-founder of Anthropic. This is his newsletter, Import AI: summaries and commentary on AI research papers, policy developments in the US and China, safety concerns raised by people at frontier labs, and notes on emerging techniques in agents, robotics and reinforcement learning. It reflects his own reading and personal opinions rather than official Anthropic statements or announcements.",
+  "itemsPerWeek": 1,
+  "recentTitles": [
+   "Import AI 472: DeepMind's cheating math agents; populist AI policies; and Forethought theorizes a nightwatchman",
+   "Import AI 471: Why Hugging Face worries me; space mining; Five Eyes on AI",
+   "Import AI 470: No rights for machines; automating environment generation with SPADE; and building better GPU kernels with Hawkeye"
+  ]
+ },
+ {
+  "id": "ai-news-ai-industry-news",
+  "kind": "rss",
+  "target": "https://www.artificialintelligence-news.com/feed/",
+  "name": "AI News",
+  "focus": "AI industry news",
+  "lang": "en",
+  "description": "AI News is a technology publication covering the artificial intelligence industry. This is its main feed: enterprise AI adoption stories, warehouse and logistics automation, statements from executives at companies such as Microsoft and Anthropic, new startup launches, and analysis of AI regulation and governance. Some items are labelled sponsored content from vendors rather than independent reporting, so treat those separately from its news coverage.",
+  "itemsPerWeek": 19.9,
+  "recentTitles": [
+   "Gartner outlines four AI tiers in warehouse automation",
+   "Fulcra Brings Universal Multiplayer to Any Agents You Choose",
+   "Adecco Group rolls out Agentforce Coworker to 27,000 staff in 40-plus countries"
+  ]
+ },
+ {
+  "id": "the-rundown-ai-ai-newsletter-and-tutorials",
+  "kind": "website",
+  "target": "https://therundown.ai/",
+  "name": "The Rundown AI",
+  "focus": "AI newsletter and tutorials",
+  "lang": "en",
+  "description": "The Rundown AI is a media company that publishes an AI newsletter. This is its homepage: short news items on model releases and company moves from labs such as OpenAI and Meta, step by step tutorials on using tools like ChatGPT, OpenRouter and coding agents, and a directory of AI products across categories such as robotics, writing and productivity. It mixes news, how to guides and product listings rather than being a pure news source.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "Inside OpenAI's log of misbehaving models",
+   "Agility's new 'safer' humanoid",
+   "Zuck sits out the AI slowdown"
+  ]
+ },
+ {
+  "id": "tldr-ai-newsletter",
+  "kind": "rss",
+  "target": "https://tldr.tech/api/rss/ai",
+  "name": "TLDR",
+  "focus": "AI newsletter",
+  "lang": "en",
+  "description": "TLDR is a newsletter company that covers technology topics in short summaries. This is its AI edition: brief links and one line summaries of AI model releases, company announcements and research from names like Claude, Gemini, OpenAI and DeepSeek, aimed at readers who want the headlines without full articles. Each issue links out to original sources rather than containing TLDR's own full length reporting.",
+  "itemsPerWeek": 5.8,
+  "recentTitles": [
+   "Claude Projects v2, Google family agent",
+   "Claude + Cowork merge, ChatGPT sponsored agents, harness tax",
+   "Jev, Periodic Neon, Gemini 3.8 Live"
+  ]
+ },
+ {
+  "id": "cohere-company-blog",
+  "kind": "website",
+  "target": "https://cohere.com/blog",
+  "name": "Cohere",
+  "focus": "Company blog",
+  "lang": "en",
+  "description": "Cohere is an AI company that builds language models for enterprise use. This is its blog: model and product launches such as North Small Translate and Command A+, partnerships with companies and governments on sovereign and regulated AI, and articles on enterprise AI adoption, generative AI use cases and responsible AI policy. It covers Cohere's own announcements and viewpoint rather than general AI industry news from other companies.",
+  "itemsPerWeek": 2.5,
+  "recentTitles": [
+   "Introducing North Small Translate: A leading sovereign open-weight machine translation model",
+   "Cohere and Aleph Alpha sign agreement to become the first transatlantic sovereign AI solution",
+   "Cohere and OpenText partner to bring trusted agentic AI to governments and regulated industries"
+  ]
+ },
+ {
+  "id": "think-facility-ai-news-tracker",
+  "kind": "website",
+  "target": "https://www.thinkfacility.com/tracker/",
+  "name": "Think Facility",
+  "focus": "AI news tracker",
+  "lang": "en",
+  "description": "Think Facility is a site that tracks artificial intelligence industry news. This is its news tracker: short stories built from labs' own announcements and executives' own statements, covering Anthropic, OpenAI, Google, Microsoft, Mistral, Grok and government AI policy moves, each paired with reactions and quotes checked against their original source. It excludes stories based only on press reports without a direct quote from someone involved.",
+  "itemsPerWeek": 105,
+  "recentTitles": [
+   "Claude leads 26% of Anthropic's AI research, but no measured part of it is fully autonomous",
+   "Google's family AI agent has its own Google account, and up to six people share it",
+   "Grok's new speech model cut short-phrase word error rate from 20.6% to 6.8%"
+  ]
+ },
+ {
+  "id": "as-fc-barcelona-news",
+  "kind": "rss",
+  "target": "https://feeds.as.com/mrss-s/list/as/site/en.as.com/tag/fc_barcelona_a",
+  "name": "AS",
+  "focus": "FC Barcelona news",
+  "lang": "en",
+  "description": "AS is a sports daily based in Spain. This is its FC Barcelona tag stream: match reports and results, injury updates on players such as Joan Garcia, transfer interest in young prospects like JJ Gabriel, contract and captaincy news, and reaction from coach Hansi Flick and club officials. It does not cover other clubs except as Barcelona's opponents or transfer rivals.",
+  "itemsPerWeek": 32.5,
+  "recentTitles": [
+   "Manchester United prodigy, dubbed \"Kid Messi\", is in Barcelona",
+   "Barcelona star Raphinha reveals where he wants to end his career",
+   "Who is Diego Kochen? This is the Barcelona prospect who just got his first USMNT call-up"
+  ]
+ },
+ {
+  "id": "barca-blaugranes-fc-barcelona-news-digest",
+  "kind": "rss",
+  "target": "https://www.barcablaugranes.com/rss/barcelona-news/index.xml",
+  "name": "Barca Blaugranes",
+  "focus": "FC Barcelona news digest",
+  "lang": "en",
+  "description": "Barca Blaugranes is a site dedicated to FC Barcelona news and opinion. This is its news feed: round ups of first team results and training sessions, injury updates, player contract news, and club matters such as Champions League final hosting and Super Cup dates. It covers Barcelona specifically rather than La Liga or football from Spain in general, and does not focus on transfer speculation.",
+  "itemsPerWeek": 7.4,
+  "recentTitles": [
+   "FC Barcelona News: 18 September 2026; Spanish Super Cup dates announced, Barça confirm Joan Garcia knee injury",
+   "FC Barcelona News: 17 September 2026; Barça continue historic start with thrashing of Racing Santander",
+   "FC Barcelona News: 16 September 2026; All set for Racing Santander clash, Camp Nou to host 2029 Champions League Final"
+  ]
+ },
+ {
+  "id": "barca-blaugranes-fc-barcelona-transfer-rumours",
+  "kind": "rss",
+  "target": "https://www.barcablaugranes.com/rss/fc-barcelona-transfer-rumors-news/index.xml",
+  "name": "Barca Blaugranes",
+  "focus": "FC Barcelona transfer rumours",
+  "lang": "en",
+  "description": "Barca Blaugranes is a site dedicated to FC Barcelona news and opinion. This is its transfer rumours feed: reported scouting interest in young prospects, contract extension talks with current players such as Raphinha and Gerard Martin, and transfer market moves involving other clubs and players linked with Barcelona. It focuses on transfer speculation and contract news rather than match reports or results.",
+  "itemsPerWeek": 10.9,
+  "recentTitles": [
+   "JJ Gabriel arrives in Barcelona after asking to leave Man Utd",
+   "Raphinha confirms he's ready to extend his contract and wants to finish his career at Barcelona",
+   "Barcelona send scouts to watch Norwegian assist king Bo Hegland"
+  ]
+ },
+ {
+  "id": "football-espan-a-fc-barcelona-news",
+  "kind": "rss",
+  "target": "https://www.football-espana.net/category/la-liga/barcelona/feed",
+  "name": "Football España",
+  "focus": "FC Barcelona news",
+  "lang": "en",
+  "description": "Football España is a site covering football from Spain. This is its Barcelona category: match reports and results, injury news on players such as Gavi, contract and release clause stories, transfer interest from other clubs in Barcelona players, and quotes from coach Hansi Flick and sporting director Deco. It does not cover other La Liga clubs except where they are Barcelona's opponents or transfer counterparts.",
+  "itemsPerWeek": 5.5,
+  "recentTitles": [
+   "Hansi Flick makes Barcelona history in 7-2 Racing win",
+   "Barcelona depth leaves Alejandro Balde waiting for his chance",
+   "Gavi Faces Fierce Barcelona Midfield Competition After Injury"
+  ]
+ },
+ {
+  "id": "bbc-sport-fc-barcelona-news",
+  "kind": "rss",
+  "target": "https://feeds.bbci.co.uk/sport/football/teams/barcelona/rss.xml",
+  "name": "BBC Sport",
+  "focus": "FC Barcelona news",
+  "lang": "en",
+  "description": "BBC Sport is the sport section of the British Broadcasting Corporation. This is its Barcelona team feed: match reports and results, player interviews on topics such as racism and career plans, injury and squad news, and features on the club's history and figures such as Cesc Fabregas and Lionel Messi. It does not cover other clubs except as Barcelona's opponents or in wider transfer market context.",
+  "itemsPerWeek": 5.5,
+  "recentTitles": [
+   "Gabriel, 15, in Barcelona amid speculation over future",
+   "I have experienced racism a thousand times - Lamine Yamal",
+   "Simply sublime - Cancelo finds his range in style"
+  ]
+ },
+ {
+  "id": "lumalabs-ai-video-prompts",
+  "kind": "website",
+  "target": "https://lumalabs.ai/news",
+  "name": "Luma",
+  "focus": "AI video prompts",
+  "lang": "en",
+  "description": "Luma is the company behind Luma AI video and 3D creation tools. This is its News page: how-to articles on AI video transition prompts, B-roll filler shots, SaaS explainer prompts, multi-scene sequences, storyboard tools, and a comparison of Google Flow SceneBuilder with Luma Scenes. It does not cover general company press, pricing, or research papers.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "AI Video Transition Prompts: Cuts, Wipes, and Match Cuts",
+   "AI B-Roll Prompts: 25 Filler Shots Worth Generating",
+   "AI Explainer Video Prompts 2026: 15 Examples for SaaS and Product"
+  ]
+ },
+ {
+  "id": "newsletter-practical-ai-newsletter",
+  "kind": "website",
+  "target": "https://newsletter.futurepedia.io/",
+  "name": "Futurepedia",
+  "focus": "Practical AI newsletter",
+  "lang": "en",
+  "description": "Futurepedia is a directory of AI tools and courses. This is its practical newsletter: short posts on ChatGPT building a live website from one prompt, Claude Design turning messy notes into a one-page road map, ChatGPT prepping meetings from calendar and inbox, trusted AI research workflows, and roundups of tools such as Suno and Gemini. It is not a model lab changelog or academic paper feed.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "Sep 15, 2026 • 3 min read ChatGPT 6 Turns One Prompt Into a Live Website Watch it build a working page, fix it mid-task, and publish a link you can share",
+   "Sep 8, 2026 • 3 min read Turn Your Messy Notes Into a Clear Road Map The exact Claude Design workflow to turn a rough plan into a clean one-page road map",
+   "Sep 1, 2026 • 3 min read Let ChatGPT Prep You, So You Miss Nothing It pulls your calendar, inbox, and notes together so nothing slips before you walk in."
+  ]
+ },
+ {
+  "id": "tinyfish-product-and-gtm-blog",
+  "kind": "website",
+  "target": "https://www.tinyfish.ai/blog",
+  "name": "TinyFish",
+  "focus": "Product and GTM blog",
+  "lang": "en",
+  "description": "TinyFish builds AI web agents, search, fetch, and browser automation. This is its blog: why Search is free, Search and Fetch becoming free, n8n integration, an accelerator program, and enterprise sales playbooks for founders from its CRO and partners such as Airwallex. It does not cover unrelated consumer AI art or general news.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "Updates Featured Why TinyFish Search is Free Sudheesh Nair · September 4, 2026",
+   "Updates Enterprise Sales for Founders: A GTM Playbook from TinyFish and Airwallex Vi · Sep 13, 2026",
+   "Updates Enterprise sales for AI-native startups: what our CRO told a room full of founders. Sky Zhang · Aug 20, 2026"
+  ]
+ },
+ {
+  "id": "creativeainews-ai-tools-for-creators",
+  "kind": "website",
+  "target": "https://www.creativeainews.com/",
+  "name": "Creative AI News",
+  "focus": "AI tools for creators",
+  "lang": "en",
+  "description": "Creative AI News covers AI tools and workflows for creative professionals. This is its site: deep dives on a coding agent uploading a .git folder, Bend 2 proofs against AI bugs, publishing an AI-narrated audiobook, Wispr Canto dictation error rates, a cheap browser agent, and GitHub Copilot's Rust port token cost. It is not a vendor product blog or a general tech news wire.",
+  "itemsPerWeek": null,
+  "recentTitles": [
+   "ZCode Silently Uploads Your Entire .git Folder",
+   "Bend 2 Blocks AI Bugs With Proof. Laws Are the Work",
+   "How to Publish an AI-Narrated Audiobook in 2026"
+  ]
+ }
+]

@@ -1,18 +1,27 @@
 import { LandingCta } from "@/components/landing/landing-cta";
+import { SignOutButton } from "@/components/landing/sign-out-button";
 import { OparaxMark } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { landingContent } from "@/lib/landing/content";
 
-export function LandingHeader() {
+export function LandingHeader({ signedIn }: { readonly signedIn: boolean }) {
   return (
-    <header className="sticky top-0 z-20 h-14 border-b border-border bg-[var(--header-bg)]">
-      <div className="mx-auto flex h-full max-w-[1240px] items-center justify-between px-4 desk:px-10">
+    <header className="sticky top-0 z-20 h-14 border-b border-border bg-background">
+      <div className="mx-auto flex h-full max-w-[1356px] items-center justify-between px-4">
         <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em]">
           <OparaxMark className="size-5" />
           {landingContent.brand}
         </span>
         <nav className="flex items-center gap-2">
-          <LandingCta cta="log_in" placement="header" />
-          <LandingCta cta="sign_up" placement="header" />
+          <ThemeToggle />
+          {signedIn ? (
+            <SignOutButton />
+          ) : (
+            <>
+              <LandingCta cta="log_in" placement="header" />
+              <LandingCta cta="sign_up" placement="header" />
+            </>
+          )}
         </nav>
       </div>
     </header>

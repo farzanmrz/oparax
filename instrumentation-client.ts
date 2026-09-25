@@ -3,8 +3,8 @@
 // query and fragment before anything is sent (see lib/observability/posthog-client.ts).
 //
 // Session Replay records product text and ordinary inputs unmasked. This is an owner decision:
-// masked recordings hide the drafts, voice guides, and beat descriptions needed to understand
-// what happened. Password inputs remain masked. Network bodies, headers, and cookies are never
+// the owner needs to see what a person typed into the product to understand what happened.
+// Password inputs remain masked. Network bodies, headers, and cookies are never
 // captured. Identity persists in localStorage.
 
 import { initPostHog } from "@/lib/observability/posthog-client";
