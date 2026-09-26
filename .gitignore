@@ -33,9 +33,9 @@ npm-debug.log*
 # Supabase CLI link metadata/cache
 supabase/.temp/
 
-# Local lab and lane state (regenerable, never committed)
+# Local scratch and lane state (regenerable, never committed)
 .feature/
-.lab/
+scratch/
 .env*
 
 # Python bytecode from the flow scripts

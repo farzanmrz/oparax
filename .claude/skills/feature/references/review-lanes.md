@@ -1,8 +1,8 @@
 # Shared fixed review lanes
 
-Use this reference from `/feature`, `/amend`, and `/qc`. It runs the project’s fixed review profiles. The global `/counsel` and `$counsel` skill (whose lane runner this uses) remains explicit-owner-invoked only. A stage that reaches its named review step is already authorized to call this runner directly.
+Use this reference from `/feature`, `/amend`, and `/qc`. It runs the project’s fixed review profiles. The global `/council` and `$council` skill (whose lane runner this uses) remains explicit-owner-invoked only. A stage that reaches its named review step is already authorized to call this runner directly.
 
-The stage owns the review brief. The runner owns provider delivery and recovery: the provider commands, exact models (ids in the counsel skill's `providers.py`), high effort, read-only mode, output normalization, and the 15-minute deadline. Do not call provider CLIs or the global runner directly.
+The stage owns the review brief. The runner owns provider delivery and recovery: the provider commands, exact models (ids in the council skill's `providers.py`), high effort, read-only mode, output normalization, and the 15-minute deadline. Do not call provider CLIs or the global runner directly.
 
 | Stage | Profile | Original lanes |
 | --- | --- | --- |

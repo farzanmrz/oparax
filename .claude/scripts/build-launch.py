@@ -11,10 +11,10 @@ import sys
 import time
 import uuid
 
-sys.path.insert(0, str(Path.home() / '.agents/skills/counsel/scripts'))
-from providers import MODELS as COUNSEL_MODELS  # noqa: E402
+sys.path.insert(0, str(Path.home() / '.agents/skills/council/scripts'))
+from providers import MODELS as COUNCIL_MODELS  # noqa: E402
 
-MODELS = {name: COUNSEL_MODELS[name][1] for name in ('astra', 'sol')}
+MODELS = {name: COUNCIL_MODELS[name][1] for name in ('astra', 'sol')}
 ACTIVE = {'STARTING', 'RUNNING'}
 # Tool configuration written mid-flow (Codex or Claude settings, hooks, skills) is committed and
 # pushed on the current branch instead of refusing the launch (owner decision 2026-09-06, after

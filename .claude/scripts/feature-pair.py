@@ -18,13 +18,13 @@ import sys
 import time
 import uuid
 
-sys.path.insert(0, str(Path.home() / '.agents/skills/counsel/scripts'))
-# Model ids and CLI launch commands are shared with the counsel skill's runner.
-from providers import MODELS as COUNSEL_MODELS, claude_command, codex_command  # noqa: E402
+sys.path.insert(0, str(Path.home() / '.agents/skills/council/scripts'))
+# Model ids and CLI launch commands are shared with the council skill's runner.
+from providers import MODELS as COUNCIL_MODELS, claude_command, codex_command  # noqa: E402
 
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
           "required": ["answer"], "additionalProperties": False}
-MODELS = {name: COUNSEL_MODELS[name][1] for name in ('fable', 'sol', 'astra')}
+MODELS = {name: COUNCIL_MODELS[name][1] for name in ('fable', 'sol', 'astra')}
 # The default partner is Astra. Routine phases honor an explicit Sol override;
 # only detail and redesign are always Astra.
 PHASES = {'scope': 'routine', 'plain': 'routine', 'detail': 'astra',

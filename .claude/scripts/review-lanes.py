@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Fixed Oparax review profiles using the global counsel skill's lane runner."""
+"""Fixed Oparax review profiles using the global council skill's lane runner."""
 
 import argparse
 from pathlib import Path
 import subprocess
 import sys
 
-SCRIPTS = Path.home() / ".agents/skills/counsel/scripts"
+SCRIPTS = Path.home() / ".agents/skills/council/scripts"
 sys.path.insert(0, str(SCRIPTS))
 from providers import MODELS  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 RUNNER = SCRIPTS / "lanes.py"
-# These profiles are shared by the Claude and Codex workflow entry points: (lane, counsel name).
+# These profiles are shared by the Claude and Codex workflow entry points: (lane, council name).
 # Model ids live in providers.py, so a model bump is made there once.
 CRITIQUE = (
     ("codex-sol", "sol"),
@@ -49,7 +49,7 @@ def main():
             command.add_argument("--source-lane", required=True)
     args = parser.parse_args()
     if not RUNNER.is_file():
-        parser.error(f"Global counsel lane runner is missing: {RUNNER}. Restore the installed skill; do not substitute a lane script.")
+        parser.error(f"Global council lane runner is missing: {RUNNER}. Restore the installed skill; do not substitute a lane script.")
     run_dir = Path(args.run_dir).expanduser().resolve()
     base = [sys.executable, str(RUNNER), args.command, "--run-dir", str(run_dir)]
     if args.command in ("preview", "start"):
@@ -61,8 +61,8 @@ def main():
             existing = [name for name, _ in lanes if (run_dir / f"{args.profile}-{name}.json").exists()]
             if existing:
                 parser.error("This review already has lane records. Continue it or choose a fresh run directory.")
-        for name, counsel_name in lanes:
-            provider, model, _ = MODELS[counsel_name]
+        for name, council_name in lanes:
+            provider, model, _ = MODELS[council_name]
             subprocess.run(
                 base + [
                     "--lane", f"{args.profile}-{name}", "--provider", provider,

@@ -124,7 +124,7 @@ When a slice touches how a third-party SDK is initialized (the PostHog `posthog.
 
 ## 6. Run the critique
 
-Once the detailed plan is complete, the session itself runs the critique with the fixed shared review runner: no Workflow tool, no bridge agents, one holistic pass per lane. Every lane reads the plan straight off disk (`.feature/plan-draft.md`, `.feature/plan-owner.md`); nothing here ever retypes the plan into a command. The global `/counsel critique` command remains explicit-owner-invoked only. This named stage calls the runner directly under its existing authorization.
+Once the detailed plan is complete, the session itself runs the critique with the fixed shared review runner: no Workflow tool, no bridge agents, one holistic pass per lane. Every lane reads the plan straight off disk (`.feature/plan-draft.md`, `.feature/plan-owner.md`); nothing here ever retypes the plan into a command. The global `/council critique` command remains explicit-owner-invoked only. This named stage calls the runner directly under its existing authorization.
 
 1. Write the shared critique brief to `.feature/lanes/critique.brief`, in this order:
    - A budget line: "Budget: about 10 minutes of wall time. Verify the plan's premises against the code first; do not chase side quests; if the budget is nearly spent, return what you have as valid findings JSON rather than nothing." This is prompt pressure only; the shared runner reports actual elapsed seconds so they stay measured against reality, not a guess. (Owner decision 2026-08-23: every lane runs at HIGH effort with this one 10-minute clock budget; measured that day, prompted high lanes land at flash ~01:15, terra ~02:00, agy-pro ~04:00, sol ~05:15, grok ~06:30-08:00, all inside it.)
