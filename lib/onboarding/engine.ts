@@ -854,7 +854,6 @@ export async function runOnboarding(
     const r = await generateText({
       model: MODEL,
       reasoning: "low",
-      temperature: 0,
       system: WRITER,
       prompt,
     });
@@ -1868,7 +1867,6 @@ export async function runOnboarding(
     instructions: INSTRUCTIONS,
     tools,
     reasoning: REASONING,
-    temperature: 0,
     maxRetries: 0,
     stopWhen: [() => S.submitted !== null, ({ steps }) => turnBase + steps.length >= MAX_TURNS],
     // Tool choice is "auto", not "required": a model that answers with text instead of a tool call under
