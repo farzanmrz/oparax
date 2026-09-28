@@ -18,11 +18,11 @@ Started September 19, 2026.
 | X API | one DM event received (the person replies to the bot) | $0.010 | verified, September 19 |
 | X API | the same post billed twice in one UTC day | not charged again | verified, September 19 |
 | xAI X search inside Grok | until September 21, 2026: per search call; after: per post fetched and per profile | $0.005 a call, then $0.005 a post and $0.010 a profile | verified from xAI's pricing page, September 11 |
-| Grok 4.7 through the Vercel AI Gateway | tokens | $1.20 in, $3.60 out, $0.30 cached input read, per million | verified from the Gateway catalog, September 21; the onboarding model since that day (owner, September 21), replacing Grok 4.6 at $2 in and $6 out |
+| Grok 4.7 through the Vercel AI Gateway | tokens | $1.20 in, $3.60 out, $0.30 cached input read, per million | verified from the Gateway catalog, September 21; the onboarding model from that day (owner, September 21), replacing Grok 4.6 at $2 in and $6 out, until GPT-6 Luna fast (`openai/gpt-6-luna-fast`) replaced it in the September 26 to 27 lab and the app; Luna fast's unit price is not yet recorded in this file |
 | Qwen 3.7 Flash through the Gateway (`alibaba/qwen3.7-flash`, the judging and writing model today) | tokens | $0.03 in, $0.13 out per million | verified from the Gateway catalog, September 21; retention none, no training |
 | Candidates for judging and writing, compared September 21 at the owner's request on the product's real prompts (2 cents, 708 calls; full write-up in [model-comparison-2026-09-21.md](model-comparison-2026-09-21.md); no choice made yet) | tokens | GLM 5.3 Flash (`zai/glm-5.3-flash`): billed $0.075 in / $0.25 out (Vercel's public page; the catalog's $0.15 / $0.50 is not what is charged), paid through a DeepInfra key attached to the Gateway account, not Gateway credits; Ling 3.0 Flash (`inclusionai/ling-3.0-flash`): $0.021 / $0.063, about half that in practice from cache reads; Ling 3.0 Flash VL free (`inclusionai/ling-3.0-flash-vl-free`): $0 | Per person per month at 2,000 judged and 500 written, reasoning off: Qwen $0.09, GLM $0.23, Ling paid $0.05, Ling free $0. Quality: GLM best judge on every set and the only writer with no invented facts (but slow, and dropped the title on 3 of 12); Qwen fast and always well formed but invented or inverted a fact in 4 of 12 articles; free Ling matched GLM on clean judging sets, never rate-limited in 350 calls, carries no retention promise |
 | Jev (TypeSafe) through the Gateway as `typesafe-ai/jev` | input tokens; output free | $0.042 per million | verified from the Gateway catalog, September 21; the Gateway response now reports the dollar figure per call (`providerMetadata.gateway.cost` charged, `marketCost` at list), so Jev's cost is read, not estimated. The September 21 test call (3,336 tokens) reported marketCost $0.000140 and cost $0 charged; the direct TypeSafe API, the previous path, reported tokens only |
-| Perplexity search through the Gateway | per search | read from the Gateway response per call | not recorded as a unit price |
+| Perplexity search through the Gateway | per search | read from the Gateway response per call | not recorded as a unit price; onboarding no longer runs a web search (removed September 27) |
 | Websites and feeds | fetching | free | conditional requests that return "not changed" cost nothing |
 | GitHub API | reads of public data | free | the limit is request rate (search 30 a minute), not money |
 | Product Hunt API and feed | reads | free | the limit is 6,250 points per 15 minutes; commercial use needs their permission by email |
@@ -37,6 +37,8 @@ Started September 19, 2026.
 | --- | --- | --- |
 | Onboarding one person (read, rank, pick, write rows), on Grok 4.6 | $0.076 for Reshad, $0.256 for Liam; at Grok 4.7's price the same runs come to about $0.054 and $0.164 (Grok's token share times 0.6; the X search fees, 2 cents a person, and Jev unchanged; Liam's one Perplexity search assumed at half a cent, its price never read) | September 19, recomputed September 21 |
 | The same before the algorithm was simplified | $0.97 and $1.06 | September 15 |
+| Onboarding one person, the cut-down loop (profile, 10 posts, one GPT-6 Luna fast call over the whole table, no search needed) | $0.277 for Liam, X and the model together, one model call, 23 seconds | September 27, evening |
+| The same with Jev scoring the table first (150 candidates, 107 passed) | $0.278 for Liam, X, Jev and the model together, 24 seconds | September 27, evening |
 | The read step once xAI bills per post | adds roughly $0.10 to $0.15 | estimate from the post limits |
 | Judging one item (Qwen) | $0.000116 | August |
 | Writing one item into English headline and fact lines (Qwen) | $0.00025 | August |
@@ -80,7 +82,7 @@ On X's Activity API a watched account's replies, quotes and reposts are all deli
 
 **Judging and writing.** Every new item from every source is judged ($0.000116); items on the beat are also written ($0.00025). A monitor seeing 2,000 items a month of which a quarter are on beat: 2,000 × $0.000116 + 500 × $0.00025 = about $0.36. Jev as the first pass costs less than a tenth of a cent a month at that volume. Earlier estimates of $1 to $8 a month came from busier monitors. Measured on the new design September 21 with reasoning on: under $0.40 a person a month on a paid writer (Qwen or GLM at 300 cards), under $0.25 on a free one, Jev included at list price.
 
-**Onboarding.** Once per person: $0.08 to $0.26 measured on Grok 4.6 (about $0.05 to $0.16 at Grok 4.7's price), plus $0.10 to $0.15 when xAI's per-post billing starts. A new source found during onboarding is saved to the shared table, so the next person with that beat does not pay to find it again.
+**Onboarding.** Once per person: $0.08 to $0.26 measured on Grok 4.6 (about $0.05 to $0.16 at Grok 4.7's price), plus $0.10 to $0.15 when xAI's per-post billing starts. These figures are for the September 19 design on Grok; the app's onboarding now runs on GPT-6 Luna fast, reads X through X's own API and runs no web search, and its cost per person is not yet recorded here (the lab's measured runs are printed by `scratch/notes/figures.py`). Since the September 27 cut, onboarding recommends only from the shared table and finds no new sources; one measured run of the cut-down loop is $0.277 (Liam, the table above).
 
 **Fetching.** Free. Each source is fetched once for everyone who watches it, so this does not grow with the number of people.
 
@@ -101,6 +103,6 @@ With alerts once a day, before payment fees and fixed bills:
 ## 5. Unknown, and what would settle each
 
 - Whether the filtered stream's price per delivered post is the same $0.005 (X's pricing page did not state it separately). One delivered post on a real rule settles it.
-- What Perplexity charges per search through the Gateway as a unit. The Gateway response of the next real build shows it.
+- What Perplexity charges per search through the Gateway as a unit. No longer needed for onboarding, which has run no web search since September 27.
 - The fixed monthly bills (Vercel, Supabase, PostHog, Gmail). The owner's invoices.
 - Judging and writing cost on the new product's real volume. The first week of a live monitor.

@@ -5,9 +5,6 @@ import type { OnboardingUIMessage } from "@/lib/onboarding/types";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeValidHandle } from "@/lib/x/handle";
 
-// A build reads posts, searches, ranks and checks sources; the lab's builds ran up to about four minutes.
-export const maxDuration = 800;
-
 const Body = z.object({ handle: z.string(), beat: z.string().trim().min(1).max(300) });
 
 export async function POST(req: Request) {

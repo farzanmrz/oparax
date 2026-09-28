@@ -42,7 +42,6 @@
     "shiki": "^4.4.3",
     "sonner": "^2.0.7",
     "streamdown": "^2.6.0",
-    "unpdf": "^1.8.1",
     "use-stick-to-bottom": "^1.1.6",
     "zod": "^4.4.3"
   },

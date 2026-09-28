@@ -35,7 +35,7 @@ A separate X Ads project, connector connected in Claude Code and Codex. No campa
 
 ## Vercel AI Gateway
 
-Key `oparax-experiment-1`, installed as `AI_GATEWAY_API_KEY`. Every model call goes through it, including Jev (`typesafe-ai/jev`) and Grok (`spacexai/grok-4.7`), so no per-provider keys exist.
+Key `oparax-experiment-1`, installed as `AI_GATEWAY_API_KEY`. Every model call goes through it, including Jev (`typesafe-ai/jev`) and the onboarding model, GPT-6 Luna fast (`openai/gpt-6-luna-fast`, which replaced Grok `spacexai/grok-4.7` in the September 26 to 27 lab and the app), so no per-provider keys exist.
 
 ## PostHog
 

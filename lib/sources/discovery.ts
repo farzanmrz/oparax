@@ -40,10 +40,13 @@ export async function fetchSafeSource(
   return (await fetchSafeSourceWithFinalUrl(endpoint, url, expectedHostname, signal)).res;
 }
 
+/** `expectedHostname` keeps every redirect on that site, which is right for checking a source. A
+ *  link a person posted (a shortener, an affiliate hop) legitimately lands on another site, so
+ *  `null` allows any public http(s) destination while still refusing private hosts. */
 export async function fetchSafeSourceWithFinalUrl(
   endpoint: string,
   url: string,
-  expectedHostname: string,
+  expectedHostname: string | null,
   signal?: AbortSignal,
 ): Promise<{ res: Response; finalUrl: string }> {
   let current = new URL(url);
@@ -51,10 +54,11 @@ export async function fetchSafeSourceWithFinalUrl(
   // requested. A repeated URL is a redirect loop even before the ceiling is exhausted.
   const visited = new Set<string>();
   for (let redirects = 0; redirects < 20; redirects += 1) {
-    if (
-      !isSafeDiscoveredUrl(current.toString(), expectedHostname) ||
-      visited.has(current.toString())
-    ) {
+    const safe =
+      expectedHostname === null
+        ? isPublicHttpUrl(current)
+        : isSafeDiscoveredUrl(current.toString(), expectedHostname);
+    if (!safe || visited.has(current.toString())) {
       throw new Error(`Source ${endpoint} redirected to an unsafe URL`);
     }
     visited.add(current.toString());
@@ -351,6 +355,12 @@ export function isPrivateHostname(hostname: string): boolean {
  *  constantly), and never a private/loopback/link-local literal. Without this a hostile
  *  site's sitemap index can point at an internal address and have the server fetch and parse
  *  it from inside its own network. */
+function isPublicHttpUrl(url: URL): boolean {
+  return (
+    (url.protocol === "http:" || url.protocol === "https:") && !isPrivateHostname(url.hostname)
+  );
+}
+
 export function isSafeDiscoveredUrl(candidate: string, expectedHostname: string): boolean {
   let url: URL;
   try {

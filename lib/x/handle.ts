@@ -1,4 +1,4 @@
-export const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
+const X_HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 
 // Preserve the spelling people use for their own handle.
 export function normalizeHandle(raw: string): string {

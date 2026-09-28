@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["radix-ui"],
   },
+  // X serves post photos and video freeze frames from this host; the onboarding page shows them.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "pbs.twimg.com" }],
+  },
   async redirects() {
     return [
       { source: "/agents", destination: "/", permanent: true },
