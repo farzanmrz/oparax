@@ -36,7 +36,10 @@ Read repository source as needed, but do not change repository files, git,
 external services or product data.
 Do not run the product app, tests or builds. No subagents or external writes.
 Only read third-party public types and docs, never built package internals.
-Do not inspect .feature/, other agent sessions, logs, transcripts or drafts.
+Do not inspect other agent sessions, logs, transcripts, run directories or
+drafts, and read nothing under .feature/ except the files the assignment below
+names by exact path as shared inputs (an approved owner plan, a settled scope
+record, plan files): those are authorized reading, never your peer's draft.
 All authorized planning inputs are supplied below; only explicitly named shared
 reference files may be read in addition to source. Do not search for your peer's
 answer. Until the EXCHANGE message, form your own answer without seeing theirs.
