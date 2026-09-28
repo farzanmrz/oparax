@@ -94,6 +94,7 @@ export function initPostHog(): void {
 
   posthog.init(token, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+    defaults: "2026-05-30",
     capture_exceptions: true,
     capture_pageview: "history_change",
     // The recorder loads separately, so place it in the head where React hydration keeps it.

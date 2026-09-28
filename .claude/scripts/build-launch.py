@@ -226,7 +226,10 @@ def command(state, job):
            # worktree path is new every time.
            '-c', f'projects."{worktree}".trust_level="trusted"',
            # The decision log and the .feature scope files live in the main checkout.
-           '--add-dir', str(Path(state['repo']) / '.feature')]
+           '--add-dir', str(Path(state['repo']) / '.feature'),
+           # A worktree's git metadata lives in the main repo's .git; without this the Codex sandbox denies
+           # index.lock there and a build can give up on its first commit (onboarding, September 28).
+           '--add-dir', str(Path(state['repo']) / '.git')]
     for override in CONNECTORS_OFF + (skills_off(),):
         cmd += ['-c', override]
     return cmd + ['--json', '--output-last-message', str(job / 'result.md'), '--', '-']

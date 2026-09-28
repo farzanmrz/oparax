@@ -6,10 +6,10 @@ Owner, September 28: "My involvement should only be planning it all out once." T
 
 Your plan is split into components (the schema, the page, the alerts, and so on), each with what it depends on. When you approve the plan, `/run-plan <N>` hands it to a script. The script, not a model, decides what happens next, and it follows the plan file exactly as approved; if the plan file changes underneath it, it stops and says so.
 
-For each component, in the order the dependencies allow, up to three at a time:
+For each component, in the order the dependencies allow, up to ten at a time (owner, September 28):
 
 1. **Build.** A fresh copy of the code is made for this component alone (its own folder and branch, cut from the feature branch after everything it depends on has landed). A Codex build session reads only this component's slice of the plan and builds it step by step, committing after every step. If the build hits a question only you can answer, it parks: it writes the question down, keeps every step it finished, and the script moves on to the components that do not depend on it.
-2. **Review.** A separate, headless Claude session runs `/qc` on that copy alone: the gates, the review lanes, the fix list. The script reads the verdict: pass, fixes, or stop.
+2. **Gates.** The script runs the build and the typecheck on that copy (owner, September 28: no review lanes per component; "let it be 1 review at the end and at the seams"). Green merges; red blocks that component with the failing lines. The old per-component `/qc` remains as `--component-review lanes`.
 3. **Fix.** If there are fixes, a Codex fix session applies exactly that list on the same copy, and review runs again. At most three fix rounds; after that the component is blocked for you to look at, and the rest keeps going.
 4. **Merge.** A passed component is merged into the feature branch `ft/<N>` with its step commits kept, in dependency order. A merge conflict blocks that component with the file names, nothing more.
 

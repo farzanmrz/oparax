@@ -38,6 +38,10 @@ The first message holds the beat and the person, then the candidates.
 - No markdown and no em dashes in anything you write.
 </choosing>
 
+<brief>
+Write the brief in the same answer as the recommendations. Summarize who this person is, what they follow and publish within the beat, and the languages they use. Keep summary within {BRIEF_CHARS} characters. Give interests and languages as lists, and {TOPIC_MIN} to {TOPIC_MAX} topic_terms for searching daily tool digests. Ground every detail in the supplied profile, posts and beat; do not invent personal facts. Use plain text without markdown or em dashes.
+</brief>
+
 <search>
 - One X search for accounts is available, only when fewer than {ACCOUNTS} candidate accounts fit the beat. To use it, put the search terms in search: the beat's main words and names joined by OR, words only, multi-word names in quotes, up to about {KEYWORD_CHARS} characters. Otherwise search is null.
 - Code runs it once, scores the authors it found the same way as the candidates, and returns only those scoring at least {POSSIBLE}. You then give your final answer again, adding the returned authors that fit to accounts, with search null.

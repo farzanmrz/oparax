@@ -20,7 +20,7 @@ disable-model-invocation: true
 The four forms, and the one command each runs:
 
 ```bash
-python3 .claude/scripts/run-plan.py start --issue <N>    # /run-plan <N>: begin the run, detached, and come back at once
+python3 .claude/scripts/run-plan.py start --issue <N>    # /run-plan <N>: begin the run, detached, and come back at once (10 builds at once, gates-only per component; owner, September 28)
 python3 .claude/scripts/run-plan.py status --issue <N>   # /run-plan <N> status: one screen, one line per component
 python3 .claude/scripts/run-plan.py stop --issue <N>     # /run-plan <N> stop: nothing new starts; what is running finishes its job
 python3 .claude/scripts/run-plan.py resume --issue <N>   # /run-plan <N> resume: pick up a stopped or interrupted run where it stands
@@ -32,6 +32,7 @@ What the owner gets:
 
 - **While it runs:** `/run-plan <N> status` at any time. Each component is one line with where it is (planned, building, reviewing, fixing, merged, parked, blocked, failed).
 - **When it ends:** a macOS notification and one file, `.feature/run-<N>-summary.md`: what shipped into `ft/<N>`, what parked with the question it is waiting on, what blocked and why, and which acceptance journeys to walk. Nothing else needs reading.
+- **Per component, only the gates (owner, September 28: "screw the separate review loops").** After each build the script runs the build and typecheck in that worktree and merges on green; the one full review with the lanes runs on the whole branch at the end. `--component-review lanes` restores the old per-component `/qc`. `--max-builds` defaults to 10.
 - **A pause parks only that component.** The rest keeps going. Parked and blocked components keep every step they committed on their own branch, so nothing is lost and nothing has to be redone.
 - **No session can hang the night.** A build gets 60 minutes, a review 30, a fix round 45; past that the script ends it, throws away its unfinished changes, and starts it again from the last step it committed. Three such timeouts block the component for you to look at.
 

@@ -1,9 +1,29 @@
 import "server-only";
-import { generateText, type ModelMessage, Output, type UIMessageStreamWriter } from "ai";
+import { generateText, type ModelMessage, Output } from "ai";
 import { z } from "zod";
 import seedTable from "@/docs/source-table-seed.json";
+import { gatewayCost, withCost } from "@/lib/ai/cost";
+import { jev } from "@/lib/ai/jev";
+import { ledgerRows, lunaBound } from "@/lib/guards/ledger";
+import { xGet } from "@/lib/x/client";
 import { INSTRUCTIONS_TEMPLATE } from "./prompts";
-import { type Final, HANDLE_NOT_FOUND, type OnboardingUIMessage } from "./types";
+import {
+  AnswerSchema,
+  BRIEF_CHARS,
+  type BuildState,
+  type Final,
+  HANDLE_NOT_FOUND,
+  type LinkMeta,
+  type Media,
+  type Part,
+  type Post,
+  type Profile,
+  type Quoted,
+  TOPIC_MAX,
+  TOPIC_MIN,
+  XPostsSchema,
+  XProfileSchema,
+} from "./types";
 
 // Onboarding in three steps (owner, September 27: "I've overcomplicated for no damn reason"): code looks the
 // person up on X and reads their newest posts; then Jev scores every row of the shared source table and every
@@ -11,72 +31,38 @@ import { type Final, HANDLE_NOT_FOUND, type OnboardingUIMessage } from "./types"
 // pass in one structured answer. No tools: when too few accounts fit, the model names search terms, code runs the
 // one X search, Jev scores its authors, and a second call gives the final answer (council, Astra and Fable).
 
-// How many micro-steps of onboarding run, during the owner's step-by-step walkthrough (see runOnboarding).
-const WALKTHROUGH_STEPS: number = 1;
-
-// Full-archive search allows one request per second, so every X call from this server waits its turn.
-const X_GAP_MS = 1100;
-let xQueue: Promise<unknown> = Promise.resolve();
-let xLast = 0;
-function xTurn<T>(work: () => Promise<T>): Promise<T> {
-  const next = xQueue.then(async () => {
-    const wait = xLast + X_GAP_MS - Date.now();
-    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-    xLast = Date.now();
-    return work();
-  });
-  xQueue = next.catch(() => {});
-  return next;
-}
-
-export async function runOnboarding(
-  { handle, beat }: { handle: string; beat: string },
-  writer: UIMessageStreamWriter<OnboardingUIMessage>,
-): Promise<void> {
+export async function runOnboarding({
+  handle,
+  beat,
+  monitorId,
+  runId,
+  report,
+  checkpoint,
+  resume = {},
+  onGeneration,
+}: {
+  handle: string;
+  beat: string;
+  monitorId: string;
+  runId: string;
+  report: (step: number, message: string) => Promise<void>;
+  checkpoint: (state: BuildState) => Promise<void>;
+  resume?: BuildState;
+  onGeneration: (generation: {
+    model: string;
+    usage: unknown;
+    latencyMs: number;
+    messages: ModelMessage[];
+    output: string;
+    charged: number;
+    market: number;
+  }) => void;
+}) {
   const MODEL = "openai/gpt-6-luna-fast";
-  const REASONING = "high" as const;
-  const X = process.env.X_BEARER_TOKEN ?? "";
-  const GW = process.env.AI_GATEWAY_API_KEY ?? "";
-  type Part = {
-    id: string;
-    date: string;
-    text: string;
-    quoted?: Quoted | null;
-    links?: string[];
-    link_meta?: Record<string, LinkMeta>;
-    media?: Media[];
-  };
-  // A photo, or a video or GIF shown by its freeze frame; src is the image X serves for it.
-  type Media = { type: string; alt?: string; src?: string };
-  type Quoted = {
-    id: string;
-    author: string;
-    name: string;
-    bio?: string;
-    text: string;
-    media?: Media[];
-  };
-  type LinkMeta = { title?: string; description?: string };
-  // One unit the model reads. A thread is one Post whose parts are the person's own self-reply chain, in order.
-  type Post = {
-    id: string;
-    date: string;
-    kind: "original" | "quote" | "thread" | "thread_part";
-    lang?: string;
-    text: string;
-    parts?: Part[];
-    quoted: Quoted | null;
-    parent_id?: string;
-    links: string[];
-    link_meta: Record<string, LinkMeta>;
-    mentions: string[];
-    hashtags: string[];
-    cashtags: string[];
-    media: Media[];
-    poll?: string[];
-    sponsored?: boolean;
-    conversation_id?: string;
-    edit_ids?: string[];
+  const state: BuildState = { ...resume };
+  const save = async (patch: Partial<BuildState>) => {
+    Object.assign(state, patch);
+    await checkpoint(state);
   };
   type Row = {
     id: string;
@@ -87,7 +73,7 @@ export async function runOnboarding(
     lang: string;
     description: string;
   };
-  const TABLE = seedTable as Row[];
+  const TABLE = seedTable satisfies Row[];
   // One source Jev scores: a table row, an account they quote (its bio and the posts of theirs they quoted) or an
   // author the X search found (its bio and the post it found).
   type Candidate = {
@@ -113,7 +99,17 @@ export async function runOnboarding(
   const POSSIBLE = 0.35;
   // Every number the prompt states, by placeholder, so the sentence the model reads and the rule code enforces
   // cannot disagree.
-  const NUMBERS: Record<string, number> = { POSTS, DAYS, SITES, ACCOUNTS, KEYWORD_CHARS, POSSIBLE };
+  const NUMBERS: Record<string, number> = {
+    POSTS,
+    DAYS,
+    SITES,
+    ACCOUNTS,
+    KEYWORD_CHARS,
+    POSSIBLE,
+    BRIEF_CHARS,
+    TOPIC_MIN,
+    TOPIC_MAX,
+  };
   // Every tag code wraps data in. The trust section lists them from here, so the list the model is told to treat
   // as data matches the tags it reads.
   const DATA_TAGS = [
@@ -142,44 +138,10 @@ export async function runOnboarding(
         "{DATA_TAGS}",
         `${DATA_TAGS.slice(0, -1).join(", ")} and ${DATA_TAGS[DATA_TAGS.length - 1]}`,
       );
-  const X_POST = 0.005,
-    X_USER = 0.01;
-  // X bills a post or profile once per UTC day however often it is returned (cogs.md), so a re-returned
-  // id costs nothing; every X call prices its answer through this.
-  function xBill(body: any): number {
-    let usd = 0;
-    for (const t of [...(body?.data ?? []), ...(body?.includes?.tweets ?? [])])
-      if (t?.id && !S.billed.has(`t${t.id}`)) {
-        S.billed.add(`t${t.id}`);
-        usd += X_POST;
-      }
-    for (const u of body?.includes?.users ?? [])
-      if (u?.id && !S.billed.has(`u${u.id}`)) {
-        S.billed.add(`u${u.id}`);
-        usd += X_USER;
-      }
-    S.x_usd += usd;
-    return usd;
-  }
-  const SOCIAL = [
-    "x.com",
-    "twitter.com",
-    "t.co",
-    "instagram.com",
-    "facebook.com",
-    "tiktok.com",
-    "youtube.com",
-    "youtu.be",
-  ];
-
   // ---------- run state, owned by code ----------
   const S = {
     posts: new Map<string, Post>(),
     seenIds: new Set<string>(),
-    uid: "",
-    billed: new Set<string>(),
-    x_usd: 0,
-    jev_usd: 0,
   };
 
   // A thread is one unit: the root plus every post that replies to the person's own previous post in
@@ -262,9 +224,6 @@ export async function runOnboarding(
     for (const p of units) if (!S.posts.has(p.id)) S.posts.set(p.id, p);
     return units.filter((p) => S.posts.get(p.id) === p);
   }
-  function hostOf(u: string) {
-    return u.replace(/^https?:\/\/(www\.)?/, "").split(/[/?#]/)[0];
-  }
   const esc = (v: unknown) =>
     String(v ?? "")
       .replace(/&/g, "&amp;")
@@ -307,10 +266,7 @@ export async function runOnboarding(
   }
   // What the model receives for text holding media tags: each tag's image right after it, the address left out of the words.
   function withImages(text: string) {
-    const parts: (
-      | { type: "text"; text: string }
-      | { type: "file"; mediaType: string; data: { type: "url"; url: URL } }
-    )[] = [];
+    const parts: ({ type: "text"; text: string } | { type: "image"; image: URL })[] = [];
     let at = 0;
     for (const m of text.matchAll(/<media\b[^>]*\/>/g)) {
       const src = m[0].match(/ src="([^"]*)"/)?.[1]?.replace(/&amp;/g, "&");
@@ -318,9 +274,8 @@ export async function runOnboarding(
       parts.push(
         { type: "text", text: text.slice(at, m.index) + m[0].replace(/ src="[^"]*"/, "") },
         {
-          type: "file",
-          mediaType: /\.png$/i.test(src) ? "image/png" : "image/jpeg",
-          data: { type: "url", url: new URL(src) },
+          type: "image",
+          image: new URL(src),
         },
       );
       at = m.index + m[0].length;
@@ -350,134 +305,8 @@ export async function runOnboarding(
     return lines.join("\n");
   }
 
-  // Every X call waits its turn in the module-level queue (xTurn), one request a second across all builds.
-  async function xGet(path: string, params: Record<string, string>) {
-    return xTurn(async () => {
-      const url = `https://api.x.com/2/${path}?${new URLSearchParams(params)}`;
-      let r = await fetch(url, { headers: { Authorization: `Bearer ${X}` } });
-      if (r.status === 429) {
-        await new Promise((res) => setTimeout(res, 2000));
-        r = await fetch(url, { headers: { Authorization: `Bearer ${X}` } });
-      }
-      const body = await r.json().catch(() => ({}));
-      return { status: r.status, body };
-    });
-  }
-  // Every field X returns to the app token (owner, September 26: pull everything; the model sees only
-  // what renderPost shows). Six profile fields X refuses to an app token are left out of the request.
-  const USER_FIELDS =
-    "affiliation,created_at,description,entities,id,is_identity_verified,location,most_recent_tweet_id,name,pinned_tweet_id,profile_banner_url,profile_image_url,protected,public_metrics,url,username,verified,verified_type,withheld";
-  const POST_FIELDS = {
-    "tweet.fields":
-      "article,attachments,author_id,card_uri,community_id,context_annotations,conversation_id,created_at,display_text_range,edit_controls,edit_history_tweet_ids,entities,geo,id,in_reply_to_user_id,lang,media_metadata,note_tweet,possibly_sensitive,public_metrics,referenced_tweets,reply_settings,scopes,source,text,withheld",
-    // Only what the model reads: the quoted post and its author, media, polls, places and articles. The
-    // profiles of mentioned accounts, the person's own profile on every call and edit-history posts are
-    // not fetched (owner, September 26: the handles are already in the post text).
-    expansions:
-      "article.cover_media,article.media_entities,attachments.media_keys,attachments.poll_ids,geo.place_id,referenced_tweets.id,referenced_tweets.id.attachments.media_keys,referenced_tweets.id.author_id",
-    "user.fields": USER_FIELDS,
-    "media.fields":
-      "alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,variants,width",
-    "poll.fields": "duration_minutes,end_datetime,id,options,voting_status",
-    "place.fields": "contained_within,country,country_code,full_name,geo,id,name,place_type",
-  };
-  // A sponsored or referral post: a partner or ad hashtag, a referral or affiliate parameter in a link,
-  // or a known affiliate redirect host. Its brand is not an interest and not a cited account.
-  const SPONSOR_TAG = /^#(\w*partner\w*|ad|ads|sponsored|paid\w*|affiliate\w*|promo\w*|gifted)$/i;
-  const REFERRAL_PARAM =
-    /[?&](ref|refcode|ref_code|referral|refid|via|aff|aff_id|affiliate|co-from|invite|invite_code|code|promo|coupon)=/i;
-  const AFFILIATE_HOST =
-    /(^|\.)(pxf\.io|sjv\.io|ojrq\.net|impact\.com|awin1\.com|shareasale\.com|partnerstack\.com|go\.skimresources\.com|viglink\.com|redirect\.viglink\.com|amzn\.to|rstyle\.me|linksynergy\.com|tkqlhce\.com|anrdoezrs\.net|dpbolvw\.net|jdoqocy\.com|kqzyfj\.com)$/i;
-  const isReferralLink = (u: string) => REFERRAL_PARAM.test(u) || AFFILIATE_HOST.test(hostOf(u));
-  const unX = (t: string) => t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
-  // Turns X's answer into posts. Reposts are dropped; a reply is kept only when it answers the person's
-  // own post (a thread continuation); a reply to anyone else is dropped.
-  function toPosts(body: any): Post[] {
-    const users: Record<string, any> = Object.fromEntries(
-      (body.includes?.users ?? []).map((u: any) => [u.id, u]),
-    );
-    const tweets: Record<string, any> = Object.fromEntries(
-      (body.includes?.tweets ?? []).map((t: any) => [t.id, t]),
-    );
-    const media: Record<string, any> = Object.fromEntries(
-      (body.includes?.media ?? []).map((m: any) => [m.media_key, m]),
-    );
-    const polls: Record<string, any> = Object.fromEntries(
-      (body.includes?.polls ?? []).map((m: any) => [m.id, m]),
-    );
-    // A photo's image is the photo; a video's or GIF's is its freeze frame (preview_image_url).
-    const mediaOf = (keys: string[] | undefined): Media[] =>
-      (keys ?? []).map((k) => ({
-        type: media[k]?.type ?? "media",
-        alt: media[k]?.alt_text,
-        src: media[k]?.type === "photo" ? media[k]?.url : media[k]?.preview_image_url,
-      }));
-    const posts: Post[] = [];
-    for (const t of body.data ?? []) {
-      const refs: any[] = t.referenced_tweets ?? [];
-      if (refs.some((r) => r.type === "retweeted")) continue;
-      const reply = refs.find((r) => r.type === "replied_to");
-      if (reply && t.in_reply_to_user_id !== S.uid) continue;
-      const q = refs.find((r) => r.type === "quoted");
-      const qt = q ? tweets[q.id] : null;
-      const quoted: Quoted | null = q
-        ? {
-            id: q.id,
-            author: qt ? `@${users[qt.author_id]?.username ?? "?"}` : "@?",
-            name: qt ? (users[qt.author_id]?.name ?? "") : "",
-            bio: qt ? unX(users[qt.author_id]?.description ?? "") : undefined,
-            text: qt ? unX(qt.note_tweet?.text ?? qt.text) : "(X did not return the quoted post)",
-            media: mediaOf(qt?.attachments?.media_keys),
-          }
-        : null;
-      const ents = t.note_tweet?.entities ?? t.entities ?? {};
-      const urls = (ents.urls ?? []).filter(
-        (e: any) =>
-          !SOCIAL.some(
-            (d) =>
-              hostOf(e.expanded_url ?? e.url) === d ||
-              hostOf(e.expanded_url ?? e.url).endsWith(`.${d}`),
-          ),
-      );
-      const link_meta: Record<string, LinkMeta> = {};
-      for (const e of urls)
-        link_meta[(e.expanded_url ?? e.url).replace(/^https?:\/\/(www\.)?/, "")] = {
-          title: e.title,
-          description: e.description,
-        };
-      posts.push({
-        id: t.id,
-        date: t.created_at.slice(0, 10),
-        kind: reply ? "thread_part" : quoted ? "quote" : "original",
-        lang: t.lang,
-        text: unX(t.note_tweet?.text ?? t.text),
-        quoted,
-        parent_id: reply?.id,
-        links: Object.keys(link_meta),
-        link_meta,
-        mentions: (ents.mentions ?? []).map((m: any) => `@${m.username}`),
-        hashtags: (ents.hashtags ?? []).map((h: any) => `#${h.tag}`),
-        cashtags: (ents.cashtags ?? []).map((c: any) => `$${c.tag}`),
-        media: mediaOf(t.attachments?.media_keys),
-        poll: (t.attachments?.poll_ids ?? []).flatMap((id: string) =>
-          (polls[id]?.options ?? []).map((o: any) => o.label),
-        ),
-        conversation_id: t.conversation_id,
-        edit_ids: t.edit_history_tweet_ids,
-      });
-      const last = posts[posts.length - 1];
-      if (!last.poll?.length) delete last.poll;
-      last.sponsored =
-        last.hashtags.some((h) => SPONSOR_TAG.test(h)) || last.links.some(isReferralLink);
-    }
-    return posts;
-  }
   const xTime = (daysAgo: number) =>
     new Date(Date.now() - daysAgo * 86_400_000).toISOString().replace(/\.\d+Z$/, "Z");
-  // A call's cost as the answer itself reports it. The generation lookup only finds a call about a minute
-  // later, so it is not used; a call on the owner's own key (BYOK) reports 0 and its marketCost instead.
-  const costOf = (meta: any) =>
-    Number(meta?.gateway?.cost ?? 0) || Number(meta?.gateway?.marketCost ?? 0);
   const handleOf = (r: Row) => `@${r.target.replace(/\/+$/, "").split("/").pop()}`.toLowerCase();
 
   // Candidates travel in the state keyed by id, so the question names its candidate by path and carries no
@@ -497,109 +326,44 @@ export async function runOnboarding(
     quoted: p.quoted ? { author: p.quoted.author, text: p.quoted.text } : null,
     sites: p.links.map(hostOf),
   });
-  // One Jev request scores every candidate with ROW_Q. A failed request, or a missing or invalid score, stops the
-  // build, since a candidate without a score cannot be kept or dropped.
-  async function jev(
-    state: object,
-    rows: Record<string, Candidate>,
-  ): Promise<Record<string, number>> {
-    const ids = Object.keys(rows);
-    const r = await fetch("https://ai-gateway.vercel.sh/v1/evaluate", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GW}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "typesafe-ai/jev",
-        state: { ...state, rows },
-        questions: Object.fromEntries(ids.map((id) => [id, { type: "boolean", ...ROW_Q(id) }])),
-      }),
-    });
-    if (!r.ok) throw new Error(`Jev ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    const body = await r.json();
-    S.jev_usd += costOf(body.providerMetadata);
-    const Scores = z.object({
-      answers: z.object(
-        Object.fromEntries(
-          ids.map((id) => [id, z.object({ probability: z.number().min(0).max(1) })]),
-        ),
-      ),
-    });
-    const scores = Scores.safeParse(body);
-    if (!scores.success)
-      throw new Error(`Jev gave no valid score at ${scores.error.issues[0]?.path.join(".")}`);
-    return Object.fromEntries(ids.map((id) => [id, scores.data.answers[id].probability]));
+  async function scoreRows(context: object, rows: Record<string, Candidate>) {
+    return jev(
+      { ...context, rows },
+      Object.fromEntries(Object.keys(rows).map((id) => [id, ROW_Q(id)])),
+      { kind: "onboarding", monitorId },
+    );
   }
 
-  type Profile = {
-    id: string;
-    handle: string;
-    name: string;
-    bio: string;
-    image?: string;
-    site?: string;
-    pinned: Post | null;
-  };
-  // Micro-step 1: who the person is on X, and their pinned post. Null when X has no account for the handle.
-  async function lookUp(): Promise<Profile | null> {
-    const u = await xGet(`users/by/username/${handle}`, {
-      "user.fields": USER_FIELDS,
-      expansions: "affiliation.user_id",
-      "tweet.fields": POST_FIELDS["tweet.fields"],
-    });
-    const d = u.body.data;
-    // X answers a handle with no account with an error entry and no data; no data on any other status is X failing.
-    if (!d) {
-      if (u.status === 200) return null;
-      throw new Error(`X could not look up @${handle} (status ${u.status})`);
-    }
-    S.uid = d.id;
-    S.billed.add(`u${d.id}`);
-    S.x_usd += X_USER;
-    xBill({ includes: { tweets: u.body.includes?.tweets ?? [] } });
-    // The profile request cannot bring a pinned post's pictures or quoted post, so the pinned post is read on its
-    // own with every post field, like any other post (owner, September 27).
-    const pinnedBody = d.pinned_tweet_id
-      ? (await xGet("tweets", { ids: d.pinned_tweet_id, ...POST_FIELDS })).body
-      : null;
-    if (pinnedBody) xBill(pinnedBody);
-    const pinned = pinnedBody ? (toPosts(pinnedBody)[0] ?? null) : null;
-    const site = d.entities?.url?.urls?.[0]?.expanded_url ?? (d.url || undefined);
-    const bio = (d.entities?.description?.urls ?? []).reduce(
-      (b: string, e: any) => b.replace(e.url, e.expanded_url ?? e.url),
-      unX(d.description ?? ""),
-    );
-    return {
-      id: d.id,
-      handle: `@${d.username}`,
-      name: d.name,
-      bio,
-      image: d.profile_image_url,
-      site,
-      pinned,
-    };
-  }
   // Micro-step 2: their newest POSTS own posts of the past DAYS days, a thread counting as one. Reposts and
   // replies to other people are left out; the timeline still carries their replies to themselves, which fold
   // into threads. A thread's continuations are newer than its first post, so the pages go on until the first
   // post of each of the newest POSTS conversations has arrived, or the window runs out.
   async function readPosts(profile: Profile): Promise<Post[]> {
-    const posts: Post[] = [];
+    const posts: Post[] = [...(state.timeline?.posts ?? [])];
     const conversationOf = (p: Post) => p.conversation_id ?? p.id;
     const newest = () =>
       [...new Set(posts.map(conversationOf))]
         .sort((a, b) => (BigInt(b) > BigInt(a) ? 1 : -1))
         .slice(0, POSTS);
-    let token: string | undefined;
-    let untilId: string | undefined;
-    for (let page = 0; page < PAGES; page += 1) {
-      const { body } = await xGet(`users/${profile.id}/tweets`, {
-        max_results: String(POSTS),
-        exclude: "replies,retweets",
-        start_time: xTime(DAYS),
-        ...POST_FIELDS,
-        ...(token ? { pagination_token: token } : untilId ? { until_id: untilId } : {}),
-      });
-      xBill(body);
-      const got = toPosts(body);
+    let token = state.timeline?.token;
+    let untilId = state.timeline?.untilId;
+    for (let page = state.timeline?.page ?? 0; !state.timeline?.done && page < PAGES; page += 1) {
+      await report(2, `Reading @${handle}'s newest posts`);
+      const response = await xGet(
+        `users/${profile.id}/tweets`,
+        {
+          max_results: String(POSTS),
+          exclude: "replies,retweets",
+          start_time: xTime(DAYS),
+          ...POST_FIELDS,
+          ...(token ? { pagination_token: token } : untilId ? { until_id: untilId } : {}),
+        },
+        { funding: { monitorId }, runId, maxPosts: POSTS * 2, profiles: POSTS },
+      );
+      if (response.status !== 200 || response.uncertain)
+        throw new Error(`X timeline ${response.status}`);
+      const body = XPostsSchema.parse(response.body);
+      const got = toPosts(body, profile.id);
       // A post with no words, image, alt text, quote or link says nothing; it is kept only when a thread hangs on it.
       posts.push(
         ...got.filter(
@@ -615,11 +379,12 @@ export async function runOnboarding(
       token = body.meta?.next_token;
       untilId = body.meta?.oldest_id;
       const top = newest();
-      if (
-        !body.data?.length ||
-        (top.length >= POSTS && top.every((c) => posts.some((p) => p.id === c)))
-      )
-        break;
+      const done =
+        !body.data.length ||
+        (!token && !untilId) ||
+        (top.length >= POSTS && top.every((c) => posts.some((p) => p.id === c)));
+      await save({ timeline: { posts, page: page + 1, token, untilId, done } });
+      if (done) break;
     }
     const keep = new Set(newest());
     return addPosts(posts.filter((p) => keep.has(conversationOf(p))));
@@ -627,24 +392,28 @@ export async function runOnboarding(
 
   // Micro-step 3's one X search: the authors of the most relevant public posts of the last month on the model's
   // terms, each with their bio and one post.
-  async function searchAccounts(terms: string) {
+  async function searchAccounts(terms: string, userId: string) {
     const query = `(${terms}) -is:reply -is:retweet`;
-    const { status, body } = await xGet("tweets/search/all", {
-      query,
-      max_results: "10",
-      sort_order: "relevancy",
-      start_time: xTime(30),
-      ...POST_FIELDS,
-      expansions: `${POST_FIELDS.expansions},author_id`,
-    });
-    if (status !== 200)
-      return { query, authors: [], failed: `X returned ${status}: ${body.title ?? ""}` };
-    xBill(body);
+    const response = await xGet(
+      "tweets/search/all",
+      {
+        query,
+        max_results: "10",
+        sort_order: "relevancy",
+        start_time: xTime(30),
+        ...POST_FIELDS,
+        expansions: `${POST_FIELDS.expansions},author_id`,
+      },
+      { funding: { monitorId }, runId, maxPosts: 20, profiles: 20 },
+    );
+    if (response.status !== 200 || response.uncertain)
+      return { query, authors: [], failed: `X search failed (${response.status}).` };
+    const body = XPostsSchema.parse(response.body);
     const users = body.includes?.users ?? [];
     const byAuthor = new Map<string, { handle: string; name: string; bio: string; post: string }>();
     for (const t of body.data ?? []) {
-      const u = users.find((x: any) => x.id === t.author_id);
-      if (u && u.id !== S.uid && !byAuthor.has(u.username))
+      const u = users.find((x) => x.id === t.author_id);
+      if (u && u.id !== userId && !byAuthor.has(u.username))
         byAuthor.set(u.username, {
           handle: `@${u.username}`,
           name: u.name,
@@ -655,47 +424,21 @@ export async function runOnboarding(
     return { query, authors: [...byAuthor.values()], failed: null };
   }
 
-  writer.write({ type: "data-status", data: { message: `Looking up @${handle} on X` } });
-  const profile = await lookUp();
-  if (!profile) {
-    writer.write({
-      type: "data-result",
-      data: { final: null, costUsd: 0, turns: 0, error: HANDLE_NOT_FOUND },
-    });
-    return;
-  }
-  const page = (m: Media[]) => m.map((x) => ({ type: x.type, src: x.src, alt: x.alt }));
+  await report(1, `Looking up @${handle} on X`);
+  const profile =
+    state.profileComplete && state.profile
+      ? state.profile
+      : await lookupProfile(handle, monitorId, save, state);
+  if (!profile) throw new Error(HANDLE_NOT_FOUND);
   const pin = profile.pinned;
-  writer.write({
-    type: "data-profile",
-    data: {
-      handle: profile.handle,
-      name: profile.name,
-      bio: profile.bio,
-      image: profile.image ?? null,
-      site: profile.site ?? null,
-      pinned: pin
-        ? {
-            text: noTco(pin.text),
-            links: pin.links,
-            media: page(pin.media),
-            quoted: pin.quoted
-              ? {
-                  author: pin.quoted.author,
-                  text: noTco(pin.quoted.text),
-                  media: page(pin.quoted.media ?? []),
-                }
-              : null,
-          }
-        : null,
-    },
-  });
-  // The walkthrough (owner, September 27): the page runs only the micro-steps explained to the owner so far; this
-  // number moves up as each one is explained.
-  if (WALKTHROUGH_STEPS < 2) return;
-  writer.write({ type: "data-status", data: { message: `Reading @${handle}'s newest posts` } });
-  const posts = await readPosts(profile);
-  if (WALKTHROUGH_STEPS < 3) return;
+  await report(2, `Reading @${handle}'s newest posts`);
+  const posts = state.posts ?? (await readPosts(profile));
+  if (!state.posts) await save({ posts });
+  for (const post of posts) {
+    S.posts.set(post.id, post);
+    for (const id of [post.id, ...(post.edit_ids ?? []), ...(post.parts?.map((p) => p.id) ?? [])])
+      S.seenIds.add(id);
+  }
 
   // Micro-step 3: the recommendation. Jev scores every candidate for the beat in one request: every table row, and
   // every account they quote outside sponsored posts that is not a table row and not them. A mention is not a
@@ -741,13 +484,12 @@ export async function runOnboarding(
     posts: own.map(jevPost),
     ...(pinnedApart ? { pinned_post: jevPost(pinnedApart) } : {}),
   };
-  writer.write({
-    type: "data-status",
-    data: {
-      message: `Read ${posts.length} posts; Jev is scoring ${Object.keys(candidates).length} candidate sources`,
-    },
-  });
-  const scores = await jev(jevState, candidates);
+  await report(
+    3,
+    `Read ${posts.length} posts; Jev is scoring ${Object.keys(candidates).length} candidate sources`,
+  );
+  const scores = state.scores ?? (await scoreRows(jevState, candidates));
+  if (!state.scores) await save({ scores });
   const kept = Object.keys(candidates)
     .filter((id) => scores[id] >= POSSIBLE)
     .sort((a, b) => scores[b] - scores[a]);
@@ -757,10 +499,7 @@ export async function runOnboarding(
       c.handle ? [[c.handle.toLowerCase(), scores[id]] as const] : [],
     ),
   );
-  writer.write({
-    type: "data-status",
-    data: { message: `Jev passed ${kept.length} candidates; choosing from them` },
-  });
+  await report(3, `Jev passed ${kept.length} candidates; choosing from them`);
 
   // Only the candidates that passed reach the model, the highest score first, after the person and their posts,
   // pictures attached.
@@ -781,31 +520,50 @@ export async function runOnboarding(
     }),
     "</candidates>",
   ].join("\n");
-  const Answer = z.object({
-    sites: z.array(z.object({ id: z.string(), why: z.string() })),
-    accounts: z.array(z.object({ handle: z.string(), why: z.string() })),
-    search: z.string().nullable(),
-  });
-  const messages: ModelMessage[] = [{ role: "user", content: withImages(firstMessage) }];
-  let modelUsd = 0;
-  let turns = 0;
+  const messages: ModelMessage[] = [
+    { role: "system", content: INSTRUCTIONS },
+    { role: "user", content: withImages(firstMessage) },
+  ];
   async function ask() {
-    const r = await generateText({
-      model: MODEL,
-      system: INSTRUCTIONS,
-      messages,
-      output: Output.object({ schema: Answer }),
-      reasoning: REASONING,
-    });
-    modelUsd += costOf(r.providerMetadata);
-    turns += 1;
-    messages.push(...r.response.messages);
-    return r.output;
+    await report(3, "Choosing recommendations and writing the brief");
+    const answer = await withCost(
+      {
+        service: "gateway",
+        kind: "onboarding",
+        monitorId,
+        runId,
+        usdReserved: lunaBound(messages),
+      },
+      async () => {
+        const started = Date.now();
+        const r = await generateText({
+          model: MODEL,
+          messages,
+          output: Output.object({ schema: AnswerSchema }),
+          reasoning: "high",
+          maxOutputTokens: 6000,
+          maxRetries: 0,
+          abortSignal: AbortSignal.timeout(120_000),
+        });
+        const cost = gatewayCost(r.providerMetadata);
+        onGeneration({
+          model: MODEL,
+          messages: [...messages],
+          output: JSON.stringify(r.output),
+          usage: r.usage,
+          latencyMs: Date.now() - started,
+          ...cost,
+        });
+        return { value: r.output, usd: cost.charged };
+      },
+    );
+    await save({ answer, turns: (state.turns ?? 0) + 1, searched: state.searched ?? null });
+    return answer;
   }
 
   // A handle is kept only when Jev passed it, as a candidate account or a search author: models invent handles with
   // full confidence (decisions.md), and being quoted or mentioned alone does not qualify an account.
-  const accountsOf = (a: z.infer<typeof Answer>["accounts"]) => [
+  const accountsOf = (a: z.infer<typeof AnswerSchema>["accounts"]) => [
     ...new Map(
       a
         .map((x) => {
@@ -817,32 +575,37 @@ export async function runOnboarding(
     ).values(),
   ];
 
-  let answer = await ask();
-  let searched: string | null = null;
+  let answer = state.answer ?? (await ask());
+  let searched = state.searched ?? null;
   const terms = answer.search?.trim();
   if (
+    (state.turns ?? 0) < 2 &&
     terms &&
     accountsOf(answer.accounts).length < ACCOUNTS &&
     terms.length <= KEYWORD_CHARS &&
     !/\b(from|is|has|url|lang|to|conversation_id):/i.test(terms)
   ) {
-    writer.write({ type: "data-status", data: { message: `Searching X for accounts: ${terms}` } });
-    const found = await searchAccounts(terms);
+    await report(3, `Searching X for accounts: ${terms}`);
+    const found = state.searchResult ?? (await searchAccounts(terms, profile.id));
     searched = found.query;
+    if (!state.searchResult) await save({ searchResult: found, searched });
     // Jev scores the authors it has not scored yet with the same question, in one more request; only those at or
     // above POSSIBLE are shown to the model and may be picked.
     const fresh = found.authors.filter((a) => !handleScores.has(a.handle.toLowerCase()));
     const keyOf = (h: string) => `s-${h.slice(1).toLowerCase()}`;
     if (fresh.length) {
-      const s = await jev(
-        jevState,
-        Object.fromEntries(
-          fresh.map((a) => [
-            keyOf(a.handle),
-            { kind: "x_account", handle: a.handle, name: a.name, bio: a.bio, posts: [a.post] },
-          ]),
-        ),
-      );
+      const s =
+        state.searchScores ??
+        (await scoreRows(
+          jevState,
+          Object.fromEntries(
+            fresh.map((a) => [
+              keyOf(a.handle),
+              { kind: "x_account", handle: a.handle, name: a.name, bio: a.bio, posts: [a.post] },
+            ]),
+          ),
+        ));
+      if (!state.searchScores) await save({ searchScores: s });
       for (const a of fresh) handleScores.set(a.handle.toLowerCase(), s[keyOf(a.handle)]);
     }
     const passed = found.authors.flatMap((a) => {
@@ -859,6 +622,7 @@ export async function runOnboarding(
         ),
         "</search_result>",
       ].join("\n");
+    messages.push({ role: "assistant", content: JSON.stringify(answer) });
     messages.push({
       role: "user",
       content: `${seen}\nThat was the one search. Give your final answer now, with search null.`,
@@ -866,6 +630,10 @@ export async function runOnboarding(
     answer = await ask();
   }
 
+  for (const author of state.searchResult?.authors ?? []) {
+    const score = state.searchScores?.[`s-${author.handle.slice(1).toLowerCase()}`];
+    if (score !== undefined) handleScores.set(author.handle.toLowerCase(), score);
+  }
   const byId = new Map(TABLE.map((r) => [r.id, r]));
   const final: Final = {
     // Only a site or feed row of the table that Jev passed, each once, at most SITES.
@@ -890,13 +658,183 @@ export async function runOnboarding(
     accounts: accountsOf(answer.accounts),
     searched,
   };
-  writer.write({
-    type: "data-result",
-    data: {
-      final,
-      costUsd: Math.round((modelUsd + S.x_usd + S.jev_usd) * 100000) / 100000,
-      turns,
-      error: null,
-    },
-  });
+  const costs = await ledgerRows({ monitorId });
+  const costUsd = costs
+    .filter((row) => row.service !== "reservation")
+    .reduce((sum, row) => sum + (row.settled ? row.usd : row.usd_reserved), 0);
+  return { profile, posts, final, brief: answer.brief, costUsd, turns: state.turns ?? 0 };
+}
+
+const SOCIAL = [
+  "x.com",
+  "twitter.com",
+  "t.co",
+  "instagram.com",
+  "facebook.com",
+  "tiktok.com",
+  "youtube.com",
+  "youtu.be",
+];
+
+function hostOf(u: string) {
+  return u.replace(/^https?:\/\/(www\.)?/, "").split(/[/?#]/)[0];
+}
+const USER_FIELDS = "description,entities,id,name,pinned_tweet_id,profile_image_url,url,username";
+const POST_FIELDS = {
+  "tweet.fields":
+    "article,attachments,author_id,card_uri,community_id,context_annotations,conversation_id,created_at,display_text_range,edit_controls,edit_history_tweet_ids,entities,geo,id,in_reply_to_user_id,lang,media_metadata,note_tweet,possibly_sensitive,public_metrics,referenced_tweets,reply_settings,scopes,source,text,withheld",
+  // Only what the model reads: the quoted post and its author, media, polls, places and articles. The
+  // profiles of mentioned accounts, the person's own profile on every call and edit-history posts are
+  // not fetched (owner, September 26: the handles are already in the post text).
+  expansions:
+    "article.cover_media,article.media_entities,attachments.media_keys,attachments.poll_ids,geo.place_id,referenced_tweets.id,referenced_tweets.id.attachments.media_keys,referenced_tweets.id.author_id",
+  "user.fields": USER_FIELDS,
+  "media.fields":
+    "alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,variants,width",
+  "poll.fields": "duration_minutes,end_datetime,id,options,voting_status",
+  "place.fields": "contained_within,country,country_code,full_name,geo,id,name,place_type",
+};
+// A sponsored or referral post: a partner or ad hashtag, a referral or affiliate parameter in a link,
+// or a known affiliate redirect host. Its brand is not an interest and not a cited account.
+const SPONSOR_TAG = /^#(\w*partner\w*|ad|ads|sponsored|paid\w*|affiliate\w*|promo\w*|gifted)$/i;
+const REFERRAL_PARAM =
+  /[?&](ref|refcode|ref_code|referral|refid|via|aff|aff_id|affiliate|co-from|invite|invite_code|code|promo|coupon)=/i;
+const AFFILIATE_HOST =
+  /(^|\.)(pxf\.io|sjv\.io|ojrq\.net|impact\.com|awin1\.com|shareasale\.com|partnerstack\.com|go\.skimresources\.com|viglink\.com|redirect\.viglink\.com|amzn\.to|rstyle\.me|linksynergy\.com|tkqlhce\.com|anrdoezrs\.net|dpbolvw\.net|jdoqocy\.com|kqzyfj\.com)$/i;
+const isReferralLink = (u: string) => REFERRAL_PARAM.test(u) || AFFILIATE_HOST.test(hostOf(u));
+const unX = (t: string) => t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+// Turns X's answer into posts. Reposts are dropped; a reply is kept only when it answers the person's
+// own post (a thread continuation); a reply to anyone else is dropped.
+function toPosts(raw: unknown, uid: string): Post[] {
+  const body = XPostsSchema.parse(raw);
+  const users = Object.fromEntries((body.includes?.users ?? []).map((u) => [u.id, u]));
+  const tweets = Object.fromEntries((body.includes?.tweets ?? []).map((t) => [t.id, t]));
+  const media = Object.fromEntries((body.includes?.media ?? []).map((m) => [m.media_key, m]));
+  const polls = Object.fromEntries((body.includes?.polls ?? []).map((m) => [m.id, m]));
+  // A photo's image is the photo; a video's or GIF's is its freeze frame (preview_image_url).
+  const mediaOf = (keys: string[] | undefined): Media[] =>
+    (keys ?? []).map((k) => ({
+      type: media[k]?.type ?? "media",
+      alt: media[k]?.alt_text,
+      src: media[k]?.type === "photo" ? media[k]?.url : media[k]?.preview_image_url,
+    }));
+  const posts: Post[] = [];
+  for (const t of body.data ?? []) {
+    const refs = t.referenced_tweets ?? [];
+    if (refs.some((r) => r.type === "retweeted")) continue;
+    const reply = refs.find((r) => r.type === "replied_to");
+    if (reply && t.in_reply_to_user_id !== uid) continue;
+    const q = refs.find((r) => r.type === "quoted");
+    const qt = q ? tweets[q.id] : null;
+    const quoted: Quoted | null = q
+      ? {
+          id: q.id,
+          author: qt ? `@${users[qt.author_id]?.username ?? "?"}` : "@?",
+          name: qt ? (users[qt.author_id]?.name ?? "") : "",
+          bio: qt ? unX(users[qt.author_id]?.description ?? "") : undefined,
+          text: qt ? unX(qt.note_tweet?.text ?? qt.text) : "(X did not return the quoted post)",
+          media: mediaOf(qt?.attachments?.media_keys),
+        }
+      : null;
+    const ents = t.note_tweet?.entities ?? t.entities ?? {};
+    const urls = (ents.urls ?? []).filter(
+      (e) =>
+        !SOCIAL.some(
+          (d) =>
+            hostOf(e.expanded_url ?? e.url) === d ||
+            hostOf(e.expanded_url ?? e.url).endsWith(`.${d}`),
+        ),
+    );
+    const link_meta: Record<string, LinkMeta> = {};
+    for (const e of urls)
+      link_meta[(e.expanded_url ?? e.url).replace(/^https?:\/\/(www\.)?/, "")] = {
+        title: e.title,
+        description: e.description,
+      };
+    posts.push({
+      id: t.id,
+      date: t.created_at.slice(0, 10),
+      kind: reply ? "thread_part" : quoted ? "quote" : "original",
+      lang: t.lang,
+      text: unX(t.note_tweet?.text ?? t.text),
+      quoted,
+      parent_id: reply?.id,
+      links: Object.keys(link_meta),
+      link_meta,
+      mentions: (ents.mentions ?? []).map((m) => `@${m.username}`),
+      hashtags: (ents.hashtags ?? []).map((h) => `#${h.tag}`),
+      cashtags: (ents.cashtags ?? []).map((c) => `$${c.tag}`),
+      media: mediaOf(t.attachments?.media_keys),
+      poll: (t.attachments?.poll_ids ?? []).flatMap((id: string) =>
+        (polls[id]?.options ?? []).map((o) => o.label),
+      ),
+      conversation_id: t.conversation_id,
+      edit_ids: t.edit_history_tweet_ids,
+    });
+    const last = posts[posts.length - 1];
+    if (!last.poll?.length) delete last.poll;
+    last.sponsored =
+      last.hashtags.some((h) => SPONSOR_TAG.test(h)) || last.links.some(isReferralLink);
+  }
+  return posts;
+}
+
+export async function lookupProfile(
+  handle: string,
+  monitorId: string,
+  checkpoint: (state: BuildState) => Promise<void>,
+  resume: BuildState = {},
+): Promise<Profile | null> {
+  let profile = resume.profile;
+  let pinnedId = resume.pinnedId;
+  if (!profile) {
+    const response = await xGet(
+      `users/by/username/${handle}`,
+      { "user.fields": USER_FIELDS },
+      { funding: { monitorId }, maxPosts: 0 },
+    );
+    if (
+      response.status === 404 ||
+      (response.status === 200 &&
+        z
+          .object({ errors: z.array(z.object({ title: z.literal("Not Found Error") })).min(1) })
+          .safeParse(response.body).success)
+    )
+      return null;
+    if (response.status !== 200 || response.uncertain)
+      throw new Error(`X lookup ${response.status}`);
+    const { data: d } = XProfileSchema.parse(response.body);
+    pinnedId = d.pinned_tweet_id;
+    profile = {
+      id: d.id,
+      handle: `@${d.username}`,
+      name: d.name,
+      bio: (d.entities?.description?.urls ?? []).reduce(
+        (bio, entity) => bio.replace(entity.url, entity.expanded_url ?? entity.url),
+        unX(d.description ?? ""),
+      ),
+      image: d.profile_image_url,
+      site: d.entities?.url?.urls?.[0]?.expanded_url ?? (d.url || undefined),
+      pinned: null,
+    };
+    await checkpoint({
+      ...resume,
+      profile,
+      x_user_id: profile.id,
+      pinnedId,
+      profileComplete: false,
+    });
+  }
+  if (pinnedId && !resume.profileComplete) {
+    const response = await xGet(
+      "tweets",
+      { ids: pinnedId, ...POST_FIELDS },
+      { funding: { monitorId }, maxPosts: 2, profiles: 1 },
+    );
+    if (response.status !== 200 || response.uncertain)
+      throw new Error(`X pinned post ${response.status}`);
+    profile = { ...profile, pinned: toPosts(response.body, profile.id)[0] ?? null };
+  }
+  await checkpoint({ ...resume, profile, x_user_id: profile.id, pinnedId, profileComplete: true });
+  return profile;
 }

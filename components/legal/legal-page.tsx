@@ -1,7 +1,7 @@
 import { ContactDialog } from "@/components/landing/contact-dialog";
-import { LandingFooter } from "@/components/landing/landing-footer";
-import { LandingHeader } from "@/components/landing/landing-header";
-import type { LegalDocument } from "@/lib/legal/content";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { type LegalDocument, legalContent } from "@/lib/legal/content";
 
 export function LegalPage({
   document,
@@ -12,12 +12,14 @@ export function LegalPage({
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <LandingHeader signedIn={signedIn} />
+      <SiteHeader signedIn={signedIn} />
       <main className="mx-auto w-full max-w-[1356px] flex-1 px-4 pt-12 pb-20">
         <h1 className="font-heading text-[34px] leading-tight font-normal tracking-[-0.02em] desk:text-[42px]">
           {document.title}
         </h1>
-        <p className="mt-2 text-[14px] text-muted-foreground">Last updated {document.updated}</p>
+        <p className="mt-2 text-[14px] text-muted-foreground">
+          {legalContent.updated} {document.updated}
+        </p>
         <p className="mt-8 text-[17px] leading-relaxed">{document.intro}</p>
         {document.sections.map((section) => (
           <section key={section.heading} className="mt-10">
@@ -33,7 +35,7 @@ export function LegalPage({
                 <p key={paragraph.before} className="mt-3 text-[17px] leading-relaxed">
                   {paragraph.before}
                   <ContactDialog
-                    label="Contact Us"
+                    label={legalContent.contact}
                     triggerClassName="text-primary underline underline-offset-4"
                   />
                   {paragraph.after}
@@ -53,7 +55,7 @@ export function LegalPage({
           </section>
         ))}
       </main>
-      <LandingFooter />
+      <SiteFooter />
     </div>
   );
 }

@@ -298,7 +298,10 @@ class Run:
         if job['status'] != 'BUILT':
             return self.set_status(c, 'failed', job.get('reason') or job.get('error') or f'build ended {job["status"]}')
         self.set_status(c, 'built')
-        self.launch_qc(c)
+        if self.state.get('component_review', 'lanes') == 'gates':
+            self.launch_gates(c)
+        else:
+            self.launch_qc(c)
 
     def parked_lines(self, c):
         note = REPO / f'.feature/decisions-{self.issue}-{c["id"]}.md'
@@ -334,7 +337,47 @@ class Run:
         qc['pid'] = self.ex.spawn(cmd, REPO, mode_dir / f'claude-round-{qc["round"]}.json', mode_dir / f'claude-round-{qc["round"]}.log')
         self.log(unit, f'QC round {qc["round"]} pid {qc["pid"]}')
 
+    def gates_only(self, c):
+        return bool(c) and self.state.get('component_review', 'lanes') == 'gates'
+
+    def launch_gates(self, c):
+        # Owner, September 28: no review lanes per component; only the deterministic gates (pnpm build, tsc) so a broken
+        # component never poisons the ones built on top of it. The one full review runs on the whole branch at the end.
+        unit, qc, checkout = self.unit(c)
+        if self.dirty(checkout):
+            qc['status'] = f'not run: uncommitted changes in {checkout}'
+            return self.set_status(c, 'blocked', qc['status'])
+        qc['round'], qc['status'], qc['started'] = qc['round'] + 1, 'running', self.ex.time()
+        self.set_status(c, 'qc')
+        self.save()
+        mode_dir = REPO / f'.feature/lanes/{self.issue}/{unit}'
+        if not self.dry:
+            mode_dir.mkdir(parents=True, exist_ok=True)
+        cmd = ['bash', REPO / '.claude/scripts/qc-gates.sh', f'{c["base_commit"]}...{c["head_commit"]}']
+        qc['pid'] = self.ex.spawn(cmd, checkout, mode_dir / f'gates-{qc["round"]}.log', mode_dir / f'gates-{qc["round"]}.err')
+        self.log(unit, f'gates round {qc["round"]} pid {qc["pid"]}')
+
+    def poll_gates(self, c):
+        unit, qc, checkout = self.unit(c)
+        if self.ex.alive(qc.get('pid')):
+            if self.ex.time() - qc['started'] > DEADLINES['qc']:
+                self.timeout(c, [qc['pid']], checkout, lambda: self.launch_gates(c))
+            return
+        log = REPO / f'.feature/lanes/{self.issue}/{unit}/gates-{qc["round"]}.log'
+        text = log.read_text() if log.is_file() else ''
+        head = self.head(checkout)
+        if 'GATES: GREEN' in text and head == c['head_commit']:
+            qc.update(status='PASS', reviewed_commit=head, summary='gates green')
+            self.log(unit, f'gates round {qc["round"]}: GREEN')
+            return self.set_status(c, 'passed')
+        fails = [l for l in text.splitlines() if 'FAIL' in l or 'error' in l.lower()][:6]
+        qc.update(status='FAIL', summary='; '.join(fails)[:400])
+        self.log(unit, f'gates round {qc["round"]}: RED')
+        return self.set_status(c, 'blocked', 'gates red: ' + ('; '.join(fails)[:400] or 'no GATES line in the log'))
+
     def poll_qc(self, c=None):
+        if self.gates_only(c):
+            return self.poll_gates(c)
         unit, qc, checkout = self.unit(c)
         if self.ex.alive(qc.get('pid')):
             if self.ex.time() - qc['started'] > DEADLINES['qc']:
@@ -494,7 +537,7 @@ def start(args):
                   qc=dict(round=0, reviewed_commit=None, status=None, pid=None), fix_rounds=0, timeouts=0,
                   last_error=None, parked=[], build_job=None, fixes=False, stage_started=None) for r in rows]
     state = dict(issue=args.issue, plan=str(plan), plan_hash=sha256(plan), plan_dir=str(plan_dir), started_at=now(),
-                 max_builds=args.max_builds, status='running', components=comps,
+                 max_builds=args.max_builds, component_review=args.component_review, status='running', components=comps,
                  integration=dict(qc=dict(round=0, status=None, reviewed_commit=None, pid=None), timeouts=0, pushed=False))
     path.write_text(json.dumps(state, indent=2) + '\n')
     launch_loop(args.issue, lock)
@@ -581,7 +624,9 @@ def main():
         else:
             sub.add_argument('--issue', type=int, required=True)
         if name == 'start':
-            sub.add_argument('--max-builds', type=int, default=3)
+            sub.add_argument('--max-builds', type=int, default=10)  # owner, September 28: everything that can run at once does
+            sub.add_argument('--component-review', choices=['gates', 'lanes'], default='gates',
+                             help='gates: build and typecheck only per component, one review at the end (owner, September 28); lanes: the full /qc per component')
         if name == '_loop':
             sub.add_argument('--lock-fd', type=int, required=True)
     args = parser.parse_args()

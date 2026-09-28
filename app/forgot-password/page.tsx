@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthAlert, AuthShell } from "@/components/auth-shell";
 import { PostHogUserContext } from "@/components/posthog-user-context";
+import { authContent } from "@/lib/auth/content";
 import { createClient } from "@/lib/supabase/server";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
@@ -31,12 +32,12 @@ export default async function ForgotPasswordPage({
     <>
       <PostHogUserContext id={null} email={undefined} />
       <AuthShell
-        title="Forgot Password"
-        subtitle={"We'll email you a link to reset it."}
+        title={authContent.forgotTitle}
+        subtitle={authContent.forgotSubtitle}
         footer={
           <p>
             <Link href="/login" className="text-foreground underline underline-offset-4">
-              Back to log in
+              {authContent.backToLogin}
             </Link>
           </p>
         }
