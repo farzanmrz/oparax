@@ -9,18 +9,21 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = landingContent.sharing.alt;
 
-// Static fonts and OFL: marcologous/hanken-grotesk, Google's pinned source commit
-// 1ab416e82130b2d3ddb7710abf7ceabf07156a13 (fonts/ttf and OFL.txt).
+// The site's own fonts (DESIGN.md), static files from Google Fonts with their OFL licenses beside
+// them: Nunito Sans for the headline, Source Sans 3 for the wordmark and text.
 export default async function Image() {
   let fonts: NonNullable<ConstructorParameters<typeof ImageResponse>[1]>["fonts"];
   try {
-    const [regular, bold] = await Promise.all([
-      readFile(join(process.cwd(), "assets/fonts/HankenGrotesk-Regular.ttf")),
-      readFile(join(process.cwd(), "assets/fonts/HankenGrotesk-Bold.ttf")),
+    const dir = join(process.cwd(), "assets/fonts");
+    const [heading, text, textMedium] = await Promise.all([
+      readFile(join(dir, "NunitoSans-Regular.ttf")),
+      readFile(join(dir, "SourceSans3-Regular.ttf")),
+      readFile(join(dir, "SourceSans3-Medium.ttf")),
     ]);
     fonts = [
-      { name: "Hanken Grotesk", data: regular, weight: 400, style: "normal" },
-      { name: "Hanken Grotesk", data: bold, weight: 700, style: "normal" },
+      { name: "Nunito Sans", data: heading, weight: 400, style: "normal" },
+      { name: "Source Sans 3", data: text, weight: 400, style: "normal" },
+      { name: "Source Sans 3", data: textMedium, weight: 500, style: "normal" },
     ];
   } catch (error) {
     console.error("Could not load landing preview fonts; using the default sans font.", error);
@@ -34,15 +37,14 @@ export default async function Image() {
         width: "100%",
         height: "100%",
         padding: "48px 56px",
-        backgroundColor: "#0c0c0e",
-        backgroundImage: "radial-gradient(ellipse at top, #112735, #0c0c0e 72%)",
-        color: "#f5f6fc",
-        fontFamily: fonts ? "Hanken Grotesk" : "sans-serif",
+        backgroundColor: "#09090b",
+        color: "#fafafa",
+        fontFamily: fonts ? "Source Sans 3" : "sans-serif",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 14, color: "#ffffff" }}>
         <OparaxMark width={40} height={40} />
-        <span style={{ fontSize: 30, fontWeight: 700 }}>{landingContent.brand}</span>
+        <span style={{ fontSize: 30, fontWeight: 500 }}>{landingContent.brand}</span>
       </div>
       <div
         style={{
@@ -51,8 +53,9 @@ export default async function Image() {
           marginTop: 40,
           fontSize: 84,
           lineHeight: 1.02,
-          letterSpacing: "-0.03em",
-          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          fontWeight: 400,
+          fontFamily: fonts ? "Nunito Sans" : "sans-serif",
         }}
       >
         <span>{landingContent.sharing.headline}</span>
@@ -64,12 +67,12 @@ export default async function Image() {
           maxWidth: "100%",
           fontSize: 30,
           lineHeight: 1.4,
-          color: "#afaba3",
+          color: "#9f9fa9",
         }}
       >
         {landingContent.sharing.description}
       </div>
-      <div style={{ display: "flex", marginTop: "auto", fontSize: 24, color: "#999ba1" }}>
+      <div style={{ display: "flex", marginTop: "auto", fontSize: 24, color: "#9f9fa9" }}>
         {landingContent.sharing.domain}
       </div>
     </div>,

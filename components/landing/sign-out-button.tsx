@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 export function SignOutButton() {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "pending" | "error">("idle");
-  const copy = landingContent.auth;
+  const copy = landingContent.navigation;
 
   async function signOut() {
     setStatus("pending");

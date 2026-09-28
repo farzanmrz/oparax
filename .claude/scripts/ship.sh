@@ -119,7 +119,7 @@ show_conflict_report() {
 
 # Trailer lookups intentionally walk only origin/beta. Pre-Phase-1 (issue #70)
 # ships recorded their Feature-Branch/Feature-Source-Tip trailers on origin/dev;
-# those are out of scope for --finalize by design — dev-only history predates
+# those are out of scope for --finalize by design, dev-only history predates
 # the beta cutover.
 find_recorded_tip() {
   recorded_branch="$1"
@@ -130,14 +130,14 @@ find_recorded_tip() {
 
 # --finalize is now only the local scratch sweep: ship itself closes the issue
 # and no stage deletes branches. The one gate left asks the one question that
-# still matters — did this branch actually reach beta — because wiping the plan
+# still matters, did this branch actually reach beta, because wiping the plan
 # files for something that never shipped loses work. Deliberately NOT gated on
 # tip equality: a meta commit landing on the branch after the ship is normal and
 # must not block a sweep that only removes local, git-ignored scratch.
 if [ "$finalize" = "true" ]; then
   git fetch --prune origin beta >&2
   [ -n "$(find_recorded_tip "$branch" || true)" ] || {
-    echo "ship: cannot finalize $branch — origin/beta has no ship commit for it, so its plan files are still live work." >&2
+    echo "ship: cannot finalize $branch, origin/beta has no ship commit for it, so its plan files are still live work." >&2
     exit 1
   }
 
@@ -150,7 +150,7 @@ if [ "$finalize" = "true" ]; then
   fi
   rm -rf .superpowers
   rmdir .claude/worktrees 2>/dev/null || true
-  echo "Finalized $branch; every ft/<issue> and bf/<issue> branch is left in place — delete them yourself when you want them gone."
+  echo "Finalized $branch; every ft/<issue> and bf/<issue> branch is left in place, delete them yourself when you want them gone."
   exit 0
 fi
 
@@ -244,14 +244,14 @@ git worktree remove "$integration_dir" >&2
 integration_dir=""
 trap - EXIT
 
-# The slice is on ${onto} and verified, so the issue is done — close it here
+# The slice is on ${onto} and verified, so the issue is done, close it here
 # rather than deferring to a separate step. Never fatal: the push already
 # succeeded and nothing about a failed gh call can un-ship it, so a hiccup
 # prints the manual fallback instead of making a good ship look like a failure.
 if gh issue close "$issue" --comment "Shipped to ${onto} as ${beta_commit}." >&2; then
   echo "ship: closed issue #$issue." >&2
 else
-  echo "ship: WARNING — ${onto} has the slice but issue #$issue could not be closed. Close it yourself: gh issue close $issue" >&2
+  echo "ship: WARNING: ${onto} has the slice but issue #$issue could not be closed. Close it yourself: gh issue close $issue" >&2
 fi
 
 echo "Shipped $branch -> ${onto}. ${onto}_sha=$beta_commit recovery_tip=$source_tip"

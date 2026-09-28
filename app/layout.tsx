@@ -2,6 +2,7 @@
 
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { BotIdClient } from "botid/client";
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Nunito_Sans, Source_Sans_3 } from "next/font/google";
 import { ThemeProvider } from "next-themes";
@@ -67,6 +68,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className={`${jetbrainsMono.variable} antialiased`}>
+        <BotIdClient
+          protect={[
+            { path: "/api/build", method: "POST" },
+            { path: "/api/view", method: "POST" },
+            { path: "/api/waitlist", method: "POST" },
+          ]}
+        />
         {/* Dark by default; the person can switch to light (owner, September 23). */}
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <TooltipProvider>{children}</TooltipProvider>

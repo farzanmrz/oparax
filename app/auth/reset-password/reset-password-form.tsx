@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, updatePasswordAction } from "@/lib/auth/actions";
+import { authContent } from "@/lib/auth/content";
 
 // Client island: drives updatePasswordAction via useActionState. The one-time
 // recovery token rides along as hidden fields (token_hash, type) so it is
@@ -33,15 +34,23 @@ export function ResetPasswordForm({
       {tokenType && <input type="hidden" name="type" value={tokenType} />}
       <div className="space-y-1.5">
         <label htmlFor="password" className="block text-sm font-medium">
-          New password
+          {authContent.newPassword}
         </label>
-        <Input id="password" name="password" type="password" autoComplete="new-password" required />
+        <Input
+          className="min-h-11 desk:min-h-7"
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          required
+        />
       </div>
       <div className="space-y-1.5">
         <label htmlFor="confirm-password" className="block text-sm font-medium">
-          Confirm new password
+          {authContent.confirmNewPassword}
         </label>
         <Input
+          className="min-h-11 desk:min-h-7"
           id="confirm-password"
           name="confirm-password"
           type="password"
@@ -54,14 +63,14 @@ export function ResetPasswordForm({
           {state.error}
         </p>
       )}
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button type="submit" className="min-h-11 w-full desk:min-h-7" disabled={isPending}>
         {isPending ? (
           <>
             <Spinner />
-            Updating…
+            {authContent.updating}
           </>
         ) : (
-          "Update password"
+          authContent.updatePassword
         )}
       </Button>
     </form>

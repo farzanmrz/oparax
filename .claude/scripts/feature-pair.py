@@ -18,13 +18,13 @@ import sys
 import time
 import uuid
 
-sys.path.insert(0, str(Path.home() / '.agents/skills/counsel/scripts'))
-# Model ids and CLI launch commands are shared with the counsel skill's runner.
-from providers import MODELS as COUNSEL_MODELS, claude_command, codex_command  # noqa: E402
+sys.path.insert(0, str(Path.home() / '.agents/skills/council/scripts'))
+# Model ids and CLI launch commands are shared with the council skill's runner.
+from providers import MODELS as COUNCIL_MODELS, claude_command, codex_command  # noqa: E402
 
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}},
           "required": ["answer"], "additionalProperties": False}
-MODELS = {name: COUNSEL_MODELS[name][1] for name in ('fable', 'sol', 'astra')}
+MODELS = {name: COUNCIL_MODELS[name][1] for name in ('fable', 'sol', 'astra')}
 # The default partner is Astra. Routine phases honor an explicit Sol override;
 # only detail and redesign are always Astra.
 PHASES = {'scope': 'routine', 'plain': 'routine', 'detail': 'astra',
@@ -36,7 +36,10 @@ Read repository source as needed, but do not change repository files, git,
 external services or product data.
 Do not run the product app, tests or builds. No subagents or external writes.
 Only read third-party public types and docs, never built package internals.
-Do not inspect .feature/, other agent sessions, logs, transcripts or drafts.
+Do not inspect other agent sessions, logs, transcripts, run directories or
+drafts, and read nothing under .feature/ except the files the assignment below
+names by exact path as shared inputs (an approved owner plan, a settled scope
+record, plan files): those are authorized reading, never your peer's draft.
 All authorized planning inputs are supplied below; only explicitly named shared
 reference files may be read in addition to source. Do not search for your peer's
 answer. Until the EXCHANGE message, form your own answer without seeing theirs.

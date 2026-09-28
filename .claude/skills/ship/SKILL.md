@@ -3,8 +3,7 @@ name: ship
 description: >-
   The ship gate, standalone, same file in Claude Code (/ship <N>) and Codex ($ship <N>). Use when the user says /ship <N> or $ship <N>, "ship it",
   or "close the slice" on a finished branch, after /qc's round marker
-  exists. Ship does NOT close the issue; the owner closes it after their
-  production check.
+  exists. Ship closes the issue once the squash lands on beta.
 argument-hint: "[issue#]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *) Skill
 model: inherit
@@ -37,7 +36,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 
 ## 2. The gate ✋
 
-Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. Also read the local detailed plan `.feature/plan-<N>.md` (the issue carries only the plain plan) and, if it has a `## 4. Owner does at ship` part, list those items verbatim in plain words: they are the owner's own operations (Vercel env and dashboard toggles) and nothing in the flow executes them; the owner does them around this ship. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
+Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. Also read the local detailed plan `.feature/plan-<N>.md` and every component slice `.feature/plan-<N>/<component>.md` (the issue carries only the plain plan) and, where a slice has a `## 4. Owner does at ship` part, list those items verbatim in plain words: they are the owner's own operations (Vercel env and dashboard toggles) and nothing in the flow executes them; the owner does them around this ship. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
 
 ## 3. Ship
 
@@ -45,9 +44,9 @@ Show the complete `git status --short --untracked-files=all` (everything listed 
 .claude/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
-The script owns the mechanics: inventory, staging, recovery snapshot, non-force push, one squash commit on `beta` with its trailers, and — once that push is verified — closing issue N. On a conflict STOP: explain whether both intentions can coexist and offer exactly three resolutions (preserve both, prefer beta, prefer the feature); never a destructive reset.
+The script owns the mechanics: inventory, staging, recovery snapshot, non-force push, one squash commit on `beta` with its trailers, and, once that push is verified, closing issue N. On a conflict STOP: explain whether both intentions can coexist and offer exactly three resolutions (preserve both, prefer beta, prefer the feature); never a destructive reset.
 
-The close is the script's job, not yours: never run `gh issue close` by hand here. If the script prints the `WARNING — ... could not be closed` line, the slice still shipped; say so in one line and close it manually.
+The close is the script's job, not yours: never run `gh issue close` by hand here. If the script prints the `WARNING: ... could not be closed` line, the slice still shipped; say so in one line and close it manually.
 
 **No promotion to `main` here.** Since 2026-08-18 `main` moves only through the weekly pull request `/promote` (or `$promote` in Codex) opens from `beta` for the owner's mentor to review; ship never runs `promote.sh beta main` and never pushes `main`.
 
@@ -61,11 +60,11 @@ The push closed the issue. Do NOT run finalize. End with:
 
 <exit-example>
 
-Shipped to beta and closed issue N. Check it on localhost when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. The plan files stay on disk in case you want an `/amend` — say the word and I sweep them.
+Shipped to beta and closed issue N. Check it on localhost when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. The plan files stay on disk in case you want an `/amend`, say the word and I sweep them.
 
 </exit-example>
 
-Stop there. `.feature/` still holds `plan-<N>*.md`, `amend-<N>-*.md`, and `fixes-<N>*.md` on purpose: if the localhost walk turns up a problem, `/amend <N>` needs them. On the owner's word, `.claude/scripts/ship.sh --finalize <issue#>` sweeps that scratch. That is now finalize's only job — it closes nothing and deletes no branch.
+Stop there. `.feature/` still holds `plan-<N>*.md`, `amend-<N>-*.md`, and `fixes-<N>*.md` on purpose: if the localhost walk turns up a problem, `/amend <N>` needs them. On the owner's word, `.claude/scripts/ship.sh --finalize <issue#>` sweeps that scratch. That is now finalize's only job, it closes nothing and deletes no branch.
 
 ## Hard rules
 

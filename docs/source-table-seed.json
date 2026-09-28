@@ -1138,5 +1138,1662 @@
    "Bend 2 Blocks AI Bugs With Proof. Laws Are the Work",
    "How to Publish an AI-Narrated Audiobook in 2026"
   ]
+ },
+ {
+  "id": "x-googledeepmind",
+  "kind": "x_account",
+  "target": "https://x.com/GoogleDeepMind",
+  "name": "Google DeepMind",
+  "focus": "Google's frontier models and research",
+  "lang": "en",
+  "description": "Google DeepMind is Google's AI research lab. This is their X account: Gemini model launches such as Gemini 3.8 Live and the Flash TTS models, threads on science tools like AlphaGenome Atlas with named university and institute partners, and WeatherNext forecasting work. Posts are product and research announcements with feature lists and links, usually in threads. It does not post pricing, funding or commentary on other companies.",
+  "postsPerDay": 1.1,
+  "followers": 1539900,
+  "recentTitles": [
+   "Fine-tune the delivery line by line, shaping pacing, emotion, and cues like laughs or pauses. \n\nAll ",
+   "Create and deploy custom audio with our new text-to-speech models:\n\n🔵 Gemini 3.8 Flash TTS: Design u",
+   "These discoveries are just the beginning.\n\nAlphaGenome Atlas is freely accessible to empower researc"
+  ],
+  "foundFor": [
+   "farzan",
+   "kush",
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "cited",
+   "other"
+  ]
+ },
+ {
+  "id": "x-deepseek_ai",
+  "kind": "x_account",
+  "target": "https://x.com/deepseek_ai",
+  "name": "DeepSeek",
+  "focus": "DeepSeek model releases and API pricing",
+  "lang": "en",
+  "description": "DeepSeek is a Chinese AI lab that releases open models and sells API access. This is their X account: model launches like DeepSeek-V4.1-Flash and V4-Flash-Vision-Exp, architecture details such as parameter counts and KV cache size, API price changes, and platform features like the Files API and multimodal support. Posts come in threads with bullet lists, several in one day around a release, then weeks of silence. It does not post general industry news or comment on other labs.",
+  "postsPerDay": 0.5,
+  "followers": 1135745,
+  "recentTitles": [
+   "🌐 Supporting open source. Expanding deployment options.\n\nWe’ll work closely with the open-source com",
+   "💰 More efficient architecture. Lower API prices.\n\nV4.1-Flash lets us serve more users at a lower cos",
+   "⚡ V4.1-Flash is now live on the DeepSeek API with native multimodal support.\n\nSet your model to deep"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-alibaba_qwen",
+  "kind": "x_account",
+  "target": "https://x.com/Alibaba_Qwen",
+  "name": "Qwen",
+  "focus": "Alibaba's Qwen open models",
+  "lang": "en",
+  "description": "Qwen is Alibaba's open model family. This is their X account: releases such as Qwen Intelligence with its mobile agents, Qwen-Audio-3.1 and Qwen-Image-2.1, benchmark and arena rankings, and thanks to partners like Intel, SGLang and Hugging Face for day-zero support. Many posts are short follow-ups with a chart or a link. It does not cover Alibaba's business or pricing.",
+  "postsPerDay": 4.2,
+  "followers": 291692,
+  "recentTitles": [
+   "Benchmark suite: https://t.co/aYhcCvwv82",
+   "Performance of Mobile Creative Agent: https://t.co/vZcKCFRkU5",
+   "Performance of Mobile-Use Agent: https://t.co/yYFYe3jjIb"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-lovable",
+  "kind": "x_account",
+  "target": "https://x.com/Lovable",
+  "name": "Lovable",
+  "focus": "AI app builder product updates",
+  "lang": "en",
+  "description": "Lovable is a startup whose product builds software from a written prompt. This is their X account: which models power Lovable builds (Claude Opus 5.5, GPT-6 Sol) with benchmark comparisons, new features like adding AI to built apps, a free chat product, and community programs such as the SheBuilds hackathon and a Contra prize challenge. It does not post about funding or the wider AI industry.",
+  "postsPerDay": 4.7,
+  "followers": 157119,
+  "recentTitles": [
+   "We did it. And it's free. Chat with Lovable now. https://t.co/6yYVuzftgE https://t.co/ibVXR4DkCY",
+   "Read the guidelines and join the challenge: https://t.co/ZHBJ15P79q",
+   "Freelancers and agencies who build with Lovable: @contra just handed you free Lovable Pro and a chan"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-composio",
+  "kind": "x_account",
+  "target": "https://x.com/composio",
+  "name": "Composio",
+  "focus": "agent tool integrations, model comparisons",
+  "lang": "en",
+  "description": "Composio is a startup that connects AI agents to outside apps through integrations and MCP. This is their X account: threads that test named models (GPT-6 Astra, Opus 5.5, Sol, Pareto, DeepSeek, GLM) on agent tasks with cost and time numbers, integration count updates, and how to connect tools like Jev to Claude, ChatGPT and Codex. It does not cover funding news or models outside the agent-tooling angle.",
+  "postsPerDay": 1.5,
+  "followers": 24561,
+  "recentTitles": [
+   "Models struggled with vague, multi-step tasks like “Can you sync the support tickets?” That required",
+   "One takeaway: models that completed the same number of tasks could cost very different amounts.\n\nPar",
+   "How long did the models take to complete the tasks?\n\nSol was the fastest model, averaging 110 second"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-youdotcom",
+  "kind": "x_account",
+  "target": "https://x.com/youdotcom",
+  "name": "You.com",
+  "focus": "web search APIs for agents",
+  "lang": "en",
+  "description": "You.com sells web search APIs for AI applications. This is their X account: the Knowledge launch that adds licensed real-time data to search results, benchmarks such as VerticalRTK against other search APIs, reranking experiments with named models, workshops, and a partnership with Coinbase on trading agents. Posts are developer threads with numbers and links. It is not a consumer product feed and does not cover the big model labs beyond the models it tests.",
+  "postsPerDay": 3.1,
+  "followers": 24051,
+  "recentTitles": [
+   "We're walking through the whole build in a live workshop: the architecture, how the reranking step d",
+   "3x fewer tokens. 84% accuracy on the Vertical RTK benchmark.\n\nThat’s what we got using Jev through @",
+   "Benchmark, harness and the full write-up.\n\nhttps://t.co/1kDQdpWNVr"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-render",
+  "kind": "x_account",
+  "target": "https://x.com/render",
+  "name": "Render",
+  "focus": "cloud hosting for agent workloads",
+  "lang": "en",
+  "description": "Render is a cloud platform for deploying applications and agents. This is their X account: product launches like Build Reuse and Application-Defined Compute, open-source agent templates (a Codex agent in iMessage, a parallel research agent), connector news with Factory, and talks from its PR.ide event and WeAreDevs. It covers hosting and infrastructure for agents, not the model labs or startup funding.",
+  "postsPerDay": 0.6,
+  "followers": 21870,
+  "recentTitles": [
+   "Render is now a supported connector in @FactoryAI.\n\nAssign a task to a Droid and it can write the co",
+   "Building production-ready agentic workloads used to be hard. Render makes this much easier with Appl",
+   "If you're at @WeAreDevs in San Jose today, stop by the Render booth for cool swag and cooler convers"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-openai",
+  "kind": "x_account",
+  "target": "https://x.com/OpenAI",
+  "name": "OpenAI",
+  "focus": "GPT releases, ChatGPT, safety reports",
+  "lang": "en",
+  "description": "OpenAI builds the GPT models and ChatGPT. This is their X account: transparency reports on incidents in its research environment and the review that followed the Hugging Face incident, open benchmarks like MentalHealthBench, model launches such as GPT-6 Sol and Luna, and ChatGPT feature updates such as Voice plugins. Posts are announcements with links, several a day around a launch. It does not post industry commentary or news about other companies.",
+  "postsPerDay": 2.9,
+  "followers": 5375636,
+  "recentTitles": [
+   "We’ve shared details on how AI agents in our research environment sent training and evaluation data ",
+   "After the Hugging Face incident, we committed to conducting a much broader review of actions taken b",
+   "Most mental health benchmarks focus on emergency situations. \n\nMentalHealthBench is designed to cove"
+  ],
+  "foundFor": [
+   "farzan",
+   "kush",
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-anthropicai",
+  "kind": "x_account",
+  "target": "https://x.com/AnthropicAI",
+  "name": "Anthropic",
+  "focus": "Claude releases and research",
+  "lang": "en",
+  "description": "Anthropic builds the Claude models. This is their X account: Claude Opus 5.5 availability, science results such as a new enzyme system found in phage DNA and physics computations, partnerships with Accenture on evaluation and Adaptyv Bio on protein design, Claude used in an Ebola response, and measurements of AI progress. Most posts are research and partnership announcements in threads. It does not cover pricing details or other companies' products.",
+  "postsPerDay": 1.3,
+  "followers": 1752909,
+  "recentTitles": [
+   "New on the Science Blog: Yes, Claude can do Nine Loops.\n\nTheoretical physicists predict how particle",
+   "In the Democratic Republic of the Congo, global health organizations including @CEPIvaccines, @WHOAF",
+   "This is the first result from our new molecular biology lab, where a team of Anthropic biologists is"
+  ],
+  "foundFor": [
+   "farzan",
+   "kush",
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-mistralai",
+  "kind": "x_account",
+  "target": "https://x.com/MistralAI",
+  "name": "Mistral AI",
+  "focus": "European frontier lab, funding, partnerships",
+  "lang": "en",
+  "description": "Mistral AI is a French model company with open-weight models. This is their X account: a large funding round, partnerships with Mozilla and HUMAIN in Saudi Arabia, an enterprise control and open platform message, a security incident statement, and the AI Engineer conference in Paris. Posts are company announcements, a few per month. It does not post benchmarks or technical model details here.",
+  "postsPerDay": 0.3,
+  "followers": 208561,
+  "recentTitles": [
+   "We are aware of a claim alleging unauthorized access to our systems. Following a thorough investigat",
+   "Today, we are announcing a partnership with @mozilla  to bring privacy, control and choice to people",
+   "Our open-weight models, products and infrastructure give organisations a real choice over how and wh"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-aiatmeta",
+  "kind": "x_account",
+  "target": "https://x.com/AIatMeta",
+  "name": "AI at Meta",
+  "focus": "Meta's models and agents",
+  "lang": "en",
+  "description": "AI at Meta is Meta's AI research and product group. This is their X account: the Muse personal agent launch powered by Muse Spark, Muse Realtime Voice and Avatar with technical details on distillation and streaming, the AIRA agent system in a Kaggle competition, and research blog links. Posts are research threads with method details, in bursts weeks apart. It does not cover Meta's business or other companies' models beyond ensembles it tested.",
+  "postsPerDay": 0.5,
+  "followers": 855434,
+  "recentTitles": [
+   "Read our research blog to learn more about Muse Realtime Avatar: https://t.co/pVq9K0fxCG",
+   "We put Muse Realtime Avatar head-to-head with two leading commercial avatar systems in their own liv",
+   "Live video streaming needs to respond instantly while remaining visually consistent over long conver"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-cursor_ai",
+  "kind": "x_account",
+  "target": "https://x.com/cursor_ai",
+  "name": "Cursor",
+  "focus": "coding agent product updates",
+  "lang": "en",
+  "description": "Cursor is a startup that makes an AI coding agent. This is their X account: feature launches like Projects, Rollouts and Security Reviewer, model availability such as Claude Opus 5.5 with CursorBench scores and cost per task, agent harness improvements and token cost reductions, and plan-level availability. Posts are product threads with numbers. It does not post about funding or the broader industry.",
+  "postsPerDay": 0.8,
+  "followers": 484243,
+  "recentTitles": [
+   "Rollouts and Security Reviewer are available today on Teams and Enterprise plans.\n\nWe’re including R",
+   "Along with Rollouts, we've made a major update to Security Reviewer.\n\nSecurity Reviewer now finishes",
+   "Introducing Rollouts.\n\nRollouts write a monitoring plan, then watch changes as they deploy. \n\nDeploy"
+  ],
+  "foundFor": [
+   "farzan",
+   "kush",
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-perplexity_ai",
+  "kind": "x_account",
+  "target": "https://x.com/perplexity_ai",
+  "name": "Perplexity",
+  "focus": "AI search product and API",
+  "lang": "en",
+  "description": "Perplexity is an AI search company. This is their X account: Fast Search in the Perplexity Search API, the Photon retrieval engine with latency and cost numbers, Portable Computer, a local agent for Windows, and plan availability. Posts are product threads with benchmarks, many in one day around a launch. It does not cover funding or other companies.",
+  "postsPerDay": 10.0,
+  "followers": 506517,
+  "recentTitles": [
+   "Inside Photon, p99 response time dropped from about 800 ms to about 65 ms. It uses about 20% fewer s",
+   "Photon builds new indexes separately from the servers handling live queries.\n\nWhen a version is read",
+   "Photon stores the index in compact formats, so each query reads and decodes only what it needs.\n\nWhe"
+  ],
+  "foundFor": [
+   "farzan",
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-techcrunch",
+  "kind": "x_account",
+  "target": "https://x.com/TechCrunch",
+  "name": "TechCrunch",
+  "focus": "tech industry and startup news",
+  "lang": "en",
+  "description": "TechCrunch is a technology news publication. This is their X account: headline links to its stories on AI labs like OpenAI and Anthropic (model drops, cloud deals, agent incidents), startup funding rounds, data center buildouts, company governance news like Automattic's board, Meta hardware, and its Disrupt conference. Posts are one-line summaries with a link, many per day. It covers all of tech, not AI alone, and offers no first-party announcements.",
+  "postsPerDay": 10.0,
+  "followers": 11013028,
+  "recentTitles": [
+   "The company behind Facebook and Instagram wants to keep consumers connected to the digital world via",
+   "Boom Supersonic CEO Blake Scholl said its new stationary power plants were no longer in Crusoe's nea",
+   "After days of upheaval at Automattic, following a failed attempt to remove CEO Matt Mullenweg, the c"
+  ],
+  "foundFor": [
+   "farzan",
+   "kush",
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-huggingface",
+  "kind": "x_account",
+  "target": "https://x.com/huggingface",
+  "name": "Hugging Face",
+  "focus": "open models and community",
+  "lang": "en",
+  "description": "Hugging Face hosts open models and the community around them. This is their X account: rare original posts on the Training Agents series, open-weight models like Inkling-Small, and open science, between many retweets and replies. Original posts arrive a few times a month. It does not cover company news, funding or the closed labs directly.",
+  "postsPerDay": 0.2,
+  "followers": 802014,
+  "recentTitles": [
+   "Training Agents 4: From reward functions to environments. https://t.co/9VSrFcBiPU",
+   "🤗💚\nhttps://t.co/coHXLgzNXh https://t.co/Ju5e0R4roZ",
+   "We use Inkling-Small to turn paper abstracts into quick, useful summaries.\n\nopen weights × open scie"
+  ],
+  "foundFor": [
+   "farzan",
+   "kush",
+   "liam"
+  ],
+  "groups": [
+   "close",
+   "other"
+  ]
+ },
+ {
+  "id": "x-ycombinator",
+  "kind": "x_account",
+  "target": "https://x.com/ycombinator",
+  "name": "Y Combinator",
+  "focus": "YC-backed startup spotlights",
+  "lang": "en",
+  "description": "Y Combinator is a startup accelerator. This is their X account: short spotlights on companies it backs, such as Vapi's voice agent platform and Hop Aero's cargo rockets, with what they build and who they serve, plus link posts. Original posts sit between many replies and retweets. It does not cover the big AI labs or general industry news.",
+  "postsPerDay": 3.0,
+  "followers": 1652702,
+  "recentTitles": [
+   "Hop Aero is building rockets that can deliver cargo anywhere on Earth in minutes.\n\nThey’re starting ",
+   "https://t.co/zmwj8aZhG6 https://t.co/nFc1RXpIOL",
+   "Vapi (@Vapi_AI) is the platform for building and deploying voice AI agents. It now serves about a bi"
+  ],
+  "foundFor": [
+   "farzan",
+   "kush",
+   "nihan"
+  ],
+  "groups": [
+   "close",
+   "other"
+  ]
+ },
+ {
+  "id": "x-github",
+  "kind": "x_account",
+  "target": "https://x.com/github",
+  "name": "GitHub",
+  "focus": "GitHub and Copilot product news",
+  "lang": "en",
+  "description": "GitHub is the code hosting and developer platform owned by Microsoft. This is their X account: posts about the GitHub Copilot app and its agents, pull request review tooling, Dependabot automation, GitHub Advanced Security webinars, GitHub Universe conference sessions, and engineering deep dives on how the product is built. Several posts a day, all announcements and event promotion from the company itself. It does not report on other companies' tools.",
+  "postsPerDay": 5.0,
+  "followers": 2714358,
+  "recentTitles": [
+   "Chat, tell us: Is chat always the right UI?  @burkeholland argues no, not when we have canvases in t",
+   "You can write and ship more code than ever. But can you trust it?  On September 29, we'll cover how ",
+   "Dependabot pull requests are easy to review one at a time ... and tedious to review by the dozen.  B"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-vercel",
+  "kind": "x_account",
+  "target": "https://x.com/vercel",
+  "name": "Vercel",
+  "focus": "Vercel platform and AI Gateway",
+  "lang": "en",
+  "description": "Vercel is the hosting and infrastructure company behind Next.js, v0 and AI Gateway. This is their X account: customer stories about internal app platforms built on Vercel, AI Gateway model adoption figures and pricing promotions, the skills.sh agent skills registry, and Fluid Compute and CDN pricing announcements. A few posts a week, all about Vercel's own platform and the models and agents reachable through it. It does not report on the wider industry.",
+  "postsPerDay": 0.4,
+  "followers": 459693,
+  "recentTitles": [
+   "Engineers @klaviyo built an internal app platform on Vercel. In the first two weeks, 512 employees s",
+   "In 7 months, the skills.⁠sh registry reached 1 million agent skills and nearly 280 million installs.",
+   "Build with Grok 4.7 and Vercel for less.  40% off until September 27th on AI Gateway. Try with @v0, "
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-cognition",
+  "kind": "x_account",
+  "target": "https://x.com/cognition",
+  "name": "Cognition",
+  "focus": "Devin and coding agent news",
+  "lang": "en",
+  "description": "Cognition is the company that makes Devin, an AI software engineering agent. This is their X account: Devin product updates such as Microsoft Teams and Microsoft 365 integration, new models like GPT-6 Sol and Luna arriving in Devin with benchmark comparisons, and company milestones such as revenue run rate. Multi-post threads with 'Read more' links to their blog, several posts a day in launch weeks. Only about Devin and Cognition, no coverage of rival agents.",
+  "postsPerDay": 3.5,
+  "followers": 185437,
+  "recentTitles": [
+   "Cognition has crossed $1B in annualized revenue run rate.   This milestone belongs to our customers.",
+   "And Devin now works natively with Microsoft 365: grant access to Outlook, Calendar, OneDrive, ShareP",
+   "In Microsoft Teams, you can now direct message Devin, start a group chat, or spin up Automations fro"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-openrouter",
+  "kind": "x_account",
+  "target": "https://x.com/OpenRouter",
+  "name": "OpenRouter",
+  "focus": "model routing and new model availability",
+  "lang": "en",
+  "description": "OpenRouter is a unified API that routes requests to hundreds of language models. This is their X account: launches of routing products such as the Jev Router built on TypeSafe's Jev model, benchmark results against its own Auto Router, and explanations of how routing, caching and data retention work. Under five posts a day averaged over the account's whole history, with long many-post threads on a launch day (the ten newest posts were one such day's thread). A source for which models and routers are shipping across labs, seen through OpenRouter's catalog.",
+  "postsPerDay": 4.8,
+  "followers": 148998,
+  "recentTitles": [
+   "You can see Jev Router's thinking process in OpenRouter Chat.  The routing insights panel shows the ",
+   "If the Jev call times out or returns invalid output, the request fails instead of falling back to an",
+   "Jev Router keeps a model that works for the rest of the session.  It can raise or lower effort witho"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-theo",
+  "kind": "x_account",
+  "target": "https://x.com/theo",
+  "name": "Theo - t3.gg",
+  "focus": "AI coding tool opinions",
+  "lang": "en",
+  "description": "Theo Browne runs T3 Chat and T3 Code and makes developer videos on YouTube. This is his X account: roughly nineteen posts a day averaged over the account's whole history, replies included (the ten newest original posts fell within one day), with blunt opinions on coding agents (Claude, Codex, Opus), usage limits and account bans, which models are popular in his products, Linux versus macOS for running agents, and screenshots and jokes about the AI developer scene. Personal takes rather than announcements, at high volume.",
+  "postsPerDay": 18.6,
+  "followers": 391965,
+  "recentTitles": [
+   "I was so innocent at the time... https://t.co/H3DMw38RmN",
+   "Holy shit https://t.co/gkF1591Ylw",
+   "Vid on \"why linux\"  https://t.co/A80WPr9m3g"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-bcherny",
+  "kind": "x_account",
+  "target": "https://x.com/bcherny",
+  "name": "Boris Cherny",
+  "focus": "Claude Code from the inside",
+  "lang": "en",
+  "description": "Boris Cherny works at Anthropic on Claude Code. This is his X account: first-hand notes on Claude Code features such as Projects, how Opus 5.5 performs as a daily driver, experiments like formally verifying the Claude Agent SDK with Lean, internal agents that write pull requests, and speed improvements to the desktop app. About one post a day, almost entirely Claude and Anthropic tooling. Not a general AI news feed.",
+  "postsPerDay": 1.2,
+  "followers": 581653,
+  "recentTitles": [
+   "Can’t wait to see what you build. https://t.co/IzsiejH1fa",
+   "Tag writes &gt;50% of my PRs every day. It also does ~100% of my data analysis, and fixes most of ou",
+   "It was an honor to meet Donald Knuth at the Computer History Museum today https://t.co/U6bGOidLmw"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-steipete",
+  "kind": "x_account",
+  "target": "https://x.com/steipete",
+  "name": "Peter Steinberger 🦞",
+  "focus": "OpenClaw and hands-on agent building",
+  "lang": "en",
+  "description": "Peter Steinberger is the creator of OpenClaw, an open source agent framework, and a longtime iOS developer. This is his X account: OpenClaw releases and partnerships such as Microsoft shipping a product on it, engineering lessons like sync database access mistakes, having agents delete 400k lines of tests, memory leaks found in dependencies, and reactions to the agent hype cycle. Several posts a day, mixing technical detail with jokes and photos.",
+  "postsPerDay": 7.2,
+  "followers": 592196,
+  "recentTitles": [
+   "keep thinking https://t.co/m9hPGboarc",
+   "The biggest design mistake I made when we moved OC to sqlite: using sync db access. When it was just",
+   "day of the dead https://t.co/ivXMULng59"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-linear",
+  "kind": "x_account",
+  "target": "https://x.com/linear",
+  "name": "Linear",
+  "focus": "Linear product and coding agent updates",
+  "lang": "en",
+  "description": "Linear is a project and issue tracking product for software teams. This is their X account: weekly changelog items such as the Linear coding agent, adaptive model routing, environment secrets, new models available in coding sessions (GPT-6 Sol, Luna, Opus 5.5), MCP access to the inbox and mobile features. About one post a day, only about Linear's own product.",
+  "postsPerDay": 1.3,
+  "followers": 113423,
+  "recentTitles": [
+   "See everything Linear’s cloud coding agent can do and how to put it to work:  https://t.co/D9ikwDhHV",
+   "New: Secure setup for Linear coding agent    Coding sessions can now access environment secrets duri",
+   "Other coding agent improvements include environment secrets and support for open-weight models.  Lea"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-karpathy",
+  "kind": "x_account",
+  "target": "https://x.com/karpathy",
+  "name": "Andrej Karpathy",
+  "focus": "LLM insights from a researcher",
+  "lang": "en",
+  "description": "Andrej Karpathy is an AI researcher, formerly of OpenAI and Tesla. This is his X account: long, plain-language posts on how to work with LLMs (ramble sessions, asking for HTML output), ways to test models beyond the pelican drawing, reactions to model releases like Claude Fable 5, talk summaries, and occasional admiration for SpaceX. Rare, roughly a couple of posts a month, often weeks apart.",
+  "postsPerDay": 0.1,
+  "followers": 4222194,
+  "recentTitles": [
+   "More on the pelican on the bicycle test from @simonw: https://t.co/OXmtODyTKj  I uploaded the source",
+   "We're starting to leave the territory where you'd test an LLM by e.g. \"create an svg of pelican on a",
+   "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM nee"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-verge",
+  "kind": "x_account",
+  "target": "https://x.com/verge",
+  "name": "The Verge",
+  "focus": "consumer tech headlines",
+  "lang": "en",
+  "description": "The Verge is a consumer technology news site. This is their X account: roughly forty-five headlines a day averaged over the account's whole history (the ten newest posts all fell within one day), linking to articles and the Vergecast on gadgets and deals (phones, cameras, HomePod, e-bikes), platform news from Meta, Apple and Google, AI lawsuits and agent incidents, and robotics. A consumer and culture angle on tech; developer tools appear rarely.",
+  "postsPerDay": 44.9,
+  "followers": 4694973,
+  "recentTitles": [
+   "Yes, if it’s Amflow’s TL Carbon ,  but expect compromises. https://t.co/OaKzs2G1HY",
+   "We also found discounted DJI Osmo Nano bundles, the first sale on the Nothing Phone 4A Pro, and a $3",
+   "On The Vergecast: Meta Connect, Muse, Googlebooks, and more. https://t.co/rJqwJmmPtF"
+  ],
+  "foundFor": [
+   "kush",
+   "nihan"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-paulg",
+  "kind": "x_account",
+  "target": "https://x.com/paulg",
+  "name": "Paul Graham",
+  "focus": "startup and AI essays",
+  "lang": "en",
+  "description": "Paul Graham co-founded Y Combinator and writes essays on startups. This is his X account: observations on how people describe LLMs and what words like 'think' mean for them, startup ideas prompted by AI problems, model bug-finding cost charts, advice to students on where to work in the AI age, plus book notes and gripes about language usage. A few posts a day, opinions and essays rather than news.",
+  "postsPerDay": 3.8,
+  "followers": 5325793,
+  "recentTitles": [
+   "I'm reading Shakespeare's Professional Career by Peter Thomson. Like most really good books, it cove",
+   "If you know anyone looking for a good and fairly AI-proof career, watchmaker (= watch repairer) seem",
+   "Using \"think\" to describe what an LLM does reminds me of the 16th century, when astronomers didn't r"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-heygen",
+  "kind": "x_account",
+  "target": "https://x.com/HeyGen",
+  "name": "HeyGen",
+  "focus": "AI avatar video tools",
+  "lang": "en",
+  "description": "HeyGen is the company behind an AI avatar and video generation product. This is their X account: product updates such as custom avatar looks and multilingual avatar videos, integrations with agents and assistants like Muse, ChatGPT and Claude through an MCP, workflow walkthroughs, small surveys about business video, and event announcements like workshops. It does not cover AI news beyond HeyGen's own product and partners.",
+  "postsPerDay": 1.0,
+  "followers": 112228,
+  "recentTitles": [
+   "And don't forget to dress for success. Custom looks let you put your avatar in any outfit without lo",
+   "New weekly update workflow Step 1: open Claude Cowork Step 2: \"read this week's Slack and make me a ",
+   "71.6% of small business owners have filmed a video for their business and never posted it. 53.9% sai"
+  ],
+  "foundFor": [
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-dreamina_ai",
+  "kind": "x_account",
+  "target": "https://x.com/dreamina_ai",
+  "name": "Dreamina AI",
+  "focus": "AI image and video generation",
+  "lang": "en",
+  "description": "Dreamina AI is ByteDance's AI image and video generation tool built on the Seedance models. This is their X account: feature launches on the Dreamina web app such as preview modes and cinematic workflows, creator contests and winner announcements, Discord credit giveaways, discount offers, and short video tutorials made with the tool. It does not cover AI industry news or tools other than Dreamina.",
+  "postsPerDay": 1.7,
+  "followers": 27814,
+  "recentTitles": [
+   "Look me in the eyes. Same creative magic, now on Dreamina App. Try cast for free 👉https://t.co/CEloH",
+   "【Dreamina AI web is LIVE】 Winners Announced! Check if you're one of the lucky winners! https://t.co/",
+   "Dreamina Seedance 2.5 White Model Reference Creation Contest, Winners Announced One white model. In"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-odysseyml",
+  "kind": "x_account",
+  "target": "https://x.com/odysseyml",
+  "name": "Odyssey",
+  "focus": "world models and simulated environments",
+  "lang": "en",
+  "description": "Odyssey is an AI lab building world models that simulate interactive environments in real time. This is their X account: launches of its Odyssey and Agora model generations, multiplayer research previews where humans and agents share a simulated world, claims about world models controlling robots, cars and drones, and teaser posts before releases. It does not cover general AI tools or coding products.",
+  "postsPerDay": 1.0,
+  "followers": 42607,
+  "recentTitles": [
+   "Going forward, we believe multi-agent world models will increasingly power important applications ac",
+   "This research preview of Agora-2 enables up to 4 humans to join together to battle 16 agents, in an ",
+   "Introducing Agora-2, our next-generation multi-agent world model. Agora-2 supports up to 20 humans a"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-relume_ai",
+  "kind": "x_account",
+  "target": "https://x.com/relume_ai",
+  "name": "Relume",
+  "focus": "AI website builder for agencies",
+  "lang": "en",
+  "description": "Relume makes an AI website builder and component library used by freelancers and agencies. This is their X account: threads announcing Relume Publish with hosting and specialist AI agents for copy, design and SEO, free Figma kit offers, and occasional design humor. It posts in bursts around launches and can go quiet for weeks. It does not cover AI news outside Relume's own product.",
+  "postsPerDay": 0.5,
+  "followers": 20774,
+  "recentTitles": [
+   "What's the difference between designers charging $25 per website vs $2,500 per website? Comment the ",
+   "What if Apple made a burger? https://t.co/omxjFbVnHe",
+   "If you build marketing websites for clients, this one was made for you. Build and grow your next cli"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-qoder_ai_ide",
+  "kind": "x_account",
+  "target": "https://x.com/qoder_ai_ide",
+  "name": "Qoder",
+  "focus": "agentic coding platform",
+  "lang": "en",
+  "description": "Qoder is an agentic coding platform and desktop IDE from Alibaba. This is their X account: free model promotions such as Qwen models at no credit cost, daily credit packs and consumption rate changes, new team features like Projects and Discussions, and conference announcements about the product line. It does not cover other coding tools or general AI news.",
+  "postsPerDay": 1.9,
+  "followers": 11834,
+  "recentTitles": [
+   "Getting started: 1. Download the Qoder desktop app. 2. Sign in and select Qwen3.8-Flash. No claim ne",
+   "Qwen3.8-Flash is free in Qoder through Sept 30. Free accounts included. No claim, no Credits. Throug",
+   "When every teammate has an Agent, how do you actually keep the team in sync? Qoder Projects &amp; Di"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-cresta",
+  "kind": "x_account",
+  "target": "https://x.com/cresta",
+  "name": "Cresta",
+  "focus": "AI agents for customer support",
+  "lang": "en",
+  "description": "Cresta sells an AI platform for contact centers and customer experience teams. This is their X account: webinars and conference sessions about AI agents in customer service, featured customer speakers such as Alaska Airlines at its own CrestaWAVE event, and customer-service takes tied to news moments. It does not cover developer tools or general AI model news.",
+  "postsPerDay": 0.7,
+  "followers": 1807,
+  "recentTitles": [
+   "Are you building the wrong AI agent strategy? 🤔 In our upcoming webinar with @Metrigy, we’re debunki",
+   "✈️ Excited to have Lori Bradshaw of @AlaskaAir as a featured speaker at #CrestaWAVE 2026! We’re prou",
+   "Bad CX always strikes at the worst possible time. Even for @MoneyLynch It’s time to hit the Beast Mo"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-svpino",
+  "kind": "x_account",
+  "target": "https://x.com/svpino",
+  "name": "Santiago",
+  "focus": "AI engineering lessons and tool reviews",
+  "lang": "en",
+  "description": "Santiago is a computer scientist who teaches AI and machine learning engineering and posts several times a day. This is his X account: hands-on takes on infrastructure and databases for agents, search APIs, speech and voice isolation, managed coding agents, video generation tools, and medical uses of AI, often as sponsored partner posts with a personal verdict. It does not cover company earnings or AI policy.",
+  "postsPerDay": 4.8,
+  "followers": 456202,
+  "recentTitles": [
+   "New database guarantees for agentic workflows: 1. Branches: Give agents a separate version of the da",
+   "This is, literally, the best search API for your agents. No other Search API tool scores in the top ",
+   "Here is how you can save a ton of money on infrastructure. Best part: you don't need to commit for a"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-digitalocean",
+  "kind": "x_account",
+  "target": "https://x.com/digitalocean",
+  "name": "DigitalOcean",
+  "focus": "cloud infrastructure for AI agents",
+  "lang": "en",
+  "description": "DigitalOcean is a cloud provider positioning itself around AI workloads. This is their X account: new models available on its serverless inference such as OpenAI, NVIDIA and TypeSafe releases, its Managed Agents preview, tutorials on running and sandboxing agents, speaker announcements for its own summits, and meetups. It does not cover consumer AI products or industry news beyond its platform and partners.",
+  "postsPerDay": 4.5,
+  "followers": 225925,
+  "recentTitles": [
+   "Now available: @nvidia Nemotron™ 3 Diarization on DigitalOcean Serverless Inference. Open-weight str",
+   "Jev doesn't write text. It returns a typed decision in 70–500ms: is this spam, which queue, what sco",
+   "Join us for the night shift after @AIconference. Your agents aren't failing because of the model. Th"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-runwayml",
+  "kind": "x_account",
+  "target": "https://x.com/runwayml",
+  "name": "Runway",
+  "focus": "generative image and video tools",
+  "lang": "en",
+  "description": "Runway is an AI company building image and video generation models and tools. This is their X account: new features and third-party models as they become available in the app, an MCP for using Runway inside Claude, evaluation write-ups, and affiliate program calls, usually as a headline post followed by a link post. It does not cover coding tools or AI industry news.",
+  "postsPerDay": 8.6,
+  "followers": 292224,
+  "recentTitles": [
+   "Get started: https://t.co/YXqYR7AGMo",
+   "Claude Opus 5.5 meets Runway MCP. Connect Runway directly into Claude to generate polished images an",
+   "Try today: https://t.co/qKmmiG0q1x"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-n8n_io",
+  "kind": "x_account",
+  "target": "https://x.com/n8n_io",
+  "name": "n8n.io",
+  "focus": "AI workflow automation",
+  "lang": "en",
+  "description": "n8n is a workflow automation tool for technical teams building AI-connected workflows. This is their X account: its own conference In The Loop with speakers and partner sessions, featured workflow templates, talks at events such as GTC and HumanX, co-hosted builder events with OpenAI, and agent permission patterns with partners like NVIDIA and Microsoft. It does not cover automation tools other than n8n.",
+  "postsPerDay": 2.7,
+  "followers": 83812,
+  "recentTitles": [
+   "Great few days at @HumanXCo in Amsterdam. Thanks to everyone who stopped by the n8n booth and shared",
+   "Jamie Madden, our Senior Education DevRel at n8n, is speaking at @NVIDIAGTC Berlin this October. He’",
+   "Agentic automation only scales with identity, permissions &amp; a reusable pattern in place. Oliver "
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-rowancheung",
+  "kind": "x_account",
+  "target": "https://x.com/rowancheung",
+  "name": "Rowan Cheung",
+  "focus": "AI news highlights and personal workflows",
+  "lang": "en",
+  "description": "Rowan Cheung is the founder of The Rundown AI, a daily AI newsletter. This is his X account: standout AI stories such as brain implants restoring movement or dogs detecting cancer with detailed threads and links to papers, lists of consumer products with AI integrated well or badly, and his own AI journaling and workflow setups. The account posts a few times a week rather than daily. It does not carry the full daily tool roundup, which lives in the newsletter.",
+  "postsPerDay": 0.7,
+  "followers": 597614,
+  "recentTitles": [
+   "Full paper: https://t.co/dDxhuKgzLn",
+   "Surgeons implanted 5 electrode arrays in his brain An AI detects when he intends to move and stimula",
+   "AI is now helping paralyzed people move again. This man is moving his own hand with an implant train"
+  ],
+  "foundFor": [
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-producthunt",
+  "kind": "x_account",
+  "target": "https://x.com/ProductHunt",
+  "name": "Product Hunt",
+  "focus": "daily new product launches",
+  "lang": "en",
+  "description": "Product Hunt is the site where makers launch new products every day. This is their X account: many posts a day highlighting individual launches with a one-line explanation and maker handle, from AI video editors and fundraising agents to browser simulations and privacy tools, plus newsletter roundups and reposts of community reactions. Most featured products are early-stage and not yet well known. It does not cover funding news or model research.",
+  "postsPerDay": 10.9,
+  "followers": 565884,
+  "recentTitles": [
+   "Pass my exam, make no mistakes https://t.co/HWnk3T85hj",
+   "Love to see it! https://t.co/BlJ32N3fyy",
+   "And of course more in the Newsletter! Subscribe here: https://t.co/05tgaMLXjL https://t.co/arWubrjK8"
+  ],
+  "foundFor": [
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "close",
+   "other"
+  ]
+ },
+ {
+  "id": "x-elevenlabs",
+  "kind": "x_account",
+  "target": "https://x.com/ElevenLabs",
+  "name": "ElevenLabs",
+  "focus": "AI voice, speech and audio tools",
+  "lang": "en",
+  "description": "ElevenLabs is the company behind AI voice, speech-to-text and audio generation models and the ElevenCreative, ElevenAgents and ElevenAPI products. This is their X account: model and product releases such as Scribe v2 Medical for clinical speech-to-text and Studio 4.0, its AI-native video editor, integrations with assistants like Muse, customer and partner case studies such as a voice-driven humanoid robot, and program announcements like free access for students. It does not cover AI news beyond ElevenLabs' own products and partners.",
+  "postsPerDay": 1.3,
+  "followers": 193763,
+  "recentTitles": [
+   "The easiest way to prepare students for the work they'll do after university is to give them the too",
+   "Asking out loud is the fastest way to get almost anything done. Even if you're asking a robot. This ",
+   "ElevenLabs is coming to @Muse. Voiceovers, soundtracks, and videos are just a message away inside Me"
+  ],
+  "foundFor": [
+   "liam",
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-testingcatalog",
+  "kind": "x_account",
+  "target": "https://x.com/testingcatalog",
+  "name": "TestingCatalog",
+  "focus": "feature sightings across AI products",
+  "lang": "en",
+  "description": "TestingCatalog is a news account that reports unreleased and newly shipped features across AI products. This is their X account: sightings of upcoming plans and features such as a ChatGPT Pro Max tier or a new Claude Code layout in Claude Desktop, app UI changes in ChatGPT and Claude, launches like the new Copilot app modes and plugin submissions on Claude Directory, smaller tool launches, and a daily AI brief that sums up the day's news by company. It does not cover hands-on tutorials or funding news.",
+  "postsPerDay": 9.9,
+  "followers": 77407,
+  "recentTitles": [
+   "DAILY AI BRIEF 🗞, Sept 26 MICROSOFT 🔥: - Biggest Copilot update yet: Home (Chat + Cowork), Code, Aut",
+   "Anthropic is developing a new Claude Code layout for Claude Desktop, with an updated model selector ",
+   "Codex is down. This sounds like a banked reset 👀 https://t.co/Avsf0zk6Lr"
+  ],
+  "foundFor": [
+   "liam"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-aihighlight",
+  "kind": "x_account",
+  "target": "https://x.com/AIHighlight",
+  "name": "AI Highlight",
+  "focus": "AI news recaps and viral clips",
+  "lang": "en",
+  "description": "AI Highlight is a curation account for AI and consumer tech. This is their X account: viral AI-generated video clips such as the Sylvester Stallone videos, quick relays of AI headlines, and plugs for its own free newsletter. Items are short relays of the moment rather than analysis or hands-on reviews. It does not cover research papers or developer tooling.",
+  "postsPerDay": 7.8,
+  "followers": 625654,
+  "recentTitles": [
+   "These Sylvester Stallone videos are absolutely wild! https://t.co/KunPGZJq0B",
+   "If you’re into AI and Tech, you need to be on our free newsletter.\n\nJoin 25,000+ readers staying ahe",
+   "These Sylvester Stallone videos are getting ridiculous 😂 https://t.co/OIx5nvJs49"
+  ],
+  "foundFor": [
+   "nihan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-getsurething",
+  "kind": "x_account",
+  "target": "https://x.com/getsurething",
+  "name": "SureThing",
+  "focus": "AI agent startup changelog",
+  "lang": "en",
+  "description": "SureThing is a small startup building an always-on AI agent that connects to many apps. This is their X account: weekly changelog threads listing new features, improvements and bug fixes, and occasional welcomes to partner tools. Posts are about SureThing's own product only. It does not cover other AI tools or industry news.",
+  "postsPerDay": 1.3,
+  "followers": 1769,
+  "recentTitles": [
+   "SureThing update, Sep 8-15:\n\nNew: Routines detail page, OpenAI Images 2.5, in-app file preview in ch",
+   "A big welcome to @glasserai 🎉 I’ve been hungry for better data, and yes, you can use Glasser with me",
+   "Building in public. Follow along → https://t.co/QK2il3ScQX"
+  ],
+  "foundFor": [
+   "nihan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-boltzbit",
+  "kind": "x_account",
+  "target": "https://x.com/boltzbit",
+  "name": "Boltzbit",
+  "focus": "AI research lab views",
+  "lang": "en",
+  "description": "Boltzbit is a London AI research company working on models that keep learning from live data. This is their X account: previews of its own papers, threads arguing about what AGI means and the limits of task-length benchmarks, and links to interviews with its researchers. Posting is infrequent, a few times a month. It does not cover product launches or tools from other companies.",
+  "postsPerDay": 0.3,
+  "followers": 220,
+  "recentTitles": [
+   "We’ve just released the preview version of our latest paper: Infinite-Parameter LLMs - Generating an",
+   "The industry declared #AGI (again) this week. Dr @YichuanZhang_ 's piece with @DIGIWORLD_INFO discus",
+   "The progress in task horizon is real and worth building on. The argument here isn't against agentic "
+  ],
+  "foundFor": [
+   "nihan"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-claudeai",
+  "kind": "x_account",
+  "target": "https://x.com/claudeai",
+  "name": "Claude",
+  "focus": "Claude product launches",
+  "lang": "en",
+  "description": "Claude is the official account for Anthropic's Claude assistant. This is their X account: launches such as Claude Opus 5.5 and the Claude Marketplace for connectors, plugins and agents, plus roundups of what people have built with new models, often as threads with links. Posts are product-facing and about Claude only. It does not cover Anthropic research papers or other AI assistants.",
+  "postsPerDay": 5.4,
+  "followers": 1823342,
+  "recentTitles": [
+   "What are you going to explore with Opus 5.5 this weekend?",
+   "https://t.co/3kIQ5LKes3",
+   "https://t.co/7zcjE09JYh"
+  ],
+  "foundFor": [
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-midjourney",
+  "kind": "x_account",
+  "target": "https://x.com/midjourney",
+  "name": "Midjourney",
+  "focus": "image model release notes",
+  "lang": "en",
+  "description": "Midjourney is an image generation research lab. This is their X account: release notes for model updates such as v8.1 with its new --tile mode for seamless patterns, a new edit model for consistent characters, weekly office hours recaps, community polls about priorities, and meetup announcements. Posting is a few times a month, clustered around releases. It does not cover other image tools or AI news.",
+  "postsPerDay": 0.2,
+  "followers": 461872,
+  "recentTitles": [
+   "A lot of people are wondering how to use our new edit model for consistent characters and more - so ",
+   "A few quick updates today! We're releasing a new version of --tile for seamless patterns in v8.1 and",
+   "Midjourney Weekly Office Hours - 9/16 https://t.co/qkX6ZaJv4X"
+  ],
+  "foundFor": [
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-fabrizioromano",
+  "kind": "x_account",
+  "target": "https://x.com/FabrizioRomano",
+  "name": "Fabrizio Romano",
+  "focus": "European transfer wire",
+  "lang": "en",
+  "description": "Fabrizio Romano is a transfer journalist who posts breaking football news in English for a global audience. This is their X account: contract talks and transfer developments across Europe's top leagues (Bayern and Manchester City in the sampled posts), quotes from managers and players, and official confirmations tagged OFFICIAL or Here we go, posted around nine times a day. It covers every major European club and national team rather than any one club.",
+  "postsPerDay": 9.0,
+  "followers": 29134273,
+  "recentTitles": [
+   "🚨 Bayern’s Karl-Heinz Rummenigge: “Olise is under contract until 2029”. “At some point, the club wil",
+   "🚨 Rodri on Manchester City charges: “The club always press their confidence that they never did some",
+   "🚨 Rodri on Manchester City charges: “What we did, they cannot take it out of us. It's something that"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-david_ornstein",
+  "kind": "x_account",
+  "target": "https://x.com/David_Ornstein",
+  "name": "David Ornstein",
+  "focus": "English transfer and governance exclusives",
+  "lang": "en",
+  "description": "David Ornstein is the football correspondent of The Athletic, based in England. This is their X account: exclusive reporting on Premier League clubs, in the sampled posts the Manchester City financial-rules verdict and the clubs' planned legal response, with some posts published as bare links to The Athletic. Posts arrived a few times a week in the sampled window. It covers English football; other leagues appear only when a story involves an English club.",
+  "postsPerDay": 0.4,
+  "followers": 4697672,
+  "recentTitles": [
+   "🚨 Premier League clubs planning legal action following guilty verdict against Manchester City relati",
+   "https://t.co/ykAkD3O3Xd https://t.co/4fzFe52FpS",
+   "🚨 EXCLUSIVE: Manchester City found guilty on virtually all charges relating to breaches of Premier L"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-mattemoretto",
+  "kind": "x_account",
+  "target": "https://x.com/MatteMoretto",
+  "name": "Matteo Moretto",
+  "focus": "Spanish and Italian transfer market",
+  "lang": "es",
+  "description": "Matteo Moretto is a Spanish-based transfer reporter who works with Fabrizio Romano. This is their X account: coaching changes in Spain (Cádiz weighing a change of manager), done deals in Italy (Neto to Juventus) and club-structure news (Milan under Cardinale), written in Spanish and Italian. It covers the whole Spanish and Italian market rather than a single club.",
+  "postsPerDay": 2.3,
+  "followers": 573607,
+  "recentTitles": [
+   "El Cádiz se está planteando seriamente cambiar de entrenador, el club ya está en contacto con varios",
+   "È fatta per Neto alla Juventus. Accordo chiuso. https://t.co/hNcDO02q0U",
+   "Milan: Gerry Cardinale è al lavoro per migliorare la struttura del club. Il proprietario, in collabo"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-fabricehawkins",
+  "kind": "x_account",
+  "target": "https://x.com/FabriceHawkins",
+  "name": "Fabrice Hawkins",
+  "focus": "France national team and French players",
+  "lang": "fr",
+  "description": "Fabrice Hawkins is a French football journalist reporting for RMC Sport. This is their X account: the France national team under Zidane (lineups, call-ups, players leaving the camp) and injury news on French players such as Mbappé and Koundé, written in French. It covers French football and French players wherever they play; club news arrives through those players rather than as club coverage.",
+  "postsPerDay": 1.9,
+  "followers": 284744,
+  "recentTitles": [
+   "🚨🇫🇷 Kylian Mbappé va quitter le rassemblement de l’équipe de France après sa blessure au genou lors ",
+   "La première composition d’équipe de Zinédine Zidane pour Turquie - France : Maignan – Koundé, Lacroi",
+   "https://t.co/5mB7wGnnse"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-mariocortegana",
+  "kind": "x_account",
+  "target": "https://x.com/MarioCortegana",
+  "name": "Mario Cortegana",
+  "focus": "Real Madrid and Spanish market",
+  "lang": "en",
+  "description": "Mario Cortegana covers Real Madrid for The Athletic. This is their X account: inside reporting on Real Madrid's first team and dressing room (the mood after the derby defeat, midfield control), Mbappé injury updates, and short cryptic posts or links, in English and Spanish. It covers Real Madrid only, with other clubs appearing as opponents.",
+  "postsPerDay": 0.8,
+  "followers": 284741,
+  "recentTitles": [
+   "JMTR. https://t.co/q0RIfzHScH",
+   "Real Madrid’s Kylian Mbappe to return to Spain for scan on knee injury sustained in France victory @",
+   "⚡️Inside Real Madrid post derby defeat: ➕Lack of control in midfield &amp; attitude ➕“The problem wi"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-martinezferran",
+  "kind": "x_account",
+  "target": "https://x.com/martinezferran",
+  "name": "Ferran Martínez",
+  "focus": "Barcelona first team and Spain squad",
+  "lang": "ca",
+  "description": "Ferran Martínez is a Mundo Deportivo journalist who follows FC Barcelona and the Spain national team. This is their X account: Barcelona first-team news and player interviews for Mundo Deportivo (Fermín's return to the Spain squad), match reaction on players such as Raphinha, and opinion on Real Madrid and Mourinho, in Catalan and Spanish. Posts arrive several times a week. It covers Barcelona and Spain; other clubs appear only as opponents or through Mourinho.",
+  "postsPerDay": 0.6,
+  "followers": 42491,
+  "recentTitles": [
+   "Fermín vuelve a la selección y atiende a @mundodeportivo https://t.co/5SfgORASBt",
+   "Mourinho vuelve a hablar de árbitros porque no puede hablar de fútbol. Mal diagnóstico Qué larga se ",
+   "EL PROTAGONISTA Raphinha està disposat a marcar una època al Barça. Quina irrupció com a '9'! 😳 http"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-monfortcarlos",
+  "kind": "x_account",
+  "target": "https://x.com/monfortcarlos",
+  "name": "Carlos Monfort",
+  "focus": "Barcelona first team daily news",
+  "lang": "es",
+  "description": "Carlos Monfort is a journalist at the Barcelona sports daily SPORT. This is their X account: daily FC Barcelona news in Spanish, with injury recoveries (De Jong, Casadó), training schedules under Flick, goalkeeper selection, youth signings and renewals (Iker Rodríguez, Dany Freire), and contract talks such as Raphinha's renewal, linking to SPORT. It also carries club commercial and media stories like the Clásico shirt sponsor. It covers FC Barcelona only, with other clubs appearing as opponents or as the other side of a deal.",
+  "postsPerDay": 2.0,
+  "followers": 69307,
+  "recentTitles": [
+   "❗️Marc Casadó, en la Ciutat Esportiva para recuperarse de su lesión. El centrocampista catalán, cedi",
+   "❗️Contamos en @sport De Jong mejora sensaciones y da un paso adelante en su recuperación. El neerlan",
+   "ℹ️ Hoy Flick ha dado fiesta a los no internacionales. Los lesionados han ido a recuperarse de sus re"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-catalunyaradio",
+  "kind": "x_account",
+  "target": "https://x.com/CatalunyaRadio",
+  "name": "Catalunya Ràdio",
+  "focus": "Catalan public radio, general news",
+  "lang": "ca",
+  "description": "Catalunya Ràdio is the official account of Catalonia's national public radio station. This is their X account: clips and links from its programmes in Catalan on politics, culture, books, housing, theatre and daily life in Catalonia, ten or more posts a day. FC Barcelona appears only occasionally through clips from its Barça programme, such as a piece on the team's physical preparation. It is a general news and culture account rather than a sports one; its sports shows post from their own accounts (@totcosta on weekdays, @ClubMitjanit on Sundays).",
+  "postsPerDay": 10.0,
+  "followers": 303572,
+  "recentTitles": [
+   "\"Traduir llibres és com tenir un fill.\" Durant La Setmana del Llibre en Català descobrim la feina qu",
+   "Portada @rogerescapa: \"La Maricarmen ha deixat amb el cul a l'aire totes les costures del sistema\" #",
+   "El Teatre Lliure celebra 50 anys i, per això, Magí Camps, Marta Orriols i Marta Vives s'han colat a "
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
+ },
+ {
+  "id": "x-fcbarcelona",
+  "kind": "x_account",
+  "target": "https://x.com/FCBarcelona",
+  "name": "FC Barcelona",
+  "focus": "Official club channel",
+  "lang": "en",
+  "description": "FC Barcelona is the official English-language X account of the club. This is their X account: international duty check-ins on its players during national-team breaks, La Liga highlight clips, membership and VIP seating announcements, fan polls and sponsor content such as eFootball, posted around nine times a day. It gives the club's own view: official announcements and highlights, not reporting or rumours about the squad.",
+  "postsPerDay": 9.0,
+  "followers": 46895387,
+  "recentTitles": [
+   "Too good not to recreate. 🎮 @play_eFootball https://t.co/Ny4u8gpXFY",
+   "🌍 International duty check-in: Hamza Abdelkarim played in the second half for Egypt in their goalles",
+   "🌍 International duty check-in: Jules Kounde played the full 90 minutes in France’s Nations League wi"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-mundodeportivo",
+  "kind": "x_account",
+  "target": "https://x.com/mundodeportivo",
+  "name": "Mundo Deportivo",
+  "focus": "Catalan sports daily, Barcelona-heavy",
+  "lang": "es",
+  "description": "Mundo Deportivo is a Barcelona-based sports newspaper founded in 1906. This is their X account: a dense stream of article links in Spanish covering FC Barcelona football and basketball, opinion columns on the club, Real Madrid stories, plus tennis, cycling and motorsport, ten or more posts a day. It is a general sports daily with a Barcelona lean, covering every sport the paper follows rather than one club.",
+  "postsPerDay": 10.0,
+  "followers": 3095122,
+  "recentTitles": [
+   "Davidovich debuta en China con victoria ante el último verdugo de Sinner ✍️ @ivanronda https://t.co/",
+   "🏀 Hambre de Liga: el Barça se estrena en el Palau ante el recién ascendido Leyma ✍️ @jfelipo https:/",
+   "'El anti-Barça' ✍️ #OpiniónMD de @AlexisRacionero https://t.co/6jfsToEMiO"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-diarioas",
+  "kind": "x_account",
+  "target": "https://x.com/diarioas",
+  "name": "Diario AS",
+  "focus": "Spanish sports daily, Madrid-leaning",
+  "lang": "es",
+  "description": "Diario AS is a Madrid-based Spanish sports newspaper. This is their X account: breaking news in Spanish on Real Madrid and the Spain national team, Mbappé's injury, the daily front page, Nations League and youth World Cup coverage, quizzes and photo galleries, ten or more posts a day. It is a general Spanish sports daily with a Madrid lean, covering every sport the paper follows.",
+  "postsPerDay": 10.0,
+  "followers": 3241864,
+  "recentTitles": [
+   "🌟🌟 ABRAN PASO AL CAMPEÓN 🇪🇸🏴󠁧󠁢󠁥󠁮󠁧󠁿 España estrenará las DOS ESTRELLAS en Wembley frente a Inglaterra",
+   "✨📰 ¡Ya está aquí la #PortadAS del sábado, 26 de septiembre! 🌟🌟 Estreno mundial https://t.co/oYu6Krgl",
+   "🚨 ¡Mbappé abandona Francia y regresa a Madrid para recibir tratamiento! 🇫🇷❌ Zidane transmitió preocu"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-esport3",
+  "kind": "x_account",
+  "target": "https://x.com/esport3",
+  "name": "Esport3",
+  "focus": "Catalan sports TV, all sports",
+  "lang": "ca",
+  "description": "Esport3 is the sports channel of Catalan public broadcaster TV3 and Catalunya Ràdio. This is their X account: sports news in Catalan on football (Manchester City's verdict, Mbappé's injury, Girona, Barça futsal), cycling and other sports, with links to its site, ten or more posts a day. It is broad Catalan sports news across every sport rather than one club or league.",
+  "postsPerDay": 10.0,
+  "followers": 203723,
+  "recentTitles": [
+   "🤦‍♂️ ES PASSA DE VELOCITAT ❌ Expulsen al seleccionador espanyol junior de ciclisme del Mundial per c",
+   "❗👀 Declaren el Manchester City culpable de 114 irregularitats financeres de les 115 acusacions contr",
+   "❌🏥 Kylian Mbappé abandona la concentració de França per una lesió tendinosa al genoll esquerre 🚨 El "
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-gerardromero",
+  "kind": "x_account",
+  "target": "https://x.com/gerardromero",
+  "name": "Gerard Romero",
+  "focus": "Barcelona talk shows and Jijantes",
+  "lang": "es",
+  "description": "Gerard Romero is a Catalan sports commentator who runs the Jijantes streaming channel and its Kings League team. This is their X account: links to Jijantes shows and debates about FC Barcelona (Flick's team, Raphinha), short reactions to Real Madrid and Mourinho, and jokes and memes during international breaks, in Spanish. The posts point to the shows on @JijantesFC rather than carrying reports themselves; it is a show-promotion feed, not a structured news feed.",
+  "postsPerDay": 4.7,
+  "followers": 1396951,
+  "recentTitles": [
+   "🎥Con @JaqueMarquez7 a las 22h valoración del inicio de temporada @JijantesFC https://t.co/0nC1x1Jf9P",
+   "Sigue el show en la Castellana… https://t.co/QWfBg2dvcq",
+   "Sigue el show en la Castellana… https://t.co/JTqEgx8yzp"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-plettigoal",
+  "kind": "x_account",
+  "target": "https://x.com/Plettigoal",
+  "name": "Florian Plettenberg",
+  "focus": "German transfers and Bundesliga",
+  "lang": "en",
+  "description": "Florian Plettenberg is a Sky Sport Germany reporter covering transfers and the Germany national team. This is their X account: Bundesliga coaching changes (Hannover, Mönchengladbach, Ingolstadt), quotes from managers and done-deal announcements, in English and German. It covers German football first: Bundesliga clubs, German players abroad and the national team.",
+  "postsPerDay": 1.4,
+  "followers": 846859,
+  "recentTitles": [
+   "🚨❌ Sabrina #Wittmann has been relieved of her duties at FC Ingolstadt. Decision has been made. Wittm",
+   "🚨🆕 Borussia Mönchengladbach are in advanced negotiations with Alexander Blessin. Verbal agreement is",
+   "🚨💥 Sandro Wagner to Hannover 96 - DONE DEAL ✔️ Full agreement reached. Contract until 2028. Wagner t"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-realmadrid",
+  "kind": "x_account",
+  "target": "https://x.com/realmadrid",
+  "name": "Real Madrid C.F.",
+  "focus": "Real Madrid official channel",
+  "lang": "es",
+  "description": "Real Madrid C.F. is the club's official Spanish-language X account. This is their X account: scorelines and player mentions from its internationals on national duty, awards for its players, medical reports, merchandise and video-game partnerships, posted several times a day in Spanish. It covers Real Madrid only, with other clubs appearing as opponents.",
+  "postsPerDay": 6.5,
+  "followers": 49536738,
+  "recentTitles": [
+   "🇹🇷 0-1 🇫🇷 ⚽ @KMbappe 👉 @Camavinga 👉 @10ArdaGuler 🏆 Liga de Naciones https://t.co/CQ3WoqJ8MI",
+   "🔝 ¡@BellinghamJude, elegido mejor jugador de la selección inglesa de la temporada 2025/26! https://t",
+   "🇦🇺 1-1 🇧🇷 👉 @ViniJr 👉 @Endrick 🤝 Amistoso https://t.co/fJE1eXd9yl"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-fcbfemeni",
+  "kind": "x_account",
+  "target": "https://x.com/FCBfemeni",
+  "name": "FC Barcelona Femení",
+  "focus": "Barcelona women's team official",
+  "lang": "ca",
+  "description": "FC Barcelona Femení is the official account of the club's women's team. This is their X account: matchday build-up, squad lists, travel and training photos, coach Pere Romeu's press conferences and ticket links, in Catalan, ten or more posts a day. It covers the women's team only.",
+  "postsPerDay": 10.0,
+  "followers": 1213189,
+  "recentTitles": [
+   "✨ 𝗨𝗡 𝗗𝗜𝗔 𝗗𝗘 𝗣𝗔𝗥𝗧𝗜𝗧 ✨ #LogroñoUnitedBarça https://t.co/LLkxiOlMts",
+   "Viatge ✔️ https://t.co/yE5Kw2ZXAq",
+   "🔜 Dos partits a l'Spotify Camp Nou! Aprofita aquesta oportunitat! 🎟️👇 https://t.co/hkFm8Elfdx https:"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-premierleague",
+  "kind": "x_account",
+  "target": "https://x.com/premierleague",
+  "name": "Premier League",
+  "focus": "Premier League official channel",
+  "lang": "en",
+  "description": "The Premier League is the league's official X account. This is their X account: highlight clips of goals and moments from English top-flight matches, player milestone posts, quizzes, sponsor votes and fantasy promotions, posted around nine times a day in English. It covers the Premier League's own clubs and players only, as highlights and promotion rather than news reporting.",
+  "postsPerDay": 9.0,
+  "followers": 46246173,
+  "recentTitles": [
+   "Jeremy Jacquet was born for the big stage 💪 https://t.co/v3yV4lLcfK",
+   "That Jurgen Klopp passion 🤩 https://t.co/6CnGGPcTFQ",
+   "Even this Sunderland fan had to appreciate Bruno Guimaraes' strike 😮‍💨 https://t.co/PkVUX5wd46"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-theathleticfc",
+  "kind": "x_account",
+  "target": "https://x.com/TheAthleticFC",
+  "name": "The Athletic | Football",
+  "focus": "English football news desk",
+  "lang": "en",
+  "description": "The Athletic | Football is the football desk of The Athletic. This is their X account: article and video links on English football, currently dominated by the Manchester City financial-rules verdict and its fallout, plus interview series and Premier League club news, posted several times a day in English. It is an English-football news desk; other leagues appear occasionally through its correspondents.",
+  "postsPerDay": 9.0,
+  "followers": 1271646,
+  "recentTitles": [
+   "Manchester City have been found guilty of 114 of 115 charges in relation to the Premier League's fin",
+   "What does Manchester City's guilty verdict mean for Pep Guardiola? @mjshrimper and @SamLee discuss G",
+   "Which Spice Girl would @GNev2 have married? Welcome to Truth or Padel, the new limited series where "
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-spacexai",
+  "kind": "x_account",
+  "target": "https://x.com/SpaceXAI",
+  "name": "SpaceXAI",
+  "focus": "xAI's Grok model and API releases",
+  "lang": "en",
+  "description": "SpaceXAI is the account where xAI announces its Grok models. This is their X account: Grok model releases such as Grok 4.7 with availability in Cursor, Grok Build and the Grok API and a comparison against Grok 4.6, Grok Voice launches like Transcribe 2.0 with per-hour prices, customer examples with Atlassian's Loom and fal, and an apology after an outage at its Memphis compute center. Posts arrive as threads of three or four on a launch day, then a gap of days. It does not post about SpaceX rockets, funding or other labs' models.",
+  "postsPerDay": 0.6,
+  "followers": 2068031,
+  "recentTitles": [
+   "Grok 4.7 is available now in Cursor and Grok Build, and the Grok API.\n\nLearn more: https://t.co/GybE",
+   "Grok 4.7 is here.\n\nIt's a notable improvement over Grok 4.6 at the same price and speed. https://t.c",
+   "Introducing Grok Voice Transcribe 2.0. It’s the world’s most accurate speech transcription model. ht"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-nvidia",
+  "kind": "x_account",
+  "target": "https://x.com/nvidia",
+  "name": "NVIDIA",
+  "focus": "NVIDIA partnerships, Jensen Huang, AI infrastructure",
+  "lang": "en",
+  "description": "NVIDIA is the chip company whose GPUs run most AI training and inference. This is their X account: research partnerships such as open protein complex structures for 2,800 viruses with Google DeepMind and EMBL-EBI, Jensen Huang at the G20 innovation ministerial and on The Ezra Klein Show with figures like a gigawatt AI factory costing 50 to 60 billion dollars, enterprise AI conversations with partners like VAST Data, and stories about companies using NVIDIA AI in clean energy and nuclear. Posts are threads with a story link, several a day. It does not post chip specifications, earnings or prices here, and it does not cover other companies' models.",
+  "postsPerDay": 3.7,
+  "followers": 2671117,
+  "recentTitles": [
+   "With @GoogleDeepMind, @emblebi, and research partners, we’re making AI-predicted protein complex str",
+   "At the G20 Innovation Ministerial, @JensenHuang joined U.S. Commerce Secretary @howardlutnick to dis",
+   "From fusion energy to repurposed EV batteries, five companies are using NVIDIA AI, digital twins and"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-a16z",
+  "kind": "x_account",
+  "target": "https://x.com/a16z",
+  "name": "a16z",
+  "focus": "Andreessen Horowitz launches and partner clips",
+  "lang": "en",
+  "description": "a16z is the venture firm Andreessen Horowitz. This is their X account: the launch of Cosign, its professional network for startup people, told through clips of partners Erik Torenberg, David Booth, Olivia Moore and Ben Horowitz on how one introduction or endorsement leads to hires, deals and companies, plus podcast clips such as Ben Horowitz on Lenny's Podcast. Posts are quotes and short videos, ten or more posts a day around a launch. The ten newest posts are all about Cosign; none are deal announcements, portfolio funding news or model comparisons.",
+  "postsPerDay": 10,
+  "followers": 1079377,
+  "recentTitles": [
+   "Announcing Cosign.\n\nSilicon Valley knows people by watching other people know them. One person's vis",
+   "Who believed in you first? Silicon Valley runs on that question.\n\na16z's Erik Torenberg, David Booth",
+   "Ben Horowitz cosigned the Databricks co-founders in 2013, when they were Berkeley academics.\n\n\" When"
+  ],
+  "foundFor": [
+   "farzan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-simonw",
+  "kind": "x_account",
+  "target": "https://x.com/simonw",
+  "name": "Simon Willison",
+  "focus": "hands-on model and tool evaluation",
+  "lang": "en",
+  "description": "Simon Willison is the creator of Datasette, a co-creator of Django and the author of a daily blog on AI tools. This is his X account: same-day write-ups of model releases such as Claude Opus 5.5 and GPT-6 Sol and Luna with price comparisons and his pelican drawing tests, notes on new model categories like TypeSafe's Jev decision models, small tools he builds such as a Gemini TTS playground and a Datasette MCP that talks to ChatGPT, and reflections on what coding agents do to software engineering, plus conference keynotes. One or two posts a day, most linking to his blog. Hands-on evaluation and cost notes rather than company announcements or funding news.",
+  "postsPerDay": 1.5,
+  "followers": 226300,
+  "recentTitles": [
+   "Big model release today - I wrote about Claude Opus 5.5, GPT-6 Sol, and GPT-6 Luna - plus comparison",
+   "Put together some notes on Jev and the new category of system one aka decision models https://t.co/E",
+   "The more time I spend working with coding agents, the more convinced I am that they make software en"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-sama",
+  "kind": "x_account",
+  "target": "https://x.com/sama",
+  "name": "Sam Altman",
+  "focus": "OpenAI from its CEO",
+  "lang": "en",
+  "description": "Sam Altman is the CEO of OpenAI. This is his X account: launch-day threads on OpenAI's own models such as GPT-6 Sol and Luna with their per-token and per-task pricing against the 5.6 family, notes ahead of DevDay and on the OpenAI API roadmap across text, code, image and video, praise for OpenAI staff, and statements on the company's review of how its agents used internet access during training. Around three posts a day in a launch week, clustered on announcement days and informal in tone. It covers OpenAI's side only, with no commentary on other labs' releases.",
+  "postsPerDay": 3.3,
+  "followers": 6284508,
+  "recentTitles": [
+   "GPT-6 Sol and Luna are big improvements on intelligence, alignment, work output, coding, computer us",
+   "We want the OpenAI API to feature the best model at every price point and to be the best at every mo",
+   "There is an extensive and ongoing review related to our agents’ use of internet access during traini"
+  ],
+  "foundFor": [
+   "kush"
+  ],
+  "groups": [
+   "other"
+  ]
+ },
+ {
+  "id": "x-therundownai",
+  "kind": "x_account",
+  "target": "https://x.com/TheRundownAI",
+  "name": "The Rundown AI",
+  "focus": "daily AI news digest",
+  "lang": "en",
+  "description": "The Rundown AI is the account of the daily AI newsletter founded by Rowan Cheung. This is their X account: one \"Top stories in AI today\" post each morning listing that day's four headlines, such as Meta Connect, Claude Opus 5.5, the GPT-6 Sol and Luna release and a16z's college alternative, with a read-more link, plus same-day posts on frontier model releases and a how-to tip like using Gemini Canvas with Google Sheets. Coverage is a news digest across the big labs and consumer AI products rather than hands-on reviews. It does not cover small indie tools or Product Hunt launches.",
+  "postsPerDay": 3.5,
+  "followers": 228986,
+  "recentTitles": [
+   "Read more: https://t.co/E0ZvWU9rrK",
+   "Top stories in AI today:\n\n- Meta’s Connect turns into a Muse takeover\n- Rowan’s Corner: The Rundown ",
+   "Read more: https://t.co/7cPxdbYo9T"
+  ],
+  "foundFor": [
+   "nihan"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-sport",
+  "kind": "x_account",
+  "target": "https://x.com/sport",
+  "name": "Diario SPORT",
+  "focus": "Barcelona sports daily, all sports",
+  "lang": "es",
+  "description": "Diario SPORT is a Barcelona-based Spanish sports newspaper. This is their X account: article links in Spanish on FC Barcelona (Balde's possible January exit with Juventus, Liverpool and Manchester United interested, Flick pairing Rodri and Bernal, a Confidencial piece on Carlos Bianchi), signed opinion columns tagged OPINIÓN SPORT on Raphinha, Mbappé and the international break, Mbappé's medical report, the daily front page, Barça basketball and tennis such as Alcaraz at the Laver Cup, ten or more posts a day. It is a general sports daily with a strong Barcelona lean, covering every sport the paper follows rather than one club.",
+  "postsPerDay": 10.0,
+  "followers": 2003235,
+  "recentTitles": [
+   "‼️ El exespanyolista Osvaldo, en estado muy grave ✍️ @Clauespi8 https://t.co/P3PGS2flDR",
+   "CONFIDENCIAL SPORT 🔴 📄 El informe inédito que recomendaba a Carlos Bianchi para el Barça: \"Michels m",
+   "💼 Movimiento para la salida de Balde del Barça en enero 👉 La Juventus se suma al interés de Liverpoo"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-jijantesfc",
+  "kind": "x_account",
+  "target": "https://x.com/JijantesFC",
+  "name": "Jijantes FC",
+  "focus": "Barcelona streaming shows and interviews",
+  "lang": "es",
+  "description": "Jijantes FC is the official account of the Jijantes streaming channel, which broadcasts daily football shows from Barcelona. This is their X account: clips and quotes from its live shows in Spanish, mostly about FC Barcelona (Deco on Julián Álvarez, Gerard Martín on competition in the squad, a former club physio on Lamine Yamal's workload and the international break, the VIP boxes at the Spotify Camp Nou), plus segments on the Spain national team and a daily YouTube recap, ten or more posts a day. It carries show excerpts and links to the stream rather than written reports; other clubs appear only as talking points on the shows.",
+  "postsPerDay": 10.0,
+  "followers": 325840,
+  "recentTitles": [
+   "👀 Recupera lo más destacado del día en el FORMATÍN de YouTube ‼️ https://t.co/CWS9zD331y",
+   "📺 DIRECTO @JijantesFC Gerard Martín: \"Sé lo que estoy haciendo y de lo que soy capaz. En un equipo s",
+   "📺 DIRECTO @JijantesFC 💰🏟️ Charlamos con @aPartidoUnico de la notícia del día: la comercialización de"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-fcbarcelona_es",
+  "kind": "x_account",
+  "target": "https://x.com/FCBarcelona_es",
+  "name": "FC Barcelona",
+  "focus": "Official club channel in Spanish",
+  "lang": "es",
+  "description": "FC Barcelona is the club's official Spanish-language X account, the Spanish counterpart of its English one. This is their X account: check-ins on its players on international duty (Koundé with France, Raphinha with Brazil, Bernal and Espart with Spain under-21), La Liga highlight clips, a monthly best-moment poll, VIP seat sales at the Spotify Camp Nou, ticket links and sponsor content such as eFootball, posted around eight times a day in Spanish. It gives the club's own view: official announcements and highlights, not reporting or rumours about the squad.",
+  "postsPerDay": 7.7,
+  "followers": 20158071,
+  "recentTitles": [
+   "Demasiado bueno como para no recrearlo @play_eFootball 🎮🔥 https://t.co/tdbokuoknE",
+   "🌍 Nuestros internacionales: Hamza Abdelkarim ha participado en la segunda parte con Egipto en el emp",
+   "🌍 Nuestros internacionales: Jules Kounde ha jugado los 90 minutos en la victoria de Francia ante Tur"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "close"
+  ]
+ },
+ {
+  "id": "x-totcosta",
+  "kind": "x_account",
+  "target": "https://x.com/totcosta",
+  "name": "Tot costa",
+  "focus": "Catalan radio sports show, Barcelona-heavy",
+  "lang": "ca",
+  "description": "Tot costa is the weekday evening sports programme of Catalunya Ràdio, on air from 7 to 9 pm. This is their X account: audio clips and links from each show in Catalan, mostly on FC Barcelona (Deco closing the door on Julián Álvarez, 2,000 more VIP seats going on sale, a Camp Nou bid for the 2030 World Cup final discussed with the Catalan government's sports minister), interviews with Barça women's players, Girona match broadcasts and a listener guessing game about players, ten or more posts a day while the show is on. It covers Catalan sport with Barcelona at the centre, and posts cluster around the show's weekday evening slot.",
+  "postsPerDay": 10.0,
+  "followers": 40736,
+  "recentTitles": [
+   "🏟️ Les opcions del Camp Nou de ser l'estadi escollit per ser seu de la final del Mundial 2030. En pa",
+   "🔊 Generació de fills de futbolistes als Països Baixos La Caçatalents, amb Andrea Orts https://t.co/b",
+   "🎙️ És possible la final del Mundial 2030 al Camp Nou? Ho respon @b5alvarez, Conseller d'Esports de l"
+  ],
+  "foundFor": [
+   "reshad"
+  ],
+  "groups": [
+   "cited"
+  ]
  }
 ]

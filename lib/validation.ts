@@ -1,4 +1,6 @@
-// Form validation — checks email format and password length before sending to Supabase.
+import { z } from "zod";
+import { authContent } from "@/lib/auth/content";
+
 interface ValidationResult {
   email: string;
   password: string;
@@ -21,19 +23,19 @@ function validateEmailValue(
 ): EmailValidationResult | ValidationError {
   if (!rawEmail || typeof rawEmail !== "string") {
     return {
-      message: "Email is required.",
+      message: authContent.emailRequired,
     };
   }
 
   const email = rawEmail.trim();
   if (email.length === 0) {
     return {
-      message: "Email is required.",
+      message: authContent.emailRequired,
     };
   }
-  if (!email.includes("@")) {
+  if (!z.email().safeParse(email).success) {
     return {
-      message: "Please enter a valid email address.",
+      message: authContent.emailInvalid,
     };
   }
 
@@ -47,14 +49,14 @@ function validatePasswordValue(
 ): PasswordValidationResult | ValidationError {
   if (!rawPassword || typeof rawPassword !== "string") {
     return {
-      message: "Password is required.",
+      message: authContent.passwordRequired,
     };
   }
 
   const password = rawPassword;
   if (password.length < 6) {
     return {
-      message: "Password must be at least 6 characters.",
+      message: authContent.passwordLength,
     };
   }
 
@@ -93,12 +95,12 @@ export function validateSignupForm(formData: FormData): ValidationResult | Valid
   const rawConfirm = formData.get("confirm-password");
   if (!rawConfirm || typeof rawConfirm !== "string") {
     return {
-      message: "Please confirm your password.",
+      message: authContent.passwordConfirmRequired,
     };
   }
   if (rawConfirm !== base.password) {
     return {
-      message: "Passwords do not match.",
+      message: authContent.passwordMismatch,
     };
   }
 
@@ -120,14 +122,33 @@ export function validateResetPasswordForm(
   const rawConfirm = formData.get("confirm-password");
   if (!rawConfirm || typeof rawConfirm !== "string") {
     return {
-      message: "Please confirm your password.",
+      message: authContent.passwordConfirmRequired,
     };
   }
   if (rawConfirm !== password.password) {
     return {
-      message: "Passwords do not match.",
+      message: authContent.passwordMismatch,
     };
   }
 
   return password;
+}
+
+export function safeNextPath(value: unknown): string | null {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return null;
+  const unsafe = (text: string) =>
+    Array.from(text).some(
+      (character) =>
+        character === "\\" || character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127,
+    );
+  if (unsafe(value)) return null;
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded.startsWith("//") || unsafe(decoded)) return null;
+    const url = new URL(value, "https://oparax.invalid");
+    if (url.origin !== "https://oparax.invalid" || url.pathname.startsWith("//")) return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
 }

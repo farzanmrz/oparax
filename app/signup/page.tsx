@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthAlert, AuthShell } from "@/components/auth-shell";
 import { PostHogUserContext } from "@/components/posthog-user-context";
-import { landingContent } from "@/lib/landing/content";
+import { authContent } from "@/lib/auth/content";
 import { createClient } from "@/lib/supabase/server";
 import { SignupForm } from "./signup-form";
 
@@ -28,13 +28,13 @@ export default async function SignupPage({
     <>
       <PostHogUserContext id={null} email={undefined} />
       <AuthShell
-        title="Sign Up"
-        subtitle={landingContent.auth.signupSubtitle}
+        title={authContent.signupTitle}
+        subtitle={authContent.signupSubtitle}
         footer={
           <p>
-            Already have an account?{" "}
+            {authContent.existingAccount}{" "}
             <Link href="/login" className="text-foreground underline underline-offset-4">
-              Log in
+              {authContent.login}
             </Link>
           </p>
         }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, resetPasswordAction } from "@/lib/auth/actions";
+import { authContent } from "@/lib/auth/content";
 
 // Client island: drives resetPasswordAction via useActionState. The email
 // field name is the contract lib/validation.ts reads; success renders the
@@ -19,16 +20,17 @@ export function ForgotPasswordForm() {
     <form action={formAction} className="space-y-4">
       <div className="space-y-1.5">
         <label htmlFor="email" className="block text-sm font-medium">
-          Email
+          {authContent.email}
         </label>
         <Input
+          className="min-h-11 desk:min-h-7"
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           required
           defaultValue={state.email}
-          placeholder="you@newsroom.com"
+          placeholder={authContent.emailPlaceholder}
         />
       </div>
       {state.error && (
@@ -41,14 +43,14 @@ export function ForgotPasswordForm() {
           {state.message}
         </p>
       )}
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button type="submit" className="min-h-11 w-full desk:min-h-7" disabled={isPending}>
         {isPending ? (
           <>
             <Spinner />
-            Sending…
+            {authContent.sending}
           </>
         ) : (
-          "Send reset link"
+          authContent.sendReset
         )}
       </Button>
     </form>

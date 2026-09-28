@@ -51,5 +51,39 @@
       "source": "/:path*"
     }
   ],
-  "regions": ["iad1", "sfo1"]
+  "regions": ["iad1", "sfo1"],
+  "crons": [
+    {
+      "path": "/api/cron/collect",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/feed",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/accounts",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/alerts",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/digests",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/credits",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/builds",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/contact",
+      "schedule": "0 * * * *"
+    }
+  ]
 }

@@ -2,18 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthAlert, AuthShell } from "@/components/auth-shell";
 import { PostHogUserContext } from "@/components/posthog-user-context";
-import { landingContent } from "@/lib/landing/content";
+import { authContent } from "@/lib/auth/content";
+import { signedInDestination } from "@/lib/auth/oauth";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/validation";
 import { LoginForm } from "./login-form";
 
-// Login page: branded shell around the existing loginAction form. The
-// error/message params arrive from the auth email flows (signup verification,
-// password reset) and render as alerts above the form. Signed-in users
-// never see auth forms; they are returned to /.
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    next?: string;
     error?: string;
     message?: string;
   }>;
@@ -22,16 +21,15 @@ export default async function LoginPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/");
-
-  const { error, message } = await searchParams;
+  const { error, message, next } = await searchParams;
+  if (user) redirect(await signedInDestination(next));
 
   return (
     <>
       <PostHogUserContext id={null} email={undefined} />
       <AuthShell
-        title="Log In"
-        subtitle={landingContent.auth.loginSubtitle}
+        title={authContent.loginTitle}
+        subtitle={authContent.loginSubtitle}
         footer={
           <>
             <p>
@@ -39,13 +37,13 @@ export default async function LoginPage({
                 href="/forgot-password"
                 className="text-foreground underline underline-offset-4"
               >
-                Forgot password?
+                {authContent.forgotPassword}
               </Link>
             </p>
             <p>
-              No account?{" "}
+              {authContent.noAccount}{" "}
               <Link href="/signup" className="text-foreground underline underline-offset-4">
-                Sign up
+                {authContent.signup}
               </Link>
             </p>
           </>
@@ -54,7 +52,7 @@ export default async function LoginPage({
         <div className="space-y-4">
           {error && <AuthAlert tone="error">{error}</AuthAlert>}
           {message && <AuthAlert tone="notice">{message}</AuthAlert>}
-          <LoginForm />
+          <LoginForm next={safeNextPath(next) ?? undefined} />
         </div>
       </AuthShell>
     </>

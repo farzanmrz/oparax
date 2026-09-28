@@ -24,6 +24,8 @@ export type LegalDocument = {
   readonly sections: readonly LegalSection[];
 };
 
+export const legalContent = { updated: "Last updated", contact: "Contact Us" } as const;
+
 export const legalLinks = [
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
@@ -34,16 +36,32 @@ export const privacyPolicy: LegalDocument = {
   title: "Privacy Policy",
   description:
     "How Oparax collects, uses, stores and shares information, including data from Google sign-in.",
-  updated: "September 24, 2026",
+  updated: "September 28, 2026",
   intro:
     'Oparax is operated by OPARAX AI, Inc. ("Oparax", "we"). This policy explains what information we collect when you use oparax.ai, why we collect it, who processes it for us, how long we keep it and how you can have it deleted.',
   sections: [
     {
       heading: "Information We Collect",
       paragraphs: [
-        "We collect only what we need to run your account and understand how the site is used:",
+        "We collect information to build and run your agent, manage your account and understand how the site is used:",
       ],
       items: [
+        {
+          label: "Your Agent",
+          text: "Your X handle, profile, recent public posts and the beat you enter help us choose sources. We store the sources your agent watches, articles, posts, stories and their cards. Your agent page and its stories are public.",
+        },
+        {
+          label: "X Alerts",
+          text: "When you connect to the Oparax bot, we store your X account identifier and connection state to send story alerts by direct message and handle your replies.",
+        },
+        {
+          label: "Payments",
+          text: "Stripe processes payments and supplies your checkout email and subscription details so we can connect your account and keep your agent running. Your card details never touch Oparax.",
+        },
+        {
+          label: "Contact",
+          text: "We store the email address and message you submit through Contact so we can respond to requests, including deletion requests.",
+        },
         {
           label: "Account Details",
           text: "Your email address, and a password if you sign up with email. Passwords are stored only as a secure hash by our authentication provider.",
@@ -66,7 +84,11 @@ export const privacyPolicy: LegalDocument = {
       heading: "Usage",
       paragraphs: ["We use this information to:"],
       items: [
-        { text: "Create your account, sign you in and keep your account secure." },
+        {
+          text: "Build your agent, watch sources for your beat and show relevant stories on your public page.",
+        },
+        { text: "Send story alerts through the Oparax bot on X when you connect it." },
+        { text: "Manage your subscription, create your account, sign you in and keep it secure." },
         { text: "Send account emails, such as sign-up confirmation and password reset." },
         { text: "Understand how the site is used, find errors and improve Oparax." },
         { text: "Respond to you when you contact us." },
@@ -85,13 +107,19 @@ export const privacyPolicy: LegalDocument = {
         "We do not sell personal information. We share it only with the service providers that run Oparax on our behalf, under their own security and privacy terms:",
       ],
       items: [
-        { label: "Supabase", text: "Account and sign-in storage." },
+        { label: "Supabase", text: "Account, sign-in and product data storage." },
         {
           label: "Vercel",
-          text: "Website hosting and anonymous traffic and performance measurement.",
+          text: "Website hosting, AI Gateway processing and anonymous traffic and performance measurement.",
         },
         { label: "PostHog", text: "Product analytics, error tracking and session recordings." },
-        { label: "Google Workspace", text: "Delivery of account emails." },
+        { label: "Google Workspace", text: "Delivery of account and contact emails." },
+        { label: "Stripe", text: "Payment processing and subscription management." },
+        { label: "X", text: "Public profile and post lookup, and bot direct messages." },
+        {
+          label: "AI Providers",
+          text: "Processing public posts, your beat and source content to select sources and write story cards.",
+        },
       ],
     },
     {
@@ -103,12 +131,12 @@ export const privacyPolicy: LegalDocument = {
     {
       heading: "Retention and Deletion",
       paragraphs: [
-        "We keep account information for as long as your account exists. Usage analytics and session recordings are kept for a limited period under our analytics provider's retention settings.",
+        "We keep account information for as long as your account exists. Cards and article text are kept while the agent exists. Usage analytics and session recordings are kept for a limited period under our analytics provider's retention settings.",
         {
           before:
             "To delete your account and the personal information linked to it, send a request through ",
           after:
-            " and include the email address on your account. We complete deletion within 30 days. If you signed in with Google, you can also remove Oparax's access at any time from your Google Account's third-party connections page.",
+            " and include your agent handle and the email address on your account, if you have one. We complete deletion within 30 days. If you signed in with Google, you can also remove Oparax's access at any time from your Google Account's third-party connections page.",
         },
       ],
     },
@@ -137,14 +165,14 @@ export const termsOfService: LegalDocument = {
   path: "/terms",
   title: "Terms of Service",
   description: "The terms for using Oparax.",
-  updated: "September 24, 2026",
+  updated: "September 28, 2026",
   intro:
     'These terms govern your use of oparax.ai and the Oparax service, operated by OPARAX AI, Inc. ("Oparax", "we"). By creating an account or using Oparax, you agree to them.',
   sections: [
     {
       heading: "The Service",
       paragraphs: [
-        "Oparax watches public sources on the internet, GitHub and Product Hunt for the topics you choose and brings what it finds to you. The service is being rebuilt and features may change, pause or be removed.",
+        "Oparax watches public sources on the internet, GitHub and Product Hunt for the topics you choose and brings what it finds to you. Your public agent page shows relevant stories and cards. You can connect to the Oparax bot for alerts on X. Features may change, pause or be removed.",
       ],
     },
     {
@@ -168,7 +196,7 @@ export const termsOfService: LegalDocument = {
     {
       heading: "Payment",
       paragraphs: [
-        "Oparax is free while it is being rebuilt. If paid plans are introduced, their price and terms will be shown before you are asked to pay.",
+        "Your free week starts with the first outside visit to your agent page and includes 300 watched X posts. After seven days, your agent stops watching until you choose a plan; existing cards remain readable. Monthly plans are Hobby at $5 with 100 watched X posts, Creator at $30 with 3,000, and Wire at $99 with 4,000. Sites and feeds are unlimited on every plan. Hobby and Creator send daily alerts; Wire sends alerts every 15 minutes when there is news. Stripe processes payment and recurring subscriptions. You can cancel through the billing portal; access continues through the paid period. Refund requests are reviewed and handled by hand through Contact.",
       ],
     },
     {
