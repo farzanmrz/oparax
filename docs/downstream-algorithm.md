@@ -1,12 +1,23 @@
 # The downstream algorithm: from a new item to a story card
 
-Written by the assistant on September 21, 2026 at the owner's request, and rewritten on the night of September 26 to 27 from the finished lab (`scratch/downstream/lab/pipeline.py`, `fetch.py`, `rank.py`; the saved prompts and lines in `scratch/downstream/viewer/data/algorithm.json`) after three outside critique rounds (rounds 6, 7 and 8 in `scratch/council/`). It is the exact specification the product build ports: where this file and the lab differ, the lab is right. Only lines carrying an owner attribution with a date are the owner's word. Every other rule is the assistant's design, numbered R1 onward so it can be confirmed, changed or dropped one by one; section 14 lists what waits on the owner. Measured figures come only from `scratch/notes/figures-2026-09-27-final.txt`; product cost figures live in [references/cogs.md](references/cogs.md). The onboarding half, which decides what a monitor watches, is specified by the code in `lib/onboarding/` (the September 19 onboarding spec was deleted September 27; git 1e9e0bc).
+Written by the assistant on September 21, 2026 at the owner's request, and rewritten on the night of September 26 to 27 from the finished lab (its `pipeline.py`, `fetch.py` and `rank.py`, and the saved prompts and lines in its `algorithm.json`) after three outside critique rounds (rounds 6, 7 and 8). The lab is archived as the git tag `archive/lab-2026-09-27` and deleted from the working tree (owner, September 28); this file and the product code are the specification, and the tag is only the record of how it was reached. Only lines carrying an owner attribution with a date are the owner's word. Every other rule is the assistant's design, numbered R1 onward so it can be confirmed, changed or dropped one by one; section 14 lists what waits on the owner. Measured figures come from the lab's `figures.py` output as it stood when the lab was archived (in the tag); product cost figures live in [references/cogs.md](references/cogs.md). The onboarding half, which decides what a monitor watches, is specified by the code in `lib/onboarding/` (the September 19 onboarding spec was deleted September 27; git 1e9e0bc).
+
+## Rulings of September 28 (owner)
+
+- Alerts: one DM per clustered story, ever, carrying the story's link on the site; later reports improve the card and never DM again. Hobby and Creator once a day (Creator every 2 hours later if asked); Wire a mini digest every 15 minutes when there is news, or nothing. No instant alerts. This replaces R21's alert on a changed card and the daily digest of section 10.
+- Grouping is in this build ("that stays. Obviously, that's a part of this"), articles only at first; watched X posts join stories later. The 72-hour window (R10), the 0.75 join line (R11) and the 0.75 adds line (R14) are the assistant's defaults, recorded as such, not tuned by him.
+- The fit line is 0.5 on, 0.35 off, and the unsure band counts as off (R7, R8; his one yes on the reconciliation, first agreed September 26).
+- The writer is Qwen 3.7 Flash with Jev doing the checks (section 7; first said September 26). Fact checking stays as R18 ("Jev can be a pretty good check"): support and attribution per fact, one repair pass.
+- Day zero is each source's 10 newest items from the last 2 days (R25; first said September 26).
+- Watched X accounts are polled from a Vercel cron, every minute for Wire and every five minutes otherwise, with replies and reposts excluded so they are never billed; the Activity API serves only the bot's incoming DMs. Their posts enter this pipeline as items in a later step.
+
+The ledger lines are in [references/decisions.md](references/decisions.md).
 
 ## 1. What it does
 
-When a monitor's sources publish something, each new item goes through: collect (fetch the article page and read its whole text); fit (Jev: does it belong to what the person wants); same story (Jev: is it the same news as a story already on the page); adds (Jev: does it say anything the card does not already say); and write (a writer model turns the story into an English card, every fact tied to a quoted span that code and Jev both check, with one repair pass when a check fails). Once a day the bot sends the cards that are new or changed.
+When a monitor's sources publish something, each new item goes through: collect (fetch the article page and read its whole text); fit (Jev: does it belong to what the person wants); same story (Jev: is it the same news as a story already on the page); adds (Jev: does it say anything the card does not already say); and write (a writer model turns the story into an English card, every fact tied to a quoted span that code and Jev both check, with one repair pass when a check fails). The bot sends one DM per story, ever, at the tier's cadence (owner, September 28).
 
-The first product build is the single-source view (issue #144): each item that fits becomes its own card, so it uses collect, fit and write, not same story or adds (owner, September 22: "Multiple sources reporting the same thing is a separate view, which we build later... a user sees both views, and they decide what they want"). Sections 5 and 6 specify the grouped view, which the lab also runs, for that later slice.
+Grouping is in the one build (owner, September 28: "that stays. Obviously, that's a part of this"), articles only at first, so the product runs every step below; the person still sees both the single-source cards and the grouped stories and chooses (owner, September 22: "Multiple sources reporting the same thing is a separate view... a user sees both views, and they decide what they want").
 
 What the owner has said, taken as given:
 - Jev judges fit, grouping and whether a further source adds a new information point; the larger model only synthesizes the news (owner, September 17, 18 and 21).
@@ -20,7 +31,7 @@ What the owner has said, taken as given:
 - The writer is told explicitly to be wary of hallucination, and reasoning stays on (owner, September 21).
 - The support and headline checks use a 0.5 line (owner, September 21: "apply ur 0.5 for jev").
 - The checks correct the card, they do not only shrink it (owner, September 26), hence the repair pass.
-- The bot alerts once a day for now (owner, September 19).
+- The bot alerts once per story, at the tier's cadence (owner, September 28; once a day first set September 19).
 - The person's corrections, per source or per story, are compiled into what Jev reads (owner, September 17 and 18); how they are typed belongs to a later slice.
 
 What runs at once (the lab's header comment; a lab runs in parallel by default, owner, September 26): sources are collected at once (8 workers), the article pages of one source are fetched at once (8), every fit check runs at once (8), and card writes for different stories run at once (4). Only two things wait: grouping walks the items one at a time in publish order, and a rewrite of a story waits for that story's previous card. The product keeps the same shape: parallel everywhere except grouping within one monitor (R13).
@@ -96,7 +107,7 @@ R6. The question, verbatim:
 - true: "The item reports something on the beat, or something the preferences or examples show they want."
 - false: "The item is off the beat, or is the kind of thing an applying preference or the examples show they do not want, even if it shares a company, a club, a person or a theme."
 
-R7. Lines: 0.5 and above is on (the lab's value; open, section 14); under 0.35 is off; between is unsure. R8: unsure counts as off; it is listed in skipped with its score so a person can see it, and the larger model is never a judge (owner: it only writes). A source the person marked "do not filter" (owner, September 26) has every item on, whatever the score.
+R7. Lines: 0.5 and above is on (owner, September 28; first agreed September 26); under 0.35 is off; between is unsure. R8: unsure counts as off (owner, September 28); it is listed in skipped with its score so a person can see it, and the larger model is never a judge (owner: it only writes). A source the person marked "do not filter" (owner, September 26) has every item on, whatever the score.
 
 R9. A call that fails, after the gateway's own retries on rate limits, server errors and dropped connections, is retried once; still failing, the item is pending and never turned into a verdict (section 8).
 
@@ -115,7 +126,7 @@ One `boolean` per open story, verbatim:
 - true: "Both report the same event or announcement."
 - false: "Different events, even if they share a club, a company, a person or a theme."
 
-R11. Booleans, not a Choice question, so every candidate can be low, which is the "new story" answer. The item attaches to every story scoring 0.75 or above (the lab's value; open, section 14), since an article can report two events; a score in the unsure band counts as no, because a wrong merge hides news and a wrong split only shows a duplicate. When an item joins, the story's latest publish time becomes the later of the two. Every score is stored, so a later split or merge is possible; those operations are not in the first build.
+R11. Booleans, not a Choice question, so every candidate can be low, which is the "new story" answer. The item attaches to every story scoring 0.75 or above (the assistant's default, recorded September 28), since an article can report two events; a score in the unsure band counts as no, because a wrong merge hides news and a wrong split only shows a duplicate. When an item joins, the story's latest publish time becomes the later of the two. Every score is stored, so a later split or merge is possible; those operations are not in the first build.
 
 A failed grouping call leaves the item pending ("pending (grouping failed)"); it never opens a story. Unlike fit and adds, the lab does not retry this call once at the step level (only the gateway's retries); that difference is recorded for the port, not ruled.
 
@@ -132,7 +143,7 @@ One `boolean`, verbatim:
 - true: "The item adds at least one fact the card lacks."
 - false: "Everything it says about this story is already on the card, or is a restatement."
 
-R14. At 0.75 or above (the lab's value; open, section 14) the story is rewritten (section 7). Under it, including the unsure band, the item is attached as a contributing source (publisher shown, link kept), nothing is rewritten, nothing alerted; the card shows "N further reports" so the body is one click away. An attached item's text is not given to later rewrites: a rewrite reads only the previous card and the new item (R15). A failed call is retried once; still failing, the item is pending for that story, neither attached nor rewritten. A version of an already attached item (R4) always goes through this step.
+R14. At 0.75 or above (the assistant's default, recorded September 28) the story is rewritten (section 7). Under it, including the unsure band, the item is attached as a contributing source (publisher shown, link kept), nothing is rewritten, nothing alerted; the card shows "N further reports" so the body is one click away. An attached item's text is not given to later rewrites: a rewrite reads only the previous card and the new item (R15). A failed call is retried once; still failing, the item is pending for that story, neither attached nor rewritten. A version of an already attached item (R4) always goes through this step.
 
 ## 7. Step four: the writer and the checks on the card
 
@@ -220,7 +231,7 @@ R32. The headline that ships. The headline of the card in force (the first card'
 
 R19, continued. With no fact left after the repair there is no card ("no card: no fact survived"): a new story shows the item's title as an unverified report with its link and language tag and is not alerted; a rewrite leaves the previous card.
 
-R21. A rewrite produces an alert only if the saved facts or headline actually changed; a rewrite that returns the same card changes nothing and alerts nothing (the lab records this as `changed_reference_card`). Designed, not in the lab: facts once dropped by the five-line limit are kept in the story's record, so the same sixth fact does not trigger rewrites again.
+R21. SUPERSEDED (owner, September 28): a rewrite never alerts; the story was alerted once when it opened, and later reports only improve the card on the site. The lab alerted on a real change (`changed_reference_card`); that signal stays useful as the card's "last meaningful change" time (R22). Designed, not in the lab: facts once dropped by the five-line limit are kept in the story's record, so the same sixth fact does not trigger rewrites again.
 
 ## 8. What is pending, and when it is retried
 
@@ -250,7 +261,7 @@ What the lab saves per person (`viewer/data/<person>.json`), which the explainer
 
 ## 10. Alerts and day zero
 
-Once a day (owner, September 19), one DM built from a fixed set of saved card revisions that are new or changed since the last confirmed send, headline and first fact each, with the page link; a revision saved after the cut goes in the next day's message; nothing is sent when nothing changed; delivery state is recorded per revision so a retry cannot double-send (R23).
+One DM per story, ever (owner, September 28): at the tier's cadence (Hobby and Creator once a day, Wire every 15 minutes when there is news), one DM built from the stories opened since the last confirmed send, headline and first fact each, with each story's link to its card on the person's page (oparax.ai/<handle>/<story id> opens the feed with that card in view; owner: "whatever cluster story is being sent, linked to that"); a story opened after the cut goes in the next message; nothing is sent when no story opened; a rewrite never sends again; one delivery record per story per person, so a retry cannot double-send (R23).
 
 Day zero is the prefill (R25, owner, September 26): right after onboarding each source contributes its 10 most recent items from the last 2 days, and those go through the steps above like any new item.
 
@@ -258,13 +269,13 @@ Day zero is the prefill (R25, owner, September 26): right after onboarding each 
 
 Calls per item: one Jev fit request (every readable item); in the grouped view, one grouping request when a story is open, and one adds request per joined story; per card written, one writer call (a second on a bad shape), one Jev request for support and attribution, one Jev headline request, and, when a check fails, one repair call with its own support and headline requests, plus at most one more headline request for the title fallback. Jev's cost is read per call from the gateway response.
 
-Measured on the final code (Liam, 23 card writes, repairs included): the writer cost $0.0223. Per-person monthly figures belong in [references/cogs.md](references/cogs.md); the figures there from September 21 predate the no-cut rule and the repair pass, so they are older until cogs.md is updated from this run.
+Measured on the final code (Liam, 23 card writes, repairs included): the writer cost $0.0223. This run's writer cost is in [references/cogs.md](references/cogs.md) section 2 (added September 28).
 
 ## 12. What the final lab measured
 
 The current record is Liam's run on the final code ("AI developments and practical tools", his sentence; ran September 27, 06:40 UTC): 23 items read, 0 unreadable; fit: 23 on, 0 off, 0 unsure; 21 stories; 23 cards written of 23 writes; 81 facts kept; dropped by code 1, by support 1, by attribution 0; 12 repairs attempted, 11 used; 0 headlines replaced; writer cost $0.0223; the shortest kept item's text 1,044 characters.
 
-That run did not exercise: an unsure or off fit score, a grouping or adds failure, a write failure, a headline fallback, an undated item, or a website listing (all ten of Liam's sources are feeds and every item was dated by its feed). Where those paths are checked, it is by the lab's tests (`test_pipeline.py`), not by a run.
+That run did not exercise: an unsure or off fit score, a grouping or adds failure, a write failure, a headline fallback, an undated item, or a website listing (all ten of Liam's sources are feeds and every item was dated by its feed). Where those paths are checked, it is by the lab's tests (`test_pipeline.py`, in the archive tag), not by a run.
 
 Older, before the final pipeline (useful for scale, not as a measure of the rules above): Nihan, 18 items, fit 11 on, 4 off, 3 unsure, 9 stories, 11 of 11 cards, 41 facts, 5 repairs attempted and 5 used, 1 headline replaced, $0.0084; Reshad, 35 items, fit 27 on, 5 off, 3 unsure, 20 stories, 26 of 27 cards, 82 facts, 15 dropped by code and 4 by support, 17 repairs attempted and 4 used, 5 headlines replaced, $0.0256. The September 21 lab, which compared four writers on the first design, is [references/downstream-lab-2026-09-21.md](references/downstream-lab-2026-09-21.md).
 
@@ -298,15 +309,13 @@ One line each, from the September 26 to 27 lab and critique rounds 6 to 8 (the o
 
 ## 14. Open rulings and decision points
 
-Open, waiting on the owner (lab values shown; none of them is his ruling yet):
-- The fit line (R7): the lab runs 0.5. The lab's code comment and the owner notes record the owner agreeing to 0.5 on September 26, but the decisions ledger still lists the fit line as open and the owner has said he wants his word on it, so it is open here.
-- The join line (R11): 0.75, the assistant's number.
-- The adds line (R14): 0.75, the assistant's number.
-- With the fit ruling: the 0.35 off line and counting the unsure band as off (R7, R8), the assistant's.
-- Also the assistant's, to confirm or change: the 72-hour story window (R10); the reader's 400-character minimum, 120-character readable floor, 60 percent body share and 200-character kept block (R30, R3); the 8-character article-shaped link (R27); one to three spans per fact (R16); medium reasoning effort (section 7); attribution at the 0.5 line (R18).
+Open, waiting on the owner:
 - Whether a person can flip a skipped item back (section 4).
+- How a card changes on the page when an item joins (append and deduplicate is the proposal).
+
+Ruled September 28 (the block at the top): the fit line (R7) at 0.5 with the unsure band off (R8); the writer; day zero (R25); alerts once per story. Recorded as the assistant's defaults, which he may change once real stories show them wrong: the join line (R11) and the adds line (R14) at 0.75; the 72-hour story window (R10); the reader's 400-character minimum, 120-character readable floor, 60 percent body share and 200-character kept block (R30, R3); the 8-character article-shaped link (R27); one to three spans per fact (R16); medium reasoning effort (section 7); attribution at the 0.5 line (R18).
 - The prompt-format skill draft (`~/.agents/skills/prompt-format/SKILL.md`), which the writer prompt and the Jev questions follow, is waiting on his judgment.
 
 Known limits, not fixed: two links from the same source landing on the same article are both marked unreadable before they can merge (section 2); markdown in a card is not checked by code (R20); grouping has no step-level retry (section 5); live blogs (R24); the product's reader does not yet follow R30.
 
-Decision points, in one list: R1 item identity by the landed address. R2 whole text, no cut (owner). R3 outcomes, unreadable items never judged, source health on the page. R4 six-hourly refetch of open-story items (not in the lab). R5 precedence of preferences over beat over examples. R6 the fit question. R7 the fit lines (open). R8 unsure counts as off. R9 a failed call retried once, then pending. R10 72-hour window, no count cap, batched requests. R11 booleans, attach to every story at the join line (open), unsure is new. R12 stories per monitor. R13 serial per monitor, versioned saves. R14 adds line (open), else attach only. R15 the writer's input. R16 the output shape with verbatim spans in the source language. R17 the code checks. R18 the support and attribution checks. R19 the headline check and the no-card outcome. R20 validation, one retry, visible failure. R21 alert only on real change. R22 card time is last meaningful change. R23 digest from saved revisions with delivery state. R24 live blogs recorded as a gap. R25 the prefill window (owner). R26 feed entries, undated ones dated from the page. R27 website listings. R28 dating a page. R29 the title. R30 the reader's rules. R31 the repair pass. R32 the headline that ships.
+Decision points, in one list: R1 item identity by the landed address. R2 whole text, no cut (owner). R3 outcomes, unreadable items never judged, source health on the page. R4 six-hourly refetch of open-story items (not in the lab). R5 precedence of preferences over beat over examples. R6 the fit question. R7 the fit lines (owner, September 28). R8 unsure counts as off (owner, September 28). R9 a failed call retried once, then pending. R10 72-hour window, no count cap, batched requests. R11 booleans, attach to every story at the join line (the assistant's default), unsure is new. R12 stories per monitor. R13 serial per monitor, versioned saves. R14 adds line (the assistant's default), else attach only. R15 the writer's input. R16 the output shape with verbatim spans in the source language. R17 the code checks. R18 the support and attribution checks. R19 the headline check and the no-card outcome. R20 validation, one retry, visible failure. R21 superseded: a story alerts once, never on a rewrite (owner, September 28). R22 card time is last meaningful change. R23 digest from saved revisions with delivery state. R24 live blogs recorded as a gap. R25 the prefill window (owner). R26 feed entries, undated ones dated from the page. R27 website listings. R28 dating a page. R29 the title. R30 the reader's rules. R31 the repair pass. R32 the headline that ships.
