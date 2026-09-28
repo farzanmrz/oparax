@@ -36,7 +36,7 @@ gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
 
 ## 2. The gate ✋
 
-Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. Also read the local detailed plan `.feature/plan-<N>.md` (the issue carries only the plain plan) and, if it has a `## 4. Owner does at ship` part, list those items verbatim in plain words: they are the owner's own operations (Vercel env and dashboard toggles) and nothing in the flow executes them; the owner does them around this ship. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
+Show the complete `git status --short --untracked-files=all` (everything listed will be staged) and name the terminal target in plain words. Also read the local detailed plan `.feature/plan-<N>.md` and every component slice `.feature/plan-<N>/<component>.md` (the issue carries only the plain plan) and, where a slice has a `## 4. Owner does at ship` part, list those items verbatim in plain words: they are the owner's own operations (Vercel env and dashboard toggles) and nothing in the flow executes them; the owner does them around this ship. The owner's own invocation saying ship ("/ship", "ship it") IS the authorization: show the inventory, do not wait for a second yes. Ambiguous invocation: ask once. A green build is never permission.
 
 ## 3. Ship
 

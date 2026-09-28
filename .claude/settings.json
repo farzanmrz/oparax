@@ -60,6 +60,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/headless-guard.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
