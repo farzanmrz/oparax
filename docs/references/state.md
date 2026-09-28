@@ -28,7 +28,7 @@ Plain product terms, a reason with every recommendation, no em dashes, nothing i
 
 ## Next
 
-`/feature` for the whole product: one planning sitting, the plan cut into components, the eight-lane critique plus Opus, the owner's approval, the issue and `ft/<N>`, then `/run-plan <N>` builds everything. The owner walks the result on localhost and ships it with `/ship`.
+In a fresh session, type `/feature 149`. Issue #149 is the brief for the whole product (every ruling of September 28); the feature stage produces the one plan cut into components and stops for the owner's yes; on his yes it creates `ft/149`, writes the plan files and launches `/run-plan 149`, which builds every component in its own worktree, runs QC per component and one integration QC, merges into `ft/149`, and notifies him with `.feature/run-149-summary.md`. Then his single walk on localhost, then `/ship 149`.
 
 ## How to explain what he has said he does not hold
 
