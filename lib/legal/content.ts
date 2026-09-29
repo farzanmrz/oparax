@@ -60,7 +60,7 @@ export const privacyPolicy: LegalDocument = {
         },
         {
           label: "Contact",
-          text: "We store the email address and message you submit through Contact so we can respond to requests, including deletion requests.",
+          text: "When you email us, we keep your email address and message so we can respond to requests, including deletion requests.",
         },
         {
           label: "Account Details",
@@ -113,7 +113,7 @@ export const privacyPolicy: LegalDocument = {
           text: "Website hosting, AI Gateway processing and anonymous traffic and performance measurement.",
         },
         { label: "PostHog", text: "Product analytics, error tracking and session recordings." },
-        { label: "Google Workspace", text: "Delivery of account and contact emails." },
+        { label: "Google Workspace", text: "Delivery of account emails and our support inbox." },
         { label: "Stripe", text: "Payment processing and subscription management." },
         { label: "X", text: "Public profile and post lookup, and bot direct messages." },
         {
