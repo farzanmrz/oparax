@@ -39,7 +39,7 @@ function SettingsFrame({ children }: { children: ReactNode }) {
       <main
         id="settings"
         tabIndex={-1}
-        className="mx-auto w-full max-w-[1356px] flex-1 scroll-mt-20 space-y-6 px-4 py-8"
+        className="mx-auto w-[min(90%,1800px)] flex-1 scroll-mt-20 space-y-6 py-8"
       >
         <h1 className="font-heading text-3xl font-normal">{copy.title}</h1>
         {children}

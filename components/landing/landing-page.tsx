@@ -33,7 +33,7 @@ export function LandingPage({
       <main
         id="landing-content"
         tabIndex={-1}
-        className="mx-auto w-full max-w-[1356px] flex-1 space-y-16 px-4 pb-20"
+        className="mx-auto w-[min(90%,1800px)] flex-1 space-y-16 pb-20"
       >
         <Hero closed={closed} error={error} handle={handle} noAgent={noAgent} />
         <HowItWorks />

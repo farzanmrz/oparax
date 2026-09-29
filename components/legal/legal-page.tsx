@@ -13,7 +13,7 @@ export function LegalPage({
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <SiteHeader signedIn={signedIn} />
-      <main className="mx-auto w-full max-w-[1356px] flex-1 px-4 pt-12 pb-20">
+      <main className="mx-auto w-[min(90%,1800px)] flex-1 pt-12 pb-20">
         <h1 className="font-heading text-[34px] leading-tight font-normal tracking-[-0.02em] desk:text-[42px]">
           {document.title}
         </h1>

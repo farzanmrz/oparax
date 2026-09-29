@@ -8,7 +8,7 @@ import { landingContent } from "@/lib/landing/content";
 export function SiteHeader({ signedIn }: { readonly signedIn: boolean }) {
   return (
     <header className="sticky top-0 z-20 h-14 border-b border-border bg-background">
-      <div className="mx-auto flex h-full max-w-[1356px] items-center justify-between px-4">
+      <div className="mx-auto flex h-full w-[min(90%,1800px)] items-center justify-between">
         <Link
           href="/"
           className="flex h-11 items-center gap-2 text-[15px] font-medium tracking-[-0.01em] desk:h-auto"

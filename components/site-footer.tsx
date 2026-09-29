@@ -8,7 +8,7 @@ const linkClassName = "inline-flex h-11 items-center hover:text-foreground desk:
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-background">
-      <nav className="mx-auto flex min-h-14 max-w-[1356px] items-center justify-center gap-6 px-4 text-[13.5px] text-muted-foreground">
+      <nav className="mx-auto flex min-h-14 w-[min(90%,1800px)] items-center justify-center gap-6 text-[13.5px] text-muted-foreground">
         {legalLinks.map((link) => (
           <Link key={link.href} href={link.href} className={linkClassName}>
             {link.label}

@@ -66,7 +66,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
       <SiteHeader signedIn={viewer.signedIn} />
       <main
         id="monitor-content"
-        className="mx-auto w-full max-w-[1356px] flex-1 space-y-6 px-4 py-8 wrap-anywhere"
+        className="mx-auto w-[min(90%,1800px)] flex-1 space-y-6 py-8 wrap-anywhere"
       >
         <AgentHeader
           handle={monitor.display_handle}

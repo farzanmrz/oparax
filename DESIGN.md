@@ -51,4 +51,4 @@ The owner's preset code is `bzq0WEyKe` (Mira, Zinc, Blue, Cyan charts, lucide, I
 - **Accessibility.** AA contrast in both modes; Mira's default focus rings kept visible; every icon-only control has a label; touch targets as above.
 - **Motion.** Only where it answers an action or shows a live step (the onboarding build); nothing animates that a person does a hundred times a day (`emil-design-eng`).
 - **Logo.** `public/oparax-logo-dark.png` and `public/email-logo.png`; the mark in `components/logo.tsx`.
-- **Layout.** Content at most 1356px wide with 16px side gutters at every width (owner, September 24: no wide margins). Responsive gates use `desk:`, never `md:`.
+- **Layout.** Content is 90% of the screen width and stops growing at 1800px, with side gutters never under 16px; backgrounds run edge to edge; buttons and inputs keep their fixed minimum sizes and heights follow content (owner, September 28: percentages over a fixed cap, the median rule the council proposed; replaces the September 24 1356px cap). Responsive gates use `desk:`, never `md:`.
