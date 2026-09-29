@@ -39,7 +39,7 @@ A parked step is still built, behind its default, and the build goes on to the n
 ## 4. Each step
 
 1. Do the step in the files it names, in order. Invoke exactly the skills the step names by `$name` and no others. A build step that tells you to run a journey, gates, a server, env or dashboard operations, or to ask the owner something: skip it and log one line (a planning defect, not an order).
-2. Design: compose stock shadcn Mira primitives per `DESIGN.md`. Never edit `DESIGN.md`, the tokens in `app/globals.css` or anything under `components/ui/` (touching DESIGN.md is a pause).
+2. Design: read `.claude/skills/feature/references/design-tooling.md` and implement the plan's actual selected blocks and accepted reference. Resolve `shadcn` and legacy `vercel:shadcn` steps to the official global `$shadcn` skill. Do not rewrite approved plan files or hashes. Never change DESIGN.md or theme tokens incidentally. Existing primitives are preserved; adding a missing registry component is allowed when the plan requires it, after inspecting the change.
 3. Migrations only when the plan slice says `migrations: yes` (the launcher lets one migrating component run at a time). Supabase MCP only, no CLI: `apply_migration` with the slug as the name, mirror the SQL to `supabase/migrations/<utc-timestamp>_<slug>.sql` with a `-- Applied via the Supabase MCP server` header, regenerate `lib/supabase/database.types.ts`. Never ask about timing or preview branches.
 4. Format what you touched: `pnpm exec biome check --write <files>` (the format-on-write hook is not trusted at a worktree path).
 5. Commit the step, trailers included, and nothing else in the same commit (`--trailer`, never a second `-m`: git reads trailers only from one final block):
