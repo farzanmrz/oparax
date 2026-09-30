@@ -22,6 +22,7 @@ export function SignupForm() {
     state.error === authContent.passwordMismatch;
 
   useEffect(() => {
+    if (!state.error) return;
     if (emailError) emailInput.current?.focus();
     else if (passwordError) passwordInput.current?.focus();
     else if (confirmationError) confirmationInput.current?.focus();

@@ -25,6 +25,7 @@ export function LoginForm({ next }: { next?: string }) {
     if (linkState.error) linkEmailInput.current?.focus();
   }, [linkState]);
   useEffect(() => {
+    if (!state.error) return;
     if (emailError) emailInput.current?.focus();
     else if (passwordError) passwordInput.current?.focus();
   }, [state, emailError, passwordError]);
