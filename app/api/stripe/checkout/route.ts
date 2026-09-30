@@ -1,11 +1,26 @@
 import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { track } from "@/lib/analytics/events";
+import { billingMetadata } from "@/lib/billing/bind";
 import { paidTierSchema, priceIdFor } from "@/lib/billing/prices";
 import { getStripe } from "@/lib/billing/stripe";
 import { monitorState } from "@/lib/monitor-state";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+function isOwnedSession(
+  session: { client_reference_id: string | null; metadata: Record<string, string> | null },
+  monitorId: string,
+  userId: string,
+) {
+  const metadata = billingMetadata.safeParse(session.metadata);
+  return (
+    session.client_reference_id === monitorId &&
+    metadata.success &&
+    metadata.data.monitor_id === monitorId &&
+    session.metadata?.user_id === userId
+  );
+}
 
 export async function POST(request: Request) {
   const parsed = z
@@ -13,33 +28,28 @@ export async function POST(request: Request) {
     .safeParse(Object.fromEntries(await request.formData()));
   if (!parsed.success) return new Response("Invalid checkout request.", { status: 400 });
   const { monitorId, tier } = parsed.data;
-  const admin = createAdminClient();
-  const { data: monitor, error } = await admin
+  const scoped = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await scoped.auth.getUser();
+  if (authError || !user) return new Response("Please sign in.", { status: 401 });
+  const { data: monitor, error } = await scoped
     .from("monitors")
     .select("*")
     .eq("id", monitorId)
+    .eq("user_id", user.id)
     .maybeSingle();
   if (error) return new Response("Checkout unavailable.", { status: 503 });
   if (!monitor) return new Response("Agent not found.", { status: 404 });
   const state = monitorState(monitor).state;
   if (state !== "frozen" && state !== "lapsed")
     return new Response("Checkout is available after the free week ends.", { status: 409 });
-  if (monitor.user_id) {
-    const scoped = await createClient();
-    const { data: owned, error: ownerError } = await scoped
-      .from("monitors")
-      .select("id")
-      .eq("id", monitorId)
-      .maybeSingle();
-    if (ownerError || !owned)
-      return Response.redirect(new URL(`/login?next=/${monitor.handle}`, request.url), 303);
-  }
+  const admin = createAdminClient();
   const stripe = getStripe();
   if (monitor.stripe_subscription_id) {
     const subscription = await stripe.subscriptions.retrieve(monitor.stripe_subscription_id);
     if (subscription.status !== "canceled" && subscription.status !== "incomplete_expired") {
-      if (!monitor.user_id)
-        return Response.redirect(new URL(`/login?next=/${monitor.handle}`, request.url), 303);
       if (!monitor.stripe_customer_id)
         return new Response("Billing is processing.", { status: 409 });
       const portal = await stripe.billingPortal.sessions.create({
@@ -64,7 +74,7 @@ export async function POST(request: Request) {
       created: { gte: Math.floor(Date.parse(monitor.checkout_opened_at) / 1000) },
       limit: 100,
     })) {
-      if (session.client_reference_id !== monitorId) continue;
+      if (!isOwnedSession(session, monitorId, user.id)) continue;
       const { error } = await admin
         .from("monitors")
         .update({ checkout_session_id: session.id })
@@ -110,12 +120,19 @@ export async function POST(request: Request) {
       .single();
     if (current?.checkout_session_id && current.checkout_session_id !== "pending") {
       const existing = await stripe.checkout.sessions.retrieve(current.checkout_session_id);
-      if (existing.status === "open" && existing.url) return Response.redirect(existing.url, 303);
+      if (
+        isOwnedSession(existing, monitorId, user.id) &&
+        existing.status === "open" &&
+        existing.url
+      )
+        return Response.redirect(existing.url, 303);
     }
     return new Response("Checkout is already open for this agent.", { status: 409 });
   }
   if (monitor.checkout_session_id) {
     const previous = await stripe.checkout.sessions.retrieve(monitor.checkout_session_id);
+    if (!isOwnedSession(previous, monitorId, user.id))
+      return new Response("Checkout unavailable.", { status: 503 });
     const previousSubscription =
       typeof previous.subscription === "string" ? previous.subscription : previous.subscription?.id;
     if (previous.status === "complete" && previousSubscription !== monitor.stripe_subscription_id) {
@@ -131,7 +148,7 @@ export async function POST(request: Request) {
     }
     if (previous.status === "open") await stripe.checkout.sessions.expire(previous.id);
   }
-  const metadata = { monitor_id: monitorId, tier, handle: monitor.handle };
+  const metadata = { monitor_id: monitorId, user_id: user.id, tier, handle: monitor.handle };
   const session = await stripe.checkout.sessions.create(
     {
       mode: "subscription",
