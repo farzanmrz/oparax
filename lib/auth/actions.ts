@@ -3,13 +3,17 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authContent } from "@/lib/auth/content";
-import { authProviderSchema, requestSigninLink, signedInDestination } from "@/lib/auth/oauth";
+import {
+  oauthUrl,
+  refreshXOAuthUrl,
+  requestSigninLink,
+  signedInDestination,
+} from "@/lib/auth/oauth";
 import { mapAuthError } from "@/lib/auth-errors";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
 import {
   isValidationError,
-  safeAuthDestination,
   validateAuthForm,
   validateEmailForm,
   validateResetPasswordForm,
@@ -236,19 +240,21 @@ export async function signInWithProvider(
   _previous: AuthFormState,
   _formData: FormData,
 ): Promise<AuthFormState> {
-  const parsed = authProviderSchema.safeParse(provider);
-  if (!parsed.success) return { error: authContent.signinFailed };
-  const redirectTo = new URL("/auth/confirm", await getSiteOrigin());
-  const destination = safeAuthDestination(next);
-  if (destination) redirectTo.searchParams.set("next", destination);
-  redirectTo.searchParams.set("method", "oauth");
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: parsed.data,
-    options: { redirectTo: redirectTo.toString() },
-  });
-  if (error || !data.url) return { error: authContent.signinFailed };
-  redirect(data.url);
+  const destination = await signedInDestination(next);
+  if (destination !== "/login") redirect(destination);
+  const url = await oauthUrl({ kind: "sign_in", provider, next });
+  if (!url) return { error: authContent.signinFailed };
+  redirect(url);
+}
+
+export async function refreshXIdentity(
+  _previous: AuthFormState,
+  _formData: FormData,
+): Promise<AuthFormState> {
+  const { url, signOutFailed } = await refreshXOAuthUrl();
+  if (signOutFailed) return { error: authContent.refreshFailed };
+  if (!url) return { error: authContent.signinFailed };
+  redirect(url);
 }
 
 export async function emailSigninLink(
