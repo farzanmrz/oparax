@@ -11,7 +11,6 @@ import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-buildin
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { SourcesList } from "@/components/monitor/sources-list";
 import { StateBanner } from "@/components/monitor/state-banner";
-import { ViewBeacon } from "@/components/monitor/view-beacon";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -76,7 +75,6 @@ export default async function MonitorPage({ params, searchParams }: Props) {
           canEdit={viewer.userId !== null && viewer.userId === monitor.user_id}
         />
         <RefreshWhileBuilding building={building} />
-        {!viewer.isOwner && !building && !failed ? <ViewBeacon monitorId={monitor.id} /> : null}
         {building || failed ? (
           <Building
             monitorId={monitor.id}

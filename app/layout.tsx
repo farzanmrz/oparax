@@ -71,7 +71,6 @@ export default function RootLayout({
         <BotIdClient
           protect={[
             { path: "/api/build", method: "POST" },
-            { path: "/api/view", method: "POST" },
             { path: "/api/waitlist", method: "POST" },
           ]}
         />

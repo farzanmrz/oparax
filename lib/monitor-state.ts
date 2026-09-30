@@ -4,28 +4,16 @@ type MonitorRow = Tables<"monitors">;
 type StateInput = Pick<
   MonitorRow,
   | "status"
-  | "build_finished_at"
   | "trial_started_at"
-  | "last_viewed_at"
   | "paid_through"
   | "tier"
   | "pool_limit"
   | "pool_used"
   | "cadence"
-  | "subscription_status"
   | "budget_exhausted_at"
 >;
 export type MonitorState = {
-  state:
-    | "building"
-    | "failed"
-    | "dormant"
-    | "paused"
-    | "trial"
-    | "exhausted"
-    | "frozen"
-    | "paid"
-    | "lapsed";
+  state: "building" | "failed" | "trial" | "exhausted" | "frozen" | "paid" | "lapsed";
   daysLeft: number | null;
   trialEndsAt: Date | null;
   poolOpen: boolean;
@@ -45,20 +33,7 @@ export function monitorState(m: StateInput, now = new Date()): MonitorState {
   else if (m.paid_through && Date.parse(m.paid_through) <= time) state = "lapsed";
   else if (trialEndsAt && trialEndsAt.getTime() <= time) state = "frozen";
   else if (m.tier === "free" && m.budget_exhausted_at) state = "exhausted";
-  else if (
-    m.tier === "free" &&
-    (m.status === "paused" ||
-      (m.build_finished_at &&
-        time -
-          Math.max(
-            Date.parse(m.build_finished_at),
-            m.last_viewed_at ? Date.parse(m.last_viewed_at) : 0,
-          ) >=
-          14 * DAY))
-  )
-    state = "paused";
-  else if (trialEndsAt) state = "trial";
-  else state = "dormant";
+  else state = "trial";
   return {
     state,
     trialEndsAt,

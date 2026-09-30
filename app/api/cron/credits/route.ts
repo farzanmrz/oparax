@@ -91,47 +91,13 @@ export async function GET(request: Request) {
       reconciled += rows.length;
       cursor = rows[rows.length - 1].id;
     }
-    let paused = 0;
-    let monitorCursor = "00000000-0000-0000-0000-000000000000";
-    const cutoff = new Date(Date.now() - 14 * 86_400_000).toISOString();
-    while (Date.now() < deadline) {
-      const { data: monitors, error: monitorError } = await db
-        .from("monitors")
-        .select("id")
-        .eq("tier", "free")
-        .eq("status", "live")
-        .is("paid_through", null)
-        .lte("build_finished_at", cutoff)
-        .or(`last_viewed_at.is.null,last_viewed_at.lte.${cutoff}`)
-        .gt("id", monitorCursor)
-        .order("id")
-        .limit(100);
-      if (monitorError) throw monitorError;
-      if (!monitors.length) break;
-      const { data: changed, error: pauseError } = await db
-        .from("monitors")
-        .update({ status: "paused" })
-        .in(
-          "id",
-          monitors.map((m) => m.id),
-        )
-        .eq("tier", "free")
-        .eq("status", "live")
-        .is("paid_through", null)
-        .lte("build_finished_at", cutoff)
-        .or(`last_viewed_at.is.null,last_viewed_at.lte.${cutoff}`)
-        .select("id");
-      if (pauseError) throw pauseError;
-      paused += changed.length;
-      monitorCursor = monitors[monitors.length - 1].id;
-    }
     if (balance.status !== "ok") throw new Error("X balance read failed");
     track(
       "run_completed",
       {
         job: "credits",
         run_id: claim.runId,
-        counts: { sources, reconciled, paused },
+        counts: { sources, reconciled },
         stopped_at_deadline: Date.now() >= deadline,
       },
       "server",

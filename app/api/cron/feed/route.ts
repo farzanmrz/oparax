@@ -76,7 +76,7 @@ export async function GET(request: Request) {
             .order("id");
           if (monitorError) throw monitorError;
           const eligible = monitors.filter((monitor) =>
-            ["dormant", "trial", "paid"].includes(monitorState(monitor).state),
+            ["trial", "paid"].includes(monitorState(monitor).state),
           );
           let next = 0;
           await Promise.all(

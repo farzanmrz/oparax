@@ -62,7 +62,7 @@ export type DisplayItem = { item: PublicItem; card: VerifiedCard | null; score: 
 
 // Explicit columns keep payment identifiers, activation secrets and checkpoints off this surface.
 const monitorColumns =
-  "id,handle,display_handle,beat,profile,brief,status,build_step,build_error,build_tries,build_finished_at,user_id,tier,trial_started_at,last_viewed_at,paid_through,pool_limit,pool_used,pool_period_start,cadence,subscription_status,budget_exhausted_at,bot_state,digest_github,digest_product_hunt";
+  "id,handle,display_handle,beat,profile,brief,status,build_step,build_tries,build_finished_at,user_id,tier,trial_started_at,paid_through,pool_limit,pool_used,pool_period_start,cadence,subscription_status,budget_exhausted_at,bot_state,digest_github,digest_product_hunt";
 const itemColumns = "id,url,title,published_at,kind,lang,source_id,author,sources(name)";
 const storyColumns = "id,fallback_title,last_changed_at,image,status,card";
 
@@ -87,20 +87,12 @@ export const readMonitor = cache(async (rawHandle: string) => {
 });
 export type PublicMonitor = NonNullable<Awaited<ReturnType<typeof readMonitor>>>;
 
-export function isOwnerEmail(email: string | undefined): boolean {
-  return (
-    !!email &&
-    (process.env.OWNER_EMAILS ?? "")
-      .split(",")
-      .some((owner) => owner.trim().toLowerCase() === email.toLowerCase())
-  );
-}
 export const readViewer = cache(async () => {
   const client = await createClient();
   const {
     data: { user },
   } = await client.auth.getUser();
-  return { userId: user?.id ?? null, signedIn: !!user, isOwner: isOwnerEmail(user?.email) };
+  return { userId: user?.id ?? null, signedIn: !!user };
 });
 
 function publicItem(

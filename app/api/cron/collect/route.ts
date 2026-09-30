@@ -46,7 +46,7 @@ export async function GET(request: Request) {
       if (error) throw error;
       for (const row of data) {
         const state = monitorState(row.monitors, now).state;
-        if (state !== "dormant" && state !== "trial" && state !== "paid") continue;
+        if (state !== "trial" && state !== "paid") continue;
         const sourceWatchers = watchers.get(row.source_id) ?? [];
         sourceWatchers.push({
           monitor_id: row.monitor_id,
