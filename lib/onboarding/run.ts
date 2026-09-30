@@ -5,7 +5,7 @@ import { track } from "@/lib/analytics/events";
 import { captureAiGeneration } from "@/lib/observability/posthog-ai";
 import { reportServerException } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database, Json } from "@/lib/supabase/database.types";
 import { normalizeValidHandle } from "@/lib/x/handle";
 import { runOnboarding } from "./engine";
 import { BuildStateSchema } from "./types";
@@ -53,7 +53,14 @@ export async function runBuild(monitorId: string, runId: string): Promise<void> 
       .single();
     if (error) throw error;
     step = Math.max(1, monitor.build_step);
+    if (!monitor.x_user_id) throw new Error("Confirmed X identity is missing");
+    const xUserId = monitor.x_user_id;
     const resume = BuildStateSchema.parse(monitor.build_state ?? {});
+    if (
+      (resume.profile && resume.profile.id !== xUserId) ||
+      (resume.x_user_id && resume.x_user_id !== xUserId)
+    )
+      throw new Error("Resumed X identity does not match this agent");
     const log = logSchema.parse(monitor.build_log);
     const result = await runOnboarding({
       handle: monitor.handle,
@@ -69,10 +76,9 @@ export async function runBuild(monitorId: string, runId: string): Promise<void> 
       },
       checkpoint: async (state) => {
         const checked = BuildStateSchema.parse(state);
-        await update({
-          build_state: checked,
-          ...(checked.profile ? { profile: checked.profile, x_user_id: checked.profile.id } : {}),
-        });
+        if (checked.profile?.id !== xUserId || checked.x_user_id !== xUserId)
+          throw new Error("Checkpoint X identity does not match this agent");
+        await update({ build_state: checked, profile: checked.profile });
       },
       onGeneration: (generation) => {
         captureAiGeneration({
@@ -100,6 +106,8 @@ export async function runBuild(monitorId: string, runId: string): Promise<void> 
         });
       },
     });
+    if (result.profile.id !== xUserId)
+      throw new Error("Final X identity does not match this agent");
     await renew();
     const { data: knownSources, error: sourcesError } = await db
       .from("sources")
@@ -119,62 +127,45 @@ export async function runBuild(monitorId: string, runId: string): Promise<void> 
       if (!handle) throw new Error("Recommended account has an invalid handle");
       return { ...account, handle };
     });
-    const newAccounts = accounts.filter((account) => !knownAccounts.has(account.handle));
-    if (newAccounts.length) {
-      const { error } = await db.from("sources").upsert(
-        newAccounts.map((account) => ({
-          id: `x-${account.handle}`,
-          kind: "x_account",
-          target: `https://x.com/${account.handle}`,
-          name: account.handle,
-        })),
-        { onConflict: "id", ignoreDuplicates: true },
-      );
-      if (error) throw error;
-    }
+    const newSources = accounts
+      .filter((account) => !knownAccounts.has(account.handle))
+      .map((account) => ({
+        id: `x-${account.handle}`,
+        kind: "x_account" as const,
+        target: `https://x.com/${account.handle}`,
+        name: account.handle,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const monitorSources = result.final.sites
+      .map((site) => ({ source_id: site.id, score: site.score, why: site.why }))
+      .sort((a, b) => a.source_id.localeCompare(b.source_id));
+    const monitorAccounts = accounts
+      .map((account) => ({
+        handle: account.handle,
+        name: knownAccounts.get(account.handle)?.name ?? account.handle,
+        x_user_id: knownAccounts.get(account.handle)?.x_user_id ?? null,
+        score: account.score,
+        why: account.why,
+      }))
+      .sort((a, b) => a.handle.localeCompare(b.handle));
     await renew();
-    if (result.final.sites.length) {
-      const { error } = await db.from("monitor_sources").upsert(
-        result.final.sites.map((site) => ({
-          monitor_id: monitorId,
-          source_id: site.id,
-          score: site.score,
-          why: site.why,
-          added_by: "onboarding",
-        })),
-        { onConflict: "monitor_id,source_id", ignoreDuplicates: true },
-      );
-      if (error) throw error;
-    }
-    await renew();
-    if (accounts.length) {
-      const { error } = await db.from("monitor_accounts").upsert(
-        accounts.map((account) => ({
-          monitor_id: monitorId,
-          handle: account.handle,
-          name: knownAccounts.get(account.handle)?.name ?? account.handle,
-          x_user_id: knownAccounts.get(account.handle)?.x_user_id ?? null,
-          score: account.score,
-          why: account.why,
-          watched: true,
-          watched_at: new Date().toISOString(),
-        })),
-        { onConflict: "monitor_id,handle", ignoreDuplicates: true },
-      );
-      if (error) throw error;
-    }
-    await renew();
-    await update({
-      profile: result.profile,
-      brief: result.brief,
-      status: "live",
-      build_step: 3,
-      build_finished_at: new Date().toISOString(),
-      build_error: null,
-      build_lease_until: null,
-      build_lease_owner: null,
+    const completion = await db.rpc("complete_build", {
+      p_monitor: monitorId,
+      p_run_id: runId,
+      p_x_user_id: xUserId,
+      p_profile: result.profile as unknown as Json,
+      p_brief: result.brief as unknown as Json,
+      p_new_sources: newSources as unknown as Json,
+      p_monitor_sources: monitorSources as unknown as Json,
+      p_accounts: monitorAccounts as unknown as Json,
     });
+    if (completion.error) throw completion.error;
+    if (completion.data === "lease_lost") throw new LeaseLost();
+    if (completion.data === "identity_mismatch")
+      throw new Error("Completion X identity does not match this agent");
+    if (completion.data !== "completed") throw new Error("Completion returned an invalid outcome");
     track("agent_built", { cost_usd: result.costUsd }, monitorId);
+    track("trial_started", { monitor_id: monitorId, trigger: "build_completed" }, monitorId);
   } catch (error) {
     if (error instanceof LeaseLost) return;
     reportServerException(error, { distinctId: monitorId, tags: { area: "onboarding", step } });
