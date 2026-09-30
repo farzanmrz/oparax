@@ -153,7 +153,7 @@ export function SetupForm({
         </p>
       )}
       <form
-        action={closed ? "/api/waitlist" : "/api/build"}
+        action="/api/build"
         method="post"
         onSubmit={submit}
         className="flex flex-col gap-4"
