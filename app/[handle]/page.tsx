@@ -43,6 +43,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   if (story && !z.uuid().safeParse(story).success) notFound();
   const [monitor, viewer] = await Promise.all([readMonitor(handle), readViewer()]);
   if (!monitor) notFound();
+  const isOwner = viewer.userId !== null && viewer.userId === monitor.user_id;
   const state = monitorState(monitor);
   const building = state.state === "building";
   const failed = state.state === "failed";
@@ -72,7 +73,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
           beat={monitor.beat}
           profile={monitor.profile}
           brief={monitor.brief}
-          canEdit={viewer.userId !== null && viewer.userId === monitor.user_id}
+          canEdit={isOwner}
         />
         <RefreshWhileBuilding building={building} />
         {building || failed ? (
@@ -83,23 +84,25 @@ export default async function MonitorPage({ params, searchParams }: Props) {
             log={log}
             profile={monitor.profile}
             failed={failed}
-            reason={monitor.build_error}
+            canRetry={isOwner}
             tries={monitor.build_tries}
           />
         ) : (
           <>
-            <StateBanner monitor={monitor} state={state} signedIn={viewer.signedIn} />
-            {search.error === "activation" ? (
+            <StateBanner monitor={monitor} state={state} isOwner={isOwner} />
+            {isOwner && search.error === "activation" ? (
               <Alert variant="destructive">
                 <AlertDescription>{copy.activationFailed}</AlertDescription>
               </Alert>
             ) : null}
-            <BotButton
-              monitorId={monitor.id}
-              handle={monitor.display_handle}
-              botState={monitor.bot_state}
-              state={state.state}
-            />
+            {isOwner ? (
+              <BotButton
+                monitorId={monitor.id}
+                handle={monitor.display_handle}
+                botState={monitor.bot_state}
+                state={state.state}
+              />
+            ) : null}
             {feed ? (
               <div className="grid gap-8 desk:grid-cols-[minmax(0,1fr)_360px]">
                 <div className="min-w-0 space-y-6">

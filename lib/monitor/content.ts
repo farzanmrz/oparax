@@ -1,7 +1,8 @@
 export const monitorContent = {
-  metadataTitle: (name: string) => `${name}'s Oparax agent`,
+  metadataTitle: (name: string) => `${name}: Oparax agent`,
   skipToNews: "Skip to news",
-  title: (handle: string) => `@${handle}'s agent`,
+  title: (handle: string) => `Agent for @${handle}`,
+  personalization: (handle: string) => `Built around @${handle}'s public posts.`,
   missing: (handle: string) => `No agent for @${handle} yet.`,
   missingStory: "This agent or story could not be found.",
   home: "Build your agent",
@@ -37,7 +38,7 @@ export const monitorContent = {
     "Choosing sources and X accounts",
   ],
   buildFailed: (step: string, reason: string) => `Building stopped at: ${step}. ${reason}`,
-  buildReason: "The build could not finish.",
+  buildReason: "Preparation could not finish. Your free week has not started.",
   retry: "Try again",
   retryFailed: "The retry could not start. Try again.",
   trial: (n: number) => `${n} days left in your free week. Plans from $5 a month.`,
@@ -46,10 +47,12 @@ export const monitorContent = {
   frozenTitle: "Your free week is over.",
   frozen:
     "Your agent has stopped watching. Old cards stay readable. Pick a plan to keep it running.",
-  lapsed: "Payment failed. Update your card to keep your agent running.",
+  lapsed: "Your paid access has ended. Open billing or choose a plan to resume updates.",
+  publicFrozen: "Updates have stopped. Existing stories remain readable.",
   updateCard: "Update card",
-  paused: "This agent paused because nobody visited it. It is starting again now.",
   pool: (used: number, limit: number) => `${used} of ${limit} watched posts used this month.`,
+  trialPool: (used: number, limit: number) =>
+    `${used} of ${limit} watched posts used in your free week.`,
   poolPaused: (date: string) =>
     `Your watched X accounts are paused until ${date}. Sites and feeds keep running.`,
   trialPoolPaused: "Your free week's watched X posts are used up. Sites and feeds keep running.",
@@ -76,12 +79,13 @@ export const monitorContent = {
   ],
   bot: "Get alerts on X",
   botHelp: (handle: string) =>
-    `Opens X with a one-time code addressed to @oparax_ai. Send it from @${handle} to connect.`,
-  botActive: "Alerts on. Reply STOP to the bot to stop.",
-  botPaused: "Alerts paused. Reply RESUME to the bot.",
-  botStopped: "Alerts stopped. Connect again to get news.",
+    `Opens a message to @oparax_ai with "Start alerts" typed. Send it from @${handle} to connect alerts; that message is how Oparax confirms the account is yours. The bot will not reply.`,
+  botActive: "Alerts on. Send STOP to the bot to stop.",
+  botPaused: "Alerts paused. Send RESUME to the bot to continue.",
+  botStopped: 'Alerts stopped. Send "Start alerts" from your X account to turn them on again.',
   activationFailed: "X connection could not start. Try again.",
-  activationUnavailable: "Alerts can connect during your free week or an active plan.",
+  activationUnavailable: "Open the alert connection during your free week or an active plan.",
+  checkConnection: "Check connection",
 } as const;
 
 export function safeWebUrl(value: string | null | undefined, httpsOnly = false): string | null {

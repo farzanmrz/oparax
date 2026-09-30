@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PayButtons } from "@/components/monitor/pay-buttons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -9,11 +8,11 @@ import type { MonitorState } from "@/lib/monitor-state";
 export function StateBanner({
   monitor,
   state,
-  signedIn,
+  isOwner,
 }: {
   monitor: PublicMonitor;
   state: MonitorState;
-  signedIn: boolean;
+  isOwner: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -28,49 +27,48 @@ export function StateBanner({
           {copy.trial(state.daysLeft ?? 0)}
         </p>
       ) : null}
-      {state.state === "paused" ? (
-        <Alert>
-          <AlertDescription>{copy.paused}</AlertDescription>
-        </Alert>
-      ) : null}
       {state.state === "exhausted" ? (
         <Alert>
-          <AlertDescription>{copy.exhausted}</AlertDescription>
+          <AlertDescription>{isOwner ? copy.exhausted : copy.publicFrozen}</AlertDescription>
         </Alert>
       ) : null}
       {state.state === "frozen" ? (
         <>
-          <Alert variant="destructive">
-            <AlertTitle>
-              <h2 className="font-heading text-lg font-bold">{copy.frozenTitle}</h2>
-            </AlertTitle>
-            <AlertDescription className="text-sm">{copy.frozen}</AlertDescription>
+          <Alert variant={isOwner ? "destructive" : "default"}>
+            {isOwner ? (
+              <AlertTitle>
+                <h2 className="font-heading text-lg font-bold">{copy.frozenTitle}</h2>
+              </AlertTitle>
+            ) : null}
+            <AlertDescription className="text-sm">
+              {isOwner ? copy.frozen : copy.publicFrozen}
+            </AlertDescription>
           </Alert>
-          <PayButtons monitorId={monitor.id} />
+          {isOwner ? <PayButtons monitorId={monitor.id} /> : null}
         </>
       ) : null}
       {state.state === "lapsed" ? (
-        <Alert variant="destructive">
+        <Alert variant={isOwner ? "destructive" : "default"}>
           <AlertDescription className="space-y-3 text-sm">
-            <p>{copy.lapsed}</p>
-            {signedIn ? (
-              <form method="post" action="/api/stripe/portal">
-                <input type="hidden" name="monitorId" value={monitor.id} />
-                <Button className="min-h-11 desk:min-h-6">{copy.updateCard}</Button>
-              </form>
-            ) : (
-              <Button asChild className="min-h-11 desk:min-h-6">
-                <Link href={`/login?next=${encodeURIComponent(`/${monitor.handle}`)}`}>
-                  {copy.updateCard}
-                </Link>
-              </Button>
-            )}
-            <PayButtons monitorId={monitor.id} />
+            <p>{isOwner ? copy.lapsed : copy.publicFrozen}</p>
+            {isOwner ? (
+              <>
+                <form method="post" action="/api/stripe/portal">
+                  <input type="hidden" name="monitorId" value={monitor.id} />
+                  <Button className="min-h-11 desk:min-h-6">{copy.updateCard}</Button>
+                </form>
+                <PayButtons monitorId={monitor.id} />
+              </>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}
       {state.state === "paid" || state.state === "trial" ? (
-        <p className="font-mono text-sm">{copy.pool(monitor.pool_used, monitor.pool_limit)}</p>
+        <p className="text-sm">
+          {state.state === "trial"
+            ? copy.trialPool(monitor.pool_used, monitor.pool_limit)
+            : copy.pool(monitor.pool_used, monitor.pool_limit)}
+        </p>
       ) : null}
       {(state.state === "paid" || state.state === "trial") && !state.poolOpen ? (
         <p className="text-sm text-amber-800 dark:text-amber-300">

@@ -33,7 +33,7 @@ export function Building({
   log,
   profile,
   failed,
-  reason,
+  canRetry,
   tries,
 }: {
   monitorId: string;
@@ -42,7 +42,7 @@ export function Building({
   log: BuildLog;
   profile: Profile | null;
   failed: boolean;
-  reason: string | null;
+  canRetry: boolean;
   tries: number;
 }) {
   const router = useRouter();
@@ -114,13 +114,8 @@ export function Building({
       {failed ? (
         <Alert variant="destructive">
           <AlertDescription className="space-y-3 text-sm">
-            <p>
-              {copy.buildFailed(
-                labels[Math.min(Math.max(step - 1, 0), 2)],
-                reason || copy.buildReason,
-              )}
-            </p>
-            {tries < 2 ? (
+            <p>{copy.buildFailed(labels[Math.min(Math.max(step - 1, 0), 2)], copy.buildReason)}</p>
+            {canRetry && tries < 2 ? (
               <form method="post" action="/api/build/retry" onSubmit={retry}>
                 <input type="hidden" name="monitorId" value={monitorId} />
                 <Button disabled={retrying} className="min-h-11 desk:min-h-6">
