@@ -4,7 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { BotIdClient } from "botid/client";
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Nunito_Sans, Source_Sans_3 } from "next/font/google";
+import { Hanken_Grotesk } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,17 +12,7 @@ import { landingContent } from "@/lib/landing/content";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-// Nunito Sans for headings (the preset's) and Source Sans 3 for text (the owner's override); DESIGN.md.
-const nunitoSansHeading = Nunito_Sans({ subsets: ["latin"], variable: "--font-heading" });
-
-const sourceSans3 = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans" });
-
-// JetBrains Mono backs --font-mono: handles, counts, timestamps, money.
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
+const hankenGrotesk = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(landingContent.sharing.origin),
@@ -51,8 +41,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#18181b" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f8fc" },
+    { media: "(prefers-color-scheme: dark)", color: "#090f1d" },
   ],
 };
 
@@ -62,12 +52,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={cn("font-sans", sourceSans3.variable, nunitoSansHeading.variable)}
-      suppressHydrationWarning
-    >
-      <body className={`${jetbrainsMono.variable} antialiased`}>
+    <html lang="en" className={cn("font-sans", hankenGrotesk.variable)} suppressHydrationWarning>
+      <body className="antialiased">
         <BotIdClient
           protect={[
             { path: "/api/build", method: "POST" },
