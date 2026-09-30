@@ -14,16 +14,23 @@ export function BotButton({
   state: MonitorState["state"];
 }) {
   if (state !== "trial" && state !== "paid") return null;
-  if (botState === "active") return <p>{copy.botActive}</p>;
-  if (botState === "paused") return <p>{copy.botPaused}</p>;
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col items-start gap-2">
+      {botState === "active" ? <p>{copy.botActive}</p> : null}
+      {botState === "paused" ? <p>{copy.botPaused}</p> : null}
       {botState === "stopped" ? <p>{copy.botStopped}</p> : null}
-      <form method="post" action="/api/activation">
-        <input type="hidden" name="monitorId" value={monitorId} />
-        <Button className="min-h-11 desk:min-h-6">{copy.bot}</Button>
-      </form>
-      <p className="text-sm text-muted-foreground">{copy.botHelp(handle)}</p>
+      {botState !== "active" && botState !== "paused" ? (
+        <>
+          <form method="post" action="/api/activation">
+            <input type="hidden" name="monitorId" value={monitorId} />
+            <Button className="min-h-11 desk:min-h-7">{copy.bot}</Button>
+          </form>
+          <p className="text-sm text-muted-foreground">{copy.botHelp(handle)}</p>
+        </>
+      ) : null}
+      <Button asChild variant="outline" className="min-h-11 desk:min-h-7">
+        <a href={`/${handle}`}>{copy.checkConnection}</a>
+      </Button>
     </div>
   );
 }
