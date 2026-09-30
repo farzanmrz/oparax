@@ -8,16 +8,26 @@ import { billingMetadata, billingMonitor, bind, stripeId, subscriptionPeriod } f
 import { paidTierSchema, paidTiers } from "./prices";
 import { getStripe } from "./stripe";
 
-export async function applyEvent(event: Stripe.Event, origin: string): Promise<string | null> {
+export async function applyEvent(event: Stripe.Event): Promise<string | null> {
   switch (event.type) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
-      return bind(event.data.object, origin);
+      return bind(event.data.object);
     case "checkout.session.async_payment_failed": {
       const session = event.data.object;
-      const metadata = billingMetadata.parse(session.metadata);
+      const parsed = billingMetadata.safeParse(session.metadata);
+      if (!parsed.success) return "conflict";
+      const metadata = parsed.data;
       const monitor = await billingMonitor(metadata.monitor_id);
       if (!monitor) return "no monitor";
+      if (monitor.checkout_session_id === "pending")
+        throw new Error("Checkout storage is pending.");
+      if (
+        monitor.user_id !== metadata.user_id ||
+        session.client_reference_id !== monitor.id ||
+        monitor.checkout_session_id !== session.id
+      )
+        return "conflict";
       const { error } = await createAdminClient()
         .from("monitors")
         .update({ checkout_session_id: null })
@@ -52,18 +62,25 @@ export async function applyEvent(event: Stripe.Event, origin: string): Promise<s
     .maybeSingle();
   if (findError) throw findError;
   const metadata = billingMetadata.safeParse(subscription.metadata);
-  const found =
-    linked ?? (metadata.success ? await billingMonitor(metadata.data.monitor_id) : null);
+  if (!metadata.success) return "conflict";
+  const found = linked ?? (await billingMonitor(metadata.data.monitor_id));
   if (!found) return "no monitor";
   const claim = await claimRun(`billing:${found.id}`, 120);
   if (!claim) throw new Error("Billing is already being processed.");
   try {
     const monitor = await billingMonitor(found.id);
     if (!monitor) return "no monitor";
-    if (monitor.stripe_subscription_id && monitor.stripe_subscription_id !== subscriptionId)
-      return null;
+    if (metadata.data.monitor_id !== monitor.id || metadata.data.user_id !== monitor.user_id)
+      return "conflict";
     // The checkout event must bind the first payment before renewals can mutate access.
     if (!monitor.stripe_subscription_id) throw new Error("Checkout binding is pending.");
+    if (
+      monitor.stripe_subscription_id !== subscriptionId ||
+      metadata.data.tier !== monitor.tier ||
+      stripeId(subscription.customer) !== monitor.stripe_customer_id ||
+      (invoice && stripeId(invoice.customer) !== monitor.stripe_customer_id)
+    )
+      return "conflict";
     if (event.type === "invoice.paid" && invoice) {
       if (monitor.last_invoice_id === invoice.id) return null;
       const period = subscriptionPeriod(subscription);

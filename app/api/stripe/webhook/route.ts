@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { applyEvent } from "@/lib/billing/apply-event";
 import { getStripe } from "@/lib/billing/stripe";
+import { reportServerException } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     if (claimError || !claimed) return new Response("Event is processing.", { status: 500 });
   }
   try {
-    const warning = await applyEvent(event, new URL(request.url).origin);
+    const warning = await applyEvent(event);
     const { error } = await admin
       .from("stripe_events")
       .update({ processed_at: new Date().toISOString(), processing_until: null, error: warning })
@@ -50,6 +51,9 @@ export async function POST(request: Request) {
     if (error) throw error;
     return new Response("OK");
   } catch (error) {
+    reportServerException(error, {
+      tags: { area: "billing", stage: "webhook", event_type: event.type },
+    });
     await admin
       .from("stripe_events")
       .update({
