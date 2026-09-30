@@ -2,15 +2,12 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, signupAction } from "@/lib/auth/actions";
 import { authContent } from "@/lib/auth/content";
 
-// Client island: drives signupAction via useActionState. Field names (email,
-// password, confirm-password) are the contract lib/validation.ts reads. When
-// signup succeeds without a session (email confirmation pending) the form is
-// swapped for a check-your-email notice, mirroring the action's state shape.
 export function SignupForm() {
   const [state, formAction, isPending] = useActionState<AuthFormState, FormData>(signupAction, {});
 
@@ -23,48 +20,44 @@ export function SignupForm() {
   }
 
   return (
-    <form action={formAction} className="space-y-4">
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="block text-sm font-medium">
-          {authContent.email}
-        </label>
-        <Input
-          className="min-h-11 desk:min-h-7"
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          defaultValue={state.email}
-          placeholder={authContent.emailPlaceholder}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="password" className="block text-sm font-medium">
-          {authContent.password}
-        </label>
-        <Input
-          className="min-h-11 desk:min-h-7"
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="confirm-password" className="block text-sm font-medium">
-          {authContent.confirmPassword}
-        </label>
-        <Input
-          className="min-h-11 desk:min-h-7"
-          id="confirm-password"
-          name="confirm-password"
-          type="password"
-          autoComplete="new-password"
-          required
-        />
-      </div>
+    <form action={formAction} className="flex flex-col gap-4">
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="email">{authContent.email}</FieldLabel>
+          <Input
+            className="min-h-11 desk:min-h-7"
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            defaultValue={state.email}
+            placeholder={authContent.emailPlaceholder}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="password">{authContent.password}</FieldLabel>
+          <Input
+            className="min-h-11 desk:min-h-7"
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            required
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="confirm-password">{authContent.confirmPassword}</FieldLabel>
+          <Input
+            className="min-h-11 desk:min-h-7"
+            id="confirm-password"
+            name="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            required
+          />
+        </Field>
+      </FieldGroup>
       {state.error && (
         <p role="alert" className="text-sm leading-relaxed text-destructive">
           {state.error}

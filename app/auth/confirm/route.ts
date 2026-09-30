@@ -27,21 +27,8 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return redirectTo(await signedInDestination(next));
   } else if (tokenHash && (type === "magiclink" || type === "email" || type === "signup")) {
-    const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) {
-      if (type === "signup") {
-        // Checkout also creates new users; their paid account should open immediately.
-        const { data: monitor, error: monitorError } = await supabase
-          .from("monitors")
-          .select("id")
-          .eq("user_id", data.user?.id ?? "")
-          .maybeSingle();
-        if (monitorError) throw monitorError;
-        if (!monitor) {
-          await supabase.auth.signOut();
-          return redirectTo("/login", { message: authContent.emailVerified });
-        }
-      }
       return redirectTo(await signedInDestination(next));
     }
   }

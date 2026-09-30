@@ -7,7 +7,7 @@ import { authContent } from "@/lib/auth/content";
 import { readAuthContext } from "@/lib/auth/identity";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { safeAuthDestination, safeNextPath } from "@/lib/validation";
+import { safeAuthDestination } from "@/lib/validation";
 
 export const authProviderSchema = z.enum(["google", "x"]);
 
@@ -20,7 +20,9 @@ export async function signedInDestination(next: unknown): Promise<string> {
 
 export async function requestSigninLink(email: string, next: unknown, origin: string) {
   const redirectTo = new URL("/auth/confirm", origin);
-  redirectTo.searchParams.set("next", safeNextPath(next) ?? "/");
+  const destination = safeAuthDestination(next);
+  if (destination) redirectTo.searchParams.set("next", destination);
+  redirectTo.searchParams.set("method", "email_link");
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,

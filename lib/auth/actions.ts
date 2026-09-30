@@ -7,10 +7,9 @@ import { authProviderSchema, requestSigninLink, signedInDestination } from "@/li
 import { mapAuthError } from "@/lib/auth-errors";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
-import { deriveUsernameFromEmail } from "@/lib/user";
 import {
   isValidationError,
-  safeNextPath,
+  safeAuthDestination,
   validateAuthForm,
   validateEmailForm,
   validateResetPasswordForm,
@@ -101,13 +100,6 @@ export async function signupAction(
   const { data, error } = await supabase.auth.signUp({
     email: validated.email,
     password: validated.password,
-    // Seed a username from the email's local part so every account has a stable
-    // starting value before its future profile experience is built.
-    options: {
-      data: {
-        username: deriveUsernameFromEmail(validated.email),
-      },
-    },
   });
 
   if (error) {
@@ -247,7 +239,9 @@ export async function signInWithProvider(
   const parsed = authProviderSchema.safeParse(provider);
   if (!parsed.success) return { error: authContent.signinFailed };
   const redirectTo = new URL("/auth/confirm", await getSiteOrigin());
-  redirectTo.searchParams.set("next", safeNextPath(next) ?? "/");
+  const destination = safeAuthDestination(next);
+  if (destination) redirectTo.searchParams.set("next", destination);
+  redirectTo.searchParams.set("method", "oauth");
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: parsed.data,

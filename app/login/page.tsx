@@ -5,7 +5,7 @@ import { PostHogUserContext } from "@/components/posthog-user-context";
 import { authContent } from "@/lib/auth/content";
 import { signedInDestination } from "@/lib/auth/oauth";
 import { createClient } from "@/lib/supabase/server";
-import { safeNextPath } from "@/lib/validation";
+import { safeAuthDestination } from "@/lib/validation";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -52,7 +52,7 @@ export default async function LoginPage({
         <div className="space-y-4">
           {error && <AuthAlert tone="error">{error}</AuthAlert>}
           {message && <AuthAlert tone="notice">{message}</AuthAlert>}
-          <LoginForm next={safeNextPath(next) ?? undefined} />
+          <LoginForm next={safeAuthDestination(next) ?? undefined} />
         </div>
       </AuthShell>
     </>
