@@ -13,7 +13,7 @@ export function Hero({ entrance }: { entrance: LandingEntrance }) {
     <section
       id="product"
       aria-labelledby="landing-title"
-      className="relative isolate pt-10 desk:pt-16"
+      className="relative isolate scroll-mt-28 pt-10 desk:scroll-mt-16 desk:pt-16"
     >
       <Atmosphere />
       <div className="relative mx-auto max-w-4xl text-center">

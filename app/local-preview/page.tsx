@@ -18,6 +18,7 @@ import {
   previewProfile,
   previewTitle,
 } from "@/lib/local-preview/fixture";
+import { monitorContent } from "@/lib/monitor/content";
 
 export const metadata: Metadata = {
   title: previewTitle,
@@ -39,9 +40,16 @@ export default async function LocalPreviewPage({
 
   return (
     <div className="ph-no-autocapture flex min-h-dvh flex-col">
+      <a
+        href="#monitor-content"
+        className="sr-only z-30 rounded-md bg-background p-3 text-primary focus:fixed focus:top-2 focus:left-4 focus:not-sr-only focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        {monitorContent.skipToNews}
+      </a>
       <SiteHeader signedIn={false} />
       <main
         id="monitor-content"
+        tabIndex={-1}
         className="mx-auto w-[min(90%,1800px)] flex-1 space-y-6 py-8 wrap-anywhere"
       >
         <Alert>

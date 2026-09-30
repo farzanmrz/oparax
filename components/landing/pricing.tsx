@@ -15,7 +15,11 @@ import { landingContent } from "@/lib/landing/content";
 export function Pricing() {
   const copy = landingContent.pricing;
   return (
-    <section id="pricing" aria-labelledby="pricing-title" className="flex flex-col gap-6">
+    <section
+      id="pricing"
+      aria-labelledby="pricing-title"
+      className="flex scroll-mt-28 flex-col gap-6 desk:scroll-mt-16"
+    >
       <div className="flex flex-col gap-2">
         <h2 id="pricing-title" className="font-heading text-2xl font-semibold">
           {copy.title}

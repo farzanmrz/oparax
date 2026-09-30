@@ -30,7 +30,11 @@ function PlatformIcon({ name }: { name: PlatformIconName }) {
 export function Platforms() {
   const copy = landingContent.platforms;
   return (
-    <section id="roadmap" aria-labelledby="roadmap-title" className="flex flex-col gap-6">
+    <section
+      id="roadmap"
+      aria-labelledby="roadmap-title"
+      className="flex scroll-mt-28 flex-col gap-6 desk:scroll-mt-16"
+    >
       <h2 id="roadmap-title" className="font-heading text-2xl font-semibold text-balance">
         {copy.title}
       </h2>
