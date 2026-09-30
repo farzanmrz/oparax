@@ -9,7 +9,7 @@ description: >-
   decides what to build, what passed, or what to merge.
 argument-hint: "<issue #> [status|stop|resume]"
 allowed-tools: Bash(python3 *)
-model: sonnet
+model: claude-sonnet-5-5
 disable-model-invocation: true
 ---
 

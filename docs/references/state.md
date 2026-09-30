@@ -1,12 +1,14 @@
 # Where things stand
 
-Read this first in any new session, before the roadmap. Updated September 28, 2026. This is the handoff: where things are, what is open, and how to explain things to the owner. Every decision is one line in [decisions.md](decisions.md); every cost number is in [cogs.md](cogs.md); every account and key is in [setup.md](../setup.md); the repository's layout is in [repo.md](repo.md); history is in git.
+Read this first in any new session, before the roadmap. Updated September 29, 2026. This is the handoff: where things are, what is open, and how to explain things to the owner. Every decision is one line in [decisions.md](decisions.md); every cost number is in [cogs.md](cogs.md); every account and key is in [setup.md](../setup.md); the repository's layout is in [repo.md](repo.md); history is in git.
 
 ## How the owner wants to be answered
 
 Plain product terms, a reason with every recommendation, no em dashes, nothing invented and presented as his decision, whole-picture answers rather than a literal answer to one sentence, and no new documents for him to read (files are for the agents; he reads chat).
 
 ## Where things are
+
+- **Review model pins, September 29:** Sol is now 6.1; Claude CLI lanes are pinned to Opus 5.5, Fable 5.1 and Sonnet 5.5. Council critique runs ten CLI reviewers from either host, including both Codex models and all three Claude models; default advice keeps its selection and host-vendor exclusion. Feature, amend and QC run eleven CLI reviewers (the council critique set plus Muse), with no separate Opus subagent. Automatic QC coordination is Sonnet 5.5 at medium effort. The shared registry remains `~/.agents/skills/council/scripts/providers.py`; the new commands were checked offline without running paid reviews.
 
 - **Design tooling setup, September 28:** the owner authorized setting up the official shadcn skill and Studio/React Bits integration, then choosing a rendered design. Both agent clients have the global official skill and shadcn/Studio MCP configuration. Project catalogs and stage guidance are in `.claude/skills/feature/references/design-tooling.md`. No new template, font, or visual direction has been approved, no paid license purchased, and product UI/theme files were not changed by this setup. The owner disputes the JetBrains Mono attribution; the existing design file is not evidence resolving that dispute.
 

@@ -21,6 +21,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, str(Path.home() / '.agents/skills/council/scripts'))
+from providers import MODELS  # noqa: E402
+
 REPO = Path(__file__).resolve().parents[2]
 LAUNCHER = REPO / '.claude/scripts/build-launch.py'
 WORKTREES = Path.home() / 'Desktop/repos/oparax-wt'
@@ -36,7 +39,8 @@ MAX_TIMEOUTS = 3
 # No --permission-mode: the default mode with these tools pre-allowed and prompts answered by
 # nobody is the headless setting that needs no human. --bare, --safe-mode and
 # --disable-slash-commands would drop the repo's skills, so none of them is passed.
-QC_FLAGS = ['--output-format', 'json', '--permission-prompts', 'none',
+QC_FLAGS = ['--model', MODELS['sonnet'][1], '--effort', 'medium',
+            '--output-format', 'json', '--permission-prompts', 'none',
             '--allowedTools', 'Bash', 'Read', 'Edit', 'Write', 'Grep', 'Glob',
             # The owner's settings allow every git and gh command; a headless QC may commit its gates
             # fix but never push, merge, move the branch or touch GitHub. The script does those.

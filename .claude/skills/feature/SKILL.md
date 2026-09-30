@@ -7,15 +7,14 @@ description: >-
   owner-facing plan with independent Fable and Astra input, load the skill
   bundles and check the plan against them, agree the plan with the owner,
   write the detailed plan as a component table plus one slice per component
-  with independent Fable and Astra drafts, run the eight-lane critique plus
-  the Claude Opus lane directly in this session plus adjudication, and on
+  with independent Fable and Astra drafts, run the eleven-lane CLI critique directly in this session plus adjudication, and on
   approval create the GitHub issue, cut the branch, write the plan files
   and launch /run-plan <N>, which records the approved plan's hash. Use when the user
   says /feature, "let's plan a feature", or brings a new capability idea to
   talk through. Bugs use it too, starting from the repro. Not for building
   (/run-plan <N> comes after this skill ends).
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Bash(python3 *) Skill Read Write Edit WebFetch WebSearch Monitor
-model: fable
+model: claude-fable-5-1
 disable-model-invocation: true
 ---
 
@@ -25,7 +24,7 @@ One planning session for the whole product (owner, September 28: planning is ove
 
 ## Fable and Astra participation
 
-Read [the pair-planning protocol](references/pair-planning.md) before step 1. Use `.claude/scripts/feature-pair.py` for sealed independent drafts, tracked execution and exact-session replies. Fable and Astra (`gpt-6-astra`) are the pair throughout planning, at high effort; Fable hosts in Claude Code, Astra hosts in Codex. Both write independently before exchanging, challenge each other's drafts, and verify one combined result. Record `pair-model: astra` and pass `--pair-model astra` on every start. An explicit owner request for Sol selects `gpt-6-sol` for scope, plain planning and adjudication; detail and substantial redesign still require Astra. The application controls the host model; never label a different model as Astra.
+Read [the pair-planning protocol](references/pair-planning.md) before step 1. Use `.claude/scripts/feature-pair.py` for sealed independent drafts, tracked execution and exact-session replies. Fable and Astra (`gpt-6-astra`) are the pair throughout planning, at high effort; Fable hosts in Claude Code, Astra hosts in Codex. Both write independently before exchanging, challenge each other's drafts, and verify one combined result. Record `pair-model: astra` and pass `--pair-model astra` on every start. An explicit owner request for Sol selects `gpt-6.1-sol` for scope, plain planning and adjudication; detail and substantial redesign still require Astra. The application controls the host model; never label a different model as Astra.
 
 The same protocol applies to `/amend`, scoped to an addition on its existing issue and branch; its formats stay in the amend skill. Build model selection is separate from the planning pair: every build `/run-plan` launches runs on Astra High (owner, September 24).
 
@@ -172,7 +171,7 @@ Once the detailed plan is complete, the session itself runs the critique with th
    - Two skills consult lines, both built from the plan's `Skills:` line: one for the Codex lanes (Sol and Astra), mapping each bare name to Codex's form (`$vercel:<name>`, `$supabase:<name>`, `$posthog:<name>`, `$stripe:<name>`, and `$<name>` for the global skills `shadcn`, `frontend-design`, `web-design-guidelines`, `accessibility`, `beautiful-shadows`, `emil-design-eng`, `design-review` and `ai-elements`), phrased "Codex lanes: consult these skills where a finding rests on a rule they cover, and cite the rule: ..."; one for grok, agy and the Cursor lanes, bare names, phrased "Grok, agy and Cursor lanes: these are rules to weigh, not skills you can invoke: ...".
    - The findings output contract: return ONLY a JSON array of finding objects, each shaped exactly `{"severity": "blocking|important|minor", "target": string, "critique": string, "suggestion": string or null, "evidence": string}`, as the final message and nothing else. `target` names the file (`shared.md`, `<id>.md`, the table) and the part. `evidence` is the investigation behind the finding: the exact file:line trail the lane verified, and for anything about execution, who runs it, when, in which request or process, and what data is in scope. A `suggestion` states inside `evidence` whether it was verified against the code or is an unverified idea. (Added 2026-08-23: a lane's compressed suggestion was adopted at adjudication while another lane's discarded detail held the fact that killed it.)
 
-2. Follow [the shared fixed review-lane procedure](references/review-lanes.md) with the `critique` profile and `.feature/lanes/critique.brief`. It starts exactly eight fixed high-effort lanes plus the Claude Opus lane, collects each with bounded waits, extracts only its findings JSON, and permits at most one bounded resume where the runner reports a real resume ID. As each lane becomes terminal, write its disposition lines into `.feature/critique-dispositions.md`, marked with the lane name. Do not edit any plan file yet: the plan is edited exactly once, after the last lane is in.
+2. Follow [the shared fixed review-lane procedure](references/review-lanes.md) with the `critique` profile and `.feature/lanes/critique.brief`. It starts exactly eleven fixed high-effort CLI lanes, collects each with bounded waits, extracts only its findings JSON, and permits at most one bounded resume where the runner reports a real resume ID. As each lane becomes terminal, write its disposition lines into `.feature/critique-dispositions.md`, marked with the lane name. Do not edit any plan file yet: the plan is edited exactly once, after the last lane is in.
 
 3. Fable and the selected partner jointly adjudicate with the independent adjudication round and exchange in the pair protocol. The host's accumulated dispositions are its private first answer, not final decisions; the peer gets the entire findings corpus and the same plan files, but not those dispositions, until exchange. Every finding gets a disposition before anything is edited, and the written record is what the owner can ask to see. Rules:
    - Read `<run-dir>/<lane>.findings.json` only after the original or its one resume reports `OK` or `NO_FINDINGS`. Never open raw output. The runner's terminal status classifies the lane:

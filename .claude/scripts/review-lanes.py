@@ -30,6 +30,9 @@ CRITIQUE = (
     ("cursor-kimi", "kimi"),
     ("cursor-glm", "glm"),
     ("cursor-muse", "muse"),
+    ("claude-opus", "opus"),
+    ("claude-fable", "fable"),
+    ("claude-sonnet", "sonnet"),
 )
 PROFILES = {
     "critique": CRITIQUE,
