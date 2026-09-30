@@ -45,7 +45,7 @@ export const authContent = {
   resetInvalid: "Your password reset link is invalid or has expired. Please request a new one.",
   passwordUpdated: "Password updated successfully. Please log in.",
   confirmationFailed: "This confirmation link could not be used. Try signing up again or log in.",
-  signinFailed: "Unable to sign in. Please try again.",
+  signinFailed: "We could not sign you in. Try again.",
   genericError: "Something went wrong. Please try again.",
   invalidCredentials: "Invalid email or password.",
   expiredSession: "Your session has expired. Please log in again.",
