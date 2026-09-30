@@ -47,7 +47,7 @@ export async function refreshXBalance(previous: XBalance = unknownBalance): Prom
 
 export async function guards(): Promise<{
   killSwitch: boolean;
-  anonBuildsOpen: boolean;
+  buildsOpen: boolean;
   trialPollingOpen: boolean;
   balanceEstimate: number | null;
 }> {
@@ -55,7 +55,7 @@ export async function guards(): Promise<{
   if (error) throw error;
   const config = Object.fromEntries(data.map((row) => [row.key, row.value]));
   const killSwitch = z.boolean().catch(true).parse(config.kill_switch);
-  const budget = z.number().finite().nonnegative().catch(0).parse(config.anon_budget_usd);
+  const budget = z.number().finite().nonnegative().catch(0).parse(config.build_budget_usd);
   let balance = balanceSchema.catch(unknownBalance).parse(config.x_balance);
   const stale =
     balance.status !== "ok" ||
@@ -81,6 +81,6 @@ export async function guards(): Promise<{
     killSwitch,
     balanceEstimate,
     trialPollingOpen,
-    anonBuildsOpen: trialPollingOpen && reservations + 3 <= budget,
+    buildsOpen: trialPollingOpen && reservations + 3 <= budget,
   };
 }

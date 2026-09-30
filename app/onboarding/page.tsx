@@ -46,7 +46,7 @@ export default async function OnboardingPage({
       <AuthShell title={onboardingContent.title}>
         <SetupForm
           verifiedHandle={xIdentity.status === "ok" ? xIdentity.displayHandle : null}
-          buildsOpen={!guard.killSwitch && guard.anonBuildsOpen}
+          buildsOpen={!guard.killSwitch && guard.buildsOpen}
           error={code}
         />
       </AuthShell>

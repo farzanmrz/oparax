@@ -3,6 +3,7 @@
 import { useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { z } from "zod";
 import {
   ChainOfThought,
   ChainOfThoughtContent,
@@ -14,6 +15,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { monitorContent as copy } from "@/lib/monitor/content";
 import type { BuildLog, Profile } from "@/lib/monitor/read";
+import { isReservedHandle, normalizeValidHandle } from "@/lib/x/handle";
+
+const retryResult = z.object({ ok: z.literal(true), redirect: z.string() });
+
+function safeRetryDestination(raw: string): boolean {
+  if (raw === "/onboarding?error=build_unavailable") return true;
+  if (!raw.startsWith("/") || raw.slice(1).includes("/")) return false;
+  const handle = normalizeValidHandle(raw.slice(1));
+  return handle !== null && handle === raw.slice(1) && !isReservedHandle(handle);
+}
 
 export function Building({
   monitorId,
@@ -49,8 +60,18 @@ export function Building({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ monitorId }),
       });
-      if (!response.ok) setError(true);
-      else router.refresh();
+      if (!response.ok) {
+        setError(true);
+      } else {
+        const result = retryResult.safeParse(await response.json());
+        if (!result.success || !safeRetryDestination(result.data.redirect)) {
+          setError(true);
+        } else if (result.data.redirect === `/${handle}`) {
+          router.refresh();
+        } else {
+          router.push(result.data.redirect);
+        }
+      }
     } catch {
       setError(true);
     } finally {
