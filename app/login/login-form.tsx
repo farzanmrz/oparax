@@ -21,7 +21,7 @@ export function LoginForm({ next }: { next?: string }) {
     {},
   );
   const [twitterState, twitterAction, twitterPending] = useActionState(
-    signInWithProvider.bind(null, "twitter", next),
+    signInWithProvider.bind(null, "x", next),
     {},
   );
   return (

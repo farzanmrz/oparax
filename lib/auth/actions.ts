@@ -239,7 +239,7 @@ export async function updatePasswordAction(
 }
 
 export async function signInWithProvider(
-  provider: "google" | "twitter",
+  provider: "google" | "x",
   next: string | undefined,
   _previous: AuthFormState,
   _formData: FormData,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { authContent } from "@/lib/auth/content";
+import { isReservedHandle, normalizeValidHandle } from "@/lib/x/handle";
 
 interface ValidationResult {
   email: string;
@@ -151,4 +152,52 @@ export function safeNextPath(value: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+export function safeAuthDestination(value: unknown): string | null {
+  const safe = safeNextPath(value);
+  if (!safe) return null;
+
+  const url = new URL(safe, "https://oparax.invalid");
+  if (url.pathname === "/" || url.pathname === "/terms" || url.pathname === "/privacy") {
+    return url.pathname;
+  }
+
+  if (url.pathname === "/checkout/return") {
+    const sessionId = url.searchParams.get("session_id");
+    return sessionId && /^cs_[A-Za-z0-9_]+$/.test(sessionId)
+      ? `/checkout/return?session_id=${encodeURIComponent(sessionId)}`
+      : null;
+  }
+
+  const segments = url.pathname.split("/").slice(1);
+  const handle = segments[0];
+  if (!handle || normalizeValidHandle(handle) !== handle || isReservedHandle(handle)) return null;
+
+  if (
+    segments.length === 2 &&
+    segments[1] !== "settings" &&
+    !z.uuid().safeParse(segments[1]).success
+  ) {
+    return null;
+  }
+  if (segments.length > 2) return null;
+
+  const path = url.pathname;
+  if (segments[1] === "settings") return path;
+
+  const query = new URLSearchParams();
+  const view = url.searchParams.get("view");
+  if (view === "stories" || view === "articles") query.set("view", view);
+  const before = url.searchParams.get("before");
+  if (before && z.iso.datetime({ offset: true }).safeParse(before).success) {
+    query.set("before", before);
+    const beforeId = url.searchParams.get("beforeId");
+    const validBeforeId =
+      view === "articles"
+        ? /^(?:[a-f0-9]{40}|x:\d+)$/.test(beforeId ?? "")
+        : z.uuid().safeParse(beforeId).success;
+    if (beforeId && validBeforeId) query.set("beforeId", beforeId);
+  }
+  return query.size ? `${path}?${query}` : path;
 }

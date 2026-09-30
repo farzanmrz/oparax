@@ -4,26 +4,18 @@ import { after } from "next/server";
 import { z } from "zod";
 import { track } from "@/lib/analytics/events";
 import { authContent } from "@/lib/auth/content";
+import { readAuthContext } from "@/lib/auth/identity";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { safeNextPath } from "@/lib/validation";
+import { safeAuthDestination, safeNextPath } from "@/lib/validation";
 
-export const authProviderSchema = z.enum(["google", "twitter"]);
+export const authProviderSchema = z.enum(["google", "x"]);
 
 export async function signedInDestination(next: unknown): Promise<string> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, monitor } = await readAuthContext();
   if (!user) return "/login";
-  const { data: monitor, error } = await supabase
-    .from("monitors")
-    .select("handle")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (error) throw error;
-  if (!monitor) return "/?noagent=1";
-  return safeNextPath(next) ?? `/${monitor.handle}`;
+  if (!monitor) return "/onboarding";
+  return safeAuthDestination(next) ?? safeAuthDestination(`/${monitor.handle}`) ?? "/";
 }
 
 export async function requestSigninLink(email: string, next: unknown, origin: string) {
