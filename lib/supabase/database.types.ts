@@ -303,16 +303,25 @@ export type Database = {
           beat: string | null;
           created_at: string;
           handle: string;
+          handle_source: string;
+          id: string;
+          user_id: string | null;
         };
         Insert: {
           beat?: string | null;
           created_at?: string;
           handle: string;
+          handle_source?: string;
+          id?: string;
+          user_id?: string | null;
         };
         Update: {
           beat?: string | null;
           created_at?: string;
           handle?: string;
+          handle_source?: string;
+          id?: string;
+          user_id?: string | null;
         };
         Relationships: [];
       };
@@ -549,8 +558,6 @@ export type Database = {
           alert_hour: number;
           alert_timezone: string | null;
           beat: string;
-          bot_code: string | null;
-          bot_code_expires_at: string | null;
           bot_connected_at: string | null;
           bot_state: string;
           brief: Json | null;
@@ -564,7 +571,6 @@ export type Database = {
           build_state: Json | null;
           build_step: number;
           build_tries: number;
-          built_by: string | null;
           cadence: string;
           cancel_at_period_end: boolean;
           checkout_opened_at: string | null;
@@ -577,7 +583,6 @@ export type Database = {
           id: string;
           last_alert_at: string | null;
           last_invoice_id: string | null;
-          last_viewed_at: string | null;
           paid_through: string | null;
           pool_limit: number;
           pool_period_start: string | null;
@@ -591,15 +596,13 @@ export type Database = {
           tier: string;
           trial_started_at: string | null;
           updated_at: string;
-          user_id: string | null;
+          user_id: string;
           x_user_id: string | null;
         };
         Insert: {
           alert_hour?: number;
           alert_timezone?: string | null;
           beat: string;
-          bot_code?: string | null;
-          bot_code_expires_at?: string | null;
           bot_connected_at?: string | null;
           bot_state?: string;
           brief?: Json | null;
@@ -613,7 +616,6 @@ export type Database = {
           build_state?: Json | null;
           build_step?: number;
           build_tries?: number;
-          built_by?: string | null;
           cadence?: string;
           cancel_at_period_end?: boolean;
           checkout_opened_at?: string | null;
@@ -626,7 +628,6 @@ export type Database = {
           id?: string;
           last_alert_at?: string | null;
           last_invoice_id?: string | null;
-          last_viewed_at?: string | null;
           paid_through?: string | null;
           pool_limit?: number;
           pool_period_start?: string | null;
@@ -640,15 +641,13 @@ export type Database = {
           tier?: string;
           trial_started_at?: string | null;
           updated_at?: string;
-          user_id?: string | null;
+          user_id: string;
           x_user_id?: string | null;
         };
         Update: {
           alert_hour?: number;
           alert_timezone?: string | null;
           beat?: string;
-          bot_code?: string | null;
-          bot_code_expires_at?: string | null;
           bot_connected_at?: string | null;
           bot_state?: string;
           brief?: Json | null;
@@ -662,7 +661,6 @@ export type Database = {
           build_state?: Json | null;
           build_step?: number;
           build_tries?: number;
-          built_by?: string | null;
           cadence?: string;
           cancel_at_period_end?: boolean;
           checkout_opened_at?: string | null;
@@ -675,7 +673,6 @@ export type Database = {
           id?: string;
           last_alert_at?: string | null;
           last_invoice_id?: string | null;
-          last_viewed_at?: string | null;
           paid_through?: string | null;
           pool_limit?: number;
           pool_period_start?: string | null;
@@ -689,7 +686,7 @@ export type Database = {
           tier?: string;
           trial_started_at?: string | null;
           updated_at?: string;
-          user_id?: string | null;
+          user_id?: string;
           x_user_id?: string | null;
         };
         Relationships: [];
@@ -944,6 +941,34 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admit_build: {
+        Args: {
+          p_alert_timezone: string;
+          p_beat: string;
+          p_display_handle: string;
+          p_handle: string;
+          p_lease_seconds: number;
+          p_run_id: string;
+          p_user_id: string;
+          p_x_user_id?: string;
+        };
+        Returns: {
+          handle: string;
+          monitor_id: string;
+          outcome: string;
+        }[];
+      };
+      apply_bot_command: {
+        Args: {
+          p_command: string;
+          p_event_id: string;
+          p_sender_x_user_id: string;
+        };
+        Returns: {
+          changed: boolean;
+          monitor_id: string;
+        }[];
+      };
       attach_sightings: {
         Args: {
           p_monitor_ids: string[];
@@ -961,6 +986,29 @@ export type Database = {
         Args: { p_job: string; p_run_id: string; p_ttl_seconds: number };
         Returns: boolean;
       };
+      complete_build: {
+        Args: {
+          p_accounts: Json;
+          p_brief: Json;
+          p_monitor: string;
+          p_monitor_sources: Json;
+          p_new_sources: Json;
+          p_profile: Json;
+          p_run_id: string;
+          p_x_user_id: string;
+        };
+        Returns: string;
+      };
+      confirm_build_identity: {
+        Args: {
+          p_build_state: Json;
+          p_display_handle: string;
+          p_monitor: string;
+          p_run_id: string;
+          p_x_user_id: string;
+        };
+        Returns: string;
+      };
       debit_posts: {
         Args: { p_item_ids: string[]; p_monitor: string };
         Returns: {
@@ -969,14 +1017,17 @@ export type Database = {
           remaining: number;
         }[];
       };
-      release_build: { Args: { p_monitor: string }; Returns: undefined };
+      expire_unconfirmed_build: {
+        Args: { p_monitor: string; p_run_id: string };
+        Returns: boolean;
+      };
+      release_build: {
+        Args: { p_monitor: string; p_run_id: string };
+        Returns: boolean;
+      };
       release_run: {
         Args: { p_job: string; p_run_id: string };
         Returns: undefined;
-      };
-      reserve_build: {
-        Args: { p_monitor: string; p_usd: number };
-        Returns: boolean;
       };
       reserve_cost: {
         Args: {
