@@ -60,7 +60,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
     <div className="flex min-h-dvh flex-col">
       <a
         href="#monitor-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-1 focus:left-4 focus:z-50 focus:bg-background focus:p-3"
+        className="sr-only rounded-md focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus:z-50 focus:bg-background focus:p-3 focus-visible:ring-2 focus-visible:ring-ring"
       >
         {copy.skipToNews}
       </a>
@@ -68,6 +68,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
       {isOwner ? <PostHogUserContext id={viewer.userId} /> : null}
       <main
         id="monitor-content"
+        tabIndex={-1}
         className="mx-auto w-[min(90%,1800px)] flex-1 space-y-6 py-8 wrap-anywhere"
       >
         <AgentHeader

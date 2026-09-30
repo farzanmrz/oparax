@@ -1,6 +1,7 @@
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { authContent } from "@/lib/auth/content";
 export function AuthShell({
   title,
   subtitle,
@@ -14,8 +15,18 @@ export function AuthShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      <a
+        href="#auth-content"
+        className="sr-only rounded-md focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus:z-50 focus:bg-background focus:p-3 focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {authContent.skipToContent}
+      </a>
       <SiteHeader signedIn={false} />
-      <main className="flex flex-1 items-center justify-center px-4 py-16">
+      <main
+        id="auth-content"
+        tabIndex={-1}
+        className="flex flex-1 items-center justify-center px-4 py-16"
+      >
         <div className="w-full max-w-sm">
           <Card>
             <CardHeader>

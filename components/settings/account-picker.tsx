@@ -42,10 +42,10 @@ function AccountRow({
   );
   return (
     <TableRow>
-      <TableCell className="whitespace-normal">
+      <TableHead scope="row" className="whitespace-normal text-foreground">
         <p className="font-mono">{copy.accounts.handle(account.handle)}</p>
         <p className="break-words text-muted-foreground">{account.name}</p>
-      </TableCell>
+      </TableHead>
       <TableCell>
         <div className="flex min-h-11 items-center gap-3 desk:min-h-6">
           <Checkbox
@@ -156,7 +156,7 @@ export function AccountPicker({
         ) : (
           <p className="text-muted-foreground">{copy.accounts.empty}</p>
         )}
-        <form action={action} className="space-y-3">
+        <form action={action} className="space-y-3" aria-busy={pending}>
           <div className="flex flex-wrap gap-3">
             <Button
               type="submit"

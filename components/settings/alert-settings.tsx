@@ -76,7 +76,7 @@ export function AlertSettings({
         {cadence === "every_15m" && (
           <p className="text-muted-foreground">{copy.alerts.frequentNote}</p>
         )}
-        <form action={action} className="space-y-4">
+        <form action={action} className="space-y-4" aria-busy={pending}>
           <div className="grid gap-4 desk:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor={`${id}-hour`}>{copy.alerts.hour}</Label>

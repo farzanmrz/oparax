@@ -1,4 +1,5 @@
 export const authContent = {
+  skipToContent: "Skip to content",
   logOut: "Log out",
   pending: "Signing out",
   error: "Could not sign out. Try again.",

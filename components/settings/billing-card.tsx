@@ -71,7 +71,7 @@ export function BillingCard({
         <form ref={portalForm} action="/api/stripe/portal" method="post" hidden>
           <input type="hidden" name="monitorId" value={monitorId} />
         </form>
-        <form action={action} className="space-y-3">
+        <form action={action} className="space-y-3" aria-busy={pending}>
           <Button type="submit" disabled={!available || pending} className="min-h-11 desk:min-h-7">
             {pending ? copy.billing.opening : copy.billing.manage}
           </Button>

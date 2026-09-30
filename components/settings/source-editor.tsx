@@ -54,7 +54,9 @@ function SourceRow({
   );
   return (
     <TableRow>
-      <TableCell className="whitespace-normal font-medium break-words">{source.name}</TableCell>
+      <TableHead scope="row" className="whitespace-normal font-medium break-words text-foreground">
+        {source.name}
+      </TableHead>
       <TableCell className="whitespace-normal break-words">
         {source.focus || copy.sources.noFocus}
       </TableCell>
@@ -95,7 +97,7 @@ function SourceRow({
               <AlertDialogTitle className="font-bold">{copy.sources.removeTitle}</AlertDialogTitle>
               <AlertDialogDescription>{copy.sources.removeDescription}</AlertDialogDescription>
             </AlertDialogHeader>
-            <form action={remove} className="space-y-4">
+            <form action={remove} className="space-y-4" aria-busy={removePending}>
               {removeState && !removeState.ok && (
                 <p role="alert" className="text-destructive">
                   {removeState.error}
@@ -168,7 +170,7 @@ export function SourceEditor({
         ) : (
           <p className="text-muted-foreground">{copy.sources.empty}</p>
         )}
-        <form action={action} className="space-y-3">
+        <form action={action} className="space-y-3" aria-busy={pending}>
           <Label htmlFor={id}>{copy.sources.url}</Label>
           <div className="flex flex-col gap-3 desk:flex-row">
             <Input

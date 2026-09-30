@@ -90,14 +90,16 @@ function RepoRow({
   );
   return (
     <TableRow>
-      <TableCell className="whitespace-normal break-words font-mono">{repo.repo}</TableCell>
+      <TableHead scope="row" className="whitespace-normal break-words font-mono text-foreground">
+        {repo.repo}
+      </TableHead>
       <TableCell className="font-mono tabular-nums">
         {repo.stars === null
           ? copy.digests.noStars
           : new Intl.NumberFormat("en").format(repo.stars)}
       </TableCell>
       <TableCell>
-        <form action={action} className="space-y-2">
+        <form action={action} className="space-y-2" aria-busy={pending}>
           <Label htmlFor={id} className="sr-only">
             {copy.digests.thresholdLabel(repo.repo)}
           </Label>
@@ -158,7 +160,7 @@ function RepoRow({
               <AlertDialogTitle className="font-bold">{copy.digests.removeTitle}</AlertDialogTitle>
               <AlertDialogDescription>{copy.digests.removeDescription}</AlertDialogDescription>
             </AlertDialogHeader>
-            <form action={remove} className="space-y-3">
+            <form action={remove} className="space-y-3" aria-busy={removing}>
               {removeState && !removeState.ok && (
                 <p role="alert" className="text-destructive">
                   {removeState.error}

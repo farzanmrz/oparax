@@ -185,7 +185,7 @@ export function SetupForm({
                   placeholder={onboardingContent.handlePlaceholder}
                   value={handle}
                   onChange={(event) => setHandle(event.target.value)}
-                  aria-describedby="handle-help"
+                  aria-describedby={handleInvalid ? "handle-help setup-error" : "handle-help"}
                   aria-invalid={handleInvalid || undefined}
                   required
                 />
@@ -205,7 +205,7 @@ export function SetupForm({
               placeholder={onboardingContent.beatPlaceholder}
               value={beat}
               onChange={(event) => setBeat(event.target.value)}
-              aria-describedby="beat-count"
+              aria-describedby={beatInvalid ? "beat-count setup-error" : "beat-count"}
               aria-invalid={beatInvalid || undefined}
               maxLength={300}
               required
@@ -217,9 +217,12 @@ export function SetupForm({
         </FieldGroup>
 
         {failure && failure.code !== "builds_unavailable" && (
-          <p role="alert" className="text-sm leading-relaxed text-destructive">
+          <p id="setup-error" role="alert" className="text-sm leading-relaxed text-destructive">
             {failure.code === "signed_out" ? (
-              <Link href="/login" className="underline underline-offset-4">
+              <Link
+                href="/login"
+                className="inline-flex min-h-11 items-center underline underline-offset-4 desk:min-h-6"
+              >
                 {onboardingContent.signedOut}
               </Link>
             ) : (
