@@ -89,7 +89,7 @@ export const PostSchema = z.object({
   edit_ids: z.array(z.string()).optional(),
 });
 export const ProfileSchema = z.object({
-  id: z.string(),
+  id: z.string().regex(/^\d+$/),
   handle: z.string(),
   name: z.string(),
   bio: z.string(),
@@ -107,7 +107,7 @@ export const SearchSchema = z.object({
 const scoresSchema = z.record(z.string(), z.number().min(0).max(1));
 export const BuildStateSchema = z.object({
   profile: ProfileSchema.optional(),
-  x_user_id: z.string().optional(),
+  x_user_id: z.string().regex(/^\d+$/).optional(),
   pinnedId: z.string().optional(),
   profileComplete: z.boolean().optional(),
   posts: z.array(PostSchema).optional(),
