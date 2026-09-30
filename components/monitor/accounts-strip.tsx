@@ -6,7 +6,7 @@ import { normalizeValidHandle } from "@/lib/x/handle";
 export function AccountsStrip({ accounts }: { accounts: MonitorFeed["accounts"] }) {
   return (
     <section aria-labelledby="accounts-heading" className="space-y-4">
-      <h2 id="accounts-heading" className="font-heading text-xl font-bold">
+      <h2 id="accounts-heading" className="font-heading text-xl font-semibold">
         {copy.accounts}
       </h2>
       {!accounts.length ? <p className="text-muted-foreground">{copy.noAccounts}</p> : null}
@@ -19,7 +19,7 @@ export function AccountsStrip({ accounts }: { accounts: MonitorFeed["accounts"] 
                 <Badge variant="outline" asChild>
                   <a
                     href={handle ? `https://x.com/${handle}` : undefined}
-                    className="min-h-11 font-mono desk:min-h-6"
+                    className="min-h-11 desk:min-h-6"
                   >
                     @{account.handle}
                   </a>

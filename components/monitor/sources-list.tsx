@@ -5,7 +5,7 @@ export function SourcesList({ sources }: { sources: MonitorFeed["sources"] }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
     <section aria-labelledby="sources-heading" className="space-y-4">
-      <h2 id="sources-heading" className="font-heading text-xl font-bold">
+      <h2 id="sources-heading" className="font-heading text-xl font-semibold">
         {copy.sources}
       </h2>
       {!sources.length ? <p className="text-muted-foreground">{copy.noSources}</p> : null}
@@ -15,7 +15,7 @@ export function SourcesList({ sources }: { sources: MonitorFeed["sources"] }) {
           const href = safeWebUrl(source.target);
           return (
             <li key={source_id} className="space-y-1">
-              <h3 className="font-heading font-bold">
+              <h3 className="font-heading font-semibold">
                 {href ? (
                   <a
                     href={href}

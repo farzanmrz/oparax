@@ -36,7 +36,7 @@ export function StoryCard({
     >
       {!compact ? <NewsImage src={card?.image ?? story.image} /> : null}
       <CardHeader className="gap-2">
-        <h3 className="font-heading text-xl font-bold">
+        <h3 className="font-heading text-xl font-semibold">
           <Link
             href={`/${handle}/${story.id}`}
             className="inline-flex min-h-11 items-center underline-offset-4 hover:underline desk:min-h-6"
@@ -44,7 +44,7 @@ export function StoryCard({
             {card?.headline || story.fallback_title || copy.unverified}
           </Link>
         </h3>
-        <time dateTime={story.last_changed_at} className="font-mono text-xs text-muted-foreground">
+        <time dateTime={story.last_changed_at} className="text-xs text-muted-foreground">
           {displayTime(story.last_changed_at)}
         </time>
       </CardHeader>

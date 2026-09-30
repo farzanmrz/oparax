@@ -15,7 +15,7 @@ export function DigestBlock({
   const shown = items.filter((item) => (item.kind === "product_hunt" ? productHunt : github));
   return (
     <section aria-labelledby="digests-heading" className="space-y-4">
-      <h2 id="digests-heading" className="font-heading text-xl font-bold">
+      <h2 id="digests-heading" className="font-heading text-xl font-semibold">
         {copy.digests}
       </h2>
       {!shown.length ? <p className="text-muted-foreground">{copy.digestEmpty}</p> : null}
@@ -27,7 +27,7 @@ export function DigestBlock({
               <Badge variant="outline">
                 {item.kind === "product_hunt" ? copy.productHunt : copy.github}
               </Badge>
-              <h3 className="font-heading font-bold">
+              <h3 className="font-heading font-semibold">
                 {href ? (
                   <a
                     href={href}
@@ -41,7 +41,7 @@ export function DigestBlock({
               </h3>
               <p>{item.description}</p>
               <p>{item.why_now}</p>
-              <time dateTime={item.created_at} className="font-mono text-xs text-muted-foreground">
+              <time dateTime={item.created_at} className="text-xs text-muted-foreground">
                 {displayTime(item.created_at)}
               </time>
             </li>

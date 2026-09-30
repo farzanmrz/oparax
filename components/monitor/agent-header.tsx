@@ -49,7 +49,8 @@ export function AgentHeader({
         <div className="min-w-0 flex-1 space-y-1">
           <h1 className="font-heading text-3xl font-normal">{copy.title(handle)}</h1>
           {profile ? <p>{profile.name}</p> : null}
-          <p className="font-mono text-sm text-muted-foreground">@{handle}</p>
+          <p className="text-sm text-muted-foreground">@{handle}</p>
+          <p className="text-sm text-muted-foreground">{copy.personalization(handle)}</p>
         </div>
         {canEdit ? (
           <Button variant="outline" asChild className="min-h-11 desk:min-h-6">
@@ -61,7 +62,7 @@ export function AgentHeader({
       {brief ? (
         <Card className={cardShadow}>
           <CardHeader>
-            <h2 className="font-heading text-lg font-bold">{copy.brief}</h2>
+            <h2 className="font-heading text-lg font-semibold">{copy.brief}</h2>
           </CardHeader>
           <CardContent>
             <p className="text-base">{brief.summary}</p>

@@ -66,15 +66,15 @@ export function ItemCard({ item, card }: DisplayItem) {
     <Card className={cardShadow}>
       <NewsImage src={card?.image ?? null} />
       <CardHeader className="gap-2">
-        <h3 className="font-heading text-xl font-bold">
+        <h3 className="font-heading text-xl font-semibold">
           {card?.headline || item.title || copy.unverified}
         </h3>
         {item.kind === "post" && item.author ? (
           <p>
-            {item.author.name} <span className="font-mono">@{item.author.handle}</span>
+            {item.author.name} <span>@{item.author.handle}</span>
           </p>
         ) : null}
-        <time dateTime={item.published_at} className="font-mono text-xs text-muted-foreground">
+        <time dateTime={item.published_at} className="text-xs text-muted-foreground">
           {displayTime(item.published_at)}
         </time>
       </CardHeader>

@@ -90,10 +90,10 @@ function RepoRow({
   );
   return (
     <TableRow>
-      <TableHead scope="row" className="whitespace-normal break-words font-mono text-foreground">
+      <TableHead scope="row" className="whitespace-normal break-words text-foreground">
         {repo.repo}
       </TableHead>
-      <TableCell className="font-mono tabular-nums">
+      <TableCell className="tabular-nums">
         {repo.stars === null
           ? copy.digests.noStars
           : new Intl.NumberFormat("en").format(repo.stars)}
@@ -119,7 +119,7 @@ function RepoRow({
               disabled={readOnly || pending || removing}
               aria-invalid={state?.ok === false}
               aria-describedby={`${id}-status`}
-              className="min-h-11 min-w-24 font-mono desk:min-h-7"
+              className="min-h-11 min-w-24 tabular-nums desk:min-h-7"
             />
             <Button
               type="submit"
@@ -270,7 +270,7 @@ export function DigestSwitches({
                 disabled={readOnly || pending}
                 aria-invalid={state?.ok === false}
                 aria-describedby={`${id}-status`}
-                className="min-h-11 font-mono desk:min-h-7"
+                className="min-h-11 desk:min-h-7"
               />
             </div>
             <div className="space-y-2">
@@ -290,7 +290,7 @@ export function DigestSwitches({
                 disabled={readOnly || pending}
                 aria-invalid={state?.ok === false}
                 aria-describedby={`${id}-status`}
-                className="min-h-11 font-mono desk:min-h-7"
+                className="min-h-11 tabular-nums desk:min-h-7"
               />
             </div>
           </div>

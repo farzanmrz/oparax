@@ -57,7 +57,7 @@ export function BillingCard({
             <dt className="font-semibold">{copy.billing.through}</dt>
             <dd>
               {paidThrough ? (
-                <time dateTime={paidThrough} className="font-mono">
+                <time dateTime={paidThrough} className="tabular-nums">
                   {new Intl.DateTimeFormat("en", { dateStyle: "long", timeZone: "UTC" }).format(
                     new Date(paidThrough),
                   )}

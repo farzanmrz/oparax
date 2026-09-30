@@ -43,7 +43,7 @@ function AccountRow({
   return (
     <TableRow>
       <TableHead scope="row" className="whitespace-normal text-foreground">
-        <p className="font-mono">{copy.accounts.handle(account.handle)}</p>
+        <p>{copy.accounts.handle(account.handle)}</p>
         <p className="break-words text-muted-foreground">{account.name}</p>
       </TableHead>
       <TableCell>
@@ -66,7 +66,7 @@ function AccountRow({
           </p>
         )}
       </TableCell>
-      <TableCell className="font-mono tabular-nums">
+      <TableCell className="tabular-nums">
         {account.posts_per_day === null
           ? copy.accounts.unknown
           : number.format(account.posts_per_day)}
@@ -116,7 +116,7 @@ export function AccountPicker({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="font-mono tabular-nums" aria-live="polite">
+        <p className="tabular-nums" aria-live="polite">
           {copy.accounts.summary(number.format(daily), number.format(used), number.format(limit))}
         </p>
         {watched.some((account) => account.posts_per_day === null) && (
