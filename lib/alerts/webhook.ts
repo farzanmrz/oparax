@@ -113,23 +113,13 @@ export async function receiveWebhook(raw: string): Promise<boolean> {
         .single();
       if (currentError) throw currentError;
       if (current.handled !== null) continue;
-      const result =
-        message.target.recipient_id === parsed.data.data.filter.user_id
-          ? await processCommand({
-              senderXUserId: message.sender_id,
-              recipientXUserId: message.target.recipient_id,
-              text: message.message_data.text,
-            })
-          : { handled: "ignored", monitorId: null };
-      const { error } = await db
-        .from("dm_events")
-        .update({
-          handled: result.handled,
-          monitor_id: result.monitorId,
-        })
-        .eq("event_id", event.id)
-        .is("handled", null);
-      if (error) throw error;
+      await processCommand({
+        eventId: event.id,
+        senderXUserId: message.sender_id,
+        recipientXUserId: message.target.recipient_id,
+        recipientMatchesFilter: message.target.recipient_id === parsed.data.data.filter.user_id,
+        text: message.message_data.text,
+      });
     } finally {
       await claim.release();
     }
