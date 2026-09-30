@@ -58,11 +58,11 @@ export const authContent = {
   passwordMismatch: "Passwords do not match.",
   differentPassword: "New password must be different from your current password.",
   checkoutTitle: "Your Oparax Agent",
-  checkoutPaid: (email: string) =>
-    `You are set. We emailed a sign-in link to ${email}. Your agent is running again.`,
-  checkoutPending: (email: string) =>
-    `Payment received. We are connecting your account; check ${email} in a minute.`,
-  checkoutUnpaid: "Your payment is still pending. Check again in a minute.",
+  checkoutPaid: "Payment confirmed. Your agent is running again.",
+  checkoutPending:
+    "Your payment is being confirmed. Check again later, or contact Oparax before paying again.",
+  checkoutUnpaid: "Payment has not been confirmed. Your agent's access has not changed.",
+  checkoutUnavailable: "We could not load this checkout. Return to your agent to continue.",
   checkAgain: "Check again",
   openAgent: "Open your agent",
 } as const;
