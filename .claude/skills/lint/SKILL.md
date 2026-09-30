@@ -9,7 +9,7 @@ argument-hint: "[base ref, default beta]"
 allowed-tools: Bash(git *) Bash(pnpm *)
 # sonnet, not inherit: this skill's own work is mechanical (run lint, group the
 # findings by file, apply, re-run); inherit ran that pass on the caller's dial.
-model: claude-sonnet-5-5
+model: sonnet
 ---
 
 # Lint resolve: clear the residual, safely

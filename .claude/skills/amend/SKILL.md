@@ -16,7 +16,7 @@ description: >-
   and /qc do those).
 argument-hint: "[issue # | plain description of the addition]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Bash(python3 *) Skill Read Write Edit WebFetch WebSearch Monitor
-model: claude-fable-5-1
+model: fable
 disable-model-invocation: true
 ---
 

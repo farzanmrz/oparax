@@ -9,7 +9,7 @@ The stage owns the review brief. The runner owns provider delivery and recovery:
 | Feature or amend critique | `critique` | `critique-codex-sol`, `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-glm`, `critique-cursor-muse`, `critique-claude-opus`, `critique-claude-fable`, `critique-claude-sonnet` |
 | QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-glm`, `qc-cursor-muse`, `qc-claude-opus`, `qc-claude-fable`, `qc-claude-sonnet` |
 
-The `critique` and `qc` profiles run the same eleven CLI lanes: Sol 6.1, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, Kimi K3, GLM 5.2, Muse Spark 1.3, Opus 5.5, Fable 5.1 and Sonnet 5.5 (owner, September 29). Every fixed lane runs at high effort. The same lanes run from Claude Code and Codex. Do not add or remove a runner lane. There is no separate Opus subagent.
+The `critique` and `qc` profiles run the same eleven CLI lanes: Sol 6.1, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, Kimi K3, GLM 5.2, Muse Spark 1.3, Opus, Fable and Sonnet (owner, September 29). Every fixed lane runs at high effort. The same lanes run from Claude Code and Codex. Do not add or remove a runner lane. There is no separate Opus subagent.
 
 ## Where the lanes run and what they may read
 
@@ -63,4 +63,4 @@ Collect and extract the resume lane in the same bounded way. A usable resume fin
 
 ## The Claude CLI lanes
 
-Opus, Fable and Sonnet run through the same runner as every other reviewer, using the pinned model ids in `providers.py` (owner, September 29). Each starts a separate `claude -p` process with only Read, Grep and Glob, no MCP servers or skills, and the same brief and findings format. The runner removes Claude nesting markers so these processes also launch from Claude Code. Collect `<profile>-claude-opus`, `<profile>-claude-fable` and `<profile>-claude-sonnet` with the same wait, extract and bounded resume procedure above. Never dispatch a second Claude review subagent.
+Opus, Fable and Sonnet run through the same runner as every other reviewer, using the `opus`, `fable` and `sonnet` aliases in `providers.py` (owner, September 29). Each starts a separate `claude -p` process with only Read, Grep and Glob, no MCP servers or skills, and the same brief and findings format. The runner removes Claude nesting markers so these processes also launch from Claude Code. Collect `<profile>-claude-opus`, `<profile>-claude-fable` and `<profile>-claude-sonnet` with the same wait, extract and bounded resume procedure above. Never dispatch a second Claude review subagent.
