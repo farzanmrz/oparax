@@ -14,7 +14,7 @@ description: >-
   talk through. Bugs use it too, starting from the repro. Not for building
   (/run-plan <N> comes after this skill ends).
 allowed-tools: Bash(git *) Bash(gh *) Bash(bash *) Bash(python3 *) Skill Read Write Edit WebFetch WebSearch Monitor
-model: fable
+model: inherit
 disable-model-invocation: true
 ---
 
