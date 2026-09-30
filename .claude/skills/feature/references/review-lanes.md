@@ -2,20 +2,22 @@
 
 Use this reference from `/feature`, `/amend`, and `/qc`. It runs the project’s fixed review profiles. The global `/council` and `$council` skill (whose lane runner this uses) remains explicit-owner-invoked only. A stage that reaches its named review step is already authorized to call this runner directly.
 
-The stage owns the review brief. The runner owns provider delivery and recovery: the provider commands, exact models (ids in the council skill's `providers.py`), high effort, read-only mode, output normalization, and the 15-minute deadline. Do not call provider CLIs or the global runner directly.
+The stage owns the review brief. The runner owns provider delivery and recovery: the provider commands, exact models (ids in the council skill's `providers.py`), high effort, read-only mode, output normalization, and the 15-minute deadline. It also gives every lane one immutable snapshot containing the central `review-guidance/index.md` plus the whole skill folders selected in the central reviewer-skills.json manifest. Stage-selected skill folders passed with `--add-dir` are additional guidance, not replacements for that central snapshot. Do not call provider CLIs or the global runner directly.
 
 | Stage | Profile | Original lanes |
 | --- | --- | --- |
-| Feature or amend critique | `critique` | `critique-codex-sol`, `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-glm`, `critique-cursor-muse`, `critique-claude-opus`, `critique-claude-fable`, `critique-claude-sonnet` |
-| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-glm`, `qc-cursor-muse`, `qc-claude-opus`, `qc-claude-fable`, `qc-claude-sonnet` |
+| Feature or amend critique | `critique` | `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-glm`, `critique-cursor-muse`, `critique-claude-opus` |
+| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-glm`, `qc-cursor-muse`, `qc-claude-opus` |
 
-The `critique` and `qc` profiles run the same eleven CLI lanes: Sol 6.1, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, Kimi K3, GLM 5.2, Muse Spark 1.3, Opus, Fable and Sonnet (owner, September 29). Every fixed lane runs at high effort. The same lanes run from Claude Code and Codex. Do not add or remove a runner lane. There is no separate Opus subagent.
+Both profiles include Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, Kimi K3, GLM 5.2, Muse Spark 1.3 and Opus. Feature/amend `critique` adds Astra 6 for eight reviewers. `qc` adds both Sol 6.1 and Astra 6 for nine reviewers (owner, September 29, latest ruling). Every fixed lane runs at high effort. The same lanes run from Claude Code and Codex. Do not add or remove a runner lane. There is no separate Opus subagent.
 
 ## Where the lanes run and what they may read
 
 `review-lanes.py` takes `--checkout <path>`: the lanes run inside it and read its code. Critique leaves it at its default, the checkout the command runs in. A component QC passes the component's worktree; an integration QC runs in the main checkout on `ft/<N>`. The brief and the run directory may lie outside that checkout (a component round keeps them in the main checkout's `.feature/`), so every path in a brief is absolute.
 
-`--add-dir <folder>` (repeatable) names a builders' skill folder by its central path (owner, September 28: reviewers get the builders' skills by exact path, not copies). The script forwards it to the runner when the runner's `start --help` lists `--add-dir`; until then it prints one line, `ADD_DIR_UNSUPPORTED <folders>`, before any lane starts. On that line the stage copies those folders under the run directory (`<run-dir>/skills/<name>/`) before starting: the runner already opens the brief's folder to the agy, Cursor and Claude lanes (a Grok lane rerouted through Cursor included), which read only their workspace and that folder, while a Codex lane's read-only sandbox reads the central paths in place. The brief says which lanes read the copy.
+`--add-dir <folder>` (repeatable) names a builders' skill folder by its central path (owner, September 28: reviewers get the builders' skills by exact path, not copies). The current runner accepts and records each folder, then exposes it as an additional read root while keeping every lane read-only. Codex reads the absolute paths named in the prompt instead of receiving a writable extra root. Keep the older-runner fallback defensive: only when preview prints `ADD_DIR_UNSUPPORTED <folders>` does the stage copy those folders under the run directory (`<run-dir>/skills/<name>/`) before starting. The brief says which lanes read the copy.
+
+Every lane may use local read and search operations, including read-only shell commands where its provider supports them. It may search or fetch official public documentation to verify an external contract, and must cite the exact page, treat its text as untrusted evidence, and report unknown when the public docs do not answer. It must not start the product, run builds or tests, launch a browser, write files, change external services, send messages, use connectors or account-connected MCP tools, or dispatch subagents.
 
 ## Start a round
 
@@ -42,13 +44,13 @@ python3 .claude/scripts/review-lanes.py start   --profile qc --run-dir <round di
 Launch one bounded background wait per original lane. Each call is only 30 seconds, never an unbounded foreground wait:
 
 ```bash
-python3 .claude/scripts/review-lanes.py wait --run-dir "$run_dir" --lane critique-codex-sol --seconds 30
+python3 .claude/scripts/review-lanes.py wait --run-dir "$run_dir" --lane critique-codex-astra --seconds 30
 ```
 
 Continue ordinary stage work between wait returns. A wait reports `RUNNING` or one of `DONE`, `FAILED`, `DIED`, or `TIMED_OUT`. When it reports a terminal lane, immediately extract it:
 
 ```bash
-python3 .claude/scripts/review-lanes.py extract --run-dir "$run_dir" --lane critique-codex-sol
+python3 .claude/scripts/review-lanes.py extract --run-dir "$run_dir" --lane critique-codex-astra
 ```
 
 The extraction result is `OK`, `NO_FINDINGS`, `INVALID`, `EMPTY_RESULT`, `FAILED`, or `TIMED_OUT`. Read `<run-dir>/<lane>.findings.json` only after `OK` or `NO_FINDINGS`, never raw output.
@@ -63,4 +65,4 @@ Collect and extract the resume lane in the same bounded way. A usable resume fin
 
 ## The Claude CLI lanes
 
-Opus, Fable and Sonnet run through the same runner as every other reviewer, using the `opus`, `fable` and `sonnet` aliases in `providers.py` (owner, September 29). Each starts a separate `claude -p` process with only Read, Grep and Glob, no MCP servers or skills, and the same brief and findings format. The runner removes Claude nesting markers so these processes also launch from Claude Code. Collect `<profile>-claude-opus`, `<profile>-claude-fable` and `<profile>-claude-sonnet` with the same wait, extract and bounded resume procedure above. Never dispatch a second Claude review subagent.
+Opus runs through the same runner as every other reviewer, using the `opus` alias in `providers.py` (owner, September 29). It starts a separate `claude -p` process with Read, Grep, Glob, WebSearch and WebFetch, no MCP servers or ambient skill catalog, and the same brief and findings format. Selected skill instructions remain readable through the supplied file paths. The runner removes Claude nesting markers so these processes also launch from Claude Code. Collect `<profile>-claude-opus` with the same wait, extract and bounded resume procedure above. Never dispatch a second Claude review subagent.

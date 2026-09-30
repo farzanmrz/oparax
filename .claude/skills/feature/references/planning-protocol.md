@@ -1,0 +1,29 @@
+# Planning protocol after plain approval
+
+This protocol applies to `/feature` and `/amend`. The owner and planning host settle scope and approve the plain plan without automatic Astra scope, plain-plan or design-review calls. Claude Code's planning host is Fable. An explicit Codex entry uses its actual current model for the owner conversation; it never claims to be Fable or Astra. Once the plain plan is approved, Fable and Astra High independently draft the whole detailed plan, compare it, and settle one result. The fixed outside critique then reviews that result. Fable and Astra independently disposition the complete findings corpus, compare their decisions and jointly settle the edits. The Astra critique lane is a fresh reviewer, not a continuation of the planning session.
+
+## Shared inputs and independence
+
+Preserve original owner messages and corrections separately from assistant interpretations. The approved plain plan locks user behavior and owner choices; do not smuggle a preferred technical solution into the shared brief. Each detailed-planning brief names the exact approved owner plan, relevant repository source, selected skill rules with their source paths, and the required output format. `/feature` needs the component table, `shared.md` and every slice from feature step 5. `/amend` needs one complete amendment from amend step 4, with the existing plan, earlier amendments and applied fixes as settled context. Name every `.feature/` input the partner may read by exact path. Do not send secrets or environment values.
+
+For adjudication, the shared brief contains the approved owner plan, the complete combined detailed plan, every terminal critique finding and the recorded owner decisions. Each partner first writes its own dispositions without seeing the other's. A dead lane supplies no invented findings. Both partners address every finding and any proposed new mechanism against the evidence standard in feature step 6.
+
+The planning host writes its own full draft or dispositions to a private file before launching the other model when the host is actually Fable or Astra. Pass that file as `--host-draft`; the helper seals it but does not show it to the partner until an explicit follow-up. In a Codex session on another model, launch both Fable and Astra through separate read-only helper runs from the same neutral inputs, before reading either result. Do not label the coordinator's own draft as a Fable or Astra answer. Existing saved `feature-pair.py` records remain readable; that older helper refuses new starts and replies.
+
+## Bounded model calls
+
+`.claude/scripts/planning-peer.py` runs the exact model selected by `--partner fable|astra` at high effort through the shared council provider commands. It permits only `--phase detail|adjudication`, uses a read-only sandbox and no connectors, hashes the owner plan, brief and optional host draft, and enforces a 900-second maximum per call. `status` and `wait` expose progress; `result` exposes only the completed answer. A failed or timed-out call is a failure, never an answer from partial output. Use a fresh run directory under the existing `.feature/` exception for each partner and phase. No model call writes final plan files.
+
+Example when Fable is the host for a feature detail round:
+
+```bash
+python3 .claude/scripts/planning-peer.py start .feature/planning-<id>/detail-astra --repo "$PWD" --owner-plan .feature/plan-owner.md --brief .feature/planning-<id>/detail-brief.md --host-draft .feature/planning-<id>/detail-fable.md --partner astra --phase detail
+python3 .claude/scripts/planning-peer.py wait .feature/planning-<id>/detail-astra --seconds 30
+python3 .claude/scripts/planning-peer.py result .feature/planning-<id>/detail-astra
+```
+
+For an Astra host, use `--host-draft <astra-file> --partner fable`. For a Codex host on another model, omit `--host-draft` and start separate `detail-fable` and `detail-astra` runs with the same approved owner plan and neutral brief. For `/amend`, use `.feature/amend-<N>-<R>-owner.md` as `--owner-plan`. The adjudication round uses `--phase adjudication` and a new run directory for each model; its brief names the completed plan and critique corpus. Do not reuse the detail sessions for critique or adjudication.
+
+After both detailed answers are available, compare the component cut and file ownership first, then shared seams, numbers and caps, then slices or amendment steps. Check paths and contracts against repository source and cost figures against `docs/references/cogs.md`. Record substantive disagreements and their evidence. The host can settle a documented technical point from source; a change to approved product behavior goes to the owner at the named approval stop. Write the reconciled plan files once. After critique, compare Fable's and Astra's independent dispositions before editing. Both must explicitly agree on the final dispositions and intended edits, or the unresolved point stays open with its evidence. Do not infer agreement from silence or a timeout.
+
+Use `reply` only for a specific unresolved question, with a message file containing `Question:`, `Evidence:` and `Resolution sought:`. It resumes the exact partner session and seals the message. Quote only the relevant part of the other answer. Continue an exchange when new evidence or a substantive disagreement needs it; there is no fixed one-exchange limit and no repetitive whole-plan debate. The host applies agreed changes by targeted hunks. A composed mechanism still gets feature step 6's conditional outside-eye check. The critique's material-change rule controls whether the owner approves again.

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""A sealed host draft plus a resumable peer, with bounded detached execution.
+"""Read or cancel saved planning-pair runs; new starts and replies are retired.
 
-Only `exchange` exposes the peer answer. The host must seal its own draft
-before start. New phases use new directories/sessions; replies use exact IDs.
-This is an orchestration boundary, not a sandbox between adversarial agents.
+Existing detached workers may finish. Their sealed results remain readable.
 """
 import argparse
 import contextlib
@@ -337,35 +335,7 @@ def main():
         work(run)
         return
     if args.cmd == 'start':
-        if not 1 <= args.timeout <= 900:
-            raise ValueError('timeout must be between 1 and 900 seconds')
-        peer = peer_for(args.host, args.phase, args.pair_model)
-        if args.phase == 'redesign' and not (args.reason or '').strip():
-            raise ValueError('redesign requires --reason explaining the substantial design change')
-        brief, draft = read_text(args.brief), read_text(args.host_draft)
-        owner_input = read_text(args.owner_input)
-        images = image_inputs(args.image)
-        if args.phase == 'design-review' and not images:
-            raise ValueError('design-review requires --image with the actual generated design')
-        repo = Path(args.repo).resolve()
-        if not repo.is_dir():
-            raise ValueError('Repository directory is missing')
-        run.mkdir(parents=True, exist_ok=False)
-        (run / 'brief.md').write_text(brief)
-        (run / 'host-draft.md').write_text(draft)
-        (run / 'owner-input.md').write_text(owner_input)
-        write_json(run / 'schema.json', SCHEMA)
-        state = dict(repo=str(repo), run=str(run), host=args.host, phase=args.phase,
-                     pair_model=args.pair_model,
-                     peer=peer, model=MODELS[peer], reason=args.reason,
-                     session_id=None, turn=0, timeout=args.timeout,
-                     sealed={'brief.md': digest(brief), 'host-draft.md': digest(draft),
-                             'owner-input.md': digest(owner_input)})
-        save_images(run, state, images)
-        with locked(run):
-            launch(run, state, rules(state) + '\nORIGINAL OWNER INPUT\n' + owner_input +
-                   '\nINDEPENDENT ASSIGNMENT\n' + brief)
-        return
+        raise ValueError('New planning pairs are retired. Use feature-detail.py after plain-plan approval.')
     if args.cmd == 'wait':
         until = time.time() + args.seconds
         while True:
@@ -395,22 +365,7 @@ def main():
                               'host_draft': read_text(run / 'host-draft.md'),
                               'peer_answer': read_text(run / f"answer-{state['turn']}.md")}))
         elif args.cmd == 'reply':
-            if state['status'] != 'EXCHANGED':
-                raise ValueError('Exchange the completed answer before sending a reply')
-            limit = 2 if state['phase'] == 'design-review' else 3
-            if state['turn'] >= limit:
-                raise ValueError(f'{limit} follow-ups used. Bring remaining choices to the owner.')
-            message = read_text(args.message)
-            images = image_inputs(args.image)
-            if state['turn'] == 0:
-                message = 'Your peer independently wrote:\n' + read_text(run / 'host-draft.md') + '\n\n' + message
-            state['turn'] += 1
-            state.setdefault('run', str(run))
-            save_images(run, state, images)
-            name = f"message-{state['turn']}.md"
-            (run / name).write_text(message)
-            state['sealed'][name] = digest(message)
-            launch(run, state, rules(state) + '\nEXCHANGE\n' + message)
+            raise ValueError('Planning-pair replies are retired. Existing results remain readable.')
 
 
 if __name__ == '__main__':

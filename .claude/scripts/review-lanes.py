@@ -20,9 +20,7 @@ from providers import MODELS  # noqa: E402
 RUNNER = SCRIPTS / "lanes.py"
 # These profiles are shared by the Claude and Codex workflow entry points: (lane, council name).
 # Model ids live in providers.py, so a model bump is made there once.
-CRITIQUE = (
-    ("codex-sol", "sol"),
-    ("codex-astra", "astra"),
+COMMON = (
     ("agy-pro", "pro"),
     ("agy-flash", "flash"),
     ("grok", "grok"),
@@ -31,12 +29,10 @@ CRITIQUE = (
     ("cursor-glm", "glm"),
     ("cursor-muse", "muse"),
     ("claude-opus", "opus"),
-    ("claude-fable", "fable"),
-    ("claude-sonnet", "sonnet"),
 )
 PROFILES = {
-    "critique": CRITIQUE,
-    "qc": CRITIQUE,
+    "critique": (("codex-astra", "astra"),) + COMMON,
+    "qc": (("codex-sol", "sol"), ("codex-astra", "astra")) + COMMON,
 }
 
 
