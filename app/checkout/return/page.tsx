@@ -17,18 +17,24 @@ export default async function CheckoutReturn({
   const {
     data: { user },
   } = await scoped.auth.getUser();
-  if (!user) redirect("/login");
+  const params = await searchParams;
+  const id = z
+    .string()
+    .regex(/^cs_[A-Za-z0-9_]+$/)
+    .safeParse(params.session_id);
+  if (!user) {
+    redirect(
+      id.success
+        ? `/login?next=${encodeURIComponent(`/checkout/return?session_id=${id.data}`)}`
+        : "/login",
+    );
+  }
 
   const { data: monitor, error } = await scoped
     .from("monitors")
     .select("id,handle,checkout_session_id,stripe_subscription_id,paid_through")
     .eq("user_id", user.id)
     .maybeSingle();
-  const params = await searchParams;
-  const id = z
-    .string()
-    .regex(/^cs_[A-Za-z0-9_]+$/)
-    .safeParse(params.session_id);
   let message: string = authContent.checkoutUnavailable;
   if (!error && monitor && id.success) {
     try {
