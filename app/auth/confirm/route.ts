@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { track } from "@/lib/analytics/events";
 import { authContent } from "@/lib/auth/content";
 import { signedInDestination } from "@/lib/auth/oauth";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +10,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type");
   const code = searchParams.get("code");
   const next = searchParams.get("next");
+  const method = searchParams.get("method");
   const redirectTo = (path: string, params?: Record<string, string>) => {
     const url = new URL(path, request.url);
     for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
@@ -24,11 +26,19 @@ export async function GET(request: NextRequest) {
     return redirectTo("/forgot-password", { error: authContent.resetInvalid });
   }
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return redirectTo(await signedInDestination(next));
-  } else if (tokenHash && (type === "magiclink" || type === "email" || type === "signup")) {
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      if (method === "oauth" || method === "email_link") {
+        if (data.user) track("signed_in", { method }, data.user.id);
+      } else {
+        console.warn("auth: sign-in method marker missing or invalid");
+      }
+      return redirectTo(await signedInDestination(next));
+    }
+  } else if (tokenHash && (type === "magiclink" || type === "email" || type === "signup")) {
+    const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    if (!error) {
+      if (data.user) track("signed_in", { method: "email_link" }, data.user.id);
       return redirectTo(await signedInDestination(next));
     }
   }

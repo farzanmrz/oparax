@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { track } from "@/lib/analytics/events";
 import { authContent } from "@/lib/auth/content";
 import {
   oauthUrl,
@@ -71,7 +72,7 @@ export async function loginAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: validated.email,
     password: validated.password,
   });
@@ -84,6 +85,7 @@ export async function loginAction(
     };
   }
 
+  if (data.user) track("signed_in", { method: "password" }, data.user.id);
   redirect(await signedInDestination(formData.get("next")));
 }
 
@@ -123,6 +125,7 @@ export async function signupAction(
   }
 
   if (data.session) {
+    track("signed_in", { method: "password" }, data.session.user.id);
     redirect(await signedInDestination(null));
   }
 

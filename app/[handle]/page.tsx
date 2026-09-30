@@ -11,6 +11,7 @@ import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-buildin
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { SourcesList } from "@/components/monitor/sources-list";
 import { StateBanner } from "@/components/monitor/state-banner";
+import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -64,6 +65,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
         {copy.skipToNews}
       </a>
       <SiteHeader signedIn={viewer.signedIn} />
+      {isOwner ? <PostHogUserContext id={viewer.userId} /> : null}
       <main
         id="monitor-content"
         className="mx-auto w-[min(90%,1800px)] flex-1 space-y-6 py-8 wrap-anywhere"

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import posthog from "posthog-js";
 import { type FormEvent, useRef, useState } from "react";
 import { z } from "zod";
 import { RefreshXIdentityButton } from "@/components/auth/refresh-x-identity";
@@ -74,6 +75,13 @@ export function SetupForm({
 
     submitting.current = true;
     setPending(true);
+    if (!closed) {
+      try {
+        posthog.capture("agent_build_requested", { placement: "setup" });
+      } catch {
+        // Analytics must never prevent the build request.
+      }
+    }
     try {
       const response = await fetch(closed ? "/api/waitlist" : "/api/build", {
         method: "POST",
