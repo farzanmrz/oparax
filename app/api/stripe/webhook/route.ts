@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 import { applyEvent } from "@/lib/billing/apply-event";
 import { getStripe } from "@/lib/billing/stripe";
-import { reportServerException } from "@/lib/observability/posthog-server";
+import { reportServerMessage } from "@/lib/observability/posthog-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     if (error) throw error;
     return new Response("OK");
   } catch (error) {
-    reportServerException(error, {
+    reportServerMessage("billing webhook processing failed", {
       tags: { area: "billing", stage: "webhook", event_type: event.type },
     });
     await admin
