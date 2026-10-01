@@ -1,6 +1,6 @@
 ---
 name: qc
-description: "Review what $build committed on an oparax issue: one component of a larger build in its own worktree ($qc <N> --component <id>), or the whole ft/<N> branch after the last component merged ($qc <N> --integration, or a bare $qc <N>). Checks plan coverage, runs the gates, launches nine CLI review lanes plus a holistic pass in this session, folds every finding into one fix list, writes the round's result file, and launches $build for queued fixes (or posts the pass marker). Use only when the owner explicitly types $qc in Codex. Never invoke automatically during other work."
+description: "Review what $build committed on an oparax issue: one component scope in the active feature checkout ($qc <N> --component <id>), or the whole ft/<N> or bf/<N> branch after its components are built ($qc <N> --integration, or a bare $qc <N>). Checks plan coverage, runs the gates, launches nine CLI review lanes plus a holistic pass in this session, folds every finding into one fix list, writes the round's result file, and launches $build for queued fixes (or records an independent PASS with the reviewed SHA). Use only when the owner explicitly types $qc in Codex. Never invoke automatically during other work."
 argument-hint: "<issue #> --component <id> | --integration"
 ---
 

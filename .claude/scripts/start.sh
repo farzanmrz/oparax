@@ -23,8 +23,8 @@
 # issue before /feature, so create-only behavior sent every session into
 # workaround mode. Branch resolution now goes, in order: already on ft/N →
 # adopt in place; local or remote ft/N exists → switch to it; current branch is
-# ft/N-<anything> (cut for this issue, off-convention) → rename it to ft/N
-# local+remote; nothing exists → create from fetched origin/beta. An adopted
+# ft/N-<anything> is historical and refused; nothing exists → create from
+# fetched origin/beta. An adopted
 # branch with ZERO commits unique against origin/beta is fast-forwarded onto
 # it; one with unique commits keeps its base untouched (said on stderr). The
 # clean-tree requirement applies ONLY when the resolution must switch or
@@ -34,6 +34,22 @@
 # break, so hard-wrapped prose reads ragged at half width. Paragraph lines are
 # joined before posting; fences, tables, headings, and list structure are kept.
 set -euo pipefail
+original_args=("$@")
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$repo_root" ] || {
+  echo "start: run from inside the repository." >&2
+  exit 1
+}
+# Claim the checkout before reading stdin or touching Git/GitHub; preserve all arguments.
+if [ -z "${OPARAX_WRITER_FD:-}" ]; then
+  exec python3 "$repo_root/.claude/scripts/writer-lease.py" run --repo "$repo_root" --run-id "feature-start" -- \
+    bash "$repo_root/.claude/scripts/start.sh" "${original_args[@]}"
+fi
+python3 "$repo_root/.claude/scripts/writer-lease.py" verify --repo "$repo_root" \
+  --run-id "${OPARAX_RUN_ID:-}" --token "${OPARAX_WRITER_TOKEN:-}" || {
+  echo "start: missing or stale writer lease; no branch or issue changed." >&2
+  exit 1
+}
 
 usage() {
   echo 'usage: start.sh [--prefix ft|bf] "<title>" [<plan-body-file>]' >&2
@@ -207,7 +223,7 @@ fetched_beta_sha="$(git rev-parse refs/remotes/origin/beta)"
 
 # ---- Resolve the branch action BEFORE touching the issue, so a precondition
 # failure leaves GitHub untouched. Actions: stay | switch-local | switch-remote
-# | rename-current | create.
+# | create.
 branch_action="create"
 current_branch="$(git branch --show-current || true)"
 if [ -n "$graduate_issue" ]; then
@@ -220,7 +236,8 @@ if [ -n "$graduate_issue" ]; then
   elif git rev-parse --verify --quiet "refs/remotes/origin/${target}" >/dev/null; then
     branch_action="switch-remote"
   elif [ -n "$current_branch" ] && [[ "$current_branch" == "${target}-"* ]]; then
-    branch_action="rename-current"
+    echo "start: $current_branch is a historical component branch. Select the canonical $target checkout; no branch is renamed or deleted." >&2
+    exit 1
   fi
   case "$branch_action" in
     switch-local|switch-remote|create) require_clean_tree ;;
@@ -264,14 +281,6 @@ case "$branch_action" in
   switch-remote)
     git switch --track "origin/${branch}" >&2 || git switch -c "$branch" "origin/${branch}" >&2
     echo "start: adopted existing remote $branch." >&2
-    ;;
-  rename-current)
-    git branch -m "$current_branch" "$branch" >&2
-    echo "start: renamed $current_branch -> $branch (off-convention cut for this issue)." >&2
-    if git rev-parse --verify --quiet "refs/remotes/origin/${current_branch}" >/dev/null; then
-      git push origin ":refs/heads/${current_branch}" >&2 || \
-        echo "start: could not delete origin/${current_branch}, remove it manually." >&2
-    fi
     ;;
   create)
     if ! git switch --create "$branch" --no-track "$fetched_beta_sha" >&2; then

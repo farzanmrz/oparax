@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Launch one component's $build in a detached Codex process inside its own worktree, then decide
+"""Launch one component's $build in a detached Codex process in the existing canonical feature checkout, then decide
 BUILT, PARKED or FAILED from the step commits and the decision log, never from the agent's prose."""
 import argparse
-import fcntl
+import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,10 @@ import uuid
 
 sys.path.insert(0, str(Path.home() / '.agents/skills/council/scripts'))
 from providers import CODEX_CONFIG, MODELS as COUNCIL_MODELS  # noqa: E402
+
+lease_spec = importlib.util.spec_from_file_location('writer_lease', Path(__file__).with_name('writer-lease.py'))
+lease = importlib.util.module_from_spec(lease_spec)
+lease_spec.loader.exec_module(lease)
 
 MODELS = {name: COUNCIL_MODELS[name][1] for name in ('astra', 'sol')}
 ACTIVE = {'STARTING', 'RUNNING'}
@@ -65,6 +70,8 @@ def alive(pid):
 
 def state_of(job):
     state = json.loads((job / 'state.json').read_text())
+    if state.get("topology") != "current-checkout":
+        return dict(state, historical=True)
     if state['status'] in ACTIVE and not alive(state.get('worker_pid')):
         state.update(status='FAILED', reason='Build supervisor exited; inspect logs before retrying.')
         write_state(job, state)
@@ -74,10 +81,6 @@ def state_of(job):
 def git(repo, *args):
     return subprocess.check_output(['git', '-C', str(repo), *args], text=True).strip()
 
-
-def branch_exists(repo, branch):
-    probe = ['git', '-C', str(repo), 'rev-parse', '--verify', '--quiet', f'refs/heads/{branch}']
-    return subprocess.run(probe, stdout=subprocess.DEVNULL).returncode == 0
 
 
 def field(path, key):
@@ -99,21 +102,9 @@ def worktree_branch(repo, path):
 
 
 def ensure_worktree(repo, base, component, path):
-    branch = f'{base}-{component}'
-    checked_out = worktree_branch(repo, path)
-    if checked_out == branch:
-        return branch
-    if checked_out is not None:
-        raise ValueError(f'{path} has {checked_out} checked out, not {branch}.')
-    if path.exists():
-        raise ValueError(f'{path} exists but is not a worktree of this checkout.')
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if branch_exists(repo, branch):
-        # A crashed run whose worktree folder was removed: the branch and its step commits remain.
-        git(repo, 'worktree', 'add', str(path), branch)
-    else:
-        git(repo, 'worktree', 'add', '-b', branch, str(path), base)
-    return branch
+    if not path.is_dir() or worktree_branch(repo, path) != base:
+        raise ValueError(f'{path} must already be a checkout on {base}; no branch or worktree is created.')
+    return base
 
 
 def commit_tool_config(repo, worktree, issue):
@@ -121,6 +112,8 @@ def commit_tool_config(repo, worktree, issue):
     for line in entries:
         rel = line[3:].split(' -> ')[-1].strip('"')
         source, target = repo / rel, worktree / rel
+        if source == target:
+            continue
         if source.is_file():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
@@ -130,17 +123,6 @@ def commit_tool_config(repo, worktree, issue):
     if git(worktree, 'status', '--porcelain', '--', *META_PREFIXES):
         git(worktree, 'commit', '-q', '-m', f'meta: commit tool configuration under .claude and .codex (#{issue})')
 
-
-def seed(repo, worktree):
-    env = repo / '.env.local'
-    if env.is_file():
-        shutil.copy2(env, worktree / '.env.local')
-    install = ['pnpm', 'install', '--frozen-lockfile']
-    offline = subprocess.run(install + ['--offline'], cwd=worktree, capture_output=True, text=True)
-    if offline.returncode:
-        online = subprocess.run(install, cwd=worktree, capture_output=True, text=True)
-        if online.returncode:
-            raise ValueError(f'pnpm install failed in {worktree}:\n{online.stderr[-2000:]}')
 
 
 def mode_of(repo, issue, component, plan):
@@ -176,7 +158,8 @@ def claim_migrations(runs, issue, component, job):
     lock = runs / f'migrating-{issue}.json'
     if lock.is_file():
         holder = json.loads(lock.read_text())
-        if Path(holder['job']).is_dir() and state_of(Path(holder['job']))['status'] in ACTIVE:
+        holder_state = state_of(Path(holder['job'])) if Path(holder['job']).is_dir() else {}
+        if not holder_state.get('historical') and holder_state.get('status') in ACTIVE:
             raise ValueError(f'Component {holder["component"]} is applying migrations (job {holder["job"]}); '
                              'one migrating component runs at a time.')
     lock.write_text(json.dumps({'component': component, 'job': str(job)}) + '\n')
@@ -190,14 +173,14 @@ def release_migrations(runs, issue, job):
 
 def prompt_for(state):
     last = max(state['steps_done'], default=0)
-    resume = (f'Steps 1 to {last} are already committed with Step trailers and uncommitted changes were '
-              f'discarded; continue from step {last + 1} and never redo a committed step.\n') if last else ''
+    resume = (f'Steps 1 to {last} are already committed with Step trailers; previous work is preserved. '
+              f'Continue from step {last + 1} and never redo a committed step.\n') if last else ''
     return (f'$build {state["issue"]}\n\n'
             f'Component: {state["component"]}\n'
             f'Mode: {state["mode"]} (round {state["round"]})\n'
             f'Scope file: {state["scope"]}\n'
             f'Plan slice: {state["plan"]}\n'
-            f'Worktree: {state["worktree"]} on branch {state["branch"]}, cut from {state["base"]}\n'
+            f'Checkout: {state["worktree"]} on branch {state["branch"]}, round starting commit {state["base_commit"]}\n'
             f'Decision log: {state["decision_log"]}\n'
             f'Migrations allowed: {"yes" if state["migrations"] else "no"}\n'
             f'{resume}\n'
@@ -237,10 +220,10 @@ def command(state, job):
 
 def verdict(state):
     worktree = Path(state['worktree'])
-    done = steps_done(worktree, state['base'], state['component'], state['round'])
+    done = steps_done(worktree, state['base_commit'], state['component'], state['round'])
     state.update(steps_done=sorted(done), head_commit=git(worktree, 'rev-parse', 'HEAD'))
     log = Path(state['decision_log'])
-    lines = log.read_text().splitlines() if log.is_file() else []
+    lines = log.read_text().splitlines()[state.get('decision_offset', 0):] if log.is_file() else []
     failed = '; '.join(line for line in lines if line.startswith('FAILED:'))
     if not done:
         return 'FAILED', failed or 'no commit carries a Step trailer for this round'
@@ -268,6 +251,7 @@ def run(job, lock_fd):
     try:
         env = os.environ.copy()
         env.pop('CLAUDECODE', None)
+        env['OPARAX_WRITER_FD'] = str(lock.fileno())
         prompt = (job / 'prompt.txt').read_text()
         with (job / 'stderr.txt').open('w') as err, (job / 'events.jsonl').open('w') as out:
             child = subprocess.Popen(command(state, job), cwd=state['worktree'], env=env,
@@ -297,6 +281,10 @@ def run(job, lock_fd):
         if rc or not completed or not state.get('session_id') or not result.is_file() or not result.read_text().strip():
             raise ValueError(f'Codex did not return a completed response (exit {rc}). {state.get("error") or ""}')
         status, reason = verdict(state)
+        if status == 'BUILT' and state['mode'] == 'FIX':
+            archived = Path(state['repo']) / f'.feature/lanes/{state["issue"]}/{state["component"]}/round-{field(Path(state["scope"]), "Round")}/fixes.md'
+            if archived.is_file():
+                archived.write_text(re.sub(r'^Status:\s*pending\s*$', 'Status: applied', archived.read_text(), flags=re.M))
         state.update(status=status, reason=reason, exit_code=rc, finished_at=time.time())
     except Exception as exc:
         if child is not None and child.poll() is None:
@@ -322,42 +310,64 @@ def launch(args):
         raise ValueError('The Codex build skill is missing from this checkout.')
     if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', args.component):
         raise ValueError('A component id is lowercase letters, digits and hyphens.')
-    base = next((b for b in (f'ft/{args.issue}', f'bf/{args.issue}') if branch_exists(repo, b)), None)
-    if base is None:
-        raise ValueError(f'Neither ft/{args.issue} nor bf/{args.issue} exists; run /feature first.')
+    worktree = Path(args.worktree).resolve() if args.worktree else repo
+    base = git(worktree, 'branch', '--show-current')
+    if base not in (f'ft/{args.issue}', f'bf/{args.issue}'):
+        raise ValueError(f'{worktree} must be on ft/{args.issue} or bf/{args.issue}, not {base or "detached HEAD"}.')
+    branch = ensure_worktree(repo, base, args.component, worktree)
+    inherited_fd = os.environ.get('OPARAX_WRITER_FD')
+    run_id = os.environ.get('OPARAX_RUN_ID')
+    if inherited_fd:
+        lock = lease.inherited(repo, int(inherited_fd), run_id, os.environ.get('OPARAX_WRITER_TOKEN'))
+    else:
+        run_id = 'build-' + uuid.uuid4().hex
+        lock, _ = lease.acquire(repo, run_id)
+    dirty = git(worktree, 'status', '--porcelain', '--untracked-files=all')
+    product_dirty = git(worktree, 'status', '--porcelain', '--untracked-files=all', '--', '.',
+                        ':(exclude).claude', ':(exclude).codex')
+    if product_dirty:
+        raise ValueError(f'Unowned dirty work is preserved in {worktree}; commit or resolve it before launching:\n{dirty}')
     runs = repo / '.feature/build-runs'
     runs.mkdir(parents=True, exist_ok=True)
-    lock = (runs / f'{args.issue}-{args.component}.lock').open('a')
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        raise ValueError(f'A build for component {args.component} is already running; do not launch another.')
-    worktree = Path(args.worktree).resolve()
-    branch = ensure_worktree(repo, base, args.component, worktree)
-    if git(worktree, 'status', '--porcelain'):
-        # Whatever a crashed run left half-done is redone from its last committed step.
-        git(worktree, 'reset', '-q', '--hard', 'HEAD')
-        git(worktree, 'clean', '-qfd')
-    commit_tool_config(repo, worktree, args.issue)
+    if not args.dry_run:
+        commit_tool_config(repo, worktree, args.issue)
     if not (worktree / '.codex/rules/default.rules').is_file():
         raise ValueError('The project rules file .codex/rules/default.rules is missing from the worktree; '
                          'a build runs only under those rules.')
-    seed(repo, worktree)
     mode, round_, scope = mode_of(repo, args.issue, args.component, plan)
+    base_commit = args.base_commit or git(worktree, 'rev-parse', 'HEAD')
+    if args.base_commit:
+        git(worktree, 'merge-base', '--is-ancestor', base_commit, 'HEAD')
+    scope_hash = hashlib.sha256(scope.read_bytes()).hexdigest()
+    previous = sorted(runs.glob(f'{args.issue}-{args.component}-*/state.json'), key=lambda p: p.stat().st_mtime)
+    for old in reversed(previous):
+        saved = json.loads(old.read_text())
+        if (saved.get('topology') == 'current-checkout' and saved.get('branch') == branch
+                and saved.get('round') == round_ and saved.get('scope') == str(scope)):
+            if saved.get('scope_hash') != scope_hash:
+                raise ValueError('This round scope changed; preserve its job records and approve a new round.')
+            if not args.base_commit:
+                if saved['status'] == 'BUILT':
+                    raise ValueError('This round is already built; review it or supply a pending fix/amendment.')
+                base_commit = saved['base_commit']
+                git(worktree, 'merge-base', '--is-ancestor', base_commit, 'HEAD')
+            break
     job = runs / f'{args.issue}-{args.component}-{uuid.uuid4().hex[:12]}'
-    if migrating(plan):
+    migration_scope = scope if re.search(r'^migrations:', scope.read_text(), re.I | re.M) else plan
+    if migrating(migration_scope):
         claim_migrations(runs, args.issue, args.component, job)
     job.mkdir()
     decision_log = repo / f'.feature/decisions-{args.issue}-{args.component}.md'
     if not decision_log.exists():
         decision_log.write_text(f'# Decisions for #{args.issue}, component {args.component}: one line each; '
                                 'PARKED: lines wait for the owner\n')
-    state = dict(status='STARTING', issue=args.issue, component=args.component, model=args.model,
+    state = dict(schema_version=2, topology='current-checkout', run_id=run_id, status='STARTING', issue=args.issue, component=args.component, model=args.model,
                  effort='high', repo=str(repo), worktree=str(worktree), branch=branch, base=base,
-                 base_commit=git(repo, 'rev-parse', base), mode=mode, round=round_, scope=str(scope),
-                 plan=str(plan), decision_log=str(decision_log), migrations=migrating(plan), job=str(job),
+                 base_commit=base_commit, mode=mode, round=round_, scope=str(scope),
+                 plan=str(plan), decision_log=str(decision_log), scope_hash=scope_hash, migrations=migrating(migration_scope), job=str(job),
                  session_id=None, started_at=time.time(), worker_pid=None, child_pid=None,
-                 steps_done=sorted(steps_done(worktree, base, args.component, round_)),
+                 decision_offset=len(decision_log.read_text().splitlines()),
+                 steps_done=sorted(steps_done(worktree, base_commit, args.component, round_)),
                  head_commit=git(worktree, 'rev-parse', 'HEAD'))
     state['command'] = shlex.join(command(state, job))
     (job / 'prompt.txt').write_text(prompt_for(state))
@@ -390,11 +400,12 @@ def main():
     start = subs.add_parser('launch')
     start.add_argument('--issue', type=int, required=True)
     start.add_argument('--component', required=True)
-    start.add_argument('--worktree', required=True)
+    start.add_argument('--worktree', help='existing canonical checkout; defaults to --repo')
+    start.add_argument('--base-commit', help='persisted starting commit for this round or retry')
     start.add_argument('--plan', required=True, help='this component\'s plan slice file')
     start.add_argument('--repo', default='.')
     start.add_argument('--model', type=str.lower, choices=list(MODELS), default='astra')
-    start.add_argument('--dry-run', action='store_true', help='prepare the worktree and print the command, no Codex')
+    start.add_argument('--dry-run', action='store_true', help='validate the checkout and print the command, no Codex')
     for name in ('status', 'watch'):
         subs.add_parser(name).add_argument('--job', required=True)
     worker = subs.add_parser('_run')
@@ -412,7 +423,7 @@ def main():
         return
     state = state_of(job)
     if args.action == 'watch':
-        while state['status'] in ACTIVE:
+        while state['status'] in ACTIVE and not state.get('historical'):
             time.sleep(2)
             state = state_of(job)
     print(json.dumps(state))

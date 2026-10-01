@@ -50,7 +50,7 @@ The argument is either an issue number or plain text describing the addition (us
 git branch --show-current
 ```
 
-- Argument is a number: N is that number; expect the branch to be `ft/<N>` (or `bf/<N>`). If not, `git fetch origin ft/<N> && git switch ft/<N>`. STOP if the branch does not exist; that means `/feature` has not run for this issue yet.
+- Argument is a number: N is that number; expect the branch to be `ft/<N>` (or `bf/<N>`). If not, STOP and name the expected and actual branches. Do not switch a checkout that may belong to an active writer. The host must route the amendment to the existing canonical checkout.
 - Argument is text (or empty): N is the number in the current branch name (`ft/124` gives 124). If the current branch is not `ft/<N>` or `bf/<N>`, STOP and ask which issue. The text is the owner's opening description of the addition; carry it into step 2 as the first thing to talk through, do not make them repeat it.
 
 Read, never edit, the two existing plan files: `.feature/plan-<N>-owner.md` (the plain plan, same text as the issue body) and `.feature/plan-<N>.md` (the detailed plan). If either is missing (an issue from before 2026-08-18 carried the detailed plan inside a `<details>` block on the issue body), recreate it once from the issue with shell: the plain plan is everything before `<details>` (or the whole body if there is none), the detailed plan is the text between `<summary>Detailed plan (for the build stage)</summary>` and `</details>`. Bytes from the issue to the file, never retyped. Also read any earlier `.feature/amend-<N>-*.md` and `.feature/fixes-<N>*.md` files: they are what has already been added and fixed on this branch.
@@ -66,7 +66,7 @@ Exactly like `/feature` step 1, scoped as a delta on top of what is already agre
 The talk-through message has a fixed shape and a cap, because the owner is a vibe coder who reads product language only, and an open-ended message here turns into a wall of code findings (2026-08-18: a 5,000-character first message the owner could not parse, then a 1,500-character retry that worked; send the retry the first time). Exactly three short parts, no more:
 1. **What you asked for, in one or two sentences**, restated in the plan's plain voice (what users get, what stays hidden, what does not change).
 2. **Anything I found that changes it**, at most three lines, one each, each in the form "what it means for you, what I'll do about it"; no file names, no option names, no mechanism talk. If nothing changes, say "nothing" and skip.
-3. **The question**: one line, a yes/no on the slice plus the bundles (and the UI checkpoint if it applies). Then END YOUR TURN. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
+3. **The question**: one line, a yes/no on the slice plus the bundles (and the UI checkpoint if it applies). Then END YOUR TURN if scope or bundles need agreement. If they are already explicitly settled in this conversation, continue to the concrete plain amendment without a duplicate scope confirmation. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
 
 ## 3. Write the plain amendment and get it approved
 
@@ -86,7 +86,7 @@ No decisions list, no journeys, no mechanism, no "what this replaces" table. Jou
 
 Load the skill bundles picked for the delta exactly as `/feature` step 3 (same table, same Skill-tool invocations, same one line per bundle), reading the private plain amendment as the draft; fold what applies into it (a point that needs the owner's judgment becomes a "What needs your call" line; everything else waits for the detailed file). Never show the owner raw skill text.
 
-**HARD STOP: the owner approves the plain amendment before anything else happens.** Print `.feature/amend-<N>-<R>-owner.md` with shell (`cat`), whole, as the entire message apart from one opening line ("Everything else in #<N> stays as approved and built. This is the amendment:"). Then END YOUR TURN and wait for the owner to say yes in this conversation. Nothing in steps 4 to 6 (the detailed file, the critique lanes, the issue update) starts before that yes. The owner's opening brief, however complete or directive it reads, is NOT approval: they approve this file, not their own prompt. Likewise step 2 is a real exchange: state the slice, the bundles, and any UI checkpoint in the three-part shape and wait. Skipping either stop is the failure that happened on 2026-08-18 (the session ran brief to critique lanes with zero owner turns). If the owner pushes back, edit the file by hunk and print it again, whole; the file is the plan.
+**HARD STOP: the owner approves the plain amendment before anything else happens.** Print `.feature/amend-<N>-<R>-owner.md` with shell (`cat`), whole, as the entire message apart from one opening line ("Everything else in #<N> stays as approved and built. This is the amendment:"). Then END YOUR TURN and wait for the owner to say yes in this conversation. Nothing in steps 4 to 6 (the detailed file, the critique lanes, the issue update) starts before that yes. The owner's opening brief, however complete or directive it reads, is NOT approval: they approve this file, not their own prompt. Step 2 requires an exchange only for scope or bundles that are not already settled. Earlier explicit authorization persists, but it does not replace approval of this concrete plain amendment. Running from an opening brief directly to critique without plain-plan approval was the failure on 2026-08-18. If the owner pushes back, edit the file by hunk and print it again, whole; the file is the plan.
 
 ## 4. Write the detailed amendment and critique it
 
@@ -98,6 +98,8 @@ After owner approval, Fable and Astra independently draft the complete detailed 
 Round: <R>
 
 Status: pending
+
+Component: <owning component id, or integration for a cross-component amendment>
 
 Skills: <bare skill names this amendment's steps rest on, same form as the plan's Skills line>
 
@@ -134,7 +136,7 @@ This adopts the existing branch in place and overwrites the issue body; it does 
 
 No comment is needed: the body now carries every amendment as its own `## Amendment R` section, in order, which is the history.
 
-Do NOT rename, archive, or edit `.feature/amend-<N>-<R>.md`; `$build` reads it (BUILD mode reads the plan's steps and then every pending amendment in round order; AMEND mode, on a built branch, applies only the pending amendments) and flips its `Status:` to `applied` when done.
+Do NOT rename, archive, or edit `.feature/amend-<N>-<R>.md` after approval. Its `Component:` header selects the owning build scope (use `integration` for a cross-component addition). The launcher chooses one round in AMEND, FIX, BUILD order, and AMEND applies only the pending amendment naming that scope. It uses the same canonical `ft/<N>` or `bf/<N>` checkout and writer lease, then flips `Status:` to `applied`. An active supervisor owns continuation; never start a competing writer. This amendment does not edit the frozen base plan or create a branch.
 
 ## 6. End: name the next command
 

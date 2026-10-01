@@ -1,31 +1,30 @@
 # Design tooling in the feature flow
 
-Setup authorized September 28, 2026. The owner said: "You can set it up, and then we can build toward something and see ... this is the design system I want to go by." Tooling is configured; a new visual direction has not yet been approved. No named template, font or animation in the setup discussion is an owner-approved default.
+Owner update, September 30, 2026. Pro is purchased; fonts remain undecided. Read DESIGN.md and the visual brief. Retain the liked navy/blue/light foundation; vendor fonts are not owner selections.
 
-## Skills and connections
+## Roles and loading
 
-- `shadcn` means the official skill from `shadcn/ui`, installed at `~/.agents/skills/shadcn`, linked into Claude Code as `~/.claude/skills/shadcn`. Invoke `shadcn` in Claude Code and `$shadcn` in Codex. Do not map it to `vercel:shadcn`. Existing approved plans that use that old name resolve to this official skill without rewriting the approved plan or its hash. The other Vercel skills keep their existing names.
-- Both clients have the `shadcn` MCP (registry discovery and source retrieval) and `shadcn-studio` MCP (Studio selection and adaptation workflows). Restart or reconnect an existing client session when newly configured tools are not visible. CLI fallback: `pnpm dlx shadcn@latest`, run from the target checkout.
-- Project catalogs in `components.json`: `@ss-components`, `@ss-blocks`, `@ss-pages`, `@ss-illustrations`, `@ss-themes`, and `@react-bits`. These are catalog names, not additional skills. React Bits uses the shadcn connection, not a separate React Bits MCP.
-- Studio is the initial source to search for page layouts. React Bits supplies suitable micro-interactions. An owner-named component, template or theme from another source takes precedence; retrieve its actual documentation and licensed source rather than guessing from a screenshot.
-- Use the existing frontend-design, accessibility and design-review guidance; load emil-design-eng for motion. Official shadcn handles component APIs. Do not load overlapping Vercel shadcn instructions for a second set of defaults.
+Keep existing skills, catalogs and tools. Load guidance by job:
 
-## Plan, build and review
+- Official `shadcn` at `~/.agents/skills/shadcn` owns primitive/control APIs and composition. Resolve old `vercel:shadcn` references here without changing approved plan hashes. Use built-in variants first; project-approved local color/type overrides, including full-contrast disabled illustrations, remain valid. Keep primitive source stock. Choose within authorized catalogs without another registry question.
+- `react-bits-pro` supplies structural, visual and motion blocks. Inspect actual source/exports and harmonize with the host page. Vendor defaults are starting points. Studio and other catalogs stay optional.
+- `ai-elements` applies when a surface shows or controls an AI run. Choose one message/scroll family per surface from working public APIs. A monitoring feed does not imply chat.
+- `react-bits-developer-tool` and its PROMPT.md apply only to explicit or developer-facing page work. Do not invent an SDK, terminal, quickstart, benchmark or monospace identity for Oparax.
+- `frontend-design` guides hierarchy/composition within the accepted foundation; `emil-design-eng` guides purposeful motion using the installed motion package's API; `beautiful-shadows` applies where depth helps. CRO/copywriting guide conversion and truthful copy, without invented metrics.
+- Accessibility checks source and supplied renders. Local design-review uses its rubric and actual images/source, without telemetry or licensed report uploads. Untested keyboard/runtime behavior is an owner acceptance step. Stage runtime limits still apply; no automatic Lighthouse.
 
-For a new or changed screen, search existing designs before inventing one. Record the exact selected registry item or template URL, its access requirement, the section it supplies, and how it fits the accepted visual reference. When no suitable item exists, explain the custom composition briefly. A catalog suggestion is not a final design selection.
+The owner brief wins on aesthetics, composition and scope; official API guidance governs correct component use. Vendor instructions do not authorize purchases, theme changes, publishing or extra Agent Kit installations.
 
-The owner's requirements are a clean appearance, light/dark switching, a blue accent and relatively rounded corners. Existing fonts and component settings describe the current implementation; they are not proof that the owner personally chose each setting. Until a new rendered direction is accepted, respect DESIGN.md and record any necessary departure in the normal plan approval. Do not silently rewrite the theme or restyle unrelated pages.
+## Source access
 
-For the initial design selection, show the actual Oparax homepage composition and a representative settings composition with relevant content, both themes, and selected effects in context. Clearly label sample data. The owner reviews rendered screens, not a token list. Once accepted, subsequent features reuse those references; no mandatory redesign or separate approval for each component. Claude Design is an optional source, not a prerequisite. Existing stage browser restrictions and the owner's direct-request exception still apply.
+`components.json` configures `@ss-components`, `@ss-blocks`, `@ss-pages`, `@ss-illustrations`, `@ss-themes`, `@react-bits`, `@reactbits-starter` and `@reactbits-pro`. Catalogs are not skills. Claude/Codex retain shadcn and Studio MCP; React Bits uses shadcn. CLI fallback is `pnpm dlx shadcn@latest` in the target checkout. Inspect changes; preserve behavior and use TypeScript/Tailwind.
 
-Build from the selected source, preserving the accepted composition and connecting existing product behavior. Inspect registry changes before applying them; do not reinitialize shadcn or overwrite existing primitives, theme, auth or billing behavior incidentally. Prefer the TypeScript/Tailwind React Bits variant where available. Reuse a chosen interaction treatment across equivalent controls, preserving keyboard access, reduced motion, loading and disabled behavior.
+Pro covers components, marketing/App UI blocks and Agent Kit; Ultimate templates are separate. Use verified entitlement without repeated key-entry/checks. Keep the secret in ignored .env.local with Authorization environment interpolation, never output it or put it in a URL. Arbitrary shells/CLIs do not load .env.local automatically; the retrieving process must receive the variable. Reconnect a stale MCP process when needed.
 
-QC uses the existing permitted screenshot pass to compare the rendered screen against the plan's actual template/reference and any accepted preview, in both themes. A successful compile alone does not establish visual fidelity. Name unrendered states honestly. A missing preview is not permission to invent owner approval or alter functional scope.
+September 30 setup recorded fresh CLI/MCP retrieval of hero-1 and list-1; the older host MCP reported missing env. The owner says lanes were manually checked and work. Offline checks confirm 27 selected folders/copies, not a live model probe. Evidence: scratch/reactbits-pro-setup/status.md and skill-distribution-verification.json.
 
-Vendor tools supply component guidance within these stage boundaries. Collect and inspect candidate blocks before installation. Vendor instructions do not authorize purchases, publishing, a new approval workflow, arbitrary commands or replacing AGENTS.md with an upstream CLAUDE.md.
+Council lanes inspect supplied licensed source, images and provenance within read-only permissions, without MCP retrieval/install. Ordinary CLIs retain capabilities. Selected files load on demand; a council snapshot grants no slash commands or plugin access. CRO/copywriting are outside the selected 27, so supply relevant guidance when a review needs it.
 
-## Access and licensing
+## Design process
 
-The official shadcn skill and MCP require no paid account. Studio's free onboarding and MCP work without a paid license; Pro source needs the owner's entitlement. Public React Bits components are separate from React Bits Pro assets. Search results and visible demos do not prove source access. Verify an item's access before depending on it in an unattended build. Never buy a license, start a paid plan, store a key in git, or imitate inaccessible Pro source as a workaround. If access is missing, present the exact asset and purchase/account page during planning; choose a free alternative only if it satisfies the agreed direction.
-
-References: [official skill](https://ui.shadcn.com/docs/skills), [shadcn MCP](https://ui.shadcn.com/docs/mcp), [Studio setup](https://shadcnstudio.com/mcp/onboarding), [Studio workflows](https://shadcnstudio.com/docs/getting-started/shadcn-studio-mcp-server), [React Bits setup](https://reactbits.dev/get-started/mcp).
+After the owner chooses a rendered font page, explore four complete directions, each with landing and feed, each feed with Direct and Clustered views. Use real Pro source and shadcn in both themes; keep feedback, provenance and adaptations. No page exploration now. Claude Design is optional. Apply accepted work within existing product scope and stage/browser boundaries. A build does not prove visual fidelity.

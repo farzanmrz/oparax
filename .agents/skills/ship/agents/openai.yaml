@@ -1,7 +1,7 @@
 interface:
   display_name: "Ship"
-  short_description: "Ship an oparax ft/<N> branch to beta after QC"
-  default_prompt: "Use $ship <N> to squash the finished ft/<N> branch to beta after the owner's localhost walk."
+  short_description: "Ship an oparax feature or bug branch after independent QC PASS"
+  default_prompt: "Use $ship <N> to squash the finished ft/<N> or bf/<N> branch to beta after exact reviewed-SHA integration QC PASS and the owner's localhost walk."
 
 policy:
   allow_implicit_invocation: false

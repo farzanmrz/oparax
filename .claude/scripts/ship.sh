@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
-# Transactional feature/bugfix shipping. Lands ft/<issue> or bf/<issue> (the
-# prefix is taken from the branch HEAD sits on) onto beta by default, or onto
-# main with --onto main (the bf hotfix path), through a temporary detached
-# worktree. A separate --finalize invocation closes the issue and wipes the
-# .feature/ scratch after the requested promotion has completed. It never
-# deletes a branch: ft/<issue> and bf/<issue> branches are the owner's to remove,
-# locally and on the remote, whenever they choose.
+# Ship a canonical feature/bug branch to beta through a temporary detached checkout.
+# Production advances only through the /promote pull request. Finalize copies this
+# issue's records to scratch and retains operational history. Branches stay intact.
 #
 # Usage:
-#   ship.sh [--onto beta|main] <issue-number> "<commit message>"
+#   ship.sh [--onto beta] <issue-number> "<commit message>"
 #   ship.sh --finalize <issue-number>
 set -euo pipefail
+original_args=("$@")
 
 usage() {
   cat >&2 <<'USAGE'
 usage:
-  ship.sh [--onto beta|main] <issue-number> "<commit message>"
+  ship.sh [--onto beta] <issue-number> "<commit message>"
   ship.sh --finalize <issue-number>
 USAGE
   exit 2
@@ -33,9 +30,13 @@ while [ "$#" -gt 0 ]; do
       shift
       onto="${1:-}"
       case "$onto" in
-        beta | main) ;;
+        beta) ;;
+        main)
+          echo "ship: direct production shipping is retired. Ship to beta, then use /promote to open the production pull request." >&2
+          exit 2
+          ;;
         *)
-          echo "ship: --onto must be beta or main." >&2
+          echo "ship: --onto must be beta; production uses /promote." >&2
           exit 2
           ;;
       esac
@@ -90,6 +91,17 @@ current_branch="$(git symbolic-ref --quiet --short HEAD || true)"
   exit 1
 }
 
+# Re-exec under the same repository-wide lease before any Git or record writes.
+if [ -z "${OPARAX_WRITER_FD:-}" ]; then
+  exec python3 .claude/scripts/writer-lease.py run --repo "$repo_root" --run-id "ship-${issue}" -- \
+    bash "$repo_root/.claude/scripts/ship.sh" "${original_args[@]}"
+fi
+python3 .claude/scripts/writer-lease.py verify --repo "$repo_root" \
+  --run-id "${OPARAX_RUN_ID:-}" --token "${OPARAX_WRITER_TOKEN:-}" || {
+  echo "ship: missing or stale writer lease; no integration started." >&2
+  exit 1
+}
+
 remote_ref_sha() {
   remote_name="$1"
   ref_name="$2"
@@ -141,16 +153,28 @@ if [ "$finalize" = "true" ]; then
     exit 1
   }
 
-  # Wipe the scratch contents but KEEP the tracked .feature/.gitignore: that one
-  # file is what hides every scratch artifact from git. Deleting it here meant
-  # the next feature's .feature/ landed as an untracked directory, tripping
-  # start.sh's require_clean_tree at the branch cut.
+  # Keep operational history, including older jobs and other issues, intact.
+  archive="scratch/feature-flow/${issue}/finalized-$(date +%Y%m%dT%H%M%S)"
+  mkdir -p "$archive"
   if [ -d .feature ]; then
-    find .feature -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf {} +
+    for record in .feature/*; do
+      name="${record##*/}"
+      case "$name" in
+        *-"${issue}"|*-"${issue}".*|*-"${issue}"-*) cp -R "$record" "$archive/" ;;
+      esac
+    done
+    if [ -d ".feature/lanes/$issue" ]; then
+      mkdir -p "$archive/lanes"
+      cp -R ".feature/lanes/$issue" "$archive/lanes/"
+    fi
+    if [ -d .feature/build-runs ]; then
+      mkdir -p "$archive/build-runs"
+      for record in .feature/build-runs/"${issue}"-*; do
+        [ -e "$record" ] && cp -R "$record" "$archive/build-runs/"
+      done
+    fi
   fi
-  rm -rf .superpowers
-  rmdir .claude/worktrees 2>/dev/null || true
-  echo "Finalized $branch; every ft/<issue> and bf/<issue> branch is left in place, delete them yourself when you want them gone."
+  echo "Finalized $branch; issue records copied to $archive and operational history retained."
   exit 0
 fi
 
@@ -171,6 +195,8 @@ if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
 fi
 
 source_tip="$(git rev-parse HEAD)"
+# A fix commit, generic done comment, or earlier PASS is never shipping proof.
+gh issue view "$issue" --json comments | python3 .claude/scripts/qc-proof.py --commit "$source_tip"
 
 # Publish the exact feature tip first. A normal non-force push supplies a remote
 # recovery copy and rejects if somebody moved the branch unexpectedly.

@@ -1,6 +1,6 @@
 ---
 name: build
-description: "Build one component of an approved Oparax plan in that component's worktree, one commit per numbered step, owner-triggered only. Use only when the owner explicitly types /build <N> <component> in Claude Code. Mode picked from files: AMEND (a pending amendment naming the component), FIX (a pending QC fix list for it), else BUILD (its plan slice). Never invoke automatically during other work."
+description: "Build one component of an approved Oparax plan in the active feature checkout, one commit per numbered step, owner-triggered only. Use only when the owner explicitly types /build <N> <component> in Claude Code. Mode picked from files: AMEND (a pending amendment naming the component), FIX (a pending QC fix list for it), else BUILD (its plan slice). Never invoke automatically during other work."
 argument-hint: "[issue #] [component]"
 allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Skill Write Read Edit Grep Glob
 model: inherit
@@ -14,4 +14,4 @@ The build skill is one file shared with Codex (`$build <N>` there) and Claude Co
 Two differences in mechanics only, never in behavior:
 
 - Where the canonical file names Codex-native invocation (typing `$name`, e.g. `$vercel:nextjs`, `$supabase:supabase`, `$posthog:instrument-llm-analytics`), the Claude Code equivalent is the `Skill` tool called with the same skill names (`vercel:nextjs`, `supabase`, `posthog:instrument-llm-analytics`, etc.). Invoke exactly the skills a step names, in the Skill-tool form, and no others. The documented compatibility alias is `vercel:shadcn` to the official global `shadcn`; do not load both.
-- This session sits in the main checkout, so every command runs against the component's worktree: read its path from `.feature/run-<N>.json` (the component's `worktree` and `plan_section`), then use `git -C <worktree>` and `pnpm -C <worktree>` and edit files under that path. The worktree and its branch must already exist (the launcher creates them, `python3 .claude/scripts/build-launch.py launch ...` with `--dry-run` if only the worktree is wanted); this skill never creates a worktree or a branch.
+- Run every command and edit in the existing canonical `ft/<N>` or `bf/<N>` checkout named by the launcher. A component is a plan scope in that checkout. A launcher `--worktree` argument is a compatibility path to an existing canonical checkout, never a creation request. This skill creates no worktree or branch and refuses a wrong target.

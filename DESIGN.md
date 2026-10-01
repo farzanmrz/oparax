@@ -6,7 +6,7 @@ Owner, September 29, 2026: "Change the design.md because, even though what we ha
 
 The owner's later clarification that day is equally important: specific comments about the integrations block and other compositions are "areas of exploration and things I'm not happy with, not as things to fix in my design system or rules that have emerged." Keep those comments in the visual brief. Do not promote them into permanent rules here.
 
-This file is the shared design contract. `app/globals.css` supplies the implemented tokens, and `app/layout.tsx` loads the implemented fonts. **Implementation status, September 29:** this contract has been updated; those runtime files still contain the earlier Zinc palette and three-font setup. The shared theme migration and Claude Design upload have not been performed by this documentation update. Existing pages are not claimed to match the new baseline yet.
+This file is the shared design contract. `app/globals.css` supplies the implemented tokens, and `app/layout.tsx` loads the implemented fonts. **Implementation status, September 30:** current app source loads Hanken Grotesk and implements the navy/blue light and dark palette. Four sans-serif heading/body combinations are under visual comparison, so font selection remains pending. This audit changes documentation only; it selects no font and changes no runtime tokens. Claude Design synchronization remains manual when requested and unverified by this audit.
 
 The repo is the source of truth. Claude Design can hold a copy. Synchronization is manual when requested; the automatic design-sync reminder hook was removed at the owner's instruction on September 29. Claim a sync complete only after an actual upload is verified.
 
@@ -21,7 +21,7 @@ These are deliberately a small foundation, not a specification for every screen.
 | Components | Existing shadcn Mira primitives remain the accessible foundation. | Compose and adapt suitable blocks without rebuilding basic controls or reinitializing the project. |
 | Theme | Dark by default, with an equally considered light mode and a visible toggle. | Both modes should feel coherent, with clearly separated surfaces and readable controls. |
 | Palette | Cool blue-gray surfaces and a blue action accent, as in the current previews. | Preserve the color relationships the owner liked instead of inventing a palette per page. |
-| Typography | Hanken Grotesk for general headings and body text, as used in the previews. Regular body text, restrained medium/semibold emphasis. | Keep the readable feel without excessive bolding. Do not impose a separate monospace identity on handles, times, or numbers. Actual code can use monospace. |
+| Typography | Font selection remains pending. Current runtime uses Hanken Grotesk; four heading/body combinations are under visual comparison. Keep readable body text and restrained emphasis. | Keep the readable feel without excessive bolding. Do not impose a separate monospace identity on handles, times, or numbers. Actual code can use monospace. |
 | Shape and depth | Moderately rounded corners, with borders, surface differences, and restrained shadows where useful. | Make layers distinct in both themes without putting every item into an oversized card. Exact radii and shadows remain component choices within this foundation. |
 | Marks and icons | Real integration marks with provenance; Lucide for generic actions and categories. | Preserve recognizable brand colors where the brand permits them. Use a neutral contrasting Oparax SVG mark and wordmark. |
 

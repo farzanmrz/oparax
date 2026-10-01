@@ -1,17 +1,17 @@
 ---
 name: build
-description: "Build one component of an approved Oparax plan in that component's own worktree, one commit per numbered step, with nobody watching. Use when the owner types $build <N> or the flow's launcher (.claude/scripts/build-launch.py) starts it with a component, a worktree and a plan slice. Mode picked from files: AMEND (a pending amendment naming this component), FIX (a pending QC fix list for this component), else BUILD (the component's plan slice). Never invoke automatically during other work."
+description: "Build one component of an approved Oparax plan in the active canonical feature checkout, one commit per numbered step, with nobody watching. Use when the owner types $build <N> or the flow's launcher (.claude/scripts/build-launch.py) starts it with a component, an existing checkout and a plan slice. Mode picked from files: AMEND (a pending amendment naming this component), FIX (a pending QC fix list for this component), else BUILD (the component's plan slice). Never invoke automatically during other work."
 ---
 
-# Build: one component, one worktree, one commit per step, then stop
+# Build: one scope in the active checkout, one commit per step, then stop
 
 You are the build stage of the Oparax feature flow. The owner approved the plan and is not watching: every choice you make is written down for him in plain product words (he does not read TypeScript, Next.js or diffs). This skill builds and STOPS. It never runs journeys, gates, servers, deploys or reviews; those belong to `/qc` in Claude Code and to the owner.
 
 ## 1. Where you are
 
-The launcher's prompt names the issue, the component, the mode, the scope file, the plan slice, the worktree, the branch, the decision log and, on a resume, the step to continue from. A manual `$build <N>` gets the same facts from `.feature/run-<N>.json` in the main checkout (`/Users/farzanm4/Desktop/repos/oparax`): the component whose `worktree` is the folder you are in.
+The launcher's prompt names the issue, the component, the mode, the scope file, the plan slice, the checkout, the canonical branch, the fixed round base commit, the decision log and, on a resume, the step to continue from. A manual `$build <N>` uses the active `ft/<N>` or `bf/<N>` checkout and its approved plan scope. When multiple scopes could apply, name the intended component or `integration` before launching; never infer a live job from an old run record. The launcher must establish repository writer ownership before a detached build starts.
 
-- `git branch --show-current` must be `ft/<N>-<component>` (or `bf/<N>-<component>` for a bug). If not, STOP: the launcher creates worktrees and branches, never this skill.
+- `git branch --show-current` must be `ft/<N>` or `bf/<N>`. If not, STOP and name the mismatch. No stage creates a component branch or checkout automatically. Existing component worktrees and schema-v1 run records are historical, not a target to adopt or resume silently.
 - Read `.feature/` files by exact path (`cat`, `ls`), never with `rg --files` or `fd`: the folder is git-ignored and those tools list nothing there (a build once stopped as "plan missing" while the plan sat on disk).
 - Scope by mode, one round per run:
   - **BUILD**: the plan slice. Read its files and contracts, its numbered build steps and its shared contracts section, nothing else; journeys and ship notes are for the owner and `/qc`.
@@ -22,7 +22,7 @@ The launcher's prompt names the issue, the component, the mode, the scope file, 
 
 ## 2. Resume
 
-`git log --format='%s%n%(trailers)' ft/<N>..HEAD` shows the committed steps: trailers `Step: k/M`, `Component: <id>`, `Round: <this round>`. Continue from k+1. The launcher already discarded uncommitted leftovers; never redo a committed step and never rewrite history.
+`git log --format='%s%n%(trailers)' <round-base-sha>..HEAD` shows the committed steps: trailers `Step: k/M`, `Component: <id>`, `Round: <this round>`. Continue from k+1. Use the fixed base SHA persisted for this round, never the moving feature branch as the base. The launcher refuses unknown dirty work and retains unfinished work on failure; never discard it, redo a committed step or rewrite history.
 
 ## 3. Deciding without the owner (owner, September 28)
 
@@ -40,8 +40,8 @@ A parked step is still built, behind its default, and the build goes on to the n
 
 1. Do the step in the files it names, in order. Invoke exactly the skills the step names by `$name` and no others. A build step that tells you to run a journey, gates, a server, env or dashboard operations, or to ask the owner something: skip it and log one line (a planning defect, not an order).
 2. Design: read `.claude/skills/feature/references/design-tooling.md` and implement the plan's actual selected blocks and accepted reference. Resolve `shadcn` and legacy `vercel:shadcn` steps to the official global `$shadcn` skill. Do not rewrite approved plan files or hashes. Never change DESIGN.md or theme tokens incidentally. Existing primitives are preserved; adding a missing registry component is allowed when the plan requires it, after inspecting the change.
-3. Migrations only when the plan slice says `migrations: yes` (the launcher lets one migrating component run at a time). Supabase MCP only, no CLI: `apply_migration` with the slug as the name, mirror the SQL to `supabase/migrations/<utc-timestamp>_<slug>.sql` with a `-- Applied via the Supabase MCP server` header, regenerate `lib/supabase/database.types.ts`. Never ask about timing or preview branches.
-4. Format what you touched: `pnpm exec biome check --write <files>` (the format-on-write hook is not trusted at a worktree path).
+3. Migrations only when the plan slice says `migrations: yes` (the one repository writer keeps database work sequential). Supabase MCP only, no CLI: `apply_migration` with the slug as the name, mirror the SQL to `supabase/migrations/<utc-timestamp>_<slug>.sql` with a `-- Applied via the Supabase MCP server` header, regenerate `lib/supabase/database.types.ts`. Never ask about timing or preview branches.
+4. Format what you touched: `pnpm exec biome check --write <files>` (do not rely only on the format-on-write hook).
 5. Commit the step, trailers included, and nothing else in the same commit (`--trailer`, never a second `-m`: git reads trailers only from one final block):
 
 ```bash
@@ -52,29 +52,23 @@ AMEND: subject `feat: amendment R step k of M, <component> (#N)`, `Round: amend-
 
 Rules while building:
 
-- **Subagents:** use them for independent work inside the scope, with clear file ownership in this worktree; they never commit, switch branches or start another stage. Review their work before the step's commit.
+- **Subagents:** independent read-only research may run in parallel, with an explicitly named task-appropriate model. One agent writes product files by default. Parallel implementation or another checkout requires the owner's explicit request, clear file ownership and coordination. Subagents never commit, switch branches or start another stage.
 - **Write it simple:** reuse an existing helper over adding one, no abstraction with a single caller, delete code the change makes dead.
 - **Reference-init diff steps** (so named): read the vendor skill's reference init snippet and our init call, list every option the reference sets that ours does not, add each unless the step records a decision not to, and log the list (option names only).
 - **Packages: types and docs, never the bundle.** Rely on `.d.ts` files, shipped docs and `tsc`; never read `dist/*.js` or minified output. A named build-time check is performed exactly as the step describes and its outcome logged.
 - **No servers, no browsers, no gates.** Never run `pnpm dev`, `pnpm start`, `pnpm build`, lint or typecheck (FIX mode's one `tsc` is the exception); never open a browser or computer-use tool. Never edit `.env*`, never run `vercel` or dashboard operations.
-- **Git:** commit only. No push, no switch, no merge, no reset, no branch delete, no rebase; the project rules block them and the flow does them.
+- **Git:** commit only. No push, no switch, no merge, no reset, no branch delete, no rebase; these are stage boundaries; the supervisor owns the normal feature-branch push. Do not claim project Git rules deny commands when no such rule exists.
 
 ## 5. Finishing a round
 
 - **BUILD**: after step M's commit, STOP.
 - **AMEND**: after the last step's commit, set the amendment file's `Status:` to `applied`. STOP.
-- **FIX**: after the last item's commit run `pnpm exec tsc --noEmit` once; fix only what is mechanical (a type, an import, a missing await) and commit it as `fix: tsc after round R (#N)` with no Step trailer; anything else is logged as `FAILED:` and you stop. Set the fix file's `Status:` to `applied`, then post the round marker (`/ship` gates on it):
+- **FIX**: after the last item's commit run `pnpm exec tsc --noEmit` once; fix only what is mechanical (a type, an import, a missing await) and commit it as `fix: tsc after round R (#N)` with no Step trailer; anything else is logged as `FAILED:` and you stop. Set the fix file's `Status:` to `applied`, report fixes applied and STOP. Post no QC-done or PASS marker. Only a subsequent independent QC PASS, tied to the exact reviewed commit, proves the branch passed; a fix commit is not review proof.
 
-```bash
-gh issue comment <N> --body "## QC round <R>, <component>: done
-<one line per applied item, the owner text only>
-<one line per skipped item: 'Not applied: <owner text> (<reason>)'>"
-```
-
-Final message, plain words: what was built or fixed (what changed for a user, not which files), migrations applied by name (they live in Supabase and a git revert does not undo them), every `PARKED:` line copied verbatim, skipped instructions, the reference-init list if a step carried one, and the next command, `/qc <N>` in Claude Code. In FIX mode add **Do this now** (the single shortest walk proving this round's fixes, five numbered steps at most, ending with the one-word reply "passed" or "still missing"). The launcher decides the run's state from the commits and the log, not from this message.
+Final message, plain words: what was built or fixed (what changed for a user, not which files), migrations applied by name (they live in Supabase and a git revert does not undo them), every `PARKED:` line copied verbatim, skipped instructions, the reference-init list if a step carried one, and the next command, `/qc <N>` in Claude Code or `$qc <N>` in Codex for a standalone build; under a valid active supervisor, it continues into QC automatically. In FIX mode add **Do this now** (the single shortest walk proving this round's fixes, five numbered steps at most, ending with the one-word reply "passed" or "still missing"). The launcher decides the run's state from the commits and the log, not from this message.
 
 ## 6. Hard rules
 
-- **Stage boundary:** never run `/qc`, `/ship` or another `$build`; never touch another component's worktree or files.
+- **Stage boundary:** never run `/qc`, `/ship` or another `$build`; never edit outside this job's approved scope or start a competing writer.
 - Anything failing twice for the same reason: log `FAILED: step k: <the error verbatim>`, leave the tree as it is, and stop; do not thrash.
 - Never claim a step done without its commit; say exactly what is done and what is not.

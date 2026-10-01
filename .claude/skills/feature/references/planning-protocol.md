@@ -12,14 +12,14 @@ The planning host writes its own full draft or dispositions to a private file be
 
 ## Bounded model calls
 
-`.claude/scripts/planning-peer.py` runs the exact model selected by `--partner fable|astra` at high effort through the shared council provider commands. It permits only `--phase detail|adjudication`, uses a read-only sandbox and no connectors, hashes the owner plan, brief and optional host draft, and enforces a 900-second maximum per call. `status` and `wait` expose progress; `result` exposes only the completed answer. A failed or timed-out call is a failure, never an answer from partial output. Use a fresh run directory under the existing `.feature/` exception for each partner and phase. No model call writes final plan files.
+`.claude/scripts/planning-peer.py` runs the exact model selected by `--partner fable|astra` at high effort through the shared council provider commands. It permits only `--phase detail|adjudication`, uses a read-only sandbox and no connectors, hashes the owner plan, brief and optional host draft, and enforces a 900-second maximum per call. `status` and `wait` expose progress; `result` exposes only the completed answer. A failed or timed-out call is a failure, never an answer from partial output. Use a fresh visible run directory under `scratch/feature-flow/planning-<id>/` for each partner and phase. Existing `.feature/planning-*` records remain readable for compatibility; approved operational plan paths stay in `.feature/`. No model call writes final plan files.
 
 Example when Fable is the host for a feature detail round:
 
 ```bash
-python3 .claude/scripts/planning-peer.py start .feature/planning-<id>/detail-astra --repo "$PWD" --owner-plan .feature/plan-owner.md --brief .feature/planning-<id>/detail-brief.md --host-draft .feature/planning-<id>/detail-fable.md --partner astra --phase detail
-python3 .claude/scripts/planning-peer.py wait .feature/planning-<id>/detail-astra --seconds 30
-python3 .claude/scripts/planning-peer.py result .feature/planning-<id>/detail-astra
+python3 .claude/scripts/planning-peer.py start scratch/feature-flow/planning-<id>/detail-astra --repo "$PWD" --owner-plan .feature/plan-owner.md --brief scratch/feature-flow/planning-<id>/detail-brief.md --host-draft scratch/feature-flow/planning-<id>/detail-fable.md --partner astra --phase detail
+python3 .claude/scripts/planning-peer.py wait scratch/feature-flow/planning-<id>/detail-astra --seconds 30
+python3 .claude/scripts/planning-peer.py result scratch/feature-flow/planning-<id>/detail-astra
 ```
 
 For an Astra host, use `--host-draft <astra-file> --partner fable`. For a Codex host on another model, omit `--host-draft` and start separate `detail-fable` and `detail-astra` runs with the same approved owner plan and neutral brief. For `/amend`, use `.feature/amend-<N>-<R>-owner.md` as `--owner-plan`. The adjudication round uses `--phase adjudication` and a new run directory for each model; its brief names the completed plan and critique corpus. Do not reuse the detail sessions for critique or adjudication.

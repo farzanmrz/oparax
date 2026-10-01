@@ -2,6 +2,12 @@
 
 Every external account and key this project uses and how it is configured now (September 24, 2026; the September 28 rulings on budgets, credits and the tiers added). No secret values are written here, only names and where they live. How each piece was set up is in git history.
 
+## Source and tooling update, September 30
+
+The account-console facts below retain their original verification dates; this audit did not recheck remote account inventory or the live database. Current source includes the monitoring tables and RPCs, signup-first onboarding, billing, cron jobs and Contact delivery. Their schemas and migration mirrors are in `lib/supabase/database.types.ts` and `supabase/migrations/`; the old empty-schema description below records the post-148 state. Current source also reads `CRON_SECRET`, `STRIPE_WEBHOOK_SECRET`, `SMTP_USER` and `SMTP_PASSWORD`. Do not treat the earlier environment-variable total as a current inventory.
+
+React Bits Pro is purchased. `REACTBITS_LICENSE_KEY` was pulled from Vercel into the git-ignored project and preview environment files; `components.json` uses Authorization Bearer environment interpolation. Never record the value. Fresh shadcn CLI and MCP retrieval passed. Arbitrary shells do not load `.env.local` automatically, and a running MCP may predate its license environment. The selected setup guidance was exposed additively; no existing active tool was removed. Evidence: `scratch/reactbits-pro-setup/status.md` and the current tooling audit record.
+
 ## Vercel
 
 Pro plan. Project `oparax`; only `main` deploys, and production is live at `https://oparax.ai` (placeholder homepage, `/privacy`, `/terms`). Fourteen domains are attached (oparax.ai plus oparax.com, .net, .xyz, .info, .store, their www variants and two vercel.app aliases); the owner keeps all of them. No marketplace integrations. No Vercel spend limit yet (set after real usage, owner's rule); the AI Gateway key gets a budget, below.

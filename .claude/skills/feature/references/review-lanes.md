@@ -13,7 +13,7 @@ Both profiles include Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, Kim
 
 ## Where the lanes run and what they may read
 
-`review-lanes.py` takes `--checkout <path>`: the lanes run inside it and read its code. Critique leaves it at its default, the checkout the command runs in. A component QC passes the component's worktree; an integration QC runs in the main checkout on `ft/<N>`. The brief and the run directory may lie outside that checkout (a component round keeps them in the main checkout's `.feature/`), so every path in a brief is absolute.
+`review-lanes.py` takes `--checkout <path>`: the lanes run inside it and read its code. Critique leaves it at its default, the checkout the command runs in. Component and integration QC use the same active canonical `ft/<N>` or `bf/<N>` checkout. Review lanes remain parallel and read-only while the supervisor holds writer ownership. The brief and the run directory may lie outside the checkout, so every path in a brief is absolute.
 
 `--add-dir <folder>` (repeatable) names a builders' skill folder by its central path (owner, September 28: reviewers get the builders' skills by exact path, not copies). The current runner accepts and records each folder, then exposes it as an additional read root while keeping every lane read-only. Codex reads the absolute paths named in the prompt instead of receiving a writable extra root. Keep the older-runner fallback defensive: only when preview prints `ADD_DIR_UNSUPPORTED <folders>` does the stage copy those folders under the run directory (`<run-dir>/skills/<name>/`) before starting. The brief says which lanes read the copy.
 

@@ -1,12 +1,12 @@
 ---
 name: run-plan
 description: >-
-  Start, check or stop the overnight run of an approved plan. The script
-  .claude/scripts/run-plan.py builds, reviews and merges every component of
-  .feature/plan-<N>.md on its own and leaves one list to read in the morning.
-  Use when the owner says /run-plan <N>, /run-plan <N> status, /run-plan <N> stop or
-  /run-plan <N> resume. This skill only starts, shows or stops the script; it never
-  decides what to build, what passed, or what to merge.
+  Start, check or stop the unattended run of an approved plan. The script
+  .claude/scripts/run-plan.py builds each component in the existing canonical
+  checkout with one product writer, then carries independent whole-branch QC,
+  fixes and QC to a bounded PASS or blocker. Use when the owner says
+  /run-plan <N>, /run-plan <N> status, /run-plan <N> stop or /run-plan <N> resume.
+  This skill only starts, shows or stops the script; it never decides scope or proof.
 argument-hint: "<issue #> [status|stop|resume]"
 allowed-tools: Bash(python3 *)
 model: sonnet
@@ -15,25 +15,24 @@ disable-model-invocation: true
 
 # Run: hand the approved plan to the script and step away
 
-`/feature <N>` ends with an approved plan on disk: `.feature/plan-<N>.md` with one row per component, and one slice file per component under `.feature/plan-<N>/`. This command hands that plan to a script that carries it out while you are away. The script is the only thing that decides anything; no model session holds the whole plan, and every model session does one bounded job (build one component, review one component, apply one fix round) and then ends. What the script does, in plain words, is in [orchestration](../feature/references/orchestration.md).
+`/feature <N>` ends with an approved plan on disk: `.feature/plan-<N>.md` with one row per component and a slice per component under `.feature/plan-<N>/`. The script carries it out in the existing `ft/<N>` or `bf/<N>` checkout with one product writer. Independent research and review lanes remain parallel and read-only. What it does is defined in [orchestration](../feature/references/orchestration.md).
 
-The four forms, and the one command each runs:
+Run the one form the owner asked for:
 
 ```bash
-python3 .claude/scripts/run-plan.py start --issue <N>    # /run-plan <N>: begin the run, detached, and come back at once (10 builds at once, gates-only per component; owner, September 28)
-python3 .claude/scripts/run-plan.py status --issue <N>   # /run-plan <N> status: one screen, one line per component
-python3 .claude/scripts/run-plan.py stop --issue <N>     # /run-plan <N> stop: nothing new starts; what is running finishes its job
-python3 .claude/scripts/run-plan.py resume --issue <N>   # /run-plan <N> resume: pick up a stopped or interrupted run where it stands
+python3 .claude/scripts/run-plan.py start --issue <N>
+python3 .claude/scripts/run-plan.py status --issue <N>
+python3 .claude/scripts/run-plan.py stop --issue <N>
+python3 .claude/scripts/run-plan.py resume --issue <N>
 ```
 
-Run the one command the owner asked for, show its output in plain words, and stop. Do not read the plan, do not launch builds, reviews or merges yourself, do not touch worktrees or branches, and do not poll or wait: the script runs detached and keeps going after this session closes.
+Show the result plainly and stop. Do not launch jobs yourself, switch branches, create checkouts or poll: the detached script continues after this session closes.
 
-What the owner gets:
+- **While it runs:** status shows one line per component and whole-branch QC. The legacy state word `merged` means incorporated directly into the active branch; there is no component merge.
+- **When it ends:** one macOS notification and an owner-readable summary under `scratch/feature-flow/<N>/run-<run_id>-summary.md`. `.feature/run-<N>-summary.md` remains a compatibility copy. The summary names built work, parked questions, blockers and acceptance journeys.
+- **One writer:** components build sequentially in dependency order. `--max-builds` defaults to 1 and refuses other values. No component branch or worktree is created. Additional implementation checkouts require an explicit owner request and a separate coordination arrangement.
+- **Review and continuation:** each component gets build and typecheck; `--component-review lanes` optionally adds independent component QC. Whole-branch QC always uses the fixed nine reviewers plus the host pass. FIXES launches the exact integration fix list in this checkout, then repeats gates and independent QC within the existing three-fix-round limit. PASS is tied to the reviewed SHA, posted by the supervisor, then the canonical feature branch is pushed.
+- **Deadlines:** a build gets 60 minutes, QC 30, a fix 45. A timed-out job is stopped. Dirty work is preserved and blocks for inspection. A clean job can retry from its fixed round base and committed steps; three timeouts block it.
+- **Resume:** only a stopped or interrupted current-checkout schema-v2 run may resume. Historical schema-v1 component-worktree records remain readable by status but cannot be silently resumed. Completed runs cannot be resumed as new work.
 
-- **While it runs:** `/run-plan <N> status` at any time. Each component is one line with where it is (planned, building, reviewing, fixing, merged, parked, blocked, failed).
-- **When it ends:** a macOS notification and one file, `.feature/run-<N>-summary.md`: what shipped into `ft/<N>`, what parked with the question it is waiting on, what blocked and why, and which acceptance journeys to walk. Nothing else needs reading.
-- **Per component, only the gates (owner, September 28: "screw the separate review loops").** After each build the script runs the build and typecheck in that worktree and merges on green; the one full review with the lanes runs on the whole branch at the end. `--component-review lanes` restores the old per-component `/qc`. `--max-builds` defaults to 10.
-- **A pause parks only that component.** The rest keeps going. Parked and blocked components keep every step they committed on their own branch, so nothing is lost and nothing has to be redone.
-- **No session can hang the night.** A build gets 60 minutes, a review 30, a fix round 45; past that the script ends it, throws away its unfinished changes, and starts it again from the last step it committed. Three such timeouts block the component for you to look at.
-
-If the script refuses (the plan file changed since approval, a component's worktree holds changes no session owns, a run is already going), relay its message as it is and stop; it says what to do.
+If the script refuses a wrong branch, changed approved plan, unknown dirty work or another writer, relay the concrete refusal and stop. Never reset or clean the owner's checkout to make launch succeed.

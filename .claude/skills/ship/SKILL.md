@@ -2,37 +2,38 @@
 name: ship
 description: >-
   The ship gate, standalone, same file in Claude Code (/ship <N>) and Codex ($ship <N>). Use when the user says /ship <N> or $ship <N>, "ship it",
-  or "close the slice" on a finished branch, after /qc's round marker
+  or "close the slice" on a finished branch, after independent integration QC PASS proof
   exists. Ship closes the issue once the squash lands on beta.
 argument-hint: "[issue#]"
-allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(pnpm *) Skill
+allowed-tools: Bash(git *) Bash(gh *) Bash(node *) Bash(python3 *) Bash(pnpm *) Skill
 model: inherit
 disable-model-invocation: true
 ---
 
-# Ship: minimal guard, deterministic mechanics, owner closes
+# Ship: independent PASS proof, owner walk, squash to beta
 
-## 0. Meta and docs sweep (always, first, unconditional)
+## 0. Confirm the target and settle meta changes
 
-Before any guard, sweep every process and documentation path into one commit on the CURRENT branch and push it, whether or not this session touched them: `.claude/`, `.codex/`, `.agents/`, `.grok/`, `.github/`, `docs/`, and root `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`. (`.feature/` is git-ignored wholesale by its own `.gitignore`, so there is never anything to commit there.)
+Before writing anything, confirm the active checkout is the requested `ft/<N>` or `bf/<N>` and no supervisor or build owns its writer lease. Refuse a wrong target or active writer without switching. Then sweep process and documentation paths into one commit on that canonical branch and push it, whether or not this session touched them: `.claude/`, `.codex/`, `.agents/`, `.grok/`, `.github/`, `docs/`, and root `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`. (`.feature/` is git-ignored wholesale by its own `.gitignore`, so there is never anything to commit there.)
 
 ```bash
 for p in .claude .codex .agents .grok .github docs AGENTS.md CLAUDE.md DESIGN.md README.md; do [ -e "$p" ] && git add -A -- "$p"; done; git diff --cached --quiet || { git commit -m "meta: sweep before ship (#<N>)" && git push origin HEAD; }
 ```
 
-(A pathspec that does not exist makes `git add` fail wholesale, hence the existence filter.) Nothing staged means nothing to do; move on. This commit touches meta paths only, so it never trips the staleness rule below.
+(A pathspec that does not exist makes `git add` fail wholesale, hence the existence filter.) Nothing staged means nothing to do; move on. This commit changes HEAD. If it follows QC, exact-commit proof must be renewed before ship.
 
 ## 1. Guard
 
-* **A `## QC round <R>: done` marker exists on the issue** (titles only, never the full thread):
+* **Canonical target:** the active checkout must already be `ft/<N>` or `bf/<N>`. Refuse a wrong target without switching, and refuse an active repository writer lease. Ship is a separate owner-triggered action after the acceptance walk.
+* **Independent integration PASS:** run the script's read-only proof validator before shipping:
 
 ```bash
-gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
-  --jq '.[] | select(.body|startswith("## QC round")) | (.body|split("\n")[0])'
+gh issue view <N> --json comments | python3 .claude/scripts/qc-proof.py --commit "$(git rev-parse HEAD)"
 ```
 
-* **Feature-path staleness:** commits after the latest done marker touching feature paths (`app/`, `lib/`, `components/`, `supabase/`, `public/`, root config) mean the proven state is not the shipping state: STOP and route to another `/qc <N>` round. Meta-only commits (`.claude/`, `.agents/`, `.codex/`, `docs/`, root `*.md`) never trip this.
-* **Missing marker:** name it and STOP. **Owner override:** "ship anyway" is honored and recorded.
+It requires the latest integration QC marker to carry `Result: PASS` and `Reviewed-Commit: <SHA>` matching the shipping HEAD. A fix build's comment, a generic done heading or a component PASS never qualifies. Any later commit, including a meta sweep, requires fresh independent QC proof. Missing or stale proof is a STOP with the concrete reason; route to `/qc <N> --integration`.
+
+* **Owner override:** "ship anyway" is honored and recorded explicitly. It is not inferred from a green build or fix-applied comment.
 
 ## 2. The gate ✋
 
@@ -44,7 +45,7 @@ Show the complete `git status --short --untracked-files=all` (everything listed 
 .claude/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
-The script owns the mechanics: inventory, staging, recovery snapshot, non-force push, one squash commit on `beta` with its trailers, and, once that push is verified, closing issue N. On a conflict STOP: explain whether both intentions can coexist and offer exactly three resolutions (preserve both, prefer beta, prefer the feature); never a destructive reset.
+The script owns the mechanics: inventory, staging, recovery snapshot, non-force push, one squash commit on `beta` with its trailers, and, once that push is verified, closing issue N. A recovery snapshot of dirty files changes HEAD; the script then refuses stale QC proof without pushing and preserves that local commit for review. On a conflict STOP: explain whether both intentions can coexist and offer exactly three resolutions (preserve both, prefer beta, prefer the feature); never a destructive reset.
 
 The close is the script's job, not yours: never run `gh issue close` by hand here. If the script prints the `WARNING: ... could not be closed` line, the slice still shipped; say so in one line and close it manually.
 
@@ -52,7 +53,7 @@ The close is the script's job, not yours: never run `gh issue close` by hand her
 
 The beta push IS the job. Never check, poll, or watch a deployment; the owner looks at the live app themselves.
 
-Right after the push, delete the branch's scratch: `.feature/lanes/`, `.feature/*dispositions*.md`, `.feature/issue-body.md`, and any draft files. Keep only `.feature/plan-<N>*.md`, `.feature/amend-<N>-*.md`, and `.feature/fixes-<N>*.md` until finalize (below), which wipes the directory.
+Preserve the issue's plan, run, review and disposition evidence after the push. Do not remove shared lane folders or another issue's records. Operational `.feature` files remain available for follow-up amendments; owner-readable records belong under `scratch/feature-flow/<N>/`.
 
 ## 4. Stop: the slice is closed
 
@@ -60,15 +61,15 @@ The push closed the issue. Do NOT run finalize. End with:
 
 <exit-example>
 
-Shipped to beta and closed issue N. Check it on localhost when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. The plan files stay on disk in case you want an `/amend`, say the word and I sweep them.
+Shipped to beta and closed issue N. Check it on localhost when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. The plan files stay on disk in case you want an `/amend`, say the word and I archive the issue records.
 
 </exit-example>
 
-Stop there. `.feature/` still holds `plan-<N>*.md`, `amend-<N>-*.md`, and `fixes-<N>*.md` on purpose: if the localhost walk turns up a problem, `/amend <N>` needs them. On the owner's word, `.claude/scripts/ship.sh --finalize <issue#>` sweeps that scratch. That is now finalize's only job, it closes nothing and deletes no branch.
+Stop there. `.feature/` still holds `plan-<N>*.md`, `amend-<N>-*.md`, and `fixes-<N>*.md` on purpose: if the localhost walk turns up a problem, `/amend <N>` needs them. On the owner's word, `.claude/scripts/ship.sh --finalize <issue#>` preserves an issue-scoped archive under `scratch/feature-flow/<N>/` and retains operational records for compatibility. It never wipes the shared `.feature` directory, closes another issue or deletes a branch.
 
 ## Hard rules
 
-* Feature slices always run on `ft/<issue#>`; app code never lands directly on `beta` or `main`. One carve-out: owner-directed micro-edits to instruction files and docs (`.claude/**`, `AGENTS.md`, `docs/**`) land on `beta` directly.
+* Feature slices run on the active `ft/<issue#>` or `bf/<issue#>` checkout; app code never lands directly on `beta` or `main`. One carve-out: owner-directed micro-edits to instruction files and docs (`.claude/**`, `AGENTS.md`, `docs/**`) land on `beta` directly.
 * `main` moves only through the ordered beta-to-main promotion; never force-push protected branches.
 * **The issue closes when the slice lands on `beta`, and `ship.sh` does it.** There is no separate owner-closes step and no waiting for the localhost walk. Never close an issue by hand except to recover from the script's own printed warning.
-* **No stage of this flow ever deletes a branch.** Every `ft/<issue#>` and `bf/<issue#>` branch stays until the owner removes it themselves, locally and on the remote. Old branches accumulating is the intended state, never a condition to tidy up: do not add a sweep, do not offer one, and do not delete a branch as a side effect of any other command.
+* **No stage creates component branches or worktrees automatically, or deletes a branch as a side effect.** Keep the active canonical branch. Owner-authorized preserving cleanup is a separate action outside the stages; obsolete branches accumulating is not a required policy.

@@ -23,11 +23,15 @@ destination_branch="$2"
 # stays available for a manual sweep during the soak period; Phase 3 removes it
 # once dev itself is retired.
 case "${source_branch}:${destination_branch}" in
-  dev:beta | beta:main)
+  beta:main)
+    echo "promote: direct beta-to-main integration is retired. Use /promote to open the reviewed production pull request." >&2
+    exit 2
+    ;;
+  dev:beta)
     ;;
   *)
     echo "promote: invalid hop ${source_branch} -> ${destination_branch}." >&2
-    echo "promote: the only allowed hops are dev -> beta and beta -> main." >&2
+    echo "promote: the legacy manual hop is dev -> beta; beta -> main requires /promote." >&2
     exit 2
     ;;
 esac
