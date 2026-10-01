@@ -7,15 +7,27 @@ description: "Build one component of an approved Oparax plan in the active canon
 
 You are the build stage of the Oparax feature flow. The owner approved the plan and is not watching: every choice you make is written down for him in plain product words (he does not read TypeScript, Next.js or diffs). This skill builds and STOPS. It never runs journeys, gates, servers, deploys or reviews; those belong to `/qc` in Claude Code and to the owner.
 
+## 0. Manual entry or launched worker
+
+A manual `$build <N>` or `/build <N> <component>` is a launcher entry, not permission for the current host to edit product files without writer ownership. Resolve the one approved scope and existing canonical checkout, then run:
+
+```bash
+python3 .claude/scripts/build-launch.py launch --issue <N> --component <id-or-integration> --plan <absolute scope path>
+```
+
+Use the component slice, or the table plan for `integration`; the launcher selects a pending amendment or fix list. Default Astra High is unchanged; a manual model override needs the owner's explicit request. Report the real job status and stop. If the scope is ambiguous, resolve it from the owner's request and approved pending records rather than starting multiple jobs.
+
+Only the launched worker follows the implementation sections below. Require the launcher's component/mode/scope/fixed-base assignment and a matching current-checkout job manifest under `.feature/build-runs/`. Check that its run id matches active writer metadata in the common Git directory; `writer-lease.py verify` checks that metadata context against the held operating-system lease. A manual entry never adopts another job merely because its manifest exists. The launcher owns descriptor inheritance and actual exclusivity. Provider tools may close inherited descriptors before starting a shell, so a missing shell descriptor is not evidence that ownership was lost; do not require shell `fstat` or unsupported standalone environment tokens. If launch provenance or matching active ownership cannot be established, STOP before editing.
+
 ## 1. Where you are
 
-The launcher's prompt names the issue, the component, the mode, the scope file, the plan slice, the checkout, the canonical branch, the fixed round base commit, the decision log and, on a resume, the step to continue from. A manual `$build <N>` uses the active `ft/<N>` or `bf/<N>` checkout and its approved plan scope. When multiple scopes could apply, name the intended component or `integration` before launching; never infer a live job from an old run record. The launcher must establish repository writer ownership before a detached build starts.
+The launcher's prompt names the issue, the component, the mode, the scope file, the plan slice, the checkout, the canonical branch, the fixed round base commit, the decision log and, on a resume, the step to continue from. The manual entry resolves these facts and delegates through section 0. Never infer a live job from an old run record; every implementation worker is launched under repository writer ownership.
 
 - `git branch --show-current` must be `ft/<N>` or `bf/<N>`. If not, STOP and name the mismatch. No stage creates a component branch or checkout automatically. Existing component worktrees and schema-v1 run records are historical, not a target to adopt or resume silently.
 - Read `.feature/` files by exact path (`cat`, `ls`), never with `rg --files` or `fd`: the folder is git-ignored and those tools list nothing there (a build once stopped as "plan missing" while the plan sat on disk).
 - Scope by mode, one round per run:
-  - **BUILD**: the plan slice. Read its files and contracts, its numbered build steps and its shared contracts section, nothing else; journeys and ship notes are for the owner and `/qc`.
-  - **AMEND**: `.feature/amend-<N>-<R>.md` with `Status: pending` and `Component: <this component>`; its `## Step` blocks are the numbered steps. Read every applied `.feature/fixes-<N>-<component>-round*.md` first and never revert an applied fix unless a step says it supersedes one.
+  - **BUILD**: the plan slice. Read its files/contracts and numbered build steps, plus the exact shared contracts it cites in `.feature/plan-<N>/shared.md`; journeys and ship notes are for the owner and `/qc`. A proof mapping describes later evidence, not extra execution work.
+  - **AMEND**: `.feature/amend-<N>-<R>.md` with `Status: pending` and `Component: <this component>`; its `## Step` blocks are the numbered steps. Read applied canonical `.feature/fixes-<N>-<component>.md` and `.feature/lanes/<N>/<component>/round-<R>/fixes.md` archives first, checking exact round job verdicts where an archive still says pending. Include affected adjacent components' applied fixes for an integration amendment. Never revert an applied fix unless a step explicitly supersedes it.
   - **FIX**: `.feature/fixes-<N>-<component>.md` with `Status: pending`; its `## Fix` blocks (`file`, `line`, `fix`, `owner`) are the numbered steps, applied exactly as written, nothing beyond them. An item whose anchor is gone or that contradicts the code as it stands is skipped: add `skipped: <reason>` under it and one decision-log line.
   - AMEND is checked first, then FIX, then BUILD; the launcher applies the same order and names the result.
 - Your first message is one line: the mode, the component and the step count.
@@ -26,7 +38,7 @@ The launcher's prompt names the issue, the component, the mode, the scope file, 
 
 ## 3. Deciding without the owner (owner, September 28)
 
-The builder decides anything that changes only how it is built (table shapes, libraries, names, any number the docs mark as the assistant's), takes the option cheapest to undo, writes one line in the run's decision log saying what and why, and keeps going. A surprise parks only the affected part behind its default; everything else continues. It pauses only for five things: spending money or signing up to a paid service; changing a price, a pool, a cadence or any other ruling of the owner's; deleting live data that has rows; sending a real DM or charging a real card; touching DESIGN.md.
+The builder decides anything that changes only how it is built (table shapes, libraries, names, any number the docs mark as the assistant's), takes the option cheapest to undo, writes one line in the run's decision log saying what and why, and keeps going. A surprise parks only the affected part behind its default; everything else continues. It parks an unresolved decision in five areas: spending or signing up to a paid service; changing a price, pool, cadence or another owner ruling; deleting live data with rows; sending a real DM or charging a real card; changing DESIGN.md or theme tokens. An exact scoped action already explicitly approved in the current session is authorized; do not re-ask or park it merely because it is in one of those areas. Incidental or newly invented changes remain outside scope.
 
 The decision log is the file the prompt names (`.feature/decisions-<N>-<component>.md` in the main checkout), appended, one line each, plain words:
 
@@ -40,7 +52,7 @@ A parked step is still built, behind its default, and the build goes on to the n
 
 1. Do the step in the files it names, in order. Invoke exactly the skills the step names by `$name` and no others. A build step that tells you to run a journey, gates, a server, env or dashboard operations, or to ask the owner something: skip it and log one line (a planning defect, not an order).
 2. Design: read `.claude/skills/feature/references/design-tooling.md` and implement the plan's actual selected blocks and accepted reference. Resolve `shadcn` and legacy `vercel:shadcn` steps to the official global `$shadcn` skill. Do not rewrite approved plan files or hashes. Never change DESIGN.md or theme tokens incidentally. Existing primitives are preserved; adding a missing registry component is allowed when the plan requires it, after inspecting the change.
-3. Migrations only when the plan slice says `migrations: yes` (the one repository writer keeps database work sequential). Supabase MCP only, no CLI: `apply_migration` with the slug as the name, mirror the SQL to `supabase/migrations/<utc-timestamp>_<slug>.sql` with a `-- Applied via the Supabase MCP server` header, regenerate `lib/supabase/database.types.ts`. Never ask about timing or preview branches.
+3. Migrations require the launcher's permission from an explicit `migrations: yes` on the approved effective amendment/fix scope, or its approved base slice when the round inherits that permission; an explicit `migrations: no` on the round wins. Never infer permission from a component table. The one repository writer keeps database work sequential. Supabase MCP only, no CLI: `apply_migration` with the slug as the name, mirror the SQL to `supabase/migrations/<utc-timestamp>_<slug>.sql` with a `-- Applied via the Supabase MCP server` header, regenerate `lib/supabase/database.types.ts`. Never ask about timing or preview branches.
 4. Format what you touched: `pnpm exec biome check --write <files>` (do not rely only on the format-on-write hook).
 5. Commit the step, trailers included, and nothing else in the same commit (`--trailer`, never a second `-m`: git reads trailers only from one final block):
 

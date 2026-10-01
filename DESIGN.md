@@ -6,7 +6,7 @@ Owner, September 29, 2026: "Change the design.md because, even though what we ha
 
 The owner's later clarification that day is equally important: specific comments about the integrations block and other compositions are "areas of exploration and things I'm not happy with, not as things to fix in my design system or rules that have emerged." Keep those comments in the visual brief. Do not promote them into permanent rules here.
 
-This file is the shared design contract. `app/globals.css` supplies the implemented tokens, and `app/layout.tsx` loads the implemented fonts. **Implementation status, September 30:** current app source loads Hanken Grotesk and implements the navy/blue light and dark palette. Four sans-serif heading/body combinations are under visual comparison, so font selection remains pending. This audit changes documentation only; it selects no font and changes no runtime tokens. Claude Design synchronization remains manual when requested and unverified by this audit.
+This file is the shared design contract. `app/globals.css` supplies the implemented tokens, and `app/layout.tsx` loads the implemented fonts. **Implementation status, September 30:** current app source loads Hanken Grotesk and implements the navy/blue light and dark palette. The owner selected the rendered Open Sans throughout candidate on September 30: "Open Sans is good." Open Sans is now the target for headings, body and ordinary UI text. Product runtime still needs migration from Hanken Grotesk through the accepted implementation scope; recording this choice does not claim that migration is complete. Claude Design synchronization remains manual when requested and unverified by this audit.
 
 The repo is the source of truth. Claude Design can hold a copy. Synchronization is manual when requested; the automatic design-sync reminder hook was removed at the owner's instruction on September 29. Claim a sync complete only after an actual upload is verified.
 
@@ -20,8 +20,8 @@ These are deliberately a small foundation, not a specification for every screen.
 | --- | --- | --- |
 | Components | Existing shadcn Mira primitives remain the accessible foundation. | Compose and adapt suitable blocks without rebuilding basic controls or reinitializing the project. |
 | Theme | Dark by default, with an equally considered light mode and a visible toggle. | Both modes should feel coherent, with clearly separated surfaces and readable controls. |
-| Palette | Cool blue-gray surfaces and a blue action accent, as in the current previews. | Preserve the color relationships the owner liked instead of inventing a palette per page. |
-| Typography | Font selection remains pending. Current runtime uses Hanken Grotesk; four heading/body combinations are under visual comparison. Keep readable body text and restrained emphasis. | Keep the readable feel without excessive bolding. Do not impose a separate monospace identity on handles, times, or numbers. Actual code can use monospace. |
+| Palette | Restrained navy/blue around direction 1, with latitude toward direction 2 and harmonious blue gradients (owner, September 30). | Preserve the color relationships the owner liked instead of inventing a palette per page. |
+| Typography | Open Sans for headings, body and ordinary UI text (owner selected the Open Sans throughout render, September 30). Use weight and size for hierarchy, with restrained emphasis. Current runtime still uses Hanken Grotesk until the implementation update. | Keep the readable feel without excessive bolding. Do not impose a separate monospace identity on handles, times, or numbers. Actual code can use monospace. |
 | Shape and depth | Moderately rounded corners, with borders, surface differences, and restrained shadows where useful. | Make layers distinct in both themes without putting every item into an oversized card. Exact radii and shadows remain component choices within this foundation. |
 | Marks and icons | Real integration marks with provenance; Lucide for generic actions and categories. | Preserve recognizable brand colors where the brand permits them. Use a neutral contrasting Oparax SVG mark and wordmark. |
 
@@ -39,6 +39,8 @@ Source: the shared `.r3` theme inherited by previews 17 to 20 in `scratch/landin
 | Border | `#d3ddec` | `#2a3952` |
 | Blue accent | `#245dec` | `#6b94ff` |
 | Blue-tinted surface | `#e7eeff` | `#203664` |
+
+Owner, September 30: "the color palette will remain dark at number 1, or somewhere between numbers 1 and 2" and "there can be variations in that gradient also." Explore within this navy/blue family, not green, red or unrelated page themes. Official platform logos retain their authentic appearance. All other components, including the X chat preview, may be restyled within this foundation. The owner explicitly corrected the earlier native-black chat restriction later on September 30; do not retain it as a lock. Keep semantic states understandable without treating their previous colors as immutable. Light mode remains part of the foundation.
 
 Map these roles to the existing semantic tokens rather than scattering raw colors through pages. Button text, focus indicators, disabled states, error colors, and chart colors need their own appropriate contrast and meaning; this table does not approve every possible pairing. Check actual foreground/background pairs before treating the theme as implemented.
 

@@ -2,14 +2,14 @@
 name: build
 description: "Build one component of an approved Oparax plan in the active feature checkout, one commit per numbered step, owner-triggered only. Use only when the owner explicitly types /build <N> <component> in Claude Code. Mode picked from files: AMEND (a pending amendment naming the component), FIX (a pending QC fix list for it), else BUILD (its plan slice). Never invoke automatically during other work."
 argument-hint: "[issue #] [component]"
-allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Skill Write Read Edit Grep Glob
+allowed-tools: Bash(git *) Bash(gh *) Bash(pnpm *) Bash(python3 *) Skill Write Read Edit Grep Glob
 model: inherit
 disable-model-invocation: true
 ---
 
 # Build (Claude Code entry point)
 
-The build skill is one file shared with Codex (`$build <N>` there) and Claude Code (`/build <N> <component>` here). Read `.agents/skills/build/SKILL.md` in this repository now, whole, and follow it exactly as written for issue N and that component, in this session. Its shell blocks are the mechanics (`git`, `gh`, the Supabase MCP tools); its mode rule decides BUILD, AMEND or FIX; one commit per step with the trailers, the decision log, then stop, is the contract. Nothing else in this file: the canonical skill is the whole instruction.
+The build skill is one file shared with Codex (`$build <N>` there) and Claude Code (`/build <N> <component>` here). Read `.agents/skills/build/SKILL.md` in this repository now, whole, and follow it exactly as written for issue N and that component, in this session. Manual invocation follows canonical section 0 and launches the leased Astra High worker; this `model: inherit` entry does not implement the code on its host model. A launched worker alone follows the implementation sections. Its mode rule decides BUILD, AMEND or FIX; one commit per step with trailers and the decision log is the worker contract. Nothing else in this file: the canonical skill is the whole instruction.
 
 Two differences in mechanics only, never in behavior:
 

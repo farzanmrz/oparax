@@ -17,10 +17,21 @@ disable-model-invocation: true
 Before writing anything, confirm the active checkout is the requested `ft/<N>` or `bf/<N>` and no supervisor or build owns its writer lease. Refuse a wrong target or active writer without switching. Then sweep process and documentation paths into one commit on that canonical branch and push it, whether or not this session touched them: `.claude/`, `.codex/`, `.agents/`, `.grok/`, `.github/`, `docs/`, and root `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`. (`.feature/` is git-ignored wholesale by its own `.gitignore`, so there is never anything to commit there.)
 
 ```bash
-for p in .claude .codex .agents .grok .github docs AGENTS.md CLAUDE.md DESIGN.md README.md; do [ -e "$p" ] && git add -A -- "$p"; done; git diff --cached --quiet || { git commit -m "meta: sweep before ship (#<N>)" && git push origin HEAD; }
+python3 .claude/scripts/writer-lease.py run --repo "$PWD" --run-id ship-meta-<N> -- bash -euc '
+while IFS= read -r -d "" p; do
+  case "$p" in
+    .claude/*|.codex/*|.agents/*|.grok/*|.github/*|docs/*|AGENTS.md|CLAUDE.md|DESIGN.md|README.md) ;;
+    *) printf "ship: staged non-metadata path preserved: %s\n" "$p" >&2; exit 1 ;;
+  esac
+done < <(git diff --cached --name-only -z --no-renames)
+for p in .claude .codex .agents .grok .github docs AGENTS.md CLAUDE.md DESIGN.md README.md; do
+  if [ -e "$p" ]; then git add -A -- "$p"; fi
+done
+git diff --cached --quiet || { git commit -m "meta: sweep before ship (#$1)" && git push origin HEAD; }
+' -- <N>
 ```
 
-(A pathspec that does not exist makes `git add` fail wholesale, hence the existence filter.) Nothing staged means nothing to do; move on. This commit changes HEAD. If it follows QC, exact-commit proof must be renewed before ship.
+(The guard runs inside the lease and rejects staged non-metadata paths without unstaging or changing them. Rename detection is disabled so both old and new paths are checked. A pathspec that does not exist makes `git add` fail wholesale, hence the existence filter.) Nothing staged means nothing to do; move on. This commit changes HEAD. If it follows QC, exact-commit proof must be renewed before ship.
 
 ## 1. Guard
 
@@ -33,7 +44,7 @@ gh issue view <N> --json comments | python3 .claude/scripts/qc-proof.py --commit
 
 It requires the latest integration QC marker to carry `Result: PASS` and `Reviewed-Commit: <SHA>` matching the shipping HEAD. A fix build's comment, a generic done heading or a component PASS never qualifies. Any later commit, including a meta sweep, requires fresh independent QC proof. Missing or stale proof is a STOP with the concrete reason; route to `/qc <N> --integration`.
 
-* **Owner override:** "ship anyway" is honored and recorded explicitly. It is not inferred from a green build or fix-applied comment.
+* **Direct owner exception:** the normal script requires independent proof and has no override flag. If the owner explicitly says "ship anyway", record his exact instruction and route the exception to the host as a separately scoped action. Never fabricate PASS, imply that the normal guard was satisfied, or silently bypass the script. A green build or fix-applied comment authorizes no exception.
 
 ## 2. The gate ✋
 
