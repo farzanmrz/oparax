@@ -4,9 +4,8 @@
 The plan is a file and this script follows it; no model session holds the plan. Every model
 session does one bounded job (one component build, one component QC, one fix round) and reads
 its frozen slice from disk. State lives in .feature/run-<N>.json (written atomically; the
-detached loop is its only writer), the journal in .feature/run-<N>.log, the morning list in
-.feature/run-<N>-summary.md. A stop request is a separate file so the loop stays the single
-writer of the state file.
+detached loop is its only writer) and the journal in .feature/run-<N>.log; `status` prints the
+summary. A stop request is a separate file so the loop stays the single writer of the state file.
 """
 import argparse
 import importlib.util
@@ -16,7 +15,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shlex
 import signal
 import subprocess
 import sys
@@ -105,9 +103,6 @@ class Real:
     def read_json(self, path):
         return json.loads(Path(path).read_text()) if Path(path).is_file() else None
 
-    def glob(self, pattern):
-        return sorted(Path(pattern).parent.glob(Path(pattern).name), key=lambda p: p.stat().st_mtime)
-
     def kill(self, pids):
         # Each session leads its own process group (start_new_session), so the group is the whole session.
         for sig in (signal.SIGTERM, signal.SIGKILL):
@@ -123,69 +118,6 @@ class Real:
 
     def sleep(self):
         time.sleep(POLL_SECONDS)
-
-
-class Dry:
-    """Prints every command in order and answers with canned success, so the order can be read."""
-
-    def __init__(self, issue, hang=None):
-        self.issue, self.n, self.clock, self.hang, self.launched = issue, 0, 0.0, hang, {}
-
-    def _say(self, cmd, cwd):
-        self.n += 1
-        print(f'{self.n:>3}. [{Path(cwd).name}] $ {" ".join(shlex.quote(str(a)) for a in cmd)}')
-
-    def sha(self, ref):
-        return hashlib.sha1(ref.encode()).hexdigest()[:12]
-
-    def run(self, cmd, cwd):
-        self._say(cmd, cwd)
-        cmd, out = [str(a) for a in cmd], ''
-        if cmd[:2] == ['git', 'rev-parse']:
-            # HEAD in the main checkout is ft/<N>; in a worktree named <N>-<id> it is ft/<N>-<id>.
-            ref = cmd[-1] if cmd[-1] != 'HEAD' else f'ft/{self.issue}'
-            out = self.sha(ref)
-        elif LAUNCHER.name in cmd[1] and cmd[2] == 'launch':
-            unit = cmd[cmd.index('--component') + 1]
-            self.launched[unit] = self.launched.get(unit, 0) + 1
-            hung = '-hung' if unit == self.hang and self.launched[unit] == 1 else ''  # the first launch never returns
-            out = json.dumps({'status': 'RUNNING', 'job': f'/dry/build-runs/{self.issue}-{unit}-job{hung}'})
-        elif LAUNCHER.name in cmd[1] and cmd[2] == 'status':
-            name = Path(cmd[-1]).name
-            if name.endswith('-hung'):
-                out = json.dumps({'status': 'RUNNING', 'worker_pid': 4242, 'child_pid': 4243})
-            else:
-                unit = name.removesuffix('-job')
-                out = json.dumps({'status': 'BUILT', 'base_commit': self.sha(f'ft/{self.issue}'), 'head_commit': self.sha(f'ft/{self.issue}'), 'steps_done': [1, 2]})
-        return subprocess.CompletedProcess(cmd, 0, out, '')
-
-    def kill(self, pids):
-        self._say(['kill', '--process-groups', *[p for p in pids if p]], REPO)
-
-    def time(self):
-        return self.clock
-
-    def spawn(self, cmd, cwd, out, err):
-        self._say(cmd, cwd)
-        return 0
-
-    def alive(self, pid):
-        return False
-
-    def read_json(self, path):
-        path = Path(path)
-        if path.name != 'result.json':
-            return None
-        unit = path.parents[1].name
-        branch = f'ft/{self.issue}'
-        return {'status': 'PASS', 'reviewed_commit': self.sha(branch), 'fixes': None, 'summary': 'dry run'}
-
-    def glob(self, pattern):
-        return []
-
-    def sleep(self):
-        self.clock += 15 * 60
-        print(f'     (clock: {int(self.clock // 60)} minutes)')
 
 
 def plan_components(plan):
@@ -226,15 +158,13 @@ def plan_components(plan):
 
 
 class Run:
-    def __init__(self, issue, ex, path=None):
-        self.issue, self.ex, self.dry = issue, ex, isinstance(ex, Dry)
-        self.path = Path(path) if path else REPO / f'.feature/run-{issue}.json'
+    def __init__(self, issue, ex):
+        self.issue, self.ex = issue, ex
+        self.path = REPO / f'.feature/run-{issue}.json'
         self.state = json.loads(self.path.read_text())
 
     # ----- state, journal, git -----
     def save(self):
-        if self.dry:
-            return
         tmp = self.path.with_suffix('.tmp')  # a reader never sees a half-written state file
         tmp.write_text(json.dumps(self.state, indent=2) + '\n')
         tmp.replace(self.path)
@@ -242,9 +172,8 @@ class Run:
     def log(self, who, text):
         line = f'{now()}  {who:<12} {text}'
         print(line, flush=True)
-        if not self.dry:
-            with (REPO / f'.feature/run-{self.issue}.log').open('a') as journal:
-                journal.write(line + '\n')
+        with (REPO / f'.feature/run-{self.issue}.log').open('a') as journal:
+            journal.write(line + '\n')
 
     def git(self, cwd, *args):
         return self.ex.run(['git', *args], cwd)
@@ -278,11 +207,11 @@ class Run:
     def launch_build(self, c, fixes=False):
         # The launcher picks FIX mode by itself from .feature/fixes-<N>-<id>.md at Status: pending, which QC writes.
         fix_list = REPO / f'.feature/fixes-{self.issue}-{c["id"]}.md'
-        if fixes and not self.dry and not re.search(r'^Status:\s*pending\s*$', fix_list.read_text() if fix_list.is_file() else '', re.M):
+        if fixes and not re.search(r'^Status:\s*pending\s*$', fix_list.read_text() if fix_list.is_file() else '', re.M):
             return self.set_status(c, 'failed', f'QC reported fixes but {fix_list} is not pending')
         c['fixes'] = fixes
         cmd = [sys.executable, LAUNCHER, 'launch', '--issue', self.issue, '--component', c['id'],
-               '--repo', REPO, '--worktree', c['worktree'], '--plan', c['plan_section']]
+               '--repo', REPO, '--plan', c['plan_section']]
         if c.get('round_base_commit'):
             cmd += ['--base-commit', c['round_base_commit']]
         done = self.ex.run(cmd, REPO)
@@ -319,14 +248,14 @@ class Run:
             return self.set_status(c, 'failed', f'unreadable build state: {done.stderr.strip()}')
         if job['status'] in BUILD_ACTIVE:
             if self.ex.time() - c['stage_started'] > DEADLINES[c['status']]:
-                self.timeout(c, [job.get('worker_pid'), job.get('child_pid')], Path(c['worktree']),
+                self.timeout(c, [job.get('worker_pid'), job.get('child_pid')], REPO,
                              lambda: self.launch_build(c, c['fixes']), stop)
             return
-        # The launcher decides BUILT, PARKED or FAILED from the step commits and the decision log.
+        # The launcher decides BUILT, PARKED or FAILED from the step commits and the build's final report.
         c.update(base_commit=c['base_commit'] or job.get('base_commit'), head_commit=job.get('head_commit'),
                  steps_done=max(job.get('steps_done') or [0]))
         if job['status'] == 'PARKED':
-            c['parked'] = self.parked_lines(c)
+            c['parked'] = [line.removeprefix('PARKED:').strip() for line in (job.get('reason') or '').splitlines()]
             return self.set_status(c, 'parked', '; '.join(c['parked']) or 'the build parked without a PARKED line')
         if job['status'] != 'BUILT':
             return self.set_status(c, 'failed', job.get('reason') or job.get('error') or f'build ended {job["status"]}')
@@ -338,47 +267,42 @@ class Run:
     def start_check(self, c):
         if c['id'] == 'integration':
             self.launch_qc()
-        elif self.state.get('component_review', 'lanes') == 'gates':
+        elif self.state['component_review'] == 'gates':
             self.launch_gates(c)
         else:
             self.launch_qc(c)
 
-    def parked_lines(self, c):
-        note = REPO / f'.feature/decisions-{self.issue}-{c["id"]}.md'
-        lines = note.read_text().splitlines() if note.is_file() else []
-        return [l[len('PARKED:'):].strip() for l in lines if l.startswith('PARKED:')]
-
     # ----- QC -----
     def unit(self, c):
-        """A QC unit is one component in its worktree, or the whole branch in the main checkout."""
+        """A QC unit is one component or the whole branch, both in this checkout."""
         if c:
-            return c['id'], c['qc'], Path(c['worktree'])
+            return c['id'], c['qc'], REPO
         return 'integration', self.state['integration']['qc'], REPO
 
-    def latest_round(self, unit):
-        dirs = self.ex.glob(REPO / f'.feature/lanes/{self.issue}/{unit}/round-*')
-        return max((int(p.name[6:]) for p in dirs if p.name[6:].isdigit()), default=0)
+    def result_file(self, unit):
+        # The one file a QC session hands back; removed before each round so a crash never reads a stale one.
+        return REPO / f'.feature/qc-{self.issue}-{unit}.json'
 
     def launch_qc(self, c=None):
         unit, qc, checkout = self.unit(c)
         if self.dirty(checkout):
             qc['status'] = f'not run: uncommitted changes in {checkout}'
             return self.set_status(c, 'blocked', qc['status']) if c else self.log(unit, qc['status'])
-        qc['round'], qc['status'], qc['started'] = self.latest_round(unit) + 1, 'running', self.ex.time()  # the session numbers its own round dir the same way
+        qc['round'], qc['status'], qc['started'] = qc['round'] + 1, 'running', self.ex.time()
         self.set_status(c or self.state['integration'], 'qc')
-        self.save()  # the QC session reads worktree, branch and head_commit from this file first thing
-        mode_dir = REPO / f'.feature/lanes/{self.issue}/{unit}'
-        if not self.dry:
-            mode_dir.mkdir(parents=True, exist_ok=True)
+        self.save()  # the QC session reads branch and head_commit from this file first thing
+        self.result_file(unit).unlink(missing_ok=True)
         qc['expected_commit'] = self.head(checkout)
         prompt = f'/qc {self.issue} --component {unit}' if c else f'/qc {self.issue} --integration'
-        # QC runs in the main checkout (the run file and .feature live there); --add-dir opens the worktree to its file tools.
-        cmd = ['claude', '-p', prompt, *QC_FLAGS] + (['--add-dir', c['worktree']] if c else [])
-        qc['pid'] = self.ex.spawn(cmd, REPO, mode_dir / f'claude-round-{qc["round"]}.json', mode_dir / f'claude-round-{qc["round"]}.log')
+        session = REPO / f'.feature/run-{self.issue}-qc-{unit}'
+        qc['pid'] = self.ex.spawn(['claude', '-p', prompt, *QC_FLAGS], REPO, session.with_suffix('.json'), session.with_suffix('.log'))
         self.log(unit, f'QC round {qc["round"]} pid {qc["pid"]}')
 
+    def gates_log(self, unit):
+        return REPO / f'.feature/run-{self.issue}-gates-{unit}.log'
+
     def gates_only(self, c):
-        return bool(c) and self.state.get('component_review', 'lanes') == 'gates'
+        return bool(c) and self.state['component_review'] == 'gates'
 
     def launch_gates(self, c):
         # Owner, September 28: no review lanes per component; only the deterministic gates (pnpm build, tsc) so a broken
@@ -390,11 +314,9 @@ class Run:
         qc['round'], qc['status'], qc['started'] = qc['round'] + 1, 'running', self.ex.time()
         self.set_status(c, 'qc')
         self.save()
-        mode_dir = REPO / f'.feature/lanes/{self.issue}/{unit}'
-        if not self.dry:
-            mode_dir.mkdir(parents=True, exist_ok=True)
         cmd = ['bash', REPO / '.claude/scripts/qc-gates.sh', f'{c["base_commit"]}...{c["head_commit"]}']
-        qc['pid'] = self.ex.spawn(cmd, checkout, mode_dir / f'gates-{qc["round"]}.log', mode_dir / f'gates-{qc["round"]}.err')
+        gates = self.gates_log(unit)
+        qc['pid'] = self.ex.spawn(cmd, checkout, gates, gates.with_suffix('.err'))
         self.log(unit, f'gates round {qc["round"]} pid {qc["pid"]}')
 
     def poll_gates(self, c, stop=False):
@@ -403,8 +325,8 @@ class Run:
             if self.ex.time() - qc['started'] > DEADLINES['qc']:
                 self.timeout(c, [qc['pid']], checkout, lambda: self.launch_gates(c), stop)
             return
-        log = REPO / f'.feature/lanes/{self.issue}/{unit}/gates-{qc["round"]}.log'
-        text = 'GATES: GREEN' if self.dry else log.read_text() if log.is_file() else ''
+        log = self.gates_log(unit)
+        text = log.read_text() if log.is_file() else ''
         head = self.head(checkout)
         if 'GATES: GREEN' in text and head == c['head_commit']:
             qc.update(status='PASS', reviewed_commit=head, summary='gates green')
@@ -423,7 +345,7 @@ class Run:
             if self.ex.time() - qc['started'] > DEADLINES['qc']:
                 self.timeout(c, [qc['pid']], checkout, lambda: self.launch_qc(c), stop)
             return
-        result = self.ex.read_json(REPO / f'.feature/lanes/{self.issue}/{unit}/round-{qc["round"]}/result.json')
+        result = self.ex.read_json(self.result_file(unit))
         if not result:
             qc['status'] = 'no result'
             return self.set_status(c, 'failed', f'QC round {qc["round"]} ended without result.json') if c else None
@@ -522,13 +444,8 @@ class Run:
         self.state['status'], self.state['finished_at'] = status, now()
         self.log('run', status)
         self.save()
-        if not self.dry:
-            (REPO / f'.feature/run-{self.issue}-summary.md').write_text(self.summary())
-            report = REPO / f'scratch/feature-flow/{self.issue}'
-            report.mkdir(parents=True, exist_ok=True)
-            (report / f'run-{self.state["run_id"]}-summary.md').write_text(self.summary())
         counts = ', '.join(f'{len(self.by_status(s))} {s}' for s in ('merged', 'parked', 'blocked', 'failed') if self.by_status(s))
-        self.ex.run(['osascript', '-e', f'display notification "{counts or "nothing ran"}. Read .feature/run-{self.issue}-summary.md" '
+        self.ex.run(['osascript', '-e', f'display notification "{counts or "nothing ran"}. Run /run-plan {self.issue} status" '
                      f'with title "Oparax run {self.issue}: {status}"'], REPO)
 
     def summary(self):
@@ -540,7 +457,7 @@ class Run:
         block(f'Built on {s.get("branch", f"ft/{self.issue}")}', self.by_status('merged'),
               lambda c: f'{c["title"]}: {c["steps_done"]} steps, QC passed after {c["fix_rounds"]} fix rounds')
         block('Parked, waiting for your answer', self.by_status('parked'),
-              lambda c: f'{c["title"]}: ' + ('; '.join(c['parked']) or c['last_error']) + f' (branch {c["branch"]}, {c["steps_done"]} steps kept)')
+              lambda c: f'{c["title"]}: ' + ('; '.join(c['parked']) or c['last_error']) + f' ({c["steps_done"]} steps kept)')
         block('Blocked', self.by_status('blocked'), lambda c: f'{c["title"]}: {c["last_error"]}')
         block('Failed', self.by_status('failed'), lambda c: f'{c["title"]}: {c["last_error"]}')
         block('Not finished when the run stopped', self.by_status('planned', *RUNNING, 'built', 'passed'),
@@ -595,18 +512,15 @@ def start(args):
     if missing:
         raise ValueError(f'Missing plan slices under {plan_dir}: {", ".join(missing)}')
     branch = main_checkout_ready(args.issue)
-    if args.max_builds != 1:
-        raise ValueError('Current-checkout runs allow exactly one product writer (--max-builds 1).')
     run_id = uuid.uuid4().hex
     lock, token = take_lock(args.issue, run_id)
-    comps = [dict(r, plan_section=str(plan_dir / f'{r["id"]}.md'), worktree=str(REPO),
-                  branch=branch, base_commit=None, head_commit=None, status='planned', steps_done=0,
+    comps = [dict(r, plan_section=str(plan_dir / f'{r["id"]}.md'), base_commit=None, head_commit=None, status='planned', steps_done=0,
                   qc=dict(round=0, reviewed_commit=None, status=None, pid=None), fix_rounds=0, timeouts=0,
                   last_error=None, parked=[], build_job=None, fixes=False, stage_started=None) for r in rows]
-    state = dict(schema_version=2, topology='current-checkout', run_id=run_id, branch=branch, issue=args.issue, plan=str(plan), plan_hash=sha256(plan), plan_dir=str(plan_dir), started_at=now(),
+    state = dict(run_id=run_id, branch=branch, issue=args.issue, plan=str(plan), plan_hash=sha256(plan), plan_dir=str(plan_dir), started_at=now(),
                  plan_inputs={str(path): sha256(path) for path in [plan, plan_dir / 'shared.md', *[plan_dir / f'{r["id"]}.md' for r in rows]]},
-                 max_builds=args.max_builds, component_review=args.component_review, status='running', components=comps,
-                 integration=dict(id='integration', title='Whole branch', plan_section=str(plan), worktree=str(REPO), branch=branch,
+                 component_review=args.component_review, status='running', components=comps,
+                 integration=dict(id='integration', title='Whole branch', plan_section=str(plan),
                                   status='planned', base_commit=None, round_base_commit=None, head_commit=None,
                                   steps_done=0, fix_rounds=0, fixes=False, parked=[], last_error=None,
                                   qc=dict(round=0, status=None, reviewed_commit=None, pid=None), timeouts=0, pushed=False))
@@ -616,8 +530,6 @@ def start(args):
 
 def resume(args):
     run = Run(args.issue, Real())
-    if run.state.get('topology') != 'current-checkout' or run.state.get('schema_version') != 2:
-        raise ValueError('Historical worktree run: inspect status and records. It cannot resume into the current-checkout topology.')
     if run.state['status'] in ('finished', 'refused'):
         raise ValueError('This completed run is history; preserve it before approving a new run.')
     main_checkout_ready(args.issue)
@@ -627,8 +539,8 @@ def resume(args):
     stop_file(args.issue).unlink(missing_ok=True)
     # A passed component's reviewed commit is checked again by merge() on the first tick.
     for c in run.by_status('built', 'passed', 'qc'):
-        if not run.ex.alive(c['qc'].get('pid')) and run.dirty(Path(c['worktree'])):
-            run.set_status(c, 'blocked', f'uncommitted changes in {c["worktree"]} that no session owns')
+        if not run.ex.alive(c['qc'].get('pid')) and run.dirty(REPO):
+            run.set_status(c, 'blocked', f'uncommitted changes in {REPO} that no session owns')
     run.state['status'] = 'running'
     run.log('run', 'resumed')
     run.save()
@@ -638,8 +550,6 @@ def resume(args):
 def loop(args):
     lock = os.fdopen(args.lock_fd, 'a')  # inherited from start or resume; held until this loop ends
     run = Run(args.issue, Real())
-    if run.state.get('topology') != 'current-checkout':
-        raise ValueError('Historical run cannot execute in the new topology.')
     run.ex.writer_fd, run.ex.writer_token, run.ex.run_id = lock.fileno(), args.writer_token, run.state['run_id']
     run.state['loop_pid'] = os.getpid()
     while True:
@@ -657,40 +567,25 @@ def loop(args):
     lock.close()
 
 
-def dry_run(args):
-    issue = json.loads(Path(args.run_file).read_text())['issue']
-    run = Run(issue, Dry(issue, args.hang), args.run_file)
-    if run.state.get('topology') != 'current-checkout':
-        raise ValueError('Historical worktree run: inspect status; dry-run cannot simulate a topology conversion.')
-    for _ in range(50):  # every canned answer is success, so the graph drains in a few ticks
-        if not run.tick(False):
-            run.finish('finished')
-            break
-        run.ex.sleep()
-    print()
-    print(run.summary())
-
-
 def status(args):
     run = Run(args.issue, Real())
     s = run.state
     _, meta = lease.paths(REPO)
     owner = json.loads(meta.read_text()) if meta.is_file() else {}
     live = 'running' if lease.verify(REPO, s.get('run_id'), owner.get('token')) else 'not running'
-    if s.get('topology') != 'current-checkout':
-        live = 'historical worktree run, not resumable'
     print(f'Run {args.issue}: {s["status"]}, loop {live}, started {s["started_at"]}, plan {s["plan"]}')
     for c in run.comps:
         note = c['last_error'] or '; '.join(c['parked'])
         print(f'  {c["id"]:<16} {c["status"]:<9} steps {c["steps_done"]:<3} qc round {c["qc"]["round"]} fixes {c["fix_rounds"]} timeouts {c["timeouts"]}  {note}')
     qc = s['integration']['qc']
     print(f'  {"whole branch":<16} {qc["status"] or "not yet":<9} pushed: {s["integration"]["pushed"]}')
+    if s['status'] != 'running':
+        print()
+        print(run.summary())
 
 
 def stop(args):
     run = Run(args.issue, Real())
-    if run.state.get('topology') != 'current-checkout':
-        raise ValueError('This historical run is not active and cannot be stopped or resumed.')
     stop_file(args.issue).touch()
     print(f'Stop requested for run {args.issue}: nothing new starts; builds and reviews already running finish '
           'on their own (each build commits per step) and are picked up by resume.')
@@ -699,16 +594,11 @@ def stop(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest='action', required=True)
-    actions = {'start': start, 'resume': resume, 'status': status, 'stop': stop, '_loop': loop, 'dry-run': dry_run}
+    actions = {'start': start, 'resume': resume, 'status': status, 'stop': stop, '_loop': loop}
     for name in actions:
         sub = subs.add_parser(name)
-        if name == 'dry-run':
-            sub.add_argument('--run-file', required=True)
-            sub.add_argument('--hang', help='component whose first build launch never returns')
-        else:
-            sub.add_argument('--issue', type=int, required=True)
+        sub.add_argument('--issue', type=int, required=True)
         if name == 'start':
-            sub.add_argument('--max-builds', type=int, default=1, help='current-checkout topology requires 1')
             sub.add_argument('--component-review', choices=['gates', 'lanes'], default='gates',
                              help='gates: build and typecheck only per component, one review at the end (owner, September 28); lanes: the full /qc per component')
         if name == '_loop':

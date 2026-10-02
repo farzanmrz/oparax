@@ -7,7 +7,7 @@ description: >-
   merges, never touches beta, never pushes main. Not for shipping a slice
   (/ship does that, onto beta).
 argument-hint: ""
-allowed-tools: Bash(git *) Bash(gh *) Bash(date *) Bash(mkdir *)
+allowed-tools: Bash(git *) Bash(gh *) Bash(date *)
 model: inherit
 disable-model-invocation: true
 ---
@@ -31,7 +31,7 @@ Never check out, reset, or push `beta` or `main` here; the branch you are on doe
 
 ## 2. Write the PR body (plain words, for a reviewer who has not followed the work)
 
-Collect `git log --format='%s' origin/main..origin/beta`. Split into two lists: slice commits (subjects that are not `meta:` or `promote:`, i.e. shipped features and fixes; each usually names an issue `#N`) and process commits (`meta:` subjects: skills, agent workflow, docs). Write `scratch/feature-flow/promote-pr.md` (create the visible parent if needed):
+Collect `git log --format='%s' origin/main..origin/beta`. Split into two lists: slice commits (subjects that are not `meta:` or `promote:`, i.e. shipped features and fixes; each usually names an issue `#N`) and process commits (`meta:` subjects: skills, agent workflow, docs). The body, passed straight to `gh` in step 3 (no file):
 
 ```
 ## Weekly promotion: beta -> main, <YYYY-MM-DD>
@@ -49,7 +49,9 @@ No file names, no code, no commit hashes in the body. If there are no slice comm
 ## 3. Open it
 
 ```bash
-gh pr create --base main --head beta --title "Weekly promotion: beta -> main (<YYYY-MM-DD>)" --body-file scratch/feature-flow/promote-pr.md --reviewer deepintel-admin
+gh pr create --base main --head beta --title "Weekly promotion: beta -> main (<YYYY-MM-DD>)" --reviewer deepintel-admin --body-file - <<'BODY'
+<the body from step 2>
+BODY
 ```
 
 If the reviewer request is rejected (the login is not a collaborator yet, or was changed), rerun without `--reviewer`; the `@` mention in the body still notifies him, and tell the owner in one line that the review request itself failed and why (add him as a collaborator: `gh api -X PUT repos/{owner}/{repo}/collaborators/<login> -f permission=pull`).
@@ -73,4 +75,4 @@ Final message, three parts and nothing else:
 
 - Manual invocation only; nothing in the flow calls this.
 - Never merges, never force-pushes, never touches `beta`, never rewinds `main`.
-- Never calls `.claude/scripts/promote.sh`; that obsolete direct-push route refuses promotion. A bug branch ships to beta through `/ship`, then follows this same PR-only promotion contract. No branch or worktree is created or deleted by promotion.
+- A bug branch ships to beta through `/ship`, then follows this same PR-only promotion. Promotion creates or deletes no branch.

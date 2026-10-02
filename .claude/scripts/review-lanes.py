@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Fixed Oparax review profiles using the global council skill's lane runner.
 
-Lanes run inside --checkout (the main checkout by default, a component's worktree for a
-component QC), so they read the code under review. --run-dir is the round's own folder; the
-stage namespaces it. --add-dir names the builders' skill folders by their central path; it is
-forwarded to the runner when the runner takes it, otherwise this script says so and the stage
-copies those folders into the run directory for the lanes that read only their workspace.
+Lanes run inside --checkout (the checkout this command runs in by default), so they read the
+code under review. --run-dir is a fresh folder for this review's lane records. --add-dir names
+the builders' skill folders by their central path; the runner exposes each as a read root.
 """
 
 import argparse
@@ -37,19 +35,11 @@ PROFILES = {
 
 
 def checkout_root(path):
-    """The top of the git checkout (a worktree answers with its own folder), or None."""
+    """The top of the git checkout, or None."""
     found = subprocess.run(
         ["git", "-C", str(path), "rev-parse", "--show-toplevel"], capture_output=True, text=True
     )
     return Path(found.stdout.strip()) if found.returncode == 0 else None
-
-
-def runner_accepts(flag):
-    """The runner is edited on its own schedule; its help text says whether a flag exists yet."""
-    shown = subprocess.run(
-        [sys.executable, str(RUNNER), "start", "--help"], capture_output=True, text=True
-    )
-    return flag in shown.stdout
 
 
 def main():
@@ -92,13 +82,7 @@ def main():
         missing = [str(directory) for directory in add_dirs if not directory.is_dir()]
         if missing:
             parser.error(f"--add-dir is not a folder: {', '.join(missing)}")
-        extra = []
-        if add_dirs and runner_accepts("--add-dir"):
-            for directory in add_dirs:
-                extra += ["--add-dir", str(directory)]
-        elif add_dirs:
-            # Before any lane starts, so the stage can copy the folders where the lanes read.
-            print("ADD_DIR_UNSUPPORTED " + " ".join(str(directory) for directory in add_dirs), flush=True)
+        extra = [arg for directory in add_dirs for arg in ("--add-dir", str(directory))]
         lanes = PROFILES[args.profile]
         if args.command == "start":
             existing = [name for name, _ in lanes if (run_dir / f"{args.profile}-{name}.json").exists()]

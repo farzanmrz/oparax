@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Launch one component's $build in a detached Codex process in the existing canonical feature checkout, then decide
-BUILT, PARKED or FAILED from the step commits and the decision log, never from the agent's prose."""
+"""Launch one component's $build in a detached Codex process in the feature checkout, then decide BUILT, PARKED
+or FAILED from the step commits and the PARKED:/FAILED: lines of the build's final report."""
 import argparse
 import importlib.util
 import hashlib
@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 import re
 import shlex
-import shutil
 import signal
 import subprocess
 import sys
@@ -26,9 +25,9 @@ lease_spec.loader.exec_module(lease)
 
 MODELS = {name: COUNCIL_MODELS[name][1] for name in ('astra', 'sol')}
 ACTIVE = {'STARTING', 'RUNNING'}
-# Tool configuration written mid-flow (Codex or Claude settings, hooks, rules, skills) rides into the
-# worktree and is committed there instead of refusing the launch (owner decision 2026-09-06). Nothing
-# is pushed: a build never pushes (owner, September 28); the flow pushes ft/<N>, and only ft/<N>.
+# Tool configuration written mid-flow (Codex or Claude settings, hooks, rules, skills) is committed
+# instead of refusing the launch (owner decision 2026-09-06). Nothing is pushed: a build never pushes
+# (owner, September 28); the flow pushes ft/<N>, and only ft/<N>.
 META_PREFIXES = ('.claude/', '.codex/')
 # Personal connectors stay out of a build while Stripe, Vercel, Supabase and PostHog stay on (owner,
 # September 28). The plugins and apps keys are the switches the desktop app itself writes (the ids
@@ -70,8 +69,6 @@ def alive(pid):
 
 def state_of(job):
     state = json.loads((job / 'state.json').read_text())
-    if state.get("topology") != "current-checkout":
-        return dict(state, historical=True)
     if state['status'] in ACTIVE and not alive(state.get('worker_pid')):
         state.update(status='FAILED', reason='Build supervisor exited; inspect logs before retrying.')
         write_state(job, state)
@@ -82,47 +79,15 @@ def git(repo, *args):
     return subprocess.check_output(['git', '-C', str(repo), *args], text=True).strip()
 
 
-
 def field(path, key):
     match = re.search(rf'^{key}:\s*(.+?)\s*$', path.read_text(), re.M)
     return match[1] if match else ''
 
 
-def worktree_branch(repo, path):
-    block = {}
-    for line in git(repo, 'worktree', 'list', '--porcelain').splitlines() + ['']:
-        if not line:
-            if block.get('worktree') == str(path):
-                return block.get('branch', '').removeprefix('refs/heads/')
-            block = {}
-        else:
-            key, _, value = line.partition(' ')
-            block[key] = value
-    return None
-
-
-def ensure_worktree(repo, base, component, path):
-    if not path.is_dir() or worktree_branch(repo, path) != base:
-        raise ValueError(f'{path} must already be a checkout on {base}; no branch or worktree is created.')
-    return base
-
-
-def commit_tool_config(repo, worktree, issue):
-    entries = git(repo, 'status', '--porcelain', '--untracked-files=all', '--', *META_PREFIXES).splitlines()
-    for line in entries:
-        rel = line[3:].split(' -> ')[-1].strip('"')
-        source, target = repo / rel, worktree / rel
-        if source == target:
-            continue
-        if source.is_file():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-        elif target.exists():
-            target.unlink()
-    git(worktree, 'add', '-A', '--', *META_PREFIXES)
-    if git(worktree, 'status', '--porcelain', '--', *META_PREFIXES):
-        git(worktree, 'commit', '-q', '-m', f'meta: commit tool configuration under .claude and .codex (#{issue})')
-
+def commit_tool_config(repo, issue):
+    git(repo, 'add', '-A', '--', *META_PREFIXES)
+    if git(repo, 'status', '--porcelain', '--', *META_PREFIXES):
+        git(repo, 'commit', '-q', '-m', f'meta: commit tool configuration under .claude and .codex (#{issue})')
 
 
 def mode_of(repo, issue, component, plan):
@@ -137,10 +102,10 @@ def mode_of(repo, issue, component, plan):
     return 'BUILD', 'build', plan
 
 
-def steps_done(worktree, base, component, round_):
+def steps_done(repo, base, component, round_):
     """{k: M} from the Step trailers of this component's commits for this round."""
     done = {}
-    for record in git(worktree, 'log', f'--format={LOG_FORMAT}', f'{base}..HEAD').split('\x1e'):
+    for record in git(repo, 'log', f'--format={LOG_FORMAT}', f'{base}..HEAD').split('\x1e'):
         fields = [part.strip() for part in record.split('\x1f')]
         if len(fields) < 4:
             continue
@@ -159,7 +124,7 @@ def claim_migrations(runs, issue, component, job):
     if lock.is_file():
         holder = json.loads(lock.read_text())
         holder_state = state_of(Path(holder['job'])) if Path(holder['job']).is_dir() else {}
-        if not holder_state.get('historical') and holder_state.get('status') in ACTIVE:
+        if holder_state.get('status') in ACTIVE:
             raise ValueError(f'Component {holder["component"]} is applying migrations (job {holder["job"]}); '
                              'one migrating component runs at a time.')
     lock.write_text(json.dumps({'component': component, 'job': str(job)}) + '\n')
@@ -180,15 +145,14 @@ def prompt_for(state):
             f'Mode: {state["mode"]} (round {state["round"]})\n'
             f'Scope file: {state["scope"]}\n'
             f'Plan slice: {state["plan"]}\n'
-            f'Checkout: {state["worktree"]} on branch {state["branch"]}, round starting commit {state["base_commit"]}\n'
-            f'Decision log: {state["decision_log"]}\n'
+            f'Checkout: {state["repo"]} on branch {state["branch"]}, round starting commit {state["base_commit"]}\n'
             f'Migrations allowed: {"yes" if state["migrations"] else "no"}\n'
             f'{resume}\n'
             'The owner approved the plan this launch comes from and nobody is watching, so follow the '
-            'repository build skill exactly: one commit per numbered step with its trailers, a decision-log '
-            'line for every choice, the five pauses as PARKED lines. Feel free to use subagents for '
-            'independent work inside the scope. Never push, switch, merge, reset or delete a branch, and '
-            'never launch QC, ship or another build. Finish with the plain result.\n')
+            'repository build skill exactly: one commit per numbered step with its trailers, and a final '
+            'report that lists every choice and carries the five pauses as PARKED: lines. Subagents may '
+            'research read-only; you are the only writer. Never push, switch, merge, reset or delete a '
+            'branch, and never launch QC, ship or another build.\n')
 
 
 def skills_off():
@@ -202,28 +166,25 @@ def skills_off():
 
 
 def command(state, job):
-    worktree = state['worktree']
-    cmd = ['codex', 'exec', '-C', worktree, '-m', MODELS[state['model']],
+    repo = state['repo']
+    cmd = ['codex', 'exec', '-C', repo, '-m', MODELS[state['model']],
            '-c', 'model_reasoning_effort="high"', '--approve-for-me',
-           # The project .codex layer (rules, hooks, config) loads only for a trusted path, and a
-           # worktree path is new every time.
-           '-c', f'projects."{worktree}".trust_level="trusted"',
-           # The decision log and the .feature scope files live in the main checkout.
-           '--add-dir', str(Path(state['repo']) / '.feature'),
-           # A worktree's git metadata lives in the main repo's .git; without this the Codex sandbox denies
-           # index.lock there and a build can give up on its first commit (onboarding, September 28).
-           '--add-dir', str(Path(state['repo']) / '.git')]
+           # The project .codex layer (rules, hooks, config) loads only for a trusted path.
+           '-c', f'projects."{repo}".trust_level="trusted"',
+           # Every step commits; without a writable .git the sandbox denies index.lock and the build
+           # gives up on its first commit (onboarding, September 28).
+           '--add-dir', str(Path(repo) / '.git')]
     for override in CONNECTORS_OFF + (skills_off(),):
         cmd += ['-c', override]
     return cmd + ['--json', '--output-last-message', str(job / 'result.md'), '--', '-']
 
 
-def verdict(state):
-    worktree = Path(state['worktree'])
-    done = steps_done(worktree, state['base_commit'], state['component'], state['round'])
-    state.update(steps_done=sorted(done), head_commit=git(worktree, 'rev-parse', 'HEAD'))
-    log = Path(state['decision_log'])
-    lines = log.read_text().splitlines()[state.get('decision_offset', 0):] if log.is_file() else []
+def verdict(state, report):
+    repo = Path(state['repo'])
+    done = steps_done(repo, state['base_commit'], state['component'], state['round'])
+    state.update(steps_done=sorted(done), head_commit=git(repo, 'rev-parse', 'HEAD'))
+    # A report line may arrive as a markdown bullet; the prefix is what counts.
+    lines = [line.strip().lstrip('-* ') for line in report.splitlines()]
     failed = '; '.join(line for line in lines if line.startswith('FAILED:'))
     if not done:
         return 'FAILED', failed or 'no commit carries a Step trailer for this round'
@@ -233,9 +194,9 @@ def verdict(state):
     missing = sorted(set(range(1, totals[0] + 1)) - set(done))
     if missing:
         return 'FAILED', failed or f'steps {missing} of {totals[0]} were not committed'
-    dirty = git(worktree, 'status', '--porcelain')
+    dirty = git(repo, 'status', '--porcelain')
     if dirty:
-        return 'FAILED', f'every step is committed but the worktree still has uncommitted changes:\n{dirty}'
+        return 'FAILED', f'every step is committed but the checkout still has uncommitted changes:\n{dirty}'
     parked = [line for line in lines if line.startswith('PARKED:')]
     return ('PARKED' if parked else 'BUILT'), '\n'.join(parked)
 
@@ -254,7 +215,7 @@ def run(job, lock_fd):
         env['OPARAX_WRITER_FD'] = str(lock.fileno())
         prompt = (job / 'prompt.txt').read_text()
         with (job / 'stderr.txt').open('w') as err, (job / 'events.jsonl').open('w') as out:
-            child = subprocess.Popen(command(state, job), cwd=state['worktree'], env=env,
+            child = subprocess.Popen(command(state, job), cwd=state['repo'], env=env,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err,
                                      text=True, start_new_session=True, pass_fds=(lock.fileno(),))
             state.update(status='RUNNING', child_pid=child.pid)
@@ -280,11 +241,7 @@ def run(job, lock_fd):
         result = job / 'result.md'
         if rc or not completed or not state.get('session_id') or not result.is_file() or not result.read_text().strip():
             raise ValueError(f'Codex did not return a completed response (exit {rc}). {state.get("error") or ""}')
-        status, reason = verdict(state)
-        if status == 'BUILT' and state['mode'] == 'FIX':
-            archived = Path(state['repo']) / f'.feature/lanes/{state["issue"]}/{state["component"]}/round-{field(Path(state["scope"]), "Round")}/fixes.md'
-            if archived.is_file():
-                archived.write_text(re.sub(r'^Status:\s*pending\s*$', 'Status: applied', archived.read_text(), flags=re.M))
+        status, reason = verdict(state, result.read_text())
         state.update(status=status, reason=reason, exit_code=rc, finished_at=time.time())
     except Exception as exc:
         if child is not None and child.poll() is None:
@@ -310,11 +267,9 @@ def launch(args):
         raise ValueError('The Codex build skill is missing from this checkout.')
     if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', args.component):
         raise ValueError('A component id is lowercase letters, digits and hyphens.')
-    worktree = Path(args.worktree).resolve() if args.worktree else repo
-    base = git(worktree, 'branch', '--show-current')
-    if base not in (f'ft/{args.issue}', f'bf/{args.issue}'):
-        raise ValueError(f'{worktree} must be on ft/{args.issue} or bf/{args.issue}, not {base or "detached HEAD"}.')
-    branch = ensure_worktree(repo, base, args.component, worktree)
+    branch = git(repo, 'branch', '--show-current')
+    if branch not in (f'ft/{args.issue}', f'bf/{args.issue}'):
+        raise ValueError(f'{repo} must be on ft/{args.issue} or bf/{args.issue}, not {branch or "detached HEAD"}.')
     inherited_fd = os.environ.get('OPARAX_WRITER_FD')
     run_id = os.environ.get('OPARAX_RUN_ID')
     if inherited_fd:
@@ -322,53 +277,47 @@ def launch(args):
     else:
         run_id = 'build-' + uuid.uuid4().hex
         lock, _ = lease.acquire(repo, run_id)
-    dirty = git(worktree, 'status', '--porcelain', '--untracked-files=all')
-    product_dirty = git(worktree, 'status', '--porcelain', '--untracked-files=all', '--', '.',
+    dirty = git(repo, 'status', '--porcelain', '--untracked-files=all')
+    product_dirty = git(repo, 'status', '--porcelain', '--untracked-files=all', '--', '.',
                         ':(exclude).claude', ':(exclude).codex')
     if product_dirty:
-        raise ValueError(f'Unowned dirty work is preserved in {worktree}; commit or resolve it before launching:\n{dirty}')
+        raise ValueError(f'Unowned dirty work is preserved in {repo}; commit or resolve it before launching:\n{dirty}')
     runs = repo / '.feature/build-runs'
     runs.mkdir(parents=True, exist_ok=True)
     if not args.dry_run:
-        commit_tool_config(repo, worktree, args.issue)
-    if not (worktree / '.codex/rules/default.rules').is_file():
-        raise ValueError('The project rules file .codex/rules/default.rules is missing from the worktree; '
+        commit_tool_config(repo, args.issue)
+    if not (repo / '.codex/rules/default.rules').is_file():
+        raise ValueError('The project rules file .codex/rules/default.rules is missing from the checkout; '
                          'a build runs only under those rules.')
     mode, round_, scope = mode_of(repo, args.issue, args.component, plan)
-    base_commit = args.base_commit or git(worktree, 'rev-parse', 'HEAD')
+    base_commit = args.base_commit or git(repo, 'rev-parse', 'HEAD')
     if args.base_commit:
-        git(worktree, 'merge-base', '--is-ancestor', base_commit, 'HEAD')
+        git(repo, 'merge-base', '--is-ancestor', base_commit, 'HEAD')
     scope_hash = hashlib.sha256(scope.read_bytes()).hexdigest()
     previous = sorted(runs.glob(f'{args.issue}-{args.component}-*/state.json'), key=lambda p: p.stat().st_mtime)
     for old in reversed(previous):
         saved = json.loads(old.read_text())
-        if (saved.get('topology') == 'current-checkout' and saved.get('branch') == branch
-                and saved.get('round') == round_ and saved.get('scope') == str(scope)):
+        if (saved.get('branch') == branch and saved.get('round') == round_ and saved.get('scope') == str(scope)):
             if saved.get('scope_hash') != scope_hash:
                 raise ValueError('This round scope changed; preserve its job records and approve a new round.')
             if not args.base_commit:
                 if saved['status'] == 'BUILT':
                     raise ValueError('This round is already built; review it or supply a pending fix/amendment.')
                 base_commit = saved['base_commit']
-                git(worktree, 'merge-base', '--is-ancestor', base_commit, 'HEAD')
+                git(repo, 'merge-base', '--is-ancestor', base_commit, 'HEAD')
             break
     job = runs / f'{args.issue}-{args.component}-{uuid.uuid4().hex[:12]}'
     migration_scope = scope if re.search(r'^migrations:', scope.read_text(), re.I | re.M) else plan
     if migrating(migration_scope):
         claim_migrations(runs, args.issue, args.component, job)
     job.mkdir()
-    decision_log = repo / f'.feature/decisions-{args.issue}-{args.component}.md'
-    if not decision_log.exists():
-        decision_log.write_text(f'# Decisions for #{args.issue}, component {args.component}: one line each; '
-                                'PARKED: lines wait for the owner\n')
-    state = dict(schema_version=2, topology='current-checkout', run_id=run_id, status='STARTING', issue=args.issue, component=args.component, model=args.model,
-                 effort='high', repo=str(repo), worktree=str(worktree), branch=branch, base=base,
+    state = dict(run_id=run_id, status='STARTING', issue=args.issue, component=args.component, model=args.model,
+                 effort='high', repo=str(repo), branch=branch,
                  base_commit=base_commit, mode=mode, round=round_, scope=str(scope),
-                 plan=str(plan), decision_log=str(decision_log), scope_hash=scope_hash, migrations=migrating(migration_scope), job=str(job),
+                 plan=str(plan), scope_hash=scope_hash, migrations=migrating(migration_scope), job=str(job),
                  session_id=None, started_at=time.time(), worker_pid=None, child_pid=None,
-                 decision_offset=len(decision_log.read_text().splitlines()),
-                 steps_done=sorted(steps_done(worktree, base_commit, args.component, round_)),
-                 head_commit=git(worktree, 'rev-parse', 'HEAD'))
+                 steps_done=sorted(steps_done(repo, base_commit, args.component, round_)),
+                 head_commit=git(repo, 'rev-parse', 'HEAD'))
     state['command'] = shlex.join(command(state, job))
     (job / 'prompt.txt').write_text(prompt_for(state))
     if args.dry_run:
@@ -400,7 +349,6 @@ def main():
     start = subs.add_parser('launch')
     start.add_argument('--issue', type=int, required=True)
     start.add_argument('--component', required=True)
-    start.add_argument('--worktree', help='existing canonical checkout; defaults to --repo')
     start.add_argument('--base-commit', help='persisted starting commit for this round or retry')
     start.add_argument('--plan', required=True, help='this component\'s plan slice file')
     start.add_argument('--repo', default='.')
@@ -423,7 +371,7 @@ def main():
         return
     state = state_of(job)
     if args.action == 'watch':
-        while state['status'] in ACTIVE and not state.get('historical'):
+        while state['status'] in ACTIVE:
             time.sleep(2)
             state = state_of(job)
     print(json.dumps(state))

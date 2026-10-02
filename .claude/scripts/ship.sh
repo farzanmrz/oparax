@@ -1,31 +1,21 @@
 #!/usr/bin/env bash
-# Ship a canonical feature/bug branch to beta through a temporary detached checkout.
-# Production advances only through the /promote pull request. Finalize copies this
-# issue's records to scratch and retains operational history. Branches stay intact.
+# Ship a feature/bug branch to beta as one squash commit built from Git objects, so no
+# second checkout is ever created. Production advances only through the /promote pull
+# request. Branches stay intact.
 #
 # Usage:
 #   ship.sh [--onto beta] <issue-number> "<commit message>"
-#   ship.sh --finalize <issue-number>
 set -euo pipefail
 original_args=("$@")
 
 usage() {
-  cat >&2 <<'USAGE'
-usage:
-  ship.sh [--onto beta] <issue-number> "<commit message>"
-  ship.sh --finalize <issue-number>
-USAGE
+  echo 'usage: ship.sh [--onto beta] <issue-number> "<commit message>"' >&2
   exit 2
 }
 
-finalize="false"
 onto="beta"
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --finalize)
-      finalize="true"
-      shift
-      ;;
     --onto)
       shift
       onto="${1:-}"
@@ -56,15 +46,9 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ "$finalize" = "true" ]; then
-  [ "$#" -eq 1 ] || usage
-  issue="$1"
-  msg=""
-else
-  [ "$#" -eq 2 ] || usage
-  issue="$1"
-  msg="$2"
-fi
+[ "$#" -eq 2 ] || usage
+issue="$1"
+msg="$2"
 case "$issue" in
   '' | *[!0-9]*)
     echo "ship: issue number must contain digits only." >&2
@@ -129,55 +113,6 @@ show_conflict_report() {
   echo "Choose explicitly: preserve compatible parts from both; prefer the destination; or prefer the feature. No ref was changed by this preview." >&2
 }
 
-# Trailer lookups intentionally walk only origin/beta. Pre-Phase-1 (issue #70)
-# ships recorded their Feature-Branch/Feature-Source-Tip trailers on origin/dev;
-# those are out of scope for --finalize by design, dev-only history predates
-# the beta cutover.
-find_recorded_tip() {
-  recorded_branch="$1"
-  git log --first-parent refs/remotes/origin/beta \
-    --format='%H%x09%(trailers:key=Feature-Branch,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Source-Tip,valueonly,separator=%x2C)' \
-    | awk -F '\t' -v wanted="$recorded_branch" '$2 == wanted && $3 != "" { print $3; exit }'
-}
-
-# --finalize is now only the local scratch sweep: ship itself closes the issue
-# and no stage deletes branches. The one gate left asks the one question that
-# still matters, did this branch actually reach beta, because wiping the plan
-# files for something that never shipped loses work. Deliberately NOT gated on
-# tip equality: a meta commit landing on the branch after the ship is normal and
-# must not block a sweep that only removes local, git-ignored scratch.
-if [ "$finalize" = "true" ]; then
-  git fetch --prune origin beta >&2
-  [ -n "$(find_recorded_tip "$branch" || true)" ] || {
-    echo "ship: cannot finalize $branch, origin/beta has no ship commit for it, so its plan files are still live work." >&2
-    exit 1
-  }
-
-  # Keep operational history, including older jobs and other issues, intact.
-  archive="scratch/feature-flow/${issue}/finalized-$(date +%Y%m%dT%H%M%S)"
-  mkdir -p "$archive"
-  if [ -d .feature ]; then
-    for record in .feature/*; do
-      name="${record##*/}"
-      case "$name" in
-        *-"${issue}"|*-"${issue}".*|*-"${issue}"-*) cp -R "$record" "$archive/" ;;
-      esac
-    done
-    if [ -d ".feature/lanes/$issue" ]; then
-      mkdir -p "$archive/lanes"
-      cp -R ".feature/lanes/$issue" "$archive/lanes/"
-    fi
-    if [ -d .feature/build-runs ]; then
-      mkdir -p "$archive/build-runs"
-      for record in .feature/build-runs/"${issue}"-*; do
-        [ -e "$record" ] && cp -R "$record" "$archive/build-runs/"
-      done
-    fi
-  fi
-  echo "Finalized $branch; issue records copied to $archive and operational history retained."
-  exit 0
-fi
-
 echo "ship: complete branch inventory authorized by the final gate:" >&2
 if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
   git status --short --untracked-files=all >&2
@@ -216,59 +151,34 @@ live_feature="$(remote_ref_sha origin "refs/heads/$branch")" || {
 git fetch origin "$onto" >&2
 beta_base="$(git rev-parse "refs/remotes/origin/${onto}")"
 
-# Preview the exact two commits without touching the index, working tree, or a
-# branch ref. A conflict exits before the integration worktree exists.
-if ! git merge-tree --write-tree "$beta_base" "$source_tip" >/dev/null; then
+# Merge the two commits into a tree without touching the index, working tree or any
+# branch ref, then make the squash commit on top of the fetched target tip.
+if ! merge_out="$(git merge-tree --write-tree "$beta_base" "$source_tip")"; then
   show_conflict_report "$beta_base" "$source_tip" "$branch -> $onto"
   exit 1
 fi
-
-integration_dir="$(mktemp -d "${TMPDIR:-/tmp}/oparax-ship-${issue}.XXXXXX")"
-rmdir "$integration_dir"
-keep_integration="false"
-cleanup_integration() {
-  if [ -n "${integration_dir:-}" ] && [ -d "$integration_dir" ] && [ "$keep_integration" = "false" ]; then
-    git worktree remove "$integration_dir" >/dev/null 2>&1 || true
-  fi
-}
-trap cleanup_integration EXIT
-
-git worktree add --detach "$integration_dir" "$beta_base" >&2
-if ! git -C "$integration_dir" merge --squash "$source_tip" >&2; then
-  keep_integration="true"
-  echo "ship: the clean preview and real squash disagreed. Recovery worktree kept at $integration_dir; no ref was pushed." >&2
-  exit 1
-fi
-
-git -C "$integration_dir" commit \
-  -m "$msg" \
+tree="${merge_out%%$'\n'*}"
+message="$(printf '%s\n' "$msg" | git interpret-trailers \
   --trailer "Feature-Issue: #$issue" \
   --trailer "Feature-Branch: $branch" \
-  --trailer "Feature-Source-Tip: $source_tip" >&2
-beta_commit="$(git -C "$integration_dir" rev-parse HEAD)"
+  --trailer "Feature-Source-Tip: $source_tip")"
+beta_commit="$(git commit-tree "$tree" -p "$beta_base" -m "$message")"
 
 # The new commit's parent is the fetched target tip, so this is a normal
 # fast-forward update. Remote movement is rejected; no force option is used.
-if ! git -C "$integration_dir" push origin "$beta_commit:refs/heads/${onto}" >&2; then
-  keep_integration="true"
-  echo "ship: origin/${onto} moved or the push failed. Recovery commit $beta_commit and worktree $integration_dir were kept; the source branch is also safe on origin." >&2
+if ! git push origin "$beta_commit:refs/heads/${onto}" >&2; then
+  echo "ship: origin/${onto} moved or the push failed. Recovery commit $beta_commit is kept locally; the source branch is also safe on origin." >&2
   exit 1
 fi
 
 live_beta="$(remote_ref_sha origin "refs/heads/${onto}")" || {
-  keep_integration="true"
-  echo "ship: ${onto} push returned success but its live ref could not be verified. Recovery worktree kept at $integration_dir." >&2
+  echo "ship: ${onto} push returned success but its live ref could not be verified. Recovery commit: $beta_commit." >&2
   exit 1
 }
 [ "$live_beta" = "$beta_commit" ] || {
-  keep_integration="true"
-  echo "ship: live origin/${onto} ($live_beta) differs from the pushed integration commit ($beta_commit). Recovery worktree kept at $integration_dir." >&2
+  echo "ship: live origin/${onto} ($live_beta) differs from the pushed squash commit ($beta_commit)." >&2
   exit 1
 }
-
-git worktree remove "$integration_dir" >&2
-integration_dir=""
-trap - EXIT
 
 # The slice is on ${onto} and verified, so the issue is done, close it here
 # rather than deferring to a separate step. Never fatal: the push already

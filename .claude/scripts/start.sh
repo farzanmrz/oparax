@@ -22,9 +22,8 @@
 # ADOPTION-AWARE (2026-08-04): the owner routinely pre-cuts a branch and a stub
 # issue before /feature, so create-only behavior sent every session into
 # workaround mode. Branch resolution now goes, in order: already on ft/N →
-# adopt in place; local or remote ft/N exists → switch to it; current branch is
-# ft/N-<anything> is historical and refused; nothing exists → create from
-# fetched origin/beta. An adopted
+# adopt in place; local or remote ft/N exists → switch to it; nothing exists →
+# create from fetched origin/beta. An adopted
 # branch with ZERO commits unique against origin/beta is fast-forwarded onto
 # it; one with unique commits keeps its base untouched (said on stderr). The
 # clean-tree requirement applies ONLY when the resolution must switch or
@@ -212,8 +211,8 @@ if git ls-files --error-unmatch .feature/.gitignore >/dev/null 2>&1 \
   git checkout -- .feature/.gitignore >&2 || true
 fi
 
-# Refresh only the base ref. Never checkout local beta: it may legitimately be
-# checked out in another worktree.
+# Refresh only the base ref. Never check out local beta: this checkout moves only
+# between feature branches.
 git fetch --prune origin beta >&2
 git rev-parse --verify --quiet refs/remotes/origin/beta >/dev/null || {
   echo "start: origin/beta is unavailable after fetch." >&2
@@ -235,9 +234,6 @@ if [ -n "$graduate_issue" ]; then
     branch_action="switch-local"
   elif git rev-parse --verify --quiet "refs/remotes/origin/${target}" >/dev/null; then
     branch_action="switch-remote"
-  elif [ -n "$current_branch" ] && [[ "$current_branch" == "${target}-"* ]]; then
-    echo "start: $current_branch is a historical component branch. Select the canonical $target checkout; no branch is renamed or deleted." >&2
-    exit 1
   fi
   case "$branch_action" in
     switch-local|switch-remote|create) require_clean_tree ;;

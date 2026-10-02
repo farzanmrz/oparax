@@ -1,6 +1,6 @@
 ---
 name: run-plan
-description: "Start, check, stop or resume the overnight run of an approved oparax plan: the script .claude/scripts/run-plan.py builds every component in the existing canonical checkout with one writer, then carries whole-branch review and fixes to a bounded PASS or blocker of .feature/plan-<N>.md on its own and leaves one morning list. Use only when the owner explicitly types $run-plan <N>, $run-plan <N> status, $run-plan <N> stop or $run-plan <N> resume in Codex. Never invoke automatically during other work."
+description: "Start, check, stop or resume the overnight run of an approved oparax plan: the script .claude/scripts/run-plan.py builds every component in this checkout with one writer, then carries whole-branch review and fixes to a bounded PASS or blocker of .feature/plan-<N>.md on its own; status shows the result. Use only when the owner explicitly types $run-plan <N>, $run-plan <N> status, $run-plan <N> stop or $run-plan <N> resume in Codex. Never invoke automatically during other work."
 argument-hint: "<issue #> [status|stop|resume]"
 ---
 

@@ -14,17 +14,17 @@ disable-model-invocation: true
 
 ## 0. Confirm the target and settle meta changes
 
-Before writing anything, confirm the active checkout is the requested `ft/<N>` or `bf/<N>` and no supervisor or build owns its writer lease. Refuse a wrong target or active writer without switching. Then sweep process and documentation paths into one commit on that canonical branch and push it, whether or not this session touched them: `.claude/`, `.codex/`, `.agents/`, `.grok/`, `.github/`, `docs/`, and root `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`. (`.feature/` is git-ignored wholesale by its own `.gitignore`, so there is never anything to commit there.)
+Before writing anything, confirm the active checkout is the requested `ft/<N>` or `bf/<N>` and no supervisor or build owns its writer lease. Refuse a wrong target or active writer without switching. Then sweep process and documentation paths into one commit on that canonical branch and push it, whether or not this session touched them: `.claude/`, `.codex/`, `.agents/`, `.github/`, `docs/`, and root `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`. (`.feature/` is git-ignored wholesale by its own `.gitignore`, so there is never anything to commit there.)
 
 ```bash
 python3 .claude/scripts/writer-lease.py run --repo "$PWD" --run-id ship-meta-<N> -- bash -euc '
 while IFS= read -r -d "" p; do
   case "$p" in
-    .claude/*|.codex/*|.agents/*|.grok/*|.github/*|docs/*|AGENTS.md|CLAUDE.md|DESIGN.md|README.md) ;;
+    .claude/*|.codex/*|.agents/*|.github/*|docs/*|AGENTS.md|CLAUDE.md|DESIGN.md|README.md) ;;
     *) printf "ship: staged non-metadata path preserved: %s\n" "$p" >&2; exit 1 ;;
   esac
 done < <(git diff --cached --name-only -z --no-renames)
-for p in .claude .codex .agents .grok .github docs AGENTS.md CLAUDE.md DESIGN.md README.md; do
+for p in .claude .codex .agents .github docs AGENTS.md CLAUDE.md DESIGN.md README.md; do
   if [ -e "$p" ]; then git add -A -- "$p"; fi
 done
 git diff --cached --quiet || { git commit -m "meta: sweep before ship (#$1)" && git push origin HEAD; }
@@ -56,31 +56,25 @@ Show the complete `git status --short --untracked-files=all` (everything listed 
 .claude/scripts/ship.sh <issue#> "<feature summary>"
 ```
 
-The script owns the mechanics: inventory, staging, recovery snapshot, non-force push, one squash commit on `beta` with its trailers, and, once that push is verified, closing issue N. A recovery snapshot of dirty files changes HEAD; the script then refuses stale QC proof without pushing and preserves that local commit for review. On a conflict STOP: explain whether both intentions can coexist and offer exactly three resolutions (preserve both, prefer beta, prefer the feature); never a destructive reset.
+The script owns the mechanics: inventory, staging, recovery snapshot, non-force push, one squash commit on `beta` built from Git objects (no second checkout) with its trailers, and, once that push is verified, closing issue N. A recovery snapshot of dirty files changes HEAD; the script then refuses stale QC proof without pushing and preserves that local commit for review. On a conflict STOP: explain whether both intentions can coexist and offer exactly three resolutions (preserve both, prefer beta, prefer the feature); never a destructive reset.
 
 The close is the script's job, not yours: never run `gh issue close` by hand here. If the script prints the `WARNING: ... could not be closed` line, the slice still shipped; say so in one line and close it manually.
 
-**No promotion to `main` here.** Since 2026-08-18 `main` moves only through the weekly pull request `/promote` (or `$promote` in Codex) opens from `beta` for the owner's mentor to review; ship never runs `promote.sh beta main` and never pushes `main`.
+**No promotion to `main` here.** Since 2026-08-18 `main` moves only through the weekly pull request `/promote` (or `$promote` in Codex) opens from `beta` for the owner's mentor to review; ship never pushes `main`.
 
-The beta push IS the job. Never check, poll, or watch a deployment; the owner looks at the live app themselves.
-
-Preserve the issue's plan, run, review and disposition evidence after the push. Do not remove shared lane folders or another issue's records. Operational `.feature` files remain available for follow-up amendments; owner-readable records belong under `scratch/feature-flow/<N>/`.
+The beta push IS the job. Never check, poll, or watch a deployment; the owner looks at the live app themselves. Leave the `.feature/` plan files in place: an amendment after his walk needs them.
 
 ## 4. Stop: the slice is closed
 
-The push closed the issue. Do NOT run finalize. End with:
-
 <exit-example>
 
-Shipped to beta and closed issue N. Check it on localhost when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request. The plan files stay on disk in case you want an `/amend`, say the word and I archive the issue records.
+Shipped to beta and closed issue N. Check it on localhost when you get a chance; slices touching the external network get a two-minute check of the affected journey (server egress differs from localhost). It reaches production with this week's `/promote` pull request.
 
 </exit-example>
-
-Stop there. `.feature/` still holds `plan-<N>*.md`, `amend-<N>-*.md`, and `fixes-<N>*.md` on purpose: if the localhost walk turns up a problem, `/amend <N>` needs them. On the owner's word, `.claude/scripts/ship.sh --finalize <issue#>` preserves an issue-scoped archive under `scratch/feature-flow/<N>/` and retains operational records for compatibility. It never wipes the shared `.feature` directory, closes another issue or deletes a branch.
 
 ## Hard rules
 
 * Feature slices run on the active `ft/<issue#>` or `bf/<issue#>` checkout; app code never lands directly on `beta` or `main`. One carve-out: owner-directed micro-edits to instruction files and docs (`.claude/**`, `AGENTS.md`, `docs/**`) land on `beta` directly.
 * `main` moves only through the ordered beta-to-main promotion; never force-push protected branches.
 * **The issue closes when the slice lands on `beta`, and `ship.sh` does it.** There is no separate owner-closes step and no waiting for the localhost walk. Never close an issue by hand except to recover from the script's own printed warning.
-* **No stage creates component branches or worktrees automatically, or deletes a branch as a side effect.** Keep the active canonical branch. Owner-authorized preserving cleanup is a separate action outside the stages; obsolete branches accumulating is not a required policy.
+* **One writer, one checkout.** No stage creates a worktree, a second checkout or a component branch, or deletes a branch as a side effect.
