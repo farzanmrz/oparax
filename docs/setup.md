@@ -65,10 +65,6 @@ Direct account under `farzan@oparax.ai`; sandbox `Oparax sandbox`, `acct_1T5QSeE
 
 `.env.local` is a copy of the Vercel variables (Vercel is the source of truth; nothing is hand-edited). Refresh it with a fresh `vercel env pull` to a new file and replace the old one, because pulling over an existing file can keep stale entries. Keep it at permissions `0600`.
 
-## Claude Design
-
-Design-system project **Oparax** (id `14526a56-d87c-4973-b4fc-123c0a668ec6`) holds a synced copy of `design-system/`. The repo is the source of truth; the design-sync hook (`.claude/hooks/design-sync.sh`) makes Claude re-sync whenever DESIGN.md, the theme tokens or `design-system/` change.
-
 ## Not used
 
 - Railway: out of the stack (owner, September 24); project deleted, plugin and skill removed.

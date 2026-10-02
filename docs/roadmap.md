@@ -8,7 +8,7 @@ Naming (owner, September 16): the thing a person gets is a **monitor**. "Desk" a
 
 Feature 149 built the monitoring product; feature 151 changes entry to sign-up first. Current source offers X, Google or native email/password sign-up, then blank authenticated onboarding, preparation and the public per-handle feed. Stripe checkout is payment for an existing account, not the first account creation step. The September 28 anonymous-build and checkout-as-sign-up journey in sections 2 and 8 is historical where it conflicts with 151. Preserve its owner quotations as history; use the current code and issue for entry behavior.
 
-The 151 build reached step 31 and received four round-two integration fixes. This source record does not establish a clean post-fix QC, owner acceptance or production deployment. Current tooling work selects no font or theme; font choice remains pending. The next design sequence and evidence are in [references/state.md](references/state.md).
+The 151 build reached step 31 and received four round-two integration fixes. This source record does not establish a clean post-fix QC, owner acceptance or production deployment. The next design sequence and evidence are in [references/state.md](references/state.md).
 
 ## 1. The product
 
@@ -90,7 +90,7 @@ How the price was reasoned about (assistant's account, September 19; the tiers w
 
 ## 10. The public door: landing page, guards, ads
 
-The live site is a placeholder homepage with the privacy and terms pages. The new landing page shows the product working, carries the box, and sends a submit straight to oparax.ai/<handle> in its building state. References from September 16: v0.app, granola.ai, f5bot.com; no embed tools. The look is DESIGN.md (stock shadcn Mira, rebuilt September 24); the owner designs the pages in Claude Design and the export is the plan's visual contract (owner, September 23).
+The live site is a placeholder homepage with the privacy and terms pages. The new landing page shows the product working, carries the box, and sends a submit straight to oparax.ai/<handle> in its building state. References from September 16: v0.app, granola.ai, f5bot.com; no embed tools.
 
 Guards for a free box: one build per handle (a repeat opens the built page); a daily cap of $200 on anonymous builds (owner, September 28: "I'll give you a $200 budget for it"), counted from the cost ledger so a viral link or a script cannot spend without limit, reserved before each build and covering that page's free week, with a "full for today, leave your handle" message; an X credit floor that pauses public builds and free-week polling when the ledger's balance estimate drops under $15, so paying users keep running; Vercel's free invisible bot check. The guards in code (owner, September 28): a cost row before every paid call, a claim per cron run, at most two tries then failed, pools that stop at zero in the same write, the day-seven freeze in every scheduler and sender, one delivery record per story per person, Stripe and X messages verified by signature and recorded once, and a daily watchdog that pauses a source or page far above normal (the August $69 loop). The only abuse guard ever written before was an in-memory limiter on the retired August branch.
 
@@ -148,7 +148,6 @@ Made by the owner:
 - Jev is in, behind a test, in the two roles of sections 3 and 4 (removed September 17, restored September 18).
 - GitHub and Product Hunt as daily digests (September 19).
 - Judging and grouping are redesigned together as their own slice.
-- The look is DESIGN.md (stock shadcn Mira, September 24); pages are designed in Claude Design. DESIGN.md and the theme change only on his explicit approval (September 24).
 - Ads in scope, prepared early, run through the connector, launched by the owner. PostHog is the one dashboard.
 - No more experiments. The experiment scripts, run folders and working documents are deleted; what they taught is written down. (The September 26 to 27 lab came after this; its record is the git tag archive/lab-2026-09-27, archived and deleted from the working tree on September 28 at the owner's word, reversing his September 27 "leave them as they are".)
 - Agents may use a browser for their own checks but never on the owner's screen.

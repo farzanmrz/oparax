@@ -10,21 +10,13 @@ The 151 signup-first build reached step 31 of 31 (`9b04ace`). Four round-two int
 
 ## Current design task
 
-The owner liked the latest free compositions and purchased React Bits Pro. Current runtime source loads Hanken Grotesk and the navy/blue light and dark palette. The separate D1 preview retains its liked navy/blue palette and existing layout. After reviewing the four sans-serif comparisons, the owner selected Open Sans throughout on September 30. The design target is Open Sans headings/body and restrained navy/blue around D1 or toward D2, with harmonious blue gradients. No green/red theme exploration. Only official platform logos retain their authentic appearance. The latest owner correction permits restyling X chat previews and every other component within the selected foundation, superseding the earlier native-black constraint. Product runtime font migration remains pending; this readiness task does not rebuild the product.
-
-Review at `http://localhost:3000/?d=1&view=feed&type=open`. The typography selector offers Source Sans 3 throughout, Manrope headings with Source Sans 3 body, Nunito Sans headings with Source Sans 3 body, and Open Sans throughout. URL values are `type=source`, `manrope`, `nunito` and `open`; selection persists across all four directions and landing/feed modes. Render and interaction evidence is in `scratch/design-recovery/typography-comparison/verification.md`. This is the isolated comparison, not the functional product server.
-
-The agreed sequence is: rendered font comparisons, then the tooling audit with actual external Opus and Grok, then owner font choice, then four complete Pro directions, then owner design acceptance, then implementation in the existing 151 product. Each Pro direction includes a landing page and a feed with both Direct and Clustered modes. Direct/Clustered belongs beside the feed heading. Keep earlier annotations, screenshots and local preferences as supporting evidence. This initial exploration adds no mandatory design stop to unrelated feature stages.
-
-The full brief and historical evidence are in [design-toolkit-proof.md](design-toolkit-proof.md); latest task authorization is `scratch/tooling-sync-2026-09-30/request.md`. Tooling council advice does not select a font or approve a page. The full page-design council follows font choice and owner readiness. The owner needs agents to discover and compose real components, show a small number of complete renders, retain feedback and carry accepted designs into the existing product.
+The design system is being set up from scratch (owner, October 2, 2026). Earlier palette, font, theme and direction guidance was removed from the repo; do not rebuild it from git history. Follow the global `reference-led-design` skill and the owner's dated design rulings in decisions.md. Product runtime keeps its current theme until feature 151 implements the new design.
 
 ## Toolkit and evidence
 
 Use shadcn controls, React Bits Pro structural, visual and motion components, and AI Elements where AI interaction needs it. Pro registry Authorization Bearer interpolation is configured; the license remains only in git-ignored environment files. Arbitrary shells and CLIs do not load `.env.local` automatically, and a running MCP may predate the key. Fresh shadcn CLI and MCP retrieval passed for Pro items. Canonical Pro and narrowly wrapped Developer Tool skills were exposed additively to the participating clients and selected review snapshots. Preserve existing active tools and reviewer rosters.
 
 Claude Code and Codex hosts retrieve and install. Restricted council lanes remain read-only and receive selected guidance, source and rendered evidence. Ordinary external clients retain their existing capabilities. Supplied source does not establish independent live catalog access. The owner reports all lanes manually checked and working. Automated checks establish distribution hashes, configuration parsing and no-provider command previews, not that every live lane was re-run by this audit. Evidence and limits are in `scratch/reactbits-pro-setup/status.md`, `lane-audit.md` beside it, and the current tooling audit records.
-
-DESIGN.md is the contract; current runtime files describe implementation. Claude Design synchronization is manual on request and has not been verified by this audit. `design-system/` remains the historical September 24 export and must not be reapplied to production.
 
 ## Flow and branch status
 
@@ -40,16 +32,6 @@ Final local and remote branch names are beta, ft/151 and main. Main is explicitl
 
 Planning retains the September 29 sequence: owner discussion and plain plan, independent Fable/Astra detailed drafts, reconciliation, fixed critique and joint adjudication. Feature/amend has eight reviewers; QC has nine, retaining Sol 6.1 and Astra. Standalone council retains its own roster. No quota gating, reset credits, timed model switch or roster reduction is introduced by this cleanup.
 
-## Readiness review, latest September 30
-
-Actual skill definitions and relevant references were compared, not just installation hashes. Project routing now resolves Pro default templates against the owner brief, both conflicting AI Elements variants, font mandates, theme resets, API examples, motion/native semantics and accurate contrast. Seven-stage instruction corrections cover schema-free UI work, proof mapping, full amendment context and fix archives, leased manual build/ship metadata, owner-versus-assistant decision status, PR attachment and honest terminal-recovery limits. No product code or executable flow helper changed in this pass. One local global shadcn correction replaced the automatic npx probe with runner-aware guidance; its current Cursor copy matches.
-
-Actual external Grok, Codex Astra and Claude Opus independently reviewed and then received follow-up context. All returned READY for exploration. Their shared recommendation is Pro as the default visual catalog, shadcn controls, and AI Elements conditional, not a mandatory second UI system. Existing preparation-screen imports stay until replaced. All 49 Pro AI/agent block sources were retrieved privately; this is not installation or live model integration. AI Chat 1 has a real disclosure with sample timing; current onboarding exposes activity logs, not a reasoning stream. No AI Elements or AI SDK removal was performed.
-
-Evidence: scratch/design-readiness-open-sans/skills-review.md, flow-review.md, pro-ai-comparison.md, dispositions.md, council-final/ (Grok and Astra), and council-opus-final/. Each final verdict is READY with nonblocking observations, not NO_FINDINGS or visual acceptance. Final durations: Astra High 54 seconds, Grok extra-high 88 seconds, Opus High 66 seconds. The ship metadata guard was syntax-checked and proved to preserve staged product work in a disposable repository. git diff --check passes; AGENTS stays 8,949 characters/bytes under 9,000. Historical review snapshots are not rewritten.
-
 ## Next
 
-Use local Claude Code as orchestrator with `docs/references/claude-design-handoff.md`. Set the shared App UI theme's four knobs once: Open Sans, navy/blue base, blue accent and shared rounding. Only official logos retain their authentic appearance; all other components can change. Marketing/Bento/animation components are deliberately harmonized, not presumed to share every App UI variable.
-
-Render four complete Pro Exploration directions, each landing and Direct/Clustered feed. Preserve the old reference set with a distinct selector, use only localhost:3000, and provide actual screenshots/component provenance to the requested page-design council. Do not reopen font/catalog selection. The existing comparison is not the new Pro exploration. Product runtime remains Hanken until accepted work is implemented through existing feature 151. No product QC, ship, deployment or Claude.ai Design sync ran during this readiness task.
+Set up the design system with the owner (see Current design task).
