@@ -114,7 +114,7 @@ With alerts once a day, before payment fees and fixed bills (the tiers' arithmet
 
 ## 6. The tiers, the free week and the spending guards
 
-Ruled September 28 (owner; the $5 and $30 are his, the $99 and the three pools the assistant's recommendation he accepted; decisions.md, Payment). Sites and feeds are unlimited on every tier; only watched X posts are pooled, and the monthly pool is the only allowance number. The arithmetic uses this file's unit prices: $0.005 a watched post, $0.015 a DM, judging and writing at the top of section 3's range ($1 a month for a light monitor, $2 for a full pool: the assistant's choice of the upper end), and Stripe at 2.9% plus $0.30 plus 0.7% Billing. Onboarding ($0.278 once) is not a monthly cost.
+Ruled September 28 (owner; the $5 and $30 are his, the $99 and the three pools the assistant's recommendation he accepted). Sites and feeds are unlimited on every tier; only watched X posts are pooled, and the monthly pool is the only allowance number. The arithmetic uses this file's unit prices: $0.005 a watched post, $0.015 a DM, judging and writing at the top of section 3's range ($1 a month for a light monitor, $2 for a full pool: the assistant's choice of the upper end), and Stripe at 2.9% plus $0.30 plus 0.7% Billing. Onboarding ($0.278 once) is not a monthly cost.
 
 | Tier | Price a month | Pool of watched posts | X posts at full use | Alerts | Judging and writing | Stripe fee | Cost at full use | Margin |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

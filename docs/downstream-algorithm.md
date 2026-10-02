@@ -11,8 +11,6 @@ Written by the assistant on September 21, 2026 at the owner's request, and rewri
 - Day zero is each source's 10 newest items from the last 2 days (R25; first said September 26).
 - Watched X accounts are polled from a Vercel cron, every minute for Wire and every five minutes otherwise, with replies and reposts excluded so they are never billed; the Activity API serves only the bot's incoming DMs. Their posts enter this pipeline as items in a later step.
 
-The ledger lines are in [references/decisions.md](references/decisions.md).
-
 ## 1. What it does
 
 When a monitor's sources publish something, each new item goes through: collect (fetch the article page and read its whole text); fit (Jev: does it belong to what the person wants); same story (Jev: is it the same news as a story already on the page); adds (Jev: does it say anything the card does not already say); and write (a writer model turns the story into an English card, every fact tied to a quoted span that code and Jev both check, with one repair pass when a check fails). The bot sends one DM per story, ever, at the tier's cadence (owner, September 28).

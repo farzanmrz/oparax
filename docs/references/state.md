@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated September 30, 2026; design section October 2, 2026. Read this first in a new host session and after compaction. Earlier handoffs and instructions are preserved verbatim in [state-history-2026-09-30.md](state-history-2026-09-30.md) as non-operative history. Costs come from [cogs.md](cogs.md), rulings from [decisions.md](decisions.md), accounts from [setup.md](../setup.md), and source structure from [repo.md](repo.md).
+Updated September 30, 2026; design section October 2, 2026. Read this first in a new host session and after compaction. Earlier handoffs and instructions are preserved verbatim in [state-history-2026-09-30.md](state-history-2026-09-30.md) as non-operative history. Costs come from [cogs.md](cogs.md), what the owner rejected or reversed from [decisions.md](decisions.md), accounts from [setup.md](../setup.md), and source structure from [repo.md](repo.md).
 
 ## Current product
 
@@ -10,7 +10,7 @@ The 151 signup-first build reached step 31 of 31 (`9b04ace`). Four round-two int
 
 ## Current design task
 
-The design system is being set up from scratch (owner, October 2, 2026). Earlier palette, font, theme and direction guidance was removed from the repo; do not rebuild it from git history. Follow the global `reference-led-design` skill and the owner's dated design rulings in decisions.md. Product runtime keeps its current theme until feature 151 implements the new design.
+The design system is being set up from scratch (owner, October 2, 2026). Earlier palette, font, theme and direction guidance was removed from the repo; do not rebuild it from git history. Follow the global `reference-led-design` skill. Product runtime keeps its current theme until feature 151 implements the new design.
 
 ## Toolkit and evidence
 

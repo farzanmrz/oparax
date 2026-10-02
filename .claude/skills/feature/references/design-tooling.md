@@ -1,6 +1,6 @@
 # Design tooling in the feature flow
 
-For any visual decision follow the global `reference-led-design` skill and the owner's dated design rulings in `docs/references/decisions.md`. This file covers catalogs, access and API conflicts only.
+For any visual decision follow the global `reference-led-design` skill. This file covers catalogs, access and API conflicts only.
 
 ## Roles and loading
 
