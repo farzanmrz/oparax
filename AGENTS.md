@@ -25,7 +25,7 @@ Interpret the owner's informal dictated annotation batch without making him orga
 
 Design-system and theme changes need explicit owner approval in his current session (September 24), never approval from a stage or background agent. Adding primitives approves no theme.
 
-Use official shadcn and Mira controls, purchased React Bits Pro for structure and motion, and AI Elements for AI interaction. Relevant UI skills guide planning, building and review. Claude Code and Codex retrieve and install; restricted council lanes review selected guidance, source and renders. Ordinary clients retain their capabilities. Preserve existing tools. Supplied source does not establish independent catalog access. License values stay in git-ignored env files; shells do not load them automatically.
+Use official shadcn and Mira controls, purchased React Bits Pro for structure and motion, and AI Elements for AI interaction. Relevant UI skills guide planning, building and review. Feature, amend and QC render any change of look, screenshot it dark and light and judge it against the reference board; the owner sees renders, not a memo. Claude Code and Codex retrieve and install; restricted council lanes review selected guidance, source and renders. Ordinary clients retain their capabilities. Preserve existing tools. Supplied source does not establish independent catalog access. License values stay in git-ignored env files; shells do not load them automatically.
 
 Compose actual components, retain original feedback and record imported, adapted, custom and reference-only provenance.
 

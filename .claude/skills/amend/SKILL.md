@@ -61,12 +61,12 @@ Whether the branch is already built (`git log --oneline origin/beta..HEAD` shows
 
 ## 2. Talk through the addition
 
-Exactly like `/feature` step 1, scoped as a delta on top of what is already agreed: discuss the addition with the owner in plain product language, cut it to one slice if it is a tangle, and run the same UI checkpoint if it touches a user-facing surface. Pick skill bundles for the delta only (same bundle rules, including the `free` bundle).
+Exactly like `/feature` step 1, scoped as a delta on top of what is already agreed: discuss the addition with the owner in plain product language, cut it to one slice if it is a tangle, and, when it changes the look, run the same renders-first `reference-led-design` loop as `/feature` step 1 (Screens): the agents render the directions, screenshot them in dark and light, judge them against the reference board and his rejected renders, and show him the renders with their verdict, not a text memo. The plain amendment then cites the accepted renders. Non-visual additions keep the text-only flow. Pick skill bundles for the delta only (same bundle rules, including the `free` bundle).
 
 The talk-through message has a fixed shape and a cap, because the owner is a vibe coder who reads product language only, and an open-ended message here turns into a wall of code findings (2026-08-18: a 5,000-character first message the owner could not parse, then a 1,500-character retry that worked; send the retry the first time). Exactly three short parts, no more:
 1. **What you asked for, in one or two sentences**, restated in the plan's plain voice (what users get, what stays hidden, what does not change).
 2. **Anything I found that changes it**, at most three lines, one each, each in the form "what it means for you, what I'll do about it"; no file names, no option names, no mechanism talk. If nothing changes, say "nothing" and skip.
-3. **The question**: one line, a yes/no on the slice plus the bundles (and the UI checkpoint if it applies). Then END YOUR TURN if scope or bundles need agreement. If they are already explicitly settled in this conversation, continue to the concrete plain amendment without a duplicate scope confirmation. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
+3. **The question**: one line, a yes/no on the slice plus the bundles (and, for a change of look, the rendered directions with the agents' verdict). Then END YOUR TURN if scope or bundles need agreement. If they are already explicitly settled in this conversation, continue to the concrete plain amendment without a duplicate scope confirmation. If the owner pushes back or does not understand, answer in the same three-part shape, shorter.
 
 ## 3. Write the plain amendment and get it approved
 

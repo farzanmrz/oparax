@@ -26,8 +26,8 @@ MODELS = {name: COUNCIL_MODELS[name][1] for name in ('fable', 'sol', 'astra')}
 # The default partner is Astra. Routine phases honor an explicit Sol override;
 # only detail and redesign are always Astra.
 PHASES = {'scope': 'routine', 'plain': 'routine', 'detail': 'astra',
-          'design-review': 'routine', 'adjudication': 'routine', 'redesign': 'astra'}
-RESEARCH_PHASES = {'scope', 'plain', 'design-review'}
+          'adjudication': 'routine', 'redesign': 'astra'}
+RESEARCH_PHASES = {'scope', 'plain'}
 RULES = """You are the independent planning peer in /feature or /amend, not its coordinator.
 Do only the assignment below. Do not invoke /feature, /amend or another workflow.
 Read repository source as needed, but do not change repository files, git,
@@ -60,10 +60,6 @@ def rules(state):
                     'interpretation replace the original owner input or references.\n')
     else:
         research = 'Do not run browsers or previews in this phase.\n'
-    if state['phase'] == 'design-review':
-        research += ('Review the actual supplied design images against the agreed direction. '
-                     'The coordinator\'s description supplements those images, never replaces them. '
-                     'Report if you cannot view them rather than returning a visual verdict.\n')
     images = state.get('images', [])
     visual = ('Shared image files (read these directly; attached to Codex calls):\n' +
               '\n'.join(str(Path(state['run']) / p) for p in images) + '\n') if images else ''
