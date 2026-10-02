@@ -1,6 +1,6 @@
 # Where things stand
 
-Updated September 30, 2026. Read this first in a new host session and after compaction. Earlier handoffs and instructions are preserved verbatim in [state-history-2026-09-30.md](state-history-2026-09-30.md) as non-operative history. Costs come from [cogs.md](cogs.md), rulings from [decisions.md](decisions.md), accounts from [setup.md](../setup.md), and source structure from [repo.md](repo.md).
+Updated September 30, 2026; design section October 2, 2026. Read this first in a new host session and after compaction. Earlier handoffs and instructions are preserved verbatim in [state-history-2026-09-30.md](state-history-2026-09-30.md) as non-operative history. Costs come from [cogs.md](cogs.md), rulings from [decisions.md](decisions.md), accounts from [setup.md](../setup.md), and source structure from [repo.md](repo.md).
 
 ## Current product
 

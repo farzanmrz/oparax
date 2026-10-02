@@ -1,6 +1,6 @@
 # Historical handoff and instructions, captured September 30, 2026
 
-This is a verbatim preservation of the handoff and AGENTS.md before the September 30 tooling audit corrections. It is historical evidence, not current operating guidance. Later rulings and the current state.md, AGENTS.md and engineering.md take precedence. Old next-step directives, failed-build statuses, purchase restrictions and font claims below must not be executed as current instructions. Design-theming passages were removed on October 2, 2026; the full text is in git at `867c023`.
+This is a verbatim preservation of the handoff and AGENTS.md before the September 30 tooling audit corrections. It is historical evidence, not current operating guidance. Later rulings and the current state.md, AGENTS.md and engineering.md take precedence. Old next-step directives, failed-build statuses, purchase restrictions and font claims below must not be executed as current instructions. Most design-theming passages were removed on October 2, 2026; the few remaining design mentions are history and do not bind (the full text is in git at `867c023`).
 
 ## Previous state.md
 
