@@ -8,7 +8,7 @@ The supervisor builds the components one at a time in dependency order, in this 
 
 After each component it runs build and typecheck. Red blocks that component and everything that depends on it; independent components continue. A parked question keeps the work done behind its default and lets independent components continue.
 
-When every component is in, one independent whole-branch QC runs the nine lanes plus its own pass on the diff and the screenshots. Fixes go straight back to a fix build in this checkout, then gates and QC again, at most three fix rounds before a concrete blocker. A PASS must name the commit it reviewed, still at HEAD; only then does the supervisor post that proof on the issue and push the branch. It never ships, closes the issue or promotes.
+When every component is in, one independent whole-branch QC runs the eight lanes plus its own pass on the diff and the screenshots. Fixes go straight back to a fix build in this checkout, then gates and QC again, at most three fix rounds before a concrete blocker. A PASS must name the commit it reviewed, still at HEAD; only then does the supervisor post that proof on the issue and push the branch. It never ships, closes the issue or promotes.
 
 Deadlines: a build 60 minutes, QC 30, a fix build 45. Past one the job is stopped; dirty work is kept and blocks for inspection, clean work retries from its last committed step, and three timeouts block the job. The run ends with a macOS notification; `/run-plan <N> status` then shows what was built, parked questions, blockers and what to walk.
 

@@ -4,7 +4,7 @@ description: >-
   The plan side of feature work, same behavior in either host: talk the change
   through with the owner, write the plain plan he approves, check it against
   the skill bundles, have Fable and Astra draft the detailed plan by component,
-  run the eight-lane critique and adjudicate it, then open the GitHub issue,
+  run the seven-lane critique and adjudicate it, then open the GitHub issue,
   cut the branch, write the plan files and launch /run-plan <N>. Also amends an
   in-flight issue: "amend this", "add this to the current feature", or /feature
   on an ft/<N> or bf/<N> branch whose plan exists runs amend mode

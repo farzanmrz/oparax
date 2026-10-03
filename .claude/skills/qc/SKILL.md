@@ -4,7 +4,7 @@ description: >-
   The review side of feature work, same behavior in either host. Reviews what a build
   committed: one component (/qc <N> --component <id>) or the whole feature branch
   (/qc <N> --integration, or a bare /qc <N>). Checks plan coverage, runs the gates,
-  screenshots changed screens, launches nine CLI review lanes on the diff and the
+  screenshots changed screens, launches eight CLI review lanes on the diff and the
   screenshots, reviews the diff itself, folds every finding into one fix list, writes
   the result file the run reads, and hands the list straight back to the builder on
   Astra High. Not for building or fixing; that is /build or $build.

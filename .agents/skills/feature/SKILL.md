@@ -1,6 +1,6 @@
 ---
 name: feature
-description: "Plan an oparax feature or bug fix, or amend the in-flight one: the planning host talks it through with the owner and writes the plain plan, Fable and Astra independently draft the detail after approval and jointly adjudicate the eight-lane CLI critique, then the host opens the GitHub issue, cuts the branch, writes the plan files and launches /run-plan <N>. Amend mode (\"amend this\", or $feature on an ft/<N> or bf/<N> branch whose plan exists) adds scope to that issue on its branch. Use only when the owner explicitly types $feature in Codex. Never invoke automatically during other work."
+description: "Plan an oparax feature or bug fix, or amend the in-flight one: the planning host talks it through with the owner and writes the plain plan, Fable and Astra independently draft the detail after approval and jointly adjudicate the seven-lane CLI critique, then the host opens the GitHub issue, cuts the branch, writes the plan files and launches /run-plan <N>. Amend mode (\"amend this\", or $feature on an ft/<N> or bf/<N> branch whose plan exists) adds scope to that issue on its branch. Use only when the owner explicitly types $feature in Codex. Never invoke automatically during other work."
 ---
 
 # Feature (Codex entry point)
