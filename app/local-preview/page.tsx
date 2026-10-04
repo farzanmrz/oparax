@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AccountsStrip } from "@/components/monitor/accounts-strip";
-import { AgentHeader } from "@/components/monitor/agent-header";
 import { Bubble } from "@/components/monitor/bubble";
 import { DigestBlock } from "@/components/monitor/digest-block";
-import { Feed } from "@/components/monitor/feed";
+import { OneFeed } from "@/components/monitor/one-feed";
 import { SkippedList } from "@/components/monitor/skipped-list";
-import { SourcesList } from "@/components/monitor/sources-list";
+import { Stage } from "@/components/one/stage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  previewBeat,
-  previewBrief,
   previewFeed,
   previewHandle,
   previewNotice,
-  previewProfile,
   previewTitle,
 } from "@/lib/local-preview/fixture";
 import { monitorContent } from "@/lib/monitor/content";
@@ -38,7 +34,7 @@ export default async function LocalPreviewPage({
   const view = typeof search.view === "string" ? search.view : undefined;
 
   return (
-    <div className="ph-no-autocapture flex min-h-dvh flex-col">
+    <Stage className="ph-no-autocapture">
       <a
         href="#monitor-content"
         className="sr-only z-30 rounded-md bg-background p-3 text-primary focus:fixed focus:top-2 focus:left-4 focus:not-sr-only focus-visible:outline-2 focus-visible:outline-ring"
@@ -48,30 +44,35 @@ export default async function LocalPreviewPage({
       <main
         id="monitor-content"
         tabIndex={-1}
-        className="mx-auto w-[min(90%,1800px)] flex-1 space-y-6 py-8 wrap-anywhere"
+        className="relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 wrap-anywhere desk:px-8"
       >
-        <Alert>
+        <Alert className="mb-6">
           <AlertDescription>{previewNotice}</AlertDescription>
         </Alert>
-        <AgentHeader
+        <OneFeed
+          feed={feed}
           handle={previewHandle}
-          beat={previewBeat}
-          profile={previewProfile}
-          brief={previewBrief}
+          view={view}
+          storyId={story}
+          title={monitorContent.yourFeed}
+          banner={
+            <p className="mt-3 text-[13px] text-t2">
+              {monitorContent.dmLine}{" "}
+              <Link
+                href={`/${previewHandle}/notifications`}
+                className="font-medium text-[var(--brand)] underline-offset-4 hover:underline"
+              >
+                {monitorContent.dmLink}
+              </Link>
+            </p>
+          }
         />
-        <div className="grid gap-8 desk:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0 space-y-6">
-            <Feed feed={feed} handle={previewHandle} view={view} storyId={story} />
-            <SkippedList items={feed.skipped} />
-          </div>
-          <aside className="min-w-0 space-y-8">
-            <SourcesList sources={feed.sources} />
-            <AccountsStrip accounts={feed.accounts} />
-            <DigestBlock items={feed.digests} github productHunt />
-          </aside>
+        <div className="mt-12 grid gap-8 desk:grid-cols-2">
+          <SkippedList items={feed.skipped} />
+          <DigestBlock items={feed.digests} github productHunt />
         </div>
       </main>
       <Bubble handle={previewHandle} displayHandle={previewHandle} />
-    </div>
+    </Stage>
   );
 }

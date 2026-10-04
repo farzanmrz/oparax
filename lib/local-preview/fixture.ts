@@ -1,23 +1,8 @@
-import type { Brief, MonitorFeed, Profile, PublicItem } from "@/lib/monitor/read";
+import type { MonitorFeed, PublicItem } from "@/lib/monitor/read";
 
 export const previewHandle = "local-preview";
 export const previewTitle = "Local preview";
 export const previewNotice = "Development preview with example data. Nothing here is live.";
-export const previewBeat = "The tools and ideas changing how people build with AI.";
-
-export const previewProfile: Profile = {
-  name: "Example reader",
-  bio: "A local example for checking the agent page.",
-  image: null,
-  site: null,
-};
-
-export const previewBrief: Brief = {
-  summary: "A close watch on useful tools, how they work, and what builders can do with them.",
-  interests: ["Developer tools", "AI workflows"],
-  languages: ["en"],
-  topic_terms: ["agents", "developer tools"],
-};
 
 const sourceIds = {
   site: "c601f31b-f29e-4684-a249-124510864cd2",

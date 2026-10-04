@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { AccountsStrip } from "@/components/monitor/accounts-strip";
 import { AgentHeader } from "@/components/monitor/agent-header";
-import { BotButton } from "@/components/monitor/bot-button";
 import { Bubble } from "@/components/monitor/bubble";
 import { Building } from "@/components/monitor/building";
 import { DigestBlock } from "@/components/monitor/digest-block";
-import { Feed } from "@/components/monitor/feed";
 import { OnboardingView } from "@/components/monitor/onboarding";
+import { OneFeed } from "@/components/monitor/one-feed";
 import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-building";
 import { SkippedList } from "@/components/monitor/skipped-list";
-import { SourcesList } from "@/components/monitor/sources-list";
 import { StateBanner } from "@/components/monitor/state-banner";
+import { Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -93,8 +92,11 @@ export default async function MonitorPage({ params, searchParams }: Props) {
       </>
     );
   }
+  const active = state.state === "trial" || state.state === "paid";
+  const stopped =
+    state.state === "frozen" || state.state === "lapsed" || state.state === "exhausted";
   return (
-    <div className="flex min-h-dvh flex-col">
+    <Stage>
       <a
         href="#monitor-content"
         className="sr-only rounded-md focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus:z-50 focus:bg-background focus:p-3 focus-visible:ring-2 focus-visible:ring-ring"
@@ -106,67 +108,78 @@ export default async function MonitorPage({ params, searchParams }: Props) {
       <main
         id="monitor-content"
         tabIndex={-1}
-        className="mx-auto w-[min(90%,1800px)] flex-1 space-y-6 py-8 wrap-anywhere"
+        className="relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 wrap-anywhere desk:px-8"
       >
-        <AgentHeader
-          handle={monitor.display_handle}
-          beat={monitor.beat}
-          profile={monitor.profile}
-          brief={monitor.brief}
-        />
         <RefreshWhileBuilding building={building} />
         {building || failed ? (
-          <Building
-            monitorId={monitor.id}
-            handle={monitor.display_handle}
-            step={monitor.build_step}
-            log={log}
-            profile={monitor.profile}
-            failed={failed}
-            canRetry={isOwner}
-            tries={monitor.build_tries}
-          />
-        ) : (
+          <div className="space-y-6">
+            <AgentHeader
+              handle={monitor.display_handle}
+              beat={monitor.beat}
+              profile={monitor.profile}
+              brief={monitor.brief}
+            />
+            <Building
+              monitorId={monitor.id}
+              handle={monitor.display_handle}
+              step={monitor.build_step}
+              log={log}
+              profile={monitor.profile}
+              failed={failed}
+              canRetry={isOwner}
+              tries={monitor.build_tries}
+            />
+          </div>
+        ) : feed ? (
           <>
-            <StateBanner monitor={monitor} state={state} isOwner={isOwner} />
-            {isOwner && search.error === "activation" ? (
-              <Alert variant="destructive">
-                <AlertDescription>{copy.activationFailed}</AlertDescription>
-              </Alert>
-            ) : null}
-            {isOwner ? (
-              <BotButton
-                monitorId={monitor.id}
-                handle={monitor.display_handle}
-                botState={monitor.bot_state}
-                state={state.state}
+            <OneFeed
+              feed={feed}
+              handle={monitor.handle}
+              view={view}
+              storyId={story}
+              title={isOwner ? copy.yourFeed : copy.title(monitor.display_handle)}
+              banner={
+                <>
+                  {isOwner && active && monitor.bot_state !== "active" ? (
+                    <p className="mt-3 text-[13px] text-t2">
+                      {copy.dmLine}{" "}
+                      <Link
+                        href={`/${monitor.handle}/notifications`}
+                        className="rounded-sm font-medium text-[var(--brand)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        {copy.dmLink}
+                      </Link>
+                    </p>
+                  ) : null}
+                  {isOwner && search.error === "activation" ? (
+                    <Alert variant="destructive" className="mt-4">
+                      <AlertDescription>{copy.activationFailed}</AlertDescription>
+                    </Alert>
+                  ) : null}
+                  {stopped ? (
+                    <div className="mt-4">
+                      <StateBanner monitor={monitor} state={state} isOwner={isOwner} />
+                    </div>
+                  ) : null}
+                </>
+              }
+            />
+            <div className="mt-12 grid gap-8 desk:grid-cols-2">
+              <SkippedList items={feed.skipped} />
+              <DigestBlock
+                items={feed.digests}
+                github={monitor.digest_github}
+                productHunt={monitor.digest_product_hunt}
               />
-            ) : null}
-            {feed ? (
-              <div className="grid gap-8 desk:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="min-w-0 space-y-6">
-                  <Feed feed={feed} handle={monitor.handle} view={view} storyId={story} />
-                  <SkippedList items={feed.skipped} />
-                </div>
-                <aside className="min-w-0 space-y-8">
-                  <SourcesList sources={feed.sources} />
-                  <AccountsStrip accounts={feed.accounts} />
-                  <DigestBlock
-                    items={feed.digests}
-                    github={monitor.digest_github}
-                    productHunt={monitor.digest_product_hunt}
-                  />
-                </aside>
-              </div>
-            ) : null}
+            </div>
           </>
-        )}
+        ) : null}
       </main>
       {isOwner ? (
         <Bubble handle={monitor.handle} displayHandle={monitor.display_handle} />
       ) : (
         <SiteFooter />
       )}
-    </div>
+    </Stage>
   );
 }
