@@ -1,0 +1,764 @@
+/*
+ * Four candidate palettes for a quick visual comparison on the feed (site/next/THEMES.md explains each).
+ * A palette is a class on <html> (palette-graphite | palette-slate | palette-ink | palette-navy), set before
+ * paint by next/palette.ts from ?palette= or localStorage. With no class the page keeps next.css as it was.
+ * Selectors are html.palette-x (light) and html.palette-x.dark (dark) so they outrank :root and .dark
+ * whatever the import order. Every block sets the full shadcn set, the React Bits knobs and ramp, the four
+ * text tiers, hairlines, the four functional slots and a few structure knobs the new feed composition reads.
+ */
+
+/* Defaults when no palette is chosen: the new composition still renders, mapped onto the current navy tokens. */
+:root {
+  --t1: var(--foreground);
+  --t2: var(--foreground);
+  --t3: var(--muted-foreground);
+  --t4: var(--muted-foreground);
+  --line: var(--border);
+  --line-soft: var(--border);
+  --line-strong: var(--input);
+  --raised: var(--secondary);
+  --well: var(--muted);
+  --tile-bg: var(--card);
+  --ok: oklch(0.6 0.14 160);
+  --ok-foreground: #ffffff;
+  --caution: oklch(0.7 0.15 70);
+  --caution-foreground: #ffffff;
+  --error: var(--destructive);
+  --error-foreground: #ffffff;
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+  --action-edge: transparent;
+  --heading-weight: 600;
+  --label-font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --label-case: uppercase;
+  --label-tracking: 0.05em;
+  --label-size: 11px;
+  --action-radius: 9999px;
+  --story-radius: 12px;
+  --story-shadow: none;
+  --stack-shadow: none;
+  --seg-on-bg: var(--card);
+  --seg-on-edge: var(--border);
+}
+.dark {
+  --ok: oklch(0.74 0.15 160);
+  --ok-foreground: #081022;
+  --caution: oklch(0.8 0.15 78);
+  --caution-foreground: #081022;
+  --error-foreground: #081022;
+}
+
+/* React Bits Pro radius ladder, global for every palette (10px "Round", equal to shadcn --radius). */
+html[class*="palette-"] {
+  --radius: 10px;
+  --rb-radius: 10px;
+  --rb-r-xs: max(0px, calc(var(--rb-radius) - 6px));
+  --rb-r-sm: max(0px, calc(var(--rb-radius) - 4px));
+  --rb-r-md: max(0px, calc(var(--rb-radius) - 2px));
+  --rb-r-lg: var(--rb-radius);
+  --rb-r-xl: calc(var(--rb-radius) + min(2px, var(--rb-radius)));
+  --rb-r-2xl: calc(var(--rb-radius) + min(4px, var(--rb-radius)));
+  --rb-r-3xl: calc(var(--rb-radius) + min(6px, var(--rb-radius)));
+  --rb-r-4xl: calc(var(--rb-radius) + min(8px, var(--rb-radius)));
+}
+
+/* ───────────── 1. GRAPHITE: Linear logic. Neutral ground, white hairlines, light grey pill. ───────────── */
+html.palette-graphite {
+  --background: #ffffff;
+  --foreground: #0f1011;
+  --card: #f9f9fa;
+  --card-foreground: #0f1011;
+  --popover: #ffffff;
+  --popover-foreground: #0f1011;
+  --primary: #18191b;
+  --primary-foreground: #f7f8f8;
+  --secondary: #f2f2f3;
+  --secondary-foreground: #2f3237;
+  --muted: #f2f2f3;
+  --muted-foreground: #5f636a;
+  --accent: #ececee;
+  --accent-foreground: #0f1011;
+  --destructive: #e5484d;
+  --border: rgb(0 0 0 / 0.09);
+  --input: rgb(0 0 0 / 0.14);
+  --ring: #245dec;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2f3237;
+  --sidebar-primary: #18191b;
+  --sidebar-primary-foreground: #f7f8f8;
+  --sidebar-accent: #f2f2f3;
+  --sidebar-accent-foreground: #0f1011;
+  --sidebar-border: rgb(0 0 0 / 0.07);
+  --sidebar-ring: #245dec;
+  --glow-1: #d0d6e0;
+  --glow-2: #e5e5e6;
+  --glow-3: #f4f4f4;
+  --t1: #0f1011;
+  --t2: #2f3237;
+  --t3: #5f636a;
+  --t4: #7b8089;
+  --line: rgb(0 0 0 / 0.09);
+  --line-soft: rgb(0 0 0 / 0.06);
+  --line-strong: rgb(0 0 0 / 0.14);
+  --raised: #ececee;
+  --well: #f2f2f3;
+  --tile-bg: transparent;
+  --ok: #27a644;
+  --ok-foreground: #ffffff;
+  --caution: #d9a100;
+  --caution-foreground: #0f1011;
+  --error: #e5484d;
+  --error-foreground: #ffffff;
+  --brand: #245dec;
+  --brand-foreground: #ffffff;
+  --rb-accent: #18191b;
+  --rb-accent-fg: #f7f8f8;
+  --color-neutral-50: oklch(98.5% 0.002 264);
+  --color-neutral-100: oklch(97% 0.002 264);
+  --color-neutral-200: oklch(92.2% 0.002 264);
+  --color-neutral-300: oklch(87% 0.003 264);
+  --color-neutral-400: oklch(70.8% 0.004 264);
+  --color-neutral-500: oklch(55.6% 0.004 264);
+  --color-neutral-600: oklch(43.9% 0.004 264);
+  --color-neutral-700: oklch(37.1% 0.004 264);
+  --color-neutral-800: oklch(26.9% 0.003 264);
+  --color-neutral-900: oklch(20.5% 0.003 264);
+  --color-neutral-950: oklch(14.5% 0.002 264);
+  --heading-weight: 510;
+  --label-font: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --label-case: none;
+  --label-tracking: 0;
+  --label-size: 12px;
+  --action-radius: 9999px;
+  --action-edge: transparent;
+  --story-radius: 12px;
+  --story-shadow: none;
+  --stack-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  --seg-on-bg: #ececee;
+  --seg-on-edge: transparent;
+}
+html.palette-graphite.dark {
+  --background: #08090a;
+  --foreground: #f7f8f8;
+  --card: #0f1011;
+  --card-foreground: #f7f8f8;
+  --popover: #141516;
+  --popover-foreground: #f7f8f8;
+  --primary: #e5e5e6;
+  --primary-foreground: #08090a;
+  --secondary: #141516;
+  --secondary-foreground: #d0d6e0;
+  --muted: #141516;
+  --muted-foreground: #8a8f98;
+  --accent: #191a1b;
+  --accent-foreground: #f7f8f8;
+  --destructive: #eb5757;
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.12);
+  --ring: #6b94ff;
+  --sidebar: #08090a;
+  --sidebar-foreground: #d0d6e0;
+  --sidebar-primary: #e5e5e6;
+  --sidebar-primary-foreground: #08090a;
+  --sidebar-accent: #141516;
+  --sidebar-accent-foreground: #f7f8f8;
+  --sidebar-border: rgb(255 255 255 / 0.06);
+  --sidebar-ring: #6b94ff;
+  --glow-1: #232326;
+  --glow-2: #464a4c;
+  --glow-3: #7e8287;
+  --t1: #f7f8f8;
+  --t2: #d0d6e0;
+  --t3: #8a8f98;
+  --t4: #6e737b;
+  --line: rgb(255 255 255 / 0.08);
+  --line-soft: rgb(255 255 255 / 0.05);
+  --line-strong: rgb(255 255 255 / 0.12);
+  --raised: #191a1b;
+  --well: #0b0c0d;
+  --ok: #27a644;
+  --ok-foreground: #08090a;
+  --caution: #f0bf00;
+  --caution-foreground: #08090a;
+  --error: #eb5757;
+  --error-foreground: #08090a;
+  --brand: #6b94ff;
+  --brand-foreground: #08090a;
+  --rb-accent: #e5e5e6;
+  --rb-accent-fg: #08090a;
+  --stack-shadow: 0 0 0 1px rgb(0 0 0 / 0.2);
+  --seg-on-bg: #191a1b;
+  --seg-on-edge: rgb(255 255 255 / 0.08);
+}
+
+/* ───────────── 2. SLATE: Supabase logic in blue. Faint blue-grey ground, deep blue plate, mono caps. ───────────── */
+html.palette-slate {
+  --background: #fdfdfd;
+  --foreground: #17181b;
+  --card: #ffffff;
+  --card-foreground: #17181b;
+  --popover: #ffffff;
+  --popover-foreground: #17181b;
+  --primary: oklch(0.47 0.17 263);
+  --primary-foreground: #ffffff;
+  --secondary: #f5f6f7;
+  --secondary-foreground: #17181b;
+  --muted: #f5f6f7;
+  --muted-foreground: #616467;
+  --accent: #f0f1f2;
+  --accent-foreground: #17181b;
+  --destructive: oklch(0.57 0.19 25);
+  --border: #e4e5e7;
+  --input: #d6d8db;
+  --ring: #245dec;
+  --sidebar: #fdfdfd;
+  --sidebar-foreground: #3c3e41;
+  --sidebar-primary: oklch(0.47 0.17 263);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f1f2;
+  --sidebar-accent-foreground: #17181b;
+  --sidebar-border: #e4e5e7;
+  --sidebar-ring: #245dec;
+  --glow-1: #245dec;
+  --glow-2: #6b94ff;
+  --glow-3: #a9c1ff;
+  --t1: #17181b;
+  --t2: oklch(0.36 0.005 250);
+  --t3: #616467;
+  --t4: oklch(0.58 0.006 250);
+  --line: #e4e5e7;
+  --line-soft: #ededee;
+  --line-strong: #d6d8db;
+  --raised: #f3f4f5;
+  --well: #f7f8f9;
+  --tile-bg: #ffffff;
+  --ok: oklch(0.6 0.13 162);
+  --ok-foreground: #ffffff;
+  --caution: oklch(0.7 0.15 70);
+  --caution-foreground: #17181b;
+  --error: oklch(0.57 0.19 25);
+  --error-foreground: #ffffff;
+  --brand: #245dec;
+  --brand-foreground: #ffffff;
+  --rb-accent: oklch(0.47 0.17 263);
+  --rb-accent-fg: #ffffff;
+  --color-neutral-50: oklch(98.5% 0.003 250);
+  --color-neutral-100: oklch(97% 0.004 250);
+  --color-neutral-200: oklch(92.2% 0.005 250);
+  --color-neutral-300: oklch(87% 0.005 250);
+  --color-neutral-400: oklch(70.8% 0.006 250);
+  --color-neutral-500: oklch(55.6% 0.006 250);
+  --color-neutral-600: oklch(43.9% 0.006 250);
+  --color-neutral-700: oklch(37.1% 0.006 250);
+  --color-neutral-800: oklch(26.9% 0.005 250);
+  --color-neutral-900: oklch(20.5% 0.005 250);
+  --color-neutral-950: oklch(14.5% 0.005 250);
+  --heading-weight: 560;
+  --label-font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --label-case: uppercase;
+  --label-tracking: 0.06em;
+  --label-size: 11px;
+  --action-radius: 6px;
+  --action-edge: oklch(0.42 0.16 263);
+  --story-radius: 10px;
+  --story-shadow: none;
+  --stack-shadow: none;
+  --seg-on-bg: #fdfdfd;
+  --seg-on-edge: #17181b;
+}
+html.palette-slate.dark {
+  --background: oklch(0.19 0.005 250);
+  --foreground: #edeff0;
+  --card: oklch(0.215 0.005 250);
+  --card-foreground: #edeff0;
+  --popover: oklch(0.24 0.005 250);
+  --popover-foreground: #edeff0;
+  --primary: oklch(0.44 0.11 262);
+  --primary-foreground: #eef3ff;
+  --secondary: oklch(0.24 0.005 250);
+  --secondary-foreground: #edeff0;
+  --muted: oklch(0.24 0.005 250);
+  --muted-foreground: oklch(0.68 0.006 250);
+  --accent: oklch(0.25 0.005 250);
+  --accent-foreground: #edeff0;
+  --destructive: oklch(0.66 0.18 25);
+  --border: rgb(237 239 240 / 0.075);
+  --input: rgb(237 239 240 / 0.135);
+  --ring: #6b94ff;
+  --sidebar: oklch(0.19 0.005 250);
+  --sidebar-foreground: oklch(0.86 0.005 250);
+  --sidebar-primary: oklch(0.44 0.11 262);
+  --sidebar-primary-foreground: #eef3ff;
+  --sidebar-accent: oklch(0.24 0.005 250);
+  --sidebar-accent-foreground: #edeff0;
+  --sidebar-border: rgb(237 239 240 / 0.075);
+  --sidebar-ring: #6b94ff;
+  --glow-1: #1d3f9e;
+  --glow-2: #3f6fe8;
+  --glow-3: #6b94ff;
+  --t1: #edeff0;
+  --t2: oklch(0.86 0.005 250);
+  --t3: oklch(0.68 0.006 250);
+  --t4: oklch(0.58 0.006 250);
+  --line: rgb(237 239 240 / 0.075);
+  --line-soft: rgb(237 239 240 / 0.05);
+  --line-strong: rgb(237 239 240 / 0.135);
+  --raised: oklch(0.24 0.005 250);
+  --well: oklch(0.175 0.005 250);
+  --tile-bg: oklch(0.215 0.005 250);
+  --ok: oklch(0.74 0.14 162);
+  --ok-foreground: #121416;
+  --caution: oklch(0.8 0.15 78);
+  --caution-foreground: #121416;
+  --error: oklch(0.66 0.18 25);
+  --error-foreground: #121416;
+  --brand: #6b94ff;
+  --brand-foreground: #121416;
+  --rb-accent: oklch(0.44 0.11 262);
+  --rb-accent-fg: #eef3ff;
+  --action-edge: oklch(0.55 0.13 262);
+  --seg-on-bg: oklch(0.19 0.005 250);
+  --seg-on-edge: oklch(0.86 0.005 250);
+}
+
+/* ───────────── 3. INK: Vercel Geist logic. Black page, #ffffff25 hairline, blue only as ring, links, one primary. ───────────── */
+html.palette-ink {
+  --background: #fafafa;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #0070f7;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2f2;
+  --secondary-foreground: #171717;
+  --muted: #f2f2f2;
+  --muted-foreground: #666666;
+  --accent: #ebebeb;
+  --accent-foreground: #171717;
+  --destructive: oklch(0.6 0.2 25);
+  --border: rgb(0 0 0 / 0.08);
+  --input: rgb(0 0 0 / 0.14);
+  --ring: #0070f7;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #4d4d4d;
+  --sidebar-primary: #0070f7;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ebebeb;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: rgb(0 0 0 / 0.08);
+  --sidebar-ring: #0070f7;
+  --glow-1: #e6e6e6;
+  --glow-2: #c9c9c9;
+  --glow-3: #a8a8a8;
+  --t1: #171717;
+  --t2: #4d4d4d;
+  --t3: #666666;
+  --t4: #767676;
+  --line: rgb(0 0 0 / 0.08);
+  --line-soft: rgb(0 0 0 / 0.05);
+  --line-strong: rgb(0 0 0 / 0.14);
+  --raised: #f2f2f2;
+  --well: #fafafa;
+  --tile-bg: #ffffff;
+  --ok: #28a948;
+  --ok-foreground: #ffffff;
+  --caution: #ff9900;
+  --caution-foreground: #171717;
+  --error: oklch(0.6 0.2 25);
+  --error-foreground: #ffffff;
+  --brand: #0064e2;
+  --brand-foreground: #ffffff;
+  --rb-accent: #0070f7;
+  --rb-accent-fg: #ffffff;
+  --color-neutral-50: oklch(98.5% 0 0);
+  --color-neutral-100: oklch(97% 0 0);
+  --color-neutral-200: oklch(92.2% 0 0);
+  --color-neutral-300: oklch(87% 0 0);
+  --color-neutral-400: oklch(70.8% 0 0);
+  --color-neutral-500: oklch(55.6% 0 0);
+  --color-neutral-600: oklch(43.9% 0 0);
+  --color-neutral-700: oklch(37.1% 0 0);
+  --color-neutral-800: oklch(26.9% 0 0);
+  --color-neutral-900: oklch(20.5% 0 0);
+  --color-neutral-950: oklch(14.5% 0 0);
+  --heading-weight: 600;
+  --label-font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --label-case: uppercase;
+  --label-tracking: 0.04em;
+  --label-size: 11px;
+  --action-radius: 6px;
+  --action-edge: transparent;
+  --story-radius: 12px;
+  --story-shadow: none;
+  --stack-shadow: 0 2px 2px rgb(0 0 0 / 0.04), 0 8px 8px -8px rgb(0 0 0 / 0.04);
+  --seg-on-bg: #e6e6e6;
+  --seg-on-edge: transparent;
+}
+html.palette-ink.dark {
+  --background: #000000;
+  --foreground: #ededed;
+  --card: #000000;
+  --card-foreground: #ededed;
+  --popover: #0a0a0a;
+  --popover-foreground: #ededed;
+  --primary: #0071f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ededed;
+  --muted: #1a1a1a;
+  --muted-foreground: #a0a0a0;
+  --accent: #1f1f1f;
+  --accent-foreground: #ededed;
+  --destructive: #ff5e63;
+  --border: rgb(255 255 255 / 0.145);
+  --input: #454545;
+  --ring: #50a8ff;
+  --sidebar: #000000;
+  --sidebar-foreground: #a0a0a0;
+  --sidebar-primary: #0071f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #ededed;
+  --sidebar-border: rgb(255 255 255 / 0.1);
+  --sidebar-ring: #50a8ff;
+  --glow-1: #1a1a1a;
+  --glow-2: #2e2e2e;
+  --glow-3: #454545;
+  --t1: #ededed;
+  --t2: #d4d4d4;
+  --t3: #a0a0a0;
+  --t4: #7d7d7d;
+  --line: rgb(255 255 255 / 0.145);
+  --line-soft: rgb(255 255 255 / 0.09);
+  --line-strong: rgb(255 255 255 / 0.24);
+  --raised: #1a1a1a;
+  --well: #0a0a0a;
+  --tile-bg: #0a0a0a;
+  --ok: #00ca52;
+  --ok-foreground: #000000;
+  --caution: #ffb200;
+  --caution-foreground: #000000;
+  --error: #ff5e63;
+  --error-foreground: #000000;
+  --brand: #50a8ff;
+  --brand-foreground: #000000;
+  --rb-accent: #0071f6;
+  --rb-accent-fg: #ffffff;
+  --stack-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 8px 24px -8px rgb(0 0 0 / 0.5);
+  --seg-on-bg: #292929;
+  --seg-on-edge: transparent;
+}
+
+/* ───────────── 4. NAVY: the control. Same navy family, every mechanism applied. ───────────── */
+html.palette-navy {
+  --background: #f3f6fb;
+  --foreground: #132139;
+  --card: #ffffff;
+  --card-foreground: #132139;
+  --popover: #ffffff;
+  --popover-foreground: #132139;
+  --primary: #245dec;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf0fa;
+  --secondary-foreground: #132139;
+  --muted: #eaf0fa;
+  --muted-foreground: #56637a;
+  --accent: #edf1f7;
+  --accent-foreground: #132139;
+  --destructive: #c8313f;
+  --border: rgb(19 33 57 / 0.11);
+  --input: rgb(19 33 57 / 0.18);
+  --ring: #245dec;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #34425b;
+  --sidebar-primary: #245dec;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #edf1f7;
+  --sidebar-accent-foreground: #132139;
+  --sidebar-border: rgb(19 33 57 / 0.11);
+  --sidebar-ring: #245dec;
+  --glow-1: #245dec;
+  --glow-2: #6b94ff;
+  --glow-3: #a9c1ff;
+  --t1: #132139;
+  --t2: #34425b;
+  --t3: #56637a;
+  --t4: #6d7a92;
+  --line: rgb(19 33 57 / 0.11);
+  --line-soft: rgb(19 33 57 / 0.07);
+  --line-strong: rgb(19 33 57 / 0.18);
+  --raised: #eaf0fa;
+  --well: #f6f8fc;
+  --tile-bg: #ffffff;
+  --ok: oklch(0.6 0.14 160);
+  --ok-foreground: #ffffff;
+  --caution: oklch(0.7 0.15 70);
+  --caution-foreground: #132139;
+  --error: #c8313f;
+  --error-foreground: #ffffff;
+  --brand: #245dec;
+  --brand-foreground: #ffffff;
+  --rb-accent: #245dec;
+  --rb-accent-fg: #ffffff;
+  --color-neutral-50: oklch(98.5% 0.004 250);
+  --color-neutral-100: oklch(97% 0.007 250);
+  --color-neutral-200: oklch(92.2% 0.013 252);
+  --color-neutral-300: oklch(87% 0.018 252);
+  --color-neutral-400: oklch(70.8% 0.028 254);
+  --color-neutral-500: oklch(55.6% 0.035 256);
+  --color-neutral-600: oklch(43.9% 0.04 258);
+  --color-neutral-700: oklch(37.1% 0.044 260);
+  --color-neutral-800: oklch(26.9% 0.045 262);
+  --color-neutral-900: oklch(20.5% 0.04 262);
+  --color-neutral-950: oklch(14.5% 0.032 262);
+  --heading-weight: 520;
+  --label-font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --label-case: uppercase;
+  --label-tracking: 0.05em;
+  --label-size: 11px;
+  --action-radius: 9999px;
+  --action-edge: transparent;
+  --story-radius: 12px;
+  --story-shadow: 0 1px 2px rgb(19 33 57 / 0.05);
+  --stack-shadow: none;
+  --seg-on-bg: #eaf0fa;
+  --seg-on-edge: transparent;
+}
+html.palette-navy.dark {
+  --background: #090f1d;
+  --foreground: #f0f4ff;
+  --card: #141e31;
+  --card-foreground: #f0f4ff;
+  --popover: #19253c;
+  --popover-foreground: #f0f4ff;
+  --primary: #6b94ff;
+  --primary-foreground: #081022;
+  --secondary: #19253c;
+  --secondary-foreground: #f0f4ff;
+  --muted: #19253c;
+  --muted-foreground: #8e9bb3;
+  --accent: #1b2740;
+  --accent-foreground: #f0f4ff;
+  --destructive: #ff7a86;
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.13);
+  --ring: #6b94ff;
+  --sidebar: #090f1d;
+  --sidebar-foreground: #c8d2e6;
+  --sidebar-primary: #6b94ff;
+  --sidebar-primary-foreground: #081022;
+  --sidebar-accent: #19253c;
+  --sidebar-accent-foreground: #f0f4ff;
+  --sidebar-border: rgb(255 255 255 / 0.07);
+  --sidebar-ring: #6b94ff;
+  --glow-1: #1d3f9e;
+  --glow-2: #3f6fe8;
+  --glow-3: #6b94ff;
+  --t1: #f0f4ff;
+  --t2: #c8d2e6;
+  --t3: #8e9bb3;
+  --t4: #6b788f;
+  --line: rgb(255 255 255 / 0.08);
+  --line-soft: rgb(255 255 255 / 0.05);
+  --line-strong: rgb(255 255 255 / 0.13);
+  --raised: #19253c;
+  --well: #0d1424;
+  --tile-bg: #111a2c;
+  --ok: oklch(0.74 0.15 160);
+  --ok-foreground: #081022;
+  --caution: oklch(0.8 0.15 78);
+  --caution-foreground: #081022;
+  --error: #ff7a86;
+  --error-foreground: #081022;
+  --brand: #6b94ff;
+  --brand-foreground: #081022;
+  --rb-accent: #6b94ff;
+  --rb-accent-fg: #081022;
+  --story-shadow: none;
+  --seg-on-bg: #19253c;
+  --seg-on-edge: rgb(255 255 255 / 0.08);
+}
+
+/*
+ * Structure knobs read by the new feed composition (next/feed/compose-new.tsx). Unlayered on purpose: these
+ * classes carry the container style per palette, so they must win over utilities on the same element.
+ * Boxed cards by default (slate, navy, no palette); graphite and ink join the stories into one list
+ * container with hairline rows (Linear thread, Vercel list).
+ */
+.sys-label {
+  font-family: var(--label-font);
+  text-transform: var(--label-case);
+  letter-spacing: var(--label-tracking);
+  font-size: var(--label-size);
+  line-height: 16px;
+  font-weight: 500;
+}
+.feed-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.story {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--story-radius);
+  box-shadow: var(--story-shadow);
+}
+.story[aria-current="true"] {
+  border-color: var(--t4);
+}
+html.palette-graphite .feed-stack,
+html.palette-ink .feed-stack {
+  gap: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--stack-shadow);
+  overflow: hidden;
+}
+html.palette-graphite .feed-stack > .story,
+html.palette-ink .feed-stack > .story {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+html.palette-graphite .feed-stack > .story + .story,
+html.palette-ink .feed-stack > .story + .story {
+  border-top: 1px solid var(--line);
+}
+html.palette-graphite .feed-stack > .story[aria-current="true"],
+html.palette-ink .feed-stack > .story[aria-current="true"] {
+  box-shadow: inset 2px 0 0 var(--t3);
+}
+
+/*
+ * ───────────── 5. COUNCIL: the shared foundation of the three council feed directions (council-design/agreed.md). ─────────────
+ * Scoped to a wrapper (.palette-council) rather than <html>, so /next/feed/window|newsroom|deck use it by default
+ * whatever palette the review dock remembers. Neutral near-black with a faint blue tint (chroma under 0.01), one step
+ * lighter for the main window, white hairlines at 7.5 and 13 percent, four text tiers. Blue is felt: primary action,
+ * selection, focus and the X post mark. Functional hues each carry one job: post blue, article teal, GitHub its own
+ * mark, ok green, caution amber, error red. Light mode: pale grey page, white panels, visibly darker borders.
+ */
+.palette-council {
+  color-scheme: light;
+  --background: #eceef2;
+  --foreground: #0e1116;
+  --card: #ffffff;
+  --card-foreground: #0e1116;
+  --popover: #ffffff;
+  --popover-foreground: #0e1116;
+  --primary: #2459e8;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f4f7;
+  --secondary-foreground: #0e1116;
+  --muted: #f3f4f7;
+  --muted-foreground: #5f6672;
+  --accent: rgb(36 89 232 / 0.08);
+  --accent-foreground: #0e1116;
+  --destructive: #d93a40;
+  --border: rgb(16 24 40 / 0.1);
+  --input: rgb(16 24 40 / 0.16);
+  --ring: #2459e8;
+  --t1: #0e1116;
+  --t2: #343a45;
+  --t3: #5f6672;
+  --t4: #878d99;
+  --line: rgb(16 24 40 / 0.1);
+  --line-soft: rgb(16 24 40 / 0.06);
+  --line-strong: rgb(16 24 40 / 0.16);
+  --raised: #f4f5f8;
+  --well: #f6f7f9;
+  --tile-bg: #ffffff;
+  --brand: #2459e8;
+  --brand-soft: rgb(36 89 232 / 0.09);
+  --brand-line: rgb(36 89 232 / 0.32);
+  --ok: #17a34a;
+  --ok-soft: rgb(23 163 74 / 0.1);
+  --caution: #c88504;
+  --caution-soft: rgb(200 133 4 / 0.12);
+  --error: #d93a40;
+  --error-soft: rgb(217 58 64 / 0.1);
+  --kind-post: #2459e8;
+  --kind-post-soft: rgb(36 89 232 / 0.1);
+  --kind-article: #0d9488;
+  --kind-article-soft: rgb(13 148 136 / 0.1);
+  --kind-github: #1f2328;
+  --kind-github-soft: rgb(31 35 40 / 0.07);
+  --page: #eceef2;
+  --window: #ffffff;
+  --rail: #f7f8fa;
+  --stage-light: radial-gradient(90% 70% at 50% 0%, rgb(36 89 232 / 0.11), rgb(36 89 232 / 0.03) 45%, transparent 75%);
+  --stage-frame: linear-gradient(180deg, #dfe3ea 0%, #e8ebf0 40%, #eceef2 100%);
+  --window-shadow: 0 0 0 1px rgb(16 24 40 / 0.07), 0 1px 2px rgb(16 24 40 / 0.05), 0 12px 24px -8px rgb(16 24 40 / 0.1),
+    0 40px 80px -24px rgb(16 24 40 / 0.22);
+  --card-shadow: 0 0 0 1px rgb(16 24 40 / 0.07), 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 16px -6px rgb(16 24 40 / 0.1);
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --dot-grid: radial-gradient(rgb(16 24 40 / 0.12) 1px, transparent 1px);
+  --rb-accent: #2459e8;
+  --rb-accent-fg: #ffffff;
+  --heading-weight: 600;
+  --label-font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  background: var(--page);
+  color: var(--t1);
+}
+.dark .palette-council {
+  color-scheme: dark;
+  --background: #0b0c0f;
+  --foreground: #f3f5f8;
+  --card: #121418;
+  --card-foreground: #f3f5f8;
+  --popover: #16191e;
+  --popover-foreground: #f3f5f8;
+  --primary: #3a6cf4;
+  --primary-foreground: #ffffff;
+  --secondary: #171a1f;
+  --secondary-foreground: #f3f5f8;
+  --muted: #171a1f;
+  --muted-foreground: #8d939e;
+  --accent: rgb(91 140 255 / 0.12);
+  --accent-foreground: #f3f5f8;
+  --destructive: #f2555a;
+  --border: rgb(255 255 255 / 0.075);
+  --input: rgb(255 255 255 / 0.13);
+  --ring: #5b8cff;
+  --t1: #f3f5f8;
+  --t2: #c9ced7;
+  --t3: #8d939e;
+  --t4: #646a75;
+  --line: rgb(255 255 255 / 0.075);
+  --line-soft: rgb(255 255 255 / 0.045);
+  --line-strong: rgb(255 255 255 / 0.13);
+  --raised: #191c22;
+  --well: #0d0f12;
+  --tile-bg: #15181d;
+  --brand: #6b95ff;
+  --brand-soft: rgb(91 140 255 / 0.13);
+  --brand-line: rgb(107 149 255 / 0.4);
+  --ok: #4cd07d;
+  --ok-soft: rgb(76 208 125 / 0.12);
+  --caution: #f2b84b;
+  --caution-soft: rgb(242 184 75 / 0.13);
+  --error: #f2555a;
+  --error-soft: rgb(242 85 90 / 0.13);
+  --kind-post: #6b95ff;
+  --kind-post-soft: rgb(107 149 255 / 0.14);
+  --kind-article: #3cc9b5;
+  --kind-article-soft: rgb(60 201 181 / 0.12);
+  --kind-github: #e6e8eb;
+  --kind-github-soft: rgb(230 232 235 / 0.08);
+  --page: #0b0c0f;
+  --window: #111317;
+  --rail: #0e1013;
+  --stage-light: radial-gradient(80% 65% at 50% 0%, rgb(170 190 230 / 0.2), rgb(120 150 220 / 0.06) 45%, transparent 78%);
+  --stage-frame: linear-gradient(180deg, #23262d 0%, #15171b 38%, #0d0e11 100%);
+  --window-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 32px -12px rgb(0 0 0 / 0.6),
+    0 48px 96px -24px rgb(0 0 0 / 0.75);
+  --card-shadow: 0 0 0 1px rgb(0 0 0 / 0.45), 0 2px 4px rgb(0 0 0 / 0.25), 0 12px 28px -10px rgb(0 0 0 / 0.55);
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --dot-grid: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
+  --rb-accent: #3a6cf4;
+  --rb-accent-fg: #ffffff;
+}

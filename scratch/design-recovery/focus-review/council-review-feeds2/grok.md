@@ -1,0 +1,23 @@
+RESULT: FINDINGS
+
+None of the five sits beside Window, Newsroom and Deck as a finished peer. Sonnet's Reading sheet is the one close enough to look at first. The gate made this round better than the last and still passed near misses, because "clears both lanes" treated different drawings as one direction.
+
+Sonnet Reading sheet (`sonnet-feed2/a-dark-01.png`, `a-light-01.png`) is the only arrival I would put next to the three. One lifted sheet, Olmo and MAI both readable with facts, quotes and large images, teal and blue on their jobs, and a real white sheet on a pale ground. It is not the reader near miss: there is no thumbnail selector. It is not a rejection. The populated page passes the human test. The empty state does not: `walk-a-empty.png` is a short message over a dead stage, the void in `landing-empty-sections-dark.png`. The dock repeats the checking line and is cramped. Clicks beyond these stills are unverified.
+
+Opus Spread fails the arrival. `opus-feed2/a-dark-01.png` and `a-light-01.png` are the front page without the old rail: Sol's photo and full facts on the left, "Also this week" teasers with "3 more facts" on the right. Beside `feed-same-shell-front-page-dark.png`, it is the same idea. `a-dark-02.png`, two full stories with quotes, is the part that belongs. Product Hunt 0 is a useless chip. Light mode itself is real.
+
+Opus Board (`b-dark-01.png`, `b-light-01.png`) has the feeds' finish: lifted cards, big images, a readable Olmo. It is not a near miss or a rejection. It is Deck (`accepted-deck-dark.png`) with a chip bar instead of the stat row. The Sol card covers MAI. Supporting cards hide facts, so a person can scan and cannot trust those cards without a click.
+
+Sonnet Open folio (`b-dark-01.png`, `b-light-01.png`) shows two complete stories, which serves the job, and it is not the front page. The account, Clustered toggle, pager and alert button sit in the spine between the articles. That placement fails the human test.
+
+Sonnet Piles (`c-dark-01.png`, `c-light-01.png`, `walk-c-direct.png`) fails. The Feed row and Clustered/Direct toggle are back. An agent panel sits among stories. Next card is how you reach the rest of a pile, so the beat is not readable on arrival. Direct still opens the same Olmo card.
+
+Opus Grok asked for a spread, then day bands, then a blotter. Opus Astra failed that spread and asked for sheets, then folios, then a board. Opus built the spread and the board anyway. Those are not the same drawings. Sonnet A does follow both lanes' shared sheet. Sonnet B is Astra's folio only. Sonnet C is Grok's piles only, and it breaks Grok's own bar by restoring the title row and adding Next card. Against `opus-feed/overview-dark.png` and `sonnet-feed/overview-dark.png`, this round is better: the wires are gone, four of five drop the source rail and "Your Feed", and the reading surfaces have images and quoted lines. The gate never saw a render, so it missed the front-page arrival, the Deck copy, the spine, the carousel, the empty void and Product Hunt 0.
+
+Look in this order: Sonnet Reading sheet, Opus Board, Sonnet Open folio, Opus Spread (open `a-dark-02.png` with `a-dark-01.png`), Sonnet Piles.
+
+In section 4, replace "Building starts only when a direction clears both lanes..." with this: a direction is cleared only when both lanes name the same objects and where they sit. Shared adjectives and shared warnings are not clearance. A lane's unique direction is dropped, not averaged and not built. The builder quotes the clearing sentence from each lane. After the screenshots exist, the same two lanes judge them before anyone is shown the pages. This is the same gate, not a new council. Add four tests: removing the chrome does not clear `feed-same-shell-front-page` when the arrival is still a lead plus teasers; a Deck, Newsroom or Window body with a new header is not a new direction; a zero-count source, a control between two stories, or a Next card as the way through the beat fails; an empty state that leaves half the screen blank fails.
+
+The strongest case against this is that you may still love Opus Board and the folio pages the way you loved Deck, and a hard intersection rule would have built only the sheet. The highest risk is another round that deletes chrome and calls the front page new. I would show you the Reading sheet first, dark and light, and ask only whether the dock stays.
+
+Verified from the cited screenshots, `DESIGN.md`, and the four gate files. Inference: the builders mapped unlike directions onto each other. Unknown: keyboard, narrow windows, and any Opus click path. No Opus walk shots are in the folder.

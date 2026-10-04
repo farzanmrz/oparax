@@ -20,6 +20,7 @@ export type SourceSampleEntry = {
   title?: string;
   keywords?: string;
   teaser?: string;
+  image?: string;
 };
 
 const parser = new XMLParser({

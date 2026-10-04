@@ -1,0 +1,18 @@
+# Council brief: step back. Why is the One UI not converging, and what design would the owner be happy with? (October 4, 2026)
+
+Astra, Grok, Kimi. The owner, just now: "The larger issue is that I'm not happy with the designs, and it's not converging to something useful. Don't confuse it into answering the specifics of what I said previously. Yes, you can, but that's why I told you to look at this entire conversation." And before that: "All three of the previous designs were good... I'm getting very close to just losing it now because I need to get to just deployment." "Go back, look at all the inputs I've given. You know enough about me now and my tastes."
+
+So this round is NOT about the latest specifics (a parallel round handles those). This round answers two things from the whole record:
+
+1. Why has every "One" pass made him less happy while the three originals (Window, Newsroom, Deck) stay "good"? Diagnose honestly from the record: the process (merging three directions by committee, each pass stripping what he named while losing what he did not name, overlays, copies), the artefacts, or the premise itself (that one combined UI is better than picking one of the three and adjusting it).
+2. What design, as a whole, would he be happy with, given everything he has said about his taste? Describe it as one coherent thing, page by page (login, setup, onboarding, feed), the way a designer would present a direction, not a change list. If your answer is "take Deck as it is and make N adjustments" or "take Window's building page and Deck's feed", say so plainly and name the adjustments. If it is the One as it stands plus fixes, say that and why.
+
+## The whole record (read all of it before answering)
+- His every note, verbatim, in order: /Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/PAGE-NOTES.md (long; read it all; the Feed > Problems list is the chronology of tonight).
+- His taste as a fixed philosophy: /Users/farzanm4/.agents/skills/reference-led-design/SKILL.md, with the accepted feeds (examples/accepted/) that "made him cry", the near misses and the rejected examples.
+- The theme he fixed: /Users/farzanm4/Desktop/repos/oparax/DESIGN.md.
+- Every council round tonight and its briefs (the chain of decisions): focus-review/council-building-oct3, council-reconcile-oct3, council-reconcile-oct3-r2, council-lock-oct3, council-lock-oct3-r2, council-review-oct3, council-feel-oct3, council-rescue-oct3 (astra.md, grok.md, kimi.md, brief.md in each).
+- Pictures, folder focus-review/v2/: the three originals one/deck-feed-now.png, one/window-feed-now.png, one/newsroom-feed-now.png, deck/building-v3-dark-done.png, window/building-v3-dark-done.png, newsroom/building-v3-dark-done.png, deck/ready-dark-01.png, deck/signup-dark-01.png, deck/setup-dark-01.png; every One pass: one/feed-closed-dark-1440.png (pass 1), one/feed-closed-p2-dark-1440.png, one/feed-closed-p3.png, one/feed-open-p3.png, one/feed-p5-open.png, one/feed-p5-closed.png, one/onboarding-done-p3.png, one/onboarding-p5-done.png, one/login-p3.png, one/setup-p3.png.
+
+## Deliver
+RESULT: FINDINGS, then (a) the diagnosis, at most 10 lines, naming what in the process or the premise has been losing him; (b) the design he would be happy with, as one direction, page by page, at most 25 lines, concrete (which original it starts from, what is kept exactly, what is adjusted and how), written so he can read it and say yes or no; (c) what you would show him first, as screenshots, to get a yes in one round; (d) one line on what you are unsure of. Under 900 words, no em dashes. Read-only.

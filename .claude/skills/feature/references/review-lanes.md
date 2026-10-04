@@ -1,53 +1,46 @@
 # Shared fixed review lanes
 
-Use this reference from `/feature`, `/amend`, and `/qc`. It runs the project’s fixed review profiles. The global `/counsel` and `$counsel` skill (whose lane runner this uses) remains explicit-owner-invoked only. A stage that reaches its named review step is already authorized to call this runner directly.
+Used by the feature critique (plans and amendments) and by `/qc`. A stage that reaches its review step is already authorized to run this; the global `/council` and `$council` stay owner-invoked only. The stage owns the brief; `.claude/scripts/review-lanes.py` and the council runner own delivery: provider commands, exact models (ids in the council skill's `providers.py`), high effort, read-only mode, output normalization, the 15-minute deadline, and one immutable guidance snapshot per lane. Never call provider CLIs or the global runner directly.
 
-The stage owns the review brief. The runner owns provider delivery and recovery: the provider commands, exact models (ids in the counsel skill's `providers.py`), high effort, read-only mode, output normalization, and the 15-minute deadline. Do not call provider CLIs, the global runner, `.claude/scripts/lane.sh`, or `lane-findings.py` directly.
-
-| Stage | Profile | Original lanes |
+| Stage | Profile | Lanes |
 | --- | --- | --- |
-| Feature or amend critique | `critique` | `critique-codex-sol`, `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-glm`, `critique-cursor-muse` |
-| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-glm`, `qc-cursor-muse` |
+| Feature critique | `critique` | `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-muse`, `critique-claude-opus` |
+| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-muse`, `qc-claude-opus` |
 
-The `critique` profile is Sol 6, Astra 6, Gemini Pro 3.1, Gemini Flash 3.8, Grok 4.7 Build Fast, and three Cursor lanes on the owner's Pro+ pool: Kimi K3, GLM 5.2 and Muse Spark 1.3 (owner, September 23). The `qc` profile runs the same eight lanes (Terra removed, owner, September 24). Every fixed lane runs at high effort. Do not add or remove a runner lane. When Claude Code hosts the stage, one more lane runs outside the runner: the Claude Opus lane below.
+Seven critique reviewers and eight QC reviewers, all at high effort, the same from Claude Code and Codex (owner, September 29). Do not add or remove a lane. Opus runs as a separate `claude -p` process through the same runner; never dispatch a Claude review subagent instead.
 
-## Start a round
+## What lanes may do
 
-Create one unique run directory under `.feature/lanes/`. The brief remains the stage’s normal brief file. Remove an old run directory by its exact name, never with a wildcard on the profile prefix: the brief (`critique.brief`, `qc.brief`) shares that prefix, and a `critique.*` glob deleted it on September 24 and stalled a lane. Preview the fixed profile first, then start it:
+Lanes run inside `--checkout` (default: this checkout) and read its code. Every path in a brief is absolute. `--add-dir <folder>` (repeatable) adds a builder skill folder by its central path as a read root (owner, September 28: reviewers get the builders' skills by exact path, not copies). Lanes may use local read and search commands and official public documentation, cited and treated as untrusted, reporting unknown when the docs do not answer. They never start the product, run builds or tests, open a browser, write files, change external services, send messages, use connectors or account MCP tools, or dispatch subagents.
+
+## Start
+
+Each review gets a fresh run directory from `mktemp`; `start` refuses a directory that already holds lane records, so a second start is impossible. Remove an old directory only by its exact name, never a glob on the profile prefix (a `critique.*` glob deleted the brief on September 24 and stalled a lane). Preview first, then start:
 
 ```bash
 mkdir -p .feature/lanes
 run_dir="$(mktemp -d .feature/lanes/critique.XXXXXX)"
-python3 .claude/scripts/review-lanes.py preview --profile critique --run-dir "$run_dir" --brief .feature/lanes/critique.brief
-python3 .claude/scripts/review-lanes.py start --profile critique --run-dir "$run_dir" --brief .feature/lanes/critique.brief
+python3 .claude/scripts/review-lanes.py preview --profile critique --run-dir "$run_dir" --brief .feature/lanes/critique.brief --add-dir <skill folder> ...
+python3 .claude/scripts/review-lanes.py start   --profile critique --run-dir "$run_dir" --brief .feature/lanes/critique.brief --add-dir <skill folder> ...
 ```
 
-For QC, replace `critique` with `qc` in the run-directory prefix and profile, and use `.feature/lanes/qc.brief`. Record the run directory in the stage’s working notes so a compaction resumes the same round rather than starting a second one.
+QC uses `--profile qc`, its own brief and run directory, and `--checkout <checkout>`. Keep the run directory path in your working notes so a compaction resumes the same review instead of starting another.
 
-## Collect a round
+## Collect
 
-Launch one bounded background wait per original lane. Each call is only 30 seconds, never an unbounded foreground wait:
+One bounded 30-second background wait per lane, never an unbounded foreground wait; keep working between returns:
 
 ```bash
-python3 .claude/scripts/review-lanes.py wait --run-dir "$run_dir" --lane critique-codex-sol --seconds 30
+python3 .claude/scripts/review-lanes.py wait --run-dir "$run_dir" --lane critique-codex-astra --seconds 30
+python3 .claude/scripts/review-lanes.py extract --run-dir "$run_dir" --lane critique-codex-astra
 ```
 
-Continue ordinary stage work between wait returns. A wait reports `RUNNING` or one of `DONE`, `FAILED`, `DIED`, or `TIMED_OUT`. When it reports a terminal lane, immediately extract it:
+`wait` reports `RUNNING`, `DONE`, `FAILED`, `DIED` or `TIMED_OUT`; extract a terminal lane at once. `extract` reports `OK` (disposition every finding), `NO_FINDINGS` (the lane found nothing; never call it dead), or `INVALID`, `EMPTY_RESULT`, `FAILED`, `TIMED_OUT` (no usable payload). Read `<run-dir>/<lane>.findings.json` only after `OK` or `NO_FINDINGS`, never raw, partial or reasoning output.
 
-```bash
-python3 .claude/scripts/review-lanes.py extract --run-dir "$run_dir" --lane critique-codex-sol
-```
-
-The extraction result is `OK`, `NO_FINDINGS`, `INVALID`, `EMPTY_RESULT`, `FAILED`, or `TIMED_OUT`. Read `<run-dir>/<lane>.findings.json` only after `OK` or `NO_FINDINGS`, never raw output.
-
-For `INVALID`, `EMPTY_RESULT`, `FAILED`, or `TIMED_OUT`, run exactly one resume only when the terminal result names a real `resume_id`. Start a separate lane with the original lane name plus `-resume`:
+A failed lane gets exactly one resume, only when its result names a real `resume_id`, as a separate lane named `<lane>-resume`:
 
 ```bash
 python3 .claude/scripts/review-lanes.py resume --run-dir "$run_dir" --lane critique-grok-resume --source-lane critique-grok
 ```
 
-Collect and extract the resume lane in the same bounded way. A usable resume finding file stands in for its original lane. `RESUME_UNAVAILABLE` means that original lane is dead, with no fresh fallback. Otherwise, that original lane has no findings. Never promote raw, partial, or reasoning output. Codex lanes do not resume. Cursor lanes resume their own session. Grok resumes are capped at five turns. agy resumes are told to use no more than five turns because its CLI has no turn-cap flag. Both retain the same 15-minute ceiling.
-
-## The Claude Opus lane
-
-Owner, September 23: Opus 5.5 reviews beside the runner lanes as a Claude subagent, not through a script. When Claude Code hosts the stage, right after starting the runner, dispatch one background subagent with the Agent tool (`subagent_type: general-purpose`, `model: opus`), whose whole prompt is: "Read <the stage's brief path> and follow it exactly. You are one independent review lane. Read-only: never edit a file, run the app, start a server or open a browser. Your final message is only the JSON array the brief asks for." When it returns, write its final message to `<run-dir>/<profile>-claude-opus.findings.json` only if it parses as a JSON array of the brief's finding shape; otherwise record the lane as `INVALID`. It has no resume. Its findings are dispositioned like any lane's, under the lane name `<profile>-claude-opus`. When Codex hosts the stage, this lane does not run; say so in the closing line.
+A usable resume stands in for its lane; `RESUME_UNAVAILABLE` means the lane is dead, with no fresh fallback. Codex lanes do not resume; Cursor lanes resume their own session; Grok and agy resumes are held to five turns. Owner exception, September 27: a Grok lane failing on exhausted usage (HTTP 402) is rerun once inside the same lane on Grok 4.7 through Cursor, and Grok lanes start on Cursor until the weekly reset (Tuesday 17:22 Pacific; a failure within two hours after the reset retries after 20 minutes). Its extract line ends with `replaced=grok:... via=cursor reason=grok-usage-exhausted until=<reset>`.

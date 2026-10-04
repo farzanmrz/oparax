@@ -1,17 +1,18 @@
 "use server";
 
-// Stateful auth actions for the routed auth pages (/login, /signup,
-// /forgot-password, /auth/reset-password).
-//
-// Each action RETURNS an { error } / { message } state instead of redirecting
-// on failure, so the pages' useActionState forms can show feedback inline
-// without navigating away. Success paths still redirect().
-
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { track } from "@/lib/analytics/events";
+import { authContent } from "@/lib/auth/content";
+import {
+  oauthUrl,
+  refreshXOAuthUrl,
+  requestSigninLink,
+  signedInDestination,
+} from "@/lib/auth/oauth";
 import { mapAuthError } from "@/lib/auth-errors";
 import { getSiteOrigin } from "@/lib/site-origin";
 import { createClient } from "@/lib/supabase/server";
-import { deriveUsernameFromEmail } from "@/lib/user";
 import {
   isValidationError,
   validateAuthForm,
@@ -23,7 +24,7 @@ import {
 export interface AuthFormState {
   error?: string;
   message?: string;
-  /** Signup succeeded — a confirmation email was sent to `email`. */
+  /** Signup succeeded, a confirmation email was sent to `email`. */
   signupComplete?: boolean;
   /**
    * The submitted email, echoed back on every error return: React 19 resets
@@ -41,11 +42,11 @@ export interface AuthFormState {
 function captureAuthFailure(operation: "login" | "signup", rawMessage: string) {
   const mappedMessage = mapAuthError(rawMessage);
   const failureClass =
-    mappedMessage === "Invalid email or password."
+    mappedMessage === authContent.invalidCredentials
       ? "invalid_credentials"
-      : mappedMessage === "Too many attempts. Please wait a moment and try again."
+      : mappedMessage === authContent.rateLimited
         ? "rate_limited"
-        : mappedMessage === "Unable to create account. Please try again or log in."
+        : mappedMessage === authContent.signupFailed
           ? "already_registered"
           : "unexpected";
 
@@ -71,7 +72,7 @@ export async function loginAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: validated.email,
     password: validated.password,
   });
@@ -84,7 +85,8 @@ export async function loginAction(
     };
   }
 
-  redirect("/");
+  if (data.user) track("signed_in", { method: "password" }, data.user.id);
+  redirect(await signedInDestination(formData.get("next")));
 }
 
 export async function signupAction(
@@ -104,13 +106,6 @@ export async function signupAction(
   const { data, error } = await supabase.auth.signUp({
     email: validated.email,
     password: validated.password,
-    // Seed a username from the email's local part so every account has a stable
-    // starting value before its future profile experience is built.
-    options: {
-      data: {
-        username: deriveUsernameFromEmail(validated.email),
-      },
-    },
   });
 
   if (error) {
@@ -124,16 +119,17 @@ export async function signupAction(
   if (data.user?.identities?.length === 0) {
     captureAuthFailure("signup", "User already registered");
     return {
-      error: "An account with this email already exists. Please log in instead.",
+      signupComplete: true,
       email,
     };
   }
 
   if (data.session) {
-    redirect("/");
+    track("signed_in", { method: "password" }, data.session.user.id);
+    redirect(await signedInDestination(null));
   }
 
-  // No session yet — email confirmation pending. The signup form swaps to a
+  // No session yet, email confirmation pending. The signup form swaps to a
   // "check your email" notice instead of navigating away.
   return {
     signupComplete: true,
@@ -169,12 +165,11 @@ export async function resetPasswordAction(
   }
 
   return {
-    message: "If an account exists for this email, we sent a password reset link.",
+    message: authContent.resetSent,
   };
 }
 
-const INVALID_RESET_LINK_MESSAGE =
-  "Your password reset link is invalid or has expired. Please request a new one.";
+const INVALID_RESET_LINK_MESSAGE = authContent.resetInvalid;
 
 export async function updatePasswordAction(
   _prevState: AuthFormState,
@@ -197,7 +192,7 @@ export async function updatePasswordAction(
     data: { user },
   } = await supabase.auth.getUser();
 
-  // No session yet — consume the one-time recovery token from the email link.
+  // No session yet, consume the one-time recovery token from the email link.
   if (!user && hasRecoveryToken && isRecoveryType) {
     const { error: verifyError } = await supabase.auth.verifyOtp({
       type: "recovery",
@@ -220,7 +215,7 @@ export async function updatePasswordAction(
 
   // Re-setting the same password counts as success: the user proved account
   // ownership via the recovery link, and "set my password to X" when it is
-  // already X is a no-op — blocking on it only confuses people who
+  // already X is a no-op, blocking on it only confuses people who
   // subconsciously reuse their old password. The message match backs up the
   // code check for Auth servers that don't send error codes.
   const samePassword =
@@ -236,8 +231,41 @@ export async function updatePasswordAction(
     };
   }
 
-  // Done — drop the recovery session and seed the login page with the
+  // Done, drop the recovery session and seed the login page with the
   // success notice, mirroring the email-verification flow.
   await supabase.auth.signOut();
-  redirect(`/login?message=${encodeURIComponent("Password updated successfully. Please log in.")}`);
+  redirect(`/login?message=${encodeURIComponent(authContent.passwordUpdated)}`);
+}
+
+export async function signInWithProvider(
+  provider: "google" | "x",
+  next: string | undefined,
+  _previous: AuthFormState,
+  _formData: FormData,
+): Promise<AuthFormState> {
+  const destination = await signedInDestination(next);
+  if (destination !== "/login") redirect(destination);
+  const url = await oauthUrl({ kind: "sign_in", provider, next });
+  if (!url) return { error: authContent.signinFailed };
+  redirect(url);
+}
+
+export async function refreshXIdentity(
+  _previous: AuthFormState,
+  _formData: FormData,
+): Promise<AuthFormState> {
+  const { url, signOutFailed } = await refreshXOAuthUrl();
+  if (signOutFailed) return { error: authContent.refreshFailed };
+  if (!url) return { error: authContent.signinFailed };
+  redirect(url);
+}
+
+export async function emailSigninLink(
+  _previous: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = z.email().safeParse(formData.get("email"));
+  if (!parsed.success) return { error: authContent.emailInvalid };
+  const result = await requestSigninLink(parsed.data, formData.get("next"), await getSiteOrigin());
+  return { message: result.message, email: parsed.data };
 }

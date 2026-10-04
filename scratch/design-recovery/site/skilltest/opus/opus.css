@@ -1,0 +1,94 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/* The accepted council palette, imported unchanged so the landing wears the same skin as the feed. */
+@import "../../app/(next)/palettes.css";
+
+/* The folder is git-ignored, so Tailwind's automatic detection skips it: name every source explicitly. */
+@source ".";
+@source "../../next/council";
+@source "../../components/ui";
+@source "../../components/react-bits";
+@source "../../components/ai-elements";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("/fonts/opensans.ttf") format("truetype");
+  font-weight: 300 800;
+  font-display: swap;
+}
+
+/* Mapping only (values live in .palette-council): the same utility names the accepted feed uses. */
+@theme inline {
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-t1: var(--t1);
+  --color-t2: var(--t2);
+  --color-t3: var(--t3);
+  --color-t4: var(--t4);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-raised: var(--raised);
+  --color-well: var(--well);
+  --color-ok: var(--ok);
+  --color-caution: var(--caution);
+  --color-error: var(--error);
+  --color-brand: var(--brand);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+}
+
+/*
+ * Landing-only structure knobs, derived from the council tokens (no new hues). The hero stage light is the feed's
+ * stage light opened wider for a full-bleed page; the section scenes reuse the window shadow and top light.
+ */
+.palette-council {
+  --hero-light: radial-gradient(60% 55% at 50% 38%, rgb(36 89 232 / 0.1), rgb(36 89 232 / 0.03) 50%, transparent 80%);
+  --scene-frame: linear-gradient(180deg, #e3e6ec 0%, #eceef2 55%);
+  --scene-end: #eceef2;
+  --fade-to-page: linear-gradient(180deg, transparent, var(--page));
+  --planned-filter: grayscale(1) opacity(0.42);
+}
+.dark .palette-council {
+  --hero-light: radial-gradient(60% 55% at 50% 38%, rgb(150 175 230 / 0.16), rgb(110 140 220 / 0.05) 50%, transparent 80%);
+  --scene-frame: linear-gradient(180deg, #17191e 0%, #0e0f12 60%);
+  --scene-end: #0e0f12;
+  --planned-filter: grayscale(1) brightness(1.4) opacity(0.32);
+}
+
+@layer base {
+  * {
+    @apply border-line outline-ring/50;
+  }
+  html {
+    scroll-padding-top: 72px;
+  }
+  body {
+    @apply font-sans antialiased;
+    background: var(--page, #0b0c0f);
+  }
+}

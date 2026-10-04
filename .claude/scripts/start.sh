@@ -13,29 +13,42 @@
 # machine-readable line: the issue number. All Git/GitHub chatter goes to stderr.
 #
 # Feature slices always run on ft/<issue#> (app code never lands directly on
-# beta — owner instruction-file micro-edits are the one carve-out; see
+# beta, owner instruction-file micro-edits are the one carve-out; see
 # ship/SKILL.md) and there is no persisted run state. A slice is
 # identified by its branch, which is the only marker QC needs
-# (`origin/beta...ft/<N>`). ship.sh always lands on beta; the terminal release
-# target (beta or main) lives only in the conversation and is applied by
-# ship/SKILL.md's promotion step after ship.sh returns — it is never
-# passed into this script or into ship.sh.
+# (`origin/beta...ft/<N>`). ship.sh always lands on beta; main moves only
+# through the weekly /promote pull request.
 #
 # ADOPTION-AWARE (2026-08-04): the owner routinely pre-cuts a branch and a stub
 # issue before /feature, so create-only behavior sent every session into
 # workaround mode. Branch resolution now goes, in order: already on ft/N →
-# adopt in place; local or remote ft/N exists → switch to it; current branch is
-# ft/N-<anything> (cut for this issue, off-convention) → rename it to ft/N
-# local+remote; nothing exists → create from fetched origin/beta. An adopted
+# adopt in place; local or remote ft/N exists → switch to it; nothing exists →
+# create from fetched origin/beta. An adopted
 # branch with ZERO commits unique against origin/beta is fast-forwarded onto
 # it; one with unique commits keeps its base untouched (said on stderr). The
 # clean-tree requirement applies ONLY when the resolution must switch or
-# create — updating an issue body needs no clean tree.
+# create, updating an issue body needs no clean tree.
 #
 # UNWRAP (2026-08-04): GitHub renders every newline in an issue body as a hard
 # break, so hard-wrapped prose reads ragged at half width. Paragraph lines are
 # joined before posting; fences, tables, headings, and list structure are kept.
 set -euo pipefail
+original_args=("$@")
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$repo_root" ] || {
+  echo "start: run from inside the repository." >&2
+  exit 1
+}
+# Claim the checkout before reading stdin or touching Git/GitHub; preserve all arguments.
+if [ -z "${OPARAX_WRITER_FD:-}" ]; then
+  exec python3 "$repo_root/.claude/scripts/writer-lease.py" run --repo "$repo_root" --run-id "feature-start" -- \
+    bash "$repo_root/.claude/scripts/start.sh" "${original_args[@]}"
+fi
+python3 "$repo_root/.claude/scripts/writer-lease.py" verify --repo "$repo_root" \
+  --run-id "${OPARAX_RUN_ID:-}" --token "${OPARAX_WRITER_TOKEN:-}" || {
+  echo "start: missing or stale writer lease; no branch or issue changed." >&2
+  exit 1
+}
 
 usage() {
   echo 'usage: start.sh [--prefix ft|bf] "<title>" [<plan-body-file>]' >&2
@@ -184,7 +197,7 @@ require_clean_tree() {
   # `git diff` alone misses untracked files, which could otherwise hitchhike
   # into the slice.
   if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
-    echo "start: working tree is not clean (including untracked files) — commit or stash it before a branch switch/create." >&2
+    echo "start: working tree is not clean (including untracked files), commit or stash it before a branch switch/create." >&2
     exit 1
   fi
 }
@@ -198,8 +211,8 @@ if git ls-files --error-unmatch .feature/.gitignore >/dev/null 2>&1 \
   git checkout -- .feature/.gitignore >&2 || true
 fi
 
-# Refresh only the base ref. Never checkout local beta: it may legitimately be
-# checked out in another worktree.
+# Refresh only the base ref. Never check out local beta: this checkout moves only
+# between feature branches.
 git fetch --prune origin beta >&2
 git rev-parse --verify --quiet refs/remotes/origin/beta >/dev/null || {
   echo "start: origin/beta is unavailable after fetch." >&2
@@ -209,7 +222,7 @@ fetched_beta_sha="$(git rev-parse refs/remotes/origin/beta)"
 
 # ---- Resolve the branch action BEFORE touching the issue, so a precondition
 # failure leaves GitHub untouched. Actions: stay | switch-local | switch-remote
-# | rename-current | create.
+# | create.
 branch_action="create"
 current_branch="$(git branch --show-current || true)"
 if [ -n "$graduate_issue" ]; then
@@ -221,8 +234,6 @@ if [ -n "$graduate_issue" ]; then
     branch_action="switch-local"
   elif git rev-parse --verify --quiet "refs/remotes/origin/${target}" >/dev/null; then
     branch_action="switch-remote"
-  elif [ -n "$current_branch" ] && [[ "$current_branch" == "${target}-"* ]]; then
-    branch_action="rename-current"
   fi
   case "$branch_action" in
     switch-local|switch-remote|create) require_clean_tree ;;
@@ -233,7 +244,7 @@ fi
 
 # Graduating an existing issue: overwrite its body with the approved plan, no
 # new issue created. Otherwise create the issue only after every local/base
-# precondition passes — if branch setup then fails, the newly-created issue is
+# precondition passes, if branch setup then fails, the newly-created issue is
 # closed below so a failed kickoff leaves no orphan tracker record.
 if [ -n "$graduate_issue" ]; then
   gh issue view "$graduate_issue" --json number >/dev/null 2>&1 || {
@@ -257,7 +268,7 @@ fi
 branch="${prefix}/${issue}"
 case "$branch_action" in
   stay)
-    echo "start: already on $branch — adopted in place." >&2
+    echo "start: already on $branch, adopted in place." >&2
     ;;
   switch-local)
     git switch "$branch" >&2
@@ -267,17 +278,9 @@ case "$branch_action" in
     git switch --track "origin/${branch}" >&2 || git switch -c "$branch" "origin/${branch}" >&2
     echo "start: adopted existing remote $branch." >&2
     ;;
-  rename-current)
-    git branch -m "$current_branch" "$branch" >&2
-    echo "start: renamed $current_branch -> $branch (off-convention cut for this issue)." >&2
-    if git rev-parse --verify --quiet "refs/remotes/origin/${current_branch}" >/dev/null; then
-      git push origin ":refs/heads/${current_branch}" >&2 || \
-        echo "start: could not delete origin/${current_branch} — remove it manually." >&2
-    fi
-    ;;
   create)
     if ! git switch --create "$branch" --no-track "$fetched_beta_sha" >&2; then
-      # Only auto-close an issue THIS run created — never a pre-existing graduated one.
+      # Only auto-close an issue THIS run created, never a pre-existing graduated one.
       if [ -z "$graduate_issue" ]; then
         close_note="Feature kickoff could not create $branch from origin/beta. Closing this automatically-created issue so it is not orphaned."
         if ! gh issue close "$issue" --reason "not planned" --comment "$close_note" >&2; then
@@ -290,7 +293,7 @@ case "$branch_action" in
     ;;
 esac
 
-# An adopted branch with no unique commits is really just "old beta" — bring it
+# An adopted branch with no unique commits is really just "old beta", bring it
 # to the fetched base so the slice starts current. Unique commits = base stays.
 if [ "$branch_action" != "create" ]; then
   if [ "$(git rev-list --count "origin/beta..${branch}" 2>/dev/null || echo 1)" = "0" ]; then
@@ -298,14 +301,14 @@ if [ "$branch_action" != "create" ]; then
       git merge --ff-only "$fetched_beta_sha" >&2 && \
         echo "start: fast-forwarded $branch onto origin/beta (no unique commits)." >&2 || true
     else
-      echo "start: $branch has no unique commits but the tree is dirty — skipped the fast-forward onto origin/beta." >&2
+      echo "start: $branch has no unique commits but the tree is dirty, skipped the fast-forward onto origin/beta." >&2
     fi
   else
-    echo "start: $branch has unique commits — base left untouched." >&2
+    echo "start: $branch has unique commits, base left untouched." >&2
   fi
   # Ensure the branch exists on origin so QC/hop-anywhere can see it.
   if ! git rev-parse --verify --quiet "refs/remotes/origin/${branch}" >/dev/null; then
-    git push -u origin "$branch" >&2 || echo "start: could not push $branch — push it manually." >&2
+    git push -u origin "$branch" >&2 || echo "start: could not push $branch, push it manually." >&2
   elif [ -z "$(git for-each-ref --format='%(upstream:short)' "refs/heads/${branch}")" ]; then
     git branch --set-upstream-to="origin/${branch}" "$branch" >&2 || true
   fi

@@ -1,41 +1,32 @@
 #!/usr/bin/env bash
-# Transactional feature/bugfix shipping. Lands ft/<issue> or bf/<issue> (the
-# prefix is taken from the branch HEAD sits on) onto beta by default, or onto
-# main with --onto main (the bf hotfix path), through a temporary detached
-# worktree. A separate --finalize invocation closes the issue and wipes the
-# .feature/ scratch after the requested promotion has completed. It never
-# deletes a branch: ft/<issue> and bf/<issue> branches are the owner's to remove,
-# locally and on the remote, whenever they choose.
+# Ship a feature/bug branch to beta as one squash commit built from Git objects, so no
+# second checkout is ever created. Production advances only through the /promote pull
+# request. Branches stay intact.
 #
 # Usage:
-#   ship.sh [--onto beta|main] <issue-number> "<commit message>"
-#   ship.sh --finalize <issue-number>
+#   ship.sh [--onto beta] <issue-number> "<commit message>"
 set -euo pipefail
+original_args=("$@")
 
 usage() {
-  cat >&2 <<'USAGE'
-usage:
-  ship.sh [--onto beta|main] <issue-number> "<commit message>"
-  ship.sh --finalize <issue-number>
-USAGE
+  echo 'usage: ship.sh [--onto beta] <issue-number> "<commit message>"' >&2
   exit 2
 }
 
-finalize="false"
 onto="beta"
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --finalize)
-      finalize="true"
-      shift
-      ;;
     --onto)
       shift
       onto="${1:-}"
       case "$onto" in
-        beta | main) ;;
+        beta) ;;
+        main)
+          echo "ship: direct production shipping is retired. Ship to beta, then use /promote to open the production pull request." >&2
+          exit 2
+          ;;
         *)
-          echo "ship: --onto must be beta or main." >&2
+          echo "ship: --onto must be beta; production uses /promote." >&2
           exit 2
           ;;
       esac
@@ -55,15 +46,9 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ "$finalize" = "true" ]; then
-  [ "$#" -eq 1 ] || usage
-  issue="$1"
-  msg=""
-else
-  [ "$#" -eq 2 ] || usage
-  issue="$1"
-  msg="$2"
-fi
+[ "$#" -eq 2 ] || usage
+issue="$1"
+msg="$2"
 case "$issue" in
   '' | *[!0-9]*)
     echo "ship: issue number must contain digits only." >&2
@@ -87,6 +72,17 @@ cd "$repo_root"
 current_branch="$(git symbolic-ref --quiet --short HEAD || true)"
 [ "$current_branch" = "$branch" ] || {
   echo "ship: expected to be on $branch (on: ${current_branch:-detached HEAD})." >&2
+  exit 1
+}
+
+# Re-exec under the same repository-wide lease before any Git or record writes.
+if [ -z "${OPARAX_WRITER_FD:-}" ]; then
+  exec python3 .claude/scripts/writer-lease.py run --repo "$repo_root" --run-id "ship-${issue}" -- \
+    bash "$repo_root/.claude/scripts/ship.sh" "${original_args[@]}"
+fi
+python3 .claude/scripts/writer-lease.py verify --repo "$repo_root" \
+  --run-id "${OPARAX_RUN_ID:-}" --token "${OPARAX_WRITER_TOKEN:-}" || {
+  echo "ship: missing or stale writer lease; no integration started." >&2
   exit 1
 }
 
@@ -117,43 +113,6 @@ show_conflict_report() {
   echo "Choose explicitly: preserve compatible parts from both; prefer the destination; or prefer the feature. No ref was changed by this preview." >&2
 }
 
-# Trailer lookups intentionally walk only origin/beta. Pre-Phase-1 (issue #70)
-# ships recorded their Feature-Branch/Feature-Source-Tip trailers on origin/dev;
-# those are out of scope for --finalize by design — dev-only history predates
-# the beta cutover.
-find_recorded_tip() {
-  recorded_branch="$1"
-  git log --first-parent refs/remotes/origin/beta \
-    --format='%H%x09%(trailers:key=Feature-Branch,valueonly,separator=%x2C)%x09%(trailers:key=Feature-Source-Tip,valueonly,separator=%x2C)' \
-    | awk -F '\t' -v wanted="$recorded_branch" '$2 == wanted && $3 != "" { print $3; exit }'
-}
-
-# --finalize is now only the local scratch sweep: ship itself closes the issue
-# and no stage deletes branches. The one gate left asks the one question that
-# still matters — did this branch actually reach beta — because wiping the plan
-# files for something that never shipped loses work. Deliberately NOT gated on
-# tip equality: a meta commit landing on the branch after the ship is normal and
-# must not block a sweep that only removes local, git-ignored scratch.
-if [ "$finalize" = "true" ]; then
-  git fetch --prune origin beta >&2
-  [ -n "$(find_recorded_tip "$branch" || true)" ] || {
-    echo "ship: cannot finalize $branch — origin/beta has no ship commit for it, so its plan files are still live work." >&2
-    exit 1
-  }
-
-  # Wipe the scratch contents but KEEP the tracked .feature/.gitignore: that one
-  # file is what hides every scratch artifact from git. Deleting it here meant
-  # the next feature's .feature/ landed as an untracked directory, tripping
-  # start.sh's require_clean_tree at the branch cut.
-  if [ -d .feature ]; then
-    find .feature -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf {} +
-  fi
-  rm -rf .superpowers
-  rmdir .claude/worktrees 2>/dev/null || true
-  echo "Finalized $branch; every ft/<issue> and bf/<issue> branch is left in place — delete them yourself when you want them gone."
-  exit 0
-fi
-
 echo "ship: complete branch inventory authorized by the final gate:" >&2
 if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
   git status --short --untracked-files=all >&2
@@ -171,6 +130,8 @@ if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
 fi
 
 source_tip="$(git rev-parse HEAD)"
+# A fix commit, generic done comment, or earlier PASS is never shipping proof.
+gh issue view "$issue" --json comments | python3 .claude/scripts/qc-proof.py --commit "$source_tip"
 
 # Publish the exact feature tip first. A normal non-force push supplies a remote
 # recovery copy and rejects if somebody moved the branch unexpectedly.
@@ -190,68 +151,43 @@ live_feature="$(remote_ref_sha origin "refs/heads/$branch")" || {
 git fetch origin "$onto" >&2
 beta_base="$(git rev-parse "refs/remotes/origin/${onto}")"
 
-# Preview the exact two commits without touching the index, working tree, or a
-# branch ref. A conflict exits before the integration worktree exists.
-if ! git merge-tree --write-tree "$beta_base" "$source_tip" >/dev/null; then
+# Merge the two commits into a tree without touching the index, working tree or any
+# branch ref, then make the squash commit on top of the fetched target tip.
+if ! merge_out="$(git merge-tree --write-tree "$beta_base" "$source_tip")"; then
   show_conflict_report "$beta_base" "$source_tip" "$branch -> $onto"
   exit 1
 fi
-
-integration_dir="$(mktemp -d "${TMPDIR:-/tmp}/oparax-ship-${issue}.XXXXXX")"
-rmdir "$integration_dir"
-keep_integration="false"
-cleanup_integration() {
-  if [ -n "${integration_dir:-}" ] && [ -d "$integration_dir" ] && [ "$keep_integration" = "false" ]; then
-    git worktree remove "$integration_dir" >/dev/null 2>&1 || true
-  fi
-}
-trap cleanup_integration EXIT
-
-git worktree add --detach "$integration_dir" "$beta_base" >&2
-if ! git -C "$integration_dir" merge --squash "$source_tip" >&2; then
-  keep_integration="true"
-  echo "ship: the clean preview and real squash disagreed. Recovery worktree kept at $integration_dir; no ref was pushed." >&2
-  exit 1
-fi
-
-git -C "$integration_dir" commit \
-  -m "$msg" \
+tree="${merge_out%%$'\n'*}"
+message="$(printf '%s\n' "$msg" | git interpret-trailers \
   --trailer "Feature-Issue: #$issue" \
   --trailer "Feature-Branch: $branch" \
-  --trailer "Feature-Source-Tip: $source_tip" >&2
-beta_commit="$(git -C "$integration_dir" rev-parse HEAD)"
+  --trailer "Feature-Source-Tip: $source_tip")"
+beta_commit="$(git commit-tree "$tree" -p "$beta_base" -m "$message")"
 
 # The new commit's parent is the fetched target tip, so this is a normal
 # fast-forward update. Remote movement is rejected; no force option is used.
-if ! git -C "$integration_dir" push origin "$beta_commit:refs/heads/${onto}" >&2; then
-  keep_integration="true"
-  echo "ship: origin/${onto} moved or the push failed. Recovery commit $beta_commit and worktree $integration_dir were kept; the source branch is also safe on origin." >&2
+if ! git push origin "$beta_commit:refs/heads/${onto}" >&2; then
+  echo "ship: origin/${onto} moved or the push failed. Recovery commit $beta_commit is kept locally; the source branch is also safe on origin." >&2
   exit 1
 fi
 
 live_beta="$(remote_ref_sha origin "refs/heads/${onto}")" || {
-  keep_integration="true"
-  echo "ship: ${onto} push returned success but its live ref could not be verified. Recovery worktree kept at $integration_dir." >&2
+  echo "ship: ${onto} push returned success but its live ref could not be verified. Recovery commit: $beta_commit." >&2
   exit 1
 }
 [ "$live_beta" = "$beta_commit" ] || {
-  keep_integration="true"
-  echo "ship: live origin/${onto} ($live_beta) differs from the pushed integration commit ($beta_commit). Recovery worktree kept at $integration_dir." >&2
+  echo "ship: live origin/${onto} ($live_beta) differs from the pushed squash commit ($beta_commit)." >&2
   exit 1
 }
 
-git worktree remove "$integration_dir" >&2
-integration_dir=""
-trap - EXIT
-
-# The slice is on ${onto} and verified, so the issue is done — close it here
+# The slice is on ${onto} and verified, so the issue is done, close it here
 # rather than deferring to a separate step. Never fatal: the push already
 # succeeded and nothing about a failed gh call can un-ship it, so a hiccup
 # prints the manual fallback instead of making a good ship look like a failure.
 if gh issue close "$issue" --comment "Shipped to ${onto} as ${beta_commit}." >&2; then
   echo "ship: closed issue #$issue." >&2
 else
-  echo "ship: WARNING — ${onto} has the slice but issue #$issue could not be closed. Close it yourself: gh issue close $issue" >&2
+  echo "ship: WARNING: ${onto} has the slice but issue #$issue could not be closed. Close it yourself: gh issue close $issue" >&2
 fi
 
 echo "Shipped $branch -> ${onto}. ${onto}_sha=$beta_commit recovery_tip=$source_tip"

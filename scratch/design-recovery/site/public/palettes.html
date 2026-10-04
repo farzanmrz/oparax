@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Oparax base colors</title>
+<style>
+@font-face{font-family:"Open Sans";src:url("/fonts/opensans.ttf") format("truetype");font-weight:300 800}
+*{box-sizing:border-box;margin:0}
+body{font-family:"Open Sans",system-ui,sans-serif;background:#808080;color:#111;padding:24px}
+h1{font-size:20px;color:#fff;margin-bottom:4px}
+.note{color:#eee;font-size:13px;margin-bottom:20px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.label{grid-column:1/-1;color:#fff;font-size:16px;font-weight:600}
+.label small{font-weight:400;color:#eee;font-size:12px;margin-left:8px}
+.mock{border-radius:12px;overflow:hidden;background:var(--page);color:var(--t1);font-size:13px;display:grid;grid-template-columns:150px 1fr;min-height:330px;outline:1px solid #0003}
+.side{background:var(--side);border-right:1px solid var(--b1);padding:14px 10px}
+.logo{display:flex;align-items:center;gap:7px;font-weight:600;font-size:14px;margin-bottom:16px}
+.logo i{width:16px;height:16px;border-radius:50%;border:3px solid var(--t1);display:inline-block}
+.grp{font-size:10px;color:var(--t3);margin:6px 6px 4px}
+.nav{padding:6px 8px;border-radius:7px;color:var(--t2)}
+.nav.on{background:var(--sel);color:var(--t1)}
+.main{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;align-items:center;justify-content:space-between}
+.h{font-size:18px;font-weight:600}
+.seg{display:flex;border:1px solid var(--b1);border-radius:8px;padding:2px;background:var(--surf2)}
+.seg span{padding:3px 9px;border-radius:6px;color:var(--t2);font-size:11px}
+.seg .on{background:var(--card);color:var(--t1);box-shadow:0 0 0 1px var(--b1)}
+.card{background:var(--card);border:1px solid var(--b1);border-radius:10px;padding:12px 14px}
+.card h3{font-size:14px;font-weight:600;margin-bottom:6px}
+.card li{color:var(--t1);margin:3px 0 3px 14px;line-height:1.4}
+.card li::marker{color:var(--t3)}
+.cite{color:var(--t3)}
+.src{border-top:1px solid var(--b1);margin-top:8px;padding-top:7px;color:var(--t2);font-size:11px;display:flex;gap:6px;align-items:center}
+.q{margin-top:6px;background:var(--surf2);border-left:2px solid var(--b2);padding:6px 8px;color:var(--t2);font-size:11px;border-radius:4px}
+.ctrl{display:flex;gap:8px;align-items:center}
+.btn{background:var(--acc);color:var(--accfg);padding:6px 12px;border-radius:7px;font-weight:600;font-size:12px}
+.btn2{background:var(--surf3);color:var(--t1);padding:6px 12px;border-radius:7px;border:1px solid var(--b2);font-size:12px}
+.input{flex:1;background:var(--field);border:1px solid var(--b2);border-radius:7px;padding:6px 9px;color:var(--t3);font-size:12px}
+.focus{box-shadow:0 0 0 2px var(--page),0 0 0 4px var(--ring)}
+.link{color:var(--ink);font-size:12px}
+.pop{background:var(--pop);border:1px solid var(--b2);border-radius:9px;padding:6px;font-size:12px;box-shadow:0 8px 24px #0000003d;width:170px}
+.pop div{padding:5px 7px;border-radius:5px;color:var(--t2)}
+.pop .hl{background:var(--sel);color:var(--t1)}
+.bar{height:6px;border-radius:3px;background:var(--surf3);position:relative;width:110px}
+.bar b{position:absolute;inset:0 30% 0 0;border-radius:3px;background:var(--acc)}
+.sw{display:flex;gap:0;margin-top:2px}
+.sw span{flex:1;height:14px}
+.tint{background:var(--tint);color:var(--ink);border-radius:6px;padding:5px 8px;font-size:11px}
+</style></head><body>
+<h1>Oparax base colors, quick look</h1>
+<p class="note">Four neutral bases from the research (Supabase, Vercel, Linear, Radix), each with your blue accent. Left dark, right light. Same mock in each: sidebar, feed title with view switch, a story card with its source quote, input, buttons, a menu, a score bar. The strip under each mock is its neutral ladder.</p>
+<div id="out"></div>
+<script>
+const P=[
+ {name:"A. Slate and blue",why:"Supabase structure on Radix slate: cool gray, blue only on actions",
+  dark:{page:"#111113",side:"#18191b",card:"#18191b",surf2:"#212225",surf3:"#272a2d",pop:"#212225",field:"#0e0e10",sel:"#2e3135",b1:"#2b2d31",b2:"#363a3f",t1:"#edeef0",t2:"#b0b4ba",t3:"#80838d",acc:"#3a6bf0",accfg:"#ffffff",ink:"#8aa8ff",ring:"#6b94ff",tint:"#141a33",ladder:["#111113","#18191b","#212225","#272a2d","#2e3135","#363a3f","#43484e","#5a6169","#696e77","#777b84","#b0b4ba","#edeef0"]},
+  light:{page:"#f9f9fb",side:"#fcfcfd",card:"#ffffff",surf2:"#f0f0f3",surf3:"#e8e8ec",pop:"#ffffff",field:"#ffffff",sel:"#e8e8ec",b1:"#e0e1e6",b2:"#cdced6",t1:"#1c2024",t2:"#60646c",t3:"#80838d",acc:"#245dec",accfg:"#ffffff",ink:"#245dec",ring:"#245dec",tint:"#edf2fe",ladder:["#fcfcfd","#f9f9fb","#f0f0f3","#e8e8ec","#e0e1e6","#d9d9e0","#cdced6","#b9bbc6","#8b8d98","#80838d","#60646c","#1c2024"]}},
+ {name:"B. Pure gray and blue",why:"Vercel Geist logic: true neutral gray, black page, hairline borders, blue pops most",
+  dark:{page:"#0a0a0a",side:"#111111",card:"#111111",surf2:"#1a1a1a",surf3:"#222222",pop:"#191919",field:"#0a0a0a",sel:"#262626",b1:"#262626",b2:"#333333",t1:"#ededed",t2:"#a1a1a1",t3:"#7a7a7a",acc:"#2f66f0",accfg:"#ffffff",ink:"#7aa0ff",ring:"#6b94ff",tint:"#0e1733",ladder:["#0a0a0a","#111111","#191919","#222222","#2a2a2a","#313131","#3a3a3a","#484848","#606060","#7b7b7b","#b4b4b4","#eeeeee"]},
+  light:{page:"#fafafa",side:"#ffffff",card:"#ffffff",surf2:"#f2f2f2",surf3:"#ebebeb",pop:"#ffffff",field:"#ffffff",sel:"#ebebeb",b1:"#e6e6e6",b2:"#d4d4d4",t1:"#171717",t2:"#4d4d4d",t3:"#7d7d7d",acc:"#245dec",accfg:"#ffffff",ink:"#245dec",ring:"#245dec",tint:"#eef3ff",ladder:["#ffffff","#fafafa","#f2f2f2","#ebebeb","#e6e6e6","#d4d4d4","#c9c9c9","#a8a8a8","#8f8f8f","#7d7d7d","#4d4d4d","#171717"]}},
+ {name:"C. Near-black and blue",why:"Linear-style: very dark layered surfaces, separation by small lightness steps plus quiet borders",
+  dark:{page:"#08090a",side:"#0f1011",card:"#141516",surf2:"#191a1b",surf3:"#1c1c1f",pop:"#191a1b",field:"#0f1011",sel:"#232326",b1:"#23252a",b2:"#34343a",t1:"#f7f8f8",t2:"#d0d6e0",t3:"#8a8f98",acc:"#2f63ee",accfg:"#ffffff",ink:"#8aa8ff",ring:"#6b94ff",tint:"#11162a",ladder:["#08090a","#0f1011","#141516","#191a1b","#1c1c1f","#232326","#28282c","#34343a","#3e3e44","#62666d","#8a8f98","#f7f8f8"]},
+  light:{page:"#ffffff",side:"#f8f8f8",card:"#ffffff",surf2:"#f4f4f4",surf3:"#f0f0f0",pop:"#ffffff",field:"#ffffff",sel:"#eeedef",b1:"#e9e8ea",b2:"#dcdbdd",t1:"#282a30",t2:"#3c4149",t3:"#6f6e77",acc:"#245dec",accfg:"#ffffff",ink:"#245dec",ring:"#245dec",tint:"#eef3ff",ladder:["#ffffff","#f8f8f8","#f4f4f4","#f0f0f0","#eeedef","#e9e8ea","#dcdbdd","#d4d4d6","#86848d","#6f6e77","#3c4149","#282a30"]}},
+ {name:"D. Cool blue-gray and blue",why:"Your current navy pulled toward gray and given real steps: a hint of blue in the neutrals, more rungs",
+  dark:{page:"#0c0f14",side:"#11151c",card:"#151a22",surf2:"#1b212b",surf3:"#212833",pop:"#1b212b",field:"#0c0f14",sel:"#262e3a",b1:"#242b36",b2:"#313a47",t1:"#e9edf3",t2:"#a8b2c1",t3:"#7c8696",acc:"#2f63ee",accfg:"#ffffff",ink:"#86a6ff",ring:"#6b94ff",tint:"#121a30",ladder:["#0c0f14","#11151c","#151a22","#1b212b","#212833","#262e3a","#313a47","#424c5b","#5b6575","#7c8696","#a8b2c1","#e9edf3"]},
+  light:{page:"#f5f7fa",side:"#fbfcfd",card:"#ffffff",surf2:"#eef1f5",surf3:"#e6eaf0",pop:"#ffffff",field:"#ffffff",sel:"#e3e8ef",b1:"#dde2ea",b2:"#c9d0db",t1:"#161b24",t2:"#4e5869",t3:"#748093",acc:"#245dec",accfg:"#ffffff",ink:"#245dec",ring:"#245dec",tint:"#ecf1ff",ladder:["#fbfcfd","#f5f7fa","#eef1f5","#e6eaf0","#dde2ea","#c9d0db","#b4bdca","#98a2b3","#748093","#5e697b","#4e5869","#161b24"]}},
+];
+const mock=(c)=>`<div class="mock" style="${Object.entries(c).filter(([k])=>k!=='ladder').map(([k,v])=>`--${k}:${v}`).join(';')}">
+ <div class="side"><div class="logo"><i></i>Oparax</div><div class="grp">Views</div><div class="nav on">Clustered</div><div class="nav">Direct</div><div class="grp" style="margin-top:14px">Account</div><div class="nav">Settings</div></div>
+ <div class="main"><div class="top"><div class="h">Your Feed</div><div class="seg"><span class="on">Clustered</span><span>Direct</span></div></div>
+ <div class="card"><h3>Next.js 15 is released as stable</h3><ul><li>Next.js 15 was declared stable on October 21, 2024. <span class="cite">(Next.js, Next.js Blog)</span></li><li>The release adds support for React 19. <span class="cite">(Next.js Blog)</span></li></ul>
+ <div class="src">Used 2 sources <span class="link">nextjs.org</span></div><div class="q">"Next.js 15 is officially stable and ready for production."</div></div>
+ <div class="ctrl"><div class="input focus">What do you want to follow?</div><div class="btn">Build my agent</div><div class="btn2">Settings</div></div>
+ <div class="ctrl" style="align-items:flex-start;justify-content:space-between"><div class="pop"><div class="hl">Open story</div><div>Copy link</div><div>Hide source</div></div>
+ <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><div class="tint">Alerts on. Daily alerts in your free week.</div><div class="ctrl"><span class="cite" style="font-size:11px">Vercel 0.97</span><div class="bar"><b></b></div></div><span class="link">Get alerts on X</span></div></div>
+ <div class="sw">${c.ladder.map(h=>`<span style="background:${h}" title="${h}"></span>`).join('')}</div></div></div>`;
+document.getElementById('out').innerHTML=P.map(p=>`<div class="row"><div class="label">${p.name}<small>${p.why}</small></div>${mock(p.dark)}${mock(p.light)}</div>`).join('');
+</script></body></html>

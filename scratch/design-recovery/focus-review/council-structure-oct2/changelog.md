@@ -1,0 +1,11 @@
+# What the host changed in the reference-led-design skill on October 2 (the host's own account)
+
+Removed or changed, in order:
+1. Outside screenshots (Linear, Supabase, Vercel, Stripe, X, Facebook) and the board method: removed at the owner's request ("remove all the examples of Facebook, X, Supabase, and Vercel. Why distract the agent?"). Archived, not deleted.
+2. The intro quote "imaginative flair and using the components creatively" and the line "a philosophy and a loop, never a UI kit: do not copy the example screens": replaced by "This is so beautiful..." and by section 1 calling the three accepted feeds "the target to replicate, in feel and finish". Host now thinks dropping the components quote was a mistake.
+3. prompts.md rewritten: the council template lost "Components available: <paths>"; the review template lost "does it use the components imaginatively?" Host now thinks both were mistakes.
+4. acceptance-criteria.md lost its worked example (his ten points, several quoting Linear and Supabase).
+5. Builder prompts written by the host (not the skill) told agents "do not reuse their layouts" / "clearly different from those three", and pointed them at the preview app's own atoms rather than the catalogs; one builder reported "the preview app's own atoms were enough".
+6. Principles 3, 4 and 5 reworded after a council review (Astra, Grok): color named by the object or state it marks; "the main surface or surfaces lifted"; "readable on arrival, without clicking; scrolling for more is fine".
+
+Added, in order: section 1 "the bar" (three accepted feeds, dark and light); section 2 near misses (three landing tests, three same-shell feeds) and rejected (adding the wire feed); "the design system is fixed" (DESIGN.md); "What done looks like" (first with numeric quotas, later removed as padding-prone); section 2a good user experience with hard fails (facts hidden behind more facts / selection / page turn / Next card; lead plus teasers; an accepted feed's body under a new header; controls between stories; zero-count chips; half-blank empty states) and a task walk; step 4 council gate, then a three-way consensus loop (builder, Astra, Grok; a direction one party wants is dropped; at most five exchanges per stage); the council skill now accepts the plain word council and lets one request authorize a whole consensus loop.

@@ -1,0 +1,26 @@
+export const galleryContent = {
+  headline: "Your sources become stories worth reading.",
+  introduction:
+    "Oparax watches the sources that matter to you, connects their reports and sends you the story on X.",
+  signup: "Start following",
+  sourcesLabel: "Sources",
+  engineLabel: "Oparax",
+  deliveryLabel: "Delivery on X",
+  exampleLabel: "An example from a space discovery feed",
+  sourceIntro: "The original reports, all in one place.",
+  synthesisLabel: "Reports become a story",
+  deliveryIntro: "Your next good read finds you.",
+  feedHeading: "Your Feed",
+  directContext: "Each source report, synthesized into a clear read.",
+  clusteredContext: "Related reports, connected into one story.",
+  feedInterest: "Following space missions, ocean worlds and space telescopes.",
+  historical: "Historical sample stories from October 2024.",
+  launchAlt: "Falcon Heavy carrying Europa Clipper lifts off from Kennedy Space Center",
+  readStory: "Read story",
+  viewFeed: "Explore the feed",
+  originalReport: "Original report",
+  relatedReading: "Your interests set the edition.",
+  companionCopy:
+    "Keep the sources. Skip the searching. Open your feed when a story catches your eye.",
+  messagePlaceholder: "Message",
+} as const;

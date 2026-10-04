@@ -1,52 +1,56 @@
 # Oparax Design System
 
-The look is stock shadcn/ui in the Mira style, dark by default with a light mode the person can switch to (owner, September 23; rebuilt on Mira September 24). This file is the whole contract; `app/globals.css` holds the tokens. Screens are designed by the owner in Claude Design, which holds a synced copy of this system (the owner runs `/design-sync` after any change here), and built from the export with shadcn components.
+Fixed by the owner on October 2, 2026: the theme of the three accepted feeds (Window, Newsroom, Deck, dark and light) is the Oparax theme. Every new screen uses it exactly. Imagination goes into composition, never into the theme. It changes only in theme exploration mode, which the owner must ask for (global `reference-led-design` skill, section 5), and any change to this file needs his explicit approval in his current session.
 
-## How it fits together
+The images are in `~/.agents/skills/reference-led-design/examples/accepted/`. The working source is the preview app: `scratch/design-recovery/site/app/(next)/palettes.css` (the `.palette-council` block, light then `.dark`) and `app/(next)/next.css` (radius, base). A page uses the theme by importing both files and wrapping its content in `.palette-council`. The product app adopts these tokens when the feed and landing are built.
 
-Three layers. The theme (the named colors, the radius and the fonts in `app/globals.css`) is set once. The style (Mira) is the shape of each component, and each component's variants (default, secondary, outline, ghost, link, destructive) are wired to the theme's colors, so changing a color changes every component at once.
+## Ground and surfaces
 
-## The choices and why
+| Token | Dark | Light | Job |
+|---|---|---|---|
+| `--page` | `#0b0c0f` | `#eceef2` | quiet ground, faint blue tint |
+| `--window` | `#111317` | `#ffffff` | the one lifted surface |
+| `--rail` | `#0e1013` | `#f7f8fa` | navigation, a step below the window |
+| `--card` / `--tile-bg` | `#121418` / `#15181d` | `#ffffff` | cards and tiles |
+| `--raised` | `#191c22` | `#f4f5f8` | hover, selected rows |
+| `--well` | `#0d0f12` | `#f6f7f9` | inset wells |
 
-The owner's preset code is `bzq0WEyKe` (Mira, Zinc, Blue, Cyan charts, lucide, IBM Plex Sans, Nunito Sans), picked on ui.shadcn.com/create. The final choices are below; the text font is Source Sans 3 rather than the code's IBM Plex Sans, so anyone re-applying the preset sets the fonts back afterwards. The repo is the source of truth, Claude Design is the copy.
+## Lines and text
 
-| Choice | Value | Reason |
-| --- | --- | --- |
-| Style | Mira (`components.json` style `radix-mira`) | compact with rounded corners, which suits a dense feed of cards (`vercel:shadcn`) |
-| Base color | Zinc | a cool neutral that reads cleanly in dark mode and passes AA contrast for text at every step (`accessibility`) |
-| Primary | Blue, the old Oparax accent tuned for contrast: light `oklch(0.555 0.15 245)` (about #0077c2) with white text, about 4.8:1; dark `oklch(0.62 0.15 245)` (#168dd9) with near-black text, about 5.5:1 | the one accent, matching the logo, for actions and links, never a surface fill (`frontend-design`). The modes differ because #168dd9 with white text is only 3.6:1. `--ring` and `--sidebar-primary` match primary |
-| Chart color | Cyan | the preset's value; there are no charts yet |
-| Radius | default | Mira's rounded rectangles for cards, controls and chips; circles only for avatars and status dots |
-| Icons | lucide | shadcn's default, so every added component arrives with matching icons; hugeicons is removed |
-| Fonts | Nunito Sans for headings, Source Sans 3 for text, JetBrains Mono for handles, counts and times | the owner compared every registry font rendered on a page and locked these (September 24). All three are in shadcn's font registry, so Claude Design loads them without an upload. page titles at normal weight, section headings bold (see Type) |
-| Mode | dark by default, light available | `next-themes` with the `dark` class; the toggle sits in the header |
+- Lines: `--line` white 7.5 percent (light: ink 10 percent), `--line-soft` 4.5 (6), `--line-strong` 13 (16).
+- Text tiers, order of reading by brightness: `--t1` `#f3f5f8`, `--t2` `#c9ced7`, `--t3` `#8d939e`, `--t4` `#646a75` (light: `#0e1116`, `#343a45`, `#5f6672`, `#878d99`). `--t4` is about 3.2:1 in dark: decoration and small labels only, never body text.
 
-## Components
+## Color, each hue one job
 
-- **Stock Mira, never hand-edited.** Screens compose the components in `components/ui/` with Tailwind classes; the files themselves stay as shadcn wrote them, so a reinstall never loses work.
-- **Add and delete, nothing else.** A missing component is added with `pnpm dlx shadcn add <name>` and arrives in Mira, colored by the theme; one nothing uses is deleted. Current set: button, dialog, input, label, sonner, spinner, textarea, tooltip.
-- **Controls use Mira's defaults with no additions.** Buttons, inputs and textareas keep the resting look and focus ring shadcn generates (owner, September 24): no theme-wide shadow or focus override, and no one-off glow, outline or wash on a single screen. Every Sign up button is the same stock button.
-- **Touch targets.** At least 44px below the `desk` breakpoint (700px) and 24px above. Mira's default controls are compact (28px), so screens enlarge them on phones.
+| Token | Dark | Light | Job |
+|---|---|---|---|
+| `--brand` (solid `--primary`) | `#6b95ff` (`#3a6cf4`) | `#2459e8` | primary action, selection, focus |
+| `--kind-post` | `#6b95ff` | `#2459e8` | X posts and X accounts |
+| `--kind-article` | `#3cc9b5` | `#0d9488` | articles from websites and RSS feeds |
+| `--kind-github` | `#e6e8eb` | `#1f2328` | GitHub, its own mark |
+| `--ok` | `#4cd07d` | `#17a34a` | live, healthy, done |
+| `--caution` | `#f2b84b` | `#c88504` | checking, warning, free week |
+| `--error` | `#f2555a` | `#d93a40` | failed |
 
-## Page frame
+Each has a `-soft` fill for chips. Real logos, favicons, avatars and article images keep their own colors and carry much of the life. No other hues: websites and RSS feeds are told apart by their label and icon, not by a new color.
 
-- Every public page shares the header (logo mark and wordmark, theme toggle, sign-in actions) and the footer.
-- The logo mark and wordmark at the top left are one link home on every page (owner, September 24): the landing page for a visitor, and the signed-in home once the product has one.
-- The footer sits at the bottom of the screen on a short page and after the content on a long one. It carries no logo, no wordmark and no email address: only Privacy, Terms and Contact on one row, centered on the page.
-- Text pages (privacy, terms, and any page that is mostly reading) use the same full-width frame as everything else: content starts at the left edge, lined up with the header logo, and fills the width.
-- Contact opens a small dialog ("Contact Us", a message box, Send) that never shows an email. Sending is not wired yet (owner: a later step), so the confirmation says "Thanks for reaching out." and must not claim delivery until sending exists.
+## Depth and light
 
-## Rules that stay
+Every screen lifts its main surface or surfaces off the page with these tokens, as the accepted feeds do in different ways: Window sets a lifted window inside a lit stage frame with cards on it, Newsroom lifts one table window, Deck lifts cards and stacks on a lit page. The tokens only create depth when the composition lifts something; panels lying flat on the page fail.
 
-- **Semantic colors are states.** Green means live or done; amber means in progress or unconfirmed; red means failed or destructive; blue means action. Never decoration.
-- **Depth.** Cards and panels use the `beautiful-shadows` medium value; controls keep Mira's default look with no added shadow; never two shadows on one element, never tinted.
-- **Type** (owner, September 24, for every page on the site).
-  - **Page titles** (the one heading at the top of a page, like "Privacy Policy"): Nunito Sans, normal weight, Title Case.
-  - **Section headings** (like "Information We Collect", "Usage"): Nunito Sans, bold, Title Case, at most five words and as short as the meaning allows ("Usage", not "How we use it").
-  - **Bullets**: every bullet starts with a capital letter and reads as a full sentence ending in a period. A bullet that leads with a label ("Account Details: ...") has the label in bold, Title Case, followed by a colon.
-  - Buttons and body copy in sentence case; no all-caps labels, no eyebrow text, no helper subtitles under headers.
-  - **Text fills its container** (owner, September 24): no artificial line-length cap anywhere. Text wraps at the edge of whatever holds it, the page frame or a card's padding, never at a fixed character width.
-- **Accessibility.** AA contrast in both modes; Mira's default focus rings kept visible; every icon-only control has a label; touch targets as above.
-- **Motion.** Only where it answers an action or shows a live step (the onboarding build); nothing animates that a person does a hundred times a day (`emil-design-eng`).
-- **Logo.** `public/oparax-logo-dark.png` and `public/email-logo.png`; the mark in `components/logo.tsx`.
-- **Layout.** Content at most 1356px wide with 16px side gutters at every width (owner, September 24: no wide margins). Responsive gates use `desk:`, never `md:`.
+- `--stage-light`: radial light from the top behind the main surface (dark: `rgb(170 190 230 / 0.2)` fading out; light: brand blue at 11 percent).
+- `--stage-frame`: the lit frame gradient around a window (dark `#23262d` to `#0d0e11`; light `#dfe3ea` to `#eceef2`).
+- `--window-shadow`: four layers, hairline ring, 1px top highlight, 16 to 32px and 48 to 96px soft drops (dark at 0.6 to 0.75 black; light at 0.1 to 0.22 ink).
+- `--card-shadow`: three layers, ring, 2 to 4px, 12 to 28px.
+- `--top-light`: a 1px inset top highlight on raised surfaces.
+- `--dot-grid`: faint dot texture for stages.
+
+## Shape and type
+
+- Radius 10px (`--radius`), with 18px for stage frames and 14px for window tops.
+- Two typefaces, as in the accepted feeds. Open Sans (weights 300 to 800) for headings, body and rows; headings 600 with tight tracking (-0.025em at 28px). The system monospace (Tailwind `font-mono`: SF Mono, Menlo) at 10 to 11px with wide tracking for small labels: the Newsroom column headers, the "LIVE" marker, the "FREE WEEK" badge, timestamps and version codes. Open Sans confirmed by the owner on October 2 ("Open Sans seems fine").
+- Sizes in the feeds: 28px page titles, 20 to 22px story titles, 12.5 to 13.5px body and rows, 11 to 11.5px labels.
+
+## Light mode
+
+Designed in its own right: pale grey page, white panels, visibly darker borders (ink 10 to 16 percent) and shadows that read. Never an inverted or pale-washed dark mode.

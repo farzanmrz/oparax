@@ -1,72 +1,121 @@
-// SERVER-ONLY. No caller until issue 2; roadmap section 5 reuses this extractor.
-// `via` distinguishes readable articles from tag-stripped text for the onboarding checker.
-// Until its first server caller, only typechecking covers this module.
+// SERVER-ONLY. The reader preserves whole passages and their quotation boundaries.
 import "server-only";
 
-import { Readability } from "@mozilla/readability";
 import { JSDOM, VirtualConsole } from "jsdom";
-import { z } from "zod";
 
-const MIN_BODY_LENGTH = 200;
-const MAX_BODY_LENGTH = 20_000;
-const MAX_HTML_LENGTH = 5_000_000;
-const articleNode = z.object({ articleBody: z.string().optional() });
-const graphNode = z.object({ "@graph": z.array(z.unknown()).optional() });
+type Paragraph = { element: Element; block: Element; text: string; quoted: boolean };
+export type ArticleText = {
+  text: string;
+  body: string;
+  via: "article" | "main" | "paragraphs" | "unavailable";
+};
 
-function normalizeText(text: string): string {
-  return text.replace(/\s+/g, " ").trim().slice(0, MAX_BODY_LENGTH);
+function normalized(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }
 
-function extractFromJsonLd(html: string): string | null {
-  const matches = html.matchAll(
-    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+function paragraphLength(paragraphs: Paragraph[]): number {
+  return paragraphs.reduce((sum, paragraph) => sum + paragraph.text.length, 0);
+}
+
+function bodyParagraphs(paragraphs: Paragraph[]): Paragraph[] {
+  const blocks = new Map<Element, Paragraph[]>();
+  for (const paragraph of paragraphs) {
+    const block = blocks.get(paragraph.block) ?? [];
+    block.push(paragraph);
+    blocks.set(paragraph.block, block);
+  }
+  const largest =
+    [...blocks.values()].sort((a, b) => paragraphLength(b) - paragraphLength(a))[0] ?? [];
+  const length = paragraphLength(largest);
+  if (length < 400 || length < paragraphLength(paragraphs) * 0.6) return paragraphs;
+  const kept = new Set<Paragraph>();
+  for (const block of blocks.values()) {
+    if (block === largest || paragraphLength(block) >= 200 || block.some((p) => p.quoted)) {
+      for (const paragraph of block) kept.add(paragraph);
+    }
+  }
+  // Use the original kept set so adjacency cannot expand into an unrelated paragraph chain.
+  const adjacent = paragraphs.filter(
+    (p, index) =>
+      /[.!?。！？]["'”’)]?$/.test(p.text) &&
+      (kept.has(paragraphs[index - 1]) || kept.has(paragraphs[index + 1])),
   );
-  for (const match of matches) {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(match[1]);
-    } catch {
-      // One malformed metadata block must not hide another block's article.
-      continue;
-    }
-    const candidates: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
-    for (const candidate of candidates) {
-      const article = articleNode.safeParse(candidate);
-      if (article.success && article.data.articleBody !== undefined) {
-        const text = normalizeText(article.data.articleBody);
-        if (text.length >= MIN_BODY_LENGTH) return text;
-      }
-      const graph = graphNode.safeParse(candidate);
-      if (graph.success && graph.data["@graph"]) {
-        for (const node of graph.data["@graph"]) candidates.push(node);
-      }
-    }
-  }
-  return null;
+  for (const paragraph of adjacent) kept.add(paragraph);
+  return paragraphs.filter((paragraph) => kept.has(paragraph));
 }
 
-export function extractArticleText(
-  html: string,
-  url: string,
-): { text: string; via: "json-ld" | "readability" | "tag-strip" } {
-  if (html.length <= MAX_HTML_LENGTH) {
-    const jsonLd = extractFromJsonLd(html);
-    if (jsonLd) return { text: jsonLd, via: "json-ld" };
-
-    try {
-      // JSDOM defaults leave scripts and external resources disabled.
-      const dom = new JSDOM(html, { url, virtualConsole: new VirtualConsole() });
-      try {
-        const article = new Readability(dom.window.document).parse();
-        const text = normalizeText(article?.textContent ?? "");
-        if (text.length >= MIN_BODY_LENGTH) return { text, via: "readability" };
-      } finally {
-        dom.window.close();
+export function extractArticleText(html: string, url: string, title = ""): ArticleText {
+  const unavailable: ArticleText = { text: title, body: "", via: "unavailable" };
+  if (html.length > 5_000_000) return unavailable;
+  let dom: JSDOM | undefined;
+  try {
+    // Scripts and external resources stay disabled in JSDOM.
+    dom = new JSDOM(html, { url, virtualConsole: new VirtualConsole() });
+    const document = dom.window.document;
+    document
+      .querySelectorAll(
+        "script, style, noscript, nav, header, footer, aside, form, button, iframe, svg, template, canvas, object, [hidden], [aria-hidden='true']",
+      )
+      .forEach((element) => {
+        element.remove();
+      });
+    // Bare quote text needs a paragraph boundary too, including text beside a quoted paragraph.
+    for (const quote of document.querySelectorAll("blockquote")) {
+      const walker = document.createTreeWalker(quote, dom.window.NodeFilter.SHOW_TEXT);
+      const bare: Node[] = [];
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.parentElement?.closest("p") && normalized(node.textContent ?? ""))
+          bare.push(node);
       }
-    } catch {
-      // Unparseable pages still get the same last-resort text extraction.
+      for (const node of bare) {
+        const paragraph = document.createElement("p");
+        node.parentNode?.replaceChild(paragraph, node);
+        paragraph.append(node);
+      }
     }
+    const paragraphs: Paragraph[] = [...document.querySelectorAll("p")].flatMap((element) => {
+      const text = normalized(element.textContent ?? "");
+      const quote = element.closest("blockquote");
+      const block = quote?.parentElement ?? element.parentElement;
+      return text && block ? [{ element, block, text, quoted: quote !== null }] : [];
+    });
+    const within = (element: Element) => paragraphs.filter((p) => element.contains(p.element));
+    const largest = (selector: string) =>
+      [...document.querySelectorAll(selector)]
+        .map((element) => ({ element, paragraphs: within(element) }))
+        .sort((a, b) => paragraphLength(b.paragraphs) - paragraphLength(a.paragraphs))[0];
+    const article = largest("article");
+    const main = largest("main, [role='main']");
+    const preferred =
+      article && paragraphLength(article.paragraphs) >= 400
+        ? article
+        : main && paragraphLength(main.paragraphs) >= 400
+          ? main
+          : null;
+    let selected: Paragraph[];
+    let via: ArticleText["via"];
+    if (preferred) {
+      selected = bodyParagraphs(preferred.paragraphs);
+      via = preferred === article ? "article" : "main";
+    } else {
+      const containers = new Set(paragraphs.map((p) => p.block));
+      selected =
+        [...containers].map(within).sort((a, b) => paragraphLength(b) - paragraphLength(a))[0] ??
+        [];
+      if (paragraphLength(selected) < 400) {
+        const fallback = paragraphs.filter((p) => p.text.length > 40 || p.quoted);
+        if (paragraphLength(fallback) > paragraphLength(selected)) selected = fallback;
+      }
+      via = "paragraphs";
+    }
+    const body = selected
+      .map((p) => (p.quoted ? `[quote] ${p.text} [end quote]` : p.text))
+      .join("\n\n");
+    return { body, text: [normalized(title), body].filter(Boolean).join("\n\n"), via };
+  } catch {
+    return unavailable;
+  } finally {
+    dom?.window.close();
   }
-
-  return { text: normalizeText(html.replace(/<[^>]+>/g, " ")), via: "tag-strip" };
 }

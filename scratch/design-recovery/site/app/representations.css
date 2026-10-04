@@ -1,0 +1,43 @@
+/* Publisher artwork keeps its own colors and intrinsic background. */
+.official-brand{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
+.official-brand img{width:100%;height:100%;object-fit:contain;border-radius:0}
+.official-brand .brand-on-light{display:none}
+.official-brand .brand-on-dark{display:block}
+html[data-theme=light] .official-brand .brand-on-light{display:block}
+html[data-theme=light] .official-brand .brand-on-dark{display:none}
+.price-scroll tbody th>.brand{display:inline-flex;vertical-align:middle;margin-right:9px}
+.roadmap-list-section{margin-top:72px;padding:30px 0}
+.roadmap-journey{display:grid;grid-template-columns:minmax(0,1.65fr) 170px minmax(220px,.75fr);gap:42px;padding:30px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.roadmap-journey h3{font-size:18px;margin-bottom:28px}
+.roadmap-platforms{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:30px 18px;list-style:none;padding:0;margin:0}
+.roadmap-platforms li{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;font-size:12px}
+.roadmap-platforms .brand{width:48px;height:48px}
+.roadmap-bridge{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:15px;color:var(--muted);text-align:center;font-size:13px}
+.roadmap-bridge svg{color:var(--blue)}
+.roadmap-outputs{border-left:1px solid var(--line);padding-left:32px}
+.roadmap-outputs ul{display:grid;gap:19px;list-style:none;padding:0;margin:0}
+.roadmap-outputs li{display:flex;align-items:center;gap:18px;font-size:14px}
+.roadmap-outputs .brand{width:36px;height:36px}
+.roadmap-outputs p{font-size:12px;line-height:1.6;color:var(--muted);margin-top:22px;max-width:28ch}
+/* The pictured X conversation keeps its own dark surface in either site theme. */
+.delivery{color-scheme:dark;background:#000;color:#e7e9ea;border-color:#2f3336;box-shadow:none;font-family:Arial,Helvetica,sans-serif}
+.delivery>header{background:#000;border-color:#2f3336}
+.delivery header small,.delivery .dm-body>time{color:#8b9197}
+.delivery .dm-avatar{background:#fff;color:#000;flex-shrink:0}
+.delivery .dm-avatar .mark{width:22px;height:22px}
+.delivery .dm-received{display:flex;align-items:flex-end;gap:8px}
+.delivery .dm-sender{width:24px;height:24px;margin-bottom:3px}
+.delivery .dm-sender .mark{width:18px;height:18px}
+.delivery .dm-message{min-width:0;max-width:calc(100% - 32px)}
+.delivery .dm-bubble{background:#202327;color:#e7e9ea;border-radius:15px 15px 15px 3px;max-width:100%;padding:14px;gap:9px}
+.delivery .dm-bubble strong{font-size:14px;letter-spacing:0}
+.delivery .dm-bubble p{color:#e7e9ea;font-size:12px;line-height:1.55}
+.delivery .dm-link{color:#1d9bf0;font-size:12px}
+.delivery .dm-preview{display:flex;flex-direction:column;gap:6px;width:100%;padding:12px 14px;margin-top:8px;text-align:left;border:1px solid #2f3336;border-radius:12px;background:#000;color:#e7e9ea}
+.delivery .dm-preview small{color:#8b9197;font-size:11px}
+.delivery .dm-preview strong{font-size:12px;line-height:1.4;letter-spacing:0;font-weight:500}
+.delivery .dm-composer{border-color:#2f3336;color:#8b9197;background:#000}
+.delivery .dm-composer span{border-color:#2f3336;background:#000}
+.delivery button:focus-visible{outline-color:#1d9bf0}
+@media(max-width:1100px){.roadmap-journey{grid-template-columns:minmax(0,1.5fr) 100px minmax(160px,.65fr);gap:20px}.roadmap-platforms{grid-template-columns:repeat(4,minmax(0,1fr))}.roadmap-outputs{padding-left:20px}}
+@media(max-width:699px){.roadmap-list-section{margin-top:45px}.roadmap-journey{grid-template-columns:1fr;gap:28px}.roadmap-platforms{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 12px}.roadmap-platforms .brand{width:44px;height:44px}.roadmap-outputs{border-left:0;border-top:1px solid var(--line);padding:26px 0 0}.roadmap-bridge{gap:10px}.roadmap-bridge svg{transform:rotate(90deg)}.roadmap-outputs ul{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.roadmap-outputs li{gap:10px}.roadmap-outputs p{max-width:none}.roadmap-outputs .brand{width:30px;height:30px}}

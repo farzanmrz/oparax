@@ -1,0 +1,14 @@
+/* Deck direction, v2. The scratch folder is gitignored, so Tailwind's automatic source detection never sees these
+ * files; next.css lists its own folders with @source. This sheet borrows next.css's theme, variants and tokens by
+ * reference (nothing of it is emitted twice) and emits one complete, ordered utilities layer for everything the
+ * deck routes use: its own folders plus every folder next.css scans, so shared components keep their variants. */
+@reference "../../app/(next)/next.css";
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "./";
+@source "../../app/(v2)/v2/deck";
+@source "../../components/ui";
+@source "../../components/react-bits";
+@source "../../components/ai-elements";
+@source "../../pro";
+@source "../../next";

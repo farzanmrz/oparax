@@ -1,0 +1,6 @@
+/* The fixed theme (DESIGN.md): the preview app's base and the .palette-council tokens, unchanged. */
+@import "../../../(next)/next.css";
+@import "../../../(next)/palettes.css";
+
+/* Tailwind also scans this direction set's components. */
+@source "../../../../skilltest/opus-feed";

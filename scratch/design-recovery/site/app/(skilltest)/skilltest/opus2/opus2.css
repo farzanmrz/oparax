@@ -1,0 +1,203 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Landing skill test (opus2). Its own root stylesheet: the accepted council feed tokens (palettes.css
+ * .palette-council) copied under .ox2, plus three source-kind hues (RSS feed, website, Product Hunt). */
+@source "../../../../skilltest/opus2";
+@source "../../../../next/council";
+@source "../../../../components/react-bits/StatusMark.tsx";
+@source "../../../../components/ai-elements/shimmer.tsx";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("/fonts/opensans.ttf") format("truetype");
+  font-weight: 300 800;
+  font-display: swap;
+}
+
+@theme inline {
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --color-t1: var(--t1);
+  --color-t2: var(--t2);
+  --color-t3: var(--t3);
+  --color-t4: var(--t4);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-raised: var(--raised);
+  --color-well: var(--well);
+  --color-brand: var(--brand);
+  --color-ok: var(--ok);
+  --color-caution: var(--caution);
+  --color-error: var(--error);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-background: var(--background);
+  --color-muted-foreground: var(--t3);
+}
+
+.ox2 {
+  color-scheme: light;
+  --background: #eceef2;
+  --primary: #2459e8;
+  --primary-foreground: #ffffff;
+  --t1: #0e1116;
+  --t2: #343a45;
+  --t3: #5f6672;
+  --t4: #878d99;
+  --line: rgb(16 24 40 / 0.1);
+  --line-soft: rgb(16 24 40 / 0.06);
+  --line-strong: rgb(16 24 40 / 0.16);
+  --raised: #f4f5f8;
+  --well: #f6f7f9;
+  --tile-bg: #ffffff;
+  --brand: #2459e8;
+  --brand-soft: rgb(36 89 232 / 0.09);
+  --brand-line: rgb(36 89 232 / 0.32);
+  --ok: #17a34a;
+  --ok-soft: rgb(23 163 74 / 0.1);
+  --caution: #c88504;
+  --caution-soft: rgb(200 133 4 / 0.12);
+  --error: #d93a40;
+  --error-soft: rgb(217 58 64 / 0.1);
+  --kind-post: #2459e8;
+  --kind-post-soft: rgb(36 89 232 / 0.1);
+  --kind-article: #0d9488;
+  --kind-article-soft: rgb(13 148 136 / 0.1);
+  --kind-github: #1f2328;
+  --kind-github-soft: rgb(31 35 40 / 0.07);
+  --rss: #e2620f;
+  --rss-soft: rgb(226 98 15 / 0.1);
+  --web: #7c3aed;
+  --web-soft: rgb(124 58 237 / 0.09);
+  --ph: #da552f;
+  --ph-soft: rgb(218 85 47 / 0.1);
+  --page: #eceef2;
+  --window: #ffffff;
+  --rail: #f7f8fa;
+  --mark: rgb(13 148 136 / 0.16);
+  --stage-light: radial-gradient(70% 60% at 60% 0%, rgb(36 89 232 / 0.12), rgb(36 89 232 / 0.03) 45%, transparent 75%);
+  --stage-frame: linear-gradient(180deg, #dfe3ea 0%, #e8ebf0 40%, #eceef2 100%);
+  --window-shadow: 0 0 0 1px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.05), 0 12px 24px -8px rgb(16 24 40 / 0.12),
+    0 40px 80px -24px rgb(16 24 40 / 0.24);
+  --card-shadow: 0 0 0 1px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 16px -6px rgb(16 24 40 / 0.12);
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --dot-grid: radial-gradient(rgb(16 24 40 / 0.13) 1px, transparent 1px);
+  background: var(--page);
+  color: var(--t1);
+}
+
+.dark .ox2 {
+  color-scheme: dark;
+  --background: #0b0c0f;
+  --primary: #3a6cf4;
+  --primary-foreground: #ffffff;
+  --t1: #f3f5f8;
+  --t2: #c9ced7;
+  --t3: #8d939e;
+  --t4: #6b717c;
+  --line: rgb(255 255 255 / 0.075);
+  --line-soft: rgb(255 255 255 / 0.045);
+  --line-strong: rgb(255 255 255 / 0.13);
+  --raised: #191c22;
+  --well: #0d0f12;
+  --tile-bg: #15181d;
+  --brand: #6b95ff;
+  --brand-soft: rgb(91 140 255 / 0.13);
+  --brand-line: rgb(107 149 255 / 0.4);
+  --ok: #4cd07d;
+  --ok-soft: rgb(76 208 125 / 0.12);
+  --caution: #f2b84b;
+  --caution-soft: rgb(242 184 75 / 0.13);
+  --error: #f2555a;
+  --error-soft: rgb(242 85 90 / 0.13);
+  --kind-post: #6b95ff;
+  --kind-post-soft: rgb(107 149 255 / 0.14);
+  --kind-article: #3cc9b5;
+  --kind-article-soft: rgb(60 201 181 / 0.12);
+  --kind-github: #e6e8eb;
+  --kind-github-soft: rgb(230 232 235 / 0.08);
+  --rss: #ff8a3d;
+  --rss-soft: rgb(255 138 61 / 0.12);
+  --web: #b197fc;
+  --web-soft: rgb(177 151 252 / 0.12);
+  --ph: #ff6d45;
+  --ph-soft: rgb(255 109 69 / 0.12);
+  --page: #0b0c0f;
+  --window: #111317;
+  --rail: #0e1013;
+  --mark: rgb(60 201 181 / 0.18);
+  --stage-light: radial-gradient(70% 60% at 60% 0%, rgb(170 190 230 / 0.17), rgb(120 150 220 / 0.05) 45%, transparent 78%);
+  --stage-frame: linear-gradient(180deg, #23262d 0%, #15171b 38%, #0d0e11 100%);
+  --window-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 32px -12px rgb(0 0 0 / 0.6),
+    0 48px 96px -24px rgb(0 0 0 / 0.75);
+  --card-shadow: 0 0 0 1px rgb(0 0 0 / 0.45), 0 2px 4px rgb(0 0 0 / 0.25), 0 12px 28px -10px rgb(0 0 0 / 0.55);
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --dot-grid: radial-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1px);
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background: var(--page, #0b0c0f);
+  }
+}
+
+/* The one lifted surface per screen, and the quieter tiles around it. */
+.ox2 .lift {
+  background: var(--window);
+  box-shadow: var(--window-shadow), var(--top-light);
+  border-radius: 14px;
+}
+.ox2 .tile {
+  background: var(--tile-bg);
+  box-shadow: var(--card-shadow), var(--top-light);
+  border-radius: 12px;
+}
+.ox2 .well {
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.ox2 .stage {
+  position: relative;
+  isolation: isolate;
+}
+.ox2 .stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--stage-light);
+  pointer-events: none;
+}
+.ox2 .dots {
+  background-image: var(--dot-grid);
+  background-size: 14px 14px;
+}
+.ox2 .label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--t3);
+}
+.ox2 mark.ev {
+  background: var(--mark);
+  color: var(--t1);
+  border-radius: 3px;
+  padding: 0 2px;
+  box-shadow: inset 0 -1.5px 0 var(--kind-article);
+}

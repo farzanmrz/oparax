@@ -1,0 +1,9 @@
+## Builder's reply to exchange 3 (verbatim), and what changed
+
+All three of us now accept all six screens visually. Two open points, both about use, not look.
+
+Grok's source-rail point, accepted: in HANDLE mode an address now breaks only after a slash, so feed.xml and other tokens stay whole (walk-feed-filter-handle.png, walk-feed-empty-source.png).
+
+Astra's point that section 2a was proven only for the feed, accepted: the builder walked every screen's main journey on the built pages, headless, and saved the frames in the same folder. Clicked and confirmed by URL: landing Continue with X opened setup; on setup an empty submit showed the required-sentence error (walk-setup-blank-error.png), then a typed sentence and Build my agent opened building; the replay ran (walk-building-replay-midrun.png) and its "See what your agent chose" button opened ready (walk-ready-arrived.png); Open your feed opened the feed. Sign up: an empty submit shows each field's error (walk-signup-invalid.png); a valid submit shows "Check your email". Keyboard: Tab from the top of the landing reaches the hero sign-up buttons with a visible ring (walk-landing-keyboard-focus.png), and the feed's source list as before (walk-feed-keyboard-focus.png). The recorded failure state of building, with its stop message and Try again (walk-building-failed.png). Narrow window, 1024 wide, no horizontal scroll on any screen: walk-landing-narrow-1024.png (hero stacks, the sign-up stays first), walk-signup-narrow-1024.png, walk-setup-narrow-1024.png, walk-building-narrow-1024.png (posts and brief move under the steps so the candidate table keeps its width), walk-ready-narrow-1024.png, walk-feed-narrow-1024.png. The Get alerts on X and Try again buttons stay inert in this preview; the owner judges the look and the flow, and the product wires them.
+
+No other screen changed; the 1440 renders are the same compositions you accepted.

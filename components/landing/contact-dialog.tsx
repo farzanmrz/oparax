@@ -1,10 +1,9 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -12,12 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { landingContent } from "@/lib/landing/content";
 
-// Owner, September 24: the contact form is UI only for now; sending is a later step, so nothing
-// is stored or delivered and the confirmation does not claim delivery.
+const copy = landingContent.contact;
+const mailto = `mailto:${copy.address}?subject=${encodeURIComponent(copy.subject)}`;
+// A browser with no mail app set up opens an empty mail setup on mailto, so Gmail's web composer is offered beside it.
+const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(copy.address)}&su=${encodeURIComponent(copy.subject)}`;
+
 export function ContactDialog({
   triggerClassName,
   label,
@@ -25,74 +25,53 @@ export function ContactDialog({
   readonly triggerClassName: string;
   readonly label?: string;
 }) {
-  const copy = landingContent.contact;
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState(false);
-  const [sent, setSent] = useState(false);
-  const fieldId = useId();
-  const errorId = useId();
+  const [copied, setCopied] = useState(false);
 
-  function reset(open: boolean) {
-    if (open) return;
-    setMessage("");
-    setError(false);
-    setSent(false);
-  }
-
-  function send(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!message.trim()) {
-      setError(true);
-      return;
-    }
-    setSent(true);
+  function copyAddress() {
+    navigator.clipboard
+      .writeText(copy.address)
+      .then(() => setCopied(true))
+      .catch(() => setCopied(false));
   }
 
   return (
-    <Dialog onOpenChange={reset}>
+    <Dialog onOpenChange={() => setCopied(false)}>
       <DialogTrigger asChild>
-        <button type="button" className={triggerClassName}>
+        <Button
+          type="button"
+          variant="link"
+          className={`h-auto min-h-11 p-0 text-inherit desk:min-h-6 ${triggerClassName}`}
+        >
           {label ?? copy.trigger}
-        </button>
+        </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain [&>button]:size-11 desk:[&>button]:size-6">
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
-          <DialogDescription>{sent ? copy.thanks : copy.description}</DialogDescription>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
-        {sent ? (
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button>{copy.close}</Button>
-            </DialogClose>
-          </DialogFooter>
-        ) : (
-          <form onSubmit={send} noValidate className="grid gap-3">
-            <div className="grid gap-2">
-              <Label htmlFor={fieldId}>{copy.label}</Label>
-              <Textarea
-                id={fieldId}
-                value={message}
-                placeholder={copy.placeholder}
-                rows={5}
-                aria-invalid={error || undefined}
-                aria-describedby={error ? errorId : undefined}
-                onChange={(event) => {
-                  setMessage(event.target.value);
-                  if (error) setError(false);
-                }}
-              />
-              {error && (
-                <p id={errorId} role="alert" className="text-xs text-destructive">
-                  {copy.empty}
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button type="submit">{copy.send}</Button>
-            </DialogFooter>
-          </form>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[15px] font-medium select-all">{copy.address}</span>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 desk:min-h-8"
+            onClick={copyAddress}
+            aria-live="polite"
+          >
+            {copied ? copy.copied : copy.copy}
+          </Button>
+        </div>
+        <DialogFooter>
+          <Button asChild variant="outline" className="min-h-11 desk:min-h-8">
+            <a href={gmail} target="_blank" rel="noopener noreferrer">
+              {copy.gmail}
+            </a>
+          </Button>
+          <Button asChild className="min-h-11 desk:min-h-8">
+            <a href={mailto}>{copy.mailApp}</a>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,0 +1,4 @@
+@import "../../../(next)/next.css";
+
+/* Tailwind must also scan this test's own components. */
+@source "../../../../skilltest/sonnet-feed3";

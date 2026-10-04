@@ -1,6 +1,6 @@
 # Experiment 1: Oparax monitors the internet for you and tells you on X
 
-Rewritten September 19, 2026 to match the product as defined that day. The plan is [roadmap.md](roadmap.md); the onboarding specification is [onboarding-algorithm.md](onboarding-algorithm.md). This file says what the experiment is trying to learn, how it is measured, and what has to exist before it can run. Every line is marked by where it came from: the owner's decision, still open, or an assistant proposal the owner has not approved. The earlier version (September 11) tested a different offer, a personalized news feed gathered across X and the web; what carried over from it is the measurement rules, the event names and the ads setup. It has not yet been attacked through the lean-startup and mom-test lenses; that happens before slice 1 is planned.
+Rewritten September 19, 2026 to match the product as defined that day. The plan is [roadmap.md](roadmap.md); the onboarding specification is the code in `lib/onboarding/` (the September 19 onboarding spec was deleted September 27; git 1e9e0bc). This file says what the experiment is trying to learn, how it is measured, and what has to exist before it can run. Every line is marked by where it came from: the owner's decision, still open, or an assistant proposal the owner has not approved. The earlier version (September 11) tested a different offer, a personalized news feed gathered across X and the web; what carried over from it is the measurement rules, the event names and the ads setup. It has not yet been attacked through the lean-startup and mom-test lenses; that happens before slice 1 is planned.
 
 ## 1. Learn
 
@@ -101,7 +101,7 @@ Before anyone outside the five is invited, walk the real sequence once: build, p
 
 ## References
 
-- Verified prices and platform facts: roadmap section 12 and onboarding-algorithm.md section 11.
+- Verified prices and platform facts: roadmap section 12 and section 11 of the September 19 onboarding spec (deleted September 27; git 1e9e0bc).
 - [X API pricing](https://docs.x.com/x-api/getting-started/pricing): a post read or delivered is $0.005, a user lookup $0.010, a DM send $0.015, a received DM event $0.010, a counts request $0.005.
 - [Stripe subscription webhooks](https://docs.stripe.com/billing/subscriptions/webhooks).
 - Product Hunt's [API terms](https://www.producthunt.com/v2/docs) require contacting them before commercial use; this matters only when slice 9 reaches paying users.

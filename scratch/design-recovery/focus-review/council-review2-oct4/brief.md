@@ -1,0 +1,9 @@
+# Council review 2: pass 6 renders. Done, or one more pass? (October 4, 2026)
+
+Astra, Grok, Kimi. You specified pass 6 (council-flow-oct4 and council-converge-oct4, all answers in /Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/). It is built. OPEN EVERY PICTURE in /Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/renders/ (stable names from now on): feed-open.png, feed-closed.png, onboarding-step-1.png through onboarding-step-8.png, onboarding-done.png, and beside them the originals deck-feed.png, window-building.png, deck-building.png and the bar accepted-deck.png. The owner will see these pictures next, and only pictures; he said "so many screenshots of each and every process, of which you think I'd be happy." His notes: PAGE-NOTES.md (Feed > Problems, bottom).
+
+Builder's own notes: step 1 shows Window's loading placeholder while the profile is found, very faint in dark; the candidates line already shows the final counts at step 4; step 6 (skipped) has no status line; the Websites section falls below the fold at 900px in the done shot.
+
+Judge: (1) Sidebar in feed-open.png: four distinct levels now? beside deck-feed.png, same object? (2) Feed closed: done? (3) Onboarding, step by step: does each screenshot make sense on its own, is there life (profile, pin, posts, logos, brief) and no fluff, does the page read as one composition beside window-building.png; which steps are weak and why. (4) Anything he would notice first and dislike.
+
+Deliver: RESULT: FINDINGS, then VERDICT in one line ("Done, show him" or "One more pass"), then the fix list if any, numbered, file and object and change, at most 8 lines, ordered by what he would notice first, then one line: which 4 pictures to show him first. Under 450 words, no em dashes. Read-only.

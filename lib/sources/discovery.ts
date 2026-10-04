@@ -40,30 +40,39 @@ export async function fetchSafeSource(
   return (await fetchSafeSourceWithFinalUrl(endpoint, url, expectedHostname, signal)).res;
 }
 
+/** `expectedHostname` keeps every redirect on that site, which is right for checking a source. A
+ *  link a person posted (a shortener, an affiliate hop) legitimately lands on another site, so
+ *  `null` allows any public http(s) destination while still refusing private hosts. */
 export async function fetchSafeSourceWithFinalUrl(
   endpoint: string,
   url: string,
-  expectedHostname: string,
+  expectedHostname: string | null,
   signal?: AbortSignal,
-): Promise<{ res: Response; finalUrl: string }> {
+  headers?: HeadersInit,
+): Promise<{ res: Response; finalUrl: string; etag: string | null; lastModified: string | null }> {
   let current = new URL(url);
   // Match fetch's existing redirect ceiling while validating every destination before it is
   // requested. A repeated URL is a redirect loop even before the ceiling is exhausted.
   const visited = new Set<string>();
   for (let redirects = 0; redirects < 20; redirects += 1) {
-    if (
-      !isSafeDiscoveredUrl(current.toString(), expectedHostname) ||
-      visited.has(current.toString())
-    ) {
+    const safe =
+      expectedHostname === null
+        ? isPublicHttpUrl(current)
+        : isSafeDiscoveredUrl(current.toString(), expectedHostname);
+    if (!safe || visited.has(current.toString())) {
       throw new Error(`Source ${endpoint} redirected to an unsafe URL`);
     }
     visited.add(current.toString());
-    const res = await fetchPinnedSource(endpoint, current, signal);
-    if (res.status < 300 || res.status >= 400) {
-      return { res, finalUrl: current.toString() };
-    }
+    const res = await fetchPinnedSource(endpoint, current, signal, headers);
     const location = res.headers.get("location");
-    if (!location) return { res, finalUrl: current.toString() };
+    if (res.status === 304 || res.status < 300 || res.status >= 400 || !location) {
+      return {
+        res,
+        finalUrl: current.toString(),
+        etag: res.headers.get("etag"),
+        lastModified: res.headers.get("last-modified"),
+      };
+    }
     await res.body?.cancel();
     current = new URL(location, current);
   }
@@ -79,6 +88,7 @@ async function fetchPinnedSource(
   endpoint: string,
   url: URL,
   signal?: AbortSignal,
+  headers?: HeadersInit,
 ): Promise<Response> {
   const deadline = Date.now() + 15_000;
   const hostname = url.hostname.replace(/^\[|\]$/g, "");
@@ -110,9 +120,11 @@ async function fetchPinnedSource(
       url,
       {
         headers: {
+          ...Object.fromEntries(new Headers(headers)),
           accept: "text/html, application/xml, application/rss+xml;q=0.9, */*;q=0.8",
           "accept-encoding": "identity",
-          "user-agent": "Oparax source discovery",
+          "user-agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
         },
         method: "GET",
         lookup: (_hostname, options, callback) => {
@@ -153,6 +165,7 @@ async function fetchPinnedSource(
         const body = [204, 205, 304].includes(status)
           ? null
           : (Readable.toWeb(res) as ReadableStream);
+        if (body === null) res.resume();
         resolve(
           new Response(body, {
             headers,
@@ -351,6 +364,12 @@ export function isPrivateHostname(hostname: string): boolean {
  *  constantly), and never a private/loopback/link-local literal. Without this a hostile
  *  site's sitemap index can point at an internal address and have the server fetch and parse
  *  it from inside its own network. */
+function isPublicHttpUrl(url: URL): boolean {
+  return (
+    (url.protocol === "http:" || url.protocol === "https:") && !isPrivateHostname(url.hostname)
+  );
+}
+
 export function isSafeDiscoveredUrl(candidate: string, expectedHostname: string): boolean {
   let url: URL;
   try {
@@ -500,12 +519,20 @@ export async function readHtmlWithinLimit(res: Response, endpoint: string): Prom
   }
 }
 
+export function stripTrackingParameters(url: URL): void {
+  for (const key of [...url.searchParams.keys()]) {
+    if (/^(?:utm_.*|fbclid|gclid|ref|source|mc_cid|mc_eid)$/i.test(key)) {
+      url.searchParams.delete(key);
+    }
+  }
+}
+
 /** Extracts same-host anchors from server-rendered HTML with a forward-only tag scan. Nested
  *  anchor markup is tag-stripped and can occasionally produce a lossy title. */
 export function extractListingSample(html: string, finalUrl: string): SourceSampleEntry[] {
   const listingUrl = new URL(finalUrl);
   listingUrl.hash = "";
-  listingUrl.search = "";
+  stripTrackingParameters(listingUrl);
   const seen = new Map<string, number>();
   const sameHostDistinct: { url: string; title?: string }[] = [];
   for (const anchor of extractAnchors(html)) {
@@ -521,7 +548,7 @@ export function extractListingSample(html: string, finalUrl: string): SourceSamp
     }
     if (isPrivateHostname(candidate.hostname)) continue;
     candidate.hash = "";
-    candidate.search = "";
+    stripTrackingParameters(candidate);
     const href = candidate.toString();
     if (href === listingUrl.toString()) continue;
     const title = anchor.text;
@@ -783,4 +810,53 @@ export async function discoverChangeDetection(inputUrl: URL): Promise<{
   }
 
   return { mechanism: null, ...evidence() };
+}
+
+export async function discoverFeedOrListing(
+  input: URL,
+): Promise<
+  | { kind: "rss"; target: string; name: string }
+  | { kind: "website"; target: string; name: string }
+  | null
+> {
+  const { fetchFeedSample } = await import("@/lib/sources/feed");
+  const { parseListingEntries } = await import("@/lib/collect/listing");
+  const name = input.hostname.replace(/^www\./, "");
+  let html = "";
+  let finalUrl = input.toString();
+  const candidates = new Set<string>([input.toString()]);
+  try {
+    const fetched = await fetchSafeSourceWithFinalUrl(
+      "Source admission",
+      input.toString(),
+      input.hostname,
+    );
+    finalUrl = fetched.finalUrl;
+    if (fetched.res.ok) {
+      html = await readHtmlWithinLimit(fetched.res, finalUrl);
+      for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+        if (
+          !/\brel\s*=\s*["']alternate["']/i.test(tag) ||
+          !/\btype\s*=\s*["']application\/(?:rss|atom)\+xml["']/i.test(tag)
+        )
+          continue;
+        const href = tag.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];
+        if (href) candidates.add(new URL(href, finalUrl).toString());
+      }
+    } else await fetched.res.body?.cancel();
+  } catch {
+    // A broken page may still have a working feed at a known path.
+  }
+  for (const path of FEED_PATHS) candidates.add(new URL(path, finalUrl).toString());
+  for (const target of candidates) {
+    try {
+      if ((await fetchFeedSample(target, 1, input.hostname)).length)
+        return { kind: "rss", target, name };
+    } catch {
+      // Feed candidates are alternatives; failure of one must not hide a valid listing.
+    }
+  }
+  return html && parseListingEntries(html, finalUrl).length >= 5
+    ? { kind: "website", target: finalUrl, name }
+    : null;
 }

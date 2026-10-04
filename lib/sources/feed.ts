@@ -1,15 +1,6 @@
-// lib/sources/feed.ts
-//
-// Fetches and parses an RSS 2.0 or Atom feed — the fallback change-detection path when a
-// site has no discoverable news sitemap. Also produces `SourceSampleEntry`
-// (lib/sources/sitemap.ts owns the shared type), the one difference being feed entries
-// usually carry a teaser (description/content:encoded, or Atom's summary/content), which
-// the sitemap-only path never has. Uses fast-xml-parser, same as sitemap.ts. Pure I/O
-// module: no Supabase, no React.
-
-import { XMLParser } from "fast-xml-parser";
-import { assertFetchOk } from "@/lib/http-fetch";
-import { fetchSafeSource } from "@/lib/sources/discovery";
+import { XMLParser, XMLValidator } from "fast-xml-parser";
+import { z } from "zod";
+import { fetchSafeSource, readHtmlWithinLimit } from "@/lib/sources/discovery";
 import type { SourceSampleEntry } from "@/lib/sources/sitemap";
 
 export type { SourceSampleEntry } from "@/lib/sources/sitemap";
@@ -19,117 +10,117 @@ const parser = new XMLParser({
   attributeNamePrefix: "@_",
   parseTagValue: false,
 });
+const nodeSchema = z.record(z.string(), z.unknown());
+const textSchema = z.union([z.string(), z.object({ "#text": z.string().optional() })]);
+type FeedNode = z.infer<typeof nodeSchema>;
 
-function asArray<T>(value: T | T[] | undefined): T[] {
-  if (value === undefined) return [];
-  return Array.isArray(value) ? value : [value];
+function nodes(value: unknown): FeedNode[] {
+  return (Array.isArray(value) ? value : [value]).flatMap((entry) => {
+    const parsed = nodeSchema.safeParse(entry);
+    return parsed.success ? [parsed.data] : [];
+  });
 }
 
-type RawFeedItem = {
-  link?: string;
-  guid?: string | { "#text"?: string };
-  title?: string;
-  pubDate?: string;
-  description?: string;
-  "content:encoded"?: string;
-  category?: string | string[];
-};
-
-function guidAsUrl(guid: RawFeedItem["guid"]): string | undefined {
-  if (typeof guid === "string") return guid;
-  return guid?.["#text"];
+function text(value: unknown): string | undefined {
+  const parsed = textSchema.safeParse(value);
+  if (!parsed.success) return undefined;
+  return typeof parsed.data === "string" ? parsed.data : parsed.data["#text"];
 }
 
-function toSampleEntry(raw: RawFeedItem): SourceSampleEntry | null {
-  const url = raw.link ?? guidAsUrl(raw.guid);
-  if (!url) return null;
-  const teaser = raw.description ?? raw["content:encoded"];
-  const keywords = Array.isArray(raw.category) ? raw.category.join(", ") : raw.category;
-  return {
-    url,
-    publishedAt: raw.pubDate,
-    title: raw.title,
-    keywords,
-    teaser,
-  };
+function publicLink(value: unknown, baseUrl: string): string | undefined {
+  const raw = text(value);
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw, baseUrl);
+    return ["https:", "http:"].includes(url.protocol) ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
-// Atom (RFC 4287): root is <feed><entry>, not RSS 2.0's <rss><channel><item> — a distinct
-// schema, not a variant, so it needs its own raw shape and mapper. <link> is a self-closing
-// element carrying its URL in an `href` attribute (never text content), and a single entry
-// can repeat it with different `rel` values; `rel="alternate"` (or no rel, the Atom default)
-// is the one this cares about. <category> likewise carries its value in a `term` attribute.
-// An element with attributes (e.g. <summary type="html">, <title type="text">) parses to
-// `{ "@_type": ..., "#text": ... }`, not a plain string — any Atom text-construct field can
-// take either shape depending on whether the source feed put an attribute on that tag.
-type AtomTextConstruct = string | { "#text"?: string };
-type RawAtomLink = { "@_href"?: string; "@_rel"?: string };
-type RawAtomCategory = { "@_term"?: string };
-type RawAtomEntry = {
-  link?: RawAtomLink | RawAtomLink[];
-  id?: string;
-  title?: AtomTextConstruct;
-  updated?: string;
-  published?: string;
-  summary?: AtomTextConstruct;
-  content?: AtomTextConstruct;
-  category?: RawAtomCategory | RawAtomCategory[];
-};
-
-function atomText(value: AtomTextConstruct | undefined): string | undefined {
-  return typeof value === "string" ? value : value?.["#text"];
+function entryImage(entry: FeedNode, body: string | undefined, url: string): string | undefined {
+  for (const enclosure of [...nodes(entry.enclosure), ...nodes(entry.link)]) {
+    const type = text(enclosure["@_type"]);
+    const rel = text(enclosure["@_rel"]);
+    if ((rel && rel !== "enclosure") || !type?.startsWith("image/")) continue;
+    const image = publicLink(enclosure["@_url"] ?? enclosure["@_href"], url);
+    if (image) return image;
+  }
+  const media = [...nodes(entry["media:thumbnail"]), ...nodes(entry["media:content"])];
+  for (const group of nodes(entry["media:group"])) {
+    media.push(...nodes(group["media:thumbnail"]), ...nodes(group["media:content"]));
+  }
+  for (const image of media) {
+    const type = text(image["@_type"]);
+    const medium = text(image["@_medium"]);
+    if (type && !type.startsWith("image/")) continue;
+    if (medium && medium !== "image") continue;
+    const link = publicLink(image["@_url"], url);
+    if (link) return link;
+  }
+  return publicLink(body?.match(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/i)?.[1], url);
 }
 
-function atomLinkHref(link: RawAtomEntry["link"]): string | undefined {
-  const links = asArray(link);
-  const alternate = links.find((entry) => !entry["@_rel"] || entry["@_rel"] === "alternate");
-  return (alternate ?? links[0])?.["@_href"];
+export function parseFeedEntries(xml: string, feedUrl: string): SourceSampleEntry[] {
+  if (
+    xml.length > 5_000_000 ||
+    /<!DOCTYPE|<!ENTITY/i.test(xml) ||
+    XMLValidator.validate(xml) !== true
+  ) {
+    throw new Error("Feed parse unavailable");
+  }
+  const root = nodeSchema.parse(parser.parse(xml));
+  const atom = nodes(root.feed)[0];
+  const rss = nodes(nodes(root.rss)[0]?.channel)[0];
+  const rdf = nodes(root["rdf:RDF"] ?? root.RDF)[0];
+  if (!atom && !rss && !rdf) throw new Error("Feed parse unavailable");
+  return nodes(atom ? atom.entry : rss ? rss.item : rdf?.item).flatMap((entry) => {
+    const links = nodes(entry.link);
+    const alternate = links.find((link) => !link["@_rel"] || link["@_rel"] === "alternate");
+    const url = publicLink(
+      atom ? (alternate?.["@_href"] ?? entry.id) : (entry.link ?? entry.guid),
+      feedUrl,
+    );
+    if (!url) return [];
+    const body =
+      text(entry["content:encoded"]) ??
+      text(entry.content) ??
+      text(entry.description) ??
+      text(entry.summary);
+    const categories = Array.isArray(entry.category) ? entry.category : [entry.category];
+    const keywords = categories
+      .flatMap((category) => {
+        const term = text(category) ?? text(nodes(category)[0]?.["@_term"]);
+        return term ? [term] : [];
+      })
+      .join(", ");
+    return [
+      {
+        url,
+        title: text(entry.title),
+        publishedAt:
+          text(entry.pubDate) ??
+          text(entry.date) ??
+          text(entry["dc:date"]) ??
+          text(entry.published) ??
+          text(entry.updated),
+        teaser: body,
+        keywords: keywords || undefined,
+        image: entryImage(entry, body, url),
+      },
+    ];
+  });
 }
 
-function atomTeaser(entry: RawAtomEntry): string | undefined {
-  return atomText(entry.summary) ?? atomText(entry.content);
-}
-
-function atomKeywords(category: RawAtomEntry["category"]): string | undefined {
-  const terms = asArray(category)
-    .map((entry) => entry["@_term"])
-    .filter((term): term is string => !!term);
-  return terms.length > 0 ? terms.join(", ") : undefined;
-}
-
-function toAtomSampleEntry(raw: RawAtomEntry): SourceSampleEntry | null {
-  const url = atomLinkHref(raw.link) ?? raw.id;
-  if (!url) return null;
-  return {
-    url,
-    publishedAt: raw.updated ?? raw.published,
-    title: atomText(raw.title),
-    keywords: atomKeywords(raw.category),
-    teaser: atomTeaser(raw),
-  };
-}
-
-/** Fetches a sample of up to `limit` recent items from an RSS 2.0 or Atom `feedUrl`,
- *  detected by root element (`<rss>` vs `<feed>`) — a site's declared `type="..."` on the
- *  discovering `<link>` tag isn't trustworthy on its own (managingmadrid.com labels its
- *  Atom feed `application/rss+xml`), so this parses whichever shape the fetched body
- *  actually is. */
 export async function fetchFeedSample(
   feedUrl: string,
   limit: number,
   expectedHostname = new URL(feedUrl).hostname,
 ): Promise<SourceSampleEntry[]> {
   const res = await fetchSafeSource("Feed", feedUrl, expectedHostname);
-  await assertFetchOk("Feed", feedUrl, res);
-  const xml = await res.text();
-  const parsed = parser.parse(xml);
-
-  const entries = parsed.feed
-    ? asArray<RawAtomEntry>(parsed.feed?.entry)
-        .map(toAtomSampleEntry)
-        .filter((entry): entry is SourceSampleEntry => entry !== null)
-    : asArray<RawFeedItem>(parsed.rss?.channel?.item)
-        .map(toSampleEntry)
-        .filter((entry): entry is SourceSampleEntry => entry !== null);
-  return entries.slice(0, limit);
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new Error(`Feed ${feedUrl} ${res.status}`);
+  }
+  return parseFeedEntries(await readHtmlWithinLimit(res, feedUrl), feedUrl).slice(0, limit);
 }

@@ -1,0 +1,11 @@
+# Owner, September 30, 2026: Git execution is globally approved in ~/.codex/rules/default.rules.
+# Keep only non-Git command restrictions here. Workflow instructions still define each stage.
+prefix_rule(pattern=["gh", "issue", "close"], decision="forbidden",
+            justification="Issues close at ship, on the owner's word.")
+prefix_rule(pattern=["gh", "pr"], decision="forbidden",
+            justification="Pull requests are opened only by /promote on the owner's word.")
+prefix_rule(pattern=["gh", "api"], decision="prompt",
+            justification="Raw GitHub API writes need a look.")
+prefix_rule(pattern=["rm", "-rf"], decision="prompt",
+            justification="A recursive delete goes through the automatic reviewer.",
+            match=["rm -rf build"], not_match=["rm file.txt"])
