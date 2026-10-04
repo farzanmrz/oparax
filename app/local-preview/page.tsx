@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AccountsStrip } from "@/components/monitor/accounts-strip";
 import { AgentHeader } from "@/components/monitor/agent-header";
+import { Bubble } from "@/components/monitor/bubble";
 import { DigestBlock } from "@/components/monitor/digest-block";
 import { Feed } from "@/components/monitor/feed";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { SourcesList } from "@/components/monitor/sources-list";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   previewBeat,
@@ -46,7 +45,6 @@ export default async function LocalPreviewPage({
       >
         {monitorContent.skipToNews}
       </a>
-      <SiteHeader signedIn={false} />
       <main
         id="monitor-content"
         tabIndex={-1}
@@ -60,7 +58,6 @@ export default async function LocalPreviewPage({
           beat={previewBeat}
           profile={previewProfile}
           brief={previewBrief}
-          canEdit={false}
         />
         <div className="grid gap-8 desk:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-6">
@@ -74,7 +71,7 @@ export default async function LocalPreviewPage({
           </aside>
         </div>
       </main>
-      <SiteFooter />
+      <Bubble handle={previewHandle} displayHandle={previewHandle} />
     </div>
   );
 }

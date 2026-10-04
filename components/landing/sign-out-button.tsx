@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { landingContent } from "@/lib/landing/content";
 import { createClient } from "@/lib/supabase/client";
 
-export function SignOutButton() {
+/** Signs out in the browser, records it, clears the analytics identity and returns home. */
+export function useSignOut() {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "pending" | "error">("idle");
-  const copy = landingContent.navigation;
 
   async function signOut() {
     setStatus("pending");
@@ -41,6 +41,13 @@ export function SignOutButton() {
     router.replace("/");
     router.refresh();
   }
+
+  return { status, signOut };
+}
+
+export function SignOutButton() {
+  const { status, signOut } = useSignOut();
+  const copy = landingContent.navigation;
 
   return (
     <Button

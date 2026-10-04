@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AccountsStrip } from "@/components/monitor/accounts-strip";
 import { AgentHeader } from "@/components/monitor/agent-header";
 import { BotButton } from "@/components/monitor/bot-button";
+import { Bubble } from "@/components/monitor/bubble";
 import { Building } from "@/components/monitor/building";
 import { DigestBlock } from "@/components/monitor/digest-block";
 import { Feed } from "@/components/monitor/feed";
@@ -64,7 +65,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
       >
         {copy.skipToNews}
       </a>
-      <SiteHeader signedIn={viewer.signedIn} />
+      {isOwner ? null : <SiteHeader signedIn={viewer.signedIn} />}
       {isOwner ? <PostHogUserContext id={viewer.userId} /> : null}
       <main
         id="monitor-content"
@@ -76,7 +77,6 @@ export default async function MonitorPage({ params, searchParams }: Props) {
           beat={monitor.beat}
           profile={monitor.profile}
           brief={monitor.brief}
-          canEdit={isOwner}
         />
         <RefreshWhileBuilding building={building} />
         {building || failed ? (
@@ -126,7 +126,11 @@ export default async function MonitorPage({ params, searchParams }: Props) {
           </>
         )}
       </main>
-      <SiteFooter />
+      {isOwner ? (
+        <Bubble handle={monitor.handle} displayHandle={monitor.display_handle} />
+      ) : (
+        <SiteFooter />
+      )}
     </div>
   );
 }

@@ -1,8 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import { cardShadow } from "@/components/monitor/item-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { monitorContent as copy, safeWebUrl } from "@/lib/monitor/content";
 import type { Brief, Profile } from "@/lib/monitor/read";
@@ -34,13 +32,11 @@ export function AgentHeader({
   beat,
   profile,
   brief,
-  canEdit,
 }: {
   handle: string;
   beat: string;
   profile: Profile | null;
   brief: Brief | null;
-  canEdit: boolean;
 }) {
   return (
     <section className="space-y-5">
@@ -52,11 +48,6 @@ export function AgentHeader({
           <p className="text-sm text-muted-foreground">@{handle}</p>
           <p className="text-sm text-muted-foreground">{copy.personalization(handle)}</p>
         </div>
-        {canEdit ? (
-          <Button variant="outline" asChild className="min-h-11 desk:min-h-6">
-            <Link href={`/${handle}/settings`}>{copy.settings}</Link>
-          </Button>
-        ) : null}
       </div>
       <p className="text-lg">{beat}</p>
       {brief ? (
