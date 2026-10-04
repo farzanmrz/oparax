@@ -136,7 +136,7 @@ export function AmbientWaves({ dark, running }: { dark: boolean; running: boolea
     function draw() {
       if (!context) return;
       context.clearRect(0, 0, width, height);
-      context.strokeStyle = dark ? "#6b94ff" : "#245dec";
+      context.strokeStyle = dark ? "#6b95ff" : "#2459e8";
       context.globalAlpha = dark ? 0.22 : 0.13;
       context.lineWidth = 0.9;
       context.beginPath();

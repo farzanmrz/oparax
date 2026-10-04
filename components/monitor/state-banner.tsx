@@ -20,7 +20,7 @@ export function StateBanner({
         <p
           className={
             state.daysLeft !== null && state.daysLeft < 3
-              ? "text-amber-800 dark:text-amber-300"
+              ? "text-[var(--caution)]"
               : "text-muted-foreground"
           }
         >
