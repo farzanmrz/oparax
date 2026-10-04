@@ -2,6 +2,10 @@
 
 Oparax monitors sources and alerts one person on X. The work in flight is its GitHub issue (151: sign-up first, then onboarding and feed); `docs/roadmap.md` is the short product summary.
 
+## Design status (owner, October 4, 2026)
+
+The design is not done. The product is incomplete. Farzan is still going through the design. What is live on oparax.ai right now is the DESIGN PREVIEW (`scratch/design-recovery/site`, the "One" pages under `/v2/one/`: login, setup, onboarding, feed, sources, notifications), served so he can walk the whole flow there; it is not the product app at the repo root. The Vercel project's root directory points at `scratch/design-recovery/site` for this; set it back to the repo root to serve the product again. For now all work goes directly on `main` (owner, October 4: "merge through all the branches, and any future work I want to do directly on main"). The record of every design decision, his verbatim notes and the next step for a new session: `scratch/design-recovery/focus-review/RUN-STATE.md` (read its top section first) and `PAGE-NOTES.md`.
+
 ## Working with the owner
 
 Host conversation only; subagents and review lanes skip this section. The owner knows engineering and AI, not the web stack.
