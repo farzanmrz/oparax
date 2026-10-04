@@ -1,11 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { field, label, primary } from "@/components/auth/one-card";
 import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, updatePasswordAction } from "@/lib/auth/actions";
 import { authContent } from "@/lib/auth/content";
+import { cn } from "@/lib/utils";
 
 // Client island: drives updatePasswordAction via useActionState. The one-time
 // recovery token rides along as hidden fields (token_hash, type) so it is
@@ -25,45 +25,43 @@ export function ResetPasswordForm({
   );
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="mt-6" aria-busy={isPending}>
       {/* Replay's session_recording.blockSelector blocks every hidden input and slimDOMOptions
           drops script nodes, so token_hash cannot enter a snapshot through these fields or the
           tokenHash hydration payload. If either token is moved off type="hidden" or rendered
           visibly, that recording rule must follow it. */}
       {tokenHash && <input type="hidden" name="token_hash" value={tokenHash} />}
       {tokenType && <input type="hidden" name="type" value={tokenType} />}
-      <div className="space-y-1.5">
-        <label htmlFor="password" className="block text-sm font-medium">
-          {authContent.newPassword}
+      <div className="grid gap-3.5">
+        <label className="grid gap-1.5">
+          <span className={label}>{authContent.newPassword}</span>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            className={field}
+          />
         </label>
-        <Input
-          className="min-h-11 desk:min-h-7"
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="confirm-password" className="block text-sm font-medium">
-          {authContent.confirmNewPassword}
+        <label className="grid gap-1.5">
+          <span className={label}>{authContent.confirmNewPassword}</span>
+          <input
+            id="confirm-password"
+            name="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            required
+            className={field}
+          />
         </label>
-        <Input
-          className="min-h-11 desk:min-h-7"
-          id="confirm-password"
-          name="confirm-password"
-          type="password"
-          autoComplete="new-password"
-          required
-        />
       </div>
       {state.error && (
-        <p role="alert" className="text-sm leading-relaxed text-destructive">
+        <p role="alert" className="mt-3 text-[13px] leading-relaxed text-[var(--error)]">
           {state.error}
         </p>
       )}
-      <Button type="submit" className="min-h-11 w-full desk:min-h-7" disabled={isPending}>
+      <button type="submit" className={cn(primary, "mt-5")} disabled={isPending}>
         {isPending ? (
           <>
             <Spinner />
@@ -72,7 +70,7 @@ export function ResetPasswordForm({
         ) : (
           authContent.updatePassword
         )}
-      </Button>
+      </button>
     </form>
   );
 }

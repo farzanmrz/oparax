@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AuthAlert, AuthShell } from "@/components/auth-shell";
+import { AuthStage, CardNotice, CardTitle, link } from "@/components/auth/one-card";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { authContent } from "@/lib/auth/content";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
-// Forgot-password page: branded shell around the existing
+// Forgot-password page: the One card around the existing
 // resetPasswordAction form (sends the recovery email). The error param
 // arrives from the email-confirmation handler when a recovery link is
 // invalid. Signed-in users never see auth forms; they are returned to /.
@@ -31,23 +32,22 @@ export default async function ForgotPasswordPage({
   return (
     <>
       <PostHogUserContext id={null} email={undefined} />
-      <AuthShell
-        title={authContent.forgotTitle}
-        subtitle={authContent.forgotSubtitle}
-        footer={
-          <p>
-            <Link href="/login" className="text-foreground underline underline-offset-4">
-              {authContent.backToLogin}
-            </Link>
-          </p>
-        }
-      >
-        <div className="space-y-4">
-          {error && <AuthAlert tone="error">{error}</AuthAlert>}
-          {message && <AuthAlert tone="notice">{message}</AuthAlert>}
-          <ForgotPasswordForm />
-        </div>
-      </AuthShell>
+      <AuthStage>
+        <CardTitle>{authContent.forgotTitle}</CardTitle>
+        <p className="mt-2.5 text-[13.5px] leading-relaxed text-t2">{authContent.forgotSubtitle}</p>
+        {error || message ? (
+          <div className="mt-5 grid gap-2">
+            {error ? <CardNotice tone="error">{error}</CardNotice> : null}
+            {message ? <CardNotice tone="notice">{message}</CardNotice> : null}
+          </div>
+        ) : null}
+        <ForgotPasswordForm />
+        <p className="mt-5 text-center text-[13px]">
+          <Link href="/login" className={cn("font-medium", link)}>
+            {authContent.backToLogin}
+          </Link>
+        </p>
+      </AuthStage>
     </>
   );
 }

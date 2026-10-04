@@ -17,12 +17,12 @@ import { cn } from "@/lib/utils";
 
 type Mode = "login" | "signup";
 
-const field =
+export const field =
   "h-10 w-full rounded-md border border-line-strong bg-well px-3 text-[14px] text-t1 placeholder:text-t3 outline-none transition-shadow focus-visible:border-[var(--brand)] focus-visible:shadow-[0_0_0_3px_var(--brand-soft)] aria-invalid:border-[var(--error)]";
-const label = "text-[13px] font-medium text-t2";
-const link =
+export const label = "text-[13px] font-medium text-t2";
+export const link =
   "text-t1 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring rounded-sm";
-const primary =
+export const primary =
   "inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-lg bg-primary text-[14px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_0_0_1px_rgb(36_89_232/0.6),0_4px_14px_-4px_rgb(58_108_244/0.55)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70";
 
 /** The lit page with the brand row on top and one lifted card in the middle. */
@@ -59,6 +59,41 @@ export function AuthStage({ children }: { children: React.ReactNode }) {
         </section>
       </main>
     </div>
+  );
+}
+
+/** The card's heading, the same on every auth page. */
+export function CardTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h1 className="text-[26px] leading-none font-semibold tracking-[-0.025em] text-t1">
+      {children}
+    </h1>
+  );
+}
+
+/** An error or notice carried in the URL or returned by an action. */
+export function CardNotice({
+  tone,
+  id,
+  children,
+}: {
+  tone: "error" | "notice";
+  id?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <p
+      id={id}
+      role={tone === "error" ? "alert" : "status"}
+      className={cn(
+        "rounded-lg border px-3 py-2 text-[13px] leading-relaxed",
+        tone === "error"
+          ? "border-[var(--error)]/30 bg-[var(--error-soft)] text-[var(--error)]"
+          : "border-line bg-well text-t1",
+      )}
+    >
+      {children}
+    </p>
   );
 }
 
@@ -135,9 +170,7 @@ export function OneAuthCard({
   if (signup && signupState.signupComplete) {
     return (
       <div>
-        <h1 className="text-[26px] leading-none font-semibold tracking-[-0.025em] text-t1">
-          {copy.cardSignupTitle}
-        </h1>
+        <CardTitle>{copy.cardSignupTitle}</CardTitle>
         <p
           role="status"
           className="mt-6 rounded-lg border border-line bg-well px-3 py-2.5 text-[13.5px] leading-relaxed text-t1"
@@ -150,24 +183,12 @@ export function OneAuthCard({
 
   return (
     <div>
-      <h1 className="text-[26px] leading-none font-semibold tracking-[-0.025em] text-t1">
-        {signup ? copy.cardSignupTitle : copy.cardLoginTitle}
-      </h1>
-      {error ? (
-        <p
-          role="alert"
-          className="mt-5 rounded-lg border border-[var(--error)]/30 bg-[var(--error-soft)] px-3 py-2 text-[13px] leading-relaxed text-[var(--error)]"
-        >
-          {error}
-        </p>
-      ) : null}
-      {message ? (
-        <p
-          role="status"
-          className="mt-5 rounded-lg border border-line bg-well px-3 py-2 text-[13px] leading-relaxed text-t1"
-        >
-          {message}
-        </p>
+      <CardTitle>{signup ? copy.cardSignupTitle : copy.cardLoginTitle}</CardTitle>
+      {error || message ? (
+        <div className="mt-5 grid gap-2">
+          {error ? <CardNotice tone="error">{error}</CardNotice> : null}
+          {message ? <CardNotice tone="notice">{message}</CardNotice> : null}
+        </div>
       ) : null}
       <form
         action={signup ? signupFormAction : loginFormAction}
