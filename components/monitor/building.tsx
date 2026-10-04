@@ -45,39 +45,8 @@ export function Building({
   canRetry: boolean;
   tries: number;
 }) {
-  const router = useRouter();
   const reducedMotion = useReducedMotion();
-  const [retrying, setRetrying] = useState(false);
-  const [error, setError] = useState(false);
   const labels = copy.steps(handle);
-  async function retry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setRetrying(true);
-    setError(false);
-    try {
-      const response = await fetch("/api/build/retry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monitorId }),
-      });
-      if (!response.ok) {
-        setError(true);
-      } else {
-        const result = retryResult.safeParse(await response.json());
-        if (!result.success || !safeRetryDestination(result.data.redirect)) {
-          setError(true);
-        } else if (result.data.redirect === `/${handle}`) {
-          router.refresh();
-        } else {
-          router.push(result.data.redirect);
-        }
-      }
-    } catch {
-      setError(true);
-    } finally {
-      setRetrying(false);
-    }
-  }
   return (
     <section aria-labelledby="building-heading" className="space-y-4">
       <h2 id="building-heading" className="font-heading text-xl font-bold">
@@ -116,17 +85,71 @@ export function Building({
           <AlertDescription className="space-y-3 text-sm">
             <p>{copy.buildFailed(labels[Math.min(Math.max(step - 1, 0), 2)], copy.buildReason)}</p>
             {canRetry && tries < 2 ? (
-              <form method="post" action="/api/build/retry" onSubmit={retry}>
-                <input type="hidden" name="monitorId" value={monitorId} />
-                <Button disabled={retrying} className="min-h-11 desk:min-h-6">
-                  {copy.retry}
-                </Button>
-              </form>
+              <RetryBuild monitorId={monitorId} handle={handle}>
+                {(retrying) => (
+                  <Button disabled={retrying} className="min-h-11 desk:min-h-6">
+                    {copy.retry}
+                  </Button>
+                )}
+              </RetryBuild>
             ) : null}
-            {error ? <p role="alert">{copy.retryFailed}</p> : null}
           </AlertDescription>
         </Alert>
       ) : null}
     </section>
+  );
+}
+
+/** The existing retry: a POST to /api/build/retry (a plain form post without script), then a refresh in place. */
+export function RetryBuild({
+  monitorId,
+  handle,
+  children,
+}: {
+  monitorId: string;
+  handle: string;
+  children: (retrying: boolean) => React.ReactNode;
+}) {
+  const router = useRouter();
+  const [retrying, setRetrying] = useState(false);
+  const [error, setError] = useState(false);
+  async function retry(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setRetrying(true);
+    setError(false);
+    try {
+      const response = await fetch("/api/build/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monitorId }),
+      });
+      if (!response.ok) {
+        setError(true);
+      } else {
+        const result = retryResult.safeParse(await response.json());
+        if (!result.success || !safeRetryDestination(result.data.redirect)) {
+          setError(true);
+        } else if (result.data.redirect === `/${handle}`) {
+          router.refresh();
+        } else {
+          router.push(result.data.redirect);
+        }
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setRetrying(false);
+    }
+  }
+  return (
+    <form method="post" action="/api/build/retry" onSubmit={retry} className="grid gap-2">
+      <input type="hidden" name="monitorId" value={monitorId} />
+      {children(retrying)}
+      {error ? (
+        <p role="alert" className="text-[13px] text-[var(--error)]">
+          {copy.retryFailed}
+        </p>
+      ) : null}
+    </form>
   );
 }

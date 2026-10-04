@@ -8,6 +8,7 @@ import { Bubble } from "@/components/monitor/bubble";
 import { Building } from "@/components/monitor/building";
 import { DigestBlock } from "@/components/monitor/digest-block";
 import { Feed } from "@/components/monitor/feed";
+import { OnboardingView } from "@/components/monitor/onboarding";
 import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-building";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { SourcesList } from "@/components/monitor/sources-list";
@@ -19,6 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { monitorContent as copy } from "@/lib/monitor/content";
 import { readBuildLog, readFeed, readMonitor, readViewer } from "@/lib/monitor/read";
 import { monitorState } from "@/lib/monitor-state";
+import { readOnboarding } from "@/lib/onboarding/read";
 
 type Props = {
   params: Promise<{ handle: string; story?: string }>;
@@ -27,6 +29,7 @@ type Props = {
     beforeId?: string | string[];
     view?: string | string[];
     error?: string | string[];
+    built?: string | string[];
   }>;
 };
 
@@ -52,11 +55,44 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   const before = typeof search.before === "string" ? search.before : undefined;
   const beforeId = typeof search.beforeId === "string" ? search.beforeId : undefined;
   const view = typeof search.view === "string" ? search.view : undefined;
-  const [feed, log] = await Promise.all([
-    !building && !failed ? readFeed(monitor, { before, beforeId, view, storyId: story }) : null,
-    building || failed ? readBuildLog(monitor.id) : [],
+  // The owner watches the build on the One onboarding page, which ends in place once the build completes.
+  const justBuilt =
+    !story && search.built === "1" && !building && !failed && monitor.build_finished_at !== null;
+  const onboarding = isOwner && (building || failed || justBuilt);
+  const [feed, log, run] = await Promise.all([
+    !building && !failed && !onboarding
+      ? readFeed(monitor, { before, beforeId, view, storyId: story })
+      : null,
+    building || failed || onboarding ? readBuildLog(monitor.id) : [],
+    onboarding ? readOnboarding(monitor.id) : null,
   ]);
   if (story && !feed?.storyFound) notFound();
+  if (onboarding) {
+    const steps = copy.onboarding.steps;
+    return (
+      <>
+        <PostHogUserContext id={viewer.userId} />
+        <RefreshWhileBuilding building={building} />
+        <main id="monitor-content" tabIndex={-1} className="wrap-anywhere">
+          <OnboardingView
+            monitorId={monitor.id}
+            handle={monitor.display_handle}
+            step={monitor.build_step}
+            log={log}
+            failed={failed}
+            ready={justBuilt}
+            canRetry={monitor.build_tries < 2}
+            failure={copy.buildFailed(
+              steps[Math.min(Math.max(monitor.build_step - 1, 0), steps.length - 1)],
+              copy.buildReason,
+            )}
+            onboarding={run ?? { profile: null, posts: [], sources: [], brief: null }}
+          />
+        </main>
+        <Bubble handle={monitor.handle} displayHandle={monitor.display_handle} />
+      </>
+    );
+  }
   return (
     <div className="flex min-h-dvh flex-col">
       <a
