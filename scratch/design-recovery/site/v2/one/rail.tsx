@@ -7,19 +7,18 @@ import { OparaxMark } from "@/pro/shared/brand";
 import { ThemeToggle } from "@/next/theme";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle, Stage } from "@/v2/deck/chrome";
-import { groups, HANDLE, itemsFrom, status, type Group, type Source } from "@/v2/deck/data";
+import { groups, HANDLE, itemsFrom, type Group, type Source } from "@/v2/deck/data";
 import { GroupGlyph, SourceMark } from "@/v2/deck/marks";
 import { BASE, type LabelMode } from "./card";
 
 // The One sidebar, drawn as the Deck's source aside (v2/deck/feed.tsx): a 240px lifted column in the page grid,
-// the stories in the next column. Open: the mark, "Oparax", the theme toggle and Collapse on top, then a copy of
-// the Deck's source list (Sources, All sources, the group labels, 18px logos, 13px names, counts in one
-// right-aligned column, three per group before "Show more"), then under one divider three rows of one anatomy:
-// Notifications (opens its channels inline), the account with its days left, and Sign out. Closed, the column is
-// gone and the content takes the width; one Expand control sits at the top left of the content's top row. Escape
-// in the open aside collapses it and focuses Expand.
-
-const LIMIT = 3;
+// the stories in the next column. Open: the mark, "Oparax", the theme toggle and Collapse on a 36px row; 24px of
+// clear space; then a copy of the Deck's source list (Sources, 16px, All sources, 20px, then every group: its label,
+// 8px, its 32px rows, 20px to the next), 18px logos, 13px names and every count in one right-aligned column. The
+// list scrolls; under a soft rule the bottom block stays pinned: Notifications (opens its channels inline), the
+// account and Sign out, three 36px rows of one anatomy. Closed, the column is gone and the content takes the width;
+// one Expand control sits at the top left of the content's top row. Escape in the open aside collapses it and
+// focuses Expand.
 
 type Sidebar = { open: boolean; expand: () => void; focusExpand: React.MutableRefObject<boolean> };
 const SidebarContext = createContext<Sidebar | null>(null);
@@ -139,7 +138,7 @@ function Rail({
         onCollapse();
       }}
     >
-      <div className="flex h-9 items-center gap-1 pb-1 pl-1.5">
+      <div className="flex h-9 shrink-0 items-center gap-1 pl-1.5">
         <Link href={`${BASE}/landing`} className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-t1">
           <OparaxMark className="size-[20px]" />
           Oparax
@@ -158,12 +157,12 @@ function Rail({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
+      <div className="mt-6 min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
         <SourceList sources={sources} onSource={onSource} activeSource={activeSource ?? null} emptyLine={emptyLine} />
       </div>
 
       {/* Pinned to the bottom of the sidebar (owner, Oct 4: "Why is that not at the bottom?") */}
-      <div className="mt-auto border-t border-line pt-2">
+      <div className="mt-auto shrink-0 border-t border-line-soft pt-2">
         <button type="button" onClick={() => setChannels(!channels)} aria-expanded={channels} className={accountRow}>
           <span className="grid size-[18px] shrink-0 place-items-center">
             <Bell className="size-4" aria-hidden="true" />
@@ -181,7 +180,6 @@ function Rail({
         <div className={accountRow}>
           <span className="grid size-[18px] shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">F</span>
           <span className="min-w-0 flex-1 truncate">@{HANDLE}</span>
-          <span className="shrink-0 text-right text-[11px] tabular-nums text-t3">{status.daysLeft} days left</span>
         </div>
         <Link href={`${BASE}/login`} className={accountRow}>
           <span className="grid size-[18px] shrink-0 place-items-center">
@@ -198,7 +196,7 @@ function Rail({
 const countCol = "w-6 shrink-0 text-right text-[11px] tabular-nums text-t3";
 const count = (s: Source) => itemsFrom(s.id).length;
 
-/** A copy of the Deck's SourceList (v2/deck/feed.tsx), names only, groups capped at three with Show more. */
+/** A copy of the Deck's SourceList (v2/deck/feed.tsx), names only, every source listed. */
 function SourceList({
   sources,
   onSource,
@@ -212,19 +210,17 @@ function SourceList({
 }) {
   return (
     <div aria-label="Sources">
-      <div className="flex items-center justify-between gap-2 px-1.5 pt-1 pb-2.5">
-        <p className="text-[13px] font-semibold text-t1">Sources</p>
-      </div>
+      <p className="mb-4 px-1.5 text-[13px] leading-5 font-semibold text-t1">Sources</p>
       {sources.length === 0 && emptyLine ? <p className="px-2 pt-1 text-[12.5px] leading-relaxed text-t3">{emptyLine}</p> : null}
       {sources.length > 0 ? (
-        <Row on={activeSource === null} onClick={onSource ? (e) => onSource(null, e.currentTarget) : undefined}>
+        <Row on={activeSource === null} onClick={onSource ? (e) => onSource(null, e.currentTarget) : undefined} className="h-9">
           <span className="grid size-[18px] place-items-center rounded-[5px] bg-[var(--brand-soft)] text-[var(--brand)]">
             <Layers className="size-3" aria-hidden="true" />
           </span>
           <span className="flex-1 text-left text-[13px] text-t1">All sources</span>
         </Row>
       ) : null}
-      <div className="mt-1">
+      <div>
         {groups.map((g) => {
           const members = sources.filter((s) => s.group === g.id).sort((a, b) => count(b) - count(a) || a.name.localeCompare(b.name));
           if (!members.length) return null;
@@ -248,34 +244,23 @@ function GroupBlock({
   onSource?: (id: string | null, trigger: HTMLElement) => void;
   activeSource: string | null;
 }) {
-  const [more, setMore] = useState(false);
-  const shown = more ? members : members.slice(0, LIMIT);
+  // Every source is listed, as the Deck does (owner, Oct 4: "the show more is looking horrible").
   return (
-    <div className="mt-3">
-      <GroupLabel glyph={<GroupGlyph group={group} />} count={members.length} className="px-2 pb-1.5">
+    <div className="mt-5">
+      <GroupLabel glyph={<GroupGlyph group={group} />} count={members.length} className="mb-2 h-4 px-2">
         {label}
       </GroupLabel>
-      {shown.map((s) => {
+      {members.map((s) => {
         const n = count(s);
         const on = activeSource === s.id;
         return (
-          <Row key={s.id} on={on} onClick={onSource ? (e) => onSource(on ? null : s.id, e.currentTarget) : undefined} title={s.focus || undefined}>
+          <Row key={s.id} on={on} onClick={onSource ? (e) => onSource(on ? null : s.id, e.currentTarget) : undefined} title={s.focus || undefined} className="h-8">
             <SourceMark source={s} size={18} />
             <span className="min-w-0 flex-1 truncate text-left text-[13px] text-t2">{s.name}</span>
             <span className={countCol}>{n > 0 ? n : null}</span>
           </Row>
         );
       })}
-      {members.length > LIMIT ? (
-        <button
-          type="button"
-          onClick={() => setMore(!more)}
-          aria-expanded={more}
-          className={cn("flex min-h-8 w-full items-center rounded-md px-2 py-1 pl-[38px] text-left text-[12px] text-t3 hover:text-t1", quiet)}
-        >
-          {more ? "Show less" : "Show more"}
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -291,10 +276,23 @@ function GroupLabel({ children, glyph, count, className }: { children: React.Rea
   );
 }
 
-/** The Deck's Row (v2/deck/feed.tsx). Without a handler it draws the same row without the hover. */
-function Row({ on, onClick, title, children }: { on: boolean; onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void; title?: string; children: React.ReactNode }) {
+/** The Deck's Row (v2/deck/feed.tsx) at a fixed height. Without a handler it draws the same row without the hover. */
+function Row({
+  on,
+  onClick,
+  title,
+  className,
+  children,
+}: {
+  on: boolean;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  title?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   const cls = cn(
-    "flex min-h-8 w-full items-center gap-2.5 rounded-md px-2 py-1",
+    "flex w-full items-center gap-2.5 rounded-md px-2",
+    className,
     onClick && "transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring",
     on && onClick && "bg-[var(--brand-soft)] shadow-[inset_0_0_0_1px_var(--brand-line)] hover:bg-[var(--brand-soft)]",
   );

@@ -1,34 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Pin } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { announce, isDone, stepIds, stepLabel, stepLine, stepTitle, useRun, type StepId, type StepState } from "@/next/building/steps";
+import { announce, currentStep, isDone, stepIds, stepLabel, stepLine, stepTitle, useRun, type StepId, type StepState } from "@/next/building/steps";
 import { StepMark } from "@/next/building/step-mark";
 import type { RunMode } from "@/next/building/mode";
-import { brief, profile } from "@/next/data/onboarding";
+import { brief, candidateCount, kept, posts, profile, quotedCandidates, setAsideCount, tableRows } from "@/next/data/onboarding";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+import { XLogo } from "@/pro/shared/brand";
 import { Plan, PlanContent, PlanDescription, PlanHeader, PlanTitle } from "@/components/ai-elements/plan";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle, PrimaryLink } from "@/v2/deck/chrome";
 import { groups, sources, type Group, type Source } from "@/v2/deck/data";
-import { Checking, EASE } from "@/v2/deck/live";
-import { GroupGlyph, kindColor, SourceMark } from "@/v2/deck/marks";
+import { EASE } from "@/v2/deck/live";
+import { GroupGlyph, kindColor, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { Label } from "@/v2/window/chrome";
 import { BASE } from "./card";
 import { Expand, Shell } from "./rail";
 
-// One onboarding: building and ready on one page, with the One sidebar, in the Window building page's three
-// columns (264px, the work, 340px). On the left, sticky, the Deck building page's step stack (each step's mark,
-// title and closing line, the running one highlighted). Under the status line one compact strip: the X account the
-// agent is built around and, once read, how many newest posts. In the middle only the chosen sources, one section
-// per kind of compact lifted cards; a card opens its reason in place. On the right, sticky, "Your brief" as the
-// Window building page draws it (v2/window/building.tsx, BriefPane). When the run ends everything stays where it is
-// and the status line becomes "Your agent is ready" with the days left and Open your feed. The run's timing comes
-// from next/building/steps.ts.
+// One onboarding: building and ready on one page, with the One sidebar collapsed, in the Window building page's
+// three columns (264px, the work, 340px). The top row holds only Expand and the running step's name. On the left,
+// sticky, the Deck building page's step stack (each step's mark and title, its closing line once done or skipped,
+// the running one highlighted). In the middle the objects arrive and stay, in order: the profile and the pinned post
+// and the three stored posts (both copied from v2/window/building.tsx), one candidates line, then the chosen sources
+// in one section per kind of compact lifted cards; a card opens its reason in place. On the right, sticky, "Your
+// brief" as the Window building page draws it (BriefPane), an empty card until the brief step. When the run ends
+// everything stays where it is and the top row becomes "Your agent is ready" with Open your feed. The run's timing
+// comes from next/building/steps.ts.
 
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
+const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
 const kinds = groups.filter((g) => g.id !== "github" && sources.some((s) => s.group === g.id));
+
+/** The top row's quiet line while a step runs. The search step is decided, never run. */
+const runningLine: Record<StepId, string> = {
+  profile: "Finding your X profile",
+  posts: "Reading your newest posts",
+  gather: "Gathering candidates",
+  jev: "Jev is checking relevance",
+  choose: "Choosing your sources",
+  search: "No X search. Enough accounts already fit.",
+  brief: "Writing your brief",
+  save: "Saving your agent",
+};
 
 export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null }) {
   const run = useRun(mode);
@@ -40,6 +55,9 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
   const chooseF = st("choose") === "done" ? 1 : st("choose") === "running" ? run.progress[idx("choose")] : 0;
   const chosen = (g: Group) => take(sources.filter((s) => s.group === g), chooseF);
   const shown = chooseF > 0 ? kinds.flatMap((k) => chosen(k.id)) : [];
+  const cur = currentStep(run);
+  const curId = cur >= 0 ? stepIds[cur] : null;
+  const seen = (id: StepId) => st(id) !== "waiting";
   const toggle = (id: string) =>
     setOpen((prev) => {
       const next = new Set(prev);
@@ -65,9 +83,11 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
                 Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
               </PrimaryLink>
             </motion.div>
-          ) : (
-            <Checking pending={1} label="Checking sources" />
-          )}
+          ) : curId && run.states[cur] === "failed" ? (
+            <p className="text-[13.5px] text-[var(--error)]">{stepTitle[curId]} stopped.</p>
+          ) : curId ? (
+            <p className="text-[13.5px] text-t2">{runningLine[curId]}</p>
+          ) : null}
         </div>
 
         <div className="mt-4 grid items-start gap-5 lg:grid-cols-[264px_minmax(0,1fr)_340px]">
@@ -88,7 +108,11 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
                         stepTitle[id]
                       )}
                     </p>
-                    <p className={cn("mt-0.5 text-[12.5px]", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{state === "done" || state === "skipped" ? stepLine[id] : stepLabel[state]}</p>
+                    {state === "done" || state === "skipped" ? (
+                      <p className="mt-0.5 text-[12.5px] text-t3">{stepLine[id]}</p>
+                    ) : state === "failed" ? (
+                      <p className="mt-0.5 text-[12.5px] text-[var(--error)]">{stepLabel[state]}</p>
+                    ) : null}
                   </div>
                 </li>
               );
@@ -98,7 +122,12 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
             </p>
           </ol>
 
-          <div className="grid min-w-0 gap-6 @container">
+          <div className="grid min-w-0 gap-5 @container">
+            {/* The profile card from the first step on (the faint loading placeholder read as a dead page). */}
+            {seen("profile") ? <ProfileCard /> : null}
+            {seen("posts") && st("posts") !== "failed" ? <PostsRow /> : null}
+            {/* One line: what was gathered while Jev checks; what was kept once Jev is done; gone once the sources arrive. */}
+            {seen("gather") && chooseF === 0 ? <CandidatesLine kept={st("jev") === "done"} /> : null}
             {chooseF > 0 ? (
               <>
                 {kinds.map((k) => {
@@ -110,7 +139,7 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
                         <span className="text-[13.5px] font-semibold text-t1">{k.label}</span>
                         <span className="text-[12.5px] tabular-nums text-t3">{sources.filter((s) => s.group === k.id).length}</span>
                       </p>
-                      <ul className="grid grid-cols-2 items-start gap-3 @2xl:grid-cols-3">
+                      <ul className="grid grid-cols-3 items-start gap-2.5 @2xl:grid-cols-4">
                         <AnimatePresence initial={false}>
                           {list.map((s) => (
                             <motion.li
@@ -146,9 +175,7 @@ function BriefPane({ state, progress }: { state: StepState; progress: number }) 
   return (
     <aside aria-label="Your brief" className="lg:sticky lg:top-4">
       <Label className="px-1 pt-1">Your brief</Label>
-      {state === "waiting" || state === "failed" ? (
-        <p className="mt-3 px-1 text-[13px] text-t3">Written after the sources are chosen.</p>
-      ) : (
+      {state === "waiting" || state === "failed" ? null : (
         <Plan isStreaming={running} defaultOpen className="mt-3 gap-3 rounded-xl border border-line-strong bg-[var(--window)] py-4 shadow-[var(--card-shadow)] ring-0">
           <PlanHeader className="px-4">
             <div className="space-y-1.5">
@@ -179,6 +206,92 @@ function BriefPane({ state, progress }: { state: StepState; progress: number }) 
   );
 }
 
+/** Window building's ProfileCard (v2/window/building.tsx): the profile and the pinned post side by side, lifted. */
+function ProfileCard() {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3"
+    >
+      <div className={cn(lift, "p-3.5")} style={liftStyle}>
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[15px] font-semibold text-white">{profile.name[0]}</span>
+          <div className="min-w-0 leading-tight">
+            <p className="text-[14px] font-semibold text-t1">{profile.name}</p>
+            <p className="text-[12.5px] text-[var(--kind-post)]">{profile.handle}</p>
+          </div>
+          <XLogo className="ml-auto size-3.5 text-[var(--kind-post)]" />
+        </div>
+        <p className="mt-3 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
+      </div>
+      <div className={cn(lift, "p-3.5")} style={liftStyle}>
+        <p className="flex items-center gap-1.5 text-[11.5px] text-t3">
+          <Pin className="size-3" aria-hidden="true" /> Pinned post
+          <span className="ml-auto tabular-nums">{day(profile.pinned.date)}</span>
+        </p>
+        <p className="mt-2 text-[13px] leading-[1.5] text-t1">{profile.pinned.text}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+/** The three stored posts from Window building's PostsGrid, in one row, lifted, all three from the posts step on. */
+function PostsRow() {
+  const reduce = useReducedMotion();
+  return (
+    <ul className="grid grid-cols-3 items-start gap-3">
+      {posts.map((p) => (
+        <motion.li
+          key={p.id}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: EASE }}
+          className={cn(lift, "p-3")}
+          style={liftStyle}
+        >
+          <p className="flex items-center gap-1.5 text-[11.5px] text-t3">
+            <XLogo className="size-2.5 text-[var(--kind-post)]" />
+            {p.kind === "quote" ? "Quote" : p.kind === "thread" ? `Thread, ${p.parts} parts` : "Post"}
+            <span className="ml-auto tabular-nums">{day(p.date)}</span>
+          </p>
+          <p className="mt-1.5 text-[13px] leading-[1.5] whitespace-pre-line text-t1">{p.text}</p>
+          {p.quoted ? (
+            <p className="mt-2 rounded-md border border-line bg-[var(--well)] px-2.5 py-1.5 text-[12px] leading-[1.45] text-t2">
+              <span className="font-medium text-[var(--kind-post)]">{p.quoted.author}</span> {p.quoted.text}
+            </p>
+          ) : null}
+        </motion.li>
+      ))}
+    </ul>
+  );
+}
+
+/** One compact line under the posts: what was gathered, then, once Jev has checked, what was kept. */
+function CandidatesLine({ kept: checked }: { kept: boolean }) {
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 text-[13px] text-t2">
+      {checked ? (
+        `${kept.length} kept as strong or possible, ${setAsideCount} set aside`
+      ) : (
+        <>
+          <span>
+            {candidateCount} candidates: {tableRows} from the source list, {quotedCandidates.length} accounts you quoted
+          </span>
+          {quotedCandidates.map((c) => (
+            <span key={c.id} className="inline-flex items-center gap-1.5 text-t1">
+              <XAvatar handle={c.target.replace("https://x.com/", "")} size={18} />
+              {c.name}
+            </span>
+          ))}
+        </>
+      )}
+    </p>
+  );
+}
+
 /** A chosen source as a compact lifted card in the Deck's ChosenCard look; a click opens its reason in place. */
 function SourceCard({ source, open, onToggle }: { source: Source; open: boolean; onToggle: () => void }) {
   const isX = source.group === "x";
@@ -190,8 +303,8 @@ function SourceCard({ source, open, onToggle }: { source: Source; open: boolean;
       className={cn(lift, "relative block w-full overflow-hidden px-3.5 text-left transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring")}
       style={liftStyle}
     >
-      <span className="flex h-16 items-center gap-2.5">
-        <SourceMark source={source} size={24} className={isX ? "" : "rounded-[6px]"} />
+      <span className="flex h-12 items-center gap-2.5">
+        <SourceMark source={source} size={22} className={isX ? "" : "rounded-[6px]"} />
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block truncate text-[13.5px] font-semibold text-t1">{source.name}</span>
           <span className="block truncate text-[11.5px] text-t3">{isX ? source.handle : source.mark}</span>

@@ -9,7 +9,7 @@ import { FreshRing } from "@/v2/deck/live";
 // The One story card: text first. Top to bottom: the source row (inline 18px marks and 13px names, no pills, the
 // time at the right; on a story joined from several sources each name opens that source's own synthesis), the headline,
 // then every fact as the body with no publisher parentheses. A story with an image shows it as a 96px thumbnail
-// beside the headline; an imageless story keeps the soft wash in its kind's color. The landing and login fans use
+// beside the headline. Every card, imageless included, draws the same lift surface. The landing and login fans use
 // the same card with the image on top ("hero"), as the Deck story card did. No colored strip along the top edge.
 
 export const BASE = "/v2/one";
