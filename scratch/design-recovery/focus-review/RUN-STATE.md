@@ -82,6 +82,8 @@ LOCKS (the owner's decisions; do not reopen): one UI, Deck base; sidebar is part
 
 NEXT STEP THE OWNER ASKED FOR: iterate on /design mockups (the Claude Design canvas) before building again. A canvas already exists on his account: https://claude.ai/artifact/UfG7NXZAHsroz5XKoe6PxQ (title "Oparax One mockups", empty). Draw the feed and the onboarding there with the real theme (tokens from DESIGN.md), real logos and story images (download them from the URLs above and upload as canvas assets), following the LOCKS and the PASS 4 BRIEF; he reacts to the pictures; then build the agreed structure once in site/v2/one.
 
+October 4, cloud session: the One code in site/v2/one already renders the pass-4 structure (built before the stop; verified from a production build). Canvas round 1 published to the "Oparax One mockups" canvas: Feed open, Feed closed (Collapse and Expand link between them), Onboarding choosing sources, Onboarding ready (cards open their reason on click); theme switch on each board; real logos, avatars and story images uploaded as canvas assets. Two changes beyond the code: the card thumbnail is a floated landscape 128x72 (same area as 96px, facts wrap beside it, link-preview artwork no longer cropped), and onboarding source cards lose the coloured top line. Waiting on the owner's reactions; then build the agreed structure once in site/v2/one.
+
 PASS 4 BRIEF (the unbuilt fix list, from the council's unanimous diagnosis):
 # Pass 4 on the ONE UI: the sidebar becomes part of the page (October 3, 2026, 22:45)
 
