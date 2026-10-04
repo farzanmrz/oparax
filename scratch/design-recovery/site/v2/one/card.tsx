@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
 import { itemLabel, kindOf, newest, sourceOf, when, type FeedStory, type ItemView, type Kind } from "@/v2/deck/data";
-import { ItemMark, KindGlyph, kindColor, kindSoft } from "@/v2/deck/marks";
+import { ItemMark, KindGlyph, kindColor } from "@/v2/deck/marks";
 import { FreshRing } from "@/v2/deck/live";
 
 // The One story card: text first. Top to bottom: the source row (inline 18px marks and 13px names, no pills, the
@@ -88,9 +88,6 @@ export function OneCard({
             <img src={pic} alt="" loading="lazy" className="size-full object-cover" />
             <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--window)]/55 via-transparent to-transparent" />
           </div>
-        ) : null}
-        {!pic ? (
-          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-24" style={{ background: `linear-gradient(180deg, ${kindSoft[kind]}, transparent)` }} />
         ) : null}
         <div className="relative p-4">
           <div className="flex min-h-6 items-center gap-2">

@@ -6,12 +6,12 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { announce, isDone, stepIds, stepLabel, stepLine, stepTitle, useRun, type StepId, type StepState } from "@/next/building/steps";
 import { StepMark } from "@/next/building/step-mark";
 import type { RunMode } from "@/next/building/mode";
-import { brief, postsRead, profile } from "@/next/data/onboarding";
+import { brief, profile } from "@/next/data/onboarding";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Plan, PlanContent, PlanDescription, PlanHeader, PlanTitle } from "@/components/ai-elements/plan";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle, PrimaryLink } from "@/v2/deck/chrome";
-import { groups, HANDLE, sources, status, type Group, type Source } from "@/v2/deck/data";
+import { groups, sources, type Group, type Source } from "@/v2/deck/data";
 import { Checking, EASE } from "@/v2/deck/live";
 import { GroupGlyph, kindColor, SourceMark } from "@/v2/deck/marks";
 import { Label } from "@/v2/window/chrome";
@@ -61,7 +61,6 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
               transition={{ duration: 0.4, ease: EASE }}
             >
               <h1 className="text-[20px] leading-none font-semibold tracking-[-0.02em] text-t1">Your agent is ready</h1>
-              <p className="text-[13.5px] text-t2">{status.daysLeft} days left in your free week.</p>
               <PrimaryLink href={`${BASE}/feed`}>
                 Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
               </PrimaryLink>
@@ -69,10 +68,7 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
           ) : (
             <Checking pending={1} label="Checking sources" />
           )}
-          <span className="text-[12px] text-t3">Replay of a sample run.</span>
         </div>
-
-        {st("profile") !== "waiting" ? <Account running={st("profile") === "running"} postsDone={st("posts") === "done"} /> : null}
 
         <div className="mt-4 grid items-start gap-5 lg:grid-cols-[264px_minmax(0,1fr)_340px]">
           {/* The Deck building page's step stack (v2/deck/building.tsx). */}
@@ -105,7 +101,6 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
           <div className="grid min-w-0 gap-6 @container">
             {chooseF > 0 ? (
               <>
-                <p className="text-[13px] text-t2">Click on any source to see the reason.</p>
                 {kinds.map((k) => {
                   const list = chosen(k.id);
                   if (!list.length) return null;
@@ -140,25 +135,6 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
         </div>
       </main>
     </Shell>
-  );
-}
-
-/** The compact strip under the status line: the X account the agent is built around, then the posts read. */
-function Account({ running, postsDone }: { running: boolean; postsDone: boolean }) {
-  return (
-    <p className="flex min-h-8 flex-wrap items-center gap-x-2.5 gap-y-1 px-1 text-[13px]">
-      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">{profile.name[0]}</span>
-      <span className="font-medium text-t1">{running ? "Looking up your account" : profile.name}</span>
-      <span className="text-t3">{running ? `@${HANDLE}` : profile.handle}</span>
-      {postsDone ? (
-        <>
-          <span aria-hidden="true" className="text-t4">
-            ·
-          </span>
-          <span className="text-t2">Read {postsRead} newest posts</span>
-        </>
-      ) : null}
-    </p>
   );
 }
 
@@ -214,7 +190,6 @@ function SourceCard({ source, open, onToggle }: { source: Source; open: boolean;
       className={cn(lift, "relative block w-full overflow-hidden px-3.5 text-left transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring")}
       style={liftStyle}
     >
-      <span aria-hidden="true" className={cn("absolute inset-x-4 top-0 h-[2px] rounded-b-full", isX ? "bg-[var(--kind-post)]" : "bg-[var(--kind-article)]")} />
       <span className="flex h-16 items-center gap-2.5">
         <SourceMark source={source} size={24} className={isX ? "" : "rounded-[6px]"} />
         <span className="min-w-0 flex-1 leading-tight">

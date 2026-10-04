@@ -131,7 +131,7 @@ function Rail({
     <aside
       id="one-sidebar"
       aria-label="Sidebar"
-      className={cn(lift, "mt-3 p-2.5 lg:sticky lg:top-4")}
+      className={cn(lift, "mt-3 flex flex-col p-2.5 lg:sticky lg:top-4 lg:h-[calc(100svh-28px)]")}
       style={liftStyle}
       onKeyDown={(e) => {
         if (e.key !== "Escape") return;
@@ -158,9 +158,12 @@ function Rail({
         </button>
       </div>
 
-      <SourceList sources={sources} onSource={onSource} activeSource={activeSource ?? null} emptyLine={emptyLine} />
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
+        <SourceList sources={sources} onSource={onSource} activeSource={activeSource ?? null} emptyLine={emptyLine} />
+      </div>
 
-      <div className="mt-3 border-t border-line pt-2">
+      {/* Pinned to the bottom of the sidebar (owner, Oct 4: "Why is that not at the bottom?") */}
+      <div className="mt-auto border-t border-line pt-2">
         <button type="button" onClick={() => setChannels(!channels)} aria-expanded={channels} className={accountRow}>
           <span className="grid size-[18px] shrink-0 place-items-center">
             <Bell className="size-4" aria-hidden="true" />

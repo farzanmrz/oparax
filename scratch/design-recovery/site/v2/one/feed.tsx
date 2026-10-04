@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X as Close } from "lucide-react";
 import { ViewSwitch } from "@/v2/deck/chrome";
 import { sources, stories, storyHasSource, type FeedStory, type View } from "@/v2/deck/data";
-import { Arrive, Checking, useArrival } from "@/v2/deck/live";
+import { Arrive, useArrival } from "@/v2/deck/live";
 import { SourceMark } from "@/v2/deck/marks";
 import { OneCard, sourcesIn, type LabelMode } from "./card";
 import { Reader } from "./drawer";
@@ -19,17 +19,19 @@ import { Expand, Shell } from "./rail";
 // the grid; a sidebar source filters the feed.
 
 const GAP = 16;
+// The picture on top of the card, as the Deck card had it (owner, Oct 4: the thumbnail "is weird now. I think it
+// was better before, when it was just part of the thing").
+const IMAGE_H = 150;
 const DISMISS_KEY = "oparax-one-xdm-banner";
 
 /** Estimated card height: source row and padding, headline lines beside the thumbnail, wrapped fact lines, the
  * plate below a joined story. */
 function estimate(s: FeedStory, colWidth: number) {
-  const textW = colWidth - 32 - (s.card.image ? 108 : 0);
+  const textW = colWidth - 32;
   const headLines = Math.ceil((s.card.headline.length * 10.2) / textW);
   const factW = colWidth - 48;
   const factLines = s.card.facts.reduce((n, f) => n + Math.ceil((f.text.length * 7.1) / factW), 0);
-  const plate = sourcesIn(s).length > 1 ? 8 : 0;
-  return 72 + Math.max(headLines * 26, s.card.image ? 98 : 0) + 12 + factLines * 20 + s.card.facts.length * 8 + plate;
+  return (s.card.image ? IMAGE_H : 0) + 72 + headLines * 26 + 12 + factLines * 20 + s.card.facts.length * 8;
 }
 
 function toColumns(list: FeedStory[], n: number, colWidth: number) {
@@ -82,7 +84,7 @@ export function OneFeed({
   const [dismissed, setDismissed] = useState(bannerOff);
   const [reader, setReader] = useState(initialReader);
   const opener = useRef<HTMLElement | null>(null);
-  const { pending } = useArrival(settled);
+  useArrival(settled);
   const { ref, n, colWidth } = useColumns();
 
   useEffect(() => {
@@ -147,9 +149,8 @@ export function OneFeed({
           <ViewSwitch view={view} onChange={setView} className="shrink-0" />
           {banner ? <Banner onTurnOn={() => setXdm(true)} onDismiss={dismiss} /> : null}
         </div>
-        {pending > 0 || selected ? (
+        {selected ? (
           <div className="flex min-h-9 items-center gap-4 px-1">
-            {pending > 0 ? <Checking pending={pending} /> : null}
             {selected ? (
               <span className="flex min-w-0 items-center gap-2 text-[13px] text-t2">
                 Only
@@ -181,6 +182,8 @@ export function OneFeed({
                   <OneCard
                     story={s}
                     mode={mode}
+                    image="hero"
+                    imageHeight={IMAGE_H}
                     fresh={s.id === freshId}
                     onSource={
                       view === "clustered"
