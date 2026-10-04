@@ -124,7 +124,13 @@ export const monitorContent = {
       detail: "4,000 watched X posts a month, a digest every 15 minutes",
     },
   ],
-  bot: "Get alerts on X",
+  notifications: {
+    title: "Notifications",
+    xdm: "X DMs",
+    xdmLine: (handle: string) => `Oparax messages @${handle} on X when a story matters.`,
+    commands:
+      'Commands, sent to @oparax_ai on X: STOP pauses alerts, RESUME turns them back on, and "Start alerts" connects them again after a stop.',
+  },
   botHelp: (handle: string) =>
     `Opens a message to @oparax_ai with "Start alerts" typed. Send it from @${handle} to connect alerts; that message is how Oparax confirms the account is yours. The bot will not reply.`,
   botActive: "Alerts on. Send STOP to the bot to stop.",
@@ -132,7 +138,6 @@ export const monitorContent = {
   botStopped: 'Alerts stopped. Send "Start alerts" from your X account to turn them on again.',
   activationFailed: "X connection could not start. Try again.",
   activationUnavailable: "Open the alert connection during your free week or an active plan.",
-  checkConnection: "Check connection",
 } as const;
 
 export function safeWebUrl(value: string | null | undefined, httpsOnly = false): string | null {
