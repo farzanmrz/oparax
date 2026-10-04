@@ -2,8 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
-import { itemLabel, kindOf, newest, sourceOf, when, type FeedStory, type ItemView } from "@/v2/deck/data";
-import { kindSoft, MarkStack } from "@/v2/deck/marks";
+import { itemLabel, newest, sourceOf, when, type FeedStory, type ItemView } from "@/v2/deck/data";
+import { MarkStack } from "@/v2/deck/marks";
 import { FreshRing, NewFlag } from "@/v2/deck/live";
 
 // The One story card: the Deck's StoryStack and StoryCard (v2/deck/stack.tsx), copied, with the owner's changes
@@ -80,7 +80,6 @@ export function StoryCard({
   className?: string;
 }) {
   const last = newest(story);
-  const leadKind = kindOf(story.items.length === 1 ? story.items[0] : last);
   const names = [...new Set(story.items.map((i) => itemLabel(i, mode)))];
   return (
     <article className={cn(lift, "relative z-10 overflow-hidden", className)} style={liftStyle}>
@@ -91,9 +90,7 @@ export function StoryCard({
           <img src={story.card.image} alt="" loading="lazy" className="size-full object-cover" />
           <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--window)]/55 via-transparent to-transparent" />
         </div>
-      ) : (
-        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-24" style={{ background: `linear-gradient(180deg, ${kindSoft[leadKind]}, transparent)` }} />
-      )}
+      ) : null}
       <div className={cn("relative", size === "md" ? "p-5" : "p-4")}>
         <div className="flex items-center gap-2">
           <MarkStack items={story.items} size={story.card.image ? 18 : 22} />

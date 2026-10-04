@@ -47,7 +47,7 @@ export function Shell({
   // that opens a small menu: Feed, Sources, Notifications, the theme, the account, Sign out.
   return (
     <Stage light={light}>
-      <div className="relative w-full px-2 pt-4 lg:px-4">
+      <div className="relative mx-auto w-full max-w-[1400px] px-4 pt-8 lg:px-8">
         <div className="min-w-0 [&>main]:px-0 [&>main]:pt-0">
           {header ? <div className="mb-7">{header}</div> : null}
           {children}
@@ -89,10 +89,10 @@ function Bubble() {
     <div ref={ref} className="fixed bottom-4 left-4 z-50 flex flex-col items-start gap-2">
       {open ? (
         <div id="one-menu" role="menu" aria-label="Oparax" className={cn(lift, "w-[220px] p-2")} style={liftStyle}>
-          <div className="flex h-9 items-center gap-2 px-2">
-            <OparaxMark className="size-[18px] text-t1" />
-            <span className="text-[14px] font-semibold tracking-tight text-t1">Oparax</span>
-            <ThemeToggle className="ml-auto size-7 rounded-md border border-line-strong bg-[var(--raised)] text-t2 hover:text-t1" />
+          {/* One mark only, on the bubble (owner, Oct 4: "why the hell is my menu itself showing the oparax logo... along with
+              the oparax header logo at the top also"). The top row holds the theme button alone. */}
+          <div className="flex h-9 items-center justify-end px-2">
+            <ThemeToggle className="size-7 rounded-md border border-line-strong bg-[var(--raised)] text-t2 hover:text-t1" />
           </div>
           <nav aria-label="Pages" className="mt-1 grid gap-0.5">
             {NAV.map(({ href, label, icon: Icon }) => {

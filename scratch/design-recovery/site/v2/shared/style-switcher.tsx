@@ -46,8 +46,6 @@ export function StyleSwitcher() {
   const match = pathname.match(/^\/v2\/(window|newsroom|deck|one)(\/.*)?$/);
   if (!match) return null;
   const [, current, rest = ""] = match;
-  // No dock on the One pages (owner, Oct 4: "Remove the toggles between the multiple designs from the page").
-  if (current === "one") return null;
   const query = search.toString() ? `?${search.toString()}` : "";
 
   const toggle = (next: boolean) => {

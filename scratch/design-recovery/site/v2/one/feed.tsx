@@ -7,7 +7,6 @@ import { X as Close } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle, ViewSwitch } from "@/v2/deck/chrome";
 import {
-  PREVIEW_NOTE,
   sources,
   stories,
   storyHasSource,
@@ -86,14 +85,8 @@ export function OneFeed({
       ownExpand
       header={
         <Header
-          title="Your Feed"
+          title="Feed"
           actions={<ViewSwitch view={view} onChange={setView} />}
-          sub={
-            <p className="text-[13.5px] text-t3">
-              {view === "clustered" ? "Articles and posts about the same event, stacked into one story." : "Each article, post and release on its own card, newest first."}
-            </p>
-          }
-          note={`${PREVIEW_NOTE} The newest story's arrival is a replay.`}
         />
       }
     >
@@ -191,7 +184,7 @@ function Banner() {
     } catch {}
   };
   return (
-    <div role="region" aria-label="Notifications" className="flex h-9 items-center gap-3 text-[13px]">
+    <div role="region" aria-label="Notifications" className={cn(lift, "mb-5 flex h-10 items-center gap-3 px-3.5 text-[13px]")} style={liftStyle}>
       <p className="text-t2">Oparax can alert you on X DMs.</p>
       <Link
         href={`${BASE}/notifications`}
@@ -203,7 +196,7 @@ function Banner() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="grid size-6 place-items-center rounded-md text-t3 transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
+        className="ml-auto grid size-6 place-items-center rounded-md text-t3 transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
       >
         <Close className="size-3.5" aria-hidden="true" />
       </button>

@@ -1,0 +1,16 @@
+[
+ {
+  "name": "astra",
+  "provider": "codex",
+  "model": "gpt-6-astra",
+  "effort": "high",
+  "mode": "advice"
+ },
+ {
+  "name": "grok",
+  "provider": "grok",
+  "model": "grok-4.7-build-fast",
+  "effort": "xhigh",
+  "mode": "advice"
+ }
+]

@@ -1,0 +1,24 @@
+RESULT: FINDINGS
+
+(1)
+He loved three feeds that show the product, with real pictures, logos and a few job colors, on a dark ground (`deck-feed.png`, `window-feed.png`, `newsroom-feed.png`): "I love all three of them in dark and light mode." Every One pass takes that life off, pastes in sentences nobody asked about, then shows one page with no way to compare. "The page is devoid of life on the feed." "I still like the older designs more than the current one."
+(a) Asked, done wrong. The bubble is the button, and the open menu draws the mark again plus "Oparax" (`rail.tsx` 93 to 94 and 130, `feed-menu.png`): "why the hell is my menu itself showing the oparax logo from which the pop-up is triggered, along with the oparax header logo at the top also." The title is "Your Feed" plus two explanations: "Just call it Feed." The banner is a loose sentence (`feed.tsx` 194): "The fucking banner is not looking like a banner." The switcher is hidden on One (`style-switcher.tsx` 49 to 50): "Why am I not seeing a switcher." The shell is full width at 8px and 16px (`rail.tsx` 50): "Why are the margins so stretched?" "The margins are so low."
+(b) Nobody asked. The subline and "Preview data from public sources..." are copied from Deck (`deck/feed.tsx` 93 to 98): "Why is there a subline beneath your feed?" "That line is not needed. That's just excess information." The green is Deck's article wash (`card.tsx` 95) when the GPT photo fails to load. On `feed-full.png` that photo is there. He is missing nothing. He already rejected a card of a different color: "That one GitHub Next.js card, for some reason, is a different color."
+(c) Contradictions were settled in silence. Switcher on, then "Remove, honestly, the toggles... because I'm away from my desktop," then wanted back today. "Half the current margins" was applied by deleting Deck's 1400px cap. "I don't like the banner and how solid it comes," then "Maybe that's where the banner can come in," and the build is neither a slab nor a banner. "Your Feed" is overridden by today's "Just call it Feed." "The image itself should be the smallest part" is overridden by "it was better before, when it was just part of the thing."
+(d) How he is shown the work. Screenshots, one page, no switcher, on the ultra-wide: "the screenshot differs from actually feeling the page itself." "if you show me more stuff to complicate, then I will complicate things." "you're very close, but not there yet" was treated as a yes, and the site was pushed.
+
+(2)
+1. `rail.tsx` Shell: use Deck's column, `mx-auto w-full max-w-[1400px] px-4 pt-8 lg:px-8` (`deck/feed.tsx` 88). Today's "stretched" and "so low" override Oct 4 "half the current margins," which was applied by dropping the cap.
+2. `feed.tsx` Header: the title is "Feed". Remove both sublines and the preview note. Keep Clustered / Direct on the right ("The Clustered and Direct can come over there").
+3. `rail.tsx` Bubble: one mark, on the round button. Remove the mark and the word "Oparax" from the top of the menu. Keep the theme control as a real button.
+4. `feed.tsx` Banner: his sentence, "Oparax can alert you on DMs. Turn on notifications.", on a lifted plate (`lift`, `liftStyle`), one line, a text link, a dismiss x. No X logo, no solid fill, no big button. This is the slot of the three cards he removed. It overrides the naked line, and it does not bring back the solid banner he rejected.
+5. `card.tsx`: if the image is missing, paint no color wash. Same surface as the other cards. If the image exists, keep it at 172px as part of the card, as in `feed-full.png`.
+6. `style-switcher.tsx`: show both docks on One again, floating, bottom left, as on `deck-feed.png`. Sit the bubble just above them so they do not cover each other. Today's ask overrides "Remove the toggles... away from my desktop."
+7. Leave the bubble's rows as they are: Feed, Sources, Notifications, the account, Sign out. Leave the three-column cards, the facts, the logos and the New flag.
+8. Leave off the source rail, the three tiles, Get alerts on X, the checking line, the peek, citations inside bullets, search, and the free-week chip. He cut those. "Get alerts on X: you can get rid of that." "Get rid of the three cards up top." "that line can go." "that looks really stupid."
+
+(3)
+Open `http://localhost:3000/v2/one/feed` on his monitor, dark, switcher on, Deck one click away. He walks it. No screenshot and no write-up.
+This feed only. Yes or no. Then the Deck login he already likes, then onboarding. Sources and notifications after the feed is a yes.
+If it is not a yes, one question: what is still wrong, in his words. No menu of choices.
+Stop councils that subtract the logos, pictures and tiles he never named. Stop pasting Deck's sentences onto One. Stop hiding the switcher. Stop pushing oparax.ai before he says yes to that same page on localhost.
