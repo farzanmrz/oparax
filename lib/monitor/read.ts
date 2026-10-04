@@ -163,65 +163,43 @@ export async function readFeed(
         )
       : articlesQuery.lt("items.published_at", before);
   }
-  const [sources, accounts, stories, articles, skipped, pending, failed, digests, selected] =
-    await Promise.all([
-      db
-        .from("monitor_sources")
-        .select("source_id,why,score,sources(id,name,focus,target,unreadable_streak,paused_at)")
-        .eq("monitor_id", monitor.id)
-        .is("removed_at", null)
-        .order("created_at"),
-      db
-        .from("monitor_accounts")
-        .select("handle,name,why,watched,score")
-        .eq("monitor_id", monitor.id)
-        .order("created_at"),
-      storiesQuery,
-      articlesQuery,
-      db
-        .from("monitor_items")
-        .select(`fit_score,items!inner(${itemColumns})`)
-        .eq("monitor_id", monitor.id)
-        .eq("status", "skipped")
-        .order("items(published_at)", { ascending: false })
-        .limit(30),
-      db
-        .from("monitor_items")
-        .select("item_id", { count: "exact", head: true })
-        .eq("monitor_id", monitor.id)
-        .eq("status", "pending"),
-      db
-        .from("monitor_items")
-        .select("item_id", { count: "exact", head: true })
-        .eq("monitor_id", monitor.id)
-        .eq("status", "failed"),
-      db
-        .from("digest_items")
-        .select("id,kind,name,url,why_now,description,created_at")
-        .eq("monitor_id", monitor.id)
-        .order("created_at", { ascending: false })
-        .limit(30),
-      options.storyId
-        ? db
-            .from("stories")
-            .select(storyColumns)
-            .eq("monitor_id", monitor.id)
-            .eq("id", options.storyId)
-            .in("status", ["written", "no_card"])
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
-    ]);
-  for (const result of [
-    sources,
-    accounts,
-    stories,
-    articles,
-    skipped,
-    pending,
-    failed,
-    digests,
-    selected,
-  ]) {
+  const [stories, articles, skipped, pending, failed, digests, selected] = await Promise.all([
+    storiesQuery,
+    articlesQuery,
+    db
+      .from("monitor_items")
+      .select(`fit_score,items!inner(${itemColumns})`)
+      .eq("monitor_id", monitor.id)
+      .eq("status", "skipped")
+      .order("items(published_at)", { ascending: false })
+      .limit(30),
+    db
+      .from("monitor_items")
+      .select("item_id", { count: "exact", head: true })
+      .eq("monitor_id", monitor.id)
+      .eq("status", "pending"),
+    db
+      .from("monitor_items")
+      .select("item_id", { count: "exact", head: true })
+      .eq("monitor_id", monitor.id)
+      .eq("status", "failed"),
+    db
+      .from("digest_items")
+      .select("id,kind,name,url,why_now,description,created_at")
+      .eq("monitor_id", monitor.id)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    options.storyId
+      ? db
+          .from("stories")
+          .select(storyColumns)
+          .eq("monitor_id", monitor.id)
+          .eq("id", options.storyId)
+          .in("status", ["written", "no_card"])
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  for (const result of [stories, articles, skipped, pending, failed, digests, selected]) {
     if (result.error) throw result.error;
   }
   const storyRows = selected.data
@@ -239,8 +217,6 @@ export async function readFeed(
     : { data: [], error: null };
   if (reports.error) throw reports.error;
   return {
-    sources: sources.data ?? [],
-    accounts: accounts.data ?? [],
     stories: storyRows.map(
       (story): DisplayStory => ({
         ...story,
@@ -272,3 +248,25 @@ export async function readFeed(
   };
 }
 export type MonitorFeed = Awaited<ReturnType<typeof readFeed>>;
+
+/** The agent's sites, feeds and X accounts for its Sources page, public like the feed. */
+export async function readSources(monitor: PublicMonitor) {
+  const db = createAdminClient();
+  const [sources, accounts] = await Promise.all([
+    db
+      .from("monitor_sources")
+      .select("source_id,why,sources(id,name,kind,focus,target,unreadable_streak,paused_at)")
+      .eq("monitor_id", monitor.id)
+      .is("removed_at", null)
+      .order("created_at"),
+    db
+      .from("monitor_accounts")
+      .select("handle,name,why,watched")
+      .eq("monitor_id", monitor.id)
+      .order("created_at"),
+  ]);
+  if (sources.error) throw sources.error;
+  if (accounts.error) throw accounts.error;
+  return { sources: sources.data, accounts: accounts.data };
+}
+export type MonitorSources = Awaited<ReturnType<typeof readSources>>;

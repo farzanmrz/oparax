@@ -114,50 +114,6 @@ const feed: MonitorFeed = {
     { item: reports.article, card: null, score: 0.89 },
   ],
   skipped: [{ item: reports.later, card: null, score: 0.28 }],
-  sources: [
-    {
-      source_id: sourceIds.site,
-      why: "Covers practical AI tools.",
-      score: 0.91,
-      sources: {
-        id: sourceIds.site,
-        name: "Example Journal",
-        focus: "AI tools for builders",
-        target: "https://example.com/sources/journal",
-        unreadable_streak: 0,
-        paused_at: null,
-      },
-    },
-    {
-      source_id: sourceIds.account,
-      why: "Shares tool releases and usage notes.",
-      score: 0.87,
-      sources: {
-        id: sourceIds.account,
-        name: "Example Builder",
-        focus: "Tool releases",
-        target: "https://example.com/sources/builder",
-        unreadable_streak: 0,
-        paused_at: null,
-      },
-    },
-  ],
-  accounts: [
-    {
-      handle: "example_builder",
-      name: "Example Builder",
-      why: "Builds tools for teams.",
-      watched: true,
-      score: 0.91,
-    },
-    {
-      handle: "tool_notes",
-      name: "Tool Notes",
-      why: "Explains new workflows.",
-      watched: true,
-      score: 0.84,
-    },
-  ],
   digests: [
     {
       id: "662b7c56-e2c5-4dbc-a0ab-4451235cfa87",
