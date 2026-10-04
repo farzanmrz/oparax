@@ -7,12 +7,10 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ProviderButtons } from "@/components/auth/provider-buttons";
-import { OparaxMark } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandRow, liftHigh, primaryButton, Stage } from "@/components/one/stage";
 import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, emailSigninLink, loginAction, signupAction } from "@/lib/auth/actions";
 import { authContent as copy } from "@/lib/auth/content";
-import { landingContent } from "@/lib/landing/content";
 import { cn } from "@/lib/utils";
 
 type Mode = "login" | "signup";
@@ -22,43 +20,29 @@ export const field =
 export const label = "text-[13px] font-medium text-t2";
 export const link =
   "text-t1 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring rounded-sm";
-export const primary =
-  "inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-lg bg-primary text-[14px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_0_0_1px_rgb(36_89_232/0.6),0_4px_14px_-4px_rgb(58_108_244/0.55)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70";
+export const primary = `${primaryButton} w-full`;
 
 /** The lit page with the brand row on top and one lifted card in the middle. */
 export function AuthStage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-dvh flex-col bg-[var(--page)] text-t1">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[760px] bg-[image:var(--stage-light)]"
-      />
+    <Stage light={760}>
       <a
         href="#auth-content"
         className="sr-only rounded-md focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus:z-50 focus:bg-background focus:p-3 focus-visible:ring-2 focus-visible:ring-ring"
       >
         {copy.skipToContent}
       </a>
-      <header className="relative z-10 flex items-center px-4 pt-4">
-        <Link
-          href="/"
-          className="flex items-center gap-2 rounded-md text-[17px] font-semibold tracking-tight text-t1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        >
-          <OparaxMark className="size-[22px]" />
-          {landingContent.brand}
-        </Link>
-        <ThemeToggle className="ml-auto size-8 text-t3 desk:size-8" />
-      </header>
+      <BrandRow />
       <main
         id="auth-content"
         tabIndex={-1}
         className="relative grid flex-1 place-items-center px-4 py-10"
       >
-        <section className="relative z-10 w-full max-w-[420px] rounded-xl border border-line-strong bg-[var(--window)] p-7 shadow-[var(--window-shadow),var(--top-light)]">
+        <section className={cn(liftHigh, "relative z-10 w-full max-w-[420px] p-7")}>
           {children}
         </section>
       </main>
-    </div>
+    </Stage>
   );
 }
 

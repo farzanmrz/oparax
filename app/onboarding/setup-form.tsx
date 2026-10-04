@@ -1,22 +1,25 @@
 "use client";
 
+import { BadgeCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import posthog from "posthog-js";
 import { type FormEvent, useRef, useState } from "react";
 import { z } from "zod";
 import { RefreshXIdentityButton } from "@/components/auth/refresh-x-identity";
-import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { BrandIcon } from "@/components/brand-icon";
+import { primaryButton } from "@/components/one/stage";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import {
   onboardingContent,
   type SetupErrorCode,
   setupErrorMessage,
   setupErrorSchema,
 } from "@/lib/onboarding/content";
+import { cn } from "@/lib/utils";
 import { isReservedHandle, normalizeValidHandle } from "@/lib/x/handle";
+
+const field =
+  "w-full rounded-lg border border-line-strong bg-well text-t1 placeholder:text-t3 outline-none transition-shadow";
 
 const buildResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), redirect: z.string().regex(/^\/[A-Za-z0-9_]{1,15}$/) }),
@@ -148,81 +151,105 @@ export function SetupForm({
   return (
     <div className="flex flex-col gap-4">
       {closed && (
-        <p role="status" className="text-sm leading-relaxed">
+        <p
+          role="status"
+          className="rounded-lg border border-line bg-well px-3 py-2 text-[13px] leading-relaxed text-t1"
+        >
           {onboardingContent.buildsUnavailable}
         </p>
       )}
-      <form
-        action="/api/build"
-        method="post"
-        onSubmit={submit}
-        className="flex flex-col gap-4"
-        aria-busy={pending}
-      >
-        <FieldGroup>
-          {verifiedHandle ? (
-            <Field>
-              <FieldTitle>{onboardingContent.handleLabel}</FieldTitle>
-              <p className="text-sm font-medium">@{verifiedHandle}</p>
-              <FieldDescription>{onboardingContent.handleHelpVerified}</FieldDescription>
-            </Field>
-          ) : (
-            <Field data-invalid={handleInvalid || undefined}>
-              <FieldLabel htmlFor="handle">{onboardingContent.handleLabel}</FieldLabel>
-              <div className="relative">
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-2 flex items-center text-sm text-muted-foreground"
-                >
-                  @
-                </span>
-                <Input
-                  ref={handleInput}
-                  id="handle"
-                  name="handle"
-                  className="min-h-11 pl-7 desk:min-h-7"
-                  autoComplete="off"
-                  placeholder={onboardingContent.handlePlaceholder}
-                  value={handle}
-                  onChange={(event) => setHandle(event.target.value)}
-                  aria-describedby={handleInvalid ? "handle-help setup-error" : "handle-help"}
-                  aria-invalid={handleInvalid || undefined}
-                  required
-                />
-              </div>
-              <FieldDescription id="handle-help">
-                {onboardingContent.handleHelpTyped}
-              </FieldDescription>
-            </Field>
+      <form action="/api/build" method="post" onSubmit={submit} aria-busy={pending}>
+        {verifiedHandle ? (
+          <div>
+            <p className="text-[13px] font-medium text-t2">{onboardingContent.handleLabel}</p>
+            <div className="mt-2 flex items-center gap-3 rounded-lg border border-line-strong bg-well px-3 py-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[14px] font-semibold text-white uppercase">
+                {verifiedHandle.slice(0, 1)}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-t1">
+                @{verifiedHandle}
+              </span>
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--ok-soft)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--ok)]">
+                <BadgeCheck className="size-3.5" aria-hidden="true" />
+                {onboardingContent.verifiedBadge}
+              </span>
+            </div>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-t3">
+              {onboardingContent.handleHelpVerified}
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="handle" className="text-[13px] font-medium text-t2">
+              {onboardingContent.handleLabel}
+            </label>
+            <div
+              className={cn(
+                field,
+                "mt-2 flex h-11 items-center gap-2 px-3 focus-within:border-[var(--brand)] focus-within:shadow-[0_0_0_3px_var(--brand-soft)]",
+                handleInvalid && "border-[var(--error)]",
+              )}
+            >
+              <span aria-hidden="true" className="text-t3">
+                @
+              </span>
+              <input
+                ref={handleInput}
+                id="handle"
+                name="handle"
+                className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
+                autoComplete="off"
+                placeholder={onboardingContent.handlePlaceholder}
+                value={handle}
+                onChange={(event) => setHandle(event.target.value)}
+                aria-describedby={handleInvalid ? "handle-help setup-error" : "handle-help"}
+                aria-invalid={handleInvalid || undefined}
+                required
+              />
+              <BrandIcon name="x" className="size-3.5 text-t3" />
+            </div>
+            <p id="handle-help" className="mt-2 text-[12.5px] leading-relaxed text-t3">
+              {onboardingContent.handleHelpTyped}
+            </p>
+          </div>
+        )}
+        <label htmlFor="beat" className="mt-6 block text-[13px] font-medium text-t2">
+          {onboardingContent.beatLabel}
+        </label>
+        <textarea
+          ref={beatInput}
+          id="beat"
+          name="beat"
+          rows={3}
+          className={cn(
+            field,
+            "mt-2 block resize-none px-3.5 py-3 text-[16px] leading-[1.5] focus-visible:border-[var(--brand)] focus-visible:shadow-[0_0_0_3px_var(--brand-soft)]",
+            beatInvalid && "border-[var(--error)]",
           )}
-          <Field data-invalid={beatInvalid || undefined}>
-            <FieldLabel htmlFor="beat">{onboardingContent.beatLabel}</FieldLabel>
-            <Textarea
-              ref={beatInput}
-              id="beat"
-              name="beat"
-              className="min-h-28"
-              placeholder={onboardingContent.beatPlaceholder}
-              value={beat}
-              onChange={(event) => setBeat(event.target.value)}
-              aria-describedby={beatInvalid ? "beat-count setup-error" : "beat-count"}
-              aria-invalid={beatInvalid || undefined}
-              maxLength={300}
-              required
-            />
-            <FieldDescription id="beat-count" aria-live="polite">
-              {onboardingContent.beatCount(beat.length)}
-            </FieldDescription>
-          </Field>
-        </FieldGroup>
+          placeholder={onboardingContent.beatPlaceholder}
+          value={beat}
+          onChange={(event) => setBeat(event.target.value)}
+          aria-describedby={beatInvalid ? "beat-count setup-error" : "beat-count"}
+          aria-invalid={beatInvalid || undefined}
+          maxLength={300}
+          required
+        />
+        <p
+          id="beat-count"
+          aria-live="polite"
+          className="mt-2 text-right text-[12.5px] text-t3 tabular-nums"
+        >
+          {onboardingContent.beatCount(beat.length)}
+        </p>
 
         {failure && failure.code !== "builds_unavailable" && (
-          <p id="setup-error" role="alert" className="text-sm leading-relaxed text-destructive">
+          <p
+            id="setup-error"
+            role="alert"
+            className="mt-3 text-[13px] leading-relaxed text-[var(--error)]"
+          >
             {failure.code === "signed_out" ? (
-              <Link
-                href="/login"
-                className="inline-flex min-h-11 items-center underline underline-offset-4 desk:min-h-6"
-              >
+              <Link href="/login" className="underline underline-offset-4">
                 {onboardingContent.signedOut}
               </Link>
             ) : (
@@ -236,19 +263,27 @@ export function SetupForm({
           </p>
         )}
         {waitlistFailure && (
-          <p role="alert" className="text-sm leading-relaxed text-destructive">
+          <p role="alert" className="mt-3 text-[13px] leading-relaxed text-[var(--error)]">
             {waitlistFailure === "bot"
               ? onboardingContent.browserError
               : onboardingContent.waitlistFailed}
           </p>
         )}
         {saved && (
-          <p role="status" className="text-sm">
+          <p role="status" className="mt-3 text-[13px] text-t1">
             {onboardingContent.saved}
           </p>
         )}
-        <Button type="submit" className="min-h-11 w-full desk:min-h-7" disabled={pending || saved}>
-          {pending && <Spinner data-icon="inline-start" />}
+        <button
+          type="submit"
+          className={cn(primaryButton, "mt-6 h-11 w-full")}
+          disabled={pending || saved}
+        >
+          {pending ? (
+            <Spinner />
+          ) : closed ? null : (
+            <Sparkles className="size-4" aria-hidden="true" />
+          )}
           {closed
             ? pending
               ? onboardingContent.saving
@@ -256,7 +291,7 @@ export function SetupForm({
             : pending
               ? onboardingContent.pending
               : onboardingContent.submit}
-        </Button>
+        </button>
       </form>
       {refreshX && <RefreshXIdentityButton />}
     </div>

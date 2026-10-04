@@ -24,6 +24,10 @@ export type SetupErrorCode = z.infer<typeof setupErrorSchema>;
 
 export const onboardingContent = {
   title: "Set Up Your Agent",
+  subtitle: "Your agent is built from these two things.",
+  verifiedBadge: "From your X sign-in",
+  sampleLabel: "Sample",
+  sampleTitle: "What one sentence became in a recorded run",
   handleLabel: "X account",
   handleHelpVerified: "Your agent is built around this X account.",
   handleHelpTyped:
