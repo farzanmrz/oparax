@@ -3,26 +3,20 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { CircleAlert, X as Close } from "lucide-react";
-import { OparaxMark } from "@/pro/shared/brand";
+import { X as Close } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AlertsButton, lift, liftStyle, Tile, ViewSwitch } from "@/v2/deck/chrome";
+import { lift, liftStyle, ViewSwitch } from "@/v2/deck/chrome";
 import {
-  newestItem,
   PREVIEW_NOTE,
   sources,
-  status,
   stories,
-  storiesThisWeek,
   storyHasSource,
-  week,
-  when,
   type FeedStory,
   type Source,
   type View,
 } from "@/v2/deck/data";
 import { Arrive, useArrival } from "@/v2/deck/live";
-import { Dot, Segments, SourceMark, WeekBars } from "@/v2/deck/marks";
+import { SourceMark } from "@/v2/deck/marks";
 import { BASE, StoryStack, type LabelMode } from "./card";
 import { Expand, Shell } from "./rail";
 
@@ -93,8 +87,7 @@ export function OneFeed({
       header={
         <Header
           title="Your Feed"
-          controls={<ViewSwitch view={view} onChange={setView} />}
-          actions={<AlertsButton />}
+          actions={<ViewSwitch view={view} onChange={setView} />}
           sub={
             <p className="text-[13.5px] text-t3">
               {view === "clustered" ? "Articles and posts about the same event, stacked into one story." : "Each article, post and release on its own card, newest first."}
@@ -105,19 +98,10 @@ export function OneFeed({
       }
     >
       <main className="min-w-0 pb-20">
-        <Tiles />
-
-        {selected ? <SourceHeader source={selected} mode={mode} onClear={() => setSourceId(null)} /> : null}
-
-        {selected && list.length === 0 ? (
-          <p className="mt-6 text-[13.5px] text-t2">
-            Nothing from {mode === "name" ? selected.name : selected.handle} has matched your sentence yet. Everything else in your feed:
-          </p>
-        ) : null}
+        <Banner />
 
         <StackColumns list={selected && list.length === 0 ? all : list} mode={mode} freshId={selected ? null : freshId} visible={visible} />
       </main>
-      <Expand />
     </Shell>
   );
 }
@@ -140,9 +124,7 @@ function Header({
     <header className="relative z-20">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Link href={`${BASE}/landing`} aria-label="Oparax home" className="shrink-0 rounded-sm text-t1">
-            <OparaxMark className="size-[22px]" />
-          </Link>
+          <Expand />
           <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">{title}</h1>
         </div>
         {controls}
@@ -169,13 +151,13 @@ function StackColumns({
   freshId: string | null;
   visible: (s: FeedStory) => boolean;
 }) {
-  const two = useMemo(() => toColumns(list, 2), [list]);
+  const two = useMemo(() => toColumns(list, 3), [list]);
   const render = (col: FeedStory[], ci: number) => (
     <div key={ci} className="flex min-w-0 flex-col gap-6">
       <AnimatePresence initial={false}>
         {col.map((s, i) =>
           visible(s) ? (
-            <Arrive key={s.id} index={ci + i * 2}>
+            <Arrive key={s.id} index={ci + i * 3}>
               <StoryStack story={s} mode={mode} fresh={s.id === freshId} imageHeight={IMAGE_H} />
             </Arrive>
           ) : null,
@@ -185,52 +167,46 @@ function StackColumns({
   );
   return (
     <>
-      <div className="mt-6 hidden items-start gap-6 md:grid md:grid-cols-2">{two.map((col, ci) => render(col, ci))}</div>
+      <div className="mt-6 hidden items-start gap-5 md:grid md:grid-cols-3">{two.map((col, ci) => render(col, ci))}</div>
       <div className="mt-6 grid gap-6 md:hidden">{render(list, 0)}</div>
     </>
   );
 }
 
-function Tiles() {
+/** Where the three tiles were (owner, Oct 4: "Get rid of the three cards up top. Maybe that's where the banner can
+ * come in. Oparax can alert you on DMs. Turn on notifications."): one quiet line, dismissable, remembered. */
+const DISMISS_KEY = "oparax-one-dm-line";
+function Banner() {
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(DISMISS_KEY) === "1") setGone(true);
+    } catch {}
+  }, []);
+  if (gone) return null;
+  const dismiss = () => {
+    setGone(true);
+    try {
+      localStorage.setItem(DISMISS_KEY, "1");
+    } catch {}
+  };
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      <Tile label="This week">
-        <div className="mt-1 flex items-end justify-between gap-4">
-          <p className="flex items-baseline gap-1.5">
-            <span className="text-[28px] leading-none font-semibold tabular-nums text-t1">{storiesThisWeek}</span>
-            <span className="text-[13px] text-t2">stories</span>
-          </p>
-          <WeekBars week={week} height={36} className="w-[136px]" />
-        </div>
-        <p className="mt-2 flex flex-wrap justify-between gap-x-3 text-[11px] text-t3">
-          <span>Per day, by newest article</span>
-          <span>
-            {week[0].label} to {week[week.length - 1].label}
-          </span>
-        </p>
-      </Tile>
-      <Tile label="Agent">
-        <p className="mt-1.5 flex items-center gap-2 text-[14px] font-medium">
-          <Dot tone="ok" pulse /> <span className="text-[var(--ok)]">Live</span>
-          <span className="text-[12.5px] font-normal text-t3">newest article {when(newestItem.published_at)}</span>
-        </p>
-        <p className="mt-2.5 flex items-center gap-1.5 text-[12.5px] text-t2">
-          <CircleAlert className="size-3.5 text-[var(--error)]" aria-hidden="true" />
-          {status.failed} item could not be read
-        </p>
-      </Tile>
-      <Tile label="Free week">
-        <p className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-[22px] leading-none font-semibold tabular-nums text-t1">{status.daysLeft}</span>
-          <span className="text-[13px] text-t2">days left</span>
-        </p>
-        <div className="mt-2.5">
-          <Segments total={status.trialDays} filled={status.daysLeft} />
-        </div>
-        <p className="mt-2 text-[11.5px] tabular-nums text-t3">
-          {status.poolUsed} of {status.poolLimit} watched X posts used
-        </p>
-      </Tile>
+    <div role="region" aria-label="Notifications" className="flex h-9 items-center gap-3 text-[13px]">
+      <p className="text-t2">Oparax can alert you on X DMs.</p>
+      <Link
+        href={`${BASE}/notifications`}
+        className="rounded-sm font-medium text-[var(--brand)] underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        Turn on notifications
+      </Link>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Dismiss"
+        className="grid size-6 place-items-center rounded-md text-t3 transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <Close className="size-3.5" aria-hidden="true" />
+      </button>
     </div>
   );
 }

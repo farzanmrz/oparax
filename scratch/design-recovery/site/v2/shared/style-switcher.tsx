@@ -19,6 +19,8 @@ const PAGES = [
 ];
 /** The One style merges building and ready into onboarding and sign up into login. */
 const ONE_PAGES = [
+  { key: "sources", label: "Sources" },
+  { key: "notifications", label: "Notifications" },
   { key: "login", label: "Login" },
   { key: "setup", label: "Setup" },
   { key: "onboarding", label: "Onboarding" },
