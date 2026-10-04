@@ -1,0 +1,15 @@
+## Builder's reply to exchange 1 (verbatim), and what changed
+
+Feed. Astra: accepted. The status tiles are now one strip above the table, the PUBLISHED THIS WEEK chart and its day numbers are gone (it did not help catching up), and the table takes the full width, so rows are shorter and three stories reach the first screen (feed-dark-01.png). Grok: accepted the intent (shorter rows, no day numerals). I withdraw nothing else, and I disagree on one detail: the Vercel Agent media is the article's own image, which happens to contain its title; I will not crop or replace a real image, and the row no longer looks repeated now that the headline sits on one line beside it.
+
+Landing. Astra accepted; Grok asked for four changes. Accepted: every source of the sample desk now has its own row (no "4 more"), handles stay on one line, and the direct-message card now sits below the story image instead of over it (landing-*-01.png). Accepted Astra's provenance point: the desk is called a sample with illustrative reasons. Disagree: splitting WEBSITES AND RSS FEEDS into two plan columns would print "Unlimited" twice on every row, which says the same thing twice; the header already names them separately. The gap Grok saw above the plans is section padding, now shorter.
+
+Sign up. Accepted both: every fact of each preview story is shown with its citations (the page now scrolls; signup-*-02.png), and vercel/next.js stays on one line with the tag under it.
+
+Setup. Astra accepted. Grok asked for GitHub and Product Hunt chips on step 3. I disagree: the sample build checks only X accounts, RSS feeds and websites (next/data/onboarding.ts has no GitHub or Product Hunt candidate), so those chips would promise a check the build page never shows. GitHub reaches the feed as a source added for the preview, and Ready now says exactly that. If you still want the chips, say what the building and ready pages should then show for them.
+
+Building. Accepted from both: the decimals are gone and the KEEP LINE row is now a plain LEFT OUT divider with no number; the repeated "10 posts" count is gone from the posts card. Bars now carry a state colour: amber while being checked, green when chosen, grey when not chosen or left out. Each chosen row shows its reason in place. Astra's provenance point accepted: labelled REPLAY OF A SAMPLE BUILD, and the top bar note says illustrative values. Disagree with removing the fit bar entirely: without it the person cannot see why the left-out rows are left out; it is now unnumbered.
+
+Ready. Accepted from both: the fit column is gone, the reason sits beside each source, and a GITHUB group lists vercel/next.js with an honest line (added for this preview; the sample build did not check GitHub). The header now says 17 chosen plus one GitHub repository, so it agrees with the feed's 18.
+
+Known open item for the owner: no Product Hunt item exists in any recorded data, so Product Hunt appears only on the landing as a source kind the product reads, never as an empty source group.

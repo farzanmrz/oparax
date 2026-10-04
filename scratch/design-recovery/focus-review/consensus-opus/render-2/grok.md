@@ -1,0 +1,19 @@
+RESULT: FINDINGS
+
+Page a, yes. Page b, yes. Change 5, yes.
+
+Directory and bands can be shown beside Window, Newsroom and Deck: the first desktop screen already holds the Olmo picture, all four facts and the quotes, and on a phone the headline and every fact come before the picture.
+
+Rail and sheet can be shown beside them: the headline still spans the story, the picture sits beside the facts, and In their words is a full-width strip under both, on the short Vercel story and on the Bank of England portrait.
+
+I reopened the six accepted feeds, the near misses (empty sections, empty plans, busy hero, busy judge, the flat landings, and the three same-shell feeds) and the rejections (wires, paragraphs in boxes, blue boxes, the navy theme, and the four lifeless palettes). `a-dark-01`, `a-light-01`, `a-dark-02` and `a-light-02` are lifted bands with a large picture, every fact and a quote well, in the theme's live, checking, failed and action colors plus real logos. They are complete stories, with no Your Feed title row and no lead-plus-teasers front page. `b-dark-01`, `b-light-01`, `b-dark-02` and `b-light-02` are one lifted sheet. In `sheet.tsx` the headline spans, facts and picture share a 60/40 row, and Evidence follows at full width with up to two spans. The hole under the short facts is gone. `b-portrait` keeps the 4% card whole inside the 16:9 well, because a `pbs.twimg.com` address uses `object-contain`. `a-portrait` uses the natural ratio, so that card fills its column. `a-mixed` and `b-mixed` put the imageless Latent Space plate in the picture slot. Empty states drop the Clustered and Direct totals, say Checking 2, and fill the sheet with source tiles. `a-github` and `b-github` say Checking 2, omit the replay sentence, and continue under Everything else on your beat. The full feed still says Checking 1 and keeps the replay line. `StoryFacts` remaps citations to `text-t3`. Get alerts on X is a link to `https://x.com/oparax_ai`, with Alerts not connected beside it, hidden only on a narrow window.
+
+Change 5, yes. Below the large breakpoint, `bands.tsx` orders the fact column first and the picture second. `a-narrow` shows the account row, the mode words and the alert button, then the Olmo headline and all four facts, with the picture starting at the bottom. Reading on arrival outranks the earlier picture-first phone order. The picture stays in the same band. `b-narrow` is unchanged: picture, then headline and facts, on one screen.
+
+The eleven criteria hold. RSS feeds, websites, X accounts and GitHub stay in separate groups. The kind words are Article and Post. Light mode is white cards on a pale page. The empty preview no longer claims Clustered 7 and Direct 10.
+
+The strongest objection is that a's directory is another source bar and b's rail recalls Window, so both could be taken for the shell near misses. The first screens have no Your Feed row, no selected story and no teaser grid, and each story is complete. The strongest objection to change 5 is that `a-narrow` is mostly type and the picture is only beginning. Those facts are what the person opened the feed to read.
+
+Highest risks. I did not tab the built page. The code puts a focus-visible ring on the native links, source controls and summaries, and the builder reports a clean console. Story images use an empty alt. The side bars on `b-portrait` sit inside the picture well and read as the card's frame. GitHub on a quiet filter is still the release tile, because this fixture has no synthesized GitHub story. The screens say Direct 10. I did not re-count the fixture against the round-1 figure of 13.
+
+Show both to the owner.

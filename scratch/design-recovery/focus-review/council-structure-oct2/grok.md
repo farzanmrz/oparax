@@ -1,0 +1,23 @@
+RESULT: FINDINGS
+
+Restore imaginative component use, and delete the rule that drops a direction only one party wants. Keep the three feeds as the feel to match. They are not a layout to clone and not a layout to avoid. The existing runner can carry the conversation. No external debate tool, no Claude Design, no wireframe.
+
+Wrong today, verified against the morning skill, `prompts.md`, and step 4. Restore his line on imaginative flair and using the components creatively, and "a philosophy and a loop, never a UI kit: do not copy the example screens." Restore "Components available: <paths>" and "does it use the components imaginatively?" Delete "a direction only one party wants is dropped." Host briefs that said "do not reuse their layouts" and pointed builders at preview atoms were outside the skill and were wrong. The skill should forbid both. Rewrite hard fail 2a.7 so a lifted window or a peeking stack is a reusable device, and only a whole accepted screen under a new header fails. Keep reading without clicking, no wires, the fixed theme, the near misses, and the removal of numeric quotas.
+
+Not wrong. Removing the Linear, Supabase, Vercel, X, Facebook, and Stripe screenshots. You said that did not cause this. Principles 3, 4, and 5 can stay. Do not restore his criteria page as a Linear gallery. His quoted points can return as quotes, with no outside pictures.
+
+Examples. The six images stay the bar for feel and finish. Under each, one caption: effect, component name, token. Deck's peek is Stack, front card already readable, depth from the shadow tokens in `DESIGN.md`. Window's lift is the layered shadow and the top-lit edge. Name the component and forbid its source. No paths into `deck.tsx` or a catalog implementation. "Components available" points at the catalog skills so a lane can choose a component and compose it.
+
+Consensus. Three artists: builder, Astra, Grok. The host never writes a reconciled direction. Verified failure: the Opus round 3 brief said "Drop Grok's three columns," and the Sonnet round 3 brief had the builder take Astra's skeleton.
+
+One owner request starts the loop, which the council skill already allows. Round 1 is a fresh council with the same brief: his words, the six images, `DESIGN.md`, the catalogs. Each lane and the builder propose directions as objects, positions, a component name plus its effect, what is readable without a click, and the nearest near miss. Later exchanges are new briefs that paste the three previous replies verbatim and add only new screenshots. Each party answers every live idea with accept (same objects and positions, its own sentence), one change that would make it accept, or "I withdraw mine." A one-party idea stays until its author withdraws it or all three cite the same bar it fails. Silence is not agreement. After five exchanges you see one paragraph: the stuck object and the three sentences. Same loop on the renders. Build only after three quoted acceptances.
+
+`lanes.py` resumes only a failed lane, once, and Codex has no resume, so Astra cannot continue a session. Do not use resume for the debate. The other session's report, which I did not re-test: claude-council cannot pass screenshots, and cc-debate is a code-review loop. Different angles are a check (life, the person's task, copy of the shell), not a veto.
+
+Lock. A themed wireframe is a cheap UI. Lock from one static page rendered in `DESIGN.md`: yes or no on the arrangement, yes or no on the words. That is the direction, the elements, and the copy. Line 72 already reversed a text lock before a render. The page is not the product build.
+
+Claude Design: no. Line 70 reversed that path with stock Mira. A sketch in another look becomes the reference the lanes follow. If you want it later, you have to say so, and it still cannot set the theme or enter the skill.
+
+Next, in order. You say yes to this rule change. Then edit only step 4, the two restored sentences, the captions, and that hard fail. Then one new screen through the verbatim loop, and you see only the pages.
+
+The case against: keeping every one-party idea can drag a copied Deck or a click-to-read stack back. The bound is that all three must still accept the same objects, and hidden facts still fail. Highest risk: the host keeps summarizing, which is the merge under a new name. Second: someone pastes Stack because it was named. I did not reopen the overview images. The round briefs and the morning skill are what I checked.

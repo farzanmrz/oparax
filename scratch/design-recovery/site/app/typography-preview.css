@@ -1,0 +1,98 @@
+@font-face {
+  font-family: PreviewNunitoSans;
+  src: url("/fonts/nunitosans.ttf") format("truetype");
+  font-weight: 200 1000;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: PreviewOpenSans;
+  src: url("/fonts/opensans.ttf") format("truetype");
+  font-weight: 300 800;
+  font-display: swap;
+}
+
+html[data-typography="source"][data-direction][data-theme] {
+  --font: SourceSans, Arial, sans-serif;
+  --preview-heading-font: SourceSans, Arial, sans-serif;
+}
+
+html[data-typography="manrope"][data-direction][data-theme] {
+  --font: SourceSans, Arial, sans-serif;
+  --preview-heading-font: Manrope, Arial, sans-serif;
+}
+
+html[data-typography="nunito"][data-direction][data-theme] {
+  --font: SourceSans, Arial, sans-serif;
+  --preview-heading-font: PreviewNunitoSans, Arial, sans-serif;
+}
+
+html[data-typography="open"][data-direction][data-theme] {
+  --font: PreviewOpenSans, Arial, sans-serif;
+  --preview-heading-font: PreviewOpenSans, Arial, sans-serif;
+}
+
+html[data-typography]:not([data-typography="direction"])
+  :is(h1, h2, h3, h4, [data-slot="dialog-title"], .wordmark, .plan-price) {
+  font-family: var(--preview-heading-font);
+}
+
+html[data-typography]:not([data-typography="direction"]) .study-4 .d4-reading-story {
+  font-family: var(--font);
+}
+
+.catalog-dock {
+  display: block;
+}
+
+.catalog-dock-main {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.typography-preview-controls {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 10px 7px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.typography-preview-controls label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.typography-preview-controls select {
+  min-height: 32px;
+  max-width: 250px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 3px 8px;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.typography-preview-controls p {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@media (max-width: 699px) {
+  .catalog-dock-main {
+    gap: 3px;
+  }
+
+  .typography-preview-controls label {
+    gap: 6px;
+  }
+
+  .typography-preview-controls select {
+    max-width: 215px;
+    font-size: 11px;
+  }
+}

@@ -1,0 +1,21 @@
+RESULT: FINDINGS.
+
+I opened every supplied render and reference image. In feed-dark-01.png, four Olmo facts sit beside a teal image. In accepted-newsroom-dark.png, the selected GPT-6.1 row has a blue band above separate facts and evidence columns.
+
+My position: the direction retains the accepted theme’s depth and finish in both modes, but several screens still need changes. I agree with the builder’s six task descriptions.
+
+Feed: widen the reading area by moving the right-hand status tiles into a compact strip above the table and removing the publication chart. In feed-dark-02.png, the reading column remains squeezed between empty flanks. Tall rows are partly a composition problem, not simply the cost of exposing facts. Compared with accepted-newsroom-dark.png, scanning suffers. The image/post/title-card treatment is inventive and balanced; full headlines, visible facts, citations, grouped sources and name/handle controls are verified. The chart’s benefit to catching up remains unconvincing, so mistake 7 persists.
+
+Landing: ACCEPT visually. The overlapping DM, lifted arrival table and complete story make a coherent demonstration, with stronger depth than landing-busy-hero-dark.png or landing-flat-hero-dark.png. Signup is immediately available; source groups, pricing rows and closing images stay readable. I disagree that the DM overlap needs correction: it barely covers the image’s bottom edge and leaves the facts clear. The amber trial row is a good reuse of Newsroom’s live-row device. Provenance needs the shared correction below.
+
+Sign up: replace the right-hand two-fact excerpts with complete cited stories, allowing scrolling. signup.tsx explicitly uses facts.slice(0, 2), so mistake 1 survives despite the attractive presentation. Its pane contrast and mixed media belong beside accepted-window-light.png, and the form and confirmation instruction are clear. I disagree with preserving the no-scroll result at the expense of story content. The release block also wraps “vercel/next.js” awkwardly.
+
+Setup: ACCEPT for the pictured verified-account state. The large sentence field and blue action establish an immediate task; the inset pinned post and quoted post give the right pane recognizable objects. This is a restrained adaptation of accepted-window-dark.png, appreciably more purposeful than rejected-paragraphs-in-boxes.png. I do not count missing article imagery as a weakness here. The typed-account and error states remain unverified visually.
+
+Building: replace the central fit-score column and KEEP LINE with readable evidence and selection reasons alongside each source. StatusMark and Shimmer make progress recognizable, but building-dark-live-02.png becomes an isolated ledger of decimals. This approaches landing-busy-judge-dark.png’s uniformly small information and the machine-first problem of feed-convergence-lines-dark.png. The repeated “10 posts” count also contradicts the builder’s subtraction claim. Progress is clear; the scores do not help the person act.
+
+Ready: remove the fit-score column and place reasons directly beside source identities. The grouped table, amber checking row and prominent feed action inherit accepted-newsroom-light.png successfully. However, repeated green bars compete with the explanations, recalling landing-flat-sources-light.png. Its table job justifies absent article imagery. The source-selection result is readable without expansion.
+
+The strongest case against these revisions is that consistency and visible scoring can build trust. My highest risk is false confidence: next/data/onboarding.ts explicitly calls scores, reasons, posts and bio illustrative fixtures. “Recorded build” overstates their provenance. Correct that first. Product Hunt’s absence is defensible for these fixtures, but its equal treatment remains unproven.
+
+These are screenshot judgments and source findings. Narrow layouts, keyboard use and task completion remain unverified; source inspection also shows inert alerts and retry buttons. Full section 2a acceptance is therefore outstanding.

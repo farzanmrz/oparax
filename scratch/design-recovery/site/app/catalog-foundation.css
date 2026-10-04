@@ -1,0 +1,93 @@
+/* Unlayered utilities preserve the legacy page CSS while allowing stock component variants. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:where(html:not([data-theme="light"]), html:not([data-theme="light"]) *));
+
+:root {
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--blue);
+  --primary-foreground: var(--button-ink);
+  --secondary: var(--soft);
+  --secondary-foreground: var(--ink);
+  --muted-foreground: var(--muted);
+  --accent: var(--wash);
+  --accent-foreground: var(--ink);
+  --destructive: #e36976;
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--blue);
+  --radius: 0.625rem;
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--blue);
+  --sidebar-primary-foreground: var(--button-ink);
+  --sidebar-accent: var(--wash);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--blue);
+}
+
+@theme inline {
+  --font-sans: var(--font);
+  --font-heading: var(--font);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--soft);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --breakpoint-desk: 700px;
+}
+
+/* Preflight is omitted. Only catalog nodes get the border/list defaults they require. */
+:where([data-slot], [data-slot] *, [data-react-bits], [data-react-bits] *) {
+  border-style: solid;
+  border-width: 0;
+  border-color: var(--line);
+}
+:where([data-slot="table"]) { border-collapse: collapse; }
+:where([data-react-bits="logo-loop"] ul) { list-style: none; margin: 0; padding: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-react-bits="logo-loop"] { overflow: visible; }
+  [data-react-bits="logo-loop"] > div:last-child { width: 100%; }
+  [data-react-bits="logo-loop"] ul:first-child { flex-wrap: wrap; gap: var(--logoloop-gap); }
+  [data-react-bits="logo-loop"] ul:first-child li { margin: 0; }
+  [data-react-bits="logo-loop"] ul[aria-hidden="true"] { display: none; }
+  [data-react-bits="logo-loop"] > div[aria-hidden] { display: none; }
+}
+
+:where([data-slot="sidebar-menu"]) { list-style: none; padding: 0; margin: 0; }

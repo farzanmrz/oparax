@@ -1,0 +1,15 @@
+/* One direction, v2. Same arrangement as v2/deck/deck.css: the scratch folder is gitignored, so Tailwind never
+ * scans it on its own. This sheet borrows next.css's theme by reference and emits one utilities layer for the
+ * One routes: its own folder, the Deck and shared files it reuses, and every folder next.css scans. */
+@reference "../../app/(next)/next.css";
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "./";
+@source "../deck";
+@source "../shared";
+@source "../../app/(v2)/v2/one";
+@source "../../components/ui";
+@source "../../components/react-bits";
+@source "../../components/ai-elements";
+@source "../../pro";
+@source "../../next";

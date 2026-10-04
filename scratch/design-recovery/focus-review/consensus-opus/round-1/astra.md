@@ -1,0 +1,21 @@
+RESULT: FINDINGS.
+
+I would develop two directions, beginning with continuous story bands. These are proposals for reconciliation, not consensus or render approval.
+
+The accepted [Window](/Users/farzanm4/.agents/skills/reference-led-design/examples/accepted/accepted-window-dark.png), [Newsroom](/Users/farzanm4/.agents/skills/reference-led-design/examples/accepted/accepted-newsroom-light.png) and [Deck](/Users/farzanm4/.agents/skills/reference-led-design/examples/accepted/accepted-deck-dark.png) feel inhabited: recognizable sources, substantial pictures, distinct objects and visible depth. Their hierarchy makes complexity feel orderly. Transfer their light, shadows, image presence, functional color and Open Sans hierarchy. Their older hidden-fact interactions cannot transfer under today’s brief.
+
+I agree with the builder’s account. [Spread](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/skilltest/opus-feed2/a-dark-01.png) repeats the lead-plus-teasers composition; Board repeats Deck; Folio interrupts reading with controls; Piles requires selection. [Reading sheet](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/skilltest/sonnet-feed2/a-dark-01.png) achieves the closest finish, but its dock obscures content, its narrow controls clip, and its empty state dies.
+
+Direction one, continuous story bands: the creator catches up by reading downward. At 1440×900, a shallow source directory occupies x24–1416, y24–184. Its four columns contain every configured source under RSS FEEDS, WEBSITES, X ACCOUNTS and GITHUB. Account, Clustered/Direct, alerts and theme controls occupy its upper edge; preview status occupies its lower edge. There is no title row.
+
+Olmo occupies x24–1416, y208–524; MAI begins at y548. Each independently lifted band has a 360px image on the left, headline and every cited fact in the middle, and actual quoted evidence on the right. Heights grow with content. Private npm, Sol, Mistral, Bank of England and Next.js continue below in stored order. Imageless Direct items retain the reading alignment, with evidence using the former image area. This differs from Window’s selected reader, Newsroom’s table and Deck’s masonry. Its nearest danger is Reading sheet repetition; separate full-width surfaces and equal treatment of every story distinguish it.
+
+Direction two, continuous spread: the creator reads consecutive complete stories side by side. A 248px left column at x24 holds account and view controls, then the same four source groups, then status. One lifted reading surface spans x296–1416 from y24. Olmo and MAI occupy equal halves, each with a 220px-high image, complete facts, citations and quotes. Subsequent pairs are private npm/Sol and Mistral/Bank; Next.js follows. One document scroll preserves chronological reading order. Imageless entries begin with their headline and retain identical type and citation treatment. Unlike Window, nothing is selected; unlike Newsroom, nothing collapses; unlike Deck, stories share one continuous surface. The nearest miss is Folio: eliminate its spine, pagination and fixed-height pages.
+
+Both use existing depth tokens exactly. Blue marks controls and X; teal marks articles and their evidence; neutral GitHub marks identify repositories. Green belongs only to the preview Live state, amber to two checking items and seven trial days, red to one failure. Show alerts disconnected and 0/300 once; omit charts and Product Hunt.
+
+For either empty state, move the configured-source directory into the reading area with stored focus descriptions, beat and connection state. Narrow layouts stack controls and stories without overlays. Light mode uses white surfaces, pale ground and existing ink borders.
+
+Verified limitation: [feed.ts](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/site/next/data/feed.ts) contains ten Direct items, not thirteen, and no synthesized GitHub story. Resolve those gaps without inventing content.
+
+The strongest objection is visual repetition. Highest risks are concealed facts and filler added for color. Bands first offers the clearest reading order; actual fit and usability remain unverified.

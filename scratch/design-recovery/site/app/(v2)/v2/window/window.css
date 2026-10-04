@@ -1,0 +1,6 @@
+/* Window direction, v2: the fixed theme (next.css and palettes.css, DESIGN.md) plus this direction's own
+   component folder as a Tailwind source, since the repository's scratch folder is git-ignored. */
+@import "../../../(next)/next.css";
+@import "../../../(next)/palettes.css";
+
+@source "../../../../v2/window";

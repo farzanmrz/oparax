@@ -1,0 +1,196 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Tailwind must scan the shared stock primitives and the installed Pro source. */
+@source "../../components/ui";
+@source "../../components/blocks";
+@source "../../components/react-bits";
+@source "../../pro";
+@source "../../next";
+@source "../../components/ai-elements";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("/fonts/opensans.ttf") format("truetype");
+  font-weight: 300 800;
+  font-display: swap;
+}
+
+/* DESIGN.md palette reference, mapped once to shadcn semantic roles. */
+:root {
+  color-scheme: light;
+  --background: #f3f6fb;
+  --foreground: #132139;
+  --card: #ffffff;
+  --card-foreground: #132139;
+  --popover: #ffffff;
+  --popover-foreground: #132139;
+  --primary: #245dec;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf0fa;
+  --secondary-foreground: #132139;
+  --muted: #eaf0fa;
+  --muted-foreground: #4a5870;
+  --accent: #e7eeff;
+  --accent-foreground: #132139;
+  --destructive: #c8313f;
+  --border: #bccadf;
+  --input: #b3c2d8;
+  --ring: #245dec;
+  --radius: 10px;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #132139;
+  --sidebar-primary: #245dec;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e7eeff;
+  --sidebar-accent-foreground: #132139;
+  --sidebar-border: #bccadf;
+  --sidebar-ring: #245dec;
+  /* Blue gradient family for atmosphere, kept inside the navy/blue foundation. */
+  --glow-1: #245dec;
+  --glow-2: #6b94ff;
+  --glow-3: #a9c1ff;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #090f1d;
+  --foreground: #f0f4ff;
+  --card: #141e31;
+  --card-foreground: #f0f4ff;
+  --popover: #141e31;
+  --popover-foreground: #f0f4ff;
+  --primary: #6b94ff;
+  --primary-foreground: #081022;
+  --secondary: #19253c;
+  --secondary-foreground: #f0f4ff;
+  --muted: #19253c;
+  --muted-foreground: #a8b6ce;
+  --accent: #203664;
+  --accent-foreground: #f0f4ff;
+  --destructive: #ff7a86;
+  --border: #2a3952;
+  --input: #2a3952;
+  --ring: #6b94ff;
+  --sidebar: #141e31;
+  --sidebar-foreground: #f0f4ff;
+  --sidebar-primary: #6b94ff;
+  --sidebar-primary-foreground: #081022;
+  --sidebar-accent: #203664;
+  --sidebar-accent-foreground: #f0f4ff;
+  --sidebar-border: #2a3952;
+  --sidebar-ring: #6b94ff;
+  --glow-1: #1d3f9e;
+  --glow-2: #3f6fe8;
+  --glow-3: #6b94ff;
+}
+
+@theme inline {
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-glow-1: var(--glow-1);
+  --color-glow-2: var(--glow-2);
+  --color-glow-3: var(--glow-3);
+  /* Palette comparison tokens (palettes.css): four text tiers, hairlines, levels, functional slots. */
+  --color-t1: var(--t1);
+  --color-t2: var(--t2);
+  --color-t3: var(--t3);
+  --color-t4: var(--t4);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-raised: var(--raised);
+  --color-well: var(--well);
+  --color-ok: var(--ok);
+  --color-caution: var(--caution);
+  --color-error: var(--error);
+  --color-brand: var(--brand);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --breakpoint-desk: 700px;
+}
+
+/*
+ * React Bits App UI theme, the four documented knobs, set once.
+ * 1. Typeface: inherited Open Sans from body (no variable needed).
+ * 2. Radius: 10px "Round", the same value as shadcn --radius.
+ * 3. Accent and readable foreground, separate light and dark pairs.
+ * 4. Neutral base: Tailwind's neutral lightness steps kept; light steps lean clean blue-gray (hue 250, low chroma) so light mode never reads lavender, dark steps stay navy (hue 262).
+ * Scoped to .rb-theme-scope so Bento tiles and other regions are harmonized deliberately, not by accident.
+ * The ladder is redeclared here because :root values resolve against :root's --rb-radius.
+ */
+.rb-theme-scope {
+  --rb-radius: 10px;
+  --rb-r-xs: max(0px, calc(var(--rb-radius) - 6px));
+  --rb-r-sm: max(0px, calc(var(--rb-radius) - 4px));
+  --rb-r-md: max(0px, calc(var(--rb-radius) - 2px));
+  --rb-r-lg: var(--rb-radius);
+  --rb-r-xl: calc(var(--rb-radius) + min(2px, var(--rb-radius)));
+  --rb-r-2xl: calc(var(--rb-radius) + min(4px, var(--rb-radius)));
+  --rb-r-3xl: calc(var(--rb-radius) + min(6px, var(--rb-radius)));
+  --rb-r-4xl: calc(var(--rb-radius) + min(8px, var(--rb-radius)));
+  --rb-accent: #245dec;
+  --rb-accent-fg: #ffffff;
+  --color-neutral-50: oklch(98.5% 0.004 250);
+  --color-neutral-100: oklch(97% 0.007 250);
+  --color-neutral-200: oklch(92.2% 0.013 252);
+  --color-neutral-300: oklch(87% 0.018 252);
+  --color-neutral-400: oklch(70.8% 0.028 254);
+  --color-neutral-500: oklch(55.6% 0.035 256);
+  --color-neutral-600: oklch(43.9% 0.04 258);
+  --color-neutral-700: oklch(37.1% 0.044 260);
+  --color-neutral-800: oklch(26.9% 0.045 262);
+  --color-neutral-900: oklch(20.5% 0.04 262);
+  --color-neutral-950: oklch(14.5% 0.032 262);
+}
+.dark .rb-theme-scope,
+.dark.rb-theme-scope {
+  --rb-accent: #6b94ff;
+  --rb-accent-fg: #081022;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-padding-top: 72px;
+    /* Composed pages: Pro content blocks take their natural height instead of 100vh. */
+    --rb-section-min-h: 0px;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+

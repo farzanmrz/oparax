@@ -1,0 +1,21 @@
+RESULT: FINDINGS
+
+He is right. One style keeps one page frame, and a yes on a page is a yes to those margins. At 1440 the brief's measurements match the code. Window's outer box is 20–1420 on every page, but the heading jumps from x=53 (feed, building) to 173 (setup) and 203 (signup). Deck's column is 40–1400 on building and ready, 80–1360 on setup, and 20–1420 on the feed. Newsroom building runs 28–1412, while the feed heading starts at 272 and the table reaches the right edge. That mismatch is on `compare-flow-a-dark.png`, `compare-flow-b-dark.png`, and the dark feed, building, and setup shots.
+
+The frame is the skin. Objects change. The bar, the inset, and the heading's and first object's left edge do not. A centered sign-up form, a larger landing headline, and a source rail sit inside the frame. Landing and sign-up use the visitor header. Setup, building, ready, and feed use the 48px app bar. Both sit on the same content inset.
+
+Window app pages: the lifted window is the page. `window/feed.tsx`, `building.tsx`, and `ready.tsx` put the heading on the lit stage and a second window below it. `accepted-window-dark.png` is one window in the stage light, with "Your Feed" inside it and the app bar above. The stage (`--stage-frame`, `--stage-light`) is the light around that window, about 20px, on the feed and on building. It does not carry the heading. A marketing page may show a demo window on that stage, aligned to the same inset. At 1440 the window fills the stage, and the heading and first cards sit at 52px from the viewport. No max-width. Below 1024px the inset is 16px, columns stack, and the heading edge stays shared.
+
+Newsroom is the full-page desk in `accepted-newsroom-dark.png`. At 1440 every app page has a 244px left column (sources, steps, or the account), main padding 28px, heading and table from 272 to 1412. Setup's centered 1240 box and the feed's right edge at 1440 both go. Landing and sign-up use that same main edge. The form centers inside the main column. Below 1100px the left column moves above the main and the inset is 16px.
+
+Deck is cards on the page, as in `accepted-deck-dark.png`. At 1440 every page uses one column from 20 to 1420, inner padding 32px, heading and first card at x=52, heading top at y=80. The setup form fills that column. Below 1024px the column is full width with 16px padding.
+
+Skill, under the fixed design system: "One style, one frame. Every page shares the bar, the outer inset, the content width, and the left and top of the heading and the first object, measured at 1440×900. A centered form or a larger headline sits inside the frame. Window app pages: the lifted window is the page, the stage is only the light around it, and the heading sits inside the window. Newsroom: one full-width desk, one left-column width, no centered max-width. Deck: one column, cards on the page. A heading or first object that starts at a different x from that style's feed is not done. Sharing the frame does not mean repeating the feed's rail, toggles, or title row."
+
+DESIGN.md, after his yes, gets those three pixel locks, plus: "Below 1024px, insets are 16px and columns stack. Visitor pages use the same inset. The stage light is the light behind a lifted surface."
+
+The strongest case against this: the October 2 same-shell near misses failed by repeating the feed chrome, and a forced shared x can pin a sign-up form to the left or pull Newsroom toward Window. The frame is only the inset and the heading edge. The three styles stay different bodies, and the form may center inside the column.
+
+Highest risk: a builder copies the whole feed onto every page, or deletes the stage and the window goes flat, or he comments on pages whose margins will still move. I did not measure the accepted PNGs in pixels, and I did not open the light set. These numbers come from each style's v2 feed where it already matches the accepted composition. They stay a proposal until he says yes.
+
+First, one shared frame per style, one builder, re-render the six pages at 1440 in dark and light, and show him each style in a row with one vertical line through the headings. One paragraph, then yes or no on the frame, before any page-by-page comments.

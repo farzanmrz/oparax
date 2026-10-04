@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/* The accepted council palette (page, window, rail, hairlines, text tiers, functional hues, stage light, shadows). */
+@import "../../../(next)/palettes.css";
+
+/* The scratch folder is gitignored, so every scanned folder is named. */
+@source "../../../../skilltest/opus3";
+@source "../../../../next/council";
+@source "../../../../components/ui";
+@source "../../../../components/react-bits";
+@source "../../../../components/ai-elements";
+@source "../../../../pro/shared";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("/fonts/opensans.ttf") format("truetype");
+  font-weight: 300 800;
+  font-display: swap;
+}
+
+@theme inline {
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-t1: var(--t1);
+  --color-t2: var(--t2);
+  --color-t3: var(--t3);
+  --color-t4: var(--t4);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-raised: var(--raised);
+  --color-well: var(--well);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 10px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-padding-top: 64px;
+  }
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+/* Section light: the feeds' stage light, as a soft ellipse behind each section's main surface so no edge shows. */
+.palette-council {
+  --opus3-glow: radial-gradient(55% 45% at 50% 50%, rgb(36 89 232 / 0.09), rgb(36 89 232 / 0.025) 55%, transparent 80%);
+}
+.dark .palette-council {
+  --opus3-glow: radial-gradient(55% 45% at 50% 50%, rgb(170 190 230 / 0.12), rgb(120 150 220 / 0.035) 55%, transparent 80%);
+}
