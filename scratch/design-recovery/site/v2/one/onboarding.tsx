@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Quote as QuoteMark, Sparkles } from "lucide-react";
 import { LayoutGroup, motion, MotionConfig, useReducedMotion } from "motion/react";
 import { announce, isDone, stepIds, stepLabel, stepLine, stepTitle, useRun, type Run, type StepId } from "@/next/building/steps";
@@ -28,6 +29,7 @@ import { beat, groups, HANDLE, hostOf, sources, type Group, type Source } from "
 import { EASE } from "@/v2/deck/live";
 import { GroupGlyph, kindColor, SiteIcon, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
+import { SetupFields } from "./setup";
 
 // One onboarding. Three columns (owner, Oct 4: "The right side is for the user's own stuff, and the left side is for
 // my timeline"): on the left the eight steps; in the centre the candidates as the run gathers them, then Jev's
@@ -35,6 +37,10 @@ import { BASE } from "./card";
 // sources on, only the chosen sources by kind; on the right the person's own things: Your brief first from Choose
 // sources on, the profile, and the newest posts arriving one under another. The heading moves Choosing sources,
 // Saving your agent, Your agent is ready; the X account and Build my agent sit at the top right the whole time.
+// Setup is this same page before the run (phase "setup", owner, Oct 4: "There's no difference between the building
+// page and the setup page"): the heading "Set up your agent", the handle, the sentence and Build my agent in one line
+// in the top bar, and the three columns waiting. The run reads ?handle= and ?sentence= from setup for the X account
+// chip and the brief.
 
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
 const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
@@ -56,9 +62,30 @@ const order: Candidate[] = (() => {
 })();
 const bandOrder: Band[] = ["strong", "possible", "set-aside"];
 
-export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null }) {
+/** Every step waiting: the columns before the run. */
+const before: Run = { states: stepIds.map(() => "waiting"), progress: stepIds.map(() => 0) };
+
+export function OneOnboarding({
+  mode = { kind: "frozen", at: "done" },
+  why = null,
+  phase = "run",
+  typed = false,
+  blank = false,
+}: {
+  mode?: RunMode;
+  why?: string | null;
+  /** "setup": the page before the run, with the fields in the top bar. */
+  phase?: "setup" | "run";
+  typed?: boolean;
+  blank?: boolean;
+}) {
   useThemeGuard();
-  const run = useRun(mode);
+  const params = useSearchParams();
+  const setupPhase = phase === "setup";
+  const handle = (!setupPhase && params.get("handle")?.trim().replace(/^@/, "")) || HANDLE;
+  const sentence = (!setupPhase && params.get("sentence")?.trim()) || beat;
+  const live = useRun(mode);
+  const run = setupPhase ? before : live;
   const done = isDone(run);
   const reduce = useReducedMotion();
   const [open, setOpen] = useState<Set<string>>(() => new Set(why ? [why] : []));
@@ -73,14 +100,14 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
       else next.add(id);
       return next;
     });
-  const heading = done ? "Your agent is ready" : st("choose") === "done" ? "Saving your agent" : "Choosing sources";
+  const heading = setupPhase ? "Set up your agent" : done ? "Your agent is ready" : st("choose") === "done" ? "Saving your agent" : "Choosing sources";
 
   return (
     <MotionConfig reducedMotion="user">
       <div className="palette-council flex min-h-svh flex-col">
         <main className="flex min-h-svh flex-1 flex-col bg-[var(--window)]">
-          <div className="flex flex-col gap-4 border-b border-line px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-10 lg:px-8">
-            <div className="min-w-0" aria-live="polite">
+          <div className="flex flex-col gap-4 border-b border-line px-5 py-5 lg:flex-row lg:items-start lg:justify-between lg:gap-10 lg:px-8">
+            <div className="flex min-w-0 shrink-0 items-center lg:h-9" aria-live="polite">
               <motion.h1
                 key={heading}
                 initial={reduce ? false : { opacity: 0, y: 4 }}
@@ -91,38 +118,56 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
                 {heading}
               </motion.h1>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-3">
-              <span className="inline-flex h-9 items-center gap-2.5 rounded-full border border-line-strong bg-[var(--raised)] pr-3.5 pl-3 text-[13px]" style={{ boxShadow: "var(--top-light)" }}>
-                <span className="text-t3">X account</span>
-                <span className="flex items-center gap-1.5 font-medium text-t1">
-                  <XLogo className="size-3 text-t1" />@{HANDLE}
+            {setupPhase ? (
+              <SetupFields typed={typed} blank={blank} />
+            ) : (
+              <div className="flex shrink-0 flex-wrap items-center gap-3">
+                <span className="inline-flex h-9 items-center gap-2.5 rounded-full border border-line-strong bg-[var(--raised)] pr-3.5 pl-3 text-[13px]" style={{ boxShadow: "var(--top-light)" }}>
+                  <span className="text-t3">X account</span>
+                  <span className="flex items-center gap-1.5 font-medium text-t1">
+                    <XLogo className="size-3 text-t1" />@{handle}
+                  </span>
                 </span>
-              </span>
-              {done ? (
-                <PrimaryLink href={`${BASE}/feed`} className="h-9 px-4 text-[13.5px]">
-                  Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
-                </PrimaryLink>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  className="inline-flex h-9 cursor-not-allowed items-center gap-2 rounded-md bg-primary px-4 text-[13.5px] font-medium text-primary-foreground opacity-55"
-                >
-                  <Sparkles className="size-3.5" aria-hidden="true" />
-                  Build my agent
-                </button>
-              )}
-            </div>
+                {done ? (
+                  <PrimaryLink href={`${BASE}/feed`} className="h-9 px-4 text-[13.5px]">
+                    Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
+                  </PrimaryLink>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="inline-flex h-9 cursor-not-allowed items-center gap-2 rounded-md bg-primary px-4 text-[13.5px] font-medium text-primary-foreground opacity-55"
+                  >
+                    <Sparkles className="size-3.5" aria-hidden="true" />
+                    Build my agent
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid min-h-[720px] flex-1 grid-cols-1 lg:grid-cols-[264px_minmax(0,1fr)_340px]">
-            <Steps run={run} />
+            <Steps run={run} quiet={setupPhase} />
             <section aria-label="Your sources" className="min-w-0 border-r border-line">
               <p className="sr-only" aria-live="polite">
                 {announce(run)}
               </p>
-              {chooseF > 0 ? (
+              {setupPhase ? (
+                <div className="space-y-7 px-7 py-6">
+                  {kinds.map((k) => (
+                    <div key={k.id}>
+                      <p className="mb-3 flex items-center gap-2">
+                        <span className="grid size-4 place-items-center text-t3">
+                          <GroupGlyph group={k.id} className="size-3.5" />
+                        </span>
+                        <span className="text-[15px] font-semibold text-t1">{k.label}</span>
+                      </p>
+                      <Placeholder>Chosen during the build</Placeholder>
+                    </div>
+                  ))}
+                </div>
+              ) : chooseF > 0 ? (
                 <div className="space-y-7 px-7 py-6">
                   {kinds.map((k) => {
                     const list = chosen(k.id);
@@ -151,7 +196,16 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
                 <Candidates run={run} />
               )}
             </section>
-            <RightPane run={run} />
+            {setupPhase ? (
+              <aside aria-label="Your brief" className="bg-[var(--rail)]">
+                <div className="px-5 pt-5 pb-8">
+                  <p className="mb-2.5 text-[13px] font-semibold text-t1">Your brief</p>
+                  <Placeholder>Written from your sentence and your posts</Placeholder>
+                </div>
+              </aside>
+            ) : (
+              <RightPane run={run} sentence={sentence} />
+            )}
           </div>
         </main>
       </div>
@@ -160,7 +214,7 @@ export function OneOnboarding({ mode, why }: { mode: RunMode; why: string | null
 }
 
 /** Window's step rail: the eight steps, their marks and the line between them, each step's line once settled. */
-function Steps({ run }: { run: Run }) {
+function Steps({ run, quiet = false }: { run: Run; quiet?: boolean }) {
   return (
     <aside aria-label="Steps" className="border-r border-line bg-[var(--rail)]">
       <div className="sticky top-0 px-4 pt-5 pb-6">
@@ -174,10 +228,10 @@ function Steps({ run }: { run: Run }) {
               <li key={id} className="relative grid grid-cols-[24px_1fr] gap-x-3 pb-4">
                 {!last ? <span aria-hidden="true" className={cn("absolute top-7 bottom-1 left-[11.5px] w-px", state === "done" ? "bg-[var(--ok)]/50" : "bg-line-strong")} /> : null}
                 <span className="relative z-10 grid size-6 place-items-center rounded-full bg-[var(--rail)]">
-                  <StepMark state={state} size={20} />
+                  {quiet ? <EmptyRing /> : <StepMark state={state} size={20} />}
                 </span>
                 <div className="min-w-0 pt-0.5">
-                  <p className={cn("text-[13px] leading-snug", state === "waiting" ? "text-t3" : "font-medium text-t1")}>
+                  <p className={cn("text-[13px] leading-snug", quiet ? "text-t2" : state === "waiting" ? "text-t3" : "font-medium text-t1")}>
                     {state === "running" ? (
                       <Shimmer as="span" duration={1.8} className="font-medium [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
                         {stepTitle[id]}
@@ -186,7 +240,9 @@ function Steps({ run }: { run: Run }) {
                       stepTitle[id]
                     )}
                   </p>
-                  <p className={cn("mt-0.5 text-[12px] leading-snug", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{settled ? stepLine[id] : stepLabel[state]}</p>
+                  {quiet ? null : (
+                    <p className={cn("mt-0.5 text-[12px] leading-snug", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{settled ? stepLine[id] : stepLabel[state]}</p>
+                  )}
                 </div>
               </li>
             );
@@ -195,6 +251,20 @@ function Steps({ run }: { run: Run }) {
       </div>
     </aside>
   );
+}
+
+/** A step before the run: an empty ring, no state yet. */
+function EmptyRing() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden="true" fill="none" stroke="var(--line-strong)" strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+
+/** A quiet inset slot for what the run will fill: dashed hairline, no shadow. */
+function Placeholder({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-xl border border-dashed border-line bg-[var(--well)] px-4 py-4 text-[13px] text-t3">{children}</p>;
 }
 
 /** The centre until Choose sources: the candidates arriving as the run gathers them, then Jev's check moving each
@@ -383,7 +453,7 @@ function SourceCard({ source, open, onToggle }: { source: Source; open: boolean;
 
 /** The right column, the person's own things: Your brief first from Choose sources on, then the profile, then the
  * newest posts arriving one under another while they are read. */
-function RightPane({ run }: { run: Run }) {
+function RightPane({ run, sentence }: { run: Run; sentence: string }) {
   const at = (id: StepId) => run.states[stepIds.indexOf(id)];
   const pState = at("profile");
   const postsState = at("posts");
@@ -393,7 +463,7 @@ function RightPane({ run }: { run: Run }) {
   return (
     <aside aria-label="Your profile and brief" className="bg-[var(--rail)]">
       <div className="grid gap-6 px-5 pt-5 pb-8">
-        {showBrief ? <BriefCard run={run} /> : null}
+        {showBrief ? <BriefCard run={run} sentence={sentence} /> : null}
         {pState === "running" ? <ProfileRunning /> : pState === "waiting" ? null : <ProfileCard />}
         {postsState !== "waiting" ? (
           <div>
@@ -427,7 +497,7 @@ function RightPane({ run }: { run: Run }) {
 }
 
 /** Your brief: the person's sentence, then the summary streaming in while the brief is written. */
-function BriefCard({ run }: { run: Run }) {
+function BriefCard({ run, sentence }: { run: Run; sentence: string }) {
   const reduce = useReducedMotion();
   const i = stepIds.indexOf("brief");
   const state = run.states[i];
@@ -441,7 +511,7 @@ function BriefCard({ run }: { run: Run }) {
       <div className={cn(lift, "p-4")} style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}>
         <p className="flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
           <QuoteMark className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
-          {beat}
+          {sentence}
         </p>
         <div className="mt-3.5 border-t border-line pt-3.5">
           <p className="text-[13px] font-semibold text-t1">About {profile.name.split(" ")[0]}</p>
