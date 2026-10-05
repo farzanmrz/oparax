@@ -1,0 +1,17 @@
+{
+ "kimi": {
+  "final": true,
+  "line": "kimi: OK FINDINGS lane=kimi model=kimi-k3-high effort=high format=text elapsed=86s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-next-oct4/kimi.result.txt findings=-",
+  "active": "kimi"
+ },
+ "astra": {
+  "final": true,
+  "line": "astra: OK FINDINGS lane=astra model=gpt-6-astra effort=high format=text elapsed=177s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-next-oct4/astra.result.txt findings=-",
+  "active": "astra"
+ },
+ "grok": {
+  "final": true,
+  "line": "grok: OK FINDINGS lane=grok model=grok-4.7-build-fast effort=xhigh format=text elapsed=209s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-next-oct4/grok.result.txt findings=-",
+  "active": "grok"
+ }
+}
