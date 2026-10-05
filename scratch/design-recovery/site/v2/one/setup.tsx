@@ -26,12 +26,20 @@ export function OneSetup({ typed, blank }: { typed: boolean; blank: boolean }) {
   const [error, setError] = useState(blank);
   const [handleError, setHandleError] = useState(false);
   return (
-    <Shell light={640}>
-      <main className="relative flex min-h-[calc(100svh-120px)] flex-col items-center justify-center pb-16">
-        <div className="w-full max-w-[540px]">
+    <Shell
+      light={640}
+      header={
+        <header className="flex items-center gap-3">
           <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">{setup.title}</h1>
+        </header>
+      }
+    >
+      {/* Left aligned under the page title like every other One page (owner, Oct 4: "Setup, for some reason, you've
+          centered it. Why? There just needs to be one visual UI."). */}
+      <main className="relative pb-16">
+        <div className="w-full max-w-[560px]">
           <form
-            className={cn(lift, "mt-6 p-6")}
+            className={cn(lift, "p-6")}
             style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
             noValidate
             onSubmit={(e) => {
@@ -108,7 +116,7 @@ export function OneSetup({ typed, blank }: { typed: boolean; blank: boolean }) {
               {setup.submit}
             </button>
           </form>
-          <p className="mt-3.5 text-center text-[12.5px] text-t3">Your public X handle is enough. No sign-in with X needed.</p>
+          <p className="mt-3.5 text-[12.5px] text-t3">Your public X handle is enough. No sign-in with X needed.</p>
         </div>
       </main>
     </Shell>

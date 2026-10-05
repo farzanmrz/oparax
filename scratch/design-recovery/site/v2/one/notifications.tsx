@@ -2,7 +2,7 @@
 
 import { XLogo } from "@/pro/shared/brand";
 import { cn } from "@/lib/utils";
-import { lift, liftStyle } from "@/v2/deck/chrome";
+import { lift } from "@/v2/deck/chrome";
 import { HANDLE } from "@/v2/deck/data";
 import { Shell } from "./rail";
 
@@ -22,26 +22,26 @@ export function OneNotifications() {
       }
     >
       <main className="min-w-0 pb-20">
-        <div className={cn(lift, "max-w-[640px] p-4")} style={liftStyle}>
-          <div className="flex items-center gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-md border border-line bg-[var(--well)] text-t1">
-              <XLogo className="size-4" />
-            </span>
+        {/* The Settings page's row list (owner, Oct 4: "that card itself doesn't look good"): a label column, the
+            line, and one quiet bordered button at the right. */}
+        <div className={cn(lift, "max-w-[760px] divide-y divide-line overflow-hidden")} style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}>
+          <section aria-label="X DMs" className="flex min-h-[72px] items-center gap-6 px-5 py-4">
+            <span className="w-[96px] shrink-0 text-[13px] text-t3">X DMs</span>
             <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-semibold text-t1">X DMs</p>
-              <p className="text-[12.5px] text-t3">Oparax messages @{HANDLE} on X when a story matters.</p>
+              <p className="text-[14px] text-t1">Oparax messages @{HANDLE} on X when a story matters.</p>
+              <p className="mt-1 text-[12.5px] text-t3">Send the bot a message from your account first. Alerts start after that DM.</p>
             </div>
             <a
               href={`https://x.com/messages/compose?recipient_id=${BOT}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 shrink-0 items-center gap-2 rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_0_0_1px_rgb(36_89_232/0.6),0_4px_14px_-4px_rgb(58_108_244/0.55)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring"
+              style={{ boxShadow: "var(--top-light)" }}
             >
-              <XLogo className="size-3" />
-              Message @{BOT} on X
+              <XLogo className="size-3.5" />
+              Message @{BOT}
             </a>
-          </div>
-          <p className="mt-3 border-t border-line pt-3 pl-12 text-[12.5px] text-t3">Send the bot a message from your account. Alerts start after that first DM.</p>
+          </section>
         </div>
       </main>
     </Shell>
