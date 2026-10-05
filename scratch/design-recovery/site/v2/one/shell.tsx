@@ -3,21 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, Moon, Sun } from "lucide-react";
 import { OparaxMark } from "@/pro/shared/brand";
-import { ThemeToggle } from "@/next/theme";
+import { THEME_KEY } from "@/next/theme";
 import { cn } from "@/lib/utils";
-import { lift, liftStyle, Stage } from "@/v2/deck/chrome";
+import { lift, Stage } from "@/v2/deck/chrome";
 import { status } from "@/v2/deck/data";
+import { Segments } from "@/v2/deck/marks";
 import { BASE } from "./card";
 
 // The One shell (owner, Oct 4: "we'd have a consistent running header for oparax"). Deck's open ground (Stage)
-// and Deck's header line on every page of the app: the mark and wordmark, Feed and Settings, then the days left in
-// the free week, the signed-in account (the email, since not everyone connects X) and the theme. The header's row
-// runs the full width with 32px at each side (owner, Oct 5: "The margins are not only a page problem, but also a
-// header problem"); the onboarding page spans the same width, the feed and settings keep their centred 1400px
-// column. Nothing floats: no bubble, no tiles, no second bar. Login keeps the same line with the mark and the
-// theme only.
+// and one header line on every page: the mark and wordmark, Feed and Settings, flexible space, then the account
+// (the initial, the signed-in email, a chevron). Nothing else in the bar. The account menu holds the plan as one
+// object, the Light and Dark switch and Sign out. Login keeps the same line with the mark and a labelled
+// Appearance switch, since there is no account. Every page, header included, sits in ONE centred column (one.css,
+// .one-column): 48px margins at 1440, 290px at 2560.
 
 const NAV = [
   { href: `${BASE}/feed`, label: "Feed" },
@@ -27,25 +27,82 @@ const NAV = [
 /** Preview account email: the sample account has no stored address, so the form's placeholder domain is used. */
 export const ACCOUNT_EMAIL = "farzan@newsroom.com";
 
-/** The 1400px column the feed, settings and login sit in. */
-export const column = "mx-auto w-full max-w-[1400px] px-4 lg:px-8";
-
-/** Full width with 32px at each side: the header's row and the onboarding page. */
-export const wide = "w-full px-4 lg:px-8";
+/** The one column every page and the header sit in. */
+export const column = "one-column";
 
 /** Clear ground under every page so the lab switcher (bottom right, about 100px tall) covers no control, plus 72px. */
 export const switcherClear = "pb-[184px]";
 
-function Divider() {
-  return <span aria-hidden="true" className="h-5 w-px shrink-0 bg-line-strong" />;
+/** The page theme, read from <html> and kept in step with any other switch on the page. */
+function useTheme() {
+  const [dark, setDark] = useState(true);
+  useEffect(() => {
+    const el = document.documentElement;
+    const read = () => setDark(el.classList.contains("dark"));
+    read();
+    const watch = new MutationObserver(read);
+    watch.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => watch.disconnect();
+  }, []);
+  const choose = (next: boolean) => {
+    document.documentElement.classList.toggle("dark", next);
+    try {
+      localStorage.setItem(THEME_KEY, next ? "dark" : "light");
+    } catch {}
+  };
+  return { dark, choose };
 }
 
-/** The running header line. `app` adds the navigation and the person's objects; without it, mark and theme only. */
+/** Light and Dark as a labelled two-way switch (the Clustered and Direct switch's skin). */
+export function ThemeSwitch({ className }: { className?: string }) {
+  const { dark, choose } = useTheme();
+  const options = [
+    { value: false, label: "Light", Icon: Sun },
+    { value: true, label: "Dark", Icon: Moon },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Theme"
+      className={cn("flex rounded-lg border border-line bg-[var(--well)] p-0.5", className)}
+      onKeyDown={(e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        choose(!dark);
+        const el = e.currentTarget;
+        requestAnimationFrame(() => (el.querySelector('[aria-checked="true"]') as HTMLElement | null)?.focus());
+      }}
+    >
+      {options.map(({ value, label, Icon }) => {
+        const on = dark === value;
+        return (
+          <button
+            key={label}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            tabIndex={on ? 0 : -1}
+            onClick={() => choose(value)}
+            className={cn(
+              "flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 text-[12.5px] text-t3 transition-colors hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring",
+              on && "bg-[var(--brand-soft)] text-t1 shadow-[inset_0_0_0_1px_var(--brand-line)]",
+            )}
+          >
+            <Icon className={cn("size-3.5", on && "text-[var(--brand)]")} aria-hidden="true" />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The running header line. `app` adds the navigation and the account; without it, the labelled Appearance switch. */
 export function OneHeader({ app = true }: { app?: boolean }) {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[var(--page)]/80 backdrop-blur-md">
-      <div className={cn(wide, "flex h-14 items-center gap-8")}>
+      <div className={cn(column, "flex h-14 items-center gap-8")}>
         <Link href={app ? `${BASE}/feed` : `${BASE}/login`} className="flex shrink-0 items-center gap-2 rounded-sm text-[17px] font-semibold tracking-tight text-t1 focus-visible:outline-2 focus-visible:outline-ring">
           <OparaxMark className="size-[22px]" />
           Oparax
@@ -71,38 +128,35 @@ export function OneHeader({ app = true }: { app?: boolean }) {
             })}
           </nav>
         ) : null}
-        <div className="ml-auto flex items-center gap-5">
+        <div className="ml-auto flex items-center">
           {app ? (
-            <>
-              <DaysLeft />
-              <Divider />
-              <Account />
-            </>
-          ) : null}
-          <ThemeToggle className="size-8 rounded-md border border-line-strong bg-[var(--window)] text-t2 shadow-[var(--top-light)] hover:text-t1" />
+            <Account />
+          ) : (
+            <div className="flex items-center gap-3">
+              <span id="appearance" className="text-[12.5px] text-t3">
+                Appearance
+              </span>
+              <ThemeSwitch className="w-[168px]" />
+            </div>
+          )}
         </div>
       </div>
     </header>
   );
 }
 
-/** The free week shows only its days left, on every page, with no meter. */
-function DaysLeft() {
-  return (
-    <p aria-label="Free week" className="text-[12.5px] whitespace-nowrap text-t2">
-      <span className="font-medium text-t1 tabular-nums">{status.daysLeft}</span> days left
-    </p>
-  );
-}
-
-/** The person: the signed-in email with a small initial circle; a small menu with Sign out. */
+/** The person: the initial, the signed-in email and a chevron. The menu holds the plan (one object: Free week, the
+ * 7-segment meter, the days left as its caption, the watched posts used), the theme, and Sign out. */
 function Account() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      button.current?.focus();
     };
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -117,42 +171,76 @@ function Account() {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={button}
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        aria-haspopup="menu"
         aria-controls="one-account"
-        className="flex h-8 items-center gap-2 rounded-md px-1.5 text-[13px] whitespace-nowrap transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring"
+        className="-mr-1.5 flex h-8 items-center gap-2 rounded-md px-1.5 text-[13px] whitespace-nowrap transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring"
       >
         <span aria-hidden="true" className="grid size-[22px] place-items-center rounded-full bg-[var(--brand-soft)] text-[11px] font-semibold text-[var(--brand)] uppercase shadow-[inset_0_0_0_1px_var(--brand-line)]">
           {ACCOUNT_EMAIL.charAt(0)}
         </span>
         <span className="font-medium text-t1">{ACCOUNT_EMAIL}</span>
-        <ChevronDown className="size-3.5 text-t3" aria-hidden="true" />
+        <ChevronDown className={cn("size-3.5 text-t3 transition-transform", open && "rotate-180")} aria-hidden="true" />
       </button>
       {open ? (
-        <div id="one-account" role="menu" aria-label="Account" className={cn(lift, "absolute top-[calc(100%+8px)] right-0 w-[200px] p-1.5")} style={liftStyle}>
-          <Link
-            href={`${BASE}/login`}
-            role="menuitem"
-            className="flex h-9 w-full items-center gap-2.5 rounded-md px-2 text-[13px] text-t2 transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <LogOut className="size-4 text-t3" aria-hidden="true" />
-            Sign out
-          </Link>
+        <div
+          id="one-account"
+          aria-label="Account"
+          className={cn(lift, "absolute top-[calc(100%+10px)] right-0 w-[296px] divide-y divide-line")}
+          style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
+        >
+          <div className="p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[13.5px] font-semibold text-t1">Free week</p>
+              <p className="text-[12px] text-t2">
+                <span className="font-medium text-t1 tabular-nums">{status.daysLeft}</span> days left
+              </p>
+            </div>
+            <div className="mt-2.5">
+              <Segments total={status.trialDays} filled={status.daysLeft} />
+            </div>
+            <p className="mt-2 text-[12px] tabular-nums text-t3">
+              {status.poolUsed} of {status.poolLimit} watched X posts used
+            </p>
+          </div>
+          <div className="flex items-center gap-3 p-4">
+            <span className="text-[13px] text-t2">Theme</span>
+            <ThemeSwitch className="ml-auto w-[168px]" />
+          </div>
+          <div className="p-4">
+            <SignOut className="w-full justify-center" />
+          </div>
         </div>
       ) : null}
     </div>
   );
 }
 
-/** Every page inside the app: Deck's ground, the running header, the page in the 1400px column (`full`: the full
- * width with 32px at each side, as the onboarding does). */
-export function AppShell({ children, light, full = false }: { children: React.ReactNode; light?: number; full?: boolean }) {
+/** Sign out as a bordered action. */
+export function SignOut({ className }: { className?: string }) {
+  return (
+    <Link
+      href={`${BASE}/login`}
+      className={cn(
+        "inline-flex h-8 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring",
+        className,
+      )}
+      style={{ boxShadow: "var(--top-light)" }}
+    >
+      <LogOut className="size-3.5 text-t3" aria-hidden="true" />
+      Sign out
+    </Link>
+  );
+}
+
+/** Every page inside the app: Deck's ground, the running header, the page in the one column. */
+export function AppShell({ children, light }: { children: React.ReactNode; light?: number }) {
   return (
     <Stage light={light}>
       <OneHeader />
-      <main className={cn(full ? wide : column, "relative flex-1 pt-7", switcherClear)}>{children}</main>
+      <main className={cn(column, "relative flex-1 pt-7", switcherClear)}>{children}</main>
     </Stage>
   );
 }

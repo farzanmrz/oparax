@@ -19,8 +19,7 @@ function modeFromParams(at: string | undefined, state: string | undefined): RunM
 // The feed holds the onboarding (owner, Oct 5: "The feed itself will have the onboarding if the feed has not been
 // constructed"). ?agent=none is that state: the setup, then the run, on this page. Its own params: ?handle=typed
 // leaves the X handle to type, ?error=blank opens with the sentence empty and its error, ?at=1..7 or done freezes
-// the run, ?state=failed is the recorded failure, ?why=<source id> opens that source's reason, ?layout=top puts the
-// steps in a row above. Otherwise the feed: ?view=clustered|direct, ?panel=open (the source list open; closed by
+// the run, ?state=failed is the recorded failure, ?why=<source id> opens that source's reason. Otherwise the feed: ?view=clustered|direct, ?panel=open (the source list open; closed by
 // default), ?source=<source id> (feed filtered to it), ?settled=1 (skip the arrival replay).
 export default async function Page({ searchParams }: { searchParams: SearchParams }) {
   const param = await readParams(searchParams);
@@ -34,7 +33,6 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
         why={param("why") ?? null}
         typed={param("handle") === "typed"}
         blank={param("error") === "blank"}
-        initialLayout={param("layout") === "top" ? "top" : "columns"}
       />
     );
   }

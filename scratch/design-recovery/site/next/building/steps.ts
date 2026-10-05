@@ -182,6 +182,17 @@ export const oneStepLine: Record<OneStepId, string> = {
   save: "Saved your agent.",
 };
 
+/** What each step does, said under its name before the run (from the real engine, lib/onboarding/engine.ts). */
+export const oneStepDoes: Record<OneStepId, string> = {
+  profile: "Looks your handle up on X: name, bio, picture, pinned post.",
+  posts: "Reads your newest 10 posts; threads count as one; reposts and replies left out.",
+  gather: "Collects every row of the shared source table and every account you quoted.",
+  jev: "Jev asks, per candidate, whether it is a useful recurring source for your beat.",
+  choose: "One model call picks sites, feeds and X accounts with a reason each, and writes your brief.",
+  search: "Runs one X search only if too few accounts fit.",
+  save: "Saves your agent and opens your feed.",
+};
+
 const oneDurations = [4000, 8000, 6000, 12000, 10000, 3000, 5000];
 export const ONE_REPLAY_MS = oneDurations.reduce((a, b) => a + b, 0);
 export const ONE_SEARCH = oneStepIds.indexOf("search");

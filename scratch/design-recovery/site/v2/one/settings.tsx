@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LogOut, Plus } from "lucide-react";
+import { Plus, X as CloseIcon } from "lucide-react";
 import { XLogo } from "@/pro/shared/brand";
 import { profile, SITES_MAX } from "@/next/data/onboarding";
 import { cn } from "@/lib/utils";
@@ -10,13 +10,14 @@ import { lift, liftStyle } from "@/v2/deck/chrome";
 import { groups, HANDLE, sources as initialSources, status, type Group, type Source } from "@/v2/deck/data";
 import { GroupGlyph, Segments, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine } from "./shell";
+import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine, SignOut } from "./shell";
 
 // The one Settings page: account, plan, sources and notifications (owner, Oct 4: "Why are you making notifications
-// and sources this separate shit?"). Two columns on Deck's ground. Left, wide: the source groups as lifted sections
-// of their own, each a heading with its glyph and Add source, rows of logo, name and handle or address on one line,
-// Remove on hover and focus, the reason under the row on click; no counts except the shared limit for websites and
-// feeds, said once. Right, sticky: one identity block holding the person, the plan, X DMs and Sign out.
+// and sources this separate shit?"). Two columns in the page's one column. Left, the body: the sources as ONE lifted
+// panel, four sections divided by hairlines (X accounts, RSS feeds, Websites, GitHub), each a heading line (the kind
+// mark, the kind name, Add source at the right) over one-line rows (logo, name, handle or address; an x at the right
+// on hover and focus; the reason under the row on click). No counts except the shared limit for websites and feeds,
+// said once. Right, a 360px sticky block, one object: the person, the plan, X DMs and Sign out.
 
 /** The Oparax bot on X. Alerts arrive as DMs from it once the person has messaged it. */
 const BOT = "oparax_ai";
@@ -35,11 +36,11 @@ export function OneSettings() {
     <AppShell>
       <PageLine title="Settings" />
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="grid gap-3">
+        <div className={cn(lift, "divide-y divide-line")} style={liftStyle}>
           {groups.map((g) => {
             const members = list.filter((s) => s.group === g.id);
             return (
-              <section key={g.id} aria-label={g.label} className={cn(lift, "px-3 pt-3.5 pb-2.5")} style={liftStyle}>
+              <section key={g.id} aria-label={g.label} className="px-3 pt-3.5 pb-2.5">
                 <div className="flex items-center gap-2.5 px-2">
                   <span className="grid size-5 place-items-center text-t3">
                     <GroupGlyph group={g.id} className="size-3.5" />
@@ -59,7 +60,7 @@ export function OneSettings() {
                     {sitesAndFeeds} of {SITES_MAX} websites and feeds
                   </p>
                 ) : null}
-                <ul className="mt-2">
+                <ul className="mt-2 grid items-start gap-x-4 xl:grid-cols-2">
                   {members.map((s) => (
                     <SourceRow key={s.id} source={s} group={g.id} open={open === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)} onRemove={() => remove(s.id)} />
                   ))}
@@ -71,19 +72,18 @@ export function OneSettings() {
         <aside aria-label="Account" className="lg:sticky lg:top-[84px]">
           <div className={cn(lift, "divide-y divide-line")} style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}>
             <div className="p-5">
-              <XAvatar handle={HANDLE} size={44} />
-              <p className="mt-3 truncate text-[14.5px]">
-                <span className="font-semibold text-t1">{profile.name}</span>
-                <span className="ml-1.5 text-t3">@{HANDLE}</span>
-              </p>
-              <p className="mt-1.5 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
-              <p className="mt-2 text-[12.5px] text-t3">{EMAIL}</p>
+              <div className="flex items-center gap-3">
+                <XAvatar handle={HANDLE} size={48} />
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] leading-tight font-semibold text-t1">{profile.name}</p>
+                  <p className="mt-0.5 truncate text-[13px] leading-tight text-t3">@{HANDLE}</p>
+                </div>
+              </div>
+              <p className="mt-3 truncate text-[12.5px] text-t2">{EMAIL}</p>
             </div>
             <div className="p-5">
               <div className="flex items-baseline gap-3">
-                <p className="text-[13.5px] text-t1">
-                  <span className="font-semibold">Free week</span>, {status.daysLeft} days left
-                </p>
+                <p className="text-[13.5px] font-semibold text-t1">Free week</p>
                 <Link
                   href={`${BASE}/landing#pricing`}
                   className="ml-auto shrink-0 rounded-sm text-[13px] text-t2 underline decoration-line-strong underline-offset-4 transition-colors hover:text-t1 hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring"
@@ -94,8 +94,13 @@ export function OneSettings() {
               <div className="mt-2.5">
                 <Segments total={status.trialDays} filled={status.daysLeft} />
               </div>
-              <p className="mt-2 text-[12px] tabular-nums text-t3">
-                {status.poolUsed} of {status.poolLimit} watched X posts used
+              <p className="mt-2 flex justify-between gap-3 text-[12px] tabular-nums text-t3">
+                <span>
+                  <span className="font-medium text-t1">{status.daysLeft}</span> days left
+                </span>
+                <span>
+                  {status.poolUsed} of {status.poolLimit} watched X posts used
+                </span>
               </p>
             </div>
             <div className="p-5">
@@ -117,14 +122,7 @@ export function OneSettings() {
               </a>
             </div>
             <div className="p-5">
-              <Link
-                href={`${BASE}/login`}
-                className="inline-flex h-8 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring"
-                style={{ boxShadow: "var(--top-light)" }}
-              >
-                <LogOut className="size-3.5" aria-hidden="true" />
-                Sign out
-              </Link>
+              <SignOut />
             </div>
           </div>
         </aside>
@@ -153,9 +151,9 @@ function SourceRow({ source: s, group, open, onToggle, onRemove }: { source: Sou
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${s.name}`}
-          className="h-7 shrink-0 rounded-md px-2 text-[12.5px] text-t3 opacity-0 transition-[opacity,color] group-hover/row:opacity-100 group-focus-within/row:opacity-100 hover:text-[var(--error)] focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
+          className="grid size-7 shrink-0 place-items-center rounded-md text-t3 opacity-0 transition-[opacity,color] group-hover/row:opacity-100 group-focus-within/row:opacity-100 hover:text-[var(--error)] focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
         >
-          Remove
+          <CloseIcon className="size-3.5" aria-hidden="true" />
         </button>
       </div>
       {open ? (

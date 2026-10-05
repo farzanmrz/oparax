@@ -10,6 +10,7 @@ import {
   oneRunAt,
   oneRunFailed,
   oneRunFrozen,
+  oneStepDoes,
   oneStepIds,
   oneStepLine,
   oneStepTitle,
@@ -29,12 +30,13 @@ import {
   postsRead,
   profile,
   setAsideCount,
+  sourceTable,
   type Band,
   type Candidate,
+  type TableRow,
 } from "@/next/data/onboarding";
 import { setup } from "@/next/copy";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { Skeleton } from "@/components/ui/skeleton";
 import { XLogo } from "@/pro/shared/brand";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle, PrimaryLink } from "@/v2/deck/chrome";
@@ -45,17 +47,16 @@ import { BASE } from "./card";
 import { AppShell } from "./shell";
 
 // One onboarding, which the feed holds (owner, Oct 5: "The feed itself will have the onboarding if the feed has not
-// been constructed"): /v2/one/feed?agent=none, full width with 32px at each side. The page line holds the heading;
-// once the run starts, the X account and the button at its right. Three columns under it: the seven steps of the
-// real engine on the left, prefilled as empty rings before the run; the setup card centred in the middle (the X
-// handle, the sentence, Build my agent), replaced in place by the run as it streams, ACCUMULATING top to bottom and
-// never removing a block: the candidates gathered, Jev's verdict for each (the band word, never the number), the
-// chosen sources as removable pills, the search line, the save line; and the person on the right as ONE identity
-// block (picture, name and handle, About, Brief) with their newest posts under it. ?layout=top turns the steps
-// into a row of tiles above. The replay runs 48 seconds (next/building/steps.ts) and can be paused and replayed.
-// ?at=1..7 and ?at=done freeze it for screenshots.
-
-export type Layout = "columns" | "top";
+// been constructed"): /v2/one/feed?agent=none, in the page's one column. At rest it is the run's page with nothing
+// looked up yet. The page line: "Set up your agent", then the X handle, the sentence and Build my agent on one line
+// (no card). Under it two working columns: the seven steps of the real engine on the left (empty rings, one line
+// each saying what the step does), and the centre, which holds the shared source table every run starts from. The
+// right column does not exist until step 1 finds the person; then it opens (300ms) with ONE identity block (picture,
+// name beside it, handle under, About, Brief) and the newest posts under it, and the centre narrows. Once the run
+// gathers, the centre ACCUMULATES top to bottom and never removes a block: the candidates gathered, Jev's verdict
+// for each (the band word, never the number) and the three bands, the chosen sources as removable pills, the search
+// line, the save line. The replay runs 48 seconds (next/building/steps.ts) and can be paused and replayed;
+// ?at=1..7 and ?at=done freeze it.
 
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
 const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
@@ -126,7 +127,6 @@ export function OneOnboarding({
   why = null,
   typed = false,
   blank = false,
-  initialLayout = "columns",
 }: {
   mode: RunMode;
   /** The run is on the page at load (?at= or ?state=failed); otherwise the page opens before the run. */
@@ -134,7 +134,6 @@ export function OneOnboarding({
   why?: string | null;
   typed?: boolean;
   blank?: boolean;
-  initialLayout?: Layout;
 }) {
   const reduce = useReducedMotion();
   const [started, setStarted] = useState(startedAtLoad);
@@ -145,7 +144,6 @@ export function OneOnboarding({
   const [text, setText] = useState(blank ? "" : beat);
   const [error, setError] = useState(blank);
   const [handleError, setHandleError] = useState(false);
-  const [layout, setLayout] = useState<Layout>(initialLayout);
   const [whyOf, setWhyOf] = useState<string | null>(why);
   const [removed, setRemoved] = useState<Set<string>>(() => new Set());
 
@@ -160,22 +158,26 @@ export function OneOnboarding({
           : oneRunAt(clock.elapsed);
   const done = started && isDone(run);
   const st = (id: OneStepId) => run.states[idx(id)];
-  const heading = !started ? "Set up your agent" : done ? "Your agent is ready" : st("choose") === "done" ? "Saving your agent" : "Choosing sources";
-  const message = [handleError ? HANDLE_REQUIRED : null, error ? setup.beatRequired : null].filter(Boolean).join(" ");
+  const heading = !started
+    ? "Set up your agent"
+    : done
+      ? "Your agent is ready"
+      : st("choose") === "done"
+        ? "Saving your agent"
+        : "Choosing sources";
+  const message = [handleError ? HANDLE_REQUIRED : null, error ? setup.beatRequired : null]
+    .filter(Boolean)
+    .join(" ");
   const sentence = text.trim() || beat;
   const shownHandle = handle.trim() || HANDLE;
+  // The right column exists only once step 1 has found the person.
+  const found = started && st("profile") === "done";
+  const gathering = started && st("gather") !== "waiting";
 
   const replay = () => {
     setLive(true);
     setRemoved(new Set());
     clock.replay();
-  };
-  const chooseLayout = (next: Layout) => {
-    setLayout(next);
-    const q = new URLSearchParams(location.search);
-    if (next === "top") q.set("layout", "top");
-    else q.delete("layout");
-    history.replaceState(null, "", `${location.pathname}?${q.toString()}`);
   };
   const submit = () => {
     if (started) return;
@@ -188,27 +190,35 @@ export function OneOnboarding({
     replay();
   };
 
-  const controls = (
-    <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-2", layout === "columns" && "border-t border-line px-4 py-3")}>
-      {started ? (
-        <>
-          <button type="button" disabled={!live || done} onClick={clock.playing ? clock.pause : clock.resume} className={quietButton}>
-            {live && !clock.playing && !done ? "Resume" : "Pause"}
-          </button>
-          <button type="button" onClick={replay} className={quietButton}>
-            Replay
-          </button>
-        </>
-      ) : null}
-      <LayoutSwitch layout={layout} onChange={chooseLayout} />
+  const controls = started ? (
+    <div className="flex items-center gap-x-4 border-t border-line px-4 py-3">
+      <button
+        type="button"
+        disabled={!live || done}
+        onClick={clock.playing ? clock.pause : clock.resume}
+        className={quietButton}
+      >
+        {live && !clock.playing && !done ? "Resume" : "Pause"}
+      </button>
+      <button type="button" onClick={replay} className={quietButton}>
+        Replay
+      </button>
     </div>
-  );
+  ) : null;
 
   return (
-    <AppShell full>
+    <AppShell>
       <MotionConfig reducedMotion="user">
-        <div className="flex min-h-9 items-center gap-6">
-          <div aria-live="polite">
+        <form
+          noValidate
+          aria-label="Set up your agent"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+          className="flex min-h-10 items-center gap-6"
+        >
+          <div aria-live="polite" className="shrink-0">
             <motion.h1
               key={heading}
               initial={reduce ? false : { opacity: 0, y: 4 }}
@@ -219,42 +229,17 @@ export function OneOnboarding({
               {heading}
             </motion.h1>
           </div>
-          {started ? (
-            <div className="ml-auto flex shrink-0 items-center gap-3">
-              <span className="inline-flex h-9 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1" style={{ boxShadow: "var(--top-light)" }}>
+          <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-3">
+            {started ? (
+              <span
+                className="inline-flex h-10 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1"
+                style={{ boxShadow: "var(--top-light)" }}
+              >
                 <XLogo className="size-3 text-t1" />@{shownHandle}
                 <span className="sr-only">, your X account</span>
               </span>
-              {done ? (
-                <PrimaryLink href={`${BASE}/feed`} className="h-9 px-4 text-[13.5px]">
-                  Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
-                </PrimaryLink>
-              ) : (
-                <button type="button" disabled aria-disabled="true" className={cn(primary, "cursor-not-allowed opacity-55 hover:brightness-100")}>
-                  <Sparkles className="size-3.5" aria-hidden="true" />
-                  {setup.submit}
-                </button>
-              )}
-            </div>
-          ) : null}
-        </div>
-
-        {layout === "top" ? <TopSteps run={run} started={started} handle={shownHandle} controls={controls} /> : null}
-
-        <div
-          className={cn(
-            "grid grid-cols-1 items-start gap-6",
-            layout === "top" ? "mt-5 lg:grid-cols-[minmax(0,1fr)_400px]" : "mt-6 lg:grid-cols-[264px_minmax(0,1fr)_340px]",
-          )}
-        >
-          {layout === "columns" ? <Timeline run={run} started={started} handle={shownHandle} controls={controls} /> : null}
-
-          <section aria-label="Setup and run" className="min-w-0">
-            <p className="sr-only" aria-live="polite">
-              {oneAnnounce(run)}
-            </p>
-            {!started ? (
-              <SetupCard
+            ) : (
+              <SetupLine
                 handle={handle}
                 text={text}
                 handleError={handleError}
@@ -268,29 +253,87 @@ export function OneOnboarding({
                   setText(v);
                   if (v.trim()) setError(false);
                 }}
-                onSubmit={submit}
-              />
-            ) : (
-              <Stream
-                run={run}
-                removed={removed}
-                onRemove={(id) => setRemoved((prev) => new Set(prev).add(id))}
-                follow={live && clock.playing}
-                whyOf={whyOf}
-                onWhy={(id) => setWhyOf((cur) => (cur === id ? null : id))}
               />
             )}
-          </section>
+            {done ? (
+              <PrimaryLink href={`${BASE}/feed`} className="h-10 shrink-0 px-4 text-[13.5px]">
+                Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
+              </PrimaryLink>
+            ) : (
+              <button
+                type="submit"
+                disabled={started}
+                aria-disabled={started}
+                className={cn(
+                  primary,
+                  "h-10 shrink-0",
+                  started && "cursor-not-allowed opacity-55 hover:brightness-100",
+                )}
+              >
+                <Sparkles className="size-3.5" aria-hidden="true" />
+                {setup.submit}
+              </button>
+            )}
+          </div>
+        </form>
+        {message && !started ? (
+          <p
+            id="setup-error"
+            role="alert"
+            className="mt-2 text-right text-[12.5px] text-[var(--error)]"
+          >
+            {message}
+          </p>
+        ) : null}
 
-          <aside aria-label="You" className="min-w-0">
-            {!started ? <Quiet>Your profile, brief and posts appear here.</Quiet> : <You run={run} sentence={sentence} />}
-          </aside>
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
+          <Timeline run={run} started={started} handle={shownHandle} controls={controls} />
+
+          <div className="flex min-w-0 items-start">
+            <section
+              aria-label={gathering ? "Your run" : "The shared source table"}
+              className="min-w-0 flex-1"
+            >
+              <p className="sr-only" aria-live="polite">
+                {oneAnnounce(run)}
+              </p>
+              {gathering ? (
+                <Stream
+                  run={run}
+                  removed={removed}
+                  onRemove={(id) => setRemoved((prev) => new Set(prev).add(id))}
+                  follow={live && clock.playing}
+                  whyOf={whyOf}
+                  onWhy={(id) => setWhyOf((cur) => (cur === id ? null : id))}
+                />
+              ) : (
+                <SourceTable />
+              )}
+            </section>
+
+            <AnimatePresence initial={false}>
+              {found ? (
+                <motion.aside
+                  key="you"
+                  aria-label="You"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 364, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
+                  className="shrink-0 overflow-hidden"
+                >
+                  <div className="w-[364px] pl-6">
+                    <You run={run} sentence={sentence} />
+                  </div>
+                </motion.aside>
+              ) : null}
+            </AnimatePresence>
+          </div>
         </div>
       </MotionConfig>
     </AppShell>
   );
 }
-
 const field =
   "flex items-center gap-2 rounded-md border border-line-strong bg-[var(--well)] px-3 transition-shadow focus-within:border-[var(--brand)] focus-within:shadow-[0_0_0_3px_var(--brand-soft)]";
 const primary =
@@ -298,42 +341,9 @@ const primary =
 const quietButton =
   "rounded-sm text-[12.5px] text-t3 underline decoration-line-strong underline-offset-4 transition-colors hover:text-t1 hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50";
 
-/** One quiet line on the open ground, where the run will put its objects. */
-function Quiet({ children }: { children: React.ReactNode }) {
-  return <p className="pt-1 text-[13px] text-t3">{children}</p>;
-}
-
-/** "Layout: Columns | Top": two quiet text buttons that flip the page live. */
-function LayoutSwitch({ layout, onChange }: { layout: Layout; onChange: (l: Layout) => void }) {
-  return (
-    <p className="flex items-center gap-2 text-[12.5px] text-t3">
-      Layout:
-      {(["columns", "top"] as const).map((l, i) => (
-        <span key={l} className="flex items-center gap-2">
-          {i > 0 ? (
-            <span aria-hidden="true" className="text-t4">
-              |
-            </span>
-          ) : null}
-          <button
-            type="button"
-            aria-pressed={layout === l}
-            onClick={() => onChange(l)}
-            className={cn(
-              "rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring",
-              layout === l ? "font-medium text-t1" : "underline decoration-line-strong underline-offset-4 hover:text-t1 hover:decoration-current",
-            )}
-          >
-            {l === "columns" ? "Columns" : "Top"}
-          </button>
-        </span>
-      ))}
-    </p>
-  );
-}
-
-/** The setup, centred in the middle column: one lifted card with the X handle, the sentence and Build my agent. */
-function SetupCard({
+/** The setup on the page line, no card: the X handle (220px, @ and the X mark inside), the sentence (one line,
+ * flexible, the counter inside). Build my agent follows at the line's right end. */
+function SetupLine({
   handle,
   text,
   handleError,
@@ -341,7 +351,6 @@ function SetupCard({
   message,
   onHandle,
   onText,
-  onSubmit,
 }: {
   handle: string;
   text: string;
@@ -350,23 +359,13 @@ function SetupCard({
   message: string;
   onHandle: (v: string) => void;
   onText: (v: string) => void;
-  onSubmit: () => void;
 }) {
   return (
-    <form
-      noValidate
-      aria-label="Set up your agent"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-      className={cn(lift, "mx-auto w-full max-w-[560px] p-6")}
-      style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
-    >
-      <label htmlFor="handle" className="block text-[13px] font-semibold text-t1">
-        {setup.handleLabel}
-      </label>
-      <div className={cn(field, "mt-2 h-10", handleError && "border-[var(--error)]")}>
+    <>
+      <label
+        className={cn(field, "h-10 w-[220px] shrink-0", handleError && "border-[var(--error)]")}
+      >
+        <span className="sr-only">{setup.handleLabel}</span>
         <span className="text-[14px] text-t3" aria-hidden="true">
           @
         </span>
@@ -382,42 +381,81 @@ function SetupCard({
           className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
         />
         <XLogo className="size-3.5 shrink-0 text-t3" />
-      </div>
-
-      <label htmlFor="beat" className="mt-5 block text-[13px] font-semibold text-t1">
-        {setup.beatLabel}
       </label>
-      <div className={cn(field, "mt-2 items-start py-2.5", error && "border-[var(--error)]")}>
-        <textarea
+      <label className={cn(field, "h-10 min-w-0 flex-1", error && "border-[var(--error)]")}>
+        <span className="sr-only">{setup.beatLabel}</span>
+        <input
           id="beat"
           value={text}
-          rows={3}
           maxLength={setup.beatMax}
           onChange={(e) => onText(e.target.value)}
           placeholder={PLACEHOLDER}
+          autoComplete="off"
           aria-invalid={error}
           aria-describedby={message ? "setup-error" : undefined}
-          className="min-w-0 flex-1 resize-none bg-transparent text-[14px] leading-[1.5] text-t1 outline-none placeholder:text-t3"
+          className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
         />
-      </div>
-      <p className="mt-1.5 text-right text-[11.5px] text-t3 tabular-nums" aria-hidden="true">
-        {text.length}/{setup.beatMax}
-      </p>
-
-      {message ? (
-        <p id="setup-error" role="alert" className="mt-2 text-[12.5px] text-[var(--error)]">
-          {message}
-        </p>
-      ) : null}
-      <p className="mt-4 text-[12.5px] leading-[1.5] text-t3">Your public X handle is enough. No sign-in with X needed.</p>
-      <button type="submit" className={cn(primary, "mt-5 h-10 w-full justify-center")}>
-        <Sparkles className="size-3.5" aria-hidden="true" />
-        {setup.submit}
-      </button>
-    </form>
+        <span className="shrink-0 text-[11.5px] text-t3 tabular-nums" aria-hidden="true">
+          {text.length}/{setup.beatMax}
+        </span>
+      </label>
+    </>
   );
 }
 
+const tableKinds: { kind: TableRow["kind"]; group: Group; label: string }[] = [
+  { kind: "x_account", group: "x", label: "X accounts" },
+  { kind: "rss", group: "rss", label: "RSS feeds" },
+  { kind: "website", group: "website", label: "Websites" },
+];
+const addressOf = (url: string) => url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+
+/** The centre before the run gathers: the shared source table the run starts from (docs/source-table-seed.json),
+ * one lifted panel, grouped by kind under plain 13px labels, one line per row (logo, name, handle or address). The
+ * table holds no GitHub rows, so no GitHub group is drawn. */
+function SourceTable() {
+  return (
+    <div className={cn(lift, "divide-y divide-line")} style={liftStyle}>
+      <p className="px-5 py-3.5 text-[13px] text-t3">
+        Every agent starts from these; your run scores them for your beat.
+      </p>
+      {tableKinds.map(({ kind, group, label }) => {
+        const rows = sourceTable.filter((r) => r.kind === kind);
+        return (
+          <section key={kind} aria-label={label} className="px-3 pt-3.5 pb-3">
+            <p className="flex items-center gap-2 px-2 text-[13px] font-semibold text-t1">
+              <span className="grid size-[18px] place-items-center text-t3">
+                <GroupGlyph group={group} className="size-3.5" />
+              </span>
+              {label}
+            </p>
+            <ul className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-x-2">
+              {rows.map((r) => {
+                const isX = kind === "x_account";
+                const handle = isX
+                  ? `@${r.target.replace("https://x.com/", "")}`
+                  : addressOf(r.target);
+                return (
+                  <li key={r.id} className="flex h-8 min-w-0 items-center gap-2.5 rounded-md px-2">
+                    {isX ? (
+                      <XAvatar handle={handle} size={18} />
+                    ) : (
+                      <SiteIcon host={hostOf(r.target)} size={18} className="rounded-[5px]" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-[13px]">
+                      <span className="font-medium text-t1">{r.name}</span>
+                      <span className="ml-1.5 text-[12px] text-t3">{handle}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
 /** What a step is doing while it runs: the live count from the recorded run, never a timer's invention. */
 function runningLine(id: OneStepId, run: Run, handle: string) {
   const p = run.progress[idx(id)];
@@ -445,13 +483,14 @@ const briefF = (p: number) => Math.max(0, Math.min(1, (p - 0.15) / 0.85));
 
 function stepLineFor(id: OneStepId, run: Run, started: boolean, handle: string) {
   const state = run.states[idx(id)];
-  if (!started || state === "waiting") return null;
+  if (!started || state === "waiting") return oneStepDoes[id];
   if (state === "failed") return "The X timeline did not answer.";
   return state === "done" || state === "skipped" ? oneStepLine[id] : runningLine(id, run, handle);
 }
 
-/** The seven steps as records on one lifted card: the mark, the name and one result line, the amber mark while a
- * step runs; finished records keep their line. Pause, Replay and the layout switch sit at its foot. */
+/** The seven steps as records on one lifted card: the mark, the name and one line (what the step does while it
+ * waits, its live count while it runs, its result once done), the amber mark while a step runs. Pause and Replay
+ * sit at its foot once the run has started. */
 function Timeline({ run, started, handle, controls }: { run: Run; started: boolean; handle: string; controls: React.ReactNode }) {
   return (
     <aside aria-label="Steps" className={cn(lift, "overflow-hidden lg:sticky lg:top-[84px]")} style={liftStyle}>
@@ -490,34 +529,6 @@ function StepName({ id, state, started }: { id: OneStepId; state: Run["states"][
         oneStepTitle[id]
       )}
     </p>
-  );
-}
-
-/** The second layout: the seven steps as a row of tiles under the page line (name, result line, state mark; the
- * active one amber), with Pause, Replay and the layout switch at the right end of the row. */
-function TopSteps({ run, started, handle, controls }: { run: Run; started: boolean; handle: string; controls: React.ReactNode }) {
-  return (
-    <div className="mt-5 flex items-stretch gap-4">
-      <ol aria-label="Steps" className="grid min-w-0 flex-1 grid-cols-7 gap-3">
-        {oneStepIds.map((id, i) => {
-          const state = run.states[i];
-          const line = stepLineFor(id, run, started, handle);
-          return (
-            <li
-              key={id}
-              id={`step-${id}`}
-              className={cn(lift, "flex min-w-0 flex-col gap-2 p-3", state === "running" && "bg-[var(--caution-soft)]")}
-              style={liftStyle}
-            >
-              <span>{started ? <StepMark state={state} size={20} /> : <EmptyRing />}</span>
-              <StepName id={id} state={state} started={started} />
-              {line ? <p className={cn("text-[12px] leading-snug", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{line}</p> : null}
-            </li>
-          );
-        })}
-      </ol>
-      <div className="flex w-[148px] shrink-0 flex-col justify-end gap-2 pb-1">{controls}</div>
-    </div>
   );
 }
 
@@ -584,8 +595,6 @@ function Stream({
     if (choosing && follow) document.getElementById("block-choose")?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
   }, [choosing, follow, reduce]);
 
-  if (gather === "waiting") return <Quiet>Candidates and the sources chosen from them appear here once your newest posts are read.</Quiet>;
-
   return (
     <LayoutGroup>
       <div className="grid gap-5">
@@ -624,8 +633,7 @@ function Stream({
                   const total = jev === "done" ? (band === "set-aside" ? setAsideCount : kept.filter((c) => bandOf(c.score) === band).length) : list.length;
                   const hidden = band === "set-aside" && jev === "done" ? setAsideCount - droppedSample.length : 0;
                   return (
-                    <Pile key={band} tone={band === "set-aside" ? "dim" : undefined}>
-                      <motion.section layout="position" className={cn(lift, "p-4", band === "set-aside" && "border-dashed bg-[var(--well)]")} style={liftStyle}>
+                    <motion.section key={band} layout="position" className={cn(lift, "p-4")} style={liftStyle}>
                         <p className="flex items-baseline gap-2">
                           <span className={cn("text-[13.5px] font-semibold", bandTone[band])}>{bandLabel[band]}</span>
                           <span className="text-[12.5px] tabular-nums text-t3">{total}</span>
@@ -638,8 +646,7 @@ function Stream({
                             <li className="flex h-8 items-center rounded-full border border-dashed border-line px-3 text-[12.5px] tabular-nums text-t3">{hidden} more</li>
                           ) : null}
                         </ul>
-                      </motion.section>
-                    </Pile>
+                    </motion.section>
                   );
                 })}
               </div>
@@ -795,23 +802,6 @@ function Chip({ c, dim }: { c: Candidate; dim?: boolean }) {
   );
 }
 
-/** The Deck building's Pile: a card with offset backing plates under it. The plates carry no content of their own. */
-function Pile({ children, plates = 2, tone }: { children: React.ReactNode; plates?: number; tone?: "dim" }) {
-  return (
-    <div className="relative" style={{ marginBottom: plates * 9 }}>
-      {Array.from({ length: plates }, (_, i) => (
-        <div
-          key={i}
-          aria-hidden="true"
-          className={cn("absolute rounded-xl border border-line-strong", tone === "dim" ? "bg-[var(--well)]" : "bg-[var(--raised)]")}
-          style={{ insetInline: (i + 1) * 12, top: 8, bottom: -(i + 1) * 9, zIndex: 1 - i, boxShadow: "var(--card-shadow)" }}
-        />
-      ))}
-      <div className="relative z-10">{children}</div>
-    </div>
-  );
-}
-
 function PostBody({ post: p }: { post: (typeof posts)[number] }) {
   return (
     <>
@@ -830,90 +820,78 @@ function PostBody({ post: p }: { post: (typeof posts)[number] }) {
   );
 }
 
-/** The right column: ONE identity block (the picture with the name beside it and the handle under the name, About
- * with their X bio, then Brief: the sentence, the summary streaming in at step 5, the interests, the language), and
- * the newest posts continuing under it as one list. */
+/** The right column, once step 1 has found the person: ONE identity block (the picture with the name beside it and
+ * the handle under the name, About with their X bio, then Brief: the sentence, then the summary streaming in at
+ * step 5), and the newest posts under it. */
 function You({ run, sentence }: { run: Run; sentence: string }) {
-  const reduce = useReducedMotion();
-  const pState = run.states[idx("profile")];
   const postsState = run.states[idx("posts")];
   const chooseState = run.states[idx("choose")];
-  const shownPosts = postsState === "running" ? take(posts, run.progress[idx("posts")]) : postsState === "waiting" ? [] : posts;
+  const shownPosts =
+    postsState === "running"
+      ? take(posts, run.progress[idx("posts")])
+      : postsState === "waiting"
+        ? []
+        : posts;
   const words = brief.summary.split(" ");
-  const f = chooseState === "done" ? 1 : chooseState === "running" ? briefF(run.progress[idx("choose")]) : 0;
+  const f =
+    chooseState === "done"
+      ? 1
+      : chooseState === "running"
+        ? briefF(run.progress[idx("choose")])
+        : 0;
   const summary = f >= 1 ? brief.summary : words.slice(0, Math.ceil(f * words.length)).join(" ");
 
   return (
     <div className="grid gap-5">
-      <motion.section
-        initial={reduce ? false : { opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: EASE }}
+      <section
         aria-label="Your profile"
         className={cn(lift, "p-4")}
         style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
       >
-        {pState === "running" || pState === "waiting" ? (
-          <div className="flex items-center gap-3">
-            <Skeleton className="size-12 rounded-full bg-[var(--raised)]" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-3.5 w-36 bg-[var(--raised)]" />
-              <Skeleton className="h-3 w-24 bg-[var(--raised)]" />
-            </div>
+        <div className="flex items-center gap-3">
+          <XAvatar handle={HANDLE} size={48} />
+          <div className="min-w-0">
+            <p className="truncate text-[15px] leading-tight font-semibold text-t1">
+              {profile.name}
+            </p>
+            <p className="mt-0.5 truncate text-[13px] leading-tight text-t3">{profile.handle}</p>
           </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-3">
-              <XAvatar handle={HANDLE} size={48} />
-              <div className="min-w-0">
-                <p className="truncate text-[15px] leading-tight font-semibold text-t1">{profile.name}</p>
-                <p className="mt-0.5 truncate text-[13px] leading-tight text-t3">{profile.handle}</p>
-              </div>
-            </div>
+        </div>
 
-            <div className="mt-4">
-              <p className="text-[13px] font-semibold text-t1">About</p>
-              <p className="mt-1.5 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
-            </div>
+        <div className="mt-4">
+          <p className="text-[13px] font-semibold text-t1">About</p>
+          <p className="mt-1.5 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
+        </div>
 
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="text-[13px] font-semibold text-t1">Brief</p>
-              <p className="mt-2 flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
-                <QuoteMark className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
-                {sentence}
-              </p>
-              {chooseState === "running" || chooseState === "done" ? (
-                <p className="mt-2.5 text-[13px] leading-[1.55] text-t2">
-                  {summary}
-                  {chooseState === "running" ? <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" /> : null}
-                </p>
-              ) : (
-                <p className="mt-2.5 text-[12.5px] text-t3">The brief is written once your sources are chosen.</p>
-              )}
-              {chooseState === "done" ? (
-                <div className="mt-3.5 space-y-3 text-[12.5px]">
-                  <div className="flex flex-wrap gap-1.5">
-                    {brief.interests.map((t) => (
-                      <span key={t} className="rounded-full border border-[var(--brand-line)] bg-[var(--brand-soft)] px-2 py-0.5 text-[11.5px] text-t1">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-t3">
-                    Language <span className="ml-1 text-t1">{brief.languages.join(", ")}</span>
-                  </p>
-                </div>
+        <div className="mt-4 border-t border-line pt-4">
+          <p className="text-[13px] font-semibold text-t1">Brief</p>
+          <p className="mt-2 flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
+            <QuoteMark
+              className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]"
+              aria-hidden="true"
+            />
+            {sentence}
+          </p>
+          {summary ? (
+            <p className="mt-2.5 text-[13px] leading-[1.55] text-t2">
+              {summary}
+              {chooseState === "running" ? (
+                <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" />
               ) : null}
-            </div>
-          </>
-        )}
-      </motion.section>
+            </p>
+          ) : null}
+        </div>
+      </section>
 
       {postsState !== "waiting" ? (
         <div>
           <p className="mb-2.5 text-[13px] font-semibold text-t1">
             {postsState === "running" ? (
-              <Shimmer as="span" duration={1.8} className="font-semibold [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
+              <Shimmer
+                as="span"
+                duration={1.8}
+                className="font-semibold [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]"
+              >
                 Your newest posts
               </Shimmer>
             ) : (
@@ -934,11 +912,6 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
               </motion.li>
             ))}
           </ul>
-          {postsState !== "running" ? (
-            <p className="mt-2.5 text-[12px] text-t3">
-              {postsRead - posts.length} more of your {postsRead} newest posts have no stored text in this sample.
-            </p>
-          ) : null}
         </div>
       ) : null}
     </div>
