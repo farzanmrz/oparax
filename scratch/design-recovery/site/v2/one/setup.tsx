@@ -2,21 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { BadgeCheck, Quote as QuoteMark, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { XLogo } from "@/pro/shared/brand";
 import { setup } from "@/next/copy";
-import { watchExample } from "@/next/data/landing";
-import { brief, profile } from "@/next/data/onboarding";
 import { cn } from "@/lib/utils";
-import { lift, liftStyle } from "@/v2/deck/chrome";
-import { beat, groups, sources, stories, when } from "@/v2/deck/data";
-import { GroupGlyph, GroupLabel, SourceMark } from "@/v2/deck/marks";
-import { BASE, type LabelMode } from "./card";
+import { lift } from "@/v2/deck/chrome";
+import { beat, HANDLE } from "@/v2/deck/data";
+import { BASE } from "./card";
 import { Shell } from "./rail";
 
-// One setup: the Deck setup form (the X account the agent is built around and the one sentence, with the blank
-// error) with the sidebar, and beside it what one sentence turned into in the sample run. The sidebar has no
-// sources yet: the agent chooses them on the next page.
+// One setup: the precursor to the onboarding page and nothing else (owner, Oct 4: "the setup page simply needs to be
+// a precursor to the onboarding page"). The public X handle the agent is built around, the one sentence, and Build
+// my agent. No sign-in with X is needed ("That doesn't mean they have to connect it"). The sample result and the
+// sample source list moved to the onboarding page, where they are the real run.
 
 const field =
   "w-full rounded-lg border border-line-strong bg-[var(--well)] text-t1 placeholder:text-t3 outline-none transition-shadow focus-visible:border-[var(--brand)] focus-visible:shadow-[0_0_0_3px_var(--brand-soft)]";
@@ -24,188 +22,95 @@ const field =
 export function OneSetup({ typed, blank }: { typed: boolean; blank: boolean }) {
   const router = useRouter();
   const [text, setText] = useState(blank ? "" : beat);
-  const [handle, setHandle] = useState("");
+  const [handle, setHandle] = useState(typed ? "" : HANDLE);
   const [error, setError] = useState(blank);
-  const [mode, setMode] = useState<LabelMode>("name");
+  const [handleError, setHandleError] = useState(false);
   return (
-    <Shell sources={[]} mode={mode} onMode={setMode} emptyLine="Your agent chooses its sources once you set it up." light={640}>
-      <main className="relative px-2 pt-4 pb-16 lg:px-4">
-        <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">{setup.title}</h1>
-        <p className="mt-2.5 text-[14px] text-t2">Your agent is built from these two things.</p>
-        <div className="mt-6 grid items-start gap-8 lg:grid-cols-[540px_minmax(0,1fr)]">
-          <div>
-            <form
-              className={cn(lift, "p-6")}
-              style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
-              noValidate
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!text.trim()) return setError(true);
-                router.push(`${BASE}/onboarding`);
-              }}
-            >
-              <p className="text-[13px] font-medium text-t2">{setup.handleLabel}</p>
-              {typed ? (
-                <>
-                  <div className={cn(field, "mt-2 flex h-11 items-center gap-2 px-3")}>
-                    <span className="text-t3">@</span>
-                    <input
-                      aria-label={setup.handleLabel}
-                      value={handle}
-                      onChange={(e) => setHandle(e.target.value)}
-                      placeholder={setup.handlePlaceholder}
-                      className="h-full flex-1 bg-transparent text-[14px] outline-none placeholder:text-t3"
-                    />
-                    <XLogo className="size-3.5 text-t3" />
-                  </div>
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-t3">{setup.typedHelp}</p>
-                </>
-              ) : (
-                <>
-                  <div className="mt-2 flex items-center gap-3 rounded-lg border border-line-strong bg-[var(--well)] px-3 py-2.5">
-                    <span className="grid size-9 place-items-center rounded-full bg-[var(--brand)] text-[14px] font-semibold text-white">{profile.name[0]}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[14px] font-semibold text-t1">{profile.name}</span>
-                      <span className="block text-[12.5px] text-t3">{profile.handle}</span>
-                    </span>
-                    <span className="flex items-center gap-1 rounded-full bg-[var(--ok-soft)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--ok)]">
-                      <BadgeCheck className="size-3.5" aria-hidden="true" /> From your X sign-in
-                    </span>
-                  </div>
-                  <p className="mt-2 text-[12.5px] text-t3">{setup.verifiedHelp}</p>
-                </>
-              )}
-
-              <label htmlFor="beat" className="mt-6 block text-[13px] font-medium text-t2">
-                {setup.beatLabel}
-              </label>
-              <textarea
-                id="beat"
-                value={text}
-                maxLength={setup.beatMax}
+    <Shell light={640}>
+      <main className="relative flex min-h-[calc(100svh-120px)] flex-col items-center justify-center pb-16">
+        <div className="w-full max-w-[540px]">
+          <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">{setup.title}</h1>
+          <form
+            className={cn(lift, "mt-6 p-6")}
+            style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              const noHandle = !handle.trim();
+              const noText = !text.trim();
+              setHandleError(noHandle);
+              setError(noText);
+              if (noHandle || noText) return;
+              router.push(`${BASE}/onboarding`);
+            }}
+          >
+            <label htmlFor="handle" className="block text-[13px] font-medium text-t2">
+              {setup.handleLabel}
+            </label>
+            <div className={cn(field, "mt-2 flex h-11 items-center gap-2 px-3", handleError && "border-[var(--error)]")}>
+              <span className="text-[15px] text-t3">@</span>
+              <input
+                id="handle"
+                value={handle}
                 onChange={(e) => {
-                  setText(e.target.value);
-                  if (e.target.value.trim()) setError(false);
+                  setHandle(e.target.value.replace(/^@/, ""));
+                  if (e.target.value.trim()) setHandleError(false);
                 }}
-                placeholder={setup.beatPlaceholder}
-                rows={3}
-                aria-invalid={error}
-                aria-describedby="beat-help"
-                className={cn(field, "mt-2 block resize-none px-3.5 py-3 text-[16px] leading-[1.5]", error && "border-[var(--error)]")}
+                placeholder={setup.handlePlaceholder}
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={handleError}
+                aria-describedby={handleError ? "handle-error" : undefined}
+                className="h-full flex-1 bg-transparent text-[15px] outline-none placeholder:text-t3"
               />
-              <p id="beat-help" className="mt-2 flex justify-between gap-4 text-[12.5px]">
-                {error ? (
-                  <span role="alert" className="text-[var(--error)]">
-                    {setup.beatRequired}
-                  </span>
-                ) : (
-                  <span className="text-t3">One sentence. Name the topics, people or products you care about.</span>
-                )}
-                <span className="shrink-0 text-t3 tabular-nums">
-                  {text.length}/{setup.beatMax}
-                </span>
+              <XLogo className="size-3.5 text-t3" />
+            </div>
+            {handleError ? (
+              <p id="handle-error" role="alert" className="mt-2 text-[12.5px] text-[var(--error)]">
+                Type the X handle your agent is built around.
               </p>
-              <button
-                type="submit"
-                className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-[14px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_0_0_1px_rgb(36_89_232/0.6),0_6px_18px_-6px_rgb(58_108_244/0.6)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                <Sparkles className="size-4" aria-hidden="true" />
-                {setup.submit}
-              </button>
-              <p className="mt-2.5 text-center text-[12px] text-t3">Preview: the next page replays a sample run, not one built from this form.</p>
-            </form>
-            <OtherExample />
-          </div>
+            ) : null}
 
-          <Example />
+            <label htmlFor="beat" className="mt-6 block text-[13px] font-medium text-t2">
+              {setup.beatLabel}
+            </label>
+            <textarea
+              id="beat"
+              value={text}
+              maxLength={setup.beatMax}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (e.target.value.trim()) setError(false);
+              }}
+              placeholder={setup.beatPlaceholder}
+              rows={3}
+              aria-invalid={error}
+              aria-describedby="beat-help"
+              className={cn(field, "mt-2 block resize-none px-3.5 py-3 text-[16px] leading-[1.5]", error && "border-[var(--error)]")}
+            />
+            <p id="beat-help" className="mt-2 flex justify-between gap-4 text-[12.5px]">
+              {error ? (
+                <span role="alert" className="text-[var(--error)]">
+                  {setup.beatRequired}
+                </span>
+              ) : (
+                <span className="text-t3">One sentence. Name the topics, people or products you care about.</span>
+              )}
+              <span className="shrink-0 text-t3 tabular-nums">
+                {text.length}/{setup.beatMax}
+              </span>
+            </p>
+            <button
+              type="submit"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-[14px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_0_0_1px_rgb(36_89_232/0.6),0_6px_18px_-6px_rgb(58_108_244/0.6)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              <Sparkles className="size-4" aria-hidden="true" />
+              {setup.submit}
+            </button>
+          </form>
+          <p className="mt-3.5 text-center text-[12.5px] text-t3">Your public X handle is enough. No sign-in with X needed.</p>
         </div>
       </main>
     </Shell>
-  );
-}
-
-function Example() {
-  const found = [stories.clustered[3], stories.clustered[0], stories.clustered[1]];
-  return (
-    <div>
-      <p className="text-[12.5px] text-t3">What one sentence became, in a sample run</p>
-      <section className={cn(lift, "mt-3 overflow-hidden")} style={liftStyle}>
-        <div className="p-5">
-          <div className="flex gap-2.5 rounded-lg border border-[var(--brand-line)] bg-[var(--brand-soft)] px-3.5 py-3">
-            <QuoteMark className="mt-0.5 size-4 shrink-0 text-[var(--brand)]" aria-hidden="true" />
-            <p className="text-[15px] leading-snug font-medium text-t1">{beat}</p>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {brief.interests.map((t) => (
-              <span key={t} className="rounded-full border border-line bg-[var(--well)] px-2.5 py-0.5 text-[12px] text-t2">
-                {t}
-              </span>
-            ))}
-          </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            {groups
-              .filter((g) => g.id !== "github")
-              .map((g) => {
-                const members = sources.filter((s) => s.group === g.id);
-                return (
-                  <div key={g.id}>
-                    <GroupLabel glyph={<GroupGlyph group={g.id} />} count={members.length}>
-                      {g.label}
-                    </GroupLabel>
-                    <ul className="mt-2 grid gap-1">
-                      {members.map((s) => (
-                        <li key={s.id} className="flex items-center gap-2 text-[12.5px] text-t2">
-                          <SourceMark source={s} size={18} className={s.group === "x" ? "" : "rounded-[5px]"} />
-                          <span className="truncate">{s.group === "x" ? s.handle : s.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-        <div className="grid border-t border-line sm:grid-cols-3">
-          {found.map((s, i) => (
-            <div key={s.id} className={cn("min-w-0", i > 0 && "sm:border-l sm:border-line")}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={s.card.image!} alt="" loading="lazy" className="aspect-[2.4/1] max-h-[220px] w-full object-cover" />
-              <div className="p-3.5">
-                <p className="text-[11.5px] text-t3 tabular-nums">{when(s.items[0].published_at)}</p>
-                <p className="mt-1 text-[13.5px] leading-snug font-semibold text-t1">{s.card.headline}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function OtherExample() {
-  return (
-    <section className={cn(lift, "mt-5 p-5")} style={liftStyle}>
-      <p className="text-[13px] text-t2">
-        A sentence about <span className="font-semibold text-t1">{watchExample.beat}</span> watches more than its obvious account:
-      </p>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-        {watchExample.rows.map((r) => (
-          <li key={r.name + r.kind} className="flex items-center gap-2.5 rounded-lg border border-line bg-[var(--well)] px-3 py-2">
-            <span
-              className={cn(
-                "grid size-6 place-items-center rounded-md",
-                r.kind === "x_account" ? "bg-[var(--kind-post-soft)] text-[var(--kind-post)]" : "bg-[var(--kind-article-soft)] text-[var(--kind-article)]",
-              )}
-            >
-              {r.kind === "x_account" ? <XLogo className="size-3" /> : <GroupGlyph group="rss" className="size-3.5" />}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[13px] font-medium text-t1">{r.name}</span>
-              <span className="block text-[12px] text-t3">{r.focus}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

@@ -101,6 +101,13 @@ export type Source = {
 const address = (url: string) => url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 export const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
 
+/** Focus lines for the quoted accounts, which joined from the person's posts and so have no table focus line. */
+const quotedFocus: Record<string, string> = {
+  "q-nextjs": "Next.js releases and framework announcements",
+  "q-rauchg": "Vercel's CEO on Next.js direction and the AI cloud",
+  "q-leerob": "Next.js practice and developer experience",
+};
+
 export const sources: Source[] = [
   ...chosenAccounts.map((a) => ({
     id: a.id,
@@ -108,7 +115,7 @@ export const sources: Source[] = [
     name: a.name,
     handle: a.handle,
     mark: a.handle,
-    focus: a.focus,
+    focus: a.focus || quotedFocus[a.id] || "",
     why: a.why,
   })),
   ...chosenSites.map((s) => ({

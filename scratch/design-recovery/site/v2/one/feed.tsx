@@ -8,21 +8,23 @@ import { cn } from "@/lib/utils";
 import { lift, liftStyle, ViewSwitch } from "@/v2/deck/chrome";
 import {
   sources,
+  status,
   stories,
+  storiesThisWeek,
   storyHasSource,
+  week,
   type FeedStory,
-  type Source,
   type View,
 } from "@/v2/deck/data";
 import { Arrive, useArrival } from "@/v2/deck/live";
-import { SourceMark } from "@/v2/deck/marks";
+import { Segments, WeekBars } from "@/v2/deck/marks";
 import { BASE, StoryStack, type LabelMode } from "./card";
-import { Expand, Shell } from "./rail";
+import { Shell } from "./rail";
 
-// The One feed: the Deck feed (v2/deck/feed.tsx), copied, with the owner's changes only: outer margins halved and
-// no width cap; the account and the theme toggle moved from the header into the sidebar; no checking row; one card
-// per story with no plates, no kind chip and no publisher parentheses; the sidebar (rail.tsx) as the Deck's source
-// list with his changes, which closes completely.
+// The One feed: the Deck feed (v2/deck/feed.tsx), copied, with the owner's changes only: a 1400px column; one
+// header row (Feed at the left; Clustered and Direct, then the Deck's This week and Free week as two compact lifted
+// tiles at the right); the DM line as a thin ribbon under it; no checking row; one card per story with no plates, no
+// kind chip and no publisher parentheses; the source panel (rail.tsx) floats over the page and filters it.
 
 const IMAGE_H = 172;
 
@@ -46,13 +48,13 @@ export function OneFeed({
   initialView,
   initialSource,
   initialMode,
-  initialPanel,
+  initialPanel = false,
   settled,
 }: {
   initialView: View;
   initialSource: string | null;
   initialMode: LabelMode;
-  initialPanel: boolean;
+  initialPanel?: boolean;
   settled: boolean;
 }) {
   const [view, setView] = useState<View>(initialView);
@@ -82,11 +84,16 @@ export function OneFeed({
       onSource={setSourceId}
       activeSource={sourceId}
       initialOpen={initialPanel}
-      ownExpand
       header={
         <Header
           title="Feed"
-          actions={<ViewSwitch view={view} onChange={setView} />}
+          actions={
+            <>
+              <ViewSwitch view={view} onChange={setView} />
+              <WeekTile />
+              <FreeWeekTile />
+            </>
+          }
         />
       }
     >
@@ -99,37 +106,53 @@ export function OneFeed({
   );
 }
 
-/** The Deck member header (v2/deck/chrome.tsx) without the account and the theme toggle, which are in the sidebar. */
-function Header({
-  title,
-  sub,
-  note,
-  controls,
-  actions,
-}: {
-  title: React.ReactNode;
-  sub?: React.ReactNode;
-  note?: string;
-  controls?: React.ReactNode;
-  actions?: React.ReactNode;
-}) {
+/** The page's one header row: the title at the left, the page's objects at the right end. */
+function Header({ title, actions }: { title: React.ReactNode; actions?: React.ReactNode }) {
   return (
-    <header className="relative z-20">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Expand />
-          <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">{title}</h1>
-        </div>
-        {controls}
-        <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">{actions}</div>
-      </div>
-      {sub || note ? (
-        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1.5">
-          <div className="min-w-0">{sub}</div>
-          {note ? <p className="text-[11.5px] text-t3">{note}</p> : null}
-        </div>
-      ) : null}
+    <header className="relative z-20 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">{title}</h1>
+      <div className="ml-auto flex flex-wrap items-center gap-3">{actions}</div>
     </header>
+  );
+}
+
+/** A compact lifted tile for the header row: as tall as the switch row plus padding. */
+const headerTile = cn(lift, "flex h-[52px] items-center gap-3.5 rounded-[10px] px-3.5");
+
+/** The Deck's This week tile, compact: the story count and the day marks. */
+function WeekTile() {
+  return (
+    <section aria-label="This week" className={headerTile} style={liftStyle}>
+      <div className="leading-none">
+        <p className="text-[11px] font-medium text-t3">This week</p>
+        <p className="mt-1.5 flex items-baseline gap-1">
+          <span className="text-[17px] leading-none font-semibold tabular-nums text-t1">{storiesThisWeek}</span>
+          <span className="text-[12px] text-t2">stories</span>
+        </p>
+      </div>
+      <WeekBars week={week} height={26} className="w-[92px]" />
+    </section>
+  );
+}
+
+/** The Deck's Free week tile, compact: days left, the day meter and the watched-posts line. */
+function FreeWeekTile() {
+  return (
+    <section aria-label="Free week" className={headerTile} style={liftStyle}>
+      <div className="leading-none">
+        <p className="text-[11px] font-medium text-t3">Free week</p>
+        <p className="mt-1.5 flex items-baseline gap-1">
+          <span className="text-[17px] leading-none font-semibold tabular-nums text-t1">{status.daysLeft}</span>
+          <span className="text-[12px] text-t2">days left</span>
+        </p>
+      </div>
+      <div className="min-w-[132px]">
+        <Segments total={status.trialDays} filled={status.daysLeft} />
+        <p className="mt-1.5 text-[10.5px] leading-none tabular-nums whitespace-nowrap text-t3">
+          {status.poolUsed} of {status.poolLimit} watched X posts used
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -166,8 +189,8 @@ function StackColumns({
   );
 }
 
-/** Where the three tiles were (owner, Oct 4: "Get rid of the three cards up top. Maybe that's where the banner can
- * come in. Oparax can alert you on DMs. Turn on notifications."): one quiet line, dismissable, remembered. */
+/** The DM line as a thin ribbon under the header (owner, Oct 4: "The banner itself looks good, but maybe it can be
+ * some other UI than the cards"): a hairline bar with no shadow, dismissable, remembered. */
 const DISMISS_KEY = "oparax-one-dm-line";
 function Banner() {
   const [gone, setGone] = useState(false);
@@ -184,7 +207,7 @@ function Banner() {
     } catch {}
   };
   return (
-    <div role="region" aria-label="Notifications" className={cn(lift, "mb-5 flex h-10 items-center gap-3 px-3.5 text-[13px]")} style={liftStyle}>
+    <div role="region" aria-label="Notifications" className="mb-5 flex h-9 items-center gap-3 rounded-[8px] border border-line bg-[var(--raised)] pr-1.5 pl-3.5 text-[13px]">
       <p className="text-t2">Oparax can alert you on X DMs.</p>
       <Link
         href={`${BASE}/notifications`}
@@ -201,34 +224,5 @@ function Banner() {
         <Close className="size-3.5" aria-hidden="true" />
       </button>
     </div>
-  );
-}
-
-const groupWord = { x: "X account", rss: "RSS feed", website: "Website", github: "GitHub repository" } as const;
-
-function SourceHeader({ source, mode, onClear }: { source: Source; mode: LabelMode; onClear: () => void }) {
-  return (
-    <section className={cn(lift, "mt-6 flex items-start gap-4 p-4")} style={liftStyle}>
-      <SourceMark source={source} size={40} className={source.group === "x" ? "" : "rounded-[8px]"} />
-      <div className="min-w-0 flex-1">
-        <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-[17px] font-semibold text-t1">{mode === "name" ? source.name : source.handle}</span>
-          <span className="text-[12.5px] text-t3">
-            {groupWord[source.group]}, {mode === "name" ? source.handle : source.name}
-          </span>
-        </p>
-        {source.focus ? <p className="mt-1 text-[13px] text-t2">{source.focus}</p> : null}
-        {source.why ? <p className="mt-1.5 text-[13px] text-t3">Chosen because: {source.why}</p> : null}
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-2">
-        <button
-          type="button"
-          onClick={onClear}
-          className="inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-[12px] text-t2 transition-colors hover:bg-raised hover:text-t1"
-        >
-          <Close className="size-3" aria-hidden="true" /> All sources
-        </button>
-      </div>
-    </section>
   );
 }
