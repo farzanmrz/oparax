@@ -1,0 +1,28 @@
+{
+ "astra": {
+  "final": true,
+  "line": "astra: OK FINDINGS lane=astra model=gpt-6-astra effort=high format=text elapsed=51s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-login-oct5/astra.result.txt findings=-",
+  "active": "astra"
+ },
+ "pro": {
+  "final": true,
+  "line": "pro: OK FINDINGS lane=pro model=gemini-3.1-pro-high effort=high format=text elapsed=83s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-login-oct5/pro.result.txt findings=-",
+  "active": "pro"
+ },
+ "grok": {
+  "final": true,
+  "line": "grok: DEAD FAILED lane=grok model=grok-4.7-build-fast effort=xhigh format=text elapsed=101s exit=- result=- findings=- (restart it: start --only grok, same brief; the old files are archived)",
+  "active": "grok",
+  "dead": true
+ },
+ "kimi": {
+  "final": true,
+  "line": "kimi: OK FINDINGS lane=kimi model=kimi-k3-high effort=high format=text elapsed=49s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-login-oct5/kimi.result.txt findings=-",
+  "active": "kimi"
+ },
+ "muse": {
+  "final": true,
+  "line": "muse: OK FINDINGS lane=muse model=muse-spark-1.3-high effort=high format=text elapsed=38s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-login-oct5/muse.result.txt findings=-",
+  "active": "muse"
+ }
+}
