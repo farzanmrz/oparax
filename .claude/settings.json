@@ -6,9 +6,6 @@
     "lint": "name-only"
   },
   "permissions": {
-    "allow": [
-      "Bash(set -a && . ./.env.local && set +a && curl -s \"$NEXT_PUBLIC_SUPABASE_URL*)"
-    ],
     "ask": [
       "mcp__Claude_Browser__preview_start",
       "mcp__Claude_Browser__navigate",
@@ -35,6 +32,11 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/headless-guard.sh\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/images-in-img.sh\"",
             "timeout": 5
           }
         ]

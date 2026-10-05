@@ -34,9 +34,13 @@ Host conversation only; subagents and review lanes skip this section. The owner 
 
 - Every build runs on Astra High. Ship follows his acceptance walk; production moves only through /promote's mentor-reviewed pull request.
 - Dirty `.claude/` or `.codex/` never blocks: commit and push it as `meta:` on the current branch. Meta and docs normally target beta.
-- Ship never pushes main; no stage deletes branches or force-pushes. Preserve beta and main unless he directs otherwise, and preserve dirty work, unique commits, archives and discovery evidence.
+- Ship never pushes main. Preserve beta and main unless he directs otherwise, and preserve dirty work, unique commits, archives and discovery evidence.
 - Stages do not run or attach to product servers; engineering.md has the bounded exceptions.
 
 ## Security
 
 Prove user ownership with RLS before privileged work. Revalidate client input on the server. Keep trust logic server-only, outside callable `"use server"` exports. Mark untrusted prompt data; use hardened URL fetches and the shared handle and return-path validation. Auth hides whether an email exists; replay masks passwords. Never commit or log secrets. Use pnpm only.
+
+## Images (owner, October 5, 2026)
+
+Every screenshot or render an agent takes is saved under `img/` at the repo root, with a short name; nowhere else (a Bash hook refuses screenshot commands aimed elsewhere). Council rounds read pictures only from `img/`: `council.py start --images a.png,b.png` empties the folder, copies the round's pictures in, tells every lane the folder and the file names, and attaches them for the codex route. Every lane is told its time budget in minutes (default 14, the most under the runner's 15-minute cut).

@@ -10,7 +10,7 @@ import { lift, liftStyle } from "@/v2/deck/chrome";
 import { groups, HANDLE, sources as initialSources, status, type Group, type Source } from "@/v2/deck/data";
 import { GroupGlyph, Segments, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { AppShell, PageLine } from "./shell";
+import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine } from "./shell";
 
 // The one Settings page: account, plan, sources and notifications (owner, Oct 4: "Why are you making notifications
 // and sources this separate shit?"). Two columns on Deck's ground. Left, wide: the source groups as lifted sections
@@ -18,8 +18,6 @@ import { AppShell, PageLine } from "./shell";
 // Remove on hover and focus, the reason under the row on click; no counts except the shared limit for websites and
 // feeds, said once. Right, sticky: one identity block holding the person, the plan, X DMs and Sign out.
 
-// Preview account email: the sample account has no stored address, so the form's placeholder domain is used.
-const EMAIL = "farzan@newsroom.com";
 /** The Oparax bot on X. Alerts arrive as DMs from it once the person has messaged it. */
 const BOT = "oparax_ai";
 

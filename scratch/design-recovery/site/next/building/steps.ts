@@ -3,7 +3,9 @@ import { useReducedMotion } from "motion/react";
 import { stepIds } from "./mode";
 import type { RunMode } from "./mode";
 import {
+  candidateCount,
   chosenAccounts,
+  kept,
   chosenSites,
   possibleCandidates,
   postsRead,
@@ -149,3 +151,82 @@ export function useFollow(run: Run, enabled: boolean) {
     document.getElementById(`step-${stepIds[cur]}`)?.scrollIntoView({ block: "start", behavior: reduced ? "auto" : "smooth" });
   }, [cur, enabled, reduced]);
 }
+
+// ───────────── The One onboarding's steps: the real engine's seven phases (lib/onboarding/engine.ts) ─────────────
+// The other three renderers keep the eight sample steps above. These seven are the engine's own phases: the
+// profile lookup, the newest posts, the candidates, Jev's one scoring request, the one model call that picks the
+// sources and writes the brief, the optional X search (two more requests only when too few accounts fit) and the
+// save. Replay only; the durations sum to the same 48 seconds.
+
+export const oneStepIds = ["profile", "posts", "gather", "jev", "choose", "search", "save"] as const;
+export type OneStepId = (typeof oneStepIds)[number];
+
+export const oneStepTitle: Record<OneStepId, string> = {
+  profile: "Find your X profile",
+  posts: "Read your newest posts",
+  gather: "Gather candidates",
+  jev: "Jev scores every candidate",
+  choose: "Choose sources and write the brief",
+  search: "Search X for more accounts",
+  save: "Save your agent",
+};
+
+/** What each step says once it has finished. Counts come from the recorded run, never from a timer. */
+export const oneStepLine: Record<OneStepId, string> = {
+  profile: `Found ${profile.name} on X.`,
+  posts: `Read ${postsRead} newest posts. A thread counts as one. Replies and reposts are left out.`,
+  gather: stepLine.gather,
+  jev: `Jev kept ${kept.length} of ${candidateCount} candidates`,
+  choose: `Chose ${sitesAndFeeds} sites and feeds and ${accounts} X accounts, wrote your brief`,
+  search: "Skipped: enough accounts already fit.",
+  save: "Saved your agent.",
+};
+
+const oneDurations = [4000, 8000, 6000, 12000, 10000, 3000, 5000];
+export const ONE_REPLAY_MS = oneDurations.reduce((a, b) => a + b, 0);
+export const ONE_SEARCH = oneStepIds.indexOf("search");
+
+export function oneRunAt(elapsed: number): Run {
+  let start = 0;
+  const states: StepState[] = [];
+  const progress: number[] = [];
+  oneDurations.forEach((d, i) => {
+    const end = start + d;
+    if (i === ONE_SEARCH) {
+      // Decided, not run: the skip line stays on screen for its three seconds.
+      const decided = elapsed >= start;
+      states.push(decided ? "skipped" : "waiting");
+      progress.push(decided ? 1 : 0);
+    } else {
+      const s: StepState = elapsed >= end ? "done" : elapsed >= start ? "running" : "waiting";
+      states.push(s);
+      progress.push(s === "done" ? 1 : s === "running" ? (elapsed - start) / d : 0);
+    }
+    start = end;
+  });
+  return { states, progress };
+}
+
+/** ?at=1..7 freezes step N mid-run with the steps before it finished; ?at=6 is the moment the search is skipped. */
+export function oneRunFrozen(at: number | "done"): Run {
+  const states = oneStepIds.map<StepState>((_, i) => {
+    const n = i + 1;
+    if (i === ONE_SEARCH) return at === "done" || at >= 6 ? "skipped" : "waiting";
+    if (at === "done" || n < at) return "done";
+    if (n === at) return "running";
+    return "waiting";
+  });
+  return { states, progress: states.map((s) => (s === "done" || s === "skipped" ? 1 : s === "running" ? 0.5 : 0)) };
+}
+
+/** The recorded failure: the X timeline did not answer during step 2. Later steps never started. */
+export function oneRunFailed(): Run {
+  const states = oneStepIds.map<StepState>((_, i) => (i === 0 ? "done" : i === 1 ? "failed" : "waiting"));
+  return { states, progress: states.map((s) => (s === "done" ? 1 : 0)) };
+}
+
+export const oneAnnounce = (r: Run) => {
+  if (isDone(r)) return "Your agent is saved.";
+  const i = currentStep(r);
+  return i < 0 ? "" : r.states[i] === "failed" ? `${oneStepTitle[oneStepIds[i]]} stopped.` : `${oneStepTitle[oneStepIds[i]]}.`;
+};

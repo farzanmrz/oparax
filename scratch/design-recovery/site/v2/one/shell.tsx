@@ -6,26 +6,32 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 import { OparaxMark } from "@/pro/shared/brand";
 import { ThemeToggle } from "@/next/theme";
-import { profile } from "@/next/data/onboarding";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle, Stage } from "@/v2/deck/chrome";
-import { HANDLE, status, storiesThisWeek, week } from "@/v2/deck/data";
-import { Segments, WeekBars, XAvatar } from "@/v2/deck/marks";
+import { status } from "@/v2/deck/data";
 import { BASE } from "./card";
 
 // The One shell (owner, Oct 4: "we'd have a consistent running header for oparax"). Deck's open ground (Stage)
-// and Deck's header line, inside the centred 1400px column, on every page of the app: the mark and wordmark, the
-// three pages, then the this-week object, the free-week object, the account and the theme. Nothing floats: no
-// bubble, no tiles, no second bar. Login keeps the same line with the mark and the theme only.
+// and Deck's header line on every page of the app: the mark and wordmark, Feed and Settings, then the days left in
+// the free week, the signed-in account (the email, since not everyone connects X) and the theme. The header's row
+// runs the full width with 32px at each side (owner, Oct 5: "The margins are not only a page problem, but also a
+// header problem"); the onboarding page spans the same width, the feed and settings keep their centred 1400px
+// column. Nothing floats: no bubble, no tiles, no second bar. Login keeps the same line with the mark and the
+// theme only.
 
 const NAV = [
   { href: `${BASE}/feed`, label: "Feed" },
-  { href: `${BASE}/onboarding`, label: "Onboarding" },
   { href: `${BASE}/settings`, label: "Settings" },
 ];
 
-/** The 1400px column every One page sits in. */
+/** Preview account email: the sample account has no stored address, so the form's placeholder domain is used. */
+export const ACCOUNT_EMAIL = "farzan@newsroom.com";
+
+/** The 1400px column the feed, settings and login sit in. */
 export const column = "mx-auto w-full max-w-[1400px] px-4 lg:px-8";
+
+/** Full width with 32px at each side: the header's row and the onboarding page. */
+export const wide = "w-full px-4 lg:px-8";
 
 /** Clear ground under every page so the lab switcher (bottom right, about 100px tall) covers no control, plus 72px. */
 export const switcherClear = "pb-[184px]";
@@ -39,7 +45,7 @@ export function OneHeader({ app = true }: { app?: boolean }) {
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[var(--page)]/80 backdrop-blur-md">
-      <div className={cn(column, "flex h-14 items-center gap-8")}>
+      <div className={cn(wide, "flex h-14 items-center gap-8")}>
         <Link href={app ? `${BASE}/feed` : `${BASE}/login`} className="flex shrink-0 items-center gap-2 rounded-sm text-[17px] font-semibold tracking-tight text-t1 focus-visible:outline-2 focus-visible:outline-ring">
           <OparaxMark className="size-[22px]" />
           Oparax
@@ -68,9 +74,7 @@ export function OneHeader({ app = true }: { app?: boolean }) {
         <div className="ml-auto flex items-center gap-5">
           {app ? (
             <>
-              <ThisWeek />
-              <Divider />
-              <FreeWeek />
+              <DaysLeft />
               <Divider />
               <Account />
             </>
@@ -82,38 +86,16 @@ export function OneHeader({ app = true }: { app?: boolean }) {
   );
 }
 
-/** Deck's This week tile, drawn inline: the count and the seven day bars. */
-function ThisWeek() {
+/** The free week shows only its days left, on every page, with no meter. */
+function DaysLeft() {
   return (
-    <section aria-label="This week" className="flex items-center gap-3">
-      <p className="flex items-baseline gap-1.5 text-[12.5px] whitespace-nowrap">
-        <span className="text-t3">This week</span>
-        <span className="text-[15px] font-semibold tabular-nums text-t1">{storiesThisWeek}</span>
-        <span className="text-t2">stories</span>
-      </p>
-      <WeekBars week={week} height={18} className="w-[64px] gap-1" />
-    </section>
+    <p aria-label="Free week" className="text-[12.5px] whitespace-nowrap text-t2">
+      <span className="font-medium text-t1 tabular-nums">{status.daysLeft}</span> days left
+    </p>
   );
 }
 
-/** Deck's Free week tile, drawn inline: the days left and the day meter. */
-function FreeWeek() {
-  return (
-    <section aria-label="Free week" className="flex items-center gap-3">
-      <p className="text-[12.5px] whitespace-nowrap">
-        <span className="text-t3">Free week, </span>
-        <span className="font-medium text-t1">
-          <span className="tabular-nums">{status.daysLeft}</span> days left
-        </span>
-      </p>
-      <div className="w-[120px]">
-        <Segments total={status.trialDays} filled={status.daysLeft} />
-      </div>
-    </section>
-  );
-}
-
-/** The person: avatar, name and handle on one line; a small menu with Sign out. */
+/** The person: the signed-in email with a small initial circle; a small menu with Sign out. */
 function Account() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -142,9 +124,10 @@ function Account() {
         aria-controls="one-account"
         className="flex h-8 items-center gap-2 rounded-md px-1.5 text-[13px] whitespace-nowrap transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring"
       >
-        <XAvatar handle={HANDLE} size={22} />
-        <span className="font-medium text-t1">{profile.name}</span>
-        <span className="text-t3">@{HANDLE}</span>
+        <span aria-hidden="true" className="grid size-[22px] place-items-center rounded-full bg-[var(--brand-soft)] text-[11px] font-semibold text-[var(--brand)] uppercase shadow-[inset_0_0_0_1px_var(--brand-line)]">
+          {ACCOUNT_EMAIL.charAt(0)}
+        </span>
+        <span className="font-medium text-t1">{ACCOUNT_EMAIL}</span>
         <ChevronDown className="size-3.5 text-t3" aria-hidden="true" />
       </button>
       {open ? (
@@ -163,12 +146,13 @@ function Account() {
   );
 }
 
-/** Every page inside the app: Deck's ground, the running header, the page in the 1400px column. */
-export function AppShell({ children, light }: { children: React.ReactNode; light?: number }) {
+/** Every page inside the app: Deck's ground, the running header, the page in the 1400px column (`full`: the full
+ * width with 32px at each side, as the onboarding does). */
+export function AppShell({ children, light, full = false }: { children: React.ReactNode; light?: number; full?: boolean }) {
   return (
     <Stage light={light}>
       <OneHeader />
-      <main className={cn(column, "relative flex-1 pt-7", switcherClear)}>{children}</main>
+      <main className={cn(full ? wide : column, "relative flex-1 pt-7", switcherClear)}>{children}</main>
     </Stage>
   );
 }

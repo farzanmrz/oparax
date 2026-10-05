@@ -38,3 +38,4 @@ scratch/
 
 # Python bytecode from the flow scripts
 __pycache__/
+img/
