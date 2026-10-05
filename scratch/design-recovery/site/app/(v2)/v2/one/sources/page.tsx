@@ -1,7 +1,6 @@
-import { OneSources } from "@/v2/one/sources";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Oparax | One: Sources" };
-
+// Sources and notifications live on the Settings page.
 export default function Page() {
-  return <OneSources />;
+  redirect("/v2/one/settings");
 }

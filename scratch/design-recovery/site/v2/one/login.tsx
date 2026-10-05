@@ -1,149 +1,138 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Globe, Rss } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
-import { OparaxMark, XLogo } from "@/pro/shared/brand";
-import { ThemeToggle } from "@/next/theme";
+import { XLogo } from "@/pro/shared/brand";
 import { cn } from "@/lib/utils";
 import { AuthForm } from "@/v2/shared/auth-form";
-import { lift, liftStyle, Stage } from "@/v2/deck/chrome";
-import { sources, stories, type Source } from "@/v2/deck/data";
-import { GitHubTile, SourceMark } from "@/v2/deck/marks";
+import { lift, Stage } from "@/v2/deck/chrome";
+import { stories } from "@/v2/deck/data";
+import { GitHubTile, SiteIcon } from "@/v2/deck/marks";
 import { BASE, StoryCard } from "./card";
+import CenterFlow from "./center-flow";
+import { column, OneHeader } from "./shell";
 
-// One log in and sign up: the React Bits Pro auth-4 block's composition (owner, Oct 4: "pick up an auth component
-// from reactbits.dev, which has a login thingy with a side image of a circle or something"), drawn with the fixed
-// theme: one framed panel split in two, the form on the left, and on the right the block's showcase of concentric
-// rings holding the product's real objects (owner, Oct 4: "you could have put multiple different social media around
-// it in the circle, right, or you could have put the card there"). In the centre one real story card; on the slowly
-// turning dashed ring the four kinds of source, upright; on the outer still ring six real sources from the sample.
-// The form is ours: email and password first, blue Log in, "New to Oparax? Sign up" swapping the confirm field in
-// place, then neutral X and Google. A successful log in goes to setup, as sign up does.
-
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+// One log in and sign up, outside the shell but on its header line (the mark and the theme). Deck's composition
+// (deck-login.png): the neat independent lifted 420px form card at the left, email and password first, blue Log in,
+// "New to Oparax? Sign up" swapping the confirm field in place, then neutral X and Google. At the right, React Bits
+// Center Flow (center-flow.tsx): the "Next.js 15 is released as stable" story is the centre, and five kinds of
+// source flow into it, clockwise from the top: GitHub, Product Hunt, the web, RSS and X. A valid log in goes to
+// onboarding, as sign up does.
 
 const input =
   "h-10 w-full rounded-md border border-line-strong bg-[var(--well)] px-3 text-[14px] text-t1 placeholder:text-t3 outline-none transition-shadow focus-visible:border-[var(--brand)] focus-visible:shadow-[0_0_0_3px_var(--brand-soft)] disabled:opacity-100";
 
-const rings = ["size-40", "size-[280px]", "size-[400px]", "size-[520px]"];
-const TURN = 90;
-
-/** The Next.js 15 story from the sample feed (the @nextjs post and the vercel/next.js release), text first, with its
- * first two facts so the card sits inside the dashed ring and the four kind marks stay clear of it. */
+/** The Next.js 15 story from the sample feed (the @nextjs post and the vercel/next.js release), with two facts. */
 const next15 = stories.clustered.find((s) => s.id === "st-next-15-gh")!;
 const story = { ...next15, card: { ...next15.card, facts: next15.card.facts.slice(0, 2) } };
 
-/** The four kinds of source, at 12, 3, 6 and 9 o'clock on the dashed ring. */
-const kinds = [
-  { id: "x", node: <XLogo className="size-[15px] text-t1" /> },
-  { id: "rss", node: <Rss className="size-4 text-[var(--kind-article)]" aria-hidden="true" /> },
-  { id: "github", node: <GitHubTile size={24} className="rounded-full" /> },
-  { id: "web", node: <Globe className="size-4 text-[var(--kind-article)]" aria-hidden="true" /> },
+/** Our tokens as 6-digit hex (Center Flow appends hex alpha to its colours). --line is white 7.5 percent on the
+ * dark --page #0b0c0f and ink rgb(16 24 40) 10 percent on the light --page #eceef2; --brand is #6b95ff dark and
+ * #2459e8 light (app/(next)/palettes.css, .palette-council). */
+const tokens = {
+  dark: { line: "#1d1e21", brand: "#6b95ff" },
+  light: { line: "#d6d9de", brand: "#2459e8" },
+};
+
+/** The five nodes, clockwise from the top. */
+const nodes = [
+  { content: <GitHubTile size={30} className="rounded-[7px]" /> },
+  { content: <SiteIcon host="producthunt.com" size={28} className="rounded-[7px]" /> },
+  { content: <Globe className="size-6 text-[var(--kind-article)]" strokeWidth={1.75} aria-hidden="true" /> },
+  { content: <Rss className="size-6 text-[var(--kind-article)]" strokeWidth={2} aria-hidden="true" /> },
+  { content: <XLogo className="size-5 text-t1" /> },
 ];
 
-/** Six real sources from the sample's chosen list, found by handle or host, clockwise from 12 o'clock. */
-const bySource = (mark: string) => sources.find((s) => s.mark === mark)!;
-const companies: Source[] = ["@nextjs", "vercel.com", "huggingface.co", "cursor.com", "mistral.ai", "simonwillison.net"].map(bySource);
+function useLight() {
+  const [light, setLight] = useState(false);
+  useEffect(() => {
+    const el = document.documentElement;
+    const read = () => setLight(!el.classList.contains("dark"));
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return light;
+}
 
-/** A point on a circle of the given diameter, clockwise from 12 o'clock, as left and top offsets in pixels. */
-const onRing = (diameter: number, i: number, n: number) => {
-  const a = (i / n) * 2 * Math.PI;
-  const r = diameter / 2;
-  return { left: r + r * Math.sin(a), top: r - r * Math.cos(a) };
-};
+const CENTER_W = 320;
+const CARD_W = CENTER_W - 4;
 
 export function OneLogin({ initial = "login" }: { initial?: "login" | "signup" }) {
   const router = useRouter();
-  const reduce = useReducedMotion();
+  const light = useLight();
+  const c = light ? tokens.light : tokens.dark;
+  const card = useRef<HTMLDivElement>(null);
+  const [cardH, setCardH] = useState(236);
+  useLayoutEffect(() => {
+    const el = card.current;
+    if (!el) return;
+    const measure = () => setCardH(Math.ceil(el.getBoundingClientRect().height));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <Stage light={760}>
-      <header className="relative z-10 mx-auto flex w-full max-w-[1400px] items-center px-4 pt-5 lg:px-8">
-        <Link href={`${BASE}/landing`} className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-t1">
-          <OparaxMark className="size-[22px]" />
-          Oparax
-        </Link>
-        <ThemeToggle className="ml-auto size-8 text-t3" />
-      </header>
-      <main className="relative mx-auto flex w-full max-w-[1400px] flex-1 items-center px-4 py-8 lg:px-8">
-        <div
-          className={cn(lift, "grid w-full grid-cols-1 overflow-hidden lg:min-h-[680px] lg:grid-cols-2")}
+      <OneHeader app={false} />
+      <main className={cn(column, "relative grid flex-1 items-center gap-16 py-10 lg:grid-cols-[420px_minmax(0,1fr)]")}>
+        <section
+          className={cn(lift, "p-7")}
           style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
+          // The shared form sends a log in to the feed; here a valid log in goes to onboarding instead.
+          onSubmitCapture={(e) => {
+            const form = e.target as HTMLFormElement;
+            const data = new FormData(form);
+            const confirm = form.querySelector<HTMLInputElement>('input[name="confirm"]');
+            const signup = confirm ? !confirm.disabled : false;
+            const mail = String(data.get("email") ?? "").trim();
+            const pass = String(data.get("password") ?? "");
+            if (signup || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail) || pass.length < 6) return;
+            e.preventDefault();
+            e.stopPropagation();
+            router.push(`${BASE}/onboarding`);
+          }}
         >
-          <section
-            className="flex flex-col justify-center px-8 py-10 lg:px-14"
-            // The shared form sends a log in to the feed; here a valid log in goes to setup instead. Sign up and the
-            // providers keep the shared form's own routes (setup).
-            onSubmitCapture={(e) => {
-              const form = e.target as HTMLFormElement;
-              const data = new FormData(form);
-              const confirm = form.querySelector<HTMLInputElement>('input[name="confirm"]');
-              const signup = confirm ? !confirm.disabled : false;
-              const mail = String(data.get("email") ?? "").trim();
-              const pass = String(data.get("password") ?? "");
-              if (signup || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail) || pass.length < 6) return;
-              e.preventDefault();
-              e.stopPropagation();
-              router.push(`${BASE}/setup`);
-            }}
-          >
-            <div className="mx-auto w-full max-w-[380px]">
-              <AuthForm
-                base={BASE}
-                initial={initial}
-                fieldClass={input}
-                labelClass="text-[13px] font-medium text-t2"
-                titleClass="text-[26px] leading-none font-semibold tracking-[-0.025em] text-t1"
-                radius="rounded-lg"
-                linkClass="text-t1 underline-offset-4 hover:underline"
-              />
-            </div>
-          </section>
+          <AuthForm
+            base={BASE}
+            initial={initial}
+            fieldClass={input}
+            labelClass="text-[13px] font-medium text-t2"
+            titleClass="text-[26px] leading-none font-semibold tracking-[-0.025em] text-t1"
+            radius="rounded-lg"
+            linkClass="text-t1 underline-offset-4 hover:underline"
+          />
+        </section>
 
-          <motion.aside
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-            aria-hidden="true"
-            className="relative hidden items-center justify-center overflow-hidden border-l border-line bg-[var(--well)] lg:flex"
-          >
-            <div className="relative size-[520px] shrink-0">
-              {rings.map((size) => (
-                <div key={size} className={cn("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-line", size)} />
-              ))}
-              <div className="absolute top-1/2 left-1/2 z-10 w-[240px] -translate-x-1/2 -translate-y-1/2">
-                <StoryCard story={story} compact={false} />
-              </div>
-              <div className="absolute top-1/2 left-1/2 z-20 size-[400px] -translate-x-1/2 -translate-y-1/2">
-                <motion.div
-                  animate={reduce ? undefined : { rotate: 360 }}
-                  transition={{ duration: TURN, repeat: Infinity, ease: "linear" }}
-                  className="relative size-full rounded-full border border-dashed border-line-strong"
-                >
-                  {kinds.map(({ id, node }, i) => (
-                    <div key={id} className="absolute -translate-x-1/2 -translate-y-1/2" style={onRing(400, i, kinds.length)}>
-                      <motion.span
-                        animate={reduce ? undefined : { rotate: -360 }}
-                        transition={{ duration: TURN, repeat: Infinity, ease: "linear" }}
-                        className="grid size-9 place-items-center rounded-full border border-line-strong bg-[var(--window)]"
-                        style={liftStyle}
-                      >
-                        {node}
-                      </motion.span>
-                    </div>
-                  ))}
-                </motion.div>
-              </div>
-              {companies.map((source, i) => (
-                <div key={source.id} className="absolute z-20 -translate-x-1/2 -translate-y-1/2" style={onRing(520, i, companies.length)}>
-                  <span className={cn("block overflow-hidden", source.group === "x" ? "rounded-full" : "rounded-[10px]")} style={liftStyle}>
-                    <SourceMark source={source} size={40} className={source.group === "x" ? "" : "rounded-[10px]"} />
-                  </span>
+        <div className="hidden justify-center lg:flex" aria-label="Sources flowing into one story">
+          <div className="h-[560px] w-[620px] shrink-0">
+            <CenterFlow
+              isLight={light}
+              nodeItems={nodes}
+              nodeSize={56}
+              nodeDistance={0.78}
+              centerSize={CENTER_W}
+              centerHeight={cardH + 4}
+              centerBackground="transparent"
+              borderRadius={12}
+              lineColor={c.line}
+              lineColorLight={c.line}
+              pulseColor={c.brand}
+              pulseColorLight={c.brand}
+              glowColor={c.brand}
+              glowColorLight={c.brand}
+              maxGlowIntensity={12}
+              centerContent={
+                <div ref={card} className="shrink-0" style={{ width: CARD_W }}>
+                  <StoryCard story={story} />
                 </div>
-              ))}
-            </div>
-          </motion.aside>
+              }
+            />
+          </div>
         </div>
       </main>
     </Stage>

@@ -1,66 +1,38 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence } from "motion/react";
-import { X as Close } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { Layers, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle, ViewSwitch } from "@/v2/deck/chrome";
-import {
-  sources,
-  status,
-  stories,
-  storiesThisWeek,
-  storyHasSource,
-  week,
-  type FeedStory,
-  type View,
-} from "@/v2/deck/data";
-import { Arrive, useArrival } from "@/v2/deck/live";
-import { Segments, WeekBars } from "@/v2/deck/marks";
-import { BASE, StoryStack, type LabelMode } from "./card";
-import { Shell } from "./rail";
+import { groups, itemsFrom, sources, stories, storyHasSource, type FeedStory, type Source, type View } from "@/v2/deck/data";
+import { Arrive, Checking, EASE, useArrival } from "@/v2/deck/live";
+import { GroupGlyph, SourceMark } from "@/v2/deck/marks";
+import { StoryCard } from "./card";
+import { AppShell, PageLine } from "./shell";
 
-// The One feed: the Deck feed (v2/deck/feed.tsx), copied, with the owner's changes only: a 1400px column; one
-// header row (Feed at the left; Clustered and Direct, then the Deck's This week and Free week as two compact lifted
-// tiles at the right); the DM line as a thin ribbon under it; no checking row; one card per story with no plates, no
-// kind chip and no publisher parentheses; the source panel (rail.tsx) floats over the page and filters it.
+// The One feed inside the shell. The page line: Feed, the Clustered and Direct switch, and Deck's amber checking
+// line at the right while a check runs. Then the stories in a grid read newest first across rows, left to right:
+// three columns at 1440, two narrower, four at 2560. Cards in a row share the row's height (the grid stretches
+// them), the picture stays 172px on top, and every fact shows. One round button at the bottom left opens Deck's
+// source list over the page; a row filters the feed. The feed never moves.
 
 const IMAGE_H = 172;
-
-function estimate(s: FeedStory) {
-  return (s.card.image ? IMAGE_H : 0) + 128 + s.card.facts.length * 46 + 24;
-}
-
-/** Newest first, each story into the shorter column by estimated height. */
-function toColumns(list: FeedStory[], n: number, lead = 0) {
-  const cols: FeedStory[][] = Array.from({ length: n }, () => []);
-  const h = Array.from({ length: n }, (_, i) => (i === 0 ? lead : 0));
-  for (const s of list) {
-    const c = h.indexOf(Math.min(...h));
-    cols[c].push(s);
-    h[c] += estimate(s) + 24;
-  }
-  return cols;
-}
 
 export function OneFeed({
   initialView,
   initialSource,
-  initialMode,
   initialPanel = false,
   settled,
 }: {
   initialView: View;
   initialSource: string | null;
-  initialMode: LabelMode;
   initialPanel?: boolean;
   settled: boolean;
 }) {
   const [view, setView] = useState<View>(initialView);
   const [sourceId, setSourceId] = useState<string | null>(sources.some((s) => s.id === initialSource) ? initialSource : null);
-  const mode = initialMode;
-  useArrival(settled);
+  const { pending } = useArrival(settled);
 
   // Keep the URL in step so each state has an address (and survives a reload).
   useEffect(() => {
@@ -73,156 +45,173 @@ export function OneFeed({
 
   const all = stories[view];
   const selected = sources.find((s) => s.id === sourceId) ?? null;
-  const list = selected ? all.filter((s) => storyHasSource(s, selected.id)) : all;
-  const freshId = all[0].id;
-  // The newest story is on the page from the start; only its New marker and edge light replay its arrival.
-  const visible = (_: FeedStory) => true;
+  const filtered = selected ? all.filter((s) => storyHasSource(s, selected.id)) : all;
+  const list = filtered.length ? filtered : all;
+  const freshId = selected ? null : all[0].id;
 
   return (
-    <Shell
-      sources={sources}
-      onSource={setSourceId}
-      activeSource={sourceId}
-      initialOpen={initialPanel}
-      header={
-        <Header
-          title="Feed"
-          actions={
-            <>
-              <ViewSwitch view={view} onChange={setView} />
-              <WeekTile />
-              <FreeWeekTile />
-            </>
-          }
-        />
-      }
-    >
-      <main className="min-w-0 pb-20">
-        <Banner />
-
-        <StackColumns list={selected && list.length === 0 ? all : list} mode={mode} freshId={selected ? null : freshId} visible={visible} />
-      </main>
-    </Shell>
+    <AppShell>
+      <PageLine
+        title="Feed"
+        beside={<ViewSwitch view={view} onChange={setView} />}
+        right={!selected && pending > 0 ? <Checking pending={pending} /> : null}
+      />
+      <Grid list={list} freshId={freshId} />
+      <SourcesControl initialOpen={initialPanel} selected={sourceId} onSelect={setSourceId} />
+    </AppShell>
   );
 }
 
-/** The page's one header row: the title at the left, the page's objects at the right end. */
-function Header({ title, actions }: { title: React.ReactNode; actions?: React.ReactNode }) {
+/** Rows read left to right, newest first; a row is as tall as its tallest card and every card stretches to it. */
+function Grid({ list, freshId }: { list: FeedStory[]; freshId: string | null }) {
   return (
-    <header className="relative z-20 flex flex-wrap items-center gap-x-5 gap-y-3">
-      <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">{title}</h1>
-      <div className="ml-auto flex flex-wrap items-center gap-3">{actions}</div>
-    </header>
-  );
-}
-
-/** A compact lifted tile for the header row: as tall as the switch row plus padding. */
-const headerTile = cn(lift, "flex h-[52px] items-center gap-3.5 rounded-[10px] px-3.5");
-
-/** The Deck's This week tile, compact: the story count and the day marks. */
-function WeekTile() {
-  return (
-    <section aria-label="This week" className={headerTile} style={liftStyle}>
-      <div className="leading-none">
-        <p className="text-[11px] font-medium text-t3">This week</p>
-        <p className="mt-1.5 flex items-baseline gap-1">
-          <span className="text-[17px] leading-none font-semibold tabular-nums text-t1">{storiesThisWeek}</span>
-          <span className="text-[12px] text-t2">stories</span>
-        </p>
-      </div>
-      <WeekBars week={week} height={26} className="w-[92px]" />
-    </section>
-  );
-}
-
-/** The Deck's Free week tile, compact: days left, the day meter and the watched-posts line. */
-function FreeWeekTile() {
-  return (
-    <section aria-label="Free week" className={headerTile} style={liftStyle}>
-      <div className="leading-none">
-        <p className="text-[11px] font-medium text-t3">Free week</p>
-        <p className="mt-1.5 flex items-baseline gap-1">
-          <span className="text-[17px] leading-none font-semibold tabular-nums text-t1">{status.daysLeft}</span>
-          <span className="text-[12px] text-t2">days left</span>
-        </p>
-      </div>
-      <div className="min-w-[132px]">
-        <Segments total={status.trialDays} filled={status.daysLeft} />
-        <p className="mt-1.5 text-[10.5px] leading-none tabular-nums whitespace-nowrap text-t3">
-          {status.poolUsed} of {status.poolLimit} watched X posts used
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function StackColumns({
-  list,
-  mode,
-  freshId,
-  visible,
-}: {
-  list: FeedStory[];
-  mode: LabelMode;
-  freshId: string | null;
-  visible: (s: FeedStory) => boolean;
-}) {
-  const two = useMemo(() => toColumns(list, 3), [list]);
-  const render = (col: FeedStory[], ci: number) => (
-    <div key={ci} className="flex min-w-0 flex-col gap-6">
-      <AnimatePresence initial={false}>
-        {col.map((s, i) =>
-          visible(s) ? (
-            <Arrive key={s.id} index={ci + i * 3}>
-              <StoryStack story={s} mode={mode} fresh={s.id === freshId} imageHeight={IMAGE_H} />
-            </Arrive>
-          ) : null,
-        )}
-      </AnimatePresence>
+    <div className="mt-6 grid grid-cols-1 gap-6 min-[768px]:grid-cols-2 min-[1280px]:grid-cols-3 min-[2200px]:grid-cols-4">
+      {list.map((s, i) => (
+        <Arrive key={s.id} index={i} className="h-full min-w-0">
+          <StoryCard story={s} fresh={s.id === freshId} imageHeight={IMAGE_H} className="h-full" />
+        </Arrive>
+      ))}
     </div>
   );
+}
+
+/** The count column: one right-aligned column, so the group and row numbers line up. */
+const countCol = "w-6 shrink-0 text-right tabular-nums";
+const SHOWN = 3;
+
+/** One round button at the bottom left of the feed; it opens Deck's source list over the page. The button, Escape
+ * or a click outside closes it, and closed it is gone. */
+function SourcesControl({ initialOpen, selected, onSelect }: { initialOpen: boolean; selected: string | null; onSelect: (id: string | null) => void }) {
+  const [open, setOpen] = useState(initialOpen);
+  const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      requestAnimationFrame(() => button.current?.focus());
+    };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (panel.current?.contains(t) || button.current?.contains(t)) return;
+      setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown);
+    };
+  }, [open]);
   return (
     <>
-      <div className="mt-6 hidden items-start gap-5 md:grid md:grid-cols-3">{two.map((col, ci) => render(col, ci))}</div>
-      <div className="mt-6 grid gap-6 md:hidden">{render(list, 0)}</div>
+      {open ? <SourcePanel ref={panel} selected={selected} onSelect={onSelect} /> : null}
+      <button
+        ref={button}
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls="one-sources"
+        aria-label={open ? "Close sources" : "Open sources"}
+        title="Sources"
+        className={cn(
+          lift,
+          "fixed bottom-4 left-4 z-50 grid size-11 place-items-center rounded-full transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring",
+          open || selected ? "text-[var(--brand)]" : "text-t2",
+        )}
+        style={liftStyle}
+      >
+        <PanelLeft className="size-[19px]" aria-hidden="true" />
+      </button>
     </>
   );
 }
 
-/** The DM line as a thin ribbon under the header (owner, Oct 4: "The banner itself looks good, but maybe it can be
- * some other UI than the cards"): a hairline bar with no shadow, dismissable, remembered. */
-const DISMISS_KEY = "oparax-one-dm-line";
-function Banner() {
-  const [gone, setGone] = useState(false);
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(DISMISS_KEY) === "1") setGone(true);
-    } catch {}
-  }, []);
-  if (gone) return null;
-  const dismiss = () => {
-    setGone(true);
-    try {
-      localStorage.setItem(DISMISS_KEY, "1");
-    } catch {}
-  };
+function SourcePanel({ ref, selected, onSelect }: { ref: React.Ref<HTMLElement>; selected: string | null; onSelect: (id: string | null) => void }) {
+  const reduce = useReducedMotion();
+  const [more, setMore] = useState<Set<string>>(() => new Set());
   return (
-    <div role="region" aria-label="Notifications" className="mb-5 flex h-9 items-center gap-3 rounded-[8px] border border-line bg-[var(--raised)] pr-1.5 pl-3.5 text-[13px]">
-      <p className="text-t2">Oparax can alert you on X DMs.</p>
-      <Link
-        href={`${BASE}/notifications`}
-        className="rounded-sm font-medium text-[var(--brand)] underline-offset-4 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      >
-        Turn on notifications
-      </Link>
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Dismiss"
-        className="ml-auto grid size-6 place-items-center rounded-md text-t3 transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        <Close className="size-3.5" aria-hidden="true" />
-      </button>
-    </div>
+    <motion.aside
+      ref={ref}
+      id="one-sources"
+      aria-label="Sources"
+      initial={reduce ? { opacity: 0 } : { opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.22, ease: EASE }}
+      className={cn(lift, "fixed inset-y-3 left-3 z-[45] flex w-[280px] flex-col overflow-hidden")}
+      style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto p-2.5 pb-20">
+        <p className="px-2 pt-1.5 pb-3 text-[15px] font-semibold text-t1">Sources</p>
+        <Row on={selected === null} onClick={() => onSelect(null)}>
+          <span className="grid size-[18px] place-items-center rounded-[5px] bg-[var(--brand-soft)] text-[var(--brand)]">
+            <Layers className="size-3" aria-hidden="true" />
+          </span>
+          <span className="flex-1 text-left text-[13px] text-t1">All sources</span>
+        </Row>
+        {groups.map((g) => {
+          const members = sources.filter((s) => s.group === g.id);
+          if (!members.length) return null;
+          const all = more.has(g.id);
+          const shown = all ? members : members.slice(0, SHOWN);
+          return (
+            <section key={g.id} aria-label={g.label} className="mt-5">
+              <p className="flex items-center gap-2 px-2 pb-1.5 text-[13px] font-semibold text-t1">
+                <span className="grid size-[18px] place-items-center text-t3">
+                  <GroupGlyph group={g.id} className="size-3.5" />
+                </span>
+                {g.label}
+                <span className={cn(countCol, "ml-auto text-[11.5px] font-medium text-t3")}>{members.length}</span>
+              </p>
+              {shown.map((s: Source) => {
+                const n = itemsFrom(s.id).length;
+                return (
+                  <Row key={s.id} on={selected === s.id} onClick={() => onSelect(selected === s.id ? null : s.id)}>
+                    <SourceMark source={s} size={18} className={s.group === "x" ? "" : "rounded-[5px]"} />
+                    <span className="min-w-0 flex-1 truncate text-left text-[13px] text-t2">{s.name}</span>
+                    <span className={cn(countCol, "text-[11.5px] text-t3")}>{n > 0 ? n : null}</span>
+                  </Row>
+                );
+              })}
+              {members.length > SHOWN ? (
+                <button
+                  type="button"
+                  aria-expanded={all}
+                  onClick={() =>
+                    setMore((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(g.id)) next.delete(g.id);
+                      else next.add(g.id);
+                      return next;
+                    })
+                  }
+                  className="mt-1 ml-[38px] rounded-sm text-[12.5px] text-t3 underline decoration-line-strong underline-offset-4 transition-colors hover:text-t1 hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  {all ? "Show less" : "Show more"}
+                </button>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
+    </motion.aside>
+  );
+}
+
+/** The Deck's source row (v2/deck/feed.tsx). */
+function Row({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={cn(
+        "flex min-h-8 w-full items-center gap-2.5 rounded-md px-2 py-1 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring",
+        on && "bg-[var(--brand-soft)] shadow-[inset_0_0_0_1px_var(--brand-line)] hover:bg-[var(--brand-soft)]",
+      )}
+    >
+      {children}
+    </button>
   );
 }

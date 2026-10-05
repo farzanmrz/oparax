@@ -17,15 +17,13 @@ const PAGES = [
   { key: "feed", label: "Feed" },
   { key: "landing", label: "Landing" },
 ];
-/** The One style merges building and ready into onboarding and sign up into login. */
+/** The One style merges setup, building and ready into onboarding, sign up into login, and sources and
+ * notifications into settings. */
 const ONE_PAGES = [
-  { key: "sources", label: "Sources" },
-  { key: "notifications", label: "Notifications" },
   { key: "login", label: "Login" },
-  { key: "setup", label: "Setup" },
   { key: "onboarding", label: "Onboarding" },
   { key: "feed", label: "Feed" },
-  { key: "landing", label: "Landing" },
+  { key: "settings", label: "Settings" },
 ];
 const toOne: Record<string, string> = { building: "onboarding", ready: "onboarding", signup: "login" };
 const fromOne: Record<string, string> = { onboarding: "building" };
@@ -97,7 +95,9 @@ export function StyleSwitcher() {
     background: active ? "#3a6cf4" : "transparent",
   });
 
-  if (hidden) {
+  // On One pages the switcher always shows: the stored hide flag is ignored there and there is no hide button.
+  const oneStyle = current === "one";
+  if (hidden && !oneStyle) {
     return (
       <div style={dock}>
         <button type="button" onClick={() => toggle(false)} style={{ ...shell, padding: "8px 12px", cursor: "pointer" }} aria-label="Show switchers">
@@ -130,6 +130,7 @@ export function StyleSwitcher() {
           {p.label}
         </a>
       ))}
+      {oneStyle ? null : (
       <button
         type="button"
         onClick={() => toggle(true)}
@@ -138,6 +139,7 @@ export function StyleSwitcher() {
       >
         ×
       </button>
+      )}
     </nav>
     </div>
   );

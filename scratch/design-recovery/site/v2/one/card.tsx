@@ -3,21 +3,22 @@
 import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
 import { itemLabel, newest, sourceOf, when, type FeedStory, type ItemView } from "@/v2/deck/data";
-import { MarkStack } from "@/v2/deck/marks";
+import { ItemMark } from "@/v2/deck/marks";
 import { FreshRing, NewFlag } from "@/v2/deck/live";
 
-// The One story card: the Deck's StoryStack and StoryCard (v2/deck/stack.tsx), copied, with the owner's changes
-// only: no backing plates and no peek (one card per story, flush), no "N Articles" kind chip, and every fact
-// without its publisher parentheses (the citations are the source row at the top). The New badge, the image on top
-// and the imageless card's soft wash stay as the Deck draws them.
+// The One story card: the Deck's StoryCard (v2/deck/stack.tsx) with the owner's changes only: one card per story
+// (no plates, no peek), no "N Articles" kind chip, every fact without its publisher parentheses, and one top row
+// that never clips: the source marks (three, then +N), ONE source name (the story's lead source; the others are
+// marks only) and the time at the right. The name truncates; the marks and the time never shrink. A picture sits on
+// top at a fixed height; an imageless card starts at its source row on the same surface, with no wash.
 
 export const BASE = "/v2/one";
 export type LabelMode = "name" | "handle";
 
-/** One entry per distinct source in the story, newest item first. */
+/** One entry per distinct source in the story, in the story's own item order. */
 export function sourcesIn(story: FeedStory) {
   const seen = new Map<string, { key: string; sourceId: string | null; item: ItemView }>();
-  for (const item of [...story.items].sort((a, b) => (a.published_at < b.published_at ? 1 : -1))) {
+  for (const item of story.items) {
     const src = sourceOf(item);
     const key = src?.id ?? item.id;
     if (!seen.has(key)) seen.set(key, { key, sourceId: src?.id ?? null, item });
@@ -41,6 +42,34 @@ export function FactList({ story, size = "sm", className }: { story: FeedStory; 
   );
 }
 
+const MAX_MARKS = 3;
+
+/** The card's top row: marks (three, then +N), the lead source's name, the time. */
+function SourceLine({ story, mode, size }: { story: FeedStory; mode: LabelMode; size: number }) {
+  const list = sourcesIn(story);
+  const shown = list.slice(0, MAX_MARKS);
+  const extra = list.length - shown.length;
+  const lead = list[0].item;
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="flex shrink-0 items-center">
+        {shown.map(({ key, item }, i) => (
+          <span
+            key={key}
+            className="rounded-full ring-2 ring-[var(--window)]"
+            style={{ marginLeft: i === 0 ? 0 : -size * 0.3, zIndex: shown.length - i, borderRadius: item.kind === "post" ? 999 : 5 }}
+          >
+            <ItemMark item={item} size={size} className={item.kind === "post" ? "" : "rounded-[5px]"} />
+          </span>
+        ))}
+        {extra > 0 ? <span className="ml-1.5 text-[11.5px] font-medium tabular-nums text-t3">+{extra}</span> : null}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-t1">{itemLabel(lead, mode)}</span>
+      <span className="shrink-0 text-[11.5px] tabular-nums whitespace-nowrap text-t3">{when(newest(story).published_at)}</span>
+    </div>
+  );
+}
+
 export function StoryStack({
   story,
   mode = "name",
@@ -54,11 +83,7 @@ export function StoryStack({
   imageHeight?: number;
   className?: string;
 }) {
-  return (
-    <div className={cn("group relative", className)}>
-      <StoryCard story={story} mode={mode} fresh={fresh} imageHeight={imageHeight} />
-    </div>
-  );
+  return <StoryCard story={story} mode={mode} fresh={fresh} imageHeight={imageHeight} className={className} />;
 }
 
 export function StoryCard({
@@ -75,28 +100,22 @@ export function StoryCard({
   fresh?: boolean;
   imageHeight?: number;
   size?: "sm" | "md";
-  /** Headline only, for cards fanned behind a readable front card. */
+  /** Headline only. */
   compact?: boolean;
   className?: string;
 }) {
-  const last = newest(story);
-  const names = [...new Set(story.items.map((i) => itemLabel(i, mode)))];
   return (
-    <article className={cn(lift, "relative z-10 overflow-hidden", className)} style={liftStyle}>
+    <article className={cn(lift, "relative z-10 flex flex-col overflow-hidden", className)} style={liftStyle}>
       {fresh ? <FreshRing /> : null}
       {story.card.image ? (
-        <div className="relative overflow-hidden border-b border-line" style={{ height: imageHeight }}>
+        <div className="relative shrink-0 overflow-hidden border-b border-line" style={{ height: imageHeight }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={story.card.image} alt="" loading="lazy" className="size-full object-cover" />
           <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--window)]/55 via-transparent to-transparent" />
         </div>
       ) : null}
-      <div className={cn("relative", size === "md" ? "p-5" : "p-4")}>
-        <div className="flex items-center gap-2">
-          <MarkStack items={story.items} size={story.card.image ? 18 : 22} />
-          <span className="min-w-0 truncate text-[12.5px] font-medium text-t1">{names.join(", ")}</span>
-          <span className="ml-auto shrink-0 text-[11.5px] tabular-nums text-t3">{when(last.published_at)}</span>
-        </div>
+      <div className={cn("relative flex-1", size === "md" ? "p-5" : "p-4")}>
+        <SourceLine story={story} mode={mode} size={story.card.image ? 18 : 20} />
         {fresh ? (
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <NewFlag />
@@ -111,7 +130,7 @@ export function StoryCard({
   );
 }
 
-/** The landing and login fans use the same card. `image` is kept for callers; the picture is always on top. */
+/** The landing uses the same card. `image` is kept for callers; the picture is always on top. */
 export function OneCard({
   image: _image,
   ...props

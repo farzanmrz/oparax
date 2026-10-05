@@ -63,8 +63,9 @@ export type Run = { states: StepState[]; progress: number[] };
 export const SEARCH = stepIds.indexOf("search");
 export const JEV = stepIds.indexOf("jev");
 
-// Milliseconds each step runs in the replay (sums to 4.6 seconds). The search step is decided, not run.
-const durations = [400, 600, 500, 1400, 800, 0, 600, 300];
+// Milliseconds each step runs in the replay (sums to 48 seconds, owner pass 14: "the loop is going so fast"). The
+// search step is decided, not run: its 2 seconds keep the skip line on screen.
+const durations = [4000, 8000, 6000, 12000, 6000, 2000, 7000, 3000];
 export const REPLAY_MS = durations.reduce((a, b) => a + b, 0);
 
 export function runAt(elapsed: number): Run {

@@ -1,8 +1,6 @@
-import { OneSettings } from "@/v2/one/settings";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Oparax | One: Notifications" };
-
-// Notifications is a row in Settings: this route opens the Settings page with that row lit once.
+// Sources and notifications live on the Settings page.
 export default function Page() {
-  return <OneSettings highlight="notifications" />;
+  redirect("/v2/one/settings");
 }

@@ -1,11 +1,12 @@
-import { readParams, type SearchParams } from "@/next/frame";
-import { OneOnboarding } from "@/v2/one/onboarding";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Oparax | One: Set Up" };
-
-// Setup is the onboarding page before the run. ?handle=typed (signed up with Google or email: type the X handle),
-// ?error=blank (empty sentence on submit).
-export default async function Page({ searchParams }: { searchParams: SearchParams }) {
-  const param = await readParams(searchParams);
-  return <OneOnboarding phase="setup" typed={param("handle") === "typed"} blank={param("error") === "blank"} />;
+// Setup is the onboarding page's first state; the query (?handle=typed, ?error=blank) carries over.
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (typeof v === "string") q.set(k, v);
+  }
+  const query = q.toString();
+  redirect(`/v2/one/onboarding${query ? `?${query}` : ""}`);
 }
