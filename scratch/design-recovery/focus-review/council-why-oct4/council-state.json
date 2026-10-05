@@ -1,0 +1,12 @@
+{
+ "astra": {
+  "final": true,
+  "line": "astra: OK FINDINGS lane=astra model=gpt-6-astra effort=high format=text elapsed=132s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-why-oct4/astra.result.txt findings=-",
+  "active": "astra"
+ },
+ "grok": {
+  "final": true,
+  "line": "grok: OK FINDINGS lane=grok model=grok-4.7-build-fast effort=xhigh format=text elapsed=164s exit=0 result=/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/council-why-oct4/grok.result.txt findings=-",
+  "active": "grok"
+ }
+}

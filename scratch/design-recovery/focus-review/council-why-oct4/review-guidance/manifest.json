@@ -1,0 +1,3194 @@
+{
+  "schema_version": 1,
+  "cwd": "/Users/farzanm4/Desktop/repos/oparax",
+  "selection_manifest": "/Users/farzanm4/.agents/skills/council/references/reviewer-skills.json",
+  "skills": [
+    {
+      "short_name": "nextjs",
+      "skill_name": "nextjs",
+      "description": "Next.js App Router architecture and implementation guidance.",
+      "when_use": "Review routing, Server Components, Server Actions, data fetching, caching, metadata, or deployment behavior.",
+      "license": "Apache-2.0",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "vercel",
+        "plugin_version": "0.21.4",
+        "plugin_repository": "https://github.com/vercel/vercel-plugin",
+        "plugin_license": "Apache-2.0",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/skills/nextjs"
+      },
+      "tree_sha256": "7107b5fd69ac44b49372b71b1345a395652802fee34e09ce716c3ac449bfcd53",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "cdd014ce090e4a137abd81682238d994a41fcd73a626cd70a2af47e2451bbb0c",
+          "bytes": 5328
+        },
+        {
+          "path": "agents/openai.yaml",
+          "sha256": "f3b76bb6fce9d078fb213868ea7d24ef253ba03655186b00f03ee512fc809015",
+          "bytes": 95
+        },
+        {
+          "path": "references/app-router-files.md",
+          "sha256": "d11b45d535b41d047fbe22e062de5c72716d64b39b85e9c259cc8e1f5362a567",
+          "bytes": 2610
+        },
+        {
+          "path": "references/async-patterns.md",
+          "sha256": "3a5e4a91d8399f0922c4a3b15b3490fbeb7396f976139a92311ea34cfa300584",
+          "bytes": 1664
+        },
+        {
+          "path": "references/bundling.md",
+          "sha256": "5496b337073985068c61527e0a89fbf7088faa47b9f92d2dd09a7d070cb48a7c",
+          "bytes": 4456
+        },
+        {
+          "path": "references/data-patterns.md",
+          "sha256": "538c8e24cd60eded9825a9461f2c644f5e6e5203d95aa4bf7c9486412bcc7aa1",
+          "bytes": 6687
+        },
+        {
+          "path": "references/debug-tricks.md",
+          "sha256": "62617a7cb131a2111f9f033617404fadb3458d56aeb0643f75aa5b2e43abf192",
+          "bytes": 2953
+        },
+        {
+          "path": "references/directives.md",
+          "sha256": "60b82ee24a8d43631da59beeec11f46ab25ce83c8000578f2222ecb6b6cadf4d",
+          "bytes": 1476
+        },
+        {
+          "path": "references/error-handling.md",
+          "sha256": "30b4e825b625df01d4a7c441591ac46782aab4f913432e96f408153d5fa62098",
+          "bytes": 4736
+        },
+        {
+          "path": "references/file-conventions.md",
+          "sha256": "95eeb1c6e1c98571192662c8ba3cbf6a034f754596aba54a35077a50a5266de3",
+          "bytes": 3464
+        },
+        {
+          "path": "references/font.md",
+          "sha256": "cb1f8d43e8fbca39839056b4621724837858bdace13e73bf3faf69abca318a21",
+          "bytes": 5196
+        },
+        {
+          "path": "references/functions.md",
+          "sha256": "39a8a418af501d7132d289f4b5dd6cae59d1bfa6fda941d502fc29bb0204e079",
+          "bytes": 4388
+        },
+        {
+          "path": "references/hydration-error.md",
+          "sha256": "d4baec07ab818045e284c45dd24422685ac934a38ea325139651f664a94eff57",
+          "bytes": 1801
+        },
+        {
+          "path": "references/image.md",
+          "sha256": "231a15ddea67fe0b965762cc89993ca5aaeb0c35c0e67767bd53ca138ec04c05",
+          "bytes": 3882
+        },
+        {
+          "path": "references/metadata.md",
+          "sha256": "19b00274877056f222f2284be5ade2479690e79e86af9a0466bc9d209506a95d",
+          "bytes": 7140
+        },
+        {
+          "path": "references/parallel-routes.md",
+          "sha256": "d8a1c2546d90af2b37e22a4a56a1978555af0d62a7683e349ce3e3287ab8a4af",
+          "bytes": 7171
+        },
+        {
+          "path": "references/route-handlers.md",
+          "sha256": "976a17de8024b3a65063350ae0fb6b9b617293f06358305800c858f58b015680",
+          "bytes": 3244
+        },
+        {
+          "path": "references/rsc-boundaries.md",
+          "sha256": "2b50b0310884609efc9f2620fbb81ef83a30a810544e449ff669c55935d5b920",
+          "bytes": 4309
+        },
+        {
+          "path": "references/runtime-selection.md",
+          "sha256": "7abb95f9af0f4769e7e9e91aba94a5787ed16e2c4009a140c8577a3a49828060",
+          "bytes": 985
+        },
+        {
+          "path": "references/scripts.md",
+          "sha256": "fff3bc7530d5af472e2825fde69a26218c9e58acba74d60913f403baab4628a3",
+          "bytes": 3326
+        },
+        {
+          "path": "references/self-hosting.md",
+          "sha256": "f59e9afa0ff4dcbe20374dff13517ccec3ac6a239ef6d02e0ee8863cf9fc7082",
+          "bytes": 8334
+        },
+        {
+          "path": "references/suspense-boundaries.md",
+          "sha256": "63e2e7125b1a1a9d652dd301814ad7140f8ab3ad6726b2b53df76a89d9bc262a",
+          "bytes": 1366
+        }
+      ]
+    },
+    {
+      "short_name": "vercel-functions",
+      "skill_name": "vercel-functions",
+      "description": "Vercel function runtimes, streaming, and cron behavior.",
+      "when_use": "Review route handlers, background work, streaming, runtime limits, and scheduled jobs.",
+      "license": "Apache-2.0",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "vercel",
+        "plugin_version": "0.21.4",
+        "plugin_repository": "https://github.com/vercel/vercel-plugin",
+        "plugin_license": "Apache-2.0",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/skills/vercel-functions"
+      },
+      "tree_sha256": "82a7da874ec59a79e04347b49656a68ebc8f50876374816ed0a729a6ce5f5ef8",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "f7a80c5159847c8c8d22e3d02c5157e10e85aeac8d501eaeda8d8c4355af95e8",
+          "bytes": 14367
+        },
+        {
+          "path": "agents/openai.yaml",
+          "sha256": "fcfe330fd810ba6b9f3da8dc6f32ff7748be9b3a03f4e15a57f17e578f40aebb",
+          "bytes": 182
+        }
+      ]
+    },
+    {
+      "short_name": "routing-middleware",
+      "skill_name": "routing-middleware",
+      "description": "Vercel routing and middleware behavior.",
+      "when_use": "Review request routing, redirects, rewrites, and middleware boundaries.",
+      "license": "Apache-2.0",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "vercel",
+        "plugin_version": "0.21.4",
+        "plugin_repository": "https://github.com/vercel/vercel-plugin",
+        "plugin_license": "Apache-2.0",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/skills/routing-middleware"
+      },
+      "tree_sha256": "d9884c1cd4847d0d87da4e1f463d888be16bfe4781c0664f74a1a34b42f752f8",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "0b9144b76ee253d169453505a7c9d8d42ceefe8ab835bc136b7c56402ae9877f",
+          "bytes": 9502
+        },
+        {
+          "path": "agents/openai.yaml",
+          "sha256": "d99c2c0fc8dc6eac667f040121beab8a662e3e9dde030a74437996ff3189cbea",
+          "bytes": 182
+        }
+      ]
+    },
+    {
+      "short_name": "react-best-practices",
+      "skill_name": "react-best-practices",
+      "description": "React and TSX quality checklist for structure, hooks, accessibility, performance, and types.",
+      "when_use": "Review React components, hooks, client boundaries, rendering behavior, or TSX performance.",
+      "license": "Apache-2.0",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "vercel",
+        "plugin_version": "0.21.4",
+        "plugin_repository": "https://github.com/vercel/vercel-plugin",
+        "plugin_license": "Apache-2.0",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/skills/react-best-practices"
+      },
+      "tree_sha256": "6b74830ef98f9afd362a30bf72d342783e73f4be7bfc0e43b467f8852ef6d063",
+      "files": [
+        {
+          "path": "AGENTS.md",
+          "sha256": "6327efcce0c631580cee5bf2dcac8f884a81172a0261fa3c8ca458a72f603165",
+          "bytes": 94496
+        },
+        {
+          "path": "SKILL.md",
+          "sha256": "64cbd5962d4a6005e55503138c29930053d55dacc6290e60bad22ebeebca5fca",
+          "bytes": 6951
+        },
+        {
+          "path": "agents/openai.yaml",
+          "sha256": "7ec87ac3ce75263c3bec83846f4bbe21e5838a418d843dd8abc1224f1c97b8d3",
+          "bytes": 117
+        },
+        {
+          "path": "rules/_sections.md",
+          "sha256": "01c59969e4e867f0708c8f8ef9c6d87fab9a07d0586244f429ff84013db8a115",
+          "bytes": 1554
+        },
+        {
+          "path": "rules/_template.md",
+          "sha256": "99df2a3ea088c6c22de2484ddc7e964d0e9923846f44c63380343ecc64455442",
+          "bytes": 631
+        },
+        {
+          "path": "rules/advanced-event-handler-refs.md",
+          "sha256": "a3097edeecfb2ff6851cd66ed8cdf0617c3c88180504bee824aa6e75a215bbbc",
+          "bytes": 1483
+        },
+        {
+          "path": "rules/advanced-init-once.md",
+          "sha256": "3e4dc22173eb0e2b6dcf583e3babd862b8696328f8f59aee7c4d746c5bc05f6c",
+          "bytes": 958
+        },
+        {
+          "path": "rules/advanced-use-latest.md",
+          "sha256": "8a3f64dfe5a77d1564248faf17fe662ae75b55d497a243cb30b38eb07ccbbf9a",
+          "bytes": 1072
+        },
+        {
+          "path": "rules/async-api-routes.md",
+          "sha256": "523338540d73427dc14c0cbb19f2741ebccdf8b105a7b2c1b33d2905cf237a42",
+          "bytes": 1125
+        },
+        {
+          "path": "rules/async-defer-await.md",
+          "sha256": "9b9166c7fc58b436cf039ac4e36dd0d3c4f762b61111f579d93cdb9f2ab2b6f9",
+          "bytes": 2028
+        },
+        {
+          "path": "rules/async-dependencies.md",
+          "sha256": "16ef469f877e30c6b8e1e1b4bc3e527312fa3c6318cb785a4eca186ea236131a",
+          "bytes": 1293
+        },
+        {
+          "path": "rules/async-parallel.md",
+          "sha256": "6d2f841896279e976dfcdc1ac89e70771ac188baadfd43c096b5706cb838b961",
+          "bytes": 654
+        },
+        {
+          "path": "rules/async-suspense-boundaries.md",
+          "sha256": "de05fedac2eb7ae563b887b5a424464ec3dfaf84e5b7797467ebe2a796ac8afc",
+          "bytes": 2510
+        },
+        {
+          "path": "rules/bundle-barrel-imports.md",
+          "sha256": "9e61a5d579a8a7d55194c2e110414d7ee2d8da947ba187d444daa1e54d265f0f",
+          "bytes": 2370
+        },
+        {
+          "path": "rules/bundle-conditional.md",
+          "sha256": "09c8259c3efb04fc0abb8e412ccbda217c222ae8118516283e571c995fe3a7d4",
+          "bytes": 949
+        },
+        {
+          "path": "rules/bundle-defer-third-party.md",
+          "sha256": "3719fb47b191e8db4fe22686ec88448ad5af9e6838585425abbe103d0b642e37",
+          "bytes": 920
+        },
+        {
+          "path": "rules/bundle-dynamic-imports.md",
+          "sha256": "401817a7369f315fc5a68a1095742ff7d53d0461906880dc9d64a41495ee1986",
+          "bytes": 791
+        },
+        {
+          "path": "rules/bundle-preload.md",
+          "sha256": "d1f7cc28da7cd5ab249acd287edc5b761afcfb194e9cb62cd44c5f3543db2de2",
+          "bytes": 1149
+        },
+        {
+          "path": "rules/client-event-listeners.md",
+          "sha256": "242a873349febc1ce685e85617994784dbab92c2eaa68aed7fed5a83e7680e93",
+          "bytes": 1969
+        },
+        {
+          "path": "rules/client-localstorage-schema.md",
+          "sha256": "0fb7cdf9dc93fdf22f87e3669f953fb9d4ac9b0be42eec4a29fe9a2560610b88",
+          "bytes": 1950
+        },
+        {
+          "path": "rules/client-passive-event-listeners.md",
+          "sha256": "1f35016f9053de69e884ee9be00654e37979c2ca85f5e57764dc2626ff7acb4b",
+          "bytes": 1644
+        },
+        {
+          "path": "rules/client-swr-dedup.md",
+          "sha256": "644652c39c6cc00de8d1c77a7273612e868dc3f7edda30764164c12ec0f764a3",
+          "bytes": 1159
+        },
+        {
+          "path": "rules/js-batch-dom-css.md",
+          "sha256": "480b891b9eaf96e929dc1e964274a4828e3a78009b7d00ccd965a0d425215959",
+          "bytes": 3266
+        },
+        {
+          "path": "rules/js-cache-function-results.md",
+          "sha256": "3daaa11d24f4295cb6be8bc6f407f2ce83cc7b5bd1f0e68891ea8ab835721dc7",
+          "bytes": 1949
+        },
+        {
+          "path": "rules/js-cache-property-access.md",
+          "sha256": "73e47431e74878a927061bf0ddc7cd91a7556cb35d2573f3421e82300d9ae311",
+          "bytes": 532
+        },
+        {
+          "path": "rules/js-cache-storage.md",
+          "sha256": "11b826b0433898c1ece2d3547010d8e77db9fb240185748c45db91493de9b6cc",
+          "bytes": 1651
+        },
+        {
+          "path": "rules/js-combine-iterations.md",
+          "sha256": "71add08aeeb43091d4ff4c0b2842cce8b4bdef8ad3e732cc034bb5a84827e746",
+          "bytes": 753
+        },
+        {
+          "path": "rules/js-early-exit.md",
+          "sha256": "925ce5ce87f3347186ca62212f29cc6baa2b8c85a96d2720ad07c3d0abf781c0",
+          "bytes": 1133
+        },
+        {
+          "path": "rules/js-flatmap-filter.md",
+          "sha256": "9e5b166a41914d975bef7635467f8fb32cd98b5c3126c0bc6f163490812fb5f0",
+          "bytes": 1411
+        },
+        {
+          "path": "rules/js-hoist-regexp.md",
+          "sha256": "f9e9aef2f7c2307dd7310f283df85dcada45fc43e9bb941b0c3aa414dec21ec4",
+          "bytes": 1028
+        },
+        {
+          "path": "rules/js-index-maps.md",
+          "sha256": "5df1bdc2cfabb2c98abd55d26762e5c18189535c2e686184f426082e62920391",
+          "bytes": 837
+        },
+        {
+          "path": "rules/js-length-check-first.md",
+          "sha256": "8b54a311c826b299272f29187fc58bc55772a04c4a72eeb29456ee96dc9fc624",
+          "bytes": 1747
+        },
+        {
+          "path": "rules/js-min-max-loop.md",
+          "sha256": "87dfb67e2f39df6ad8bcfb5b78c5fb364d3c07554ad188a202408d99f3763421",
+          "bytes": 2290
+        },
+        {
+          "path": "rules/js-set-map-lookups.md",
+          "sha256": "a7fd781a6ba9ad49065961b6f9a90ef486bf6b648390e1a08704025f98e1642b",
+          "bytes": 532
+        },
+        {
+          "path": "rules/js-tosorted-immutable.md",
+          "sha256": "d0a5e1b0fec48a0a81397957e2f068e224329f7c42cb5feeed8aae6fa64025e8",
+          "bytes": 1782
+        },
+        {
+          "path": "rules/rendering-activity.md",
+          "sha256": "1e5e7eaf3555e61d6a2e900089c676527d26259501db5594f59544b6c664f85a",
+          "bytes": 564
+        },
+        {
+          "path": "rules/rendering-animate-svg-wrapper.md",
+          "sha256": "9c6ae0ca7a51434e803887c64cded760956579a1452ccb80a461a03f9c937c77",
+          "bytes": 1185
+        },
+        {
+          "path": "rules/rendering-conditional-render.md",
+          "sha256": "2ec2fa23c4148285144687050c52369adba3da2fbe3d486f8d3e0aad8f06f2bc",
+          "bytes": 980
+        },
+        {
+          "path": "rules/rendering-content-visibility.md",
+          "sha256": "64eee6d5b916fe74df33363994b27fc7f71bea3bcedc7ee04bda23107ca3e6e4",
+          "bytes": 815
+        },
+        {
+          "path": "rules/rendering-hoist-jsx.md",
+          "sha256": "93b229560fae92005ed9a2a829064607b39b2e984e92d221d05b2d41df2b7c0e",
+          "bytes": 1039
+        },
+        {
+          "path": "rules/rendering-hydration-no-flicker.md",
+          "sha256": "dc7ab358c67c177bca6e6f360fbc935ebe4efa928c0ba3ebd3f9f3d9e2000ca3",
+          "bytes": 2308
+        },
+        {
+          "path": "rules/rendering-hydration-suppress-warning.md",
+          "sha256": "915bacb934e2927d84b37a3f3d225a47b309ac8f9e494ed2bcb66ce07c5676a2",
+          "bytes": 872
+        },
+        {
+          "path": "rules/rendering-resource-hints.md",
+          "sha256": "351b1095d641717b930f1b2253282b7120af3023bc74e06c17675168d4286864",
+          "bytes": 2549
+        },
+        {
+          "path": "rules/rendering-script-defer-async.md",
+          "sha256": "4cea07b7875ba7fc2c7465ff23b63a2bb334f90aaf2d9293d38d67b05fdb32ab",
+          "bytes": 1868
+        },
+        {
+          "path": "rules/rendering-svg-precision.md",
+          "sha256": "ed468533f6e95f622859c884b122cf21f9f593ed6bb3d500a54de4b9f9bcb9fb",
+          "bytes": 588
+        },
+        {
+          "path": "rules/rendering-usetransition-loading.md",
+          "sha256": "3a1249c3f13026b6f54ab5712c388df219d6af01b12aa542749acd99a46f4bc1",
+          "bytes": 2074
+        },
+        {
+          "path": "rules/rerender-defer-reads.md",
+          "sha256": "234050a77faf50cb306be10a9e15bd4421134ab5907e75f13e6d78e2bd262dc9",
+          "bytes": 973
+        },
+        {
+          "path": "rules/rerender-dependencies.md",
+          "sha256": "17eb5830956fb56486fd3cfc7431f5849d39751730c05ad9e77dd4f0c27169c5",
+          "bytes": 824
+        },
+        {
+          "path": "rules/rerender-derived-state-no-effect.md",
+          "sha256": "cb11ec76f50aa7b6847269f02d79b120c889a30d9ecd2c1d578f75144419c77a",
+          "bytes": 1201
+        },
+        {
+          "path": "rules/rerender-derived-state.md",
+          "sha256": "1c326bb67b01fb084eb00c8911b0a7cff54681c2315b629f88e49b64eaa6481d",
+          "bytes": 728
+        },
+        {
+          "path": "rules/rerender-functional-setstate.md",
+          "sha256": "5e68df6b2ae8058e67f476ff1ac67bde159f5a9d18df439e46eabcdeb7b52e58",
+          "bytes": 2968
+        },
+        {
+          "path": "rules/rerender-lazy-state-init.md",
+          "sha256": "4ae844740f266fc8cbf050701230286624a2440ec5be67b9a63d9edc3c580573",
+          "bytes": 2016
+        },
+        {
+          "path": "rules/rerender-memo-with-default-value.md",
+          "sha256": "81c47476564ad8a79fc68fc442734255ca7d6829424359464503fda0a9f9a0dd",
+          "bytes": 1173
+        },
+        {
+          "path": "rules/rerender-memo.md",
+          "sha256": "1f258990c2f27ff6256b3cc5c43300631bb3f0d81f749aed08d07fcdcc131dd1",
+          "bytes": 1148
+        },
+        {
+          "path": "rules/rerender-move-effect-to-event.md",
+          "sha256": "abc2cbf167bee056743023351e96806a411d3398da8802093620aecf0721f029",
+          "bytes": 1268
+        },
+        {
+          "path": "rules/rerender-no-inline-components.md",
+          "sha256": "1cc32907a770272524ba682eef9e7efdd8ad4533b6f89b718a1fcd7d1d0eb6a3",
+          "bytes": 2135
+        },
+        {
+          "path": "rules/rerender-simple-expression-in-memo.md",
+          "sha256": "5bdcf2d1558ba5204e643c887b7b4060f89630969425651eb68e96427d97f800",
+          "bytes": 1018
+        },
+        {
+          "path": "rules/rerender-split-combined-hooks.md",
+          "sha256": "6f45d703343484ef9acef9388397f3642966ae6a5a258899a0cf1f9977cfbf6c",
+          "bytes": 1844
+        },
+        {
+          "path": "rules/rerender-transitions.md",
+          "sha256": "60f4033909a62df5e5b8c601494f9e50a562e2f8c1c2d81eac24f38142265f1c",
+          "bytes": 1055
+        },
+        {
+          "path": "rules/rerender-use-deferred-value.md",
+          "sha256": "8c3579576a61a949884167745dcfaf1d5426ba305cc61fd0a79602d70fda4909",
+          "bytes": 1846
+        },
+        {
+          "path": "rules/rerender-use-ref-transient-values.md",
+          "sha256": "f1a649af9d1d0b5c762f6c9c4c1c70c90d7df82aa10296ee87aadb78c1b76c54",
+          "bytes": 1742
+        },
+        {
+          "path": "rules/server-after-nonblocking.md",
+          "sha256": "d0b8d24a3db9f0f65f9e2bddbf230b0e03a5f60e1229d93a4a18f5e7a991c7c2",
+          "bytes": 2012
+        },
+        {
+          "path": "rules/server-auth-actions.md",
+          "sha256": "a2ca8aa102839251c7971ec784560fab943c20b36fe6f80365d4110c13260c23",
+          "bytes": 2649
+        },
+        {
+          "path": "rules/server-cache-lru.md",
+          "sha256": "1924b64561841923b88a657085097a0aeba3e0ba2d5470b9f5c15cc10d6ae70f",
+          "bytes": 1353
+        },
+        {
+          "path": "rules/server-cache-react.md",
+          "sha256": "fddeea6c870bb3da4134b61d54b7d09b83d2603f929b7547cd3dc1dc269edd5c",
+          "bytes": 2228
+        },
+        {
+          "path": "rules/server-dedup-props.md",
+          "sha256": "c2747424cdac46be62f835f245a0aa887b0090b416d28e2ac8676702645eeb37",
+          "bytes": 2060
+        },
+        {
+          "path": "rules/server-hoist-static-io.md",
+          "sha256": "f90610d0f0db0fa8da5cf99790ed3369544a5b9b671bc4198347c95ec3325db4",
+          "bytes": 4393
+        },
+        {
+          "path": "rules/server-parallel-fetching.md",
+          "sha256": "569a2e9fc04f9606686cd75c5894ef8781b502786a7fffe241396846c7733472",
+          "bytes": 1554
+        },
+        {
+          "path": "rules/server-serialization.md",
+          "sha256": "f4c7d68b29c82381baad059c4a7f09e868e71ec9c3115a26ad3ae7d24c0dfe1f",
+          "bytes": 996
+        }
+      ]
+    },
+    {
+      "short_name": "shadcn",
+      "skill_name": "shadcn",
+      "description": "Official shadcn component composition and project guidance.",
+      "when_use": "Review UI built with shadcn components, registries, presets, forms, or component composition.",
+      "license": "MIT",
+      "source": {
+        "type": "directory",
+        "repository": "https://github.com/shadcn/ui.git",
+        "source_path": "/Users/farzanm4/.agents/skills/shadcn"
+      },
+      "tree_sha256": "1463f4b7a55aab91083f57f25371b6da2598f18fcbf7ca46e82aa0ceb8bc5ad9",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "d2504f3bd74426ebba8a8b675d2e84e437439ad48d6128b9135b586612dc05f2",
+          "bytes": 19714
+        },
+        {
+          "path": "agents/openai.yml",
+          "sha256": "35db91b1eef58b2abe01da9b88577de5a44e233b740cd93d692ddeeadd2afe4d",
+          "bytes": 238
+        },
+        {
+          "path": "assets/shadcn-small.png",
+          "sha256": "0ecc62d682727f68fc4937eed19960c706714fa084d44f63028d611ae02bf3d7",
+          "bytes": 1049
+        },
+        {
+          "path": "assets/shadcn.png",
+          "sha256": "7d60ad6fec4d89a0d44ba5a3c9283d2fea0047af5467f9227040e20d927d39b7",
+          "bytes": 3852
+        },
+        {
+          "path": "cli.md",
+          "sha256": "a381e35bf36fe7bb851952c13707e01e82434fd7a4a4e53f6df26c6370838904",
+          "bytes": 17304
+        },
+        {
+          "path": "customization.md",
+          "sha256": "84c1d47168c4b8adb5840e4af30a4e373ae3377c1110478c8974f398dd63f5ba",
+          "bytes": 6074
+        },
+        {
+          "path": "evals/evals.json",
+          "sha256": "58aca2760b0cc5265bb575f76cd8eed344b88544314b8cb2cd53e0b8007dc936",
+          "bytes": 6330
+        },
+        {
+          "path": "mcp.md",
+          "sha256": "8d696b4e45b7d0e337367248513bd9acebe8f3bcfd7b748c775e5a337c8f38c8",
+          "bytes": 3510
+        },
+        {
+          "path": "registry.md",
+          "sha256": "4f239be36bd2b58e17047db1ca80ab7da00e15a8b73242e5e4d50d113c4caa05",
+          "bytes": 8817
+        },
+        {
+          "path": "rules/base-vs-radix.md",
+          "sha256": "2b2deb47d004285220c1fc6b38bb2edc2d0ccbcdafd031b0b189d5d8ed0d1ba8",
+          "bytes": 6954
+        },
+        {
+          "path": "rules/chat.md",
+          "sha256": "de29c12524a27578a59ecf8c95ea939278c1a3572a3706bfc99f6f92cb770b7b",
+          "bytes": 8018
+        },
+        {
+          "path": "rules/composition.md",
+          "sha256": "f282df828d83a91132a846ddb62eea149a7c7c94822e9ca88cfddf85af01aa41",
+          "bytes": 4892
+        },
+        {
+          "path": "rules/forms.md",
+          "sha256": "29593e14381e34626f8e0e9c15c59f3394b92a0623af6a6ec94585400123853c",
+          "bytes": 4857
+        },
+        {
+          "path": "rules/icons.md",
+          "sha256": "d4a58266648872d9ee07d0c2368843a1cb88b8253b7f528dd7bda9d68b6c2535",
+          "bytes": 1958
+        },
+        {
+          "path": "rules/styling.md",
+          "sha256": "f88fbd72dff862805b786dc7d7e4c74c83030fc278c5b97c993e4e665001798c",
+          "bytes": 4675
+        }
+      ]
+    },
+    {
+      "short_name": "accessibility",
+      "skill_name": "accessibility",
+      "description": "WCAG 2.2 accessibility guidance for web interfaces.",
+      "when_use": "Review semantics, keyboard use, focus, contrast, screen reader behavior, or accessibility acceptance criteria.",
+      "license": "MIT",
+      "source": {
+        "type": "directory",
+        "repository": "https://github.com/addyosmani/web-quality-skills.git",
+        "source_path": "/Users/farzanm4/.agents/skills/accessibility"
+      },
+      "tree_sha256": "c8d5c13c7beef6d3fec5b66d8d2da7ce92f62c801c7c880c035260b5efdc55ce",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "267fb2a0707d6142f2871f22688203a42ba21291a2aa200fb740936e41362b5d",
+          "bytes": 14358
+        },
+        {
+          "path": "references/A11Y-PATTERNS.md",
+          "sha256": "f10e238dd4dd3c4f51134c2056bc02d3dd4f8fb6ccc9145c2c1ba7aab4d58140",
+          "bytes": 6036
+        },
+        {
+          "path": "references/WCAG.md",
+          "sha256": "16683e025e3833d931c9d880645d98a448827f97e10189b6c8f12c832e7a2361",
+          "bytes": 9079
+        }
+      ]
+    },
+    {
+      "short_name": "ai-elements",
+      "skill_name": "ai-elements",
+      "description": "AI Elements guidance and local component references.",
+      "when_use": "Review a UI that depicts or controls an AI run, its steps, messages, or tool output.",
+      "license": null,
+      "source": {
+        "type": "directory",
+        "repository": null,
+        "source_path": "/Users/farzanm4/.agents/skills/ai-elements"
+      },
+      "tree_sha256": "07914a8a06f540bd06a70a03d9136b8b51fbf74c826b3d11738a8591a1a9c7fa",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "6e1697f6728f131cfbbb6b53543438921ce11faafcc4d5e0cc361b1643324e71",
+          "bytes": 7246
+        },
+        {
+          "path": "references/agent.md",
+          "sha256": "8de46c28ccc5ebd5fac21d80b92842b001138342225c22aaf7b06bd563f362f3",
+          "bytes": 4235
+        },
+        {
+          "path": "references/artifact.md",
+          "sha256": "e29139db9c32ad75145959f7236ac3bbfb221a02e8ab8d154099894a7b0e39bc",
+          "bytes": 3017
+        },
+        {
+          "path": "references/attachments.md",
+          "sha256": "807014b23a7a9f539e8de0b04e04dd09ff34720a1aa2d65188501ed4ea21d681",
+          "bytes": 5760
+        },
+        {
+          "path": "references/audio-player.md",
+          "sha256": "c153e68d60d9dc995c16cce4a86be20c29e4d04200091f4d530fab916543ac94",
+          "bytes": 5346
+        },
+        {
+          "path": "references/canvas.md",
+          "sha256": "a81e79d1ea06a912237641bbe5941a1bf9f49064d368d15849284e08e8fd9079",
+          "bytes": 1175
+        },
+        {
+          "path": "references/chain-of-thought.md",
+          "sha256": "2f3b911ac35e30fac4b51757b39569355670547e5d062752cac2021b2641421b",
+          "bytes": 3410
+        },
+        {
+          "path": "references/checkpoint.md",
+          "sha256": "c5c9e23244f612342c25b74d012197184b9f3ad01e4a26a313aebe2d0b010265",
+          "bytes": 5612
+        },
+        {
+          "path": "references/code-block.md",
+          "sha256": "3bc8fb276c7d633dd3f3cfe6741bc29f20ea9057626ab47df32c5c7800afbbdf",
+          "bytes": 5538
+        },
+        {
+          "path": "references/commit.md",
+          "sha256": "88a39198d4ecd38ee3810c6374f5a1063a5dcb9511b16751bd71088e30c727d6",
+          "bytes": 5959
+        },
+        {
+          "path": "references/confirmation.md",
+          "sha256": "a92f042b15cff43be7a946d68cf08a76acfe731c9320b43086766b4bd99de0ca",
+          "bytes": 8790
+        },
+        {
+          "path": "references/connection.md",
+          "sha256": "35dc82bf09c58c1a864fc58b36a61ccb46efc9dac291452b545a90f483beca62",
+          "bytes": 1165
+        },
+        {
+          "path": "references/context.md",
+          "sha256": "edacdb850ee629f7f83109dbe2ad1d25bb0d925d8a840a6be92ca75a47ae7367",
+          "bytes": 5747
+        },
+        {
+          "path": "references/controls.md",
+          "sha256": "d0bd92e0cb14efd1e2171c0b241005194a65207e873626c64159b30f8e4f87c9",
+          "bytes": 971
+        },
+        {
+          "path": "references/conversation.md",
+          "sha256": "72d382261109347fec1ce6a3f7d3b044098c2cab15080abd823e4d75295c1ef3",
+          "bytes": 7555
+        },
+        {
+          "path": "references/edge.md",
+          "sha256": "ab468ad6c3dcf873bb0629ae900bfa98169040ac0e947b2a5cd03e070eb6b47a",
+          "bytes": 2121
+        },
+        {
+          "path": "references/environment-variables.md",
+          "sha256": "071788690b1a35182d5abb43dd164e3b2925d7698d4486b3bce3372a513f8a76",
+          "bytes": 3751
+        },
+        {
+          "path": "references/file-tree.md",
+          "sha256": "0aba8bbe6d2c34790af3be82524ed3d721bea3097410dd0771d73c4482a78e1b",
+          "bytes": 2027
+        },
+        {
+          "path": "references/image.md",
+          "sha256": "9f8174e57c40af7810869d59908d98af1aceb023e83a0a5e65cd944f8d939944",
+          "bytes": 4116
+        },
+        {
+          "path": "references/inline-citation.md",
+          "sha256": "c652d69f0bac69c6e7c07884aaefd1e8e737793152833141cf44762d5dcbe049",
+          "bytes": 11089
+        },
+        {
+          "path": "references/jsx-preview.md",
+          "sha256": "c31d05f2b5929faf833a2b0a4290857233d561475ddd29a34ee8eba244daef7e",
+          "bytes": 3319
+        },
+        {
+          "path": "references/message.md",
+          "sha256": "4b0e069960830546711fc6334db9a06839dad8d096688ced032e3cf63b602c79",
+          "bytes": 9595
+        },
+        {
+          "path": "references/mic-selector.md",
+          "sha256": "3dc56d762357de3b91fa3283ee488e68ae53dea2681fbfe61c71b39cdf021f8e",
+          "bytes": 7875
+        },
+        {
+          "path": "references/model-selector.md",
+          "sha256": "b483b684512abf2dea82e5867f0a575f7124531925c83a9eefe99e12ceaf1e1b",
+          "bytes": 4378
+        },
+        {
+          "path": "references/node.md",
+          "sha256": "5a399f56e4fa53c5e5056e84bfa65f3d172983ec95fd80d1ab9337f82c0db84c",
+          "bytes": 2870
+        },
+        {
+          "path": "references/open-in-chat.md",
+          "sha256": "75aa3c4de5aa7b6e49d5a8234a3dfbb7ec4f8cd8bef1ab322fd0e42c4deb8b8c",
+          "bytes": 2764
+        },
+        {
+          "path": "references/package-info.md",
+          "sha256": "2d19cff156c93bec027afb34fdc21144582faced243b86c629fba8c283be1c59",
+          "bytes": 3241
+        },
+        {
+          "path": "references/panel.md",
+          "sha256": "b5502294a33861fb68f21b77e7b4b0230ffa8cc21ce65b1b7e6b241e1818d73b",
+          "bytes": 1040
+        },
+        {
+          "path": "references/persona.md",
+          "sha256": "6d7b55c59c28e9319a43c455fe809312796d51a1909ad2037faafa8e6b7cec87",
+          "bytes": 5500
+        },
+        {
+          "path": "references/plan.md",
+          "sha256": "4f651bbbd55528cdaf52f09bbf12187c73c40dc4efdd13adeb26b5e6d40d8e9b",
+          "bytes": 3271
+        },
+        {
+          "path": "references/prompt-input.md",
+          "sha256": "a4c6ab9b8d5e63162db77cccc5361a03442e06fd9d8eb1ada79a4fd9e598ce76",
+          "bytes": 20226
+        },
+        {
+          "path": "references/queue.md",
+          "sha256": "a3ad234669d3c6437b1985cd5ed3b730a6fde1ad16fb8f612efa1c03e1bc27ec",
+          "bytes": 5481
+        },
+        {
+          "path": "references/reasoning.md",
+          "sha256": "0535f191e51124dca48238128e9b792ad69053fd372208aafa617a2392ef18a6",
+          "bytes": 7951
+        },
+        {
+          "path": "references/sandbox.md",
+          "sha256": "e1acf2a182e097578f127e97d8f2a77b7a72951d8bec03cfe67765ca5887bd71",
+          "bytes": 4356
+        },
+        {
+          "path": "references/schema-display.md",
+          "sha256": "50f121d0e21327b12daa3f541ad95f97b1a5ca72207f5f1b12fdfd8bc184ce00",
+          "bytes": 2534
+        },
+        {
+          "path": "references/shimmer.md",
+          "sha256": "9bbf4e1aa2b1cc357645c4abfe5a319ae29fc05e7f13fa34b5e54a5e16967ee2",
+          "bytes": 1688
+        },
+        {
+          "path": "references/snippet.md",
+          "sha256": "d672e32d5476b3b0104b009143f3d0b4360db62d06f13d67a5ac103882269630",
+          "bytes": 2244
+        },
+        {
+          "path": "references/sources.md",
+          "sha256": "9334fcee47adc916cdfd0481a9214befe3de69dedaec3cdf1ae1cb877ac84c17",
+          "bytes": 6394
+        },
+        {
+          "path": "references/speech-input.md",
+          "sha256": "1dadfe4a59ce2b27b1922f40af13f8d847e0abe638ba7fa1a0a061ea9c47a168",
+          "bytes": 6636
+        },
+        {
+          "path": "references/stack-trace.md",
+          "sha256": "7a90b467b8128bae6435e45e3898ffd6bd779b6884313c6b07cb8e8e4fc7529c",
+          "bytes": 8108
+        },
+        {
+          "path": "references/suggestion.md",
+          "sha256": "38cfbefe93ff85b6863645ff8df01975dc4f9bda9758e2178166a17fe668f2e5",
+          "bytes": 3718
+        },
+        {
+          "path": "references/task.md",
+          "sha256": "cd1589d64dfa12553b9fd376969aebb91d02c57c036fb808e239c982d9ad7f23",
+          "bytes": 6900
+        },
+        {
+          "path": "references/terminal.md",
+          "sha256": "6ce21837bc369e785242211cab38025eed5a7043b15e7379f05e5fe94c13ce9c",
+          "bytes": 3132
+        },
+        {
+          "path": "references/test-results.md",
+          "sha256": "baed0c4137553638cd11c6355bca06a426c42ddefdd05fc44bd784a83b5d6e11",
+          "bytes": 5111
+        },
+        {
+          "path": "references/tool.md",
+          "sha256": "4ae349c84b2cdbdf6e136457a6ea0783dca4e20f918e4159568d4ce559818c2e",
+          "bytes": 8669
+        },
+        {
+          "path": "references/toolbar.md",
+          "sha256": "30e4352c411dc8391a17ad7b014108a0b5c98b5d063f79e845dcda6301375848",
+          "bytes": 983
+        },
+        {
+          "path": "references/transcription.md",
+          "sha256": "0621911f7b0bd7e1dff106389dd257e4460e462a2f84f15a2d4c8b607d939b90",
+          "bytes": 5011
+        },
+        {
+          "path": "references/voice-selector.md",
+          "sha256": "b2269f9690d976e0f166be38551d86f317c86df4a0ed7a550e0bb68c71183c81",
+          "bytes": 10565
+        },
+        {
+          "path": "references/web-preview.md",
+          "sha256": "6fcaf57fe8bd90b957bf1c1d67c2399b64c4af1023238e7fb189db2715bd55a8",
+          "bytes": 6278
+        },
+        {
+          "path": "scripts/agent.tsx",
+          "sha256": "e36d23a848a44a12313ad7f088656620502a38d6db122e9f365e66ca9e11d807",
+          "bytes": 1626
+        },
+        {
+          "path": "scripts/artifact.tsx",
+          "sha256": "bc34d822ce48c94a6bfbd5221931db0c6312a2068852ec38d3d6ec189630f6ab",
+          "bytes": 2968
+        },
+        {
+          "path": "scripts/attachments-inline.tsx",
+          "sha256": "105497bd01b357320e93e31b6dcde996a22416d46c1354cdbdb31dbbc28278ec",
+          "bytes": 3598
+        },
+        {
+          "path": "scripts/attachments-list.tsx",
+          "sha256": "2513a333704b87b9ac81bb26099a89b1be89727dd1ac8805fdb4599f6e66934a",
+          "bytes": 2281
+        },
+        {
+          "path": "scripts/attachments.tsx",
+          "sha256": "a71b1b097636cda4ab1dcaa44d70aea05facf6a028545ad20a9576982e85b521",
+          "bytes": 2035
+        },
+        {
+          "path": "scripts/audio-player-remote.tsx",
+          "sha256": "59040a9e79898a8de0fe88813bca035d7f2abed684465826f4bc322d4c52a2bb",
+          "bytes": 1064
+        },
+        {
+          "path": "scripts/audio-player.tsx",
+          "sha256": "055483272f09f8bc38e7787783f682284fb3d4f1532c3131b95a1d315130438f",
+          "bytes": 1858
+        },
+        {
+          "path": "scripts/chain-of-thought.tsx",
+          "sha256": "d9149b88f4d30a499bcf2e88d5608111e43d0b6e15d70cac577d48617f6feb90",
+          "bytes": 141884
+        },
+        {
+          "path": "scripts/checkpoint.tsx",
+          "sha256": "c7a6eec6bd09b7e854eeec2726b2a04998dcb749ea531d2401471d8c35a2b254",
+          "bytes": 2890
+        },
+        {
+          "path": "scripts/code-block-dark.tsx",
+          "sha256": "6f3b11047fa9d2cab32fe650c3067f2f37a40d5e8cac101fa2fc6699283b836a",
+          "bytes": 1039
+        },
+        {
+          "path": "scripts/code-block.tsx",
+          "sha256": "d32a0212fc90fa7fe0c41cbccbe46de8566da92c109fc24283737add02d8617b",
+          "bytes": 3020
+        },
+        {
+          "path": "scripts/commit.tsx",
+          "sha256": "4efda612212b526704286c7771478628365b1c58fb3a54a5ad46400c83b092a4",
+          "bytes": 2171
+        },
+        {
+          "path": "scripts/confirmation-accepted.tsx",
+          "sha256": "3e8ec0eafd61e92ccdd78e6c645c863d2df87f7f1f7c069c2428e2aad6377e70",
+          "bytes": 1179
+        },
+        {
+          "path": "scripts/confirmation-rejected.tsx",
+          "sha256": "46a85175e83767a788f4148b6c9ae222bf232a5cbd922972d9b4a589aa098734",
+          "bytes": 1175
+        },
+        {
+          "path": "scripts/confirmation-request.tsx",
+          "sha256": "d3c74a6d4ea699d33054d7e56d6d8ff71678b329c83cba832ea97f6a5aa44df2",
+          "bytes": 1718
+        },
+        {
+          "path": "scripts/confirmation.tsx",
+          "sha256": "e6c3305727959f1d90e0e88ad9b5d4ccd4eba23bf93a65eae2bb67e71bc562de",
+          "bytes": 1707
+        },
+        {
+          "path": "scripts/context.tsx",
+          "sha256": "c6e8c87e38a44c5d794f31c60e3a52381f215018fb85b80e55a45dd10502ad1f",
+          "bytes": 1005
+        },
+        {
+          "path": "scripts/conversation.tsx",
+          "sha256": "8bcb200c95ab09e7c63de63a31d66b6251fcf6a03ffb730a3c191b2afa7d71cc",
+          "bytes": 4244
+        },
+        {
+          "path": "scripts/environment-variables.tsx",
+          "sha256": "c29ee611181434400023a56e29ce28f51cae5eb9c2863e3d304a57db2abc120d",
+          "bytes": 1735
+        },
+        {
+          "path": "scripts/file-tree-basic.tsx",
+          "sha256": "9fd221b3986079f0612ffe774ad34f194e3d25d74de9580925673b7c345d7656",
+          "bytes": 380
+        },
+        {
+          "path": "scripts/file-tree-expanded.tsx",
+          "sha256": "1f6d23373f9f3a6b6e768cd611b9cc4ca07e30ca013f9881b25ba991ef2f7141",
+          "bytes": 609
+        },
+        {
+          "path": "scripts/file-tree-selection.tsx",
+          "sha256": "933209ec0e895b3059b3d91cb4dbf531625b5a9143f1a6fcb98c176510709d06",
+          "bytes": 619
+        },
+        {
+          "path": "scripts/file-tree.tsx",
+          "sha256": "24f3616388f92da7476d3784b2f03ffbe7e45844f836de11bfb1d7aafe30af30",
+          "bytes": 1527
+        },
+        {
+          "path": "scripts/image.tsx",
+          "sha256": "ad20593bd14c3027e11822843ddbd9a19ccc8e7bb8cd8c0a82cfc8ed1786a8b4",
+          "bytes": 139751
+        },
+        {
+          "path": "scripts/inline-citation.tsx",
+          "sha256": "06ac4d2650228d976065b76b25b3d9b4ce6504d5f9702199879da54987d6276a",
+          "bytes": 3315
+        },
+        {
+          "path": "scripts/jsx-preview.tsx",
+          "sha256": "7e2abd317b5f2a9f74828edefe039e1d6cff8c60b48cd9377f25e2a2c775ee9f",
+          "bytes": 3325
+        },
+        {
+          "path": "scripts/message.tsx",
+          "sha256": "0493016d96ea193f489a7927f540712086a6d856daf687b22ddbff196e621c4f",
+          "bytes": 10297
+        },
+        {
+          "path": "scripts/mic-selector.tsx",
+          "sha256": "f1b07e49dcc05402e2a349aed06e4b0e57b8bceecd9819ce613a46cd52d92c3d",
+          "bytes": 1236
+        },
+        {
+          "path": "scripts/model-selector.tsx",
+          "sha256": "75be06438bcda5234d873ac24c484ce8a5cee51c47d3a4e3c3161e18fbf7a75e",
+          "bytes": 8682
+        },
+        {
+          "path": "scripts/open-in-chat.tsx",
+          "sha256": "7ce522e30d9c031c378452ae93c788a208b962a7168bdfc55041aa0a414649b4",
+          "bytes": 704
+        },
+        {
+          "path": "scripts/package-info.tsx",
+          "sha256": "901c2767b40d33b1f91aa51388d13085a3195ab056231fcbd9a74e735aeadad8",
+          "bytes": 1345
+        },
+        {
+          "path": "scripts/persona-command.tsx",
+          "sha256": "6fba3f1a042e545aa210e308ae00c273545cd4b7b75068c04f4525662ab0d47a",
+          "bytes": 2539
+        },
+        {
+          "path": "scripts/persona-glint.tsx",
+          "sha256": "71a529de3d5a276ff83bedcab8fd1d8c6f5bc98089ba9528cd94ca24eae3346b",
+          "bytes": 2537
+        },
+        {
+          "path": "scripts/persona-halo.tsx",
+          "sha256": "0f49dd45535fded8e43f5874256aca1dd5d62b72e8d55411493d651ba613fed4",
+          "bytes": 2536
+        },
+        {
+          "path": "scripts/persona-mana.tsx",
+          "sha256": "ef504f2d5b6352ef2fac06ebb4dae40aedaf68d14fdd666f5c221694fe4f85ae",
+          "bytes": 2536
+        },
+        {
+          "path": "scripts/persona-obsidian.tsx",
+          "sha256": "972f665a4a897a221db2072e06ee1cd8584c7d54e722d2f0ce300a8636dd6507",
+          "bytes": 2540
+        },
+        {
+          "path": "scripts/persona-opal.tsx",
+          "sha256": "7f5f141b46802e69d23a020e5fc14b74f245e0ee4143bdab5acc7daf98c4810d",
+          "bytes": 2574
+        },
+        {
+          "path": "scripts/plan.tsx",
+          "sha256": "aedfbc69821f60fe755304614d7104a5f88561004ee69761b339d5b3841c055a",
+          "bytes": 1988
+        },
+        {
+          "path": "scripts/prompt-input-cursor.tsx",
+          "sha256": "a92a14f6cf8be9ff3c56d9afaa6dffc5a571227ba3f5812ef0de6ff9a5125da1",
+          "bytes": 15448
+        },
+        {
+          "path": "scripts/prompt-input-tooltip.tsx",
+          "sha256": "f03ff6342b4137b347a5e993c87d10eb5951ed99176049ea6465b81d880c83ac",
+          "bytes": 1108
+        },
+        {
+          "path": "scripts/prompt-input.tsx",
+          "sha256": "ed8a95dadc20c18bf33ddd3cd9059436251f4e60a023f893705703717a5369b8",
+          "bytes": 7549
+        },
+        {
+          "path": "scripts/queue-prompt-input.tsx",
+          "sha256": "fd060453229d735c27af79d7a43e2559d33e53be013dfb23125c6faf93f25ea5",
+          "bytes": 10743
+        },
+        {
+          "path": "scripts/queue.tsx",
+          "sha256": "568615b6565b72049da5e8acdd65c3e6ec0a46d1e1829f5c58a393a36df8be7b",
+          "bytes": 8195
+        },
+        {
+          "path": "scripts/reasoning.tsx",
+          "sha256": "0ac5d03694c56c59f4dd676c63b4ace86b0e3ca79c27c46dc511f412478aa519",
+          "bytes": 2264
+        },
+        {
+          "path": "scripts/sandbox.tsx",
+          "sha256": "79a5f79b324840dccd7b7b732afe3aadda34efc5ae708d8f82a49136bb48edad",
+          "bytes": 5504
+        },
+        {
+          "path": "scripts/schema-display-basic.tsx",
+          "sha256": "388b0d6d31247bbb56b9de3324e66a001702f4964de8c60a16b9039b32783d7e",
+          "bytes": 221
+        },
+        {
+          "path": "scripts/schema-display-body.tsx",
+          "sha256": "941dd26ed94847bb792bb8b1f5459e344e0d820dcdc51804254d2385dd683751",
+          "bytes": 487
+        },
+        {
+          "path": "scripts/schema-display-nested.tsx",
+          "sha256": "03d519460a04c9ab9d67176e8161efa5db97c786f4c53a3121eda672f31ac30c",
+          "bytes": 470
+        },
+        {
+          "path": "scripts/schema-display-params.tsx",
+          "sha256": "84883f2a17f783edb9c22993da407f2e731073eddc431a15980fdcf030d64590",
+          "bytes": 374
+        },
+        {
+          "path": "scripts/schema-display.tsx",
+          "sha256": "721570b85a7c425f003f1adfac4fe00356bc2e4fead6d9c16283fe3f4c85a64b",
+          "bytes": 2764
+        },
+        {
+          "path": "scripts/shimmer-duration.tsx",
+          "sha256": "c7d86732c5ebfaef1c496759a2e2919ed9dea7fef337e2d621990be28e16cc20",
+          "bytes": 934
+        },
+        {
+          "path": "scripts/shimmer-elements.tsx",
+          "sha256": "26bc817bfab244e9b0b12e4adaf3fc87a95f54213435053499cb89ea91a0c77d",
+          "bytes": 1160
+        },
+        {
+          "path": "scripts/shimmer.tsx",
+          "sha256": "5b1c83ba49bdaffecc58b8eb5fc2d1f730ea6f6872688fd6dead9d7bd53f8a4b",
+          "bytes": 443
+        },
+        {
+          "path": "scripts/snippet-plain.tsx",
+          "sha256": "2b6f48a76914cd1db3ca6bfbf159d0f83f45311f4e0d0cdf1b34a235ae2db8d6",
+          "bytes": 362
+        },
+        {
+          "path": "scripts/snippet.tsx",
+          "sha256": "d078c8d7b61479ea70ae078ba56839df5b455aa571b2de76e347ae428509ebe4",
+          "bytes": 589
+        },
+        {
+          "path": "scripts/sources-custom.tsx",
+          "sha256": "8ceb02178c14c53381cf7f25a3375be2a573580a112303be483148c23738b4e2",
+          "bytes": 1035
+        },
+        {
+          "path": "scripts/sources.tsx",
+          "sha256": "4fd8ddec394197405e686c1d632b380ce0c7a302626fb7e4a372a16d9dd4b347",
+          "bytes": 752
+        },
+        {
+          "path": "scripts/speech-input.tsx",
+          "sha256": "5cc185e24cdfef088d7d2c76a31a18c48fd3db90049bbb8ba3275ad98a6ae1ba",
+          "bytes": 2342
+        },
+        {
+          "path": "scripts/stack-trace-collapsed.tsx",
+          "sha256": "ec57c9bda182cde7a1e1b120d4fb54b6f35c94b0ec238e792dcd694fa1d4f443",
+          "bytes": 1097
+        },
+        {
+          "path": "scripts/stack-trace-no-internal.tsx",
+          "sha256": "2a57c6a862b5e933b0888d3f049a61391d19951274e9d9357ae09007c08cf0e4",
+          "bytes": 1231
+        },
+        {
+          "path": "scripts/stack-trace.tsx",
+          "sha256": "ba021501ded4935f716f710284c1c1db8ebaa16bc1bf96cb4f959b466e4d2b48",
+          "bytes": 1991
+        },
+        {
+          "path": "scripts/suggestion-input.tsx",
+          "sha256": "877e7256555f1c9c7c1c32808c9f43bb204d747b78491684d34f49468c8305a4",
+          "bytes": 4522
+        },
+        {
+          "path": "scripts/suggestion.tsx",
+          "sha256": "f99cbfd7e0c4ce7bd92fd0bce925af37a316b6408f84489294feb95cc05eea8d",
+          "bytes": 802
+        },
+        {
+          "path": "scripts/task.tsx",
+          "sha256": "07b6f65581068b0afcd5df23973f2fc72880c0f224b8817730a145fc7b175e34",
+          "bytes": 1507
+        },
+        {
+          "path": "scripts/terminal-basic.tsx",
+          "sha256": "573e2adf152d193e5a0b932ac185fb31d76dceec4407bfef5bf1e786c4abf92d",
+          "bytes": 169
+        },
+        {
+          "path": "scripts/terminal-clear.tsx",
+          "sha256": "8e9e7724453269168c1e3c32a858b42be7dda5d3a7eaaf9c7d142240ce7f54eb",
+          "bytes": 523
+        },
+        {
+          "path": "scripts/terminal-streaming.tsx",
+          "sha256": "6add64118a77cf615522b713d39c657007fb9a9b8b26eda5d3c524a5c7b13944",
+          "bytes": 1007
+        },
+        {
+          "path": "scripts/terminal.tsx",
+          "sha256": "3c5f1b259d0c828561aa1287494f27e8559c5de0a1f592bc358b0374bc21e4f9",
+          "bytes": 2385
+        },
+        {
+          "path": "scripts/test-results-basic.tsx",
+          "sha256": "d31b0c4922897dd092a1317dce9d73010d8780db554ede29065e8683a8d9809c",
+          "bytes": 464
+        },
+        {
+          "path": "scripts/test-results-errors.tsx",
+          "sha256": "d88841b9ec3226a27c9a630ec749e292dbff4db89b8885b409b1bd681f18541b",
+          "bytes": 1306
+        },
+        {
+          "path": "scripts/test-results-suites.tsx",
+          "sha256": "7659130e2cb9ec20d70bdaceb30a1b020619b5bdbc4850afc16a024615c63f11",
+          "bytes": 901
+        },
+        {
+          "path": "scripts/test-results.tsx",
+          "sha256": "a8e5c1fe967c8349e4bea0de0361bccbaba871ef9346e6f7374f97081ea6ff80",
+          "bytes": 2718
+        },
+        {
+          "path": "scripts/tool-input-available.tsx",
+          "sha256": "28496f812bc4706c28d11fd9abd0baca199585f98334488db3b9f6bea815fd68",
+          "bytes": 738
+        },
+        {
+          "path": "scripts/tool-input-streaming.tsx",
+          "sha256": "2a6d469911ddaef5eebbec445574c2a81d1c9e77b2264acd8f1fb1f34b732ffb",
+          "bytes": 683
+        },
+        {
+          "path": "scripts/tool-output-available.tsx",
+          "sha256": "054ff725738e6e42cb6b72113326c711d8f8a6d7906779b3896816670705aba7",
+          "bytes": 1788
+        },
+        {
+          "path": "scripts/tool-output-error.tsx",
+          "sha256": "d8856b6365349f6936491845991c8840b2dc1278d655c381fd2b085192995e54",
+          "bytes": 1085
+        },
+        {
+          "path": "scripts/tool.tsx",
+          "sha256": "64053575e475d0caf17100f883f63f4296b45444d7865e543b37ec990dd97137",
+          "bytes": 6864
+        },
+        {
+          "path": "scripts/transcription.tsx",
+          "sha256": "4211577988bea98fd7b6e060f1bec48886ca5ecf2fc72c6489c8c5534dc37b29",
+          "bytes": 4979
+        },
+        {
+          "path": "scripts/voice-selector.tsx",
+          "sha256": "34f71bcd6267068ee8f233b0fc75a93c514ea1f7eed5d8a9437f47f1e85d4e17",
+          "bytes": 7239
+        },
+        {
+          "path": "scripts/web-preview.tsx",
+          "sha256": "161c86cb08d1bfa7a51079c43b7d42c28a551cc0651ef35650cc8e450072f936",
+          "bytes": 2859
+        }
+      ]
+    },
+    {
+      "short_name": "reference-led-design",
+      "skill_name": "reference-led-design",
+      "description": "The owner's accepted design method: verbatim owner words, a screenshot board with his verdicts, acceptance criteria, distinct directions, image-anchored building.",
+      "when_use": "Propose or judge visual directions, explain what the owner responded to in reference screenshots, or extend an accepted design. Lanes use steps 1 to 4 read-only and cite board images.",
+      "license": null,
+      "source": {
+        "type": "directory",
+        "repository": null,
+        "source_path": "/Users/farzanm4/.agents/skills/reference-led-design"
+      },
+      "tree_sha256": "2a37aacf49cf752054367261e610722bcea31b00d59ba592874e856ac1e8f0ee",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "2bf67de9497e3c410f71455031a2c0d028771cb184173fbf3e3ad4499429a12f",
+          "bytes": 23789
+        },
+        {
+          "path": "examples/accepted/accepted-deck-dark.png",
+          "sha256": "44576f81d4c27d56fd2d6a376fa9b69299146bce28201d892870061bc3fcaf03",
+          "bytes": 417025
+        },
+        {
+          "path": "examples/accepted/accepted-deck-light.png",
+          "sha256": "1e53f167ff76befb0c835aec1d18bac344b3abf0976f6ec006bffe26ada33d15",
+          "bytes": 394280
+        },
+        {
+          "path": "examples/accepted/accepted-newsroom-dark.png",
+          "sha256": "5bad1f2a4ac2beef2d4881cc6f1325d1bd05c12b50e58e4d957ec76c1f8e9c94",
+          "bytes": 236755
+        },
+        {
+          "path": "examples/accepted/accepted-newsroom-light.png",
+          "sha256": "0ca7fcdc4c73d936634ed8e5668fbc0beaa6aafd59ee8dded027c5b5fc922939",
+          "bytes": 236395
+        },
+        {
+          "path": "examples/accepted/accepted-window-dark.png",
+          "sha256": "7b212b232b3938f4528a03d0c44374804812eca8fe251ae1adcdd616a77c4870",
+          "bytes": 407430
+        },
+        {
+          "path": "examples/accepted/accepted-window-light.png",
+          "sha256": "d4d451eb29d2c1f93bdfce2f9974b1aaa6e4f018518a533ef7341bf16a3c202c",
+          "bytes": 381105
+        },
+        {
+          "path": "examples/near-misses/feed-same-shell-front-page-dark.png",
+          "sha256": "d28d9f252bcaa683edfecf8f3ae3e7e44ca481a06a946bc592f7231c892a1f34",
+          "bytes": 572968
+        },
+        {
+          "path": "examples/near-misses/feed-same-shell-photo-lead-dark.png",
+          "sha256": "9294a89bd4bf7aa486215c659b7e2653605295f6879510f2369dbbc7abc5bb49",
+          "bytes": 659650
+        },
+        {
+          "path": "examples/near-misses/feed-same-shell-reader-dark.png",
+          "sha256": "7eb3fb243e276b5784bbf87dcbd417e180b0640569e76bc455eac1c472cd1291",
+          "bytes": 577532
+        },
+        {
+          "path": "examples/near-misses/landing-busy-hero-dark.png",
+          "sha256": "2f49f0a7b71d059b5d87e1c58194e5ed5930f215bd9ae9bae23d6db1a807fa7f",
+          "bytes": 411582
+        },
+        {
+          "path": "examples/near-misses/landing-busy-judge-dark.png",
+          "sha256": "42515214b982e80bdf47a8fa1a13d179ddc7ba5c7b3f85f337a46633554280b5",
+          "bytes": 394022
+        },
+        {
+          "path": "examples/near-misses/landing-empty-plans-dark.png",
+          "sha256": "3cd39dc01d52bf8fc391d6684f02493c3e6122bfd8a87b4fe9bbb36eeb8a1e99",
+          "bytes": 152280
+        },
+        {
+          "path": "examples/near-misses/landing-empty-sections-dark.png",
+          "sha256": "c6e67ca564a8691947dc02ffcad5c379671ddb47b943d14b089817f641a327b7",
+          "bytes": 208129
+        },
+        {
+          "path": "examples/near-misses/landing-flat-hero-dark.png",
+          "sha256": "e69e82a3c855ef58329778ca5419b20506eb65f4657305413035d11c5f001f62",
+          "bytes": 373063
+        },
+        {
+          "path": "examples/near-misses/landing-flat-sources-light.png",
+          "sha256": "da3053a1ab10a7f2504d63f5d639bc04415797290393f6c28b4ce46fdf924d20",
+          "bytes": 294178
+        },
+        {
+          "path": "examples/near-misses/landing-flat-stories-dark.png",
+          "sha256": "d2c39299cebf0a06289e39b3d93b8b9dc0081435e2cad628523dc390ea132a11",
+          "bytes": 317385
+        },
+        {
+          "path": "examples/rejected/feed-convergence-lines-dark.png",
+          "sha256": "f9c13e5b61f361e0275ec215cf5bba5cede534f24e914561c0076de39892d478",
+          "bytes": 374635
+        },
+        {
+          "path": "examples/rejected/landing-blue-boxes-dark.png",
+          "sha256": "29ef52716458cd298e61eb7a653270de5796f22a41b95567228d1f5f1d4a4be7",
+          "bytes": 152805
+        },
+        {
+          "path": "examples/rejected/rejected-paragraphs-in-boxes.png",
+          "sha256": "4f0ba8b7ec23b4820d53f37f87d15fbcaeb9ce49dc50076a0566833e9cd42549",
+          "bytes": 153760
+        },
+        {
+          "path": "examples/rejected/themes/feed-theme-graphite-dark.png",
+          "sha256": "6b64be2747981cadfa744891c5a160316793fb300b30641a713050bae7fa8e7e",
+          "bytes": 177563
+        },
+        {
+          "path": "examples/rejected/themes/feed-theme-graphite-light.png",
+          "sha256": "75ebcfeb1e9d0e0a16d242bd355c5995175d29fbc19323b519e23c4cbe464543",
+          "bytes": 155954
+        },
+        {
+          "path": "examples/rejected/themes/feed-theme-ink-dark.png",
+          "sha256": "98b27087189ed87340d97fef58a48d2bf999c218a45deaf030190e55a95ed5c3",
+          "bytes": 153512
+        },
+        {
+          "path": "examples/rejected/themes/feed-theme-navy-dark.png",
+          "sha256": "37136ab1511e61e2b5c90e248317ac0dd952b2ba3976d0ea719419264078c420",
+          "bytes": 173614
+        },
+        {
+          "path": "examples/rejected/themes/feed-theme-slate-dark.png",
+          "sha256": "2fb84b34dfa1a64806e372d9a9fc7befd63ed489f9e8efafb722fc913bf748a5",
+          "bytes": 168984
+        },
+        {
+          "path": "examples/rejected/themes/four-base-palettes.png",
+          "sha256": "388474ece3b5e0bdd2450fd3e3dffb9c3bd1ba5e3e270fd1aa0cb16e86acbcac",
+          "bytes": 444323
+        },
+        {
+          "path": "references/acceptance-criteria.md",
+          "sha256": "6fa35e434022f2989e0183e6fd8349cb908982a56eb9190e542d42d5204acf9d",
+          "bytes": 3139
+        },
+        {
+          "path": "references/prompts.md",
+          "sha256": "618ecb21a96b64908424f1ecb3084bff567381e0138934a3c4cb75785972cb56",
+          "bytes": 3221
+        },
+        {
+          "path": "references/worked-example.md",
+          "sha256": "9da3df55ae0e4937bb8d4298444e05848f5fb6586e19ba76b5bdfede69793500",
+          "bytes": 2830
+        },
+        {
+          "path": "scripts/extract-owner-messages.py",
+          "sha256": "3a8ebfec9249d5e2e0ec99089bc478f0ddf951174517cd51e3b32e4174b95cc9",
+          "bytes": 3722
+        }
+      ]
+    },
+    {
+      "short_name": "supabase",
+      "skill_name": "supabase",
+      "description": "Supabase guidance for Auth, SSR clients, RLS, and database changes.",
+      "when_use": "Review Supabase queries, Auth, RLS, migrations, client initialization, and ownership boundaries.",
+      "license": "MIT",
+      "source": {
+        "type": "directory",
+        "repository": "https://github.com/supabase-community/supabase-plugin",
+        "source_path": "/Users/farzanm4/.agents/skills/supabase"
+      },
+      "tree_sha256": "8f2109f3fe21c6299966bb575ec39715250f0f53ceb7c37fe74faeeb4c88f6c9",
+      "files": [
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "f4c9c7750ea2c9212a05c3f38bc04d66cb2fe037f6b9a3fb6279d53bef152f8e",
+          "bytes": 7355
+        },
+        {
+          "path": "SKILL.md",
+          "sha256": "697e0e949f97621c6fc1784169eb3ccbf673747d6bb8299a52962d3d84d93dc6",
+          "bytes": 14307
+        },
+        {
+          "path": "assets/feedback-issue-template.md",
+          "sha256": "ea211aa174c5a096fe76461f25143b8bc23f3bde3adc9e727cda38218cc8c282",
+          "bytes": 459
+        },
+        {
+          "path": "references/skill-feedback.md",
+          "sha256": "09ad94c0291735dfc04c92557c8734fa259ec39e1d56bf2bd5c6a6529d838717",
+          "bytes": 1035
+        }
+      ]
+    },
+    {
+      "short_name": "supabase-postgres-best-practices",
+      "skill_name": "supabase-postgres-best-practices",
+      "description": "Supabase Postgres schema, SQL, RLS, and performance guidance.",
+      "when_use": "Review tables, indexes, policies, RPCs, queries, and migrations.",
+      "license": "MIT",
+      "source": {
+        "type": "directory",
+        "repository": "https://github.com/supabase-community/supabase-plugin",
+        "source_path": "/Users/farzanm4/.agents/skills/supabase-postgres-best-practices"
+      },
+      "tree_sha256": "d91704aad316b865a244ff5f1c98d5cec9756eb53d80e2b6c71d8470575224a3",
+      "files": [
+        {
+          "path": "CHANGELOG.md",
+          "sha256": "751ad110037c85d400018c9894716a04fa46357ff55c22b1169b280752e19e88",
+          "bytes": 5684
+        },
+        {
+          "path": "SKILL.md",
+          "sha256": "ad65e776f45e761bafc609d3f506c77c1032225aa65e0c4c02f241b8071e5855",
+          "bytes": 3231
+        },
+        {
+          "path": "references/_contributing.md",
+          "sha256": "191e039e7d94764e6073410b513b559f9a594e0fdf0252a30c2a2986df2ab3bc",
+          "bytes": 4113
+        },
+        {
+          "path": "references/_sections.md",
+          "sha256": "c9e992612b422c7122de0b7542ebc2450db283edaab08cfe86c6d657fcccccd5",
+          "bytes": 1682
+        },
+        {
+          "path": "references/_template.md",
+          "sha256": "6299954250f212caabe339d752c3e5313a8e07d1a182a4e4b425baee91df1bd2",
+          "bytes": 1040
+        },
+        {
+          "path": "references/advanced-full-text-search.md",
+          "sha256": "40c2606bbb4c4dce31308f201b24cc7f58c7df05b1d9c6856fe2b888d3b7cf28",
+          "bytes": 1468
+        },
+        {
+          "path": "references/advanced-jsonb-indexing.md",
+          "sha256": "24cacf6a8bc35901dd566d24502ce8e57f810a5c196b897e61d52726e521d106",
+          "bytes": 1444
+        },
+        {
+          "path": "references/conn-idle-timeout.md",
+          "sha256": "630588902c00fcec59a5988cc5d042f76dcf2c923a535abfd8c47dca205eaed5",
+          "bytes": 1282
+        },
+        {
+          "path": "references/conn-limits.md",
+          "sha256": "11b2a67a7c7679cbbc5d807bbb17e69c98484a581d0c8b929c03408f412b81b2",
+          "bytes": 1325
+        },
+        {
+          "path": "references/conn-pooling.md",
+          "sha256": "88cf086bf98ba865d2e9d0579974e1366b14157619d6a93e7da77be91084e4a5",
+          "bytes": 1382
+        },
+        {
+          "path": "references/conn-prepared-statements.md",
+          "sha256": "174e9332fe3dda5c99b2b00159fb1915ae36c00bab3a7882c14e73e4344e946e",
+          "bytes": 1529
+        },
+        {
+          "path": "references/data-batch-inserts.md",
+          "sha256": "531933b82d6a622d0fae29e0ea80be6fe5d78655adf2804c271ea84a1930de37",
+          "bytes": 1287
+        },
+        {
+          "path": "references/data-n-plus-one.md",
+          "sha256": "21a44905e5b16a42741892ec34bb1bfef124d049b140a76934a9acd0f46f5fc2",
+          "bytes": 1361
+        },
+        {
+          "path": "references/data-pagination.md",
+          "sha256": "73c9fa10a3d439bedea0e11b640bd25bf30dd50f0d9006cf85baf7c3151543fa",
+          "bytes": 1358
+        },
+        {
+          "path": "references/data-upsert.md",
+          "sha256": "2612af83b20a2701dde30ef1f8d7efd26b7e9eef84717226b8f038a2d2150ff7",
+          "bytes": 1390
+        },
+        {
+          "path": "references/lock-advisory.md",
+          "sha256": "c88d259dbf81c3771438f59a165f7eab8acd09999dd370bdf807521c73f35aab",
+          "bytes": 1531
+        },
+        {
+          "path": "references/lock-deadlock-prevention.md",
+          "sha256": "09aee46f51d7178c8e55fe056cd5a94a64ba2c122fe418e6900cd99f297b2347",
+          "bytes": 1855
+        },
+        {
+          "path": "references/lock-short-transactions.md",
+          "sha256": "5aa7f61095916986d39644b446cdbcd2bacca7ef698a3bb50b3f82dd60207602",
+          "bytes": 1350
+        },
+        {
+          "path": "references/lock-skip-locked.md",
+          "sha256": "6c45077f430f29cd9cd8f448c94d578e827e7bd023fcdaf717a756acb116fa4b",
+          "bytes": 1353
+        },
+        {
+          "path": "references/monitor-explain-analyze.md",
+          "sha256": "4cb67ffbf8e57f2e5b380b0beb4242528b513723ce314a2c2ffcf083bd4203d7",
+          "bytes": 1441
+        },
+        {
+          "path": "references/monitor-pg-stat-statements.md",
+          "sha256": "89dca99d4e894fcbdcac136be7ad9fbc03d1342904f065c1b198dc9cf495f098",
+          "bytes": 1418
+        },
+        {
+          "path": "references/monitor-vacuum-analyze.md",
+          "sha256": "2892272011710eb49b3f185ec12f15ce9ce4c365792c672f6e2a9c90da426a1a",
+          "bytes": 1506
+        },
+        {
+          "path": "references/query-composite-indexes.md",
+          "sha256": "73e42424e671f0266e74fdb220db3196790f69fb43e2b19c7b9483eb4971b554",
+          "bytes": 1454
+        },
+        {
+          "path": "references/query-covering-indexes.md",
+          "sha256": "daf2a7f0477fb7357b62b5fb5b185b1995a77a186347e45cb780e25e7a7589b6",
+          "bytes": 1287
+        },
+        {
+          "path": "references/query-index-types.md",
+          "sha256": "472a74f22c2df203bd0154999b3a5a0187cca2ab3d9a3978e305bb7c32f1a282",
+          "bytes": 1521
+        },
+        {
+          "path": "references/query-missing-indexes.md",
+          "sha256": "91ad8b0ff4365704b4830a7f077c6f140f7140fd5d3ce5cd0b92b160cf9e25f1",
+          "bytes": 1218
+        },
+        {
+          "path": "references/query-partial-indexes.md",
+          "sha256": "6448982bc8558c6555284958edc331b29239c6a0130e6b4501dd6d4da607a6dd",
+          "bytes": 1347
+        },
+        {
+          "path": "references/schema-constraints.md",
+          "sha256": "90e8efda3e9e81095e642911ad4aae2809d160f29414338fa997253238f510f8",
+          "bytes": 1880
+        },
+        {
+          "path": "references/schema-data-types.md",
+          "sha256": "e01b58c14c7f3f65d8ead580b9a4fcf70b83baaab0f9a5f83c569c9fd113e8c8",
+          "bytes": 1453
+        },
+        {
+          "path": "references/schema-foreign-key-indexes.md",
+          "sha256": "7587713d12a65a212365459b3d39e4717d8a79e4073b10bd62f1054d8192c0dd",
+          "bytes": 1679
+        },
+        {
+          "path": "references/schema-lowercase-identifiers.md",
+          "sha256": "4bc80f70865f2390872591f326c8a6be6456a0aeb5a7e5a2475d7cd9d43059ab",
+          "bytes": 1728
+        },
+        {
+          "path": "references/schema-partitioning.md",
+          "sha256": "541e13fbeaf4bb1485c9059d4c9417dbdb766cf16f4237cd63a04ada7ec45b90",
+          "bytes": 1548
+        },
+        {
+          "path": "references/schema-primary-keys.md",
+          "sha256": "3c8beabef82066f9a0838b926da0885117fd2d9a263aaf84cb5ca9e5f0d400e9",
+          "bytes": 1821
+        },
+        {
+          "path": "references/security-privileges.md",
+          "sha256": "095909274a4fb43df785d7144cf674eeb40284d2d45628f14af4108737b93663",
+          "bytes": 1566
+        },
+        {
+          "path": "references/security-rls-basics.md",
+          "sha256": "e04dd1a3a382aafdaaa73fe9f7976352acdde6e90c2a2470d281b94d4f44b096",
+          "bytes": 1372
+        },
+        {
+          "path": "references/security-rls-performance.md",
+          "sha256": "2e1faeca7d5746e246b1c78f9492fe2a9cfa41c4d7fa1e23c402d58fa18ea014",
+          "bytes": 2103
+        }
+      ]
+    },
+    {
+      "short_name": "ai-sdk",
+      "skill_name": "ai-sdk",
+      "description": "Vercel AI SDK generation, structured output, tool, and streaming guidance.",
+      "when_use": "Review model calls, output validation, tools, streaming, and provider integration.",
+      "license": "Apache-2.0",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "vercel",
+        "plugin_version": "0.21.4",
+        "plugin_repository": "https://github.com/vercel/vercel-plugin",
+        "plugin_license": "Apache-2.0",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/skills/ai-sdk"
+      },
+      "tree_sha256": "3beed94f68cc526e44a8e37cc2b1b324a4a7a1f4f93a9d7a69af2baaa60b272a",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "787895e07e49c8686ad12b5017bc7f5160fa88863c2739a98976b540f709e2b5",
+          "bytes": 6366
+        },
+        {
+          "path": "agents/openai.yaml",
+          "sha256": "fad9fabe45c1a4029565b188776575be0edabdfe930dc0db613fd603d64f58ce",
+          "bytes": 89
+        },
+        {
+          "path": "references/ai-gateway.md",
+          "sha256": "f3c716c7f9ddad655044f19823ce5c2792985fba5589a0e99e8e3b1139fec90c",
+          "bytes": 2191
+        },
+        {
+          "path": "references/common-errors.md",
+          "sha256": "64949f0614a629733d1c47d6e5d5b953d90a696e71922695f69248a21290dcad",
+          "bytes": 11034
+        },
+        {
+          "path": "references/devtools.md",
+          "sha256": "a07e778b4ce4279cb3a70321a6e5a6021614ed6188d29a5d59ea21e3e53e8d3d",
+          "bytes": 1199
+        },
+        {
+          "path": "references/providers.md",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "references/type-safe-agents.md",
+          "sha256": "7501751dd0d505e9ee3c9fbf8298d758e8bdae0395554d8f5333e4e017202ae8",
+          "bytes": 5323
+        }
+      ]
+    },
+    {
+      "short_name": "ai-gateway",
+      "skill_name": "ai-gateway",
+      "description": "Vercel AI Gateway routing, model, and cost guidance.",
+      "when_use": "Review Gateway model identifiers, routing, limits, usage, cost, and failure handling.",
+      "license": "Apache-2.0",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "vercel",
+        "plugin_version": "0.21.4",
+        "plugin_repository": "https://github.com/vercel/vercel-plugin",
+        "plugin_license": "Apache-2.0",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/vercel/0.21.4/skills/ai-gateway"
+      },
+      "tree_sha256": "a3c664bfa3ca69837e3aa66faa097a278c18f84a71c53769f193e8f6c7567113",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "cdfc9062b39056d43b406a93ba081d38383473a62d5391b8c9561b89079c6647",
+          "bytes": 19134
+        },
+        {
+          "path": "agents/openai.yaml",
+          "sha256": "a4d38268963f3d551df6d88296738bcade16fe7a58c94d7d422d23d36b6d6fce",
+          "bytes": 97
+        }
+      ]
+    },
+    {
+      "short_name": "typesafe-ai",
+      "skill_name": "typesafe-ai",
+      "description": "TypeSafe Jev judgment and typed answer guidance.",
+      "when_use": "Review Jev questions, scoring contracts, response validation, and judgment use.",
+      "license": "MIT",
+      "source": {
+        "type": "directory",
+        "repository": null,
+        "source_path": "/Users/farzanm4/.agents/skills/typesafe-ai"
+      },
+      "tree_sha256": "3c6e39947b410ff5cb84faca6e3aa1ea89b7cfdd3f43a778ee724c63d0ae2bdd",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "835f233f1d6ed84a9b9a351aba0689b47644a4137d6316911fc7957bde523b02",
+          "bytes": 1068
+        },
+        {
+          "path": "SKILL.md",
+          "sha256": "71ea90d7906c6554c4f4c460ef7361b2d26f59116ccdae986dc6d997b9389f52",
+          "bytes": 10040
+        }
+      ]
+    },
+    {
+      "short_name": "prompt-format",
+      "skill_name": "prompt-format",
+      "description": "Draft assistant proposal for Oparax prompt and Jev question format; it is not an approved project rule.",
+      "when_use": "Consult when reviewing prompts, tool descriptions, untrusted data markers, or Jev questions. Treat its rules as nonbinding unless an approved plan or task explicitly adopts them.",
+      "license": null,
+      "source": {
+        "type": "directory",
+        "repository": null,
+        "source_path": "/Users/farzanm4/.agents/skills/prompt-format"
+      },
+      "tree_sha256": "b64deba44ec0d451bbb8086e7ee6cfa94f63cbf8c8e7c1dcf4dab1d709e82da2",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "35baf6d6eced18e5c1ab4b3a79c6f82542ae4602e017c7c6e51f75c1df9d2d3a",
+          "bytes": 5645
+        }
+      ]
+    },
+    {
+      "short_name": "instrument-integration",
+      "skill_name": "instrument-integration",
+      "description": "PostHog client and server initialization guidance.",
+      "when_use": "Review analytics SDK setup, identity, capture configuration, and duplicate initialization.",
+      "license": "MIT",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "posthog",
+        "plugin_version": "1.0.63",
+        "plugin_repository": "https://github.com/PostHog/ai-plugin",
+        "plugin_license": "MIT",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/skills/instrument-integration"
+      },
+      "tree_sha256": "bf2f488afd9295b5ec3a19bb945fa835143ca70f2d194e8af4e516b5db142506",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "af5ffcd70af4bb52966c352f79fbb04f6be54bbd90dcba129876d15d11c68f9e",
+          "bytes": 9050
+        },
+        {
+          "path": "references/COMMANDMENTS.md",
+          "sha256": "f59329546452388aa880db136faee21ac6384194da2e77eaa889d41d553b7cd4",
+          "bytes": 650
+        },
+        {
+          "path": "references/EXAMPLE-android.md",
+          "sha256": "04133784fcc38d09de13438b287e7d2f41749ecd5ba57e11c6352b89786efc4a",
+          "bytes": 50906
+        },
+        {
+          "path": "references/EXAMPLE-angular.md",
+          "sha256": "47b4eb6baf5a47c74f36bd07c90b962c6170bb297abe1944812a4a227b473607",
+          "bytes": 23701
+        },
+        {
+          "path": "references/EXAMPLE-astro-hybrid.md",
+          "sha256": "d45120b62a2425d7976a76d97a148a8a06f9f7999c7e2e29402035fbb37715b8",
+          "bytes": 28110
+        },
+        {
+          "path": "references/EXAMPLE-astro-ssr.md",
+          "sha256": "50508bb14b1f2740f204d0cc50e0512cc41395ede5c3eea9c416ecc87441a02e",
+          "bytes": 28239
+        },
+        {
+          "path": "references/EXAMPLE-astro-static.md",
+          "sha256": "24e76884c9364bafa30b849bf695ef73e45ef4dd9ad44dc719b0a3b04c8b3c68",
+          "bytes": 20083
+        },
+        {
+          "path": "references/EXAMPLE-astro-view-transitions.md",
+          "sha256": "a0a8cf659972c9894c7be2815d2be9265e733ad113a1e0a726f2166bbea004ed",
+          "bytes": 23910
+        },
+        {
+          "path": "references/EXAMPLE-django.md",
+          "sha256": "c58efd3dceff95450a6dabf380e4d35ae40c6e8a65bf2a32e3c2a297b15ff319",
+          "bytes": 31421
+        },
+        {
+          "path": "references/EXAMPLE-expo.md",
+          "sha256": "8848905886fa58e8c9fd2070f2c0eb59d9cf23e9e192b2fc7741dcfa57c55bbb",
+          "bytes": 35973
+        },
+        {
+          "path": "references/EXAMPLE-fastapi.md",
+          "sha256": "0efb0876f6000f33d1ecc72adf6ea9ac535826a24d1f3024c495f9bef539b93b",
+          "bytes": 41906
+        },
+        {
+          "path": "references/EXAMPLE-flask.md",
+          "sha256": "27953a1f18b0a943760e89b1a8b9fd03a8370262adaac056a6112dc80f401aaa",
+          "bytes": 33159
+        },
+        {
+          "path": "references/EXAMPLE-javascript-node.md",
+          "sha256": "02e17ad41324aad3005f42477b1eff3a3a4c39368a5fe5ef234a1e983d2163a5",
+          "bytes": 9244
+        },
+        {
+          "path": "references/EXAMPLE-javascript-web.md",
+          "sha256": "a03e3d75eb5804a0340315a7137c2156b1831c4858a1a70330bedea0276c3851",
+          "bytes": 12023
+        },
+        {
+          "path": "references/EXAMPLE-laravel.md",
+          "sha256": "f7ffbab844f355e58f0ef904a1d04fe8309fb83d55695904e9ed08d4c5ffa9b3",
+          "bytes": 60662
+        },
+        {
+          "path": "references/EXAMPLE-next-app-router.md",
+          "sha256": "4721408b449acff1b84e40d00542e7671aba20e278e5531055c23c73bfdc556b",
+          "bytes": 17978
+        },
+        {
+          "path": "references/EXAMPLE-next-pages-router.md",
+          "sha256": "36fd5ef1c44f72ea49e89a8610a23127246f4ec04edb1e7db1d1719ada8373e6",
+          "bytes": 19580
+        },
+        {
+          "path": "references/EXAMPLE-nuxt-3-6.md",
+          "sha256": "ef322f3ac70d311ea75ee5094680ba879834a2332f060bdf0ea619f47ee041a0",
+          "bytes": 22807
+        },
+        {
+          "path": "references/EXAMPLE-nuxt-4.md",
+          "sha256": "0325e4bf2709ad69043ec1f8018ff75778538c1d0f96fcabb16c332ee31c4d8f",
+          "bytes": 29639
+        },
+        {
+          "path": "references/EXAMPLE-php.md",
+          "sha256": "5747fc3714c4ba449058149c26ddfe9141420feb6129e44a95a95d493c9c3bc9",
+          "bytes": 13276
+        },
+        {
+          "path": "references/EXAMPLE-python.md",
+          "sha256": "75e60c208afc7103fb36d281d460f3ef23ff41992c92800cfb45306e4de3620e",
+          "bytes": 11916
+        },
+        {
+          "path": "references/EXAMPLE-react-native.md",
+          "sha256": "ed211829a58adabef11fbb7089e37badb1cacdc5ecb31614197ee58239490540",
+          "bytes": 47082
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-6.md",
+          "sha256": "822ca59ae62edb74d739840c479495f1b28812a6c6f3bbea44093b151a8ba10d",
+          "bytes": 13828
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-7-data.md",
+          "sha256": "053518346e6e90554da2c1688762e5774a13ad0df668eaa68491359ddf134388",
+          "bytes": 20587
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-7-declarative.md",
+          "sha256": "d2c5e8ec2501621c0d21f4b8e5b33f5baeed586163c7c4e1fe1cb40569e6a6a5",
+          "bytes": 15398
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-7-framework.md",
+          "sha256": "2a88aa2eeb272813879177c34471fd7235aad62be0648ed8c96df73bc5e663d5",
+          "bytes": 33295
+        },
+        {
+          "path": "references/EXAMPLE-react-tanstack-router-code-based.md",
+          "sha256": "39b37653005c81bdbb4ac8e4046c6f2a45a18fa21ce7a65b9212c08fb164131a",
+          "bytes": 20067
+        },
+        {
+          "path": "references/EXAMPLE-react-tanstack-router-file-based.md",
+          "sha256": "9efb27b97a6cf9f3387960f68cf613513cf8a755fcbceb9e22651b6532ef2aa7",
+          "bytes": 18764
+        },
+        {
+          "path": "references/EXAMPLE-react-vite.md",
+          "sha256": "5cd07c9436bc6eb190b55a777ca84ca5f4bca402ec1565033f3d45fbc0a1f237",
+          "bytes": 12737
+        },
+        {
+          "path": "references/EXAMPLE-ruby-on-rails.md",
+          "sha256": "31ffa80785ed093510188438e9add3317a628479998cd58e8db2f97cff58f6d7",
+          "bytes": 38863
+        },
+        {
+          "path": "references/EXAMPLE-ruby.md",
+          "sha256": "e9531e7784903aa6c6a54f143f57373c46a064b9044261894162637378eea946",
+          "bytes": 10197
+        },
+        {
+          "path": "references/EXAMPLE-sveltekit.md",
+          "sha256": "dc925d6aa84b28e3ca316fb86e0232c4b4580a19f517e0db291ea1506c8ca376",
+          "bytes": 19039
+        },
+        {
+          "path": "references/EXAMPLE-swift.md",
+          "sha256": "dd54def7f1334a6defc45b53720827c4dacc3f9153a6e39dc8a8f5b86f70be29",
+          "bytes": 19215
+        },
+        {
+          "path": "references/EXAMPLE-tanstack-start.md",
+          "sha256": "0d38391f020f7d72a7e98ac1a0753e4eba9669347b7101ae511666f376246cd8",
+          "bytes": 30586
+        },
+        {
+          "path": "references/EXAMPLE-vue-3.md",
+          "sha256": "e7f7bcef68c053e954e8501f2cb7b6c11011e326301755b3b01eb9783ccee68c",
+          "bytes": 18324
+        },
+        {
+          "path": "references/android.md",
+          "sha256": "eef3d23bf919f07bab30ba0aa9a61af31a6defa2a6e0d8c32bfc70e21e525662",
+          "bytes": 32056
+        },
+        {
+          "path": "references/angular.md",
+          "sha256": "47f9b5c738060fa594063f5a722dcefe8256181634bfa9073f7bfc753f4f1fbd",
+          "bytes": 15705
+        },
+        {
+          "path": "references/astro.md",
+          "sha256": "cbef5604a01600a89f3c2132ccd1bf1af27ab6e0bfe612de8bf572475ce7e14f",
+          "bytes": 11952
+        },
+        {
+          "path": "references/configuration.md",
+          "sha256": "bb4933f317727dd5c31e5630d5f7bc9673e030ddaaf9919c8a912742e8da735a",
+          "bytes": 16915
+        },
+        {
+          "path": "references/django.md",
+          "sha256": "6232f1516e6c0bad87e744d46d119c975f2f97be48830ae14302a520aaf2693d",
+          "bytes": 11359
+        },
+        {
+          "path": "references/dotnet.md",
+          "sha256": "780e7adb3e36e77e6a5b1cd81ce4ab619a7875d86ef2eface684c2a08647d5a0",
+          "bytes": 24956
+        },
+        {
+          "path": "references/elixir.md",
+          "sha256": "50142859859e8104c10a46cb14f6602c2cf4fe89b842b912f16f081be7bef8a1",
+          "bytes": 14827
+        },
+        {
+          "path": "references/flask.md",
+          "sha256": "980cda78a11cfac82e2f686420eb8d81fe06d82efc83172e68851d083b734e61",
+          "bytes": 6582
+        },
+        {
+          "path": "references/flutter.md",
+          "sha256": "4f69b9fd65a06165066b8bd25772f296bbe002dc5b9824a08de46f44e4d0851e",
+          "bytes": 34070
+        },
+        {
+          "path": "references/go.md",
+          "sha256": "cac4f4bece53dd67e14134f396ddfc064d9afebec8121f0b5723f8a00ad7675e",
+          "bytes": 19322
+        },
+        {
+          "path": "references/identify-users.md",
+          "sha256": "39ef32e349b62d41f2ca90c781c248ba8193509d77facc903573044d4aab4f57",
+          "bytes": 11910
+        },
+        {
+          "path": "references/ios.md",
+          "sha256": "fa8331b0ad15d430539a0e8c6e0da784a66d95884672d88fa6a74888438ae966",
+          "bytes": 6518
+        },
+        {
+          "path": "references/js.md",
+          "sha256": "e07723638e72c4f808b53ee00e81a6150c34a0c8091332f748a4ee188ade92b2",
+          "bytes": 14926
+        },
+        {
+          "path": "references/laravel.md",
+          "sha256": "6b3e749a4a20d0515f68a16f46fffe3660f9d0a1e2aab54ab1431b6b68b552c6",
+          "bytes": 5267
+        },
+        {
+          "path": "references/next-js.md",
+          "sha256": "c968f686d087baa067ce3c16587019296ed4606cc5bacec575f3de152d0013b9",
+          "bytes": 17098
+        },
+        {
+          "path": "references/node.md",
+          "sha256": "3b90ced630df6ad2452314b964138bb7ae8888805baeb045678a0bb31667528b",
+          "bytes": 41234
+        },
+        {
+          "path": "references/nuxt-js-3-6.md",
+          "sha256": "1b25f94fd8653f12dd6481498ae192b2ed09d85a0e4a00fb5b4dd88e7a494820",
+          "bytes": 10779
+        },
+        {
+          "path": "references/nuxt-js.md",
+          "sha256": "b4b88f82df206f1171ffae7e75ea34727fa3e7fb42c482bad97d016e32f439f9",
+          "bytes": 12052
+        },
+        {
+          "path": "references/php.md",
+          "sha256": "78f1984c0e5a33ed003e146ff3055f8a0e421a6d1a726054468b83b71857da3e",
+          "bytes": 22964
+        },
+        {
+          "path": "references/posthog-js.md",
+          "sha256": "59a3759c9cab6401d9d3d91ae25e9ad5e7ed11737836872d678755350ba950f1",
+          "bytes": 50574
+        },
+        {
+          "path": "references/posthog-node.md",
+          "sha256": "3f8128dd3e80edd1393c5992437792b0ff669770fef0cfe7cc11714cbdadbdca",
+          "bytes": 34136
+        },
+        {
+          "path": "references/posthog-python.md",
+          "sha256": "f6e8817015afcb4d9c4c46532fdead1529db84dbf90120b1200f2ee2285ffc8d",
+          "bytes": 65648
+        },
+        {
+          "path": "references/python.md",
+          "sha256": "493ca330b25adeb29c0aa8dfdc5e32c470630aa6929dc5151368de4d00fe9fd7",
+          "bytes": 49066
+        },
+        {
+          "path": "references/react-native.md",
+          "sha256": "b9463a70663725464b2b45231bb17b895f542022548429ac11c24a128f4bc173",
+          "bytes": 57626
+        },
+        {
+          "path": "references/react-router-v6.md",
+          "sha256": "dbbed4dd5e68f176c357e06cf3c19e727f4776bc0fb6fc1f66a35bef4cada3f7",
+          "bytes": 12935
+        },
+        {
+          "path": "references/react-router-v7-data-mode.md",
+          "sha256": "31ec7141ae37a14b71a15b33869e7b39aed196611e6bd3e28b2b965d0cbd0238",
+          "bytes": 12754
+        },
+        {
+          "path": "references/react-router-v7-declarative-mode.md",
+          "sha256": "dcb8eded51680a8aea866ecf05edf737feb5cf42f78d2b98d4ff6a3033b208d2",
+          "bytes": 12985
+        },
+        {
+          "path": "references/react-router-v7-framework-mode.md",
+          "sha256": "c7fb85da32bf817369e23c4e60c76cc0205fbbf9723b80f131447d6f2fbb8233",
+          "bytes": 16368
+        },
+        {
+          "path": "references/react.md",
+          "sha256": "243e9123123abfd3f8dc3be89da59f5f3b8ab16429248c69d783a6a67aff8c72",
+          "bytes": 21423
+        },
+        {
+          "path": "references/ruby-on-rails.md",
+          "sha256": "2f3f8b831749127c9848e03b65e769e906d12c13a478d2afbf641765cffdffbe",
+          "bytes": 17949
+        },
+        {
+          "path": "references/ruby.md",
+          "sha256": "77edf8fbe8bd1b471ac32ec8abbf975fd85596503a111466d051f8c137980b97",
+          "bytes": 24837
+        },
+        {
+          "path": "references/svelte.md",
+          "sha256": "1618ab42bb1eb36f79a217a834c227113dd0a56a6228ec92b7835c55dfa1af62",
+          "bytes": 10541
+        },
+        {
+          "path": "references/tanstack-start.md",
+          "sha256": "d931c48d51f5e0b823bbae00b6719e8dd87a6ca0ee2730082fdc846009d39525",
+          "bytes": 7023
+        },
+        {
+          "path": "references/usage.md",
+          "sha256": "ba64324617e119aaa943cc0c2525a11b29d6d042af502913b2987dcf037bfd18",
+          "bytes": 26934
+        },
+        {
+          "path": "references/vue-js.md",
+          "sha256": "b384db405140cd3bbbc08fc1fa31835444c2cd8596dd6670305df48d800c66ed",
+          "bytes": 12482
+        }
+      ]
+    },
+    {
+      "short_name": "instrument-product-analytics",
+      "skill_name": "instrument-product-analytics",
+      "description": "PostHog product analytics guidance for meaningful user actions and identity.",
+      "when_use": "Review a feature or pull request for missing, duplicate, unsafe, or inconsistent product analytics.",
+      "license": "MIT",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "posthog",
+        "plugin_version": "1.0.63",
+        "plugin_repository": "https://github.com/PostHog/ai-plugin",
+        "plugin_license": "MIT",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/skills/instrument-product-analytics"
+      },
+      "tree_sha256": "cd302aa038fb74767c1c5cfd10adf7c7c763f21c8feb8e522e347ed6e5d697aa",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "6a3cc26315fcc1ea4ae6190351d9736483298059656d8c9217d89f4bd21a731a",
+          "bytes": 9818
+        },
+        {
+          "path": "references/COMMANDMENTS.md",
+          "sha256": "f59329546452388aa880db136faee21ac6384194da2e77eaa889d41d553b7cd4",
+          "bytes": 650
+        },
+        {
+          "path": "references/EXAMPLE-android.md",
+          "sha256": "04133784fcc38d09de13438b287e7d2f41749ecd5ba57e11c6352b89786efc4a",
+          "bytes": 50906
+        },
+        {
+          "path": "references/EXAMPLE-angular.md",
+          "sha256": "47b4eb6baf5a47c74f36bd07c90b962c6170bb297abe1944812a4a227b473607",
+          "bytes": 23701
+        },
+        {
+          "path": "references/EXAMPLE-astro-hybrid.md",
+          "sha256": "d45120b62a2425d7976a76d97a148a8a06f9f7999c7e2e29402035fbb37715b8",
+          "bytes": 28110
+        },
+        {
+          "path": "references/EXAMPLE-astro-ssr.md",
+          "sha256": "50508bb14b1f2740f204d0cc50e0512cc41395ede5c3eea9c416ecc87441a02e",
+          "bytes": 28239
+        },
+        {
+          "path": "references/EXAMPLE-astro-static.md",
+          "sha256": "24e76884c9364bafa30b849bf695ef73e45ef4dd9ad44dc719b0a3b04c8b3c68",
+          "bytes": 20083
+        },
+        {
+          "path": "references/EXAMPLE-astro-view-transitions.md",
+          "sha256": "a0a8cf659972c9894c7be2815d2be9265e733ad113a1e0a726f2166bbea004ed",
+          "bytes": 23910
+        },
+        {
+          "path": "references/EXAMPLE-django.md",
+          "sha256": "c58efd3dceff95450a6dabf380e4d35ae40c6e8a65bf2a32e3c2a297b15ff319",
+          "bytes": 31421
+        },
+        {
+          "path": "references/EXAMPLE-expo.md",
+          "sha256": "8848905886fa58e8c9fd2070f2c0eb59d9cf23e9e192b2fc7741dcfa57c55bbb",
+          "bytes": 35973
+        },
+        {
+          "path": "references/EXAMPLE-fastapi.md",
+          "sha256": "0efb0876f6000f33d1ecc72adf6ea9ac535826a24d1f3024c495f9bef539b93b",
+          "bytes": 41906
+        },
+        {
+          "path": "references/EXAMPLE-flask.md",
+          "sha256": "27953a1f18b0a943760e89b1a8b9fd03a8370262adaac056a6112dc80f401aaa",
+          "bytes": 33159
+        },
+        {
+          "path": "references/EXAMPLE-laravel.md",
+          "sha256": "f7ffbab844f355e58f0ef904a1d04fe8309fb83d55695904e9ed08d4c5ffa9b3",
+          "bytes": 60662
+        },
+        {
+          "path": "references/EXAMPLE-next-app-router.md",
+          "sha256": "4721408b449acff1b84e40d00542e7671aba20e278e5531055c23c73bfdc556b",
+          "bytes": 17978
+        },
+        {
+          "path": "references/EXAMPLE-next-pages-router.md",
+          "sha256": "36fd5ef1c44f72ea49e89a8610a23127246f4ec04edb1e7db1d1719ada8373e6",
+          "bytes": 19580
+        },
+        {
+          "path": "references/EXAMPLE-nuxt-3-6.md",
+          "sha256": "ef322f3ac70d311ea75ee5094680ba879834a2332f060bdf0ea619f47ee041a0",
+          "bytes": 22807
+        },
+        {
+          "path": "references/EXAMPLE-nuxt-4.md",
+          "sha256": "0325e4bf2709ad69043ec1f8018ff75778538c1d0f96fcabb16c332ee31c4d8f",
+          "bytes": 29639
+        },
+        {
+          "path": "references/EXAMPLE-php.md",
+          "sha256": "5747fc3714c4ba449058149c26ddfe9141420feb6129e44a95a95d493c9c3bc9",
+          "bytes": 13276
+        },
+        {
+          "path": "references/EXAMPLE-python.md",
+          "sha256": "75e60c208afc7103fb36d281d460f3ef23ff41992c92800cfb45306e4de3620e",
+          "bytes": 11916
+        },
+        {
+          "path": "references/EXAMPLE-react-native.md",
+          "sha256": "ed211829a58adabef11fbb7089e37badb1cacdc5ecb31614197ee58239490540",
+          "bytes": 47082
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-6.md",
+          "sha256": "822ca59ae62edb74d739840c479495f1b28812a6c6f3bbea44093b151a8ba10d",
+          "bytes": 13828
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-7-data.md",
+          "sha256": "053518346e6e90554da2c1688762e5774a13ad0df668eaa68491359ddf134388",
+          "bytes": 20587
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-7-declarative.md",
+          "sha256": "d2c5e8ec2501621c0d21f4b8e5b33f5baeed586163c7c4e1fe1cb40569e6a6a5",
+          "bytes": 15398
+        },
+        {
+          "path": "references/EXAMPLE-react-react-router-7-framework.md",
+          "sha256": "2a88aa2eeb272813879177c34471fd7235aad62be0648ed8c96df73bc5e663d5",
+          "bytes": 33295
+        },
+        {
+          "path": "references/EXAMPLE-react-tanstack-router-code-based.md",
+          "sha256": "39b37653005c81bdbb4ac8e4046c6f2a45a18fa21ce7a65b9212c08fb164131a",
+          "bytes": 20067
+        },
+        {
+          "path": "references/EXAMPLE-react-tanstack-router-file-based.md",
+          "sha256": "9efb27b97a6cf9f3387960f68cf613513cf8a755fcbceb9e22651b6532ef2aa7",
+          "bytes": 18764
+        },
+        {
+          "path": "references/EXAMPLE-ruby-on-rails.md",
+          "sha256": "31ffa80785ed093510188438e9add3317a628479998cd58e8db2f97cff58f6d7",
+          "bytes": 38863
+        },
+        {
+          "path": "references/EXAMPLE-ruby.md",
+          "sha256": "e9531e7784903aa6c6a54f143f57373c46a064b9044261894162637378eea946",
+          "bytes": 10197
+        },
+        {
+          "path": "references/EXAMPLE-sveltekit.md",
+          "sha256": "dc925d6aa84b28e3ca316fb86e0232c4b4580a19f517e0db291ea1506c8ca376",
+          "bytes": 19039
+        },
+        {
+          "path": "references/EXAMPLE-swift.md",
+          "sha256": "dd54def7f1334a6defc45b53720827c4dacc3f9153a6e39dc8a8f5b86f70be29",
+          "bytes": 19215
+        },
+        {
+          "path": "references/EXAMPLE-tanstack-start.md",
+          "sha256": "0d38391f020f7d72a7e98ac1a0753e4eba9669347b7101ae511666f376246cd8",
+          "bytes": 30586
+        },
+        {
+          "path": "references/EXAMPLE-vue-3.md",
+          "sha256": "e7f7bcef68c053e954e8501f2cb7b6c11011e326301755b3b01eb9783ccee68c",
+          "bytes": 18324
+        },
+        {
+          "path": "references/android.md",
+          "sha256": "eef3d23bf919f07bab30ba0aa9a61af31a6defa2a6e0d8c32bfc70e21e525662",
+          "bytes": 32056
+        },
+        {
+          "path": "references/angular.md",
+          "sha256": "47f9b5c738060fa594063f5a722dcefe8256181634bfa9073f7bfc753f4f1fbd",
+          "bytes": 15705
+        },
+        {
+          "path": "references/astro.md",
+          "sha256": "cbef5604a01600a89f3c2132ccd1bf1af27ab6e0bfe612de8bf572475ce7e14f",
+          "bytes": 11952
+        },
+        {
+          "path": "references/configuration.md",
+          "sha256": "bb4933f317727dd5c31e5630d5f7bc9673e030ddaaf9919c8a912742e8da735a",
+          "bytes": 16915
+        },
+        {
+          "path": "references/django.md",
+          "sha256": "6232f1516e6c0bad87e744d46d119c975f2f97be48830ae14302a520aaf2693d",
+          "bytes": 11359
+        },
+        {
+          "path": "references/dotnet.md",
+          "sha256": "780e7adb3e36e77e6a5b1cd81ce4ab619a7875d86ef2eface684c2a08647d5a0",
+          "bytes": 24956
+        },
+        {
+          "path": "references/elixir.md",
+          "sha256": "50142859859e8104c10a46cb14f6602c2cf4fe89b842b912f16f081be7bef8a1",
+          "bytes": 14827
+        },
+        {
+          "path": "references/flask.md",
+          "sha256": "980cda78a11cfac82e2f686420eb8d81fe06d82efc83172e68851d083b734e61",
+          "bytes": 6582
+        },
+        {
+          "path": "references/flutter.md",
+          "sha256": "4f69b9fd65a06165066b8bd25772f296bbe002dc5b9824a08de46f44e4d0851e",
+          "bytes": 34070
+        },
+        {
+          "path": "references/go.md",
+          "sha256": "cac4f4bece53dd67e14134f396ddfc064d9afebec8121f0b5723f8a00ad7675e",
+          "bytes": 19322
+        },
+        {
+          "path": "references/identify-users.md",
+          "sha256": "39ef32e349b62d41f2ca90c781c248ba8193509d77facc903573044d4aab4f57",
+          "bytes": 11910
+        },
+        {
+          "path": "references/ios.md",
+          "sha256": "fa8331b0ad15d430539a0e8c6e0da784a66d95884672d88fa6a74888438ae966",
+          "bytes": 6518
+        },
+        {
+          "path": "references/laravel.md",
+          "sha256": "6b3e749a4a20d0515f68a16f46fffe3660f9d0a1e2aab54ab1431b6b68b552c6",
+          "bytes": 5267
+        },
+        {
+          "path": "references/next-js.md",
+          "sha256": "c968f686d087baa067ce3c16587019296ed4606cc5bacec575f3de152d0013b9",
+          "bytes": 17098
+        },
+        {
+          "path": "references/nuxt-js-3-6.md",
+          "sha256": "1b25f94fd8653f12dd6481498ae192b2ed09d85a0e4a00fb5b4dd88e7a494820",
+          "bytes": 10779
+        },
+        {
+          "path": "references/nuxt-js.md",
+          "sha256": "b4b88f82df206f1171ffae7e75ea34727fa3e7fb42c482bad97d016e32f439f9",
+          "bytes": 12052
+        },
+        {
+          "path": "references/php.md",
+          "sha256": "78f1984c0e5a33ed003e146ff3055f8a0e421a6d1a726054468b83b71857da3e",
+          "bytes": 22964
+        },
+        {
+          "path": "references/posthog-python.md",
+          "sha256": "f6e8817015afcb4d9c4c46532fdead1529db84dbf90120b1200f2ee2285ffc8d",
+          "bytes": 65648
+        },
+        {
+          "path": "references/python.md",
+          "sha256": "493ca330b25adeb29c0aa8dfdc5e32c470630aa6929dc5151368de4d00fe9fd7",
+          "bytes": 49066
+        },
+        {
+          "path": "references/react-native.md",
+          "sha256": "b9463a70663725464b2b45231bb17b895f542022548429ac11c24a128f4bc173",
+          "bytes": 57626
+        },
+        {
+          "path": "references/react-router-v6.md",
+          "sha256": "dbbed4dd5e68f176c357e06cf3c19e727f4776bc0fb6fc1f66a35bef4cada3f7",
+          "bytes": 12935
+        },
+        {
+          "path": "references/react-router-v7-data-mode.md",
+          "sha256": "31ec7141ae37a14b71a15b33869e7b39aed196611e6bd3e28b2b965d0cbd0238",
+          "bytes": 12754
+        },
+        {
+          "path": "references/react-router-v7-declarative-mode.md",
+          "sha256": "dcb8eded51680a8aea866ecf05edf737feb5cf42f78d2b98d4ff6a3033b208d2",
+          "bytes": 12985
+        },
+        {
+          "path": "references/react-router-v7-framework-mode.md",
+          "sha256": "c7fb85da32bf817369e23c4e60c76cc0205fbbf9723b80f131447d6f2fbb8233",
+          "bytes": 16368
+        },
+        {
+          "path": "references/ruby-on-rails.md",
+          "sha256": "2f3f8b831749127c9848e03b65e769e906d12c13a478d2afbf641765cffdffbe",
+          "bytes": 17949
+        },
+        {
+          "path": "references/ruby.md",
+          "sha256": "77edf8fbe8bd1b471ac32ec8abbf975fd85596503a111466d051f8c137980b97",
+          "bytes": 24837
+        },
+        {
+          "path": "references/svelte.md",
+          "sha256": "1618ab42bb1eb36f79a217a834c227113dd0a56a6228ec92b7835c55dfa1af62",
+          "bytes": 10541
+        },
+        {
+          "path": "references/tanstack-start.md",
+          "sha256": "d931c48d51f5e0b823bbae00b6719e8dd87a6ca0ee2730082fdc846009d39525",
+          "bytes": 7023
+        },
+        {
+          "path": "references/usage.md",
+          "sha256": "ba64324617e119aaa943cc0c2525a11b29d6d042af502913b2987dcf037bfd18",
+          "bytes": 26934
+        },
+        {
+          "path": "references/vue-js.md",
+          "sha256": "b384db405140cd3bbbc08fc1fa31835444c2cd8596dd6670305df48d800c66ed",
+          "bytes": 12482
+        }
+      ]
+    },
+    {
+      "short_name": "instrument-error-tracking",
+      "skill_name": "instrument-error-tracking",
+      "description": "PostHog error tracking setup and capture guidance.",
+      "when_use": "Review server and client error capture, grouping, and sensitive data handling.",
+      "license": "MIT",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "posthog",
+        "plugin_version": "1.0.63",
+        "plugin_repository": "https://github.com/PostHog/ai-plugin",
+        "plugin_license": "MIT",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/skills/instrument-error-tracking"
+      },
+      "tree_sha256": "a9160eca46994efb3d9d607e5e599c5e636a20b9188d8fc5ee65172625a16fef",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "81cf2e5f5a6d535d3f3e020a8ba341b770bcbb3183dc667b1dd178c1d9c48bd1",
+          "bytes": 7055
+        },
+        {
+          "path": "references/COMMANDMENTS.md",
+          "sha256": "f59329546452388aa880db136faee21ac6384194da2e77eaa889d41d553b7cd4",
+          "bytes": 650
+        },
+        {
+          "path": "references/alerts.md",
+          "sha256": "4d337be2f6bc5262ed07da05f78e4c0d95b24c44d16784dc5b4ab1d3babd7669",
+          "bytes": 3830
+        },
+        {
+          "path": "references/android.md",
+          "sha256": "2473eeff8e055dae1c16d354d2a5f73fd28c0331d441d4d53940c5695055f459",
+          "bytes": 3891
+        },
+        {
+          "path": "references/angular.md",
+          "sha256": "a7f9dfa5c98cfc85c45920bb1fb08e973be2421d13f2584c17348757d4ffe35a",
+          "bytes": 8394
+        },
+        {
+          "path": "references/assigning-issues.md",
+          "sha256": "244e59a5a14c70d7df2fa5e6ce46bfa67af35c430bc7d2345d624b6586ff54c5",
+          "bytes": 6539
+        },
+        {
+          "path": "references/django.md",
+          "sha256": "6232f1516e6c0bad87e744d46d119c975f2f97be48830ae14302a520aaf2693d",
+          "bytes": 11359
+        },
+        {
+          "path": "references/dotnet.md",
+          "sha256": "780e7adb3e36e77e6a5b1cd81ce4ab619a7875d86ef2eface684c2a08647d5a0",
+          "bytes": 24956
+        },
+        {
+          "path": "references/elixir.md",
+          "sha256": "78d3f20e8a7206e12a8ca780123a3687c0e09abb5376f6d68569d4cba4303b1d",
+          "bytes": 9157
+        },
+        {
+          "path": "references/fingerprints.md",
+          "sha256": "c1d9ab1db3830fd24f2e3caec4c5cde99b6e94baaa9681c8f53dd0579ccbc4af",
+          "bytes": 4288
+        },
+        {
+          "path": "references/flask.md",
+          "sha256": "980cda78a11cfac82e2f686420eb8d81fe06d82efc83172e68851d083b734e61",
+          "bytes": 6582
+        },
+        {
+          "path": "references/flutter.md",
+          "sha256": "153b42e4ad38e5d01f8037cbe422b55e88fdd47b45b2b961f2181136c94a7ff0",
+          "bytes": 9530
+        },
+        {
+          "path": "references/go.md",
+          "sha256": "86f05de70fb765e8d6d5a7d83d479a4387538b15a00203baaf503fe9dc24c7b1",
+          "bytes": 5314
+        },
+        {
+          "path": "references/hono.md",
+          "sha256": "5f03517d7194f46c32e1148d2b26ede52653636c134d171197de7d6be6e56a04",
+          "bytes": 2973
+        },
+        {
+          "path": "references/ios.md",
+          "sha256": "19dd215f79852fc2cdd15fd35db4dc5960bcbe02681b4b1749df99e4e9ba46de",
+          "bytes": 6583
+        },
+        {
+          "path": "references/laravel.md",
+          "sha256": "6b3e749a4a20d0515f68a16f46fffe3660f9d0a1e2aab54ab1431b6b68b552c6",
+          "bytes": 5267
+        },
+        {
+          "path": "references/monitoring.md",
+          "sha256": "e8dd3b735e13cb111189359517a5691e47343f5f6dcf2116bff51fc6dd9d4100",
+          "bytes": 8401
+        },
+        {
+          "path": "references/nextjs.md",
+          "sha256": "0660682bf4ff96360d32f51ac3df98e7c32ff6c8188184affc7fd6c1e31a0dc7",
+          "bytes": 13427
+        },
+        {
+          "path": "references/node.md",
+          "sha256": "839f2be622326c8d322bcbd5bc353d2c39defbbedae1fa8d4303b61c4fa9ccef",
+          "bytes": 3776
+        },
+        {
+          "path": "references/nuxt-3-6.md",
+          "sha256": "b7a3078e565a083cfc2e329e3c91a85edf0ba743cdedaa11251e1e21b19af726",
+          "bytes": 5312
+        },
+        {
+          "path": "references/nuxt-3-7.md",
+          "sha256": "092055bfcc5ce5e79e882d7772a7baedf4f535f320e126426ffa509ea340510a",
+          "bytes": 4563
+        },
+        {
+          "path": "references/php.md",
+          "sha256": "94532ff42daa7c6997c38d8f00e49bb8ff0fdb60836cd55084041150d9a7cd66",
+          "bytes": 5653
+        },
+        {
+          "path": "references/python.md",
+          "sha256": "436d0c900b3007ceaf98cc00103bb2b5494d0a3be9b62bee6ed06a55aaa08870",
+          "bytes": 5151
+        },
+        {
+          "path": "references/react-native.md",
+          "sha256": "0ad7b5940df27a5e9fce07e8257a302ce5d7220f97918434408e78e021e09403",
+          "bytes": 8283
+        },
+        {
+          "path": "references/react.md",
+          "sha256": "1109cd2cead69277eda5e39f7208f28e34cd41e76ca945d3bc08f342788d79f3",
+          "bytes": 5449
+        },
+        {
+          "path": "references/ruby-on-rails.md",
+          "sha256": "2f3f8b831749127c9848e03b65e769e906d12c13a478d2afbf641765cffdffbe",
+          "bytes": 17949
+        },
+        {
+          "path": "references/ruby.md",
+          "sha256": "4706b2d2a7f4a4fe7031453ab2d118e3c291f1fc793a0e6d07328ee7061bb9ea",
+          "bytes": 2536
+        },
+        {
+          "path": "references/svelte.md",
+          "sha256": "993159fa53e3d516858a8b29396c43012c9e84c4bf60e74cb219a63c7eae6e3e",
+          "bytes": 4916
+        },
+        {
+          "path": "references/upload-source-maps.md",
+          "sha256": "72e1c16491f7ca1f54ab2737a5b9aadb7b5138a3d8a182f8c1632d73f476ac9a",
+          "bytes": 3801
+        },
+        {
+          "path": "references/web.md",
+          "sha256": "6445cfc173226136eb830d744ba768cbe58e4829c4e21db73b0c5ef0401cb0ea",
+          "bytes": 5359
+        }
+      ]
+    },
+    {
+      "short_name": "instrument-feature-flags",
+      "skill_name": "instrument-feature-flags",
+      "description": "PostHog feature flag instrumentation guidance.",
+      "when_use": "Review feature flag evaluation, rollout behavior, and analytics when flags are in scope.",
+      "license": "MIT",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "posthog",
+        "plugin_version": "1.0.63",
+        "plugin_repository": "https://github.com/PostHog/ai-plugin",
+        "plugin_license": "MIT",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/skills/instrument-feature-flags"
+      },
+      "tree_sha256": "811e0ca3679ea62f5a49bd2c15c66fd4855f390e78547733ac72a2d692b03f61",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "990d91ccd08d188f29fd8f6b36160e12f78723926ba4a6411504ecb7e75e36bb",
+          "bytes": 5821
+        },
+        {
+          "path": "references/COMMANDMENTS.md",
+          "sha256": "f59329546452388aa880db136faee21ac6384194da2e77eaa889d41d553b7cd4",
+          "bytes": 650
+        },
+        {
+          "path": "references/adding-feature-flag-code.md",
+          "sha256": "d89c442ee9860d9cc199acdd61ff2d37208b51cb38b85d9cfd9e2039f46bc732",
+          "bytes": 116262
+        },
+        {
+          "path": "references/android.md",
+          "sha256": "78e6b3c6c78ff304ae77a23ea2b1d9b62459481d9a5cfd4085979418a6ef1969",
+          "bytes": 3663
+        },
+        {
+          "path": "references/api.md",
+          "sha256": "fe44a5a79aad40a6c527915a703cdd13c468f7b7f2f9dd5df1488aaf2d838cfd",
+          "bytes": 5769
+        },
+        {
+          "path": "references/best-practices.md",
+          "sha256": "825a9ad2492cb9fb0b2a0a9d9c077ef873537b2e52689fa0f62cea201b0546e8",
+          "bytes": 20741
+        },
+        {
+          "path": "references/django.md",
+          "sha256": "6232f1516e6c0bad87e744d46d119c975f2f97be48830ae14302a520aaf2693d",
+          "bytes": 11359
+        },
+        {
+          "path": "references/dotnet.md",
+          "sha256": "780e7adb3e36e77e6a5b1cd81ce4ab619a7875d86ef2eface684c2a08647d5a0",
+          "bytes": 24956
+        },
+        {
+          "path": "references/elixir.md",
+          "sha256": "025085bb8f0a3ae7c5d2f02a68578df02d1bfd9e097befa978eb61da9c358915",
+          "bytes": 1490
+        },
+        {
+          "path": "references/flask.md",
+          "sha256": "980cda78a11cfac82e2f686420eb8d81fe06d82efc83172e68851d083b734e61",
+          "bytes": 6582
+        },
+        {
+          "path": "references/flutter.md",
+          "sha256": "757add53bc88325161c8f420330968992fd38d2dfedd1a15156e742a0000ed96",
+          "bytes": 6338
+        },
+        {
+          "path": "references/go.md",
+          "sha256": "aa96909cb9d38eb2962527cdd4b0378256f2632fb44747f4a333fdf43c121c4b",
+          "bytes": 5478
+        },
+        {
+          "path": "references/ios.md",
+          "sha256": "57fb36771367333d1ba91beddfbaa614a0f47d2923fd45e320755df963c7379b",
+          "bytes": 3616
+        },
+        {
+          "path": "references/java.md",
+          "sha256": "62c90930e929be3610842f7b0fd805f5c1b52fb1ad1e565c9d20e1994200d138",
+          "bytes": 2442
+        },
+        {
+          "path": "references/laravel.md",
+          "sha256": "6b3e749a4a20d0515f68a16f46fffe3660f9d0a1e2aab54ab1431b6b68b552c6",
+          "bytes": 5267
+        },
+        {
+          "path": "references/next-js.md",
+          "sha256": "c968f686d087baa067ce3c16587019296ed4606cc5bacec575f3de152d0013b9",
+          "bytes": 17098
+        },
+        {
+          "path": "references/nodejs.md",
+          "sha256": "71385ad8e33bea63c1d2b330a1bf1fa9737f7ad0726123f6d46b084903b4d5a6",
+          "bytes": 5476
+        },
+        {
+          "path": "references/php.md",
+          "sha256": "0f3dacb632330a8c669fe212ab728e4fc34b27107e960d26290f38d8ebc9bc81",
+          "bytes": 4725
+        },
+        {
+          "path": "references/python.md",
+          "sha256": "f41b743cbb49516efc7e853efda414f46463b8d431f1b6a563f9c268eb4ba3ce",
+          "bytes": 5198
+        },
+        {
+          "path": "references/react-native.md",
+          "sha256": "f570a4738594fa1a7fbe0e481fe7eded2c9424c57a944b9eebe498623833703b",
+          "bytes": 4485
+        },
+        {
+          "path": "references/react.md",
+          "sha256": "d438440f39b2a499ea143d8c40b8c35df54fa39ce3fee6e3f0b241667aaf0073",
+          "bytes": 8446
+        },
+        {
+          "path": "references/ruby-on-rails.md",
+          "sha256": "2f3f8b831749127c9848e03b65e769e906d12c13a478d2afbf641765cffdffbe",
+          "bytes": 17949
+        },
+        {
+          "path": "references/ruby.md",
+          "sha256": "d7b8362a70081706c2c9c5d30752a025e5bb05dee9205749756016073e4ca70a",
+          "bytes": 5050
+        },
+        {
+          "path": "references/rust.md",
+          "sha256": "eb65df6e4b1bccf820ba6a586e3dc6809ad2ef6d060b368f1094c311827b50ac",
+          "bytes": 7669
+        },
+        {
+          "path": "references/usage.md",
+          "sha256": "ba64324617e119aaa943cc0c2525a11b29d6d042af502913b2987dcf037bfd18",
+          "bytes": 26934
+        },
+        {
+          "path": "references/web.md",
+          "sha256": "1150b31fcaf98a749318a1373a6b124a9d634d92564d79bb064d1ddb168bf69f",
+          "bytes": 6984
+        }
+      ]
+    },
+    {
+      "short_name": "instrument-llm-analytics",
+      "skill_name": "instrument-llm-analytics",
+      "description": "PostHog AI observability guidance.",
+      "when_use": "Review model spans, token and cost capture, latency, and safe trace properties.",
+      "license": "MIT",
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "posthog",
+        "plugin_version": "1.0.63",
+        "plugin_repository": "https://github.com/PostHog/ai-plugin",
+        "plugin_license": "MIT",
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/posthog/posthog/1.0.63/skills/instrument-llm-analytics"
+      },
+      "tree_sha256": "38c581a6390f079970712e78dda8f6923ef4e4536c74cf004d6a17104fe965a5",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "b5da68f1a867b4e8994fcc6ff43160a42cba7586acc206ac14132c4f4c335d36",
+          "bytes": 7442
+        },
+        {
+          "path": "references/COMMANDMENTS.md",
+          "sha256": "f59329546452388aa880db136faee21ac6384194da2e77eaa889d41d553b7cd4",
+          "bytes": 650
+        },
+        {
+          "path": "references/README.md",
+          "sha256": "44077ff3df4db9cce3e29901e29a7f2b573da23a69a7f9b6f2f04ba852775b09",
+          "bytes": 543
+        },
+        {
+          "path": "references/anthropic.md",
+          "sha256": "6d56a23e61e00c37ed98b0653de637d85e48700510e38b8bce3467936f831f9b",
+          "bytes": 7602
+        },
+        {
+          "path": "references/autogen.md",
+          "sha256": "5e131a40113c4d09bfd5b1993ed525541041089596b815613b2e34d5723f8b0a",
+          "bytes": 8001
+        },
+        {
+          "path": "references/azure-openai.md",
+          "sha256": "8962a8544f5281d8177c1f05ed921d6681d9015e7e543b37d70a5fddd0776772",
+          "bytes": 10203
+        },
+        {
+          "path": "references/basics.md",
+          "sha256": "a512726e502081543a42c3f8a60fbe90dfe1dca4566caa40033e6ece14b63653",
+          "bytes": 4386
+        },
+        {
+          "path": "references/calculating-costs.md",
+          "sha256": "554c5bb07cd21c40aaa685aed66e71a2e81c5ca6eb9c0e46d794b33328be3a07",
+          "bytes": 8633
+        },
+        {
+          "path": "references/cerebras.md",
+          "sha256": "83b29595f0d684e1404bf59b1124648728d0abbb114bb3b149149c89e7754db4",
+          "bytes": 7765
+        },
+        {
+          "path": "references/cohere.md",
+          "sha256": "3066b34c56d725b1ff58170c9456d1d9420dd6ef6a42ba5c659947bbbd7aa8e2",
+          "bytes": 7777
+        },
+        {
+          "path": "references/crewai.md",
+          "sha256": "6f7658a4b87f39937ea558dcc10abf6187c5172d4f0e106bb84c3128e6129c1a",
+          "bytes": 6757
+        },
+        {
+          "path": "references/deepseek.md",
+          "sha256": "7073adb11a92f6997b7821316f15dbcaa15242631b0a1fcb56f69bb38b284763",
+          "bytes": 7761
+        },
+        {
+          "path": "references/dspy.md",
+          "sha256": "b8117192c24a6aabf8337fd3b84b1c7b2e7e71e36992007a68c7104fc5892c05",
+          "bytes": 6785
+        },
+        {
+          "path": "references/fireworks-ai.md",
+          "sha256": "fa322d28cd3293d75c7f301906507fd9b8978aa38458691272f133d6b7902801",
+          "bytes": 7890
+        },
+        {
+          "path": "references/google.md",
+          "sha256": "a8685d2b8ae700aa841313e4686ceaa09e51a1d6d8df970c5cc8fe01fda003e0",
+          "bytes": 8093
+        },
+        {
+          "path": "references/groq.md",
+          "sha256": "97ceb7d9279c864b2538b6bfa7421825ee46de2b3f8b07f605dee5534a5b2379",
+          "bytes": 7753
+        },
+        {
+          "path": "references/helicone.md",
+          "sha256": "6de8b3dfb5effde153ddf65e52991ea014ebb6a05c42dd12278492c3f2e3b3da",
+          "bytes": 7769
+        },
+        {
+          "path": "references/hugging-face.md",
+          "sha256": "a0e318a9dbb944eee97bc40265ca0a62071ed821679421923954ff483be0ebc3",
+          "bytes": 7857
+        },
+        {
+          "path": "references/instructor.md",
+          "sha256": "ea58a1dade75a1af742a21c7abf248f720fc9d1812f86a8cedf5f69193d0b483",
+          "bytes": 10863
+        },
+        {
+          "path": "references/langchain.md",
+          "sha256": "30632ac0614f6b9985bfff6d544bdc7b46cb75471710bc11bf48a3570ed29fe7",
+          "bytes": 8081
+        },
+        {
+          "path": "references/langgraph.md",
+          "sha256": "01413d7d86b0da6f31fc9f89b677e14260e5a5e4ec03257a540d83648e75618d",
+          "bytes": 7922
+        },
+        {
+          "path": "references/litellm.md",
+          "sha256": "d77aaa1a393617785a9449ed16c04dd9d5da3b4d2abb412cacc14c36a93ab2ec",
+          "bytes": 8892
+        },
+        {
+          "path": "references/llamaindex.md",
+          "sha256": "c3a8c267f8ce9e657ba122a6fe436a8a6b18ae8a1bd32ec476dee94ad8c98544",
+          "bytes": 8400
+        },
+        {
+          "path": "references/manual-capture.md",
+          "sha256": "ac0638347dc357e09eb0dc76b2c7b4db89df20323a738d936214ff2ed7c4c4b5",
+          "bytes": 23422
+        },
+        {
+          "path": "references/mastra.md",
+          "sha256": "a6fa2e84bd9def00497c410b5f2b7dad340769c4ae9421e2161829275c57efa4",
+          "bytes": 6192
+        },
+        {
+          "path": "references/mirascope.md",
+          "sha256": "ce41f3f09e14308243a06f985da538e2eb24ed759dc0b63ec30e28713684c095",
+          "bytes": 8327
+        },
+        {
+          "path": "references/mistral.md",
+          "sha256": "9cee7ee206ce349c0a4b74a767d59466004854adbac71439942f9c5673d3e650",
+          "bytes": 7767
+        },
+        {
+          "path": "references/ollama.md",
+          "sha256": "612c580f758d997e088dd12593d02909fdc9bb6ce0bfb9a541a86bbebb7fc081",
+          "bytes": 7713
+        },
+        {
+          "path": "references/openai-agents.md",
+          "sha256": "2f9b4fdfd32c24ebbd6477abec522ab0a25d430dc4442907c1e2f3464be0f2d5",
+          "bytes": 7568
+        },
+        {
+          "path": "references/openai.md",
+          "sha256": "3272ef05d0bceed871288bf8274830da09f08efcaf483be77c062b3d70477168",
+          "bytes": 9727
+        },
+        {
+          "path": "references/openrouter.md",
+          "sha256": "295a54cc66f70d01b69ba81c363b564613054066c4e5218b736be7a5ea7ec066",
+          "bytes": 7783
+        },
+        {
+          "path": "references/perplexity.md",
+          "sha256": "8c90a7bf27ea050907a360cdac9e2b421d7582f2d97ead6683b6ab761996149e",
+          "bytes": 7767
+        },
+        {
+          "path": "references/portkey.md",
+          "sha256": "67cf425f593211b3b6d5eb53b67f5b903ca47ee5614c24b5b5e9540aa0b5b1fa",
+          "bytes": 7725
+        },
+        {
+          "path": "references/pydantic-ai.md",
+          "sha256": "9db4f9a426ad6990346629ac8c8aaa6182b9ad75a979c914f12bd99b65197da1",
+          "bytes": 7735
+        },
+        {
+          "path": "references/semantic-kernel.md",
+          "sha256": "2096604ffba044df219c8fd12fdff01fbf1346472735704279516c4887ef4948",
+          "bytes": 8015
+        },
+        {
+          "path": "references/smolagents.md",
+          "sha256": "9a48bceac0b86a8794eb898288b403380bea69d0818a5c6e194021ce948e049d",
+          "bytes": 7752
+        },
+        {
+          "path": "references/together-ai.md",
+          "sha256": "d2f7ee34b91abab46db577b1f3c43f1596963f77cc997ea2ec90149d8ed601e7",
+          "bytes": 7840
+        },
+        {
+          "path": "references/traces.md",
+          "sha256": "d1a7ad926a2841a9e92831da84d21b77ccd38bb5ebf775310b0faf8575ed869b",
+          "bytes": 7761
+        },
+        {
+          "path": "references/vercel-ai.md",
+          "sha256": "830c712b298e97d4c35d8fa7ecae43ca413e88d756da7ce618b5c4a2b20977fe",
+          "bytes": 9554
+        },
+        {
+          "path": "references/xai.md",
+          "sha256": "220cc0ce5a726e51e9d95f6ec97bfbe30f59bc522d1c7b3ef65f1ccdc59782dd",
+          "bytes": 7684
+        }
+      ]
+    },
+    {
+      "short_name": "stripe-best-practices",
+      "skill_name": "stripe-best-practices",
+      "description": "Stripe integration and subscription guidance.",
+      "when_use": "Review checkout, subscriptions, webhooks, idempotency, and key handling.",
+      "license": null,
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "stripe",
+        "plugin_version": "8.0.0",
+        "plugin_repository": null,
+        "plugin_license": null,
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/stripe/8.0.0/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/stripe/8.0.0/skills/stripe-best-practices"
+      },
+      "tree_sha256": "c0ebc519346a215d8d051459b6ba9c45e0a84f5d97c494e766a5a8965a7832ca",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "55c73cae0acb93e77df4e6d4027a4955620c6f41a2f2434352af33be648fa49b",
+          "bytes": 6742
+        },
+        {
+          "path": "references/billing.md",
+          "sha256": "953ecf521449f558b7a0e9bb67c295745783b6d51d3e7be0924499cba5d0b354",
+          "bytes": 8654
+        },
+        {
+          "path": "references/connect.md",
+          "sha256": "5da76cb728ab738f52b0838d5e5d4143a3aa91d73d842f69153e2a1f0ca9471f",
+          "bytes": 11016
+        },
+        {
+          "path": "references/payments.md",
+          "sha256": "215410bac69138d36415421f19fcbb4f434195d0f87d34181c51ac5588bb30f3",
+          "bytes": 8979
+        },
+        {
+          "path": "references/security.md",
+          "sha256": "9d2b1f3a6e72d5907e0418291523c61aa27bb7ad2db3a7b94fe4f356519651d7",
+          "bytes": 10047
+        },
+        {
+          "path": "references/tax.md",
+          "sha256": "8e065f5b841b1f910d83f92409895d7903c209d001389449effa996576c35bad",
+          "bytes": 22656
+        },
+        {
+          "path": "references/treasury.md",
+          "sha256": "ccd38ef29a654b2c59bde4d56e5537af6a89f10a7297ed0b87c3b9e9f2bb8ffa",
+          "bytes": 793
+        }
+      ]
+    },
+    {
+      "short_name": "stripe-docs",
+      "skill_name": "stripe-docs",
+      "description": "Stripe documentation lookup guidance.",
+      "when_use": "Review Stripe API assumptions against shipped guidance and official public docs.",
+      "license": null,
+      "source": {
+        "type": "codex_plugin_skill",
+        "plugin_name": "stripe",
+        "plugin_version": "8.0.0",
+        "plugin_repository": null,
+        "plugin_license": null,
+        "plugin_manifest": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/stripe/8.0.0/.codex-plugin/plugin.json",
+        "source_path": "/Users/farzanm4/.codex/plugins/cache/openai-curated-remote/stripe/8.0.0/skills/stripe-docs"
+      },
+      "tree_sha256": "375d24ff8d90257c4ce33ce89455ad83a16c77a89cf9e917c4b539d9fb2eb2bc",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "af38e784edcdb2f1b273825705c749c1fb3a2614a25875d0705abde02eaa603f",
+          "bytes": 1356
+        }
+      ]
+    },
+    {
+      "short_name": "react-bits-pro",
+      "skill_name": "react-bits-pro",
+      "description": "Licensed React Bits Pro catalog, source integration, entitlement and harmonization guidance.",
+      "when_use": "Review React Bits Pro component or block choices and supplied source. Reviewers inspect files only; installation instructions do not grant install or MCP access.",
+      "license": "Proprietary; vendor setup skill metadata",
+      "source": {
+        "type": "directory",
+        "repository": "https://pro.reactbits.dev",
+        "source_path": "/Users/farzanm4/.agents/skills/react-bits-pro"
+      },
+      "tree_sha256": "32327ec83dbe2af10aa0ffbb9c5176f10fdbd5ee7b61d779440f1a3de79973fc",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "547c3ef28f10c8c06ecd3d5a1816ddc63bbd96159763e97cc40e670ae08d64c7",
+          "bytes": 92018
+        }
+      ]
+    }
+  ]
+}
