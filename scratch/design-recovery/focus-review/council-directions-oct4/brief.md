@@ -1,5 +1,8 @@
 # Council brief: two to three complete directions for the One app, from the host's diagnosis (October 4, 2026, 21:35). Astra and Grok. Under 1100 words each. Read-only.
 
+TIME BUDGET: you have 12 minutes in total. Open at most 6 pictures (the One: feed-open, p13-onboarding-done, p13-settings, p13-login; the originals: deck-feed, window-feed), then write. Deliver what you have by minute 12; a complete answer on time beats a perfect one late.
+
+
 The owner despises pass 13 and does not want to relitigate page by page. He asked for "two to three candidate directions... be imaginative in my boundaries". The host's diagnosis, which he accepted with "Yes, please send it to council", frames this round. Answer the diagnosis, not his sentences one by one.
 
 ## The diagnosis (host, accepted by the owner)
