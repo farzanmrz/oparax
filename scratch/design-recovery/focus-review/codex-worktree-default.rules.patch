@@ -1,0 +1,30 @@
+diff --git a/.codex/rules/default.rules b/.codex/rules/default.rules
+index 62cf9a7e..8dddb631 100644
+--- a/.codex/rules/default.rules
++++ b/.codex/rules/default.rules
+@@ -1,23 +1,5 @@
+-# Project execpolicy for Oparax (owner, September 28: restrict at the project level, not globally).
+-# Codex applies the most restrictive matching decision, so these `forbidden` rules override the
+-# owner's user-level `allow` rules for any Codex run inside this repository, including automated
+-# builds. A build commits on its branch and never pushes, merges, switches branches, deletes
+-# branches, closes issues or deletes files broadly; the flow's scripts and the owner do those.
+-prefix_rule(pattern=["git", "push"], decision="forbidden",
+-            justification="Pushes are the owner's or the flow's, never a build's.",
+-            match=["git push origin main", "git push origin beta", "git push --force origin ft/1"])
+-prefix_rule(pattern=["git", "branch", "-D"], decision="forbidden",
+-            justification="No stage deletes a branch.")
+-prefix_rule(pattern=["git", "branch", "-d"], decision="forbidden",
+-            justification="No stage deletes a branch.")
+-prefix_rule(pattern=["git", "checkout", "main"], decision="forbidden",
+-            justification="A build stays on its own branch.")
+-prefix_rule(pattern=["git", "switch"], decision="forbidden",
+-            justification="A build stays on its own branch.")
+-prefix_rule(pattern=["git", "merge"], decision="forbidden",
+-            justification="Merges are the flow's, never a build's.")
+-prefix_rule(pattern=["git", "reset", "--hard"], decision="forbidden",
+-            justification="A build never discards work.")
++# Owner, September 30, 2026: Git execution is globally approved in ~/.codex/rules/default.rules.
++# Keep only non-Git command restrictions here. Workflow instructions still define each stage.
+ prefix_rule(pattern=["gh", "issue", "close"], decision="forbidden",
+             justification="Issues close at ship, on the owner's word.")
+ prefix_rule(pattern=["gh", "pr"], decision="forbidden",
