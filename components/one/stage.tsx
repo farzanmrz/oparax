@@ -1,7 +1,3 @@
-import Link from "next/link";
-import { OparaxMark } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { landingContent } from "@/lib/landing/content";
 import { cn } from "@/lib/utils";
 
 // The One page ground (preview v2/deck/chrome.tsx Stage and lift): the quiet page with soft light from the top,
@@ -36,21 +32,5 @@ export function Stage({
       />
       {children}
     </div>
-  );
-}
-
-/** The brand row for pages outside the One shell: the mark and name home, the theme at the right. */
-export function BrandRow() {
-  return (
-    <header className="relative z-10 flex items-center px-4 pt-4">
-      <Link
-        href="/"
-        className="flex items-center gap-2 rounded-md text-[17px] font-semibold tracking-tight text-t1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      >
-        <OparaxMark className="size-[22px]" />
-        {landingContent.brand}
-      </Link>
-      <ThemeToggle className="ml-auto size-8 text-t3 desk:size-8" />
-    </header>
   );
 }

@@ -13,6 +13,7 @@ export const monitorContent = {
     settings: "Settings",
     account: "Account",
     theme: "Theme",
+    appearance: "Appearance",
     light: "Light",
     dark: "Dark",
     daysLeft: (n: number) => (n === 1 ? "day left" : "days left"),
@@ -175,9 +176,9 @@ export const monitorContent = {
     },
   ],
   notifications: {
-    title: "Notifications",
     xdm: "X DMs",
     xdmLine: (handle: string) => `Oparax messages @${handle} on X when a story matters.`,
+    message: "Message @oparax_ai",
     commands:
       'Commands, sent to @oparax_ai on X: STOP pauses alerts, RESUME turns them back on, and "Start alerts" connects them again after a stop.',
   },

@@ -50,13 +50,7 @@ export function OneHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-[var(--page)]/80 backdrop-blur-md">
       <div className="one-column flex h-14 items-center gap-8">
-        <Link
-          href={feed}
-          className="flex shrink-0 items-center gap-2 rounded-sm text-[17px] font-semibold tracking-tight text-t1 focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <OparaxMark className="size-[22px]" />
-          {landingContent.brand}
-        </Link>
+        <Brand href={feed} />
         <nav aria-label={copy.pages} className="flex h-full items-stretch gap-6">
           {nav.map(({ href, label, on }) => (
             <Link
@@ -80,6 +74,36 @@ export function OneHeader({
         </nav>
         <div className="ml-auto flex items-center">
           <Account label={label} plan={plan} />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Brand({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex shrink-0 items-center gap-2 rounded-sm text-[17px] font-semibold tracking-tight text-t1 focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      <OparaxMark className="size-[22px]" />
+      {landingContent.brand}
+    </Link>
+  );
+}
+
+/** The same header line outside the app (log in, sign up, password pages): the mark and name home, and the labelled
+ * Appearance switch, since there is no account. */
+export function BrandHeader() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-[var(--page)]/80 backdrop-blur-md">
+      <div className="one-column flex h-14 items-center gap-8">
+        <Brand href="/" />
+        <div className="ml-auto flex items-center gap-3">
+          <span aria-hidden="true" className="text-[12.5px] text-t3">
+            {copy.appearance}
+          </span>
+          <ThemeSwitch className="w-[168px]" />
         </div>
       </div>
     </header>
@@ -183,7 +207,7 @@ function Plan({ plan }: { plan: ShellPlan }) {
 }
 
 /** Light and Dark as a labelled two-way switch (the Clustered and Direct switch's skin), native radios inside. */
-function ThemeSwitch({ className }: { className?: string }) {
+export function ThemeSwitch({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -226,14 +250,17 @@ function ThemeSwitch({ className }: { className?: string }) {
 }
 
 /** Sign out as a bordered action. */
-function SignOut() {
+export function SignOut({ className = "w-full" }: { className?: string }) {
   const { status, signOut } = useSignOut();
   return (
     <button
       type="button"
       onClick={signOut}
       disabled={status === "pending"}
-      className="inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1 shadow-[var(--top-light)] transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-70"
+      className={cn(
+        "inline-flex h-8 items-center justify-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1 shadow-[var(--top-light)] transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-70",
+        className,
+      )}
     >
       <LogOut className="size-3.5 text-t3" aria-hidden="true" />
       <span role={status === "error" ? "alert" : undefined}>

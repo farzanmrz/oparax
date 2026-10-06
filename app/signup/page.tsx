@@ -23,7 +23,7 @@ export default async function SignupPage({
   return (
     <>
       <PostHogUserContext id={null} email={undefined} />
-      <AuthStage>
+      <AuthStage fan>
         <OneAuthCard initial="signup" next={safeAuthDestination(next) ?? undefined} error={error} />
       </AuthStage>
     </>

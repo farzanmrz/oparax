@@ -2,15 +2,18 @@
 
 // The One log in and sign up card (design preview v2/one/login.tsx) on the existing auth actions: email and password
 // first, blue Log in, "New to Oparax? Sign up" swapping Confirm password in place, then neutral X and Google. The
-// card is the only lifted surface on a lit page.
+// card is lifted highest on a lit page.
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ProviderButtons } from "@/components/auth/provider-buttons";
-import { BrandRow, liftHigh, primaryButton, Stage } from "@/components/one/stage";
+import { OneCard } from "@/components/one/card";
+import { BrandHeader } from "@/components/one/header";
+import { liftHigh, primaryButton, Stage } from "@/components/one/stage";
 import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, emailSigninLink, loginAction, signupAction } from "@/lib/auth/actions";
 import { authContent as copy } from "@/lib/auth/content";
+import { authFan } from "@/lib/auth-fan";
 import { cn } from "@/lib/utils";
 
 type Mode = "login" | "signup";
@@ -22,8 +25,12 @@ export const link =
   "text-t1 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring rounded-sm";
 export const primary = `${primaryButton} w-full`;
 
-/** The lit page with the brand row on top and one lifted card in the middle. */
-export function AuthStage({ children }: { children: React.ReactNode }) {
+/**
+ * The lit page under the One header line (the mark, and the Appearance switch) with the lifted card. With `fan`, the
+ * card sits at the left of Deck's composition and three sample story cards fan out at its right (lib/auth-fan.ts);
+ * without it, the card stands alone in the middle.
+ */
+export function AuthStage({ children, fan = false }: { children: React.ReactNode; fan?: boolean }) {
   return (
     <Stage light={760}>
       <a
@@ -32,17 +39,50 @@ export function AuthStage({ children }: { children: React.ReactNode }) {
       >
         {copy.skipToContent}
       </a>
-      <BrandRow />
+      <BrandHeader />
       <main
         id="auth-content"
         tabIndex={-1}
-        className="relative grid flex-1 place-items-center px-4 py-10"
+        className="one-column relative flex flex-1 items-center py-10"
       >
-        <section className={cn(liftHigh, "relative z-10 w-full max-w-[420px] p-7")}>
-          {children}
-        </section>
+        <div
+          className={cn(
+            "mx-auto grid w-full justify-items-center",
+            fan &&
+              "max-w-[1228px] min-[1240px]:grid-cols-[420px_minmax(0,1fr)] min-[1240px]:items-center",
+          )}
+        >
+          <section className={cn(liftHigh, "relative z-20 w-full max-w-[420px] p-7")}>
+            {children}
+          </section>
+          {fan ? <Fan /> : null}
+        </div>
       </main>
     </Stage>
+  );
+}
+
+/**
+ * Deck's fan: two compact cards tilted behind a readable front card, a step back from the form (the card shadow, no
+ * scrim). It starts 112px right of the form; the tilted middle card's upper left corner reaches about 8px further
+ * left, so more than 80px of ground stays clear between the form and the nearest card.
+ */
+function Fan() {
+  return (
+    <section
+      className="relative hidden h-[680px] w-full min-[1240px]:block"
+      aria-label={authFan.label}
+    >
+      <div className="absolute -top-6 left-[292px] w-[400px] rotate-[3deg]">
+        <OneCard story={authFan.back} compact />
+      </div>
+      <div className="absolute top-0 left-[112px] w-[400px] -rotate-[3.5deg]">
+        <OneCard story={authFan.middle} compact />
+      </div>
+      <div className="absolute top-24 left-[256px] w-[440px]">
+        <OneCard story={authFan.front} />
+      </div>
+    </section>
   );
 }
 

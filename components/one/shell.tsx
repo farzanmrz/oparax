@@ -26,7 +26,8 @@ export type ShellMonitor = Pick<
 
 const tierNames = new Map<string, string>(Object.entries(settingsContent.billing.tiers));
 
-function planOf(monitor: ShellMonitor): ShellPlan | null {
+/** The plan as the header and settings show it; null before the free week starts. */
+export function planOf(monitor: ShellMonitor): ShellPlan | null {
   const free = monitor.tier === "free";
   // The free week starts when the build succeeds; until then there is no plan to show and no countdown.
   if (free && !monitor.trial_started_at) return null;

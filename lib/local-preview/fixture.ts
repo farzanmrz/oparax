@@ -280,37 +280,42 @@ export function previewMonitor(now = Date.now()) {
   } satisfies SettingsMonitor & { handle: string; display_handle: string };
 }
 
+const firstSentence = (text: string) => text.split(/(?<=\.)\s/)[0] ?? text;
+
+/** The example agent's settings: rows of the shared table, a few of each kind, two accounts watched. */
 export const previewSettings: SettingsData = {
-  sources: [
-    {
-      id: "langchain-product-and-engineering-blog",
-      name: "LangChain",
-      focus: "Product and engineering blog",
-      noFilter: false,
-    },
-    {
-      id: "sarthak-rastogi-ai-agent-engineering",
-      name: "Sarthak Rastogi",
-      focus: "AI agent engineering",
-      noFilter: false,
-    },
-  ],
-  accounts: [
-    {
-      handle: "cursor_ai",
-      name: "Cursor",
-      watched: true,
-      posts_per_day: 3.4,
-      counts_checked_at: "2026-09-28T06:00:00+00:00",
-    },
-    {
-      handle: "example_review",
-      name: "Example Reviewer",
-      watched: false,
-      posts_per_day: 1.2,
-      counts_checked_at: "2026-09-28T06:00:00+00:00",
-    },
-  ],
+  profile: {
+    name: person.name,
+    bio: "Building review tools for agent teams.",
+    image: null,
+    site: null,
+  },
+  sources: (["rss", "website"] as const).flatMap((kind) =>
+    seedTable
+      .filter((row) => row.kind === kind)
+      .slice(0, kind === "rss" ? 6 : 3)
+      .map((row, i) => ({
+        id: row.id,
+        kind,
+        name: row.name,
+        host: new URL(row.target).hostname.replace(/^www\./, ""),
+        focus: row.focus,
+        why: firstSentence(row.description),
+        noFilter: false,
+        note: kind === "rss" && i === 5 ? "Could not read its last 3 items." : null,
+      })),
+  ),
+  accounts: seedTable
+    .filter((row) => row.kind === "x_account")
+    .slice(0, 7)
+    .map((row, i) => ({
+      handle: row.target.split("/").pop() ?? row.id,
+      name: row.name,
+      why: firstSentence(row.description),
+      watched: i < 3,
+      posts_per_day: i < 5 ? [3.4, 1.2, 6.8, 0.6, 2.1][i] : null,
+      counts_checked_at: i < 5 ? "2026-09-28T06:00:00+00:00" : null,
+    })),
   repos: [{ repo: "example/review-tool", threshold: 50, stars: 820 }],
   failedDeliveries: 0,
 };

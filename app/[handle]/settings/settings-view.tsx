@@ -1,107 +1,81 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { column, OneShell, type ShellMonitor } from "@/components/one/shell";
-import { AccountPicker, type EditableAccount } from "@/components/settings/account-picker";
-import { AlertSettings } from "@/components/settings/alert-settings";
-import { BillingCard } from "@/components/settings/billing-card";
-import { DigestSwitches, type FollowedRepo } from "@/components/settings/digest-switches";
-import { type EditableSource, SourceEditor } from "@/components/settings/source-editor";
+import { column, OneShell, planOf, type ShellMonitor } from "@/components/one/shell";
+import { AccountBlock } from "@/components/settings/account-block";
+import {
+  type FollowedRepo,
+  type SettingsAccount,
+  type SettingsSource,
+  SourcesPanel,
+} from "@/components/settings/sources-panel";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Profile } from "@/lib/monitor/read";
 import { monitorState } from "@/lib/monitor-state";
 import { settingsContent as copy } from "@/lib/settings/content";
 import type { Tables } from "@/lib/supabase/database.types";
-import { cn } from "@/lib/utils";
 
-export type SettingsMonitor = Pick<
-  Tables<"monitors">,
-  | "id"
-  | "status"
-  | "trial_started_at"
-  | "paid_through"
-  | "tier"
-  | "pool_limit"
-  | "pool_used"
-  | "cadence"
-  | "budget_exhausted_at"
-  | "alert_hour"
-  | "alert_timezone"
-  | "bot_state"
-  | "digest_github"
-  | "digest_product_hunt"
-  | "stripe_customer_id"
->;
+export type SettingsMonitor = ShellMonitor &
+  Pick<
+    Tables<"monitors">,
+    | "id"
+    | "display_handle"
+    | "alert_hour"
+    | "alert_timezone"
+    | "bot_state"
+    | "digest_github"
+    | "digest_product_hunt"
+    | "stripe_customer_id"
+  >;
 /** Each list is null when its read failed. */
 export type SettingsData = {
-  sources: EditableSource[] | null;
-  accounts: EditableAccount[] | null;
+  profile: Profile | null;
+  sources: SettingsSource[] | null;
+  accounts: SettingsAccount[] | null;
   repos: FollowedRepo[] | null;
   failedDeliveries: number | null;
 };
 
-/** The settings page frame: the One shell for the owner, the public site header otherwise. */
-export function SettingsFrame({
-  children,
-  owner,
-}: {
-  children: ReactNode;
-  owner?: { email: string | null; monitor: ShellMonitor };
-}) {
-  const skip = { href: "#settings", label: copy.skip };
-  const body = (
-    <main
-      id="settings"
-      tabIndex={-1}
-      className={cn(
-        "flex-1 scroll-mt-20 space-y-6",
-        owner ? `${column} relative pt-7 pb-24` : "mx-auto w-[min(90%,1800px)] py-8",
-      )}
-    >
-      <h1 className="font-heading text-3xl font-normal">{copy.title}</h1>
-      {children}
-    </main>
+const skip = { href: "#settings", label: copy.skip };
+
+function Title() {
+  return (
+    <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">
+      {copy.title}
+    </h1>
   );
-  if (owner)
-    return (
-      <OneShell email={owner.email} monitor={owner.monitor} skip={skip}>
-        {body}
-      </OneShell>
-    );
+}
+
+/** Someone signed in to another account: the public header and the one line that says so. */
+export function SettingsElsewhere({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
-      <a
-        href={skip.href}
-        className="sr-only z-50 rounded-md bg-background p-3 focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {skip.label}
-      </a>
       <SiteHeader signedIn />
-      {body}
+      <main id="settings" className="mx-auto w-[min(90%,1800px)] flex-1 space-y-6 py-8">
+        <Title />
+        {children}
+      </main>
       <SiteFooter />
     </div>
   );
 }
 
-function LoadError() {
-  return (
-    <Alert variant="destructive">
-      <AlertDescription>{copy.loadError}</AlertDescription>
-    </Alert>
-  );
-}
-
-/** The owner's settings tabs over data the page has already read. */
+/**
+ * The owner's one Settings page (design preview v2/one/settings.tsx) inside the One shell: the sources as the main
+ * body and, at the right, the account block (the person, the plan, alerts, digests, X DMs, Sign out).
+ */
 export function SettingsView({
   handle,
+  email,
   monitor,
   data,
+  notice,
 }: {
   handle: string;
+  email: string | null;
   monitor: SettingsMonitor;
   data: SettingsData;
+  /** Shown above the page line; the development preview's banner. */
+  notice?: ReactNode;
 }) {
   const state = monitorState(monitor);
   const readOnly = state.state !== "paid";
@@ -110,88 +84,51 @@ export function SettingsView({
     monitor.alert_timezone && timezones.includes(monitor.alert_timezone)
       ? monitor.alert_timezone
       : "UTC";
+  const plan = planOf(monitor);
+  const subscribed = state.state === "paid" || state.state === "lapsed";
 
   return (
-    <>
-      <Button asChild variant="outline" className="min-h-11 desk:min-h-7">
-        <Link href={`/${handle}`}>{copy.back}</Link>
-      </Button>
-      {readOnly && (
-        <Alert>
-          <AlertDescription>{copy.errors.readOnly}</AlertDescription>
-        </Alert>
-      )}
-      <Tabs defaultValue={state.state === "lapsed" ? "billing" : "sources"} className="gap-4">
-        <div className="overflow-x-auto p-1">
-          <TabsList aria-label={copy.tabsLabel} className="min-h-12 desk:min-h-8">
-            {copy.tabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="min-h-11 px-3 desk:min-h-7">
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-        <TabsContent value="sources">
-          {data.sources ? (
-            <SourceEditor handle={handle} sources={data.sources} readOnly={readOnly} />
-          ) : (
-            <LoadError />
-          )}
-        </TabsContent>
-        <TabsContent value="accounts">
-          {data.accounts ? (
-            <AccountPicker
-              handle={handle}
-              accounts={data.accounts}
-              used={monitor.pool_used}
-              limit={monitor.pool_limit}
-              readOnly={readOnly}
-            />
-          ) : (
-            <LoadError />
-          )}
-        </TabsContent>
-        <TabsContent value="alerts">
-          {data.failedDeliveries === null && <LoadError />}
-          <AlertSettings
-            key={`${monitor.alert_hour}:${timezone}`}
+    <OneShell email={email} monitor={monitor} skip={skip}>
+      <main
+        id="settings"
+        tabIndex={-1}
+        className={`${column} relative flex-1 scroll-mt-20 pt-7 pb-24`}
+      >
+        {notice}
+        <Title />
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <SourcesPanel
             handle={handle}
-            hour={monitor.alert_hour}
-            timezone={timezone}
-            timezones={timezones}
-            cadence={state.cadence}
-            botState={monitor.bot_state}
-            failedDeliveries={data.failedDeliveries ?? 0}
             readOnly={readOnly}
+            sources={data.sources}
+            accounts={data.accounts}
+            repos={data.repos}
+            poolLeft={Math.max(0, monitor.pool_limit - monitor.pool_used)}
           />
-        </TabsContent>
-        <TabsContent value="digests">
-          {data.repos ? (
-            <DigestSwitches
-              handle={handle}
-              github={monitor.digest_github}
-              productHunt={monitor.digest_product_hunt}
-              repos={data.repos}
-              readOnly={readOnly}
-            />
-          ) : (
-            <LoadError />
-          )}
-        </TabsContent>
-        <TabsContent value="billing">
-          <BillingCard
+          <AccountBlock
             handle={handle}
             monitorId={monitor.id}
-            tier={monitor.tier}
-            paidThrough={monitor.paid_through}
-            lapsed={state.state === "lapsed"}
-            available={
-              (state.state === "paid" || state.state === "lapsed") &&
-              Boolean(monitor.stripe_customer_id)
+            displayHandle={monitor.display_handle}
+            email={email}
+            profile={data.profile}
+            plan={
+              plan && {
+                ...plan,
+                paidThrough: monitor.paid_through,
+                lapsed: state.state === "lapsed",
+                subscribed,
+                billing: subscribed && Boolean(monitor.stripe_customer_id),
+              }
             }
+            alerts={{ hour: monitor.alert_hour, timezone, timezones, cadence: state.cadence }}
+            digests={{ github: monitor.digest_github, productHunt: monitor.digest_product_hunt }}
+            botState={monitor.bot_state}
+            open={state.state === "trial" || state.state === "paid"}
+            failedDeliveries={data.failedDeliveries}
+            readOnly={readOnly}
           />
-        </TabsContent>
-      </Tabs>
-    </>
+        </div>
+      </main>
+    </OneShell>
   );
 }

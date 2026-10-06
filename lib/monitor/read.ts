@@ -60,6 +60,12 @@ export type DisplayStory = Pick<
 };
 export type DisplayItem = { item: PublicItem; card: VerifiedCard | null; score: number | null };
 
+/** The stored X profile, checked; null when it is missing or malformed. */
+export function profileOf(raw: unknown): Profile | null {
+  const profile = profileSchema.safeParse(raw).data;
+  return profile ? { ...profile, image: profile.image ?? null, site: profile.site ?? null } : null;
+}
+
 // Explicit columns keep payment identifiers, activation secrets and checkpoints off this surface.
 const monitorColumns =
   "id,handle,display_handle,beat,profile,brief,status,build_step,build_tries,build_finished_at,user_id,tier,trial_started_at,paid_through,pool_limit,pool_used,pool_period_start,cadence,subscription_status,budget_exhausted_at,bot_state,digest_github,digest_product_hunt";
@@ -76,12 +82,9 @@ export const readMonitor = cache(async (rawHandle: string) => {
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  const profile = profileSchema.safeParse(data.profile).data;
   return {
     ...data,
-    profile: profile
-      ? { ...profile, image: profile.image ?? null, site: profile.site ?? null }
-      : null,
+    profile: profileOf(data.profile),
     brief: briefSchema.safeParse(data.brief).data ?? null,
   };
 });

@@ -24,7 +24,7 @@ export default async function LoginPage({
   return (
     <>
       <PostHogUserContext id={null} email={undefined} />
-      <AuthStage>
+      <AuthStage fan>
         <OneAuthCard
           initial="login"
           next={safeAuthDestination(next) ?? undefined}

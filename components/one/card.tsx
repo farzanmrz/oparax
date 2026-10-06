@@ -18,7 +18,16 @@ function sourcesIn(story: FeedStory): FeedItem[] {
   return [...new Map(story.items.map((item) => [item.label, item])).values()];
 }
 
-export function OneCard({ story, className }: { story: FeedStory; className?: string }) {
+export function OneCard({
+  story,
+  compact = false,
+  className,
+}: {
+  story: FeedStory;
+  /** The headline without its facts, for the cards set back in the sign-in fan. */
+  compact?: boolean;
+  className?: string;
+}) {
   const sources = sourcesIn(story);
   const shown = sources.slice(0, MAX_MARKS);
   const extra = sources.length - shown.length;
@@ -109,7 +118,7 @@ export function OneCard({ story, className }: { story: FeedStory; className?: st
             story.headline
           )}
         </h3>
-        {story.facts.length ? (
+        {compact ? null : story.facts.length ? (
           <ul className="mt-2.5 space-y-2">
             {story.facts.map((fact) => (
               <li key={fact} className="flex gap-2.5 text-[13.5px] leading-[1.5]">
