@@ -1,34 +1,14 @@
 import { redirect } from "next/navigation";
 import { RefreshXIdentityButton } from "@/components/auth/refresh-x-identity";
-import { BrandRow, liftHigh, Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { readAuthContext } from "@/lib/auth/identity";
 import { signedInDestination } from "@/lib/auth/oauth";
 import { guards } from "@/lib/guards/guards";
 import { reportServerException } from "@/lib/observability/posthog-server";
 import { onboardingContent, setupErrorSchema } from "@/lib/onboarding/content";
-import { cn } from "@/lib/utils";
 import { SetupForm } from "./setup-form";
 import { SetupSample } from "./setup-sample";
-
-/** The One setup page: the title, then the form on its lifted card with the sample run beside it. */
-function SetupStage({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <Stage light={640}>
-      <BrandRow />
-      <main className="relative mx-auto w-full max-w-[1240px] px-4 pt-8 pb-16 desk:px-8">
-        <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">
-          {onboardingContent.title}
-        </h1>
-        <p className="mt-2.5 text-[14px] text-t2">{onboardingContent.subtitle}</p>
-        <div className="mt-6 grid items-start gap-8 desk:grid-cols-[minmax(0,540px)_minmax(0,1fr)]">
-          <div className={cn(liftHigh, "p-6")}>{children}</div>
-          {aside}
-        </div>
-      </main>
-    </Stage>
-  );
-}
+import { SetupStage } from "./setup-stage";
 
 export default async function OnboardingPage({
   searchParams,

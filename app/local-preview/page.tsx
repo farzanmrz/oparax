@@ -6,14 +6,9 @@ import { DigestBlock } from "@/components/monitor/digest-block";
 import { OneFeed } from "@/components/monitor/one-feed";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { Stage } from "@/components/one/stage";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  previewFeed,
-  previewHandle,
-  previewNotice,
-  previewTitle,
-} from "@/lib/local-preview/fixture";
+import { previewFeed, previewHandle, previewTitle } from "@/lib/local-preview/fixture";
 import { monitorContent } from "@/lib/monitor/content";
+import { PreviewNotice } from "./preview-notice";
 
 export const metadata: Metadata = {
   title: previewTitle,
@@ -46,9 +41,7 @@ export default async function LocalPreviewPage({
         tabIndex={-1}
         className="relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 wrap-anywhere desk:px-8"
       >
-        <Alert className="mb-6">
-          <AlertDescription>{previewNotice}</AlertDescription>
-        </Alert>
+        <PreviewNotice />
         <OneFeed
           feed={feed}
           handle={previewHandle}

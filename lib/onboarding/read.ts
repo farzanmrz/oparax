@@ -2,7 +2,7 @@ import "server-only";
 
 import seedTable from "@/docs/source-table-seed.json";
 import { createClient } from "@/lib/supabase/server";
-import { BuildStateSchema, type Post } from "./types";
+import { type BuildState, BuildStateSchema, type Post } from "./types";
 
 // The owner's view of an onboarding run: the saved build_state, read through the owner's own session (RLS), checked
 // with BuildStateSchema, and reduced to what the onboarding page shows. Scores, checkpoints and raw X payloads stay
@@ -77,9 +77,11 @@ export async function readOnboarding(monitorId: string): Promise<Onboarding | nu
   if (error) throw error;
   if (!data) return null;
   const parsed = BuildStateSchema.safeParse(data.build_state ?? {});
-  if (!parsed.success) return null;
-  const state = parsed.data;
+  return parsed.success ? toOnboarding(parsed.data) : null;
+}
 
+/** The page's view of a checked build_state (the development preview passes its fixture through here too). */
+export function toOnboarding(state: BuildState): Onboarding {
   const posts = (state.posts ?? []).flatMap((post) => toPost(post) ?? []);
   const quoting = (handle: string) =>
     posts.find((post) => post.quoted?.author.toLowerCase() === handle.toLowerCase()) ?? null;

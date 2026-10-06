@@ -60,6 +60,7 @@ export function OnboardingView({
   canRetry,
   failure,
   onboarding,
+  preview = false,
 }: {
   monitorId: string;
   handle: string;
@@ -71,13 +72,15 @@ export function OnboardingView({
   /** The failure line the page already shows: the step and the reason. */
   failure: string;
   onboarding: Onboarding;
+  /** The development preview freezes a run at a checkpoint, so its address is left as it is. */
+  preview?: boolean;
 }) {
   const router = useRouter();
   const building = !failed && !ready;
   // Mark the address while building so the refresh that lands after completion keeps this page in place.
   useEffect(() => {
-    if (building) router.replace(`/${handle}?built=1`, { scroll: false });
-  }, [building, handle, router]);
+    if (building && !preview) router.replace(`/${handle}?built=1`, { scroll: false });
+  }, [building, preview, handle, router]);
   const states = copy.steps.map((_, i): StepState => {
     const n = i + 1;
     if (ready || n < step) return "done";
