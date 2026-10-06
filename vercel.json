@@ -5,7 +5,8 @@
   "git": {
     "deploymentEnabled": {
       "**": false,
-      "main": true
+      "main": true,
+      "beta": true
     }
   },
   "headers": [
@@ -51,7 +52,10 @@
       "source": "/:path*"
     }
   ],
-  "regions": ["iad1", "sfo1"],
+  "regions": [
+    "iad1",
+    "sfo1"
+  ],
   "crons": [
     {
       "path": "/api/cron/collect",
