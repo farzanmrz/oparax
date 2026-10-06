@@ -430,10 +430,12 @@ export async function runOnboarding({
       ? state.profile
       : await lookupProfile(handle, monitorId, save, state);
   if (!profile) throw new Error(HANDLE_NOT_FOUND);
+  await report(1, `Found ${profile.name} on X`);
   const pin = profile.pinned;
   await report(2, `Reading @${handle}'s newest posts`);
   const posts = state.posts ?? (await readPosts(profile));
   if (!state.posts) await save({ posts });
+  await report(2, `Read ${posts.length} newest posts`);
   for (const post of posts) {
     S.posts.set(post.id, post);
     for (const id of [post.id, ...(post.edit_ids ?? []), ...(post.parts?.map((p) => p.id) ?? [])])
@@ -484,6 +486,11 @@ export async function runOnboarding({
     posts: own.map(jevPost),
     ...(pinnedApart ? { pinned_post: jevPost(pinnedApart) } : {}),
   };
+  const quotedCount = Object.keys(candidates).filter((id) => id.startsWith("q-")).length;
+  await report(
+    3,
+    `Gathered ${TABLE.length} from the source list, ${quotedCount} accounts you quoted`,
+  );
   await report(
     3,
     `Read ${posts.length} posts; Jev is scoring ${Object.keys(candidates).length} candidate sources`,
@@ -499,6 +506,7 @@ export async function runOnboarding({
       c.handle ? [[c.handle.toLowerCase(), scores[id]] as const] : [],
     ),
   );
+  await report(3, `Jev kept ${kept.length} of ${Object.keys(candidates).length} candidates`);
   await report(3, `Jev passed ${kept.length} candidates; choosing from them`);
 
   // Only the candidates that passed reach the model, the highest score first, after the person and their posts,
@@ -628,6 +636,8 @@ export async function runOnboarding({
       content: `${seen}\nThat was the one search. Give your final answer now, with search null.`,
     });
     answer = await ask();
+  } else if (!searched && accountsOf(answer.accounts).length >= ACCOUNTS) {
+    await report(3, "Enough accounts already fit");
   }
 
   for (const author of state.searchResult?.authors ?? []) {
@@ -658,6 +668,7 @@ export async function runOnboarding({
     accounts: accountsOf(answer.accounts),
     searched,
   };
+  await report(3, "Saving your agent");
   const costs = await ledgerRows({ monitorId });
   const costUsd = costs
     .filter((row) => row.service !== "reservation")

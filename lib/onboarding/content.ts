@@ -23,15 +23,9 @@ export const setupErrorSchema = z.enum([
 export type SetupErrorCode = z.infer<typeof setupErrorSchema>;
 
 export const onboardingContent = {
-  title: "Set Up Your Agent",
-  subtitle: "Your agent is built from these two things.",
-  verifiedBadge: "From your X sign-in",
-  sampleLabel: "Sample",
-  sampleTitle: "What one sentence became in a recorded run",
+  title: "Set up your agent",
+  verifiedBadge: "from your X sign-in",
   handleLabel: "X account",
-  handleHelpVerified: "Your agent is built around this X account.",
-  handleHelpTyped:
-    'The X account whose public posts describe what you follow. Typing a handle does not connect alerts or prove the account is yours; alerts connect when you send "Start alerts" to the Oparax bot from that account.',
   handlePlaceholder: "your_handle",
   handleRequired: "Enter the X handle to build around.",
   handleInvalid: "Use 1 to 15 letters, numbers or underscores, with an optional @ at the start.",

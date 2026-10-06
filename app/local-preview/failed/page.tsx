@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { OnboardingView } from "@/components/monitor/onboarding";
-import { OneShell } from "@/components/one/shell";
+import { OneRun } from "@/components/one/run";
+import { column, OneShell } from "@/components/one/shell";
+import { SourceTable } from "@/components/one/source-table";
 import {
+  previewBeat,
   previewBuildingMonitor,
   previewEmail,
   previewFailed,
   previewHandle,
-  previewMonitor,
   previewTitle,
 } from "@/lib/local-preview/fixture";
-import { monitorContent as copy } from "@/lib/monitor/content";
+import { readRun } from "@/lib/onboarding/phases";
 import { toOnboarding } from "@/lib/onboarding/read";
 import { PreviewNotice } from "../preview-notice";
 
@@ -22,21 +23,27 @@ export const metadata: Metadata = {
 // A run whose first try stopped, with its one retry left.
 export default function LocalPreviewFailedPage() {
   if (process.env.NODE_ENV !== "development") notFound();
-  const steps = copy.onboarding.steps;
+  const run = toOnboarding(previewFailed.state);
+  const monitor = previewBuildingMonitor("failed");
   return (
-    <OneShell email={previewEmail} monitor={previewBuildingMonitor("failed")}>
-      <main id="monitor-content" tabIndex={-1} className="wrap-anywhere">
-        <PreviewNotice className="mb-0 rounded-none border-x-0 border-t-0" />
-        <OnboardingView
-          monitorId={previewMonitor().id}
+    <OneShell email={previewEmail} monitor={monitor}>
+      <main
+        id="monitor-content"
+        tabIndex={-1}
+        className={`${column} relative flex-1 pt-7 pb-24 wrap-anywhere`}
+      >
+        <PreviewNotice />
+        <OneRun
+          monitorId={monitor.id}
           handle={previewHandle}
-          step={previewFailed.step}
-          log={previewFailed.log}
+          displayHandle={monitor.display_handle}
+          beat={previewBeat}
+          view={readRun(previewFailed.log, run, { failed: true, ready: false })}
+          run={run}
           failed
           ready={false}
           canRetry
-          failure={copy.buildFailed(steps[previewFailed.step - 1], copy.buildReason)}
-          onboarding={toOnboarding(previewFailed.state)}
+          table={<SourceTable />}
           preview
         />
       </main>

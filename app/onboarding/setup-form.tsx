@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import posthog from "posthog-js";
 import { type FormEvent, useRef, useState } from "react";
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { isReservedHandle, normalizeValidHandle } from "@/lib/x/handle";
 
 const field =
-  "w-full rounded-lg border border-line-strong bg-well text-t1 placeholder:text-t3 outline-none transition-shadow";
+  "rounded-lg border border-line-strong bg-well text-t1 transition-shadow focus-within:border-[var(--brand)] focus-within:shadow-[0_0_0_3px_var(--brand-soft)]";
 
 const buildResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), redirect: z.string().regex(/^\/[A-Za-z0-9_]{1,15}$/) }),
@@ -42,7 +42,7 @@ export function SetupForm({
   error?: SetupErrorCode;
 }) {
   const handleInput = useRef<HTMLInputElement>(null);
-  const beatInput = useRef<HTMLTextAreaElement>(null);
+  const beatInput = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
   const [handle, setHandle] = useState("");
   const [beat, setBeat] = useState("");
@@ -148,49 +148,48 @@ export function SetupForm({
       failure?.code === "profile_unavailable" ||
       failure?.code === "x_identity_invalid");
 
+  const message =
+    failure && failure.code !== "builds_unavailable" ? (
+      failure.code === "signed_out" ? (
+        <Link href="/login" className="underline underline-offset-4">
+          {onboardingContent.signedOut}
+        </Link>
+      ) : (
+        setupErrorMessage(failure.code, verifiedHandle !== null, normalizedHandle, failure.generic)
+      )
+    ) : null;
+
+  // The page line (design preview v2/one/onboarding.tsx SetupLine): the title, then the X handle, the one sentence
+  // with its counter inside, and the action on one line, no card. Errors sit under the line at its right.
   return (
-    <div className="flex flex-col gap-4">
-      {closed && (
-        <p
-          role="status"
-          className="rounded-lg border border-line bg-well px-3 py-2 text-[13px] leading-relaxed text-t1"
-        >
-          {onboardingContent.buildsUnavailable}
-        </p>
-      )}
-      <form action="/api/build" method="post" onSubmit={submit} aria-busy={pending}>
-        {verifiedHandle ? (
-          <div>
-            <p className="text-[13px] font-medium text-t2">{onboardingContent.handleLabel}</p>
-            <div className="mt-2 flex items-center gap-3 rounded-lg border border-line-strong bg-well px-3 py-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[14px] font-semibold text-white uppercase">
-                {verifiedHandle.slice(0, 1)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-t1">
-                @{verifiedHandle}
-              </span>
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--ok-soft)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--ok)]">
-                <BadgeCheck className="size-3.5" aria-hidden="true" />
-                {onboardingContent.verifiedBadge}
-              </span>
-            </div>
-            <p className="mt-2 text-[12.5px] leading-relaxed text-t3">
-              {onboardingContent.handleHelpVerified}
-            </p>
-          </div>
-        ) : (
-          <div>
-            <label htmlFor="handle" className="text-[13px] font-medium text-t2">
-              {onboardingContent.handleLabel}
-            </label>
-            <div
+    <>
+      <form
+        action="/api/build"
+        method="post"
+        onSubmit={submit}
+        aria-busy={pending}
+        aria-label={onboardingContent.title}
+        className="flex min-h-10 flex-wrap items-center gap-x-6 gap-y-3"
+      >
+        <h1 className="shrink-0 text-[28px] leading-none font-semibold tracking-[-0.025em] whitespace-nowrap text-t1">
+          {onboardingContent.title}
+        </h1>
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+          {verifiedHandle ? (
+            <span className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1 shadow-[var(--top-light)]">
+              <BrandIcon name="x" className="size-3 text-t1" />@{verifiedHandle}
+              <span className="sr-only">, {onboardingContent.verifiedBadge}</span>
+            </span>
+          ) : (
+            <label
               className={cn(
                 field,
-                "mt-2 flex h-11 items-center gap-2 px-3 focus-within:border-[var(--brand)] focus-within:shadow-[0_0_0_3px_var(--brand-soft)]",
+                "flex h-10 w-[220px] shrink-0 items-center gap-2 px-3",
                 handleInvalid && "border-[var(--error)]",
               )}
             >
-              <span aria-hidden="true" className="text-t3">
+              <span className="sr-only">{onboardingContent.handleLabel}</span>
+              <span aria-hidden="true" className="text-[14px] text-t3">
                 @
               </span>
               <input
@@ -199,101 +198,88 @@ export function SetupForm({
                 name="handle"
                 className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
                 autoComplete="off"
+                spellCheck={false}
                 placeholder={onboardingContent.handlePlaceholder}
                 value={handle}
-                onChange={(event) => setHandle(event.target.value)}
-                aria-describedby={handleInvalid ? "handle-help setup-error" : "handle-help"}
+                onChange={(event) => setHandle(event.target.value.replace(/^@/, ""))}
+                aria-describedby={handleInvalid ? "setup-error" : undefined}
                 aria-invalid={handleInvalid || undefined}
                 required
               />
-              <BrandIcon name="x" className="size-3.5 text-t3" />
-            </div>
-            <p id="handle-help" className="mt-2 text-[12.5px] leading-relaxed text-t3">
-              {onboardingContent.handleHelpTyped}
-            </p>
-          </div>
-        )}
-        <label htmlFor="beat" className="mt-6 block text-[13px] font-medium text-t2">
-          {onboardingContent.beatLabel}
-        </label>
-        <textarea
-          ref={beatInput}
-          id="beat"
-          name="beat"
-          rows={3}
-          className={cn(
-            field,
-            "mt-2 block resize-none px-3.5 py-3 text-[16px] leading-[1.5] focus-visible:border-[var(--brand)] focus-visible:shadow-[0_0_0_3px_var(--brand-soft)]",
-            beatInvalid && "border-[var(--error)]",
+              <BrandIcon name="x" className="size-3.5 shrink-0 text-t3" />
+            </label>
           )}
-          placeholder={onboardingContent.beatPlaceholder}
-          value={beat}
-          onChange={(event) => setBeat(event.target.value)}
-          aria-describedby={beatInvalid ? "beat-count setup-error" : "beat-count"}
-          aria-invalid={beatInvalid || undefined}
-          maxLength={300}
-          required
-        />
-        <p
-          id="beat-count"
-          aria-live="polite"
-          className="mt-2 text-right text-[12.5px] text-t3 tabular-nums"
-        >
-          {onboardingContent.beatCount(beat.length)}
-        </p>
-
-        {failure && failure.code !== "builds_unavailable" && (
-          <p
-            id="setup-error"
-            role="alert"
-            className="mt-3 text-[13px] leading-relaxed text-[var(--error)]"
-          >
-            {failure.code === "signed_out" ? (
-              <Link href="/login" className="underline underline-offset-4">
-                {onboardingContent.signedOut}
-              </Link>
-            ) : (
-              setupErrorMessage(
-                failure.code,
-                verifiedHandle !== null,
-                normalizedHandle,
-                failure.generic,
-              )
+          <label
+            className={cn(
+              field,
+              "flex h-10 min-w-0 flex-1 items-center gap-2 px-3",
+              beatInvalid && "border-[var(--error)]",
             )}
+          >
+            <span className="sr-only">{onboardingContent.beatLabel}</span>
+            <input
+              ref={beatInput}
+              id="beat"
+              name="beat"
+              className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
+              autoComplete="off"
+              placeholder={onboardingContent.beatPlaceholder}
+              value={beat}
+              onChange={(event) => setBeat(event.target.value)}
+              aria-describedby={beatInvalid ? "beat-count setup-error" : "beat-count"}
+              aria-invalid={beatInvalid || undefined}
+              maxLength={300}
+              required
+            />
+            <span id="beat-count" className="shrink-0 text-[11.5px] text-t3 tabular-nums">
+              {onboardingContent.beatCount(beat.length)}
+            </span>
+          </label>
+          <button
+            type="submit"
+            className={cn(primaryButton, "h-10 shrink-0 text-[13.5px]")}
+            disabled={pending || saved}
+          >
+            {pending ? (
+              <Spinner />
+            ) : closed ? null : (
+              <Sparkles className="size-3.5" aria-hidden="true" />
+            )}
+            {closed
+              ? pending
+                ? onboardingContent.saving
+                : onboardingContent.waitlist
+              : pending
+                ? onboardingContent.pending
+                : onboardingContent.submit}
+          </button>
+        </div>
+      </form>
+      <div className="mt-2 flex flex-col items-end gap-2 text-right text-[12.5px] leading-relaxed empty:hidden">
+        {closed ? (
+          <p role="status" className="text-t1">
+            {onboardingContent.buildsUnavailable}
           </p>
-        )}
-        {waitlistFailure && (
-          <p role="alert" className="mt-3 text-[13px] leading-relaxed text-[var(--error)]">
+        ) : null}
+        {message ? (
+          <p id="setup-error" role="alert" className="text-[var(--error)]">
+            {message}
+          </p>
+        ) : null}
+        {waitlistFailure ? (
+          <p role="alert" className="text-[var(--error)]">
             {waitlistFailure === "bot"
               ? onboardingContent.browserError
               : onboardingContent.waitlistFailed}
           </p>
-        )}
-        {saved && (
-          <p role="status" className="mt-3 text-[13px] text-t1">
+        ) : null}
+        {saved ? (
+          <p role="status" className="text-t1">
             {onboardingContent.saved}
           </p>
-        )}
-        <button
-          type="submit"
-          className={cn(primaryButton, "mt-6 h-11 w-full")}
-          disabled={pending || saved}
-        >
-          {pending ? (
-            <Spinner />
-          ) : closed ? null : (
-            <Sparkles className="size-4" aria-hidden="true" />
-          )}
-          {closed
-            ? pending
-              ? onboardingContent.saving
-              : onboardingContent.waitlist
-            : pending
-              ? onboardingContent.pending
-              : onboardingContent.submit}
-        </button>
-      </form>
-      {refreshX && <RefreshXIdentityButton />}
-    </div>
+        ) : null}
+        {refreshX ? <RefreshXIdentityButton /> : null}
+      </div>
+    </>
   );
 }

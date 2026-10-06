@@ -3,7 +3,7 @@
 // Identity marks from the One design (preview v2/deck/marks.tsx): a site's favicon from Google's favicon service
 // (DuckDuckGo second), an X account's avatar from unavatar, a glyph last. Real logos keep their own colors.
 
-import { Globe } from "lucide-react";
+import { Globe, Rss } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BrandIcon } from "@/components/brand-icon";
 import { cn } from "@/lib/utils";
@@ -136,4 +136,12 @@ export function SourceMark({
   if (kind === "x") return <XAvatar handle={mark} size={size} className={className} />;
   if (kind === "github") return <GitHubTile size={size} className={className} />;
   return <SiteIcon host={mark} size={size} className={cn("rounded-[5px]", className)} />;
+}
+
+/** A kind's glyph beside its group label: X, RSS, GitHub, or the globe for a website. */
+export function GroupGlyph({ kind, className }: { kind: string; className?: string }) {
+  if (kind === "x_account" || kind === "x") return <BrandIcon name="x" className={className} />;
+  if (kind === "rss") return <Rss className={className} strokeWidth={2} aria-hidden="true" />;
+  if (kind === "github") return <BrandIcon name="github" className={className} />;
+  return <Globe className={className} strokeWidth={2} aria-hidden="true" />;
 }

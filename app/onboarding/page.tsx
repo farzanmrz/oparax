@@ -7,7 +7,6 @@ import { guards } from "@/lib/guards/guards";
 import { reportServerException } from "@/lib/observability/posthog-server";
 import { onboardingContent, setupErrorSchema } from "@/lib/onboarding/content";
 import { SetupForm } from "./setup-form";
-import { SetupSample } from "./setup-sample";
 import { SetupStage } from "./setup-stage";
 
 export default async function OnboardingPage({
@@ -28,7 +27,10 @@ export default async function OnboardingPage({
       <>
         <PostHogUserContext id={user.id} email={user.email} />
         <SetupStage email={user.email ?? null}>
-          <div className="flex flex-col gap-4">
+          <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">
+            {onboardingContent.title}
+          </h1>
+          <div className="mt-4 flex flex-col items-start gap-3">
             <p role="alert" className="text-[13.5px] leading-relaxed text-[var(--error)]">
               {onboardingContent.xIdentityUnreadable}
             </p>
@@ -44,7 +46,7 @@ export default async function OnboardingPage({
   return (
     <>
       <PostHogUserContext id={user.id} email={user.email} />
-      <SetupStage email={user.email ?? null} aside={<SetupSample />}>
+      <SetupStage email={user.email ?? null}>
         <SetupForm
           verifiedHandle={xIdentity.status === "ok" ? xIdentity.displayHandle : null}
           buildsOpen={!guard.killSwitch && guard.buildsOpen}

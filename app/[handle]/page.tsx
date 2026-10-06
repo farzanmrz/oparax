@@ -5,12 +5,13 @@ import { z } from "zod";
 import { AgentHeader } from "@/components/monitor/agent-header";
 import { Building } from "@/components/monitor/building";
 import { DigestBlock } from "@/components/monitor/digest-block";
-import { OnboardingView } from "@/components/monitor/onboarding";
 import { OneFeed } from "@/components/monitor/one-feed";
 import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-building";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { StateBanner } from "@/components/monitor/state-banner";
+import { OneRun } from "@/components/one/run";
 import { column, OneShell } from "@/components/one/shell";
+import { SourceTable } from "@/components/one/source-table";
 import { Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
@@ -19,7 +20,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { monitorContent as copy } from "@/lib/monitor/content";
 import { readBuildLog, readFeed, readMonitor, readViewer } from "@/lib/monitor/read";
 import { monitorState } from "@/lib/monitor-state";
-import { readOnboarding } from "@/lib/onboarding/read";
+import { readRun } from "@/lib/onboarding/phases";
+import { emptyOnboarding, readOnboarding } from "@/lib/onboarding/read";
 
 type Props = {
   params: Promise<{ handle: string; story?: string }>;
@@ -67,25 +69,27 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   ]);
   if (story && !feed?.storyFound) notFound();
   if (onboarding) {
-    const steps = copy.onboarding.steps;
+    const shown = run ?? emptyOnboarding;
     return (
       <OneShell email={viewer.email} monitor={monitor}>
         <PostHogUserContext id={viewer.userId} />
         <RefreshWhileBuilding building={building} />
-        <main id="monitor-content" tabIndex={-1} className="wrap-anywhere">
-          <OnboardingView
+        <main
+          id="monitor-content"
+          tabIndex={-1}
+          className={`${column} relative flex-1 pt-7 pb-24 wrap-anywhere`}
+        >
+          <OneRun
             monitorId={monitor.id}
-            handle={monitor.display_handle}
-            step={monitor.build_step}
-            log={log}
+            handle={monitor.handle}
+            displayHandle={monitor.display_handle}
+            beat={monitor.beat}
+            view={readRun(log, shown, { failed, ready: justBuilt })}
+            run={shown}
             failed={failed}
             ready={justBuilt}
             canRetry={monitor.build_tries < 2}
-            failure={copy.buildFailed(
-              steps[Math.min(Math.max(monitor.build_step - 1, 0), steps.length - 1)],
-              copy.buildReason,
-            )}
-            onboarding={run ?? { profile: null, posts: [], sources: [], brief: null }}
+            table={<SourceTable />}
           />
         </main>
       </OneShell>
@@ -116,14 +120,11 @@ export default async function MonitorPage({ params, searchParams }: Props) {
               brief={monitor.brief}
             />
             <Building
-              monitorId={monitor.id}
               handle={monitor.display_handle}
               step={monitor.build_step}
               log={log}
               profile={monitor.profile}
               failed={failed}
-              canRetry={isOwner}
-              tries={monitor.build_tries}
             />
           </div>
         ) : feed ? (

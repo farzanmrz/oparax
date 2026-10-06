@@ -1,9 +1,6 @@
 "use client";
 
 import { useReducedMotion } from "motion/react";
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
-import { z } from "zod";
 import {
   ChainOfThought,
   ChainOfThoughtContent,
@@ -12,38 +9,22 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { ProfileAvatar } from "@/components/monitor/agent-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { monitorContent as copy } from "@/lib/monitor/content";
 import type { BuildLog, Profile } from "@/lib/monitor/read";
-import { isReservedHandle, normalizeValidHandle } from "@/lib/x/handle";
 
-const retryResult = z.object({ ok: z.literal(true), redirect: z.string() });
-
-function safeRetryDestination(raw: string): boolean {
-  if (raw === "/onboarding?error=build_unavailable") return true;
-  if (!raw.startsWith("/") || raw.slice(1).includes("/")) return false;
-  const handle = normalizeValidHandle(raw.slice(1));
-  return handle !== null && handle === raw.slice(1) && !isReservedHandle(handle);
-}
-
+// What a visitor sees while someone else's agent builds; the owner watches the One run (components/one/run.tsx).
 export function Building({
-  monitorId,
   handle,
   step,
   log,
   profile,
   failed,
-  canRetry,
-  tries,
 }: {
-  monitorId: string;
   handle: string;
   step: number;
   log: BuildLog;
   profile: Profile | null;
   failed: boolean;
-  canRetry: boolean;
-  tries: number;
 }) {
   const reducedMotion = useReducedMotion();
   const labels = copy.steps(handle);
@@ -82,74 +63,11 @@ export function Building({
       </ChainOfThought>
       {failed ? (
         <Alert variant="destructive">
-          <AlertDescription className="space-y-3 text-sm">
+          <AlertDescription className="text-sm">
             <p>{copy.buildFailed(labels[Math.min(Math.max(step - 1, 0), 2)], copy.buildReason)}</p>
-            {canRetry && tries < 2 ? (
-              <RetryBuild monitorId={monitorId} handle={handle}>
-                {(retrying) => (
-                  <Button disabled={retrying} className="min-h-11 desk:min-h-6">
-                    {copy.retry}
-                  </Button>
-                )}
-              </RetryBuild>
-            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}
     </section>
-  );
-}
-
-/** The existing retry: a POST to /api/build/retry (a plain form post without script), then a refresh in place. */
-export function RetryBuild({
-  monitorId,
-  handle,
-  children,
-}: {
-  monitorId: string;
-  handle: string;
-  children: (retrying: boolean) => React.ReactNode;
-}) {
-  const router = useRouter();
-  const [retrying, setRetrying] = useState(false);
-  const [error, setError] = useState(false);
-  async function retry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setRetrying(true);
-    setError(false);
-    try {
-      const response = await fetch("/api/build/retry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monitorId }),
-      });
-      if (!response.ok) {
-        setError(true);
-      } else {
-        const result = retryResult.safeParse(await response.json());
-        if (!result.success || !safeRetryDestination(result.data.redirect)) {
-          setError(true);
-        } else if (result.data.redirect === `/${handle}`) {
-          router.refresh();
-        } else {
-          router.push(result.data.redirect);
-        }
-      }
-    } catch {
-      setError(true);
-    } finally {
-      setRetrying(false);
-    }
-  }
-  return (
-    <form method="post" action="/api/build/retry" onSubmit={retry} className="grid gap-2">
-      <input type="hidden" name="monitorId" value={monitorId} />
-      {children(retrying)}
-      {error ? (
-        <p role="alert" className="text-[13px] text-[var(--error)]">
-          {copy.retryFailed}
-        </p>
-      ) : null}
-    </form>
   );
 }

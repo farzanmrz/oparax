@@ -1,4 +1,5 @@
 import type { SettingsData, SettingsMonitor } from "@/app/[handle]/settings/settings-view";
+import seedTable from "@/docs/source-table-seed.json";
 import type { BuildLog, MonitorFeed, PublicItem } from "@/lib/monitor/read";
 import type { BuildState, Post } from "@/lib/onboarding/types";
 
@@ -158,6 +159,9 @@ export function previewFeed(storyId?: string): MonitorFeed {
 const DAY = 86_400_000;
 const person = { id: "1890000000000000000", handle: "example_builder", name: "Example Builder" };
 
+/** The example person's one sentence. */
+export const previewBeat = "Tools that let teams review what AI agents change before it runs";
+
 /** The example person's sign-in address, shown in the shell's account. */
 export const previewEmail = "builder@example.com";
 
@@ -208,7 +212,7 @@ export const previewSettings: SettingsData = {
       counts_checked_at: "2026-09-28T06:00:00+00:00",
     },
     {
-      handle: "example_reviewer",
+      handle: "example_review",
       name: "Example Reviewer",
       watched: false,
       posts_per_day: 1.2,
@@ -251,7 +255,7 @@ const posts = [
     "Good thread on why diffs beat summaries when you review what a coding agent did.",
     {
       id: "1890000000000000020",
-      author: "@example_reviewer",
+      author: "@example_review",
       name: "Example Reviewer",
       bio: "Writes about reviewing software changes.",
       text: "A summary tells you what the agent meant to do. The diff tells you what it did.",
@@ -264,35 +268,10 @@ const posts = [
   ),
 ];
 
-const lookedUp = {
-  step: 1,
-  message: `Looking up @${person.handle} on X`,
-  at: "2026-09-28T18:00:01.000Z",
-};
-const reading = {
-  step: 2,
-  message: `Reading @${person.handle}'s newest posts`,
-  at: "2026-09-28T18:00:04.000Z",
-};
-const scoring = {
-  step: 3,
-  message: `Read ${posts.length} posts; Jev is scoring 151 candidate sources`,
-  at: "2026-09-28T18:00:09.000Z",
-};
-const passed = {
-  step: 3,
-  message: "Jev passed 4 candidates; choosing from them",
-  at: "2026-09-28T18:00:31.000Z",
-};
-const choosing = {
-  step: 3,
-  message: "Choosing recommendations and writing the brief",
-  at: "2026-09-28T18:00:32.000Z",
-};
-
 const profileState: BuildState = {
   profile: {
     ...person,
+    handle: `@${person.handle}`,
     bio: "Building review tools for agent teams.",
     pinned,
   },
@@ -301,13 +280,24 @@ const profileState: BuildState = {
   profileComplete: true,
 };
 const postsState: BuildState = { ...profileState, posts };
+// Example scores for every table row, spread so most rows fall below the possible line as in a real run; the rows
+// the example answer picks are set by hand below.
+const spread = (id: string) => {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return (h % 1000) / 1000;
+};
+const exampleScores = Object.fromEntries(
+  seedTable.map((row) => [row.id, Math.round(spread(row.id) ** 3 * 90) / 100]),
+);
 const scoredState: BuildState = {
   ...postsState,
   scores: {
+    ...exampleScores,
     "langchain-product-and-engineering-blog": 0.86,
     "sarthak-rastogi-ai-agent-engineering": 0.78,
     "x-cursor_ai": 0.81,
-    "q-example_reviewer": 0.74,
+    "q-example_review": 0.74,
     "google-ai-news-and-product-updates": 0.22,
   },
 };
@@ -326,7 +316,7 @@ const chosenState: BuildState = {
     ],
     accounts: [
       { handle: "cursor_ai", why: "Ships coding agent updates the posts discuss." },
-      { handle: "example_reviewer", why: "Quoted on reviewing what an agent changed." },
+      { handle: "example_review", why: "Quoted on reviewing what an agent changed." },
     ],
     search: null,
     brief: {
@@ -341,7 +331,31 @@ const chosenState: BuildState = {
   turns: 1,
 };
 
-export const previewCheckpoints = ["profile", "posts", "jev", "chosen", "done"] as const;
+// The log as the engine reports it (lib/onboarding/engine.ts), one line per report() call, in order.
+const scores = scoredState.scores ?? {};
+const kept = Object.values(scores).filter((score) => score >= 0.35).length;
+const total = Object.keys(scores).length;
+const at = (second: number) => `2026-09-28T18:00:${String(second).padStart(2, "0")}.000Z`;
+const line = (step: number, message: string, second: number) => ({ step, message, at: at(second) });
+const lookingUp = line(1, `Looking up @${person.handle} on X`, 1);
+const found = line(1, `Found ${person.name} on X`, 2);
+const reading = line(2, `Reading @${person.handle}'s newest posts`, 3);
+const read = line(2, `Read ${posts.length} newest posts`, 8);
+const gathered = line(
+  3,
+  `Gathered ${seedTable.length} from the source list, 1 accounts you quoted`,
+  8,
+);
+const scoring = line(3, `Read ${posts.length} posts; Jev is scoring ${total} candidate sources`, 9);
+const jevKept = line(3, `Jev kept ${kept} of ${total} candidates`, 31);
+const passed = line(3, `Jev passed ${kept} candidates; choosing from them`, 31);
+const choosing = line(3, "Choosing recommendations and writing the brief", 32);
+const saving = line(3, "Saving your agent", 52);
+const toPosts = [lookingUp, found, reading, read];
+const toScores = [...toPosts, gathered, scoring];
+const toAnswer = [...toScores, jevKept, passed, choosing];
+
+export const previewCheckpoints = ["profile", "posts", "scoring", "jev", "chosen", "done"] as const;
 export type PreviewCheckpoint = (typeof previewCheckpoints)[number];
 
 /** The run at one checkpoint: the engine's step, its saved state and the log so far. */
@@ -349,25 +363,16 @@ export const previewRun: Record<
   PreviewCheckpoint,
   { step: number; ready: boolean; state: BuildState; log: BuildLog }
 > = {
-  profile: { step: 1, ready: false, state: profileState, log: [lookedUp] },
-  posts: { step: 2, ready: false, state: postsState, log: [lookedUp, reading] },
-  jev: { step: 3, ready: false, state: scoredState, log: [lookedUp, reading, scoring, passed] },
-  chosen: {
-    step: 3,
-    ready: false,
-    state: chosenState,
-    log: [lookedUp, reading, scoring, passed, choosing],
-  },
-  done: {
-    step: 3,
-    ready: true,
-    state: chosenState,
-    log: [lookedUp, reading, scoring, passed, choosing],
-  },
+  profile: { step: 2, ready: false, state: profileState, log: [lookingUp, found, reading] },
+  posts: { step: 2, ready: false, state: postsState, log: toPosts },
+  scoring: { step: 3, ready: false, state: postsState, log: toScores },
+  jev: { step: 3, ready: false, state: scoredState, log: toAnswer },
+  chosen: { step: 3, ready: false, state: chosenState, log: [...toAnswer, saving] },
+  done: { step: 3, ready: true, state: chosenState, log: [...toAnswer, saving] },
 };
 
 /** The first try stopped while reading posts; one retry is left. */
-export const previewFailed = { step: 2, state: profileState, log: [lookedUp, reading] };
+export const previewFailed = { step: 2, state: profileState, log: [lookingUp, found, reading] };
 
 /** The monitor while its run is under way or stopped: the free week has not started and nothing is watched yet. */
 export function previewBuildingMonitor(status: "building" | "failed") {
