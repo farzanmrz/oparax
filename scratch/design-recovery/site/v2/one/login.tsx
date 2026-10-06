@@ -24,7 +24,10 @@ export function OneLogin({ initial = "login" }: { initial?: "login" | "signup" }
   return (
     <Stage light={760}>
       <OneHeader app={false} />
-      <main className={cn(column, "relative grid flex-1 items-center gap-0 py-10 lg:grid-cols-[420px_minmax(0,1fr)]")}>
+      {/* The composition (420px form plus the 808px fan) is centred inside the page column, so on a wide screen it
+          sits in the middle instead of at the column's left edge (owner, Oct 5: "the login has shifted to the left"). */}
+      <main className={cn(column, "relative flex flex-1 items-center py-10")}>
+        <div className="mx-auto grid w-full max-w-[1228px] items-center gap-0 lg:grid-cols-[420px_minmax(0,1fr)]">
         <section
           className={cn(lift, "relative z-20 p-7")}
           style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
@@ -66,6 +69,7 @@ export function OneLogin({ initial = "login" }: { initial?: "login" | "signup" }
           <div className="absolute top-24 left-[256px] w-[440px]">
             <OneCard story={front} image="hero" imageHeight={170} />
           </div>
+        </div>
         </div>
       </main>
     </Stage>
