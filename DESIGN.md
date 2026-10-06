@@ -51,6 +51,10 @@ Every screen lifts its main surface or surfaces off the page with these tokens, 
 - Two typefaces, as in the accepted feeds. Open Sans (weights 300 to 800) for headings, body and rows; headings 600 with tight tracking (-0.025em at 28px). The system monospace (Tailwind `font-mono`: SF Mono, Menlo) at 10 to 11px with wide tracking for small labels: the Newsroom column headers, the "LIVE" marker, the "FREE WEEK" badge, timestamps and version codes. Open Sans confirmed by the owner on October 2 ("Open Sans seems fine").
 - Sizes in the feeds: 28px page titles, 20 to 22px story titles, 12.5 to 13.5px body and rows, 11 to 11.5px labels.
 
+## Width
+
+- One centred column on every page, the header's content inside the same column. Side margin = clamp(48px, (viewport width − 1400px) / 4, 290px); the column is the viewport minus two margins (1344px at 1440, 1980px at 2560: half of the Deck page's margins on an ultra-wide screen). A page's composition is centred inside the column; nothing sits at the column's edge with empty ground beside it, and nothing is full-bleed. Owner, October 5, 2026 ("Yes" to this line).
+
 ## Light mode
 
 Designed in its own right: pale grey page, white panels, visibly darker borders (ink 10 to 16 percent) and shadows that read. Never an inverted or pale-washed dark mode.
