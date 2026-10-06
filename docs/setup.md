@@ -23,7 +23,7 @@ Seventeen environment variables, each one readable Config entry with Production,
 
 ## Supabase
 
-One shared project, ref `pcgvpypzfwuchyfwdlwe`, on a direct account (not through the Vercel marketplace), free plan. The `public` schema holds no application objects since #148; Supabase Auth and its users are untouched. Login providers: Email, Google, and X / Twitter (OAuth 2.0); the deprecated Twitter provider stays off. Site URL `https://oparax.ai`; allowed return URLs `http://localhost:3000/**` and `https://oparax.ai/**`. Nonce checks stay on for Google, and both providers require an email.
+One shared project, ref `pcgvpypzfwuchyfwdlwe`, on a direct account (not through the Vercel marketplace), free plan. The `public` schema holds no application objects since #148; Supabase Auth and its users are untouched. Login providers: Email, Google, and X / Twitter (OAuth 2.0); the deprecated Twitter provider stays off. Site URL `https://oparax.ai`; allowed return URLs `http://localhost:3000/**`, `http://127.0.0.1:3000/**`, `https://oparax.ai/**` and `https://beta.oparax.ai/**`. The Confirm sign up and Reset password email templates build their button link from `{{ .RedirectTo }}` (the address the requesting site sends), not `{{ .SiteURL }}`, so an email asked for on beta or localhost returns there (October 5, 2026). Nonce checks stay on for Google, and both providers require an email.
 
 ## Google sign-in
 
