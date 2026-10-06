@@ -1,6 +1,6 @@
 import type { SettingsData, SettingsMonitor } from "@/app/[handle]/settings/settings-view";
 import seedTable from "@/docs/source-table-seed.json";
-import type { BuildLog, MonitorFeed, PublicItem } from "@/lib/monitor/read";
+import type { BuildLog, MonitorFeed, MonitorSources, PublicItem } from "@/lib/monitor/read";
 import type { BuildState, Post } from "@/lib/onboarding/types";
 
 export const previewHandle = "local-preview";
@@ -59,56 +59,148 @@ const storyIds = {
   noCard: "55c2406d-d96e-40cd-a9d4-bd33f647d96a",
 } as const;
 
-const stories: MonitorFeed["stories"] = [
-  {
-    id: storyIds.written,
-    fallback_title: "A clearer way to review agent work",
-    last_changed_at: "2026-09-28T18:00:00+00:00",
+// More example stories so the level rows show cards of different heights and several sources each. Example data:
+// example.com addresses, no pictures (a picture needs a public https address).
+const exampleItem = (
+  n: number,
+  kind: "post" | "article",
+  publisher: string,
+  hour: number,
+): PublicItem => ({
+  id: `example-item-${n}`,
+  url: `https://example.com/${kind}s/${n}`,
+  title: `Example ${kind} ${n}`,
+  published_at: `2026-09-27T${String(hour).padStart(2, "0")}:00:00+00:00`,
+  kind,
+  lang: "en",
+  source_id: kind === "post" ? sourceIds.account : sourceIds.site,
+  author: kind === "post" ? { handle: `example_${n}`, name: publisher } : null,
+  publisher,
+});
+const exampleStory = (
+  n: number,
+  headline: string,
+  facts: string[],
+  items: PublicItem[],
+): MonitorFeed["stories"][number] => ({
+  id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+  fallback_title: headline,
+  last_changed_at: items[0].published_at,
+  image: null,
+  status: "written",
+  card: {
+    headline,
+    headline_from: "writer",
     image: null,
-    status: "written",
-    card: {
-      headline: "Teams gain a clearer review step for agent work",
-      headline_from: "writer",
-      image: null,
-      facts: [
-        {
-          text: "The new tool lets a team inspect proposed agent actions before they run.",
-          support: 0.94,
-          attribution: 0.97,
-          evidence: [{ item: reportIds.article, span: "inspect proposed changes before they run" }],
-        },
-        {
-          text: "Its release announcement also describes a shared review queue.",
-          support: 0.91,
-          attribution: 0.95,
-          evidence: [{ item: reportIds.post, span: "a shared review queue" }],
-        },
-      ],
-      publishers: [
-        {
-          source_id: sourceIds.site,
-          name: "Example Journal",
-          url: "https://example.com/articles/agent-review",
-        },
-        {
-          source_id: sourceIds.account,
-          name: "Example Builder",
-          url: "https://example.com/posts/tool-launch",
-        },
-      ],
-    },
-    reports: [reports.article, reports.post],
+    facts: facts.map((text) => ({ text, support: 0.9, attribution: 0.9, evidence: [] })),
+    publishers: [],
   },
-  {
-    id: storyIds.noCard,
-    fallback_title: "A workflow note on reviewing agent changes",
-    last_changed_at: "2026-09-27T15:00:00+00:00",
-    image: null,
-    status: "no_card",
-    card: null,
-    reports: [reports.later],
-  },
+  reports: items,
+});
+const moreStories = [
+  exampleStory(
+    1,
+    "A review queue now holds every proposed agent change until a person approves it",
+    [
+      "Each proposed change waits in one shared queue.",
+      "A reviewer sees the diff, the agent's stated reason and the files it touched.",
+      "Approvals and rejections are kept as a record the team can search later.",
+    ],
+    [
+      exampleItem(1, "article", "Example Journal", 17),
+      exampleItem(2, "post", "Example Builder", 16),
+      exampleItem(3, "article", "Example Weekly", 15),
+      exampleItem(4, "article", "Example Daily", 14),
+      exampleItem(5, "post", "Example Reviewer", 13),
+    ],
+  ),
+  exampleStory(
+    2,
+    "An agent framework adds a dry run mode",
+    ["A dry run lists what the agent would do without doing it."],
+    [exampleItem(6, "article", "Example Framework Blog", 12)],
+  ),
+  exampleStory(
+    3,
+    "Two coding agent makers publish how their approval steps work, and where they differ on what counts as a risky change",
+    [
+      "One asks for approval before any file outside the project is touched.",
+      "The other asks before any command that reaches the network.",
+      "Both log the approval next to the change itself.",
+      "Neither lets the agent approve its own change.",
+    ],
+    [exampleItem(7, "post", "Example Maker", 11), exampleItem(8, "article", "Example Journal", 10)],
+  ),
+  exampleStory(
+    4,
+    "A survey of teams running agents finds most review every change",
+    [
+      "Most of the teams asked review every agent change before it runs.",
+      "Smaller teams review fewer changes than larger ones.",
+    ],
+    [
+      exampleItem(9, "article", "Example Research", 9),
+      exampleItem(10, "post", "Example Analyst", 8),
+    ],
+  ),
 ];
+
+// Newest first, as the feed read orders them.
+const stories: MonitorFeed["stories"] = (
+  [
+    {
+      id: storyIds.written,
+      fallback_title: "A clearer way to review agent work",
+      last_changed_at: "2026-09-28T18:00:00+00:00",
+      image: null,
+      status: "written",
+      card: {
+        headline: "Teams gain a clearer review step for agent work",
+        headline_from: "writer",
+        image: null,
+        facts: [
+          {
+            text: "The new tool lets a team inspect proposed agent actions before they run.",
+            support: 0.94,
+            attribution: 0.97,
+            evidence: [
+              { item: reportIds.article, span: "inspect proposed changes before they run" },
+            ],
+          },
+          {
+            text: "Its release announcement also describes a shared review queue.",
+            support: 0.91,
+            attribution: 0.95,
+            evidence: [{ item: reportIds.post, span: "a shared review queue" }],
+          },
+        ],
+        publishers: [
+          {
+            source_id: sourceIds.site,
+            name: "Example Journal",
+            url: "https://example.com/articles/agent-review",
+          },
+          {
+            source_id: sourceIds.account,
+            name: "Example Builder",
+            url: "https://example.com/posts/tool-launch",
+          },
+        ],
+      },
+      reports: [reports.article, reports.post],
+    },
+    {
+      id: storyIds.noCard,
+      fallback_title: "A workflow note on reviewing agent changes",
+      last_changed_at: "2026-09-27T15:00:00+00:00",
+      image: null,
+      status: "no_card",
+      card: null,
+      reports: [reports.later],
+    },
+    ...moreStories,
+  ] satisfies MonitorFeed["stories"]
+).sort((a, b) => (a.last_changed_at < b.last_changed_at ? 1 : -1));
 
 const feed: MonitorFeed = {
   stories,
@@ -378,3 +470,34 @@ export const previewFailed = { step: 2, state: profileState, log: [lookingUp, fo
 export function previewBuildingMonitor(status: "building" | "failed") {
   return { ...previewMonitor(), status, trial_started_at: null, pool_used: 0 };
 }
+
+/** The example agent's sources for the feed's source list: rows of the shared table, a few of each kind. */
+export const previewSources: MonitorSources = {
+  accounts: seedTable
+    .filter((row) => row.kind === "x_account")
+    .slice(0, 5)
+    .map((row) => ({
+      handle: row.target.split("/").pop() ?? row.id,
+      name: row.name,
+      why: row.focus,
+      watched: false,
+    })),
+  sources: (["rss", "website"] as const).flatMap((kind) =>
+    seedTable
+      .filter((row) => row.kind === kind)
+      .slice(0, kind === "rss" ? 4 : 2)
+      .map((row) => ({
+        source_id: row.id,
+        why: row.focus,
+        sources: {
+          id: row.id,
+          name: row.name,
+          kind: row.kind,
+          focus: row.focus,
+          target: row.target,
+          unreadable_streak: 0,
+          paused_at: null,
+        },
+      })),
+  ),
+};

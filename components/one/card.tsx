@@ -2,27 +2,41 @@ import Link from "next/link";
 import { SourceMark } from "@/components/one/marks";
 import { lift } from "@/components/one/stage";
 import { monitorContent as copy } from "@/lib/monitor/content";
-import { type FeedStory, when } from "@/lib/monitor/present";
+import { type FeedItem, type FeedStory, when } from "@/lib/monitor/present";
 import { cn } from "@/lib/utils";
 
-// The One story card (design preview v2/one/card.tsx): the image on top, the sources named at the top (they are the
-// citations), the headline, then the facts with no publisher parentheses. No plates, no peek, no article count.
+// The One story card (design preview v2/one/card.tsx): the picture on top, 172px, when there is one; one
+// top row that never clips (the source marks, three then +N, ONE source name that truncates, and the time, which
+// never shrinks); the headline; every fact. An imageless card starts at its source row on the same surface, no wash.
 
-export function OneCard({ story }: { story: FeedStory }) {
-  const labels = [...new Map(story.items.map((item) => [item.label, item])).values()];
-  const lead = story.items[0]?.kind ?? "article";
+const MAX_MARKS = 3;
+/** The first mark sits on top of the next. */
+const stack = ["z-30", "z-20", "z-10"];
+
+/** One entry per distinct source in the story, in the story's own item order. */
+function sourcesIn(story: FeedStory): FeedItem[] {
+  return [...new Map(story.items.map((item) => [item.label, item])).values()];
+}
+
+export function OneCard({ story, className }: { story: FeedStory; className?: string }) {
+  const sources = sourcesIn(story);
+  const shown = sources.slice(0, MAX_MARKS);
+  const extra = sources.length - shown.length;
+  const lead = sources[0];
+  const size = story.image ? 18 : 20;
   return (
     <article
       id={story.id}
       aria-current={story.current ? "true" : undefined}
       className={cn(
         lift,
-        "relative scroll-mt-6 overflow-hidden",
+        "relative flex scroll-mt-6 flex-col overflow-hidden",
         story.current && "ring-2 ring-[var(--brand-line)]",
+        className,
       )}
     >
       {story.image ? (
-        <div className="relative h-[172px] overflow-hidden border-b border-line">
+        <div className="relative h-[172px] shrink-0 overflow-hidden border-b border-line">
           {/* biome-ignore lint/performance/noImgElement: Publisher images use the browser with no referrer. */}
           <img
             src={story.image}
@@ -38,52 +52,50 @@ export function OneCard({ story }: { story: FeedStory }) {
             className="absolute inset-0 bg-gradient-to-t from-[var(--window)]/55 via-transparent to-transparent"
           />
         </div>
-      ) : (
-        <span
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent",
-            lead === "post" ? "from-[var(--kind-post-soft)]" : "from-[var(--kind-article-soft)]",
-          )}
-        />
-      )}
-      <div className="relative p-4">
-        <div className="flex items-center gap-2">
+      ) : null}
+      <div className="relative flex-1 p-4">
+        <div className="flex min-w-0 items-center gap-2">
           <span className="flex shrink-0 items-center">
-            {labels.slice(0, 4).map((item, i) => (
+            {shown.map((item, i) => (
               <span
                 key={item.id}
+                title={item.label}
                 className={cn(
-                  "ring-2 ring-[var(--window)]",
+                  "relative ring-2 ring-[var(--window)]",
                   item.kind === "post" ? "rounded-full" : "rounded-[5px]",
-                  i > 0 && "-ml-1.5",
+                  stack[i],
+                  i > 0 && (story.image ? "-ml-[5px]" : "-ml-1.5"),
                 )}
               >
                 <SourceMark
                   kind={item.kind === "post" ? "x" : "site"}
                   mark={item.mark}
-                  size={story.image ? 18 : 22}
+                  size={size}
                 />
               </span>
             ))}
-          </span>
-          <span className="min-w-0 truncate text-[12.5px] font-medium text-t1">
-            {labels.map((item, i) => (
-              <span key={item.id}>
-                {i > 0 ? ", " : null}
-                {item.url ? (
-                  <a href={item.url} className="underline-offset-4 hover:underline">
-                    {item.label}
-                  </a>
-                ) : (
-                  item.label
-                )}
+            {extra > 0 ? (
+              <span className="ml-1.5 text-[11.5px] font-medium text-t3 tabular-nums">
+                +{extra}
               </span>
-            ))}
+            ) : null}
           </span>
+          {lead ? (
+            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-t1">
+              {lead.url ? (
+                <a href={lead.url} className="underline-offset-4 hover:underline">
+                  {lead.label}
+                </a>
+              ) : (
+                lead.label
+              )}
+            </span>
+          ) : (
+            <span className="flex-1" />
+          )}
           <time
             dateTime={story.time}
-            className="ml-auto shrink-0 text-[11.5px] text-t3 tabular-nums"
+            className="shrink-0 text-[11.5px] whitespace-nowrap text-t3 tabular-nums"
           >
             {when(story.time)}
           </time>

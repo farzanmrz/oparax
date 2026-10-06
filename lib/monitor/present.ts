@@ -81,18 +81,6 @@ export function toFeedArticle({ item, card }: DisplayItem): FeedStory {
   };
 }
 
-/** Newest first, each story into the shorter of three columns by estimated height (the Deck's layout). */
-export function toColumns(list: FeedStory[], n = 3): FeedStory[][] {
-  const cols: FeedStory[][] = Array.from({ length: n }, () => []);
-  const heights = Array.from({ length: n }, () => 0);
-  for (const story of list) {
-    const c = heights.indexOf(Math.min(...heights));
-    cols[c].push(story);
-    heights[c] += (story.image ? 172 : 0) + 128 + story.facts.length * 46 + 48;
-  }
-  return cols;
-}
-
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "Oct 1, 15:01" in UTC, with the year only outside the current one, so server and client agree. */

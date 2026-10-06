@@ -1,24 +1,25 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { AgentHeader } from "@/components/monitor/agent-header";
 import { Building } from "@/components/monitor/building";
 import { DigestBlock } from "@/components/monitor/digest-block";
 import { OneFeed } from "@/components/monitor/one-feed";
+import { overlayGroups } from "@/components/monitor/one-sources";
 import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-building";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { StateBanner } from "@/components/monitor/state-banner";
 import { OneRun } from "@/components/one/run";
 import { column, OneShell } from "@/components/one/shell";
 import { SourceTable } from "@/components/one/source-table";
+import { SourcesOverlay } from "@/components/one/sources-overlay";
 import { Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { monitorContent as copy } from "@/lib/monitor/content";
-import { readBuildLog, readFeed, readMonitor, readViewer } from "@/lib/monitor/read";
+import { readBuildLog, readFeed, readMonitor, readSources, readViewer } from "@/lib/monitor/read";
 import { monitorState } from "@/lib/monitor-state";
 import { readRun } from "@/lib/onboarding/phases";
 import { emptyOnboarding, readOnboarding } from "@/lib/onboarding/read";
@@ -60,12 +61,12 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   const justBuilt =
     !story && search.built === "1" && !building && !failed && monitor.build_finished_at !== null;
   const onboarding = isOwner && (building || failed || justBuilt);
-  const [feed, log, run] = await Promise.all([
-    !building && !failed && !onboarding
-      ? readFeed(monitor, { before, beforeId, view, storyId: story })
-      : null,
+  const ready = !building && !failed && !onboarding;
+  const [feed, log, run, sources] = await Promise.all([
+    ready ? readFeed(monitor, { before, beforeId, view, storyId: story }) : null,
     building || failed || onboarding ? readBuildLog(monitor.id) : [],
     onboarding ? readOnboarding(monitor.id) : null,
+    ready && isOwner ? readSources(monitor) : null,
   ]);
   if (story && !feed?.storyFound) notFound();
   if (onboarding) {
@@ -95,7 +96,6 @@ export default async function MonitorPage({ params, searchParams }: Props) {
       </OneShell>
     );
   }
-  const active = state.state === "trial" || state.state === "paid";
   const stopped =
     state.state === "frozen" || state.state === "lapsed" || state.state === "exhausted";
   const content = (
@@ -134,20 +134,10 @@ export default async function MonitorPage({ params, searchParams }: Props) {
               handle={monitor.handle}
               view={view}
               storyId={story}
-              title={isOwner ? copy.yourFeed : copy.title(monitor.display_handle)}
+              owner={isOwner}
+              title={copy.title(monitor.display_handle)}
               banner={
                 <>
-                  {isOwner && active && monitor.bot_state !== "active" ? (
-                    <p className="mt-3 text-[13px] text-t2">
-                      {copy.dmLine}{" "}
-                      <Link
-                        href={`/${monitor.handle}/notifications`}
-                        className="rounded-sm font-medium text-[var(--brand)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                      >
-                        {copy.dmLink}
-                      </Link>
-                    </p>
-                  ) : null}
                   {isOwner && search.error === "activation" ? (
                     <Alert variant="destructive" className="mt-4">
                       <AlertDescription>{copy.activationFailed}</AlertDescription>
@@ -169,6 +159,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
                 productHunt={monitor.digest_product_hunt}
               />
             </div>
+            {sources ? <SourcesOverlay groups={overlayGroups(sources)} /> : null}
           </>
         ) : null}
       </main>

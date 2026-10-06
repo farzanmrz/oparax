@@ -1,21 +1,24 @@
 import { Layers, Rows3 } from "lucide-react";
 import Link from "next/link";
-import { OneCard } from "@/components/monitor/one-card";
+import { OneCard } from "@/components/one/card";
 import { lift } from "@/components/one/stage";
 import { monitorContent as copy } from "@/lib/monitor/content";
-import { type FeedStory, toColumns, toFeedArticle, toFeedStory } from "@/lib/monitor/present";
+import { type FeedStory, toFeedArticle, toFeedStory } from "@/lib/monitor/present";
 import type { MonitorFeed } from "@/lib/monitor/read";
 import { cn } from "@/lib/utils";
 
-// The One feed (design preview v2/one/feed.tsx): the title with Clustered and Direct at the right, one line under it,
-// then the cards three across. Clustered is the stories, Direct the matching articles one card each (view=articles);
-// both page with the existing cursor.
+// The One feed (design preview v2/one/feed.tsx): the page line (the title and the Clustered and Direct switch), then
+// the cards in level rows read newest first across, left to right: three across at 1440, four at 2560. A row is as
+// tall as its tallest card and every card stretches to it. Clustered is the stories, Direct the matching articles
+// one card each (view=articles); both page with the existing cursor. The owner's page line is "Feed" alone; a
+// visitor's keeps the agent's title and the line under it.
 
 export function OneFeed({
   feed,
   handle,
   view,
   storyId,
+  owner,
   title,
   banner,
 }: {
@@ -23,8 +26,10 @@ export function OneFeed({
   handle: string;
   view?: string;
   storyId?: string;
+  owner: boolean;
+  /** The visitor's title. */
   title: string;
-  /** What sits under the title: the DM line, the plan states. */
+  /** What sits under the page line: the plan states. */
   banner?: React.ReactNode;
 }) {
   const direct = !storyId && view === "articles";
@@ -39,17 +44,14 @@ export function OneFeed({
   ];
   return (
     <section aria-labelledby="feed-title">
-      <header className="flex flex-wrap items-center gap-x-5 gap-y-3">
+      <header className="flex min-h-9 flex-wrap items-center gap-x-5 gap-y-3">
         <h1
           id="feed-title"
-          className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1"
+          className="shrink-0 text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1"
         >
-          {title}
+          {owner ? copy.feedTitle : title}
         </h1>
-        <nav
-          aria-label={copy.feed}
-          className="ml-auto flex rounded-lg border border-line bg-well p-0.5"
-        >
+        <nav aria-label={copy.feed} className="flex rounded-lg border border-line bg-well p-0.5">
           {tabs.map(({ on, href, label, icon: Icon }) => (
             <Link
               key={label}
@@ -66,9 +68,13 @@ export function OneFeed({
           ))}
         </nav>
       </header>
-      <p className="mt-3 text-[13.5px] text-t3">{direct ? copy.directLine : copy.clusteredLine}</p>
+      {owner ? null : (
+        <p className="mt-3 text-[13.5px] text-t3">
+          {direct ? copy.directLine : copy.clusteredLine}
+        </p>
+      )}
       {banner}
-      {feed.pending || feed.failed ? (
+      {!owner && (feed.pending || feed.failed) ? (
         <div role="status" className="mt-3 space-y-1 text-[12.5px] text-t3">
           {feed.pending ? <p>{copy.pendingItems(feed.pending)}</p> : null}
           {feed.failed ? <p>{copy.failedItems(feed.failed)}</p> : null}
@@ -76,15 +82,9 @@ export function OneFeed({
       ) : null}
       <h2 className="sr-only">{direct ? copy.articles : copy.stories}</h2>
       {list.length ? (
-        // Desktop only (owner): three columns; a narrow window stacks them.
-        <div className="mt-6 grid items-start gap-6 desk:grid-cols-3 desk:gap-5">
-          {toColumns(list).map((column, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: The three columns are fixed positions.
-            <div key={i} className="flex min-w-0 flex-col gap-6">
-              {column.map((story) => (
-                <OneCard key={story.id} story={story} />
-              ))}
-            </div>
+        <div className="mt-6 grid grid-cols-1 gap-6 min-[768px]:grid-cols-2 min-[1280px]:grid-cols-3 min-[2200px]:grid-cols-4">
+          {list.map((story) => (
+            <OneCard key={story.id} story={story} className="h-full min-w-0" />
           ))}
         </div>
       ) : feed.pending ? null : (

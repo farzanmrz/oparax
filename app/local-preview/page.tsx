@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DigestBlock } from "@/components/monitor/digest-block";
 import { OneFeed } from "@/components/monitor/one-feed";
+import { overlayGroups } from "@/components/monitor/one-sources";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { column, OneShell } from "@/components/one/shell";
+import { SourcesOverlay } from "@/components/one/sources-overlay";
 import {
   previewEmail,
   previewFeed,
   previewHandle,
   previewMonitor,
+  previewSources,
   previewTitle,
 } from "@/lib/local-preview/fixture";
 import { monitorContent } from "@/lib/monitor/content";
@@ -51,23 +53,14 @@ export default async function LocalPreviewPage({
           handle={previewHandle}
           view={view}
           storyId={story}
-          title={monitorContent.yourFeed}
-          banner={
-            <p className="mt-3 text-[13px] text-t2">
-              {monitorContent.dmLine}{" "}
-              <Link
-                href={`/${previewHandle}/notifications`}
-                className="font-medium text-[var(--brand)] underline-offset-4 hover:underline"
-              >
-                {monitorContent.dmLink}
-              </Link>
-            </p>
-          }
+          owner
+          title={monitorContent.title(previewHandle)}
         />
         <div className="mt-12 grid gap-8 desk:grid-cols-2">
           <SkippedList items={feed.skipped} />
           <DigestBlock items={feed.digests} github productHunt />
         </div>
+        <SourcesOverlay groups={overlayGroups(previewSources)} />
       </main>
     </OneShell>
   );
