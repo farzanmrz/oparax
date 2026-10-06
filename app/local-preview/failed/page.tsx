@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OnboardingView } from "@/components/monitor/onboarding";
+import { OneShell } from "@/components/one/shell";
 import {
+  previewBuildingMonitor,
+  previewEmail,
   previewFailed,
   previewHandle,
   previewMonitor,
@@ -21,20 +24,22 @@ export default function LocalPreviewFailedPage() {
   if (process.env.NODE_ENV !== "development") notFound();
   const steps = copy.onboarding.steps;
   return (
-    <main id="monitor-content" tabIndex={-1} className="wrap-anywhere">
-      <PreviewNotice className="mb-0 rounded-none border-x-0 border-t-0" />
-      <OnboardingView
-        monitorId={previewMonitor().id}
-        handle={previewHandle}
-        step={previewFailed.step}
-        log={previewFailed.log}
-        failed
-        ready={false}
-        canRetry
-        failure={copy.buildFailed(steps[previewFailed.step - 1], copy.buildReason)}
-        onboarding={toOnboarding(previewFailed.state)}
-        preview
-      />
-    </main>
+    <OneShell email={previewEmail} monitor={previewBuildingMonitor("failed")}>
+      <main id="monitor-content" tabIndex={-1} className="wrap-anywhere">
+        <PreviewNotice className="mb-0 rounded-none border-x-0 border-t-0" />
+        <OnboardingView
+          monitorId={previewMonitor().id}
+          handle={previewHandle}
+          step={previewFailed.step}
+          log={previewFailed.log}
+          failed
+          ready={false}
+          canRetry
+          failure={copy.buildFailed(steps[previewFailed.step - 1], copy.buildReason)}
+          onboarding={toOnboarding(previewFailed.state)}
+          preview
+        />
+      </main>
+    </OneShell>
   );
 }

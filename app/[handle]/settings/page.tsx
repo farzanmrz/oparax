@@ -67,7 +67,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ handl
   }
 
   return (
-    <SettingsFrame>
+    <SettingsFrame owner={{ email: owned.email, monitor }}>
       <SettingsView
         handle={handle}
         monitor={monitor}

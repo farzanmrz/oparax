@@ -266,3 +266,12 @@
     background-color: var(--muted-foreground);
   }
 }
+
+/* One centred column on every signed-in page, the header's content inside it (DESIGN.md Width). Side margin =
+ * clamp(48px, (viewport - 1400px) / 4, 290px): 48px at 1440 (a 1344px column), 290px at 2560 (a 1980px column). */
+@layer components {
+  .one-column {
+    width: 100%;
+    padding-inline: clamp(48px, calc((100vw - 1400px) / 4), 290px);
+  }
+}

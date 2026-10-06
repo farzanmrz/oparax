@@ -39,7 +39,7 @@ export function Stage({
   );
 }
 
-/** The brand row for pages without the bubble: the mark and name home, the theme at the right. */
+/** The brand row for pages outside the One shell: the mark and name home, the theme at the right. */
 export function BrandRow() {
   return (
     <header className="relative z-10 flex items-center px-4 pt-4">

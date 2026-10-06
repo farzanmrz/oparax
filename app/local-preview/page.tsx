@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Bubble } from "@/components/monitor/bubble";
 import { DigestBlock } from "@/components/monitor/digest-block";
 import { OneFeed } from "@/components/monitor/one-feed";
 import { SkippedList } from "@/components/monitor/skipped-list";
-import { Stage } from "@/components/one/stage";
-import { previewFeed, previewHandle, previewTitle } from "@/lib/local-preview/fixture";
+import { column, OneShell } from "@/components/one/shell";
+import {
+  previewEmail,
+  previewFeed,
+  previewHandle,
+  previewMonitor,
+  previewTitle,
+} from "@/lib/local-preview/fixture";
 import { monitorContent } from "@/lib/monitor/content";
 import { PreviewNotice } from "./preview-notice";
 
@@ -29,17 +34,16 @@ export default async function LocalPreviewPage({
   const view = typeof search.view === "string" ? search.view : undefined;
 
   return (
-    <Stage className="ph-no-autocapture">
-      <a
-        href="#monitor-content"
-        className="sr-only z-30 rounded-md bg-background p-3 text-primary focus:fixed focus:top-2 focus:left-4 focus:not-sr-only focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        {monitorContent.skipToNews}
-      </a>
+    <OneShell
+      email={previewEmail}
+      monitor={previewMonitor()}
+      skip={{ href: "#monitor-content", label: monitorContent.skipToNews }}
+      className="ph-no-autocapture"
+    >
       <main
         id="monitor-content"
         tabIndex={-1}
-        className="relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 wrap-anywhere desk:px-8"
+        className={`${column} relative flex-1 pt-7 pb-24 wrap-anywhere`}
       >
         <PreviewNotice />
         <OneFeed
@@ -65,7 +69,6 @@ export default async function LocalPreviewPage({
           <DigestBlock items={feed.digests} github productHunt />
         </div>
       </main>
-      <Bubble handle={previewHandle} displayHandle={previewHandle} />
-    </Stage>
+    </OneShell>
   );
 }

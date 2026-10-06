@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { BrandIcon } from "@/components/brand-icon";
-import { Bubble } from "@/components/monitor/bubble";
-import { lift, Stage } from "@/components/one/stage";
+import { column, OneShell } from "@/components/one/shell";
+import { lift } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { monitorContent } from "@/lib/monitor/content";
 import { readMonitor, readViewer } from "@/lib/monitor/read";
@@ -45,9 +45,9 @@ export default async function NotificationsPage({
           : monitorContent.botHelp(monitor.display_handle);
 
   return (
-    <Stage>
+    <OneShell email={viewer.email} monitor={monitor}>
       <PostHogUserContext id={viewer.userId} />
-      <main className="relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 desk:px-8">
+      <main className={`${column} relative flex-1 pt-7 pb-24`}>
         <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">
           {copy.title}
         </h1>
@@ -90,7 +90,6 @@ export default async function NotificationsPage({
           <p className="mt-2 text-[12.5px] leading-relaxed text-t3">{copy.commands}</p>
         </section>
       </main>
-      <Bubble handle={monitor.handle} displayHandle={monitor.display_handle} />
-    </Stage>
+    </OneShell>
   );
 }

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { SetupForm } from "@/app/onboarding/setup-form";
 import { SetupSample } from "@/app/onboarding/setup-sample";
 import { SetupStage } from "@/app/onboarding/setup-stage";
-import { previewTitle } from "@/lib/local-preview/fixture";
+import { previewEmail, previewTitle } from "@/lib/local-preview/fixture";
 import { PreviewNotice } from "../preview-notice";
 
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function LocalPreviewRestPage() {
   if (process.env.NODE_ENV !== "development") notFound();
   return (
-    <SetupStage aside={<SetupSample />}>
+    <SetupStage email={previewEmail} aside={<SetupSample />}>
       <PreviewNotice />
       <SetupForm verifiedHandle={null} buildsOpen error={undefined} />
     </SetupStage>

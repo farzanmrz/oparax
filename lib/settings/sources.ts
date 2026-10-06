@@ -38,7 +38,7 @@ export async function ownedMonitor(rawHandle: unknown) {
     .maybeSingle();
   if (error) throw error;
   if (!monitor) return { ok: false as const, error: errors.wrongAccount, reason: "wrongAccount" };
-  return { ok: true as const, monitor, userId: user.id };
+  return { ok: true as const, monitor, userId: user.id, email: user.email ?? null };
 }
 
 export async function changeSettings<T, R extends { ok: true } = { ok: true }>(
@@ -96,18 +96,16 @@ export async function addSourceForOwner(handle: unknown, url: unknown): Promise<
         .from("sources")
         .upsert({ id, ...source }, { onConflict: "id", ignoreDuplicates: true });
       if (sourceError) throw sourceError;
-      const { error } = await db
-        .from("monitor_sources")
-        .upsert(
-          {
-            monitor_id: monitor.id,
-            source_id: id,
-            added_by: "person",
-            removed_at: null,
-            prefilled_at: null,
-          },
-          { onConflict: "monitor_id,source_id" },
-        );
+      const { error } = await db.from("monitor_sources").upsert(
+        {
+          monitor_id: monitor.id,
+          source_id: id,
+          added_by: "person",
+          removed_at: null,
+          prefilled_at: null,
+        },
+        { onConflict: "monitor_id,source_id" },
+      );
       if (error) throw error;
       track("source_added", { monitor_id: monitor.id, source_id: id, kind: source.kind }, userId);
       return { ok: true };

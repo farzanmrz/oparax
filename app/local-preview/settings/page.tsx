@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SettingsFrame, SettingsView } from "@/app/[handle]/settings/settings-view";
 import {
+  previewEmail,
   previewHandle,
   previewMonitor,
   previewSettings,
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export default function LocalPreviewSettingsPage() {
   if (process.env.NODE_ENV !== "development") notFound();
   return (
-    <SettingsFrame>
+    <SettingsFrame owner={{ email: previewEmail, monitor: previewMonitor() }}>
       <PreviewNotice className="mb-0" />
       <SettingsView handle={previewHandle} monitor={previewMonitor()} data={previewSettings} />
     </SettingsFrame>

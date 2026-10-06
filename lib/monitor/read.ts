@@ -92,7 +92,7 @@ export const readViewer = cache(async () => {
   const {
     data: { user },
   } = await client.auth.getUser();
-  return { userId: user?.id ?? null, signedIn: !!user };
+  return { userId: user?.id ?? null, signedIn: !!user, email: user?.email ?? null };
 });
 
 function publicItem(

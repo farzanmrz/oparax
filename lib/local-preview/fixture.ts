@@ -158,6 +158,9 @@ export function previewFeed(storyId?: string): MonitorFeed {
 const DAY = 86_400_000;
 const person = { id: "1890000000000000000", handle: "example_builder", name: "Example Builder" };
 
+/** The example person's sign-in address, shown in the shell's account. */
+export const previewEmail = "builder@example.com";
+
 /** The example person's monitor: two days into the free week, with some of its watched X posts used. */
 export function previewMonitor(now = Date.now()) {
   return {
@@ -365,3 +368,8 @@ export const previewRun: Record<
 
 /** The first try stopped while reading posts; one retry is left. */
 export const previewFailed = { step: 2, state: profileState, log: [lookedUp, reading] };
+
+/** The monitor while its run is under way or stopped: the free week has not started and nothing is watched yet. */
+export function previewBuildingMonitor(status: "building" | "failed") {
+  return { ...previewMonitor(), status, trial_started_at: null, pool_used: 0 };
+}

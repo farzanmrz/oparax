@@ -20,11 +20,12 @@ export type MonitorState = {
   cadence: "daily" | "every_15m";
 };
 const DAY = 86_400_000;
+export const TRIAL_DAYS = 7;
 
 export function monitorState(m: StateInput, now = new Date()): MonitorState {
   const time = now.getTime();
   const trialEndsAt = m.trial_started_at
-    ? new Date(Date.parse(m.trial_started_at) + 7 * DAY)
+    ? new Date(Date.parse(m.trial_started_at) + TRIAL_DAYS * DAY)
     : null;
   let state: MonitorState["state"];
   if (m.status === "building") state = "building";

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { AgentHeader } from "@/components/monitor/agent-header";
-import { Bubble } from "@/components/monitor/bubble";
 import { Building } from "@/components/monitor/building";
 import { DigestBlock } from "@/components/monitor/digest-block";
 import { OnboardingView } from "@/components/monitor/onboarding";
@@ -11,6 +10,7 @@ import { OneFeed } from "@/components/monitor/one-feed";
 import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-building";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { StateBanner } from "@/components/monitor/state-banner";
+import { column, OneShell } from "@/components/one/shell";
 import { Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
@@ -69,7 +69,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   if (onboarding) {
     const steps = copy.onboarding.steps;
     return (
-      <>
+      <OneShell email={viewer.email} monitor={monitor}>
         <PostHogUserContext id={viewer.userId} />
         <RefreshWhileBuilding building={building} />
         <main id="monitor-content" tabIndex={-1} className="wrap-anywhere">
@@ -88,27 +88,23 @@ export default async function MonitorPage({ params, searchParams }: Props) {
             onboarding={run ?? { profile: null, posts: [], sources: [], brief: null }}
           />
         </main>
-        <Bubble handle={monitor.handle} displayHandle={monitor.display_handle} />
-      </>
+      </OneShell>
     );
   }
   const active = state.state === "trial" || state.state === "paid";
   const stopped =
     state.state === "frozen" || state.state === "lapsed" || state.state === "exhausted";
-  return (
-    <Stage>
-      <a
-        href="#monitor-content"
-        className="sr-only rounded-md focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus:z-50 focus:bg-background focus:p-3 focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {copy.skipToNews}
-      </a>
-      {isOwner ? null : <SiteHeader signedIn={viewer.signedIn} />}
+  const content = (
+    <>
       {isOwner ? <PostHogUserContext id={viewer.userId} /> : null}
       <main
         id="monitor-content"
         tabIndex={-1}
-        className="relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 wrap-anywhere desk:px-8"
+        className={
+          isOwner
+            ? `${column} relative flex-1 pt-7 pb-24 wrap-anywhere`
+            : "relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 wrap-anywhere desk:px-8"
+        }
       >
         <RefreshWhileBuilding building={building} />
         {building || failed ? (
@@ -175,11 +171,26 @@ export default async function MonitorPage({ params, searchParams }: Props) {
           </>
         ) : null}
       </main>
-      {isOwner ? (
-        <Bubble handle={monitor.handle} displayHandle={monitor.display_handle} />
-      ) : (
-        <SiteFooter />
-      )}
+    </>
+  );
+  const skip = { href: "#monitor-content", label: copy.skipToNews };
+  if (isOwner)
+    return (
+      <OneShell email={viewer.email} monitor={monitor} skip={skip}>
+        {content}
+      </OneShell>
+    );
+  return (
+    <Stage>
+      <a
+        href={skip.href}
+        className="sr-only rounded-md focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus:z-50 focus:bg-background focus:p-3 focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {skip.label}
+      </a>
+      <SiteHeader signedIn={viewer.signedIn} />
+      {content}
+      <SiteFooter />
     </Stage>
   );
 }

@@ -27,7 +27,7 @@ export default async function OnboardingPage({
     return (
       <>
         <PostHogUserContext id={user.id} email={user.email} />
-        <SetupStage>
+        <SetupStage email={user.email ?? null}>
           <div className="flex flex-col gap-4">
             <p role="alert" className="text-[13.5px] leading-relaxed text-[var(--error)]">
               {onboardingContent.xIdentityUnreadable}
@@ -44,7 +44,7 @@ export default async function OnboardingPage({
   return (
     <>
       <PostHogUserContext id={user.id} email={user.email} />
-      <SetupStage aside={<SetupSample />}>
+      <SetupStage email={user.email ?? null} aside={<SetupSample />}>
         <SetupForm
           verifiedHandle={xIdentity.status === "ok" ? xIdentity.displayHandle : null}
           buildsOpen={!guard.killSwitch && guard.buildsOpen}
