@@ -103,9 +103,13 @@ export async function signupAction(
   }
 
   const supabase = await createClient();
+  // The confirmation link returns to the origin the person signed up from (localhost in a local walk, oparax.ai in
+  // production); without this Supabase sends it to the project's Site URL (owner's walk, October 5).
+  const emailRedirectTo = new URL("/auth/confirm", await getSiteOrigin()).toString();
   const { data, error } = await supabase.auth.signUp({
     email: validated.email,
     password: validated.password,
+    options: { emailRedirectTo },
   });
 
   if (error) {
