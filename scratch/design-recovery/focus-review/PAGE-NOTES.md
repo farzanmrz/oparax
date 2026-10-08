@@ -150,3 +150,6 @@ Directions: Window (W), Newsroom (N), Deck (D). Routes: /v2/{window,newsroom,dec
 - "On the sign up trigger on the form make the buttons say there normal continue but on login part make the buttons say 'Login with Google' and so on so different text on social login buttons. And on the main Login button for the site make it say Login one word not Log in"
 - "What is this I am seeing then on login? remove this thats all I meant for thre sign in link" (img/4.png, the "Email me a sign-in link instead" line on login)
 - "The social sign in is still not appearing neatly aligned like the examples I provided were are you sure that is not an error or u need to tell the agent to correct it?" (after commit 19e415e4; the pair was centred as a 192px row)
+- "bruh I don't know what the fuck the agents are doing, but it's horrible. It's still not aligned. Literally, I just need to type "social login UI on Google", and I can come across a plethora of examples, as you see in the screenshot, which are still all better aligned than the bullshit I see on our page." (img/5.webp his search collage; img/6.png ours after 167e0fee)
+- "Also rename continue with X to continue with twitter just use the X logo"
+- "C and any reason why our buttons and by extension forms also so wide? or is that just standard width I just wanna know" (picked layout C, img/pick-C-crop.png)
