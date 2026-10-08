@@ -8,11 +8,11 @@ import { authContent } from "@/lib/auth/content";
 
 // Providers are neutral, never blue: white in light, the raised surface in dark. Only the main action is blue.
 const provider =
-  "inline-flex h-10 w-full items-center justify-center rounded-lg border border-line-strong bg-white text-[14px] font-medium text-[#14151a] transition-colors hover:bg-[#f3f4f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70 dark:bg-raised dark:text-t1 dark:hover:bg-[var(--tile-bg)]";
+  "inline-flex h-10 w-full items-center justify-start rounded-lg border border-line-strong bg-white text-[14px] font-medium text-[#14151a] transition-colors hover:bg-[#f3f4f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70 dark:bg-raised dark:text-t1 dark:hover:bg-[var(--tile-bg)]";
 
-// Both buttons share one fixed-width inner row: the logo sits in the same 16px slot and the label starts at the same x.
-const row = "flex w-48 items-center gap-2.5";
-const slot = "flex size-4 shrink-0 items-center justify-center";
+// Both buttons share one structure: the logo sits in a 20px slot 16px from the left edge, the label starts 12px after it.
+const row = "flex items-center gap-3 pl-4";
+const slot = "flex size-5 shrink-0 items-center justify-center";
 
 // The standard multicolour Google G, the same in light and dark.
 function GoogleG() {
