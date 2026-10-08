@@ -11,7 +11,7 @@ import { OneCard } from "@/components/one/card";
 import { BrandHeader } from "@/components/one/header";
 import { liftHigh, primaryButton, Stage } from "@/components/one/stage";
 import { Spinner } from "@/components/ui/spinner";
-import { type AuthFormState, emailSigninLink, loginAction, signupAction } from "@/lib/auth/actions";
+import { type AuthFormState, loginAction, signupAction } from "@/lib/auth/actions";
 import { authContent as copy } from "@/lib/auth/content";
 import { authFan } from "@/lib/auth-fan";
 import { cn } from "@/lib/utils";
@@ -158,7 +158,6 @@ export function OneAuthCard({
     signupAction,
     {},
   );
-  const [linkState, linkAction, linkPending] = useActionState(emailSigninLink, {});
   // An error belongs to the mode that produced it; flipping modes hides it until the next submit.
   const [flipped, setFlipped] = useState(false);
   const emailInput = useRef<HTMLInputElement>(null);
@@ -218,7 +217,7 @@ export function OneAuthCard({
         action={signup ? signupFormAction : loginFormAction}
         onSubmit={() => setFlipped(false)}
         className="mt-6"
-        aria-busy={pending || linkPending}
+        aria-busy={pending}
       >
         <input type="hidden" name="next" value={next ?? ""} />
         <div className="grid gap-3.5">
@@ -230,13 +229,11 @@ export function OneAuthCard({
               type="email"
               autoComplete="email"
               required
-              defaultValue={state.email ?? linkState.email}
+              defaultValue={state.email}
               placeholder={copy.emailPlaceholder}
               className={field}
-              aria-invalid={emailError || Boolean(linkState.error)}
-              aria-describedby={
-                emailError ? "auth-error" : linkState.error ? "link-status" : undefined
-              }
+              aria-invalid={emailError}
+              aria-describedby={emailError ? "auth-error" : undefined}
             />
           </label>
           <label className="grid gap-1.5">
@@ -289,7 +286,7 @@ export function OneAuthCard({
               : copy.signup
             : pending
               ? copy.loggingIn
-              : copy.login}
+              : copy.loginButton}
         </button>
         <p className="mt-3 text-center text-[13px] text-t3">
           {signup ? copy.existingAccount : copy.newToOparax}{" "}
@@ -297,41 +294,6 @@ export function OneAuthCard({
             {signup ? copy.login : copy.signup}
           </button>
         </p>
-        {signup ? null : (
-          <div className="mt-2 text-center text-[13px]">
-            {/* The emailed sign-in link stays available, quietly; a resend goes through the link route. */}
-            {linkState.message ? (
-              <button
-                type="submit"
-                formAction="/api/auth/link"
-                formMethod="post"
-                formNoValidate
-                className={cn(link, "text-t3")}
-              >
-                {copy.resend}
-              </button>
-            ) : (
-              <button
-                type="submit"
-                formAction={linkAction}
-                formNoValidate
-                disabled={linkPending}
-                className={cn(link, "text-t3")}
-              >
-                {linkPending ? copy.sending : copy.linkInstead}
-              </button>
-            )}
-            {linkState.error || linkState.message ? (
-              <p
-                id="link-status"
-                role={linkState.error ? "alert" : "status"}
-                className={cn("mt-1.5", linkState.error ? "text-[var(--error)]" : "text-t2")}
-              >
-                {linkState.error ?? linkState.message}
-              </p>
-            ) : null}
-          </div>
-        )}
       </form>
 
       <div className="my-5 flex items-center gap-3 text-[12px] text-t3">
@@ -340,7 +302,7 @@ export function OneAuthCard({
         <span className="h-px flex-1 bg-line" />
       </div>
 
-      <ProviderButtons next={next} />
+      <ProviderButtons next={next} mode={mode} />
     </div>
   );
 }

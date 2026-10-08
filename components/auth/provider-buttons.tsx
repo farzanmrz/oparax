@@ -38,7 +38,7 @@ function GoogleG() {
   );
 }
 
-export function ProviderButtons({ next }: { next?: string }) {
+export function ProviderButtons({ next, mode }: { next?: string; mode: "login" | "signup" }) {
   const [xState, xAction, xPending] = useActionState<AuthFormState, FormData>(
     signInWithProvider.bind(null, "x", next),
     {},
@@ -56,7 +56,7 @@ export function ProviderButtons({ next }: { next?: string }) {
             <span className={slot}>
               {xPending ? <Spinner /> : <BrandIcon name="x" mono className="size-3.5" />}
             </span>
-            <span>{authContent.x}</span>
+            <span>{mode === "login" ? authContent.loginX : authContent.x}</span>
           </span>
         </button>
         {xState.error && (
@@ -69,7 +69,7 @@ export function ProviderButtons({ next }: { next?: string }) {
         <button type="submit" className={provider} disabled={googlePending}>
           <span className={row}>
             <span className={slot}>{googlePending ? <Spinner /> : <GoogleG />}</span>
-            <span>{authContent.google}</span>
+            <span>{mode === "login" ? authContent.loginGoogle : authContent.google}</span>
           </span>
         </button>
         {googleState.error && (
