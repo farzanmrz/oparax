@@ -8,16 +8,16 @@ import { authContent } from "@/lib/auth/content";
 
 // Providers are neutral, never blue: white in light, the raised surface in dark. Only the main action is blue.
 const provider =
-  "inline-flex h-10 w-full items-center justify-start rounded-lg border border-line-strong bg-white text-[14px] font-medium text-[#14151a] transition-colors hover:bg-[#f3f4f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70 dark:bg-raised dark:text-t1 dark:hover:bg-[var(--tile-bg)]";
+  "inline-flex h-10 w-full items-center justify-center rounded-lg border border-line-strong bg-white text-[14px] font-medium text-[#14151a] transition-colors hover:bg-[#f3f4f6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70 dark:bg-raised dark:text-t1 dark:hover:bg-[var(--tile-bg)]";
 
-// Both buttons share one structure: the logo sits in a 20px slot 16px from the left edge, the label starts 12px after it.
-const row = "flex items-center gap-3 pl-4";
-const slot = "flex size-5 shrink-0 items-center justify-center";
+// Both buttons share one structure: the logo in an 18px slot and the label sit together as one group, centred in the button, 10px apart.
+const row = "flex items-center gap-2.5";
+const slot = "flex size-[18px] shrink-0 items-center justify-center";
 
 // The standard multicolour Google G, the same in light and dark.
 function GoogleG() {
   return (
-    <svg viewBox="0 0 18 18" aria-hidden="true" className="size-4">
+    <svg viewBox="0 0 18 18" aria-hidden="true" className="size-[18px]">
       <path
         fill="#4285F4"
         d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.874 2.6836-6.615z"
@@ -54,7 +54,7 @@ export function ProviderButtons({ next, mode }: { next?: string; mode: "login" |
         <button type="submit" className={provider} disabled={xPending}>
           <span className={row}>
             <span className={slot}>
-              {xPending ? <Spinner /> : <BrandIcon name="x" mono className="size-3.5" />}
+              {xPending ? <Spinner /> : <BrandIcon name="x" mono className="size-[18px]" />}
             </span>
             <span>{mode === "login" ? authContent.loginX : authContent.x}</span>
           </span>
