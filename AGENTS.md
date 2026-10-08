@@ -44,3 +44,7 @@ Prove user ownership with RLS before privileged work. Revalidate client input on
 ## Images (owner, October 5, 2026)
 
 Every screenshot or render an agent takes is saved under `img/` at the repo root, with a short name; nowhere else (a Bash hook refuses screenshot commands aimed elsewhere). Council rounds read pictures only from `img/`: `council.py start --images a.png,b.png` empties the folder, copies the round's pictures in, tells every lane the folder and the file names, and attaches them for the codex route. Every lane is told its time budget in minutes (default 14, the most under the runner's 15-minute cut).
+
+## Recording (owner, October 8, 2026)
+
+The owner's yes to this rule, in full. Agents record nothing on their own initiative. No resume sections, progress bullets or "what happens next" in any state file. Page notes hold only what the owner said while looking at a page, verbatim. `docs/references/decisions.md`, `docs/roadmap.md`, `DESIGN.md` and the design skill change only when he authorizes that exact edit in chat. Nothing he said as an example or "for example" becomes a limit, a prompt line or a plan item. An idea is written down only when he says "park this", in his words, on one list whose first line is "Not a requirement"; nothing on it is built until he says "build this". Until the documentation cleanup he has asked for, the live instructions are this file, DESIGN.md, decisions.md and what he says in the current chat.
