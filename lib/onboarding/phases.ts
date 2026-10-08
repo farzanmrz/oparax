@@ -24,6 +24,16 @@ const GATHERED = /^Gathered (\d+) from the source list, (\d+) accounts you quote
 const SCORING = /Jev is scoring (\d+) candidate sources$/;
 const SEARCHING = "Searching X for accounts: ";
 
+/**
+ * An engine log line as a page shows it. The engine saves "X" for the platform (saved builds and the matchers here
+ * read that text); every page says Twitter (owner, October 8), so the wording changes only on display.
+ */
+export function displayLine(line: string): string {
+  if (line.startsWith(SEARCHING))
+    return `Searching Twitter for accounts: ${line.slice(SEARCHING.length)}`;
+  return line.replace(/ on X$/, " on Twitter");
+}
+
 /** The phases before any run: every ring empty. */
 export const restPhases: Phase[] = phaseIds.map((id) => ({ id, state: "waiting", result: null }));
 

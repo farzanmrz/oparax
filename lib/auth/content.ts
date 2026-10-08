@@ -15,7 +15,7 @@ export const authContent = {
   x: "Continue with Twitter",
   loginGoogle: "Login with Google",
   loginX: "Login with Twitter",
-  refreshX: "Sign out and continue with X",
+  refreshX: "Sign out and continue with Twitter",
   refreshFailed: "We could not sign you out. Try again.",
   or: "or",
   resend: "Resend the link",

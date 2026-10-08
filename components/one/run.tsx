@@ -325,7 +325,7 @@ function BandBlock({ band, list }: { band: Band; list: OnboardingCandidate[] }) 
             <span>{c.name}</span>
             <span className="font-mono text-[9.5px] tracking-[0.1em] text-t3 uppercase">
               {c.kind === "x"
-                ? "X"
+                ? "Twitter"
                 : c.kind === "rss"
                   ? "RSS"
                   : c.kind === "github"

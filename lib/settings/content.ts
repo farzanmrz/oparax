@@ -45,7 +45,7 @@ export const settingsContent = {
     daily: "Daily",
     frequent: "Every 15 minutes",
     frequentNote: "Your tier sends every 15 minutes. The saved hour applies to daily alerts.",
-    deliveries: (count: number) => `${count} stories could not be delivered on X.`,
+    deliveries: (count: number) => `${count} stories could not be delivered on Twitter.`,
     hourLabel: (hour: number) => `${String(hour).padStart(2, "0")}:00`,
   },
   digests: {
@@ -84,8 +84,8 @@ export const settingsContent = {
     unavailable: "Settings could not be saved. Try again.",
     source: "Paste the site's feed or its news section page.",
     missingSource: "This source is no longer on your page.",
-    missingAccount: "This X account is not on your page.",
-    countsClosed: "X counts are unavailable right now. Your saved counts have not changed.",
+    missingAccount: "This Twitter account is not on your page.",
+    countsClosed: "Twitter counts are unavailable right now. Your saved counts have not changed.",
     billing: "Subscription management is unavailable right now.",
   },
 } as const;

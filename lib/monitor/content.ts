@@ -17,7 +17,7 @@ export const monitorContent = {
     light: "Light",
     dark: "Dark",
     daysLeft: (n: number) => (n === 1 ? "day left" : "days left"),
-    pool: (used: number, limit: number) => `${used} of ${limit} watched X posts used`,
+    pool: (used: number, limit: number) => `${used} of ${limit} watched Twitter posts used`,
     signOut: "Sign out",
     signingOut: "Signing out",
     signOutFailed: "Could not sign out. Try again.",
@@ -43,7 +43,7 @@ export const monitorContent = {
   articles: "Articles",
   feed: "News views",
   sources: "Sources",
-  accounts: "X Accounts",
+  accounts: "Twitter Accounts",
   watched: "Watched",
   skipped: "Skipped",
   digests: "Daily Digests",
@@ -51,7 +51,7 @@ export const monitorContent = {
   productHunt: "Product Hunt",
   digestEmpty: "Your next digest will appear here.",
   noSources: "No sites or feeds selected yet.",
-  noAccounts: "No X accounts selected yet.",
+  noAccounts: "No Twitter accounts selected yet.",
   noNews: "No relevant news yet.",
   failedItems: (n: number) => `Could not process ${n} items.`,
   pendingItems: (n: number) => `${n} items being checked.`,
@@ -64,9 +64,9 @@ export const monitorContent = {
   imageAlt: "",
   building: "Building Your Agent",
   steps: (handle: string) => [
-    `Looking up @${handle} on X`,
+    `Looking up @${handle} on Twitter`,
     `Reading @${handle}'s newest posts`,
-    "Choosing sources and X accounts",
+    "Choosing sources and Twitter accounts",
   ],
   buildFailed: (step: string, reason: string) => `Building stopped at: ${step}. ${reason}`,
   onboarding: {
@@ -74,8 +74,8 @@ export const monitorContent = {
     // (design preview next/building/steps.ts, verbatim).
     phases: {
       profile: {
-        title: "Find your X profile",
-        does: "Looks your handle up on X: name, bio, picture, pinned post.",
+        title: "Find your Twitter profile",
+        does: "Looks your handle up on Twitter: name, bio, picture, pinned post.",
       },
       posts: {
         title: "Read your newest posts",
@@ -91,11 +91,11 @@ export const monitorContent = {
       },
       choose: {
         title: "Choose sources and write the brief",
-        does: "One model call picks sites, feeds and X accounts with a reason each, and writes your brief.",
+        does: "One model call picks sites, feeds and Twitter accounts with a reason each, and writes your brief.",
       },
       search: {
-        title: "Search X for more accounts",
-        does: "Runs one X search only if too few accounts fit.",
+        title: "Search Twitter for more accounts",
+        does: "Runs one Twitter search only if too few accounts fit.",
       },
       save: { title: "Save your agent", does: "Saves your agent and opens your feed." },
     },
@@ -105,7 +105,7 @@ export const monitorContent = {
     stoppedTitle: "Building stopped",
     ready: "Your agent is ready",
     openFeed: "Open your feed",
-    yourAccount: ", your X account",
+    yourAccount: ", your Twitter account",
     tableLabel: "The shared source table",
     tableIntro: "Every agent starts from these; your run scores them for your beat.",
     runLabel: "Your run",
@@ -114,15 +114,15 @@ export const monitorContent = {
     scoring: "Jev is scoring the candidates.",
     bands: { strong: "Strong match", possible: "Possible match", aside: "Set aside" },
     more: (n: number) => `${n} more`,
-    found: (name: string) => `Found ${name} on X`,
+    found: (name: string) => `Found ${name} on Twitter`,
     read: (n: number) => `Read ${n} newest posts`,
     gathered: (table: number, quoted: number) =>
       `Gathered ${table} from the source list, ${quoted} ${quoted === 1 ? "account" : "accounts"} you quoted`,
     kept: (kept: number, total: number) => `Jev kept ${kept} of ${total} candidates`,
     chose: (sites: number, accounts: number) =>
-      `Chose ${sites} ${sites === 1 ? "site or feed" : "sites and feeds"} and ${accounts} X ${accounts === 1 ? "account" : "accounts"}, wrote your brief`,
-    searched: (terms: string) => `Searched X for: ${terms}`,
-    searchFailed: "The X search did not answer.",
+      `Chose ${sites} ${sites === 1 ? "site or feed" : "sites and feeds"} and ${accounts} Twitter ${accounts === 1 ? "account" : "accounts"}, wrote your brief`,
+    searched: (terms: string) => `Searched Twitter for: ${terms}`,
+    searchFailed: "The Twitter search did not answer.",
     enough: "Skipped: enough accounts already fit",
     saved: "Saved your agent",
     you: "You",
@@ -134,7 +134,7 @@ export const monitorContent = {
     post: "Post",
     quote: "Quote",
     thread: (parts: number) => `Thread, ${parts} parts`,
-    groups: { x: "X accounts", rss: "RSS feeds", website: "Websites", github: "GitHub" },
+    groups: { x: "Twitter accounts", rss: "RSS feeds", website: "Websites", github: "GitHub" },
   },
   buildReason: "Preparation could not finish. Your free week has not started.",
   retry: "Try again",
@@ -152,8 +152,9 @@ export const monitorContent = {
   trialPool: (used: number, limit: number) =>
     `${used} of ${limit} watched posts used in your free week.`,
   poolPaused: (date: string) =>
-    `Your watched X accounts are paused until ${date}. Sites and feeds keep running.`,
-  trialPoolPaused: "Your free week's watched X posts are used up. Sites and feeds keep running.",
+    `Your watched Twitter accounts are paused until ${date}. Sites and feeds keep running.`,
+  trialPoolPaused:
+    "Your free week's watched Twitter posts are used up. Sites and feeds keep running.",
   renewal: "your next renewal",
   unreadable: (n: number) => `Could not read its last ${n} items.`,
   sourcePaused: "Paused today: unusual spending.",
@@ -162,32 +163,33 @@ export const monitorContent = {
     {
       tier: "hobby",
       label: "Hobby, $5 a month",
-      detail: "100 watched X posts a month, one DM a day",
+      detail: "100 watched Twitter posts a month, one DM a day",
     },
     {
       tier: "creator",
       label: "Creator, $30 a month",
-      detail: "3,000 watched X posts a month, one DM a day",
+      detail: "3,000 watched Twitter posts a month, one DM a day",
     },
     {
       tier: "wire",
       label: "Wire, $99 a month",
-      detail: "4,000 watched X posts a month, a digest every 15 minutes",
+      detail: "4,000 watched Twitter posts a month, a digest every 15 minutes",
     },
   ],
   notifications: {
-    xdm: "X DMs",
-    xdmLine: (handle: string) => `Oparax messages @${handle} on X when a story matters.`,
+    xdm: "Twitter DMs",
+    xdmLine: (handle: string) => `Oparax messages @${handle} on Twitter when a story matters.`,
     message: "Message @oparax_ai",
     commands:
-      'Commands, sent to @oparax_ai on X: STOP pauses alerts, RESUME turns them back on, and "Start alerts" connects them again after a stop.',
+      'Commands, sent to @oparax_ai on Twitter: STOP pauses alerts, RESUME turns them back on, and "Start alerts" connects them again after a stop.',
   },
   botHelp: (handle: string) =>
     `Opens a message to @oparax_ai with "Start alerts" typed. Send it from @${handle} to connect alerts; that message is how Oparax confirms the account is yours. The bot will not reply.`,
   botActive: "Alerts on. Send STOP to the bot to stop.",
   botPaused: "Alerts paused. Send RESUME to the bot to continue.",
-  botStopped: 'Alerts stopped. Send "Start alerts" from your X account to turn them on again.',
-  activationFailed: "X connection could not start. Try again.",
+  botStopped:
+    'Alerts stopped. Send "Start alerts" from your Twitter account to turn them on again.',
+  activationFailed: "Twitter connection could not start. Try again.",
   activationUnavailable: "Open the alert connection during your free week or an active plan.",
 } as const;
 

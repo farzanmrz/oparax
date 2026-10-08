@@ -11,6 +11,7 @@ import { ProfileAvatar } from "@/components/monitor/agent-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { monitorContent as copy } from "@/lib/monitor/content";
 import type { BuildLog, Profile } from "@/lib/monitor/read";
+import { displayLine } from "@/lib/onboarding/phases";
 
 // What a visitor sees while someone else's agent builds; the owner watches the One run (components/one/run.tsx).
 export function Building({
@@ -45,7 +46,7 @@ export function Building({
                 className="animate-none text-foreground"
                 status={complete ? "complete" : active ? "active" : "pending"}
                 label={active && reducedMotion === false ? <Shimmer>{label}</Shimmer> : label}
-                description={message}
+                description={message ? displayLine(message) : undefined}
               >
                 {index === 0 && profile ? (
                   <div className="flex items-start gap-3">
