@@ -147,3 +147,5 @@ Directions: Window (W), Newsroom (N), Deck (D). Routes: /v2/{window,newsroom,dec
 - "Remove email me a sign in link from sign up that sentence its unnecessary"
 - "Why does continue with X and continue with google not align uniformly the logos and the sentences like these 2 example images show. Not the UI, look at the alignment of logos and text how it appears so uniform whereas on our site its misaligned." (references: img/1.png, img/2.png; ours: img/3.png)
 - "Why is the google logo this weird blue color and not the normal multicolor google logo (img3)"
+- "On the sign up trigger on the form make the buttons say there normal continue but on login part make the buttons say 'Login with Google' and so on so different text on social login buttons. And on the main Login button for the site make it say Login one word not Log in"
+- "What is this I am seeing then on login? remove this thats all I meant for thre sign in link" (img/4.png, the "Email me a sign-in link instead" line on login)
