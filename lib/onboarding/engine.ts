@@ -326,12 +326,31 @@ export async function runOnboarding({
     quoted: p.quoted ? { author: p.quoted.author, text: p.quoted.text } : null,
     sites: p.links.map(hostOf),
   });
+  // Jev sends the whole state with every request and refuses one past 32,000 estimated tokens (JSON length / 2), so
+  // the candidates go in chunks that stay under 24,000 with the shared context, leaving room for the question.
   async function scoreRows(context: object, rows: Record<string, Candidate>) {
-    return jev(
-      { ...context, rows },
-      Object.fromEntries(Object.keys(rows).map((id) => [id, ROW_Q(id)])),
-      { kind: "onboarding", monitorId },
+    const base = JSON.stringify({ ...context, rows: {} }).length;
+    const chunks: Record<string, Candidate>[] = [];
+    let chars = Number.POSITIVE_INFINITY;
+    for (const [id, row] of Object.entries(rows)) {
+      const add = JSON.stringify({ [id]: row }).length;
+      if ((chars + add) / 2 > 24_000) {
+        chunks.push({});
+        chars = base;
+      }
+      chunks[chunks.length - 1][id] = row;
+      chars += add;
+    }
+    const scores = await Promise.all(
+      chunks.map((chunk) =>
+        jev(
+          { ...context, rows: chunk },
+          Object.fromEntries(Object.keys(chunk).map((id) => [id, ROW_Q(id)])),
+          { kind: "onboarding", monitorId },
+        ),
+      ),
     );
+    return Object.fromEntries(scores.flatMap((s) => Object.entries(s)));
   }
 
   // Micro-step 2: their newest POSTS own posts of the past DAYS days, a thread counting as one. Reposts and
@@ -442,7 +461,7 @@ export async function runOnboarding({
       S.seenIds.add(id);
   }
 
-  // Micro-step 3: the recommendation. Jev scores every candidate for the beat in one request: every table row, and
+  // Micro-step 3: the recommendation. Jev scores every candidate for the beat: every table row, and
   // every account they quote outside sponsored posts that is not a table row and not them. A mention is not a
   // candidate, since nothing shows what an account that was not fetched publishes (owner, September 27: "just being
   // quoted or mentioned doesn't automatically qualify it for being recommended as a source").
