@@ -58,8 +58,8 @@ export function OneLanding() {
               Oparax turns the news you follow into sourced stories.
             </h1>
             <p className="mt-5 text-[16px] leading-[1.6] text-t2">
-              Pick what you follow. Oparax watches the X accounts, websites, RSS feeds, GitHub and Product Hunt around it, joins the
-              articles and posts about one event into one story with its sources attached, and can alert you on X.
+              Pick what you follow. Oparax watches the Twitter accounts, websites, RSS feeds, GitHub and Product Hunt around it, joins the
+              articles and posts about one event into one story with its sources attached, and can alert you on Twitter.
             </p>
             <div className="mt-8 flex items-center gap-5">
               <PrimaryLink href={`${BASE}/login?mode=signup`} size="lg" className="px-6">
@@ -86,7 +86,7 @@ export function OneLanding() {
             <div className="max-w-[640px]">
               <h2 className="text-[30px] leading-tight font-semibold tracking-[-0.025em] text-t1">Every source weighed the same</h2>
               <p className="mt-3 text-[15px] leading-relaxed text-t2">
-                X accounts, websites, RSS feeds, GitHub and Product Hunt are all read the same way: each new item is checked against your
+                Twitter accounts, websites, RSS feeds, GitHub and Product Hunt are all read the same way: each new item is checked against your
                 sentence, and what passes becomes a story.
               </p>
             </div>
@@ -94,7 +94,7 @@ export function OneLanding() {
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <SourceCard group="x" label="X accounts" />
+            <SourceCard group="x" label="Twitter accounts" />
             <SourceCard group="rss" label="RSS feeds" />
             <div className="grid content-start gap-4">
               <SourceCard group="website" label="Websites" />
@@ -128,7 +128,7 @@ export function OneLanding() {
           <div className="max-w-[640px]">
             <h2 className="text-[30px] leading-tight font-semibold tracking-[-0.025em] text-t1">A free week, then a plan</h2>
             <p className="mt-3 text-[15px] leading-relaxed text-t2">
-              Every plan includes your story feed and unlimited websites and RSS feeds. Choose how much of X to watch and how often to hear
+              Every plan includes your story feed and unlimited websites and RSS feeds. Choose how much of Twitter to watch and how often to hear
               from us.
             </p>
           </div>
@@ -312,7 +312,7 @@ function AgentStrip() {
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-[13.5px]">
                   <span className="font-medium text-t1">{s.group === "x" ? s.handle : s.name}</span>
-                  <span className="font-mono text-[10px] tracking-[0.1em] text-t3 uppercase">{s.group === "x" ? "X account" : "RSS feed"}</span>
+                  <span className="font-mono text-[10px] tracking-[0.1em] text-t3 uppercase">{s.group === "x" ? "Twitter account" : "RSS feed"}</span>
                 </p>
                 <p className="mt-0.5 text-[13px] leading-snug text-t2">{s.why}</p>
               </div>
@@ -341,7 +341,7 @@ function Plans() {
         </p>
         <span className="mt-5 block h-1.5 rounded-full bg-[var(--caution)]" aria-hidden="true" />
         <p className="mt-4 flex items-center gap-1.5 text-[13px] text-t2">
-          <XLogo className="size-3 text-[var(--kind-post)]" /> 300 watched X posts
+          <XLogo className="size-3 text-[var(--kind-post)]" /> 300 watched Twitter posts
         </p>
         <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-t2">
           <Check className="size-3.5 text-[var(--ok)]" aria-hidden="true" /> No card. It starts when your agent is ready.
@@ -361,7 +361,7 @@ function Plans() {
               <span className="block h-full rounded-full bg-[var(--brand)]" style={{ width: `${Math.max((watched / max) * 100, 3)}%` }} />
             </span>
             <p className="mt-4 flex items-center gap-1.5 text-[13px] text-t2">
-              <XLogo className="size-3 text-[var(--kind-post)]" /> {watched.toLocaleString("en-US")} watched X posts a month
+              <XLogo className="size-3 text-[var(--kind-post)]" /> {watched.toLocaleString("en-US")} watched Twitter posts a month
             </p>
             <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-t2">
               <Check className="size-3.5 text-[var(--ok)]" aria-hidden="true" /> {cadence}

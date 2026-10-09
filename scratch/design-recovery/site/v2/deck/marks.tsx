@@ -8,7 +8,7 @@ import { hostOf, kindCount, kindOf, sourceOf, type Group, type ItemView, type Ki
 
 // Identity marks, copied from the accepted feeds (next/council/marks.tsx) and extended with GitHub releases and
 // source groups. Runtime public images only: Google's favicon service for sites (DuckDuckGo second), unavatar for
-// X accounts, a glyph last. Real logos keep their own colors.
+// Twitter accounts, a glyph last. Real logos keep their own colors.
 
 function useFallback(sources: string[]) {
   const [index, setIndex] = useState(0);
@@ -128,7 +128,7 @@ export function GroupGlyph({ group, className }: { group: Group; className?: str
   return <GitHubMark className={cn("size-3", className)} />;
 }
 
-/** The small capitalized group header: X ACCOUNTS, RSS FEEDS, WEBSITES, GITHUB. */
+/** The small capitalized group header: TWITTER ACCOUNTS, RSS FEEDS, WEBSITES, GITHUB. */
 export function GroupLabel({ children, glyph, count, className }: { children: React.ReactNode; glyph?: React.ReactNode; count?: number; className?: string }) {
   return (
     <p className={cn("flex items-center gap-1.5 font-mono text-[10.5px] tracking-[0.12em] text-t3 uppercase", className)}>

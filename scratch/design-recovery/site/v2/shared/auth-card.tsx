@@ -65,7 +65,7 @@ export function AuthCard({ initial = "login" }: { initial?: "login" | "signup" }
       <div className="grid gap-2.5">
         <button type="button" className={provider}>
           <XLogo className="size-4 text-black dark:text-white" />
-          Continue with X
+          Continue with Twitter
         </button>
         <button type="button" className={provider}>
           <GoogleG />

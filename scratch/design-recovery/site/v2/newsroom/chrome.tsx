@@ -6,7 +6,7 @@ import { ChevronsUpDown } from "lucide-react";
 import { OparaxMark, XLogo } from "@/pro/shared/brand";
 import { THEME_KEY, ThemeToggle } from "@/next/theme";
 import { cn } from "@/lib/utils";
-import { HANDLE, PREVIEW_NOTE, type FeedItem, type Story } from "./data";
+import { PREVIEW_NOTE, type FeedItem, type Story } from "./data";
 import { ItemMark, KindGlyph } from "./marks";
 
 // Newsroom chrome, carried from the accepted feed (next/council/chrome.tsx): the masthead with the page title,
@@ -40,9 +40,9 @@ export const SAMPLE_NOTE = "Sample build with illustrative values, not from your
 
 /**
  * The Newsroom masthead, set on the page at the content inset: the mark and the page title on the left; the
- * person, their plan badge and the theme on the right; the preview note small beneath.
+ * person's initial and the theme on the right (no @handle and no plan badge, owner Oct 8); the preview note small beneath.
  */
-export function Masthead({ title, badge = true, note = PREVIEW_NOTE, className }: { title: string; badge?: boolean; note?: string; className?: string }) {
+export function Masthead({ title, note = PREVIEW_NOTE, className }: { title: string; badge?: boolean; note?: string; className?: string }) {
   return (
     <header className={cn("relative z-20 px-4 pt-6 lg:px-7", className)}>
       <div className="flex items-center gap-3.5">
@@ -51,12 +51,6 @@ export function Masthead({ title, badge = true, note = PREVIEW_NOTE, className }
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <span className="flex items-center gap-2 text-[13px] text-t1">
             <span className="grid size-5 place-items-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">F</span>
-            @{HANDLE}
-            {badge ? (
-              <span className="rounded-[5px] border border-[var(--caution)]/40 bg-[var(--caution-soft)] px-1.5 py-px font-mono text-[10px] tracking-wide whitespace-nowrap text-[var(--caution)]">
-                FREE WEEK
-              </span>
-            ) : null}
             <ChevronsUpDown className="size-3.5 text-t3" />
           </span>
           <ThemeToggle className="size-8 text-t3" />
@@ -119,7 +113,7 @@ export function AlertsButton({ className }: { className?: string }) {
   return (
     <button type="button" className={cn(primaryClass, "h-8 px-3 text-[13px]", className)}>
       <XLogo className="size-3" />
-      Get alerts on X
+      Get alerts on Twitter
     </button>
   );
 }

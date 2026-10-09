@@ -6,7 +6,7 @@ import { ChevronsUpDown, Layers, Rows3 } from "lucide-react";
 import { OparaxMark, XLogo } from "@/pro/shared/brand";
 import { THEME_KEY, ThemeToggle } from "@/next/theme";
 import { cn } from "@/lib/utils";
-import { HANDLE, type FeedStory, type ItemView, type View } from "./data";
+import { type FeedStory, type ItemView, type View } from "./data";
 import { ItemMark, KindGlyph } from "./marks";
 import { kindOf } from "./data";
 
@@ -45,7 +45,8 @@ export function Stage({ children, className, light = 560 }: { children: React.Re
 
 /**
  * The Deck member header: an open row on the page at the cards' left edge (x 52 at 1440). The mark and the page
- * title, then the page's own controls; its actions, the person with their plan badge, and the theme at the right.
+ * title, then the page's own controls; its actions, the person's initial (no @handle and no plan badge, owner Oct 8),
+ * and the theme at the right.
  * The page's line and the preview note sit beneath.
  */
 export function Header({
@@ -54,7 +55,6 @@ export function Header({
   note,
   controls,
   actions,
-  freeWeek = true,
 }: {
   title: React.ReactNode;
   sub?: React.ReactNode;
@@ -76,12 +76,7 @@ export function Header({
         <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
           {actions}
           <span className="flex shrink-0 items-center gap-2 text-[13px] text-t1">
-            <span className="grid size-5 place-items-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">F</span>@{HANDLE}
-            {freeWeek ? (
-              <span className="rounded-[5px] border border-[var(--caution)]/40 bg-[var(--caution-soft)] px-1.5 py-px font-mono text-[10px] tracking-wide whitespace-nowrap text-[var(--caution)]">
-                FREE WEEK
-              </span>
-            ) : null}
+            <span className="grid size-5 place-items-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">F</span>
             <ChevronsUpDown className="size-3.5 text-t3" aria-hidden="true" />
           </span>
           <ThemeToggle className="-ml-2 size-8 text-t3" />
@@ -167,7 +162,7 @@ export function AlertsButton({ className, full = false }: { className?: string; 
   return (
     <button type="button" className={cn(primary, "h-8 px-3 text-[13px]", full && "w-full", className)}>
       <XLogo className="size-3" />
-      Get alerts on X
+      Get alerts on Twitter
     </button>
   );
 }

@@ -21,7 +21,7 @@ import {
 // Window direction, v2. Every story, source and quote comes from next/data (verified public pages, the recorded
 // onboarding run and the stored GitHub release lines). Nothing here calls a model. Changes from the accepted
 // feed's data, each from the owner's October 2 notes:
-// - Sources are grouped by what they are (X ACCOUNTS, RSS FEEDS, WEBSITES, GITHUB, PRODUCT HUNT), all weighed the same.
+// - Sources are grouped by what they are (TWITTER ACCOUNTS, RSS FEEDS, WEBSITES, GITHUB, PRODUCT HUNT), all weighed the same.
 // - GitHub is a source: its stored release lines become a story card (Direct) and join the Next.js 15 story with the
 //   @nextjs post (Clustered). Facts come only from the stored post text and the stored release lines.
 // - The Bank of England and CNBC stories are left out: their sources are not in this person's source list.
@@ -64,7 +64,7 @@ export type Story = {
 const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
 
 export const groups: { id: Group; label: string }[] = [
-  { id: "x", label: "X accounts" },
+  { id: "x", label: "Twitter accounts" },
   { id: "rss", label: "RSS feeds" },
   { id: "website", label: "Websites" },
   { id: "github", label: "GitHub" },

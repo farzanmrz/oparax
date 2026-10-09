@@ -11,10 +11,10 @@ import { StoryCard, StoryStack } from "./stack";
 
 // Deck v2 ready: what the agent chose, each source with its reason under its group header, and the first stories
 // waiting in the feed as a stack, then into the feed. Tiles carry what the person needs next: the free week that
-// just started and alerts on X, which are not connected yet.
+// just started and alerts on Twitter, which are not connected yet.
 
 const groupsHere: { id: Group; label: string }[] = [
-  { id: "x", label: "X accounts" },
+  { id: "x", label: "Twitter accounts" },
   { id: "rss", label: "RSS feeds" },
   { id: "website", label: "Websites" },
 ];
@@ -41,14 +41,14 @@ export function DeckReady() {
             <p className="mt-1 flex items-baseline gap-1.5">
               <span className="text-[22px] leading-none font-semibold tabular-nums text-t1">{status.daysLeft}</span>
               <span className="text-[13px] text-t2">days left</span>
-              <span className="ml-auto text-[12px] tabular-nums text-t3">{status.poolLimit} watched X posts</span>
+              <span className="ml-auto text-[12px] tabular-nums text-t3">{status.poolLimit} watched Twitter posts</span>
             </p>
             <div className="mt-3">
               <Segments total={status.trialDays} filled={status.daysLeft} />
             </div>
             <p className="mt-3 text-[12px] text-t3">Plans from $5 a month when the week ends.</p>
           </Tile>
-          <Tile label="Alerts on X">
+          <Tile label="Alerts on Twitter">
             <div className="mt-1.5 flex items-center gap-3">
               <span className="flex items-center gap-1.5 text-[13px] text-t2">
                 <span className="size-2 rounded-full border border-t3" aria-hidden="true" /> Not connected
@@ -71,7 +71,7 @@ export function DeckReady() {
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid items-start gap-6 md:grid-cols-2">
             <div className="grid gap-6">
-              <Group id="x" label="X accounts" />
+              <Group id="x" label="Twitter accounts" />
               <Group id="website" label="Websites" />
               <Group id="github" label="GitHub" />
             </div>

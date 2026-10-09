@@ -8,6 +8,7 @@ import { StepMark } from "@/next/building/step-mark";
 import {
   announce,
   isDone,
+  stepDoes,
   stepIds,
   stepLabel,
   stepLine,
@@ -46,13 +47,13 @@ import { lift, liftStyle, PrimaryLink, BASE, Header, Stage } from "./chrome";
 import { beat, HANDLE, hostOf } from "./data";
 import { SiteIcon, XAvatar } from "./marks";
 
-// Deck v2 building. The recorded run replays once (labelled once as a replay): summary tiles on top, the eight
+// Deck v2 building. The recorded run replays once (labelled once as a replay): summary tiles on top, the product's seven
 // steps as a stack on the left, and on the right every step's evidence in order, open, staying once its step is
 // done. Chosen sources are the front cards with the reason each was picked on the card; the matches that fit but
 // were not chosen peek behind them (everything on a backing plate is also listed in full in the Jev step); the
 // recorded set-aside names are a dimmer stack; the brief is open text; the skipped search is a small tile.
 // Jev returns only a probability, so the bands are Strong match, Possible match and Set aside, never a number.
-// ?at=1..8 freezes a step, ?at=done the end.
+// ?at=1..7 freezes a step, ?at=done the end.
 
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -127,7 +128,7 @@ export function DeckBuilding({ mode }: { mode: RunMode }) {
             label="Chosen"
             value={chooseDone ? chosenIdSet.size : null}
             running={st("choose") === "running"}
-            sub={chooseDone ? `${chosenSites.length} sites and feeds, ${chosenAccounts.length} X accounts` : "sites, feeds and X accounts"}
+            sub={chooseDone ? `${chosenSites.length} sites and feeds, ${chosenAccounts.length} Twitter accounts` : "sites, feeds and Twitter accounts"}
             meter={chooseDone ? chosenIdSet.size / candidateCount : undefined}
           />
         </div>
@@ -149,7 +150,10 @@ export function DeckBuilding({ mode }: { mode: RunMode }) {
                         stepTitle[id]
                       )}
                     </p>
-                    <p className={cn("mt-0.5 text-[12.5px]", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{state === "done" || state === "skipped" ? stepLine[id] : stepLabel[state]}</p>
+                    <p className="mt-0.5 text-[12.5px] leading-snug text-t3">{stepDoes[id]}</p>
+                    {state === "waiting" ? null : (
+                      <p className={cn("mt-1 text-[12.5px]", state === "failed" ? "text-[var(--error)]" : state === "running" ? "text-[var(--caution)]" : "text-t2")}>{state === "done" || state === "skipped" ? stepLine[id] : stepLabel[state]}</p>
+                    )}
                   </div>
                 </li>
               );
@@ -235,18 +239,21 @@ function Evidence({ id, state, progress, chooseProgress, chooseDone, failed }: {
     case "jev":
       return <Bands running={running} progress={progress} chooseProgress={chooseProgress} chooseDone={chooseDone} />;
     case "choose":
-      return <Chosen running={running} progress={progress} />;
+      return (
+        <div className="grid gap-6">
+          <Chosen running={running} progress={progress} />
+          <Brief running={running} progress={progress} />
+        </div>
+      );
     case "search":
       return (
         <div className={cn(lift, "flex items-center gap-3 border-dashed px-4 py-3")} style={liftStyle}>
           <StepMark state="skipped" size={20} />
           <p className="text-[13px] text-t2">
-            <span className="font-medium text-t1">Skipped.</span> {keptAccounts} X accounts already passed the check, so there was nothing to look for.
+            <span className="font-medium text-t1">Skipped.</span> {keptAccounts} Twitter accounts already passed the check, so there was nothing to look for.
           </p>
         </div>
       );
-    case "brief":
-      return <Brief running={running} progress={progress} />;
     default:
       return failed ? null : null;
   }
@@ -332,7 +339,7 @@ function CandidateChip({ c, chosen, dim }: { c: Candidate; chosen?: boolean; dim
     >
       {isX ? <XAvatar handle={c.target.replace("https://x.com/", "")} size={20} className={cn(dim && "opacity-60 grayscale")} /> : <SiteIcon host={hostOf(c.target)} size={20} className={cn("rounded-[5px]", dim && "opacity-60 grayscale")} />}
       <span>{c.name}</span>
-      <span className="font-mono text-[9.5px] tracking-[0.1em] text-t3 uppercase">{isX ? "X" : c.kind === "rss" ? "RSS" : "Web"}</span>
+      <span className="font-mono text-[9.5px] tracking-[0.1em] text-t3 uppercase">{isX ? "Twitter" : c.kind === "rss" ? "RSS" : "Web"}</span>
       {chosen ? <Check className="size-3.5 text-[var(--brand)]" aria-label="chosen" /> : null}
     </li>
   );
@@ -436,7 +443,7 @@ function ChosenCard({ c, why, isX }: { c: Candidate & { why: string }; why: stri
       </div>
       <div className="mt-2.5 flex items-center gap-1.5">
         <span className={cn("rounded-full px-2 py-px text-[11px] font-medium", isX ? "bg-[var(--kind-post-soft)] text-[var(--kind-post)]" : "bg-[var(--kind-article-soft)] text-[var(--kind-article)]")}>
-          {isX ? "X account" : c.kind === "rss" ? "RSS feed" : "Website"}
+          {isX ? "Twitter account" : c.kind === "rss" ? "RSS feed" : "Website"}
         </span>
         <span className={cn("text-[11.5px]", bandTone[band])}>{bandLabel[band]}</span>
       </div>
@@ -488,7 +495,7 @@ function Chosen({ running, progress }: { running: boolean; progress: number }) {
   };
   return (
     <div className="grid gap-6">
-      {group("X accounts", chosenAccounts.length, accounts, true)}
+      {group("Twitter accounts", chosenAccounts.length, accounts, true)}
       {group("Sites and feeds", chosenSites.length, sites, false)}
     </div>
   );

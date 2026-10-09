@@ -7,7 +7,7 @@ import { OparaxMark, XLogo } from "@/pro/shared/brand";
 import { THEME_KEY, ThemeToggle } from "@/next/theme";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { counts, HANDLE, hrefWith, type View } from "./data";
+import { counts, hrefWith, type View } from "./data";
 
 // The Window skin shared by every v2 Window screen: the in-window app bar or the site header, the lit stage rim,
 // the lifted window that is the page, the primary blue action, and the name or handle preference for sources.
@@ -27,10 +27,10 @@ export function useThemeGuard() {
 }
 
 /**
- * The signed-in app bar, drawn inside the window as its first row: mark, the person, their plan badge and the
- * account switch on the left; the preview note and the theme on the right.
+ * The signed-in app bar, drawn inside the window as its first row: mark, the person's initial and the account
+ * switch on the left (no @handle and no plan badge, owner Oct 8); the preview note and the theme on the right.
  */
-export function TopBar({ note, badge = true, className }: { note?: string; badge?: boolean; className?: string }) {
+export function TopBar({ note, className }: { note?: string; badge?: boolean; className?: string }) {
   useThemeGuard();
   return (
     <header className={cn("relative z-20 flex h-12 shrink-0 items-center gap-3 border-b border-line px-4", className)}>
@@ -38,12 +38,7 @@ export function TopBar({ note, badge = true, className }: { note?: string; badge
         <OparaxMark className="size-[18px]" />
       </Link>
       <span className="flex shrink-0 items-center gap-2 text-[13px] text-t1">
-        <span className="grid size-5 place-items-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">F</span>@{HANDLE}
-        {badge ? (
-          <span className="rounded-[5px] border border-[var(--caution)]/40 bg-[var(--caution-soft)] px-1.5 py-px font-mono text-[10px] tracking-wide whitespace-nowrap text-[var(--caution)]">
-            FREE WEEK
-          </span>
-        ) : null}
+        <span className="grid size-5 place-items-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">F</span>
         <ChevronsUpDown className="size-3.5 text-t3" aria-hidden="true" />
       </span>
       <div className="ml-auto flex min-w-0 items-center gap-2">
@@ -197,7 +192,7 @@ export function WindowBar({ children, className }: { children?: React.ReactNode;
   );
 }
 
-/** Small capitalized group label, system monospace (X ACCOUNTS, RSS FEEDS ...). */
+/** Small capitalized group label, system monospace (TWITTER ACCOUNTS, RSS FEEDS ...). */
 export function Label({ children, className }: { children: React.ReactNode; className?: string }) {
   return <p className={cn("font-mono text-[10.5px] font-medium tracking-[0.12em] text-t3 uppercase", className)}>{children}</p>;
 }
@@ -253,7 +248,7 @@ export function SecondaryButton({ children, className, href }: { children: React
 export function AlertsPreviewNote({ className }: { className?: string }) {
   return (
     <p className={cn("text-[12px] leading-[1.5] text-t3", className)}>
-      Preview: opens X&apos;s composer with “Start alerts” typed. Choose @oparax_ai as the recipient.
+      Preview: opens Twitter&apos;s composer with “Start alerts” typed. Choose @oparax_ai as the recipient.
     </p>
   );
 }
@@ -276,7 +271,7 @@ export function AlertsButton({ className, full = false }: { className?: string; 
       )}
     >
       <XLogo className="size-3" />
-      Get alerts on X
+      Get alerts on Twitter
     </a>
   );
 }

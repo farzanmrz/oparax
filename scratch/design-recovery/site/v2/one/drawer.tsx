@@ -15,7 +15,7 @@ import { FactList, sourcesIn, type LabelMode } from "./card";
 // back to the name that opened it.
 
 export const READER = 400;
-const kindWord = { post: "X post", article: "Article", release: "GitHub release" } as const;
+const kindWord = { post: "Twitter post", article: "Article", release: "GitHub release" } as const;
 
 /** The selected source's own report of this story: the Direct card built from the story's item from that source. */
 function reportOf(story: FeedStory, sourceId: string) {

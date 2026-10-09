@@ -33,14 +33,14 @@ export type Group = "x" | "rss" | "website" | "github";
 export type Kind = "post" | "article" | "github";
 
 export const groupLabel: Record<Group, string> = {
-  x: "X ACCOUNTS",
+  x: "TWITTER ACCOUNTS",
   rss: "RSS FEEDS",
   website: "WEBSITES",
   github: "GITHUB",
 };
 
 export const groupSingular: Record<Group, string> = {
-  x: "X account",
+  x: "Twitter account",
   rss: "RSS feed",
   website: "Website",
   github: "GitHub repository",
@@ -50,7 +50,7 @@ export type Source = {
   id: string;
   group: Group;
   name: string;
-  /** X handle, feed or page address, or owner/repo: what the "Handle" toggle shows. */
+  /** Twitter handle, feed or page address, or owner/repo: what the "Handle" toggle shows. */
   handle: string;
   host: string;
   focus: string;

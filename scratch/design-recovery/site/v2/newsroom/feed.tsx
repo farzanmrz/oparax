@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { ArrowUpDown, CalendarDays, CircleAlert, Gauge, Layers, Rows3, Search, X } from "lucide-react";
+import { ArrowUpDown, CalendarDays, CircleAlert, Gauge, Layers, X } from "lucide-react";
 import { XLogo } from "@/pro/shared/brand";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import {
   clock,
@@ -37,7 +36,7 @@ import { StoryMedia } from "./media";
 // window under a mono uppercase header, a live checking row on top, status tiles and a small chart beside it.
 // Fixed: every row shows its facts on arrival (no expand); every row has one media object of the same
 // footprint (image, post, release or article card); the left list holds every source, grouped by kind, and
-// filters the table; a Name or Handle switch; no "reports"; each count said once and with its unit.
+// filters the table; sources by name (no Name or Handle switch, no search, the clustered view only, owner Oct 8); no "reports"; each count said once and with its unit.
 
 const BASE = "/v2/newsroom/feed";
 // Below 1280px the media moves under the facts, so the story column never collapses.
@@ -48,17 +47,12 @@ export function NewsroomFeed({ view, theme, settled = false }: { view: View; the
   const list = storiesFor(view);
   const { arrived, pending } = useArrival(settled);
   const [selected, setSelected] = useState<string | null>(null);
-  const [label, setLabel] = useState<Label>("name");
-  const [query, setQuery] = useState("");
+  const label: Label = "name";
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (arrived ? list : list.slice(1)).filter(
-      (s) =>
-        (!selected || s.items.some((i) => i.sourceId === selected)) &&
-        (!q || [s.card.headline, ...s.card.facts.map((f) => f.text), ...s.items.map((i) => i.publisher)].join(" ").toLowerCase().includes(q)),
-    );
-  }, [arrived, list, selected, query]);
+  const visible = useMemo(
+    () => (arrived ? list : list.slice(1)).filter((s) => !selected || s.items.some((i) => i.sourceId === selected)),
+    [arrived, list, selected],
+  );
 
   const source = selected ? sourceById.get(selected) ?? null : null;
 
@@ -69,29 +63,16 @@ export function NewsroomFeed({ view, theme, settled = false }: { view: View; the
           <div className="flex items-center justify-between gap-6">
             <div>
               <p className="text-[13.5px] text-t3">
-                {view === "clustered"
-                  ? "Articles and posts about the same event, joined into one story. Newest first."
-                  : "Each article, post and GitHub release on its own. Newest first."}
+                Articles and posts about the same event, joined into one story. Newest first.
               </p>
             </div>
             <AlertsButton />
           </div>
 
           <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start">
-          <SourceRail selected={selected} onSelect={setSelected} label={label} onLabel={setLabel} />
+          <SourceRail selected={selected} onSelect={setSelected} label={label} />
           <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
-            <ViewSwitch view={view} theme={theme} />
-            <label className="flex h-8 w-[260px] items-center gap-2 rounded-md border border-line bg-[var(--well)] px-2.5 text-[12.5px] text-t3 focus-within:border-[var(--brand-line)]">
-              <Search className="size-3.5 shrink-0" aria-hidden="true" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search stories"
-                aria-label="Search stories"
-                className="min-w-0 flex-1 bg-transparent text-t1 outline-none placeholder:text-t3"
-              />
-            </label>
             {source ? (
               <span className="inline-flex h-8 items-center gap-2 rounded-md border border-[var(--brand-line)] bg-[var(--brand-soft)] pr-1 pl-2.5 text-[12.5px] text-t1">
                 <SourceMark source={source} size={16} />
@@ -129,9 +110,7 @@ export function NewsroomFeed({ view, theme, settled = false }: { view: View; the
               {visible.length === 0 ? (
                 source ? (
                   <SourceEmpty source={source} label={label} />
-                ) : (
-                  <p className="px-4 py-12 text-center text-[13.5px] text-t3">No stories match “{query}”.</p>
-                )
+                ) : null
               ) : (
                 <ul>
                   <AnimatePresence initial={false}>
@@ -162,66 +141,19 @@ export function NewsroomFeed({ view, theme, settled = false }: { view: View; the
   );
 }
 
-function ViewSwitch({ view, theme }: { view: View; theme?: string }) {
-  const icon = { clustered: Layers, direct: Rows3 };
-  return (
-    <nav aria-label="Feed view" className="flex rounded-lg border border-line bg-[var(--well)] p-0.5">
-      {(["clustered", "direct"] as const).map((v) => {
-        const Icon = icon[v];
-        const on = v === view;
-        return (
-          <Link
-            key={v}
-            href={href(BASE, { view: v, theme })}
-            aria-current={on ? "page" : undefined}
-            className={cn(
-              "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] text-t3 transition-colors hover:text-t1",
-              on && "bg-[var(--brand-soft)] text-t1 shadow-[inset_0_0_0_1px_var(--brand-line)]",
-            )}
-          >
-            <Icon className={cn("size-3.5", on && "text-[var(--brand)]")} aria-hidden="true" />
-            {v === "clustered" ? "Clustered" : "Direct"}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
 function SourceRail({
   selected,
   onSelect,
   label,
-  onLabel,
 }: {
   selected: string | null;
   onSelect: (id: string | null) => void;
   label: Label;
-  onLabel: (l: Label) => void;
 }) {
   return (
     <nav aria-label="Sources" className="w-full shrink-0 rounded-[14px] border border-line bg-[var(--rail)] px-2.5 pt-5 pb-8 lg:w-[244px]">
-      <div className="flex items-center justify-between px-2">
+      <div className="px-2">
         <p className="font-mono text-[10.5px] tracking-[0.1em] text-t3">SOURCES</p>
-        <ToggleGroup
-          type="single"
-          size="sm"
-          spacing={0}
-          value={label}
-          onValueChange={(v) => v && onLabel(v as Label)}
-          aria-label="Show sources by"
-          className="rounded-md border border-line bg-[var(--well)] p-0.5"
-        >
-          {(["name", "handle"] as const).map((v) => (
-            <ToggleGroupItem
-              key={v}
-              value={v}
-              className="h-5 rounded-[5px] px-1.5 font-mono text-[9.5px] tracking-[0.06em] text-t3 data-[state=on]:bg-[var(--brand-soft)] data-[state=on]:text-t1 data-[state=on]:shadow-[inset_0_0_0_1px_var(--brand-line)]"
-            >
-              {v === "name" ? "NAME" : "HANDLE"}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
       </div>
       <button
         type="button"
@@ -370,7 +302,7 @@ function StatusStrip() {
       <StatusTile tone="error" label="FAILED" icon={<CircleAlert className="size-[18px]" />}>
         Could not process <span className="tabular-nums">{status.failed}</span> item
       </StatusTile>
-      <StatusTile label="ALERTS ON X" icon={<XLogo className="size-4" />}>
+      <StatusTile label="ALERTS ON TWITTER" icon={<XLogo className="size-4" />}>
         <span className="flex items-center gap-2">
           <Dot tone="idle" /> Not connected
         </span>
@@ -385,7 +317,7 @@ function StatusStrip() {
         </div>
         <div className="w-[120px] shrink-0">
           <p className="flex items-center justify-between font-mono text-[10px] tracking-[0.08em] text-t3">
-            <span className="flex items-center gap-1.5"><Gauge className="size-3" /> X POSTS</span>
+            <span className="flex items-center gap-1.5"><Gauge className="size-3" /> TWITTER POSTS</span>
             <span className="font-sans text-[12.5px] tracking-normal text-t1 tabular-nums">{status.poolUsed}<span className="text-t3">/{status.poolLimit}</span></span>
           </p>
           <div className="mt-2 h-1.5 rounded-full bg-line-strong" />

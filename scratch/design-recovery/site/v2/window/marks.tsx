@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { kindWord, type Group, type Item, type Kind, type Source } from "./data";
 
 // Native-color identity marks, copied from next/council/marks.tsx and extended for the v2 source groups.
-// Runtime public images only: Google's favicon service for sites (DuckDuckGo second), unavatar for X accounts.
+// Runtime public images only: Google's favicon service for sites (DuckDuckGo second), unavatar for Twitter accounts.
 
 function useFallback(sources: string[]) {
   const [index, setIndex] = useState(0);
@@ -91,7 +91,7 @@ export function ProductHuntMark({ size = 16, className }: { size?: number; class
   );
 }
 
-/** A source's identity: round avatar for an X account, favicon for a feed or website, the brand mark otherwise. */
+/** A source's identity: round avatar for an Twitter account, favicon for a feed or website, the brand mark otherwise. */
 export function SourceMark({ source, size = 16, className }: { source: Source; size?: number; className?: string }) {
   if (source.group === "x") return <XAvatar handle={source.handle} size={size} className={className} />;
   if (source.group === "github")

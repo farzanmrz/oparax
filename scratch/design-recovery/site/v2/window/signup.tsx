@@ -128,7 +128,7 @@ export function Signup({ sent = false }: { sent?: boolean }) {
                   <div className="mt-8 border-t border-line pt-5">
                     <p className="flex items-center gap-2 text-[13px] font-medium text-[var(--caution)]">
                       <span className="rounded-[5px] border border-[var(--caution)]/40 bg-[var(--caution-soft)] px-1.5 py-px font-mono text-[10px] tracking-wide">FREE WEEK</span>
-                      7 days, 300 watched X posts, no card
+                      7 days, 300 watched Twitter posts, no card
                     </p>
                     <p className="mt-1.5 text-[12.5px] text-t3">It starts when your agent is ready.</p>
                   </div>

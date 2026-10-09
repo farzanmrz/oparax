@@ -78,13 +78,13 @@ function Hero() {
           </span>
           <h1 className="mt-5 text-[52px] leading-[1.04] font-semibold tracking-[-0.035em] text-t1">Your beat, watched for you.</h1>
           <p className="mt-5 text-[16px] leading-[1.6] text-t2">
-            Say what you follow in one sentence. Oparax watches the X accounts, RSS feeds, websites, GitHub repositories and Product Hunt around it,
-            joins the articles and posts about one event into one story with every fact sourced, and sends it to you on X.
+            Say what you follow in one sentence. Oparax watches the Twitter accounts, RSS feeds, websites, GitHub repositories and Product Hunt around it,
+            joins the articles and posts about one event into one story with every fact sourced, and sends it to you on Twitter.
           </p>
           <div className="mt-7 flex max-w-[360px] flex-col gap-2.5">
             <PrimaryButton href={`${BASE}/setup`} className="h-11 text-[14px]">
               <XLogo className="size-3.5" />
-              Sign up with X
+              Sign up with Twitter
             </PrimaryButton>
             <SecondaryButton href={`${BASE}/setup?handle=typed`} className="h-11 text-[14px]">
               <GoogleMark />
@@ -207,7 +207,7 @@ function SourcesSection() {
   return (
     <>
       <SectionHead id="sources" eyebrow="Sources" title="Every source weighed the same">
-        X accounts, RSS feeds, websites, GitHub and Product Hunt all feed one judge: each new post, article or release is read against your
+        Twitter accounts, RSS feeds, websites, GitHub and Product Hunt all feed one judge: each new post, article or release is read against your
         sentence, and the ones about the same event join one story.
       </SectionHead>
       <Stage>
@@ -282,7 +282,7 @@ function AgentSection() {
   return (
     <>
       <SectionHead id="agent" eyebrow="Your agent" title="One sentence, then it picks the sources">
-        Your agent reads your newest X posts once, checks {candidateCount} candidate sources against your sentence, and keeps the ones that fit,
+        Your agent reads your newest Twitter posts once, checks {candidateCount} candidate sources against your sentence, and keeps the ones that fit,
         each with its reason. You never fill in a list.
       </SectionHead>
       <Stage grid>
@@ -361,17 +361,17 @@ function SourceMarkHost({ host }: { host: string }) {
 /* ───────────── Pricing ───────────── */
 
 const plans = [
-  { name: "Free week", price: "$0", per: "for 7 days", posts: 300, postsLabel: "300 watched X posts in the week", cadence: "One DM a day", note: "No card. It starts when your agent is ready.", free: true },
-  { name: "Hobby", price: "$5", per: "a month", posts: 100, postsLabel: "100 watched X posts a month", cadence: "One DM a day" },
-  { name: "Creator", price: "$30", per: "a month", posts: 3000, postsLabel: "3,000 watched X posts a month", cadence: "One DM a day" },
-  { name: "Wire", price: "$99", per: "a month", posts: 4000, postsLabel: "4,000 watched X posts a month", cadence: "Every 15 minutes when there is news" },
+  { name: "Free week", price: "$0", per: "for 7 days", posts: 300, postsLabel: "300 watched Twitter posts in the week", cadence: "One DM a day", note: "No card. It starts when your agent is ready.", free: true },
+  { name: "Hobby", price: "$5", per: "a month", posts: 100, postsLabel: "100 watched Twitter posts a month", cadence: "One DM a day" },
+  { name: "Creator", price: "$30", per: "a month", posts: 3000, postsLabel: "3,000 watched Twitter posts a month", cadence: "One DM a day" },
+  { name: "Wire", price: "$99", per: "a month", posts: 4000, postsLabel: "4,000 watched Twitter posts a month", cadence: "Every 15 minutes when there is news" },
 ];
 
 function Pricing() {
   return (
     <>
       <SectionHead id="pricing" eyebrow="Pricing" title="A free week, then a plan">
-        Every plan reads unlimited RSS feeds and websites, and GitHub and Product Hunt. Plans differ in how many X posts your agent watches and how
+        Every plan reads unlimited RSS feeds and websites, and GitHub and Product Hunt. Plans differ in how many Twitter posts your agent watches and how
         often it writes to you.
       </SectionHead>
       <Stage>
@@ -403,7 +403,7 @@ function Pricing() {
               </div>
               <ul className="mt-4 space-y-2 text-[12.5px] text-t2">
                 <li className="flex gap-2">
-                  <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--ok)]" /> Alerts on X: {p.cadence[0].toLowerCase() + p.cadence.slice(1)}
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--ok)]" /> Alerts on Twitter: {p.cadence[0].toLowerCase() + p.cadence.slice(1)}
                 </li>
                 <li className="flex gap-2">
                   <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--ok)]" /> Unlimited RSS feeds and websites
@@ -421,7 +421,7 @@ function Pricing() {
           <div className="flex gap-2.5">
             <SecondaryButton href={`${BASE}/login?mode=signup`}>Sign up with email</SecondaryButton>
             <PrimaryButton href={`${BASE}/setup`}>
-              <XLogo className="size-3" /> Sign up with X
+              <XLogo className="size-3" /> Sign up with Twitter
             </PrimaryButton>
           </div>
         </div>

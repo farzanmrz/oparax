@@ -179,7 +179,7 @@ export const brief = {
 /** The stored build_log, exactly as the product writes it today (shown in NOTES, not on screen). */
 export const buildLog = [
   { step: 1, message: "Profile identity confirmed", at: "2026-10-01T14:02:12.418Z" },
-  { step: 1, message: "Looking up @farzanmrz on X", at: "2026-10-01T14:02:14.201Z" },
+  { step: 1, message: "Looking up @farzanmrz on Twitter", at: "2026-10-01T14:02:14.201Z" },
   { step: 2, message: "Reading @farzanmrz's newest posts", at: "2026-10-01T14:02:14.688Z" },
   { step: 2, message: "Reading @farzanmrz's newest posts", at: "2026-10-01T14:02:14.903Z" },
   { step: 2, message: "Reading @farzanmrz's newest posts", at: "2026-10-01T14:02:16.355Z" },
@@ -202,7 +202,7 @@ export const quotedCandidates = kept.filter((c) => c.quoted);
 export const storedPosts = posts.length; // 3 stored in full; the other 7 have no stored text
 
 /** The shared source table every run starts from: the 150 rows of docs/source-table-seed.json (kind, name and
- * target only), in the table's own order. The table holds X accounts, RSS feeds and websites; no GitHub rows. */
+ * target only), in the table's own order. The table holds Twitter accounts, RSS feeds and websites; no GitHub rows. */
 export type TableRow = { id: string; kind: Kind; name: string; target: string };
 export const sourceTable: TableRow[] = [
   { id: "google-ai-news-and-product-updates", kind: "rss", name: "Google", target: "https://blog.google/innovation-and-ai/technology/ai/rss/" },

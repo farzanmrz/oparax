@@ -10,6 +10,7 @@ import { StepMark } from "@/next/building/step-mark";
 import {
   announce,
   isDone,
+  stepDoes,
   stepIds,
   stepLabel,
   stepLine,
@@ -44,7 +45,7 @@ import { beat, brief, droppedSample, HANDLE, kept, posts, postsRead, profile } f
 import { EASE } from "./live";
 import { SiteIcon, XAvatar } from "./marks";
 
-// Window building, v2. The page is the window: the eight steps of the onboarding run in a rail on the left, the
+// Window building, v2. The page is the window: the product's seven steps of the onboarding run in a rail on the left, the
 // work itself in the middle, every step in order and staying on the page once it has finished (the profile, the
 // posts, the candidates, Jev's bands, the chosen sources with the reason each was picked), and the brief open on
 // the right. Jev returns only a probability, so candidates show as Strong match, Possible match or Set aside, and
@@ -56,8 +57,8 @@ export type { RunMode };
 const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
 
-const kindOf = (c: Candidate) => (c.kind === "x_account" ? "X" : c.kind === "rss" ? "RSS" : "Web");
-const kindWordOf = (c: Candidate) => (c.kind === "x_account" ? "X account" : c.kind === "rss" ? "RSS feed" : "Website");
+const kindOf = (c: Candidate) => (c.kind === "x_account" ? "Twitter" : c.kind === "rss" ? "RSS" : "Web");
+const kindWordOf = (c: Candidate) => (c.kind === "x_account" ? "Twitter account" : c.kind === "rss" ? "RSS feed" : "Website");
 
 function CandMark({ c, size = 18 }: { c: Candidate; size?: number }) {
   if (c.kind === "x_account") return <XAvatar handle={c.target.replace("https://x.com/", "")} size={size} />;
@@ -186,7 +187,10 @@ function Steps({ run }: { run: Run }) {
                       </a>
                     )}
                   </p>
-                  <p className={cn("mt-0.5 text-[12px]", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{stepLabel[state]}</p>
+                  <p className="mt-0.5 text-[12px] leading-snug text-t3">{stepDoes[id]}</p>
+                  {state === "waiting" ? null : (
+                    <p className={cn("mt-0.5 text-[12px]", state === "failed" ? "text-[var(--error)]" : state === "running" ? "text-[var(--caution)]" : "text-t3")}>{stepLabel[state]}</p>
+                  )}
                 </div>
               </li>
             );
@@ -257,7 +261,7 @@ function Evidence({ id, run, state, progress }: { id: StepId; run: Run; state: S
     case "choose":
       return <Chosen running={running} progress={progress} />;
     case "search":
-      return <p className="pl-[52px] text-[12.5px] text-t3">{keptAccounts} X accounts already passed the check, so there was nothing to look for.</p>;
+      return <p className="pl-[52px] text-[12.5px] text-t3">{keptAccounts} Twitter accounts already passed the check, so there was nothing to look for.</p>;
     default:
       return null;
   }
@@ -301,7 +305,7 @@ function ProfileCard() {
 }
 
 function PostsGrid({ running, progress, failed }: { running: boolean; progress: number; failed: boolean }) {
-  if (failed) return <p className="pl-[52px] text-[12.5px] text-t3">X did not return the posts in time.</p>;
+  if (failed) return <p className="pl-[52px] text-[12.5px] text-t3">Twitter did not return the posts in time.</p>;
   const shown = running ? take(posts, progress) : posts;
   return (
     <>
@@ -479,7 +483,7 @@ function Chosen({ running, progress }: { running: boolean; progress: number }) {
   return (
     <>
       <div className="grid grid-cols-2 items-start gap-2.5">
-        {col("X accounts", chosenAccounts.length, accounts)}
+        {col("Twitter accounts", chosenAccounts.length, accounts)}
         {col("Sites and feeds", chosenSites.length, sites)}
       </div>
       {!running ? (
@@ -492,7 +496,7 @@ function Chosen({ running, progress }: { running: boolean; progress: number }) {
 }
 
 function BriefPane({ run }: { run: Run }) {
-  const i = stepIds.indexOf("brief");
+  const i = stepIds.indexOf("choose");
   const state = run.states[i];
   const streaming = state === "running";
   const ready = state === "done";
@@ -504,7 +508,7 @@ function BriefPane({ run }: { run: Run }) {
         <Label>Your brief</Label>
         {state === "waiting" || state === "failed" ? (
           <div className="mt-3 space-y-2 rounded-xl border border-dashed border-line-strong p-4">
-            <p className="text-[13px] text-t3">Written after the sources are chosen.</p>
+            <p className="text-[13px] text-t3">Written with the sources in step 5.</p>
             <Skeleton className="h-3 w-full bg-[var(--raised)]" />
             <Skeleton className="h-3 w-5/6 bg-[var(--raised)]" />
             <Skeleton className="h-3 w-2/3 bg-[var(--raised)]" />

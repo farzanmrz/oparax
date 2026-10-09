@@ -10,7 +10,7 @@ import { ItemMark, KindChip, KindGlyph } from "./marks";
 
 // One story, readable on arrival: kind chips and time, the headline, every fact with its sources named, and on
 // the right the story's image when it has one plus each source as a small card in the form it arrived (an
-// article's quote, an X post, a GitHub release). Hovering or focusing a cited name lights its card.
+// article's quote, an Twitter post, a GitHub release). Hovering or focusing a cited name lights its card.
 
 export function kindsOf(story: Story) {
   const out: { kind: Kind; count: number }[] = [];
@@ -136,7 +136,7 @@ export function StoryBlock({ story, fresh = false, last = false }: { story: Stor
   );
 }
 
-/** Each source of a story as its own small card, in the form it arrived: an article quote, an X post, a release. */
+/** Each source of a story as its own small card, in the form it arrived: an article quote, an Twitter post, a release. */
 export function SourceCard({ item, story, focused = false, className }: { item: Item; story: Story; focused?: boolean; className?: string }) {
   const src = sourceById.get(item.sourceId)!;
   const spans = [...new Set(story.facts.flatMap((f) => f.evidence.filter((e) => e.item === item.id).map((e) => e.span)))];

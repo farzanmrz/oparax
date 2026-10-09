@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { CircleAlert, Layers, X as Close } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AlertsButton, Header, lift, liftStyle, Stage, Tile, ViewSwitch } from "./chrome";
+import { AlertsButton, Header, lift, liftStyle, Stage, Tile } from "./chrome";
 import {
   groups,
   itemsFrom,
@@ -27,8 +27,9 @@ import { Dot, GroupGlyph, GroupLabel, Segments, SourceMark, WeekBars } from "./m
 import { StoryStack, PEEK, type LabelMode } from "./stack";
 
 // Deck v2 feed. The accepted Deck's composition (a slim row of tiles, then stories as physical stacks on a lit
-// page) with the owner's fixes: a source list on the left where X accounts, RSS feeds, websites and GitHub sit as
-// equal sources under small capitalized headers, each one selectable, with a name or handle switch; every fact
+// page) with the owner's fixes: a source list on the left where Twitter accounts, RSS feeds, websites and GitHub sit as
+// equal sources under small capitalized headers, each one selectable, shown by name (no name or handle switch, and
+// the clustered view is the only view, owner Oct 8); every fact
 // readable on arrival; counts only where they tell the person something, each with its unit, said once.
 
 const IMAGE_H = 172;
@@ -50,31 +51,28 @@ function toColumns(list: FeedStory[], n: number, lead = 0) {
 }
 
 export function DeckFeed({
-  initialView,
   initialSource,
-  initialMode,
   settled,
 }: {
-  initialView: View;
+  initialView?: View;
   initialSource: string | null;
-  initialMode: LabelMode;
+  initialMode?: LabelMode;
   settled: boolean;
 }) {
-  const [view, setView] = useState<View>(initialView);
+  const view: View = "clustered";
   const [sourceId, setSourceId] = useState<string | null>(sources.some((s) => s.id === initialSource) ? initialSource : null);
-  const [mode, setMode] = useState<LabelMode>(initialMode);
+  const mode: LabelMode = "name";
   const { arrived, pending } = useArrival(settled);
 
   // Keep the URL in step so each state has an address (and survives a reload).
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    q.set("view", view);
+    q.delete("view");
     if (sourceId) q.set("source", sourceId);
     else q.delete("source");
-    if (mode === "handle") q.set("label", "handle");
-    else q.delete("label");
+    q.delete("label");
     history.replaceState(null, "", `${location.pathname}?${q.toString()}`);
-  }, [view, sourceId, mode]);
+  }, [sourceId]);
 
   const all = stories[view];
   const selected = sources.find((s) => s.id === sourceId) ?? null;
@@ -88,19 +86,18 @@ export function DeckFeed({
       <main className="relative mx-auto w-full max-w-[1400px] px-4 pt-8 pb-20 lg:px-8">
         <Header
           title="Your Feed"
-          controls={<ViewSwitch view={view} onChange={setView} />}
           actions={<AlertsButton />}
           sub={
             <p className="text-[13.5px] text-t3">
-              {view === "clustered" ? "Articles and posts about the same event, stacked into one story." : "Each article, post and release on its own card, newest first."}
+              Articles and posts about the same event, stacked into one story.
             </p>
           }
           note={`${PREVIEW_NOTE} The newest story's arrival is a replay.`}
         />
 
         <div className="mt-7 grid items-start gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
-          <SourceList selected={sourceId} onSelect={setSourceId} mode={mode} onMode={setMode} />
-          <SourceStrip selected={sourceId} onSelect={setSourceId} mode={mode} onMode={setMode} />
+          <SourceList selected={sourceId} onSelect={setSourceId} mode={mode} />
+          <SourceStrip selected={sourceId} onSelect={setSourceId} mode={mode} />
 
           <div className="min-w-0">
             <Tiles />
@@ -208,7 +205,7 @@ function Tiles() {
           <Segments total={status.trialDays} filled={status.daysLeft} />
         </div>
         <p className="mt-2 text-[11.5px] tabular-nums text-t3">
-          {status.poolUsed} of {status.poolLimit} watched X posts used
+          {status.poolUsed} of {status.poolLimit} watched Twitter posts used
         </p>
       </Tile>
     </div>
@@ -219,18 +216,15 @@ function SourceList({
   selected,
   onSelect,
   mode,
-  onMode,
 }: {
   selected: string | null;
   onSelect: (id: string | null) => void;
   mode: LabelMode;
-  onMode: (m: LabelMode) => void;
 }) {
   return (
     <aside aria-label="Sources" className={cn(lift, "hidden p-2.5 lg:sticky lg:top-4 lg:block")} style={liftStyle}>
       <div className="flex items-center justify-between gap-2 px-1.5 pt-1 pb-2.5">
         <p className="text-[13px] font-semibold text-t1">Sources</p>
-        <NameHandle mode={mode} onMode={onMode} />
       </div>
       <Row on={selected === null} onClick={() => onSelect(null)}>
         <span className="grid size-[18px] place-items-center rounded-[5px] bg-[var(--brand-soft)] text-[var(--brand)]">
@@ -264,48 +258,15 @@ function SourceList({
   );
 }
 
-function NameHandle({ mode, onMode }: { mode: LabelMode; onMode: (m: LabelMode) => void }) {
-  return (
-    <div role="radiogroup" aria-label="Show sources by" className="flex rounded-md border border-line bg-[var(--well)] p-0.5" onKeyDown={(e) => arrows(e, () => onMode(mode === "name" ? "handle" : "name"))}>
-      {(["name", "handle"] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          role="radio"
-          aria-checked={mode === m}
-          tabIndex={mode === m ? 0 : -1}
-          onClick={() => onMode(m)}
-          className={cn(
-            "h-6 rounded-[5px] px-2 text-[11.5px] text-t3 transition-colors hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring",
-            mode === m && "bg-[var(--brand-soft)] text-t1 shadow-[inset_0_0_0_1px_var(--brand-line)]",
-          )}
-        >
-          {m === "name" ? "Name" : "Handle"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** Left and right arrows move a two-option control, as a radio group does. */
-function arrows(e: React.KeyboardEvent<HTMLElement>, flip: () => void) {
-  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-  e.preventDefault();
-  flip();
-  const el = e.currentTarget;
-  requestAnimationFrame(() => (el.querySelector('[aria-checked="true"]') as HTMLElement | null)?.focus());
-}
-
 /** Below the wide layout the source list becomes one scrolling row, so the first story stays in view. */
-const kindTag = { x: "X", rss: "RSS", website: "Web", github: "GitHub" } as const;
+const kindTag = { x: "Twitter", rss: "RSS", website: "Web", github: "GitHub" } as const;
 
-function SourceStrip({ selected, onSelect, mode, onMode }: { selected: string | null; onSelect: (id: string | null) => void; mode: LabelMode; onMode: (m: LabelMode) => void }) {
+function SourceStrip({ selected, onSelect, mode }: { selected: string | null; onSelect: (id: string | null) => void; mode: LabelMode }) {
   const chip = "flex h-8 shrink-0 items-center gap-2 rounded-full border px-2.5 text-[12.5px] transition-colors";
   const on = "border-[var(--brand-line)] bg-[var(--brand-soft)] text-t1";
   const off = "border-line bg-[var(--window)] text-t2";
   return (
     <div className="flex min-w-0 items-center gap-2 lg:hidden">
-    <NameHandle mode={mode} onMode={onMode} />
     <nav aria-label="Sources" className="-mr-6 flex min-w-0 flex-1 gap-1.5 overflow-x-auto pr-6 pb-1">
       <button type="button" aria-pressed={selected === null} onClick={() => onSelect(null)} className={cn(chip, selected === null ? on : off)}>
         <Layers className="size-3.5 text-[var(--brand)]" aria-hidden="true" /> All sources
@@ -338,7 +299,7 @@ function Row({ on, onClick, children }: { on: boolean; onClick: () => void; chil
   );
 }
 
-const groupWord = { x: "X account", rss: "RSS feed", website: "Website", github: "GitHub repository" } as const;
+const groupWord = { x: "Twitter account", rss: "RSS feed", website: "Website", github: "GitHub repository" } as const;
 
 function SourceHeader({ source, mode, onClear }: { source: Source; mode: LabelMode; onClear: () => void }) {
   return (

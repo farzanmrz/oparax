@@ -7,7 +7,7 @@ import { day, hostOf, releaseLines, releaseMeta, type FeedItem, type Story } fro
 import { GitHubMark, ItemMark, XAvatar } from "./marks";
 
 // The media slot of a Newsroom row. Every row carries one visual object of the same footprint, so items with
-// and without images sit together: the article's own image when it has one; otherwise the X post itself, the
+// and without images sit together: the article's own image when it has one; otherwise the Twitter post itself, the
 // GitHub release's stored lines, or the article's own title and address as an article card.
 
 export function StoryMedia({ story, className, tall = false }: { story: Story; className?: string; tall?: boolean }) {

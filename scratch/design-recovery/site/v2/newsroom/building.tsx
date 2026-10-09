@@ -7,7 +7,7 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StepMark } from "@/next/building/step-mark";
 import { modeFromParams } from "@/next/building/mode";
-import { announce, isDone, stepIds, stepLabel, stepLine, stepTitle, useFollow, useRun, type Run, type StepId, type StepState } from "@/next/building/steps";
+import { announce, isDone, stepDoes, stepIds, stepLabel, stepLine, stepTitle, useFollow, useRun, type Run, type StepId, type StepState } from "@/next/building/steps";
 import {
   bandLabel,
   bandOf,
@@ -42,7 +42,7 @@ import { SiteIcon, XAvatar } from "./marks";
 const COLS = 5;
 const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
-const kindName = { x_account: "X account", rss: "RSS feed", website: "Website" } as const;
+const kindName = { x_account: "Twitter account", rss: "RSS feed", website: "Website" } as const;
 const chosenOrder = [...chosenSites, ...chosenAccounts];
 const whyById = new Map(chosenOrder.map((c) => [c.id, c.why]));
 
@@ -115,7 +115,7 @@ function LiveRow({ run, failed }: { run: Run; failed: boolean }) {
     return (
       <div className="flex h-11 items-center gap-3 border-b border-line bg-[var(--error-soft)] px-4">
         <span className="font-mono text-[10.5px] tracking-[0.08em] text-[var(--error)]">STOPPED</span>
-        <span className="text-[13px] text-t1">X did not return the posts in time.</span>
+        <span className="text-[13px] text-t1">Twitter did not return the posts in time.</span>
       </div>
     );
   return (
@@ -153,6 +153,7 @@ function StepRows({ id, index, state, run, progress, onRetry }: { id: StepId; in
             {state === "done" || state === "skipped" ? <span className="text-[13px] text-t2">{stepLine[id]}</span> : null}
             <span className={cn("ml-auto text-[12px]", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{stepLabel[state]}</span>
           </span>
+          <span className="mt-1 block pl-[51px] text-[12.5px] text-t3">{stepDoes[id]}</span>
         </TableCell>
       </TableRow>
       <Body id={id} run={run} state={state} progress={progress} onRetry={onRetry} />
@@ -309,10 +310,10 @@ function Body({ id, run, state, progress, onRetry }: { id: StepId; run: Run; sta
     case "search":
       return (
         <Full className="py-2.5">
-          <p className="text-[12.5px] text-t3">{keptAccounts} X accounts already passed the check, so there was nothing to look for.</p>
+          <p className="text-[12.5px] text-t3">{keptAccounts} Twitter accounts already passed the check, so there was nothing to look for.</p>
         </Full>
       );
-    case "brief": {
+    case "choose": {
       const words = brief.summary.split(" ");
       const text = running ? words.slice(0, Math.max(1, Math.ceil(progress * words.length))).join(" ") : brief.summary;
       return (

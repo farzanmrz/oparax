@@ -8,7 +8,7 @@ import { hostOf, type FeedItem, type Group, type Kind, type Source } from "./dat
 
 // Identity marks, copied from the accepted feed (next/council/marks.tsx) and adapted: GitHub is a kind like
 // post and article. Runtime public images only: Google's favicon service with DuckDuckGo as the second try,
-// unavatar for X accounts, a glyph last.
+// unavatar for Twitter accounts, a glyph last.
 
 function useFallback(sources: string[]) {
   const [index, setIndex] = useState(0);
@@ -97,7 +97,7 @@ export function GoogleMark({ className }: { className?: string }) {
   );
 }
 
-/** A source's mark: round avatar for an X account, the GitHub mark for a repository, a favicon otherwise. */
+/** A source's mark: round avatar for an Twitter account, the GitHub mark for a repository, a favicon otherwise. */
 export function SourceMark({ source, size = 18, className }: { source: Source; size?: number; className?: string }) {
   if (source.group === "x") return <XAvatar handle={source.handle} size={size} className={className} />;
   if (source.group === "github")

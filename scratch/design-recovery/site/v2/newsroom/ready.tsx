@@ -10,7 +10,7 @@ import { LiveLine } from "./live";
 import { Dot, GroupGlyph, Segments, SiteIcon, SourceMark, XAvatar } from "./marks";
 import Link from "next/link";
 
-// Newsroom ready: what the agent chose, as the lifted table window grouped under X ACCOUNTS, RSS FEEDS and
+// Newsroom ready: what the agent chose, as the lifted table window grouped under TWITTER ACCOUNTS, RSS FEEDS and
 // WEBSITES, each row with its reason; the brief and the free week beside it; then into the feed. The live
 // row says the first check is running. Everything is the recorded run's answer.
 
@@ -108,7 +108,7 @@ export function Ready({ theme }: { theme?: string }) {
               </div>
               <div className="mt-3.5 flex items-center justify-between">
                 <p className="flex items-center gap-1.5 font-mono text-[10.5px] tracking-[0.08em] text-t3">
-                  <Gauge className="size-3" /> WATCHED X POSTS
+                  <Gauge className="size-3" /> WATCHED TWITTER POSTS
                 </p>
                 <span className="text-[12.5px] tabular-nums text-t1">
                   {status.poolUsed} <span className="text-t3">of {status.poolLimit}</span>
@@ -116,7 +116,7 @@ export function Ready({ theme }: { theme?: string }) {
               </div>
               <div className="mt-2 h-1.5 rounded-full bg-line-strong" />
             </section>
-            <StatusTile label="ALERTS ON X" icon={<XLogo className="size-4" />}>
+            <StatusTile label="ALERTS ON TWITTER" icon={<XLogo className="size-4" />}>
               <span className="flex items-center gap-2">
                 <Dot tone="idle" /> Not connected
               </span>

@@ -3,7 +3,7 @@ import { githubRelease, heroStory } from "@/next/data/landing";
 import { beat, chosenAccounts, chosenSites } from "@/next/data/onboarding";
 
 // Deck v2 content. Every story, fact and span comes from next/data (verified against the public pages); the
-// sources are the recorded onboarding run's chosen sites, feeds and X accounts, plus the vercel/next.js GitHub
+// sources are the recorded onboarding run's chosen sites, feeds and Twitter accounts, plus the vercel/next.js GitHub
 // repository whose stored release (v15.0.0) is the GitHub item. Counts and the week chart are computed here from
 // stored published_at values only. Changes from the accepted Deck feed: the Bank of England story is dropped
 // (neither of its sources is in this person's source list), and GitHub is a source like any other: its release
@@ -92,7 +92,7 @@ export type Source = {
   name: string;
   /** The handle form: @handle for X, the feed or page address for RSS and websites, owner/repo for GitHub. */
   handle: string;
-  /** Host for the favicon, or the X handle for the avatar. */
+  /** Host for the favicon, or the Twitter handle for the avatar. */
   mark: string;
   focus: string;
   why: string | null;
@@ -139,7 +139,7 @@ export const sources: Source[] = [
 ];
 
 export const groups: { id: Group; label: string }[] = [
-  { id: "x", label: "X accounts" },
+  { id: "x", label: "Twitter accounts" },
   { id: "rss", label: "RSS feeds" },
   { id: "website", label: "Websites" },
   { id: "github", label: "GitHub" },

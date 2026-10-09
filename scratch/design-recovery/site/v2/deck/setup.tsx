@@ -12,7 +12,7 @@ import { BASE, Header, lift, liftStyle, Stage } from "./chrome";
 import { beat, groups, sources, stories, when } from "./data";
 import { GroupGlyph, GroupLabel, SourceMark } from "./marks";
 
-// Deck v2 setup: one lifted form card (the X account the agent is built around, and the one sentence), and beside
+// Deck v2 setup: one lifted form card (the Twitter account the agent is built around, and the one sentence), and beside
 // it what a sentence turns into, from the recorded run: the interests it read, the sources it chose and the stories
 // they found this week, plus the owner's own second example. Copy is the product's (next/copy.ts setup).
 
@@ -63,7 +63,7 @@ export function DeckSetup({ typed, blank }: { typed: boolean; blank: boolean }) 
                     <span className="block text-[12.5px] text-t3">{profile.handle}</span>
                   </span>
                   <span className="flex items-center gap-1 rounded-full bg-[var(--ok-soft)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--ok)]">
-                    <BadgeCheck className="size-3.5" aria-hidden="true" /> From your X sign-in
+                    <BadgeCheck className="size-3.5" aria-hidden="true" /> From your Twitter sign-in
                   </span>
                 </div>
                 <p className="mt-2 text-[12.5px] text-t3">{setup.verifiedHelp}</p>

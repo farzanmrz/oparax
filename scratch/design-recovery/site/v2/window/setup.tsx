@@ -12,14 +12,14 @@ import { AppFrame, BASE, Label, PrimaryButton, ShowProvider, TopBar } from "./ch
 import { DAYS, HANDLE, posts, postsRead, profile, stories } from "./data";
 import { Facts, StoryHead, StoryImage } from "./story";
 
-// Window setup, v2: the X account and the one sentence (copy from next/copy.ts, the product's onboarding
-// content). Beside the form, what the agent will read first: the person's public X profile and newest posts
+// Window setup, v2: the Twitter account and the one sentence (copy from next/copy.ts, the product's onboarding
+// content). Beside the form, what the agent will read first: the person's public Twitter profile and newest posts
 // (the recorded example's values), and the kinds of source it will weigh against the sentence.
 
 const steps = [
-  { icon: AtSign, text: "Looks up your X account" },
+  { icon: AtSign, text: "Looks up your Twitter account" },
   { icon: MessageSquareText, text: "Reads your newest posts" },
-  { icon: ScanSearch, text: "Checks which X accounts, RSS feeds and websites fit your sentence" },
+  { icon: ScanSearch, text: "Checks which Twitter accounts, RSS feeds and websites fit your sentence" },
   { icon: ListChecks, text: "Chooses what to watch, with a reason for each" },
   { icon: FileText, text: "Writes your brief" },
 ];
@@ -126,7 +126,7 @@ export function Setup({ typed = false, blank = false }: { typed?: boolean; blank
                       </li>
                     ))}
                   </ol>
-                  <p className="mt-4 text-[13px] text-t3">Your free week starts when your agent is ready and includes 300 watched X posts.</p>
+                  <p className="mt-4 text-[13px] text-t3">Your free week starts when your agent is ready and includes 300 watched Twitter posts.</p>
                 </section>
               </form>
               <aside aria-label="An example story and what your agent reads first" className="border-t border-line bg-[var(--rail)] px-5 pt-8 pb-8 lg:border-t-0 lg:border-l lg:px-7">

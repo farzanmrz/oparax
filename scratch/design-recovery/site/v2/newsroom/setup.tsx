@@ -9,15 +9,15 @@ import { beat as recordedBeat, HANDLE, posts, profile, status } from "./data";
 import { Lifted, Masthead, Mono, Page, primaryClass, SAMPLE_NOTE } from "./chrome";
 import { KindChip } from "./marks";
 
-// Newsroom setup: one lifted two-pane window. Left, the two inputs (the X account from sign-in, the one
+// Newsroom setup: one lifted two-pane window. Left, the two inputs (the Twitter account from sign-in, the one
 // sentence) and what happens next as a mono-headed step table, with websites and RSS feeds named apart.
-// Right, in the rail tone, the X account the agent is built around: profile, pinned post and newest posts,
+// Right, in the rail tone, the Twitter account the agent is built around: profile, pinned post and newest posts,
 // the material the agent reads (fixture values from the recorded run).
 
 const steps = [
-  { icon: AtSign, text: "Looks up your X account" },
+  { icon: AtSign, text: "Looks up your Twitter account" },
   { icon: MessageSquareText, text: "Reads your newest posts" },
-  { icon: ScanSearch, text: "Checks which X accounts, RSS feeds and websites fit your sentence", kinds: true },
+  { icon: ScanSearch, text: "Checks which Twitter accounts, RSS feeds and websites fit your sentence", kinds: true },
   { icon: ListChecks, text: "Chooses what to watch, with a reason for each" },
   { icon: FileText, text: "Writes your brief" },
 ];
@@ -29,7 +29,7 @@ export function Setup({ theme, typed = false, filled = false, blank = false }: {
     <Page>
       <Masthead title={setup.title} badge={false} note={SAMPLE_NOTE} />
       <main className="w-full px-4 pt-4 pb-14 lg:px-7">
-        <p className="text-[13.5px] text-t3">Your free week starts when your agent is ready and includes {status.poolLimit} watched X posts.</p>
+        <p className="text-[13.5px] text-t3">Your free week starts when your agent is ready and includes {status.poolLimit} watched Twitter posts.</p>
         <Lifted strong className="mt-5 grid grid-cols-1 rounded-[14px] lg:grid-cols-[minmax(0,1fr)_440px]">
           <form
             action="/v2/newsroom/building"
@@ -112,7 +112,7 @@ export function Setup({ theme, typed = false, filled = false, blank = false }: {
                     <span className="text-[13px] text-t1">{text}</span>
                     {kinds ? (
                       <span className="ml-auto flex shrink-0 gap-1">
-                        <KindChip kind="post" label="X" />
+                        <KindChip kind="post" label="Twitter" />
                         <KindChip kind="article" label="RSS" />
                         <KindChip kind="article" label="Web" />
                       </span>

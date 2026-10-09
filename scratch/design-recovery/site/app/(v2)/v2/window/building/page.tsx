@@ -5,7 +5,7 @@ export const metadata = { title: "Oparax | Window: Building" };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-// ?at=1..8 freezes that step mid-run, ?at=done shows the end state, ?state=failed the recorded failure.
+// ?at=1..7 freezes that step mid-run, ?at=done shows the end state, ?state=failed the recorded failure.
 export default async function BuildingPage({ searchParams }: { searchParams: SearchParams }) {
   const q = await searchParams;
   const at = typeof q.at === "string" ? q.at : undefined;

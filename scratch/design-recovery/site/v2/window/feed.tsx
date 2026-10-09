@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ArrowUpDown, Layers, Rows3, X as Close } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AlertsButton, AlertsPreviewNote, AppFrame, Label, ShowProvider, ShowToggle, TopBar, useShow, ViewSwitch } from "./chrome";
+import { AlertsButton, AlertsPreviewNote, AppFrame, Label, ShowProvider, TopBar, useShow } from "./chrome";
 import {
   groups,
   PREVIEW_NOTE,
@@ -49,10 +49,7 @@ function Rail({ view, selected, onSelect }: { view: View; selected: string | nul
   return (
     <aside aria-label="Sources" className="w-full shrink-0 border-b lg:w-[228px] lg:border-b-0 lg:border-r border-line bg-[var(--rail)]">
       <div className="sticky top-0 max-h-svh overflow-y-auto pb-6">
-        <div className="px-2.5 pt-3">
-          <ShowToggle />
-        </div>
-        <ul className="px-2 pt-2.5">
+        <ul className="px-2 pt-3">
           <li>
             <button
               type="button"
@@ -132,7 +129,6 @@ function Column({ view, theme, selected, onClear }: { view: View; theme?: string
       <div className="sticky top-0 z-10 border-b border-line bg-[var(--window)]/95 backdrop-blur">
         <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-6 py-2.5">
           <h1 className="mr-1 text-[22px] leading-none font-semibold tracking-[-0.02em] text-t1">Your Feed</h1>
-          <ViewSwitch view={view} theme={theme} source={selected} />
           {src ? <FilterChip source={src} onClear={onClear} /> : null}
           <span className="ml-auto flex items-center gap-1.5 text-[12px] text-t3">
             <ArrowUpDown className="size-3" aria-hidden="true" /> Newest first
@@ -210,14 +206,14 @@ function Tile({ label, children, className }: { label: string; children: React.R
 function watchingLine() {
   const n = (g: Source["group"]) => sources.filter((s) => s.group === g).length;
   const plural = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
-  return `${plural(n("x"), "X account", "X accounts")}, ${plural(n("rss"), "RSS feed", "RSS feeds")}, ${plural(n("website"), "website", "websites")}, ${plural(n("github"), "GitHub repository", "GitHub repositories")} and Product Hunt`;
+  return `${plural(n("x"), "Twitter account", "Twitter accounts")}, ${plural(n("rss"), "RSS feed", "RSS feeds")}, ${plural(n("website"), "website", "websites")}, ${plural(n("github"), "GitHub repository", "GitHub repositories")} and Product Hunt`;
 }
 
 function StatusColumn() {
   return (
     <aside aria-label="Your agent" className="w-full shrink-0 border-t lg:w-[236px] lg:border-t-0 lg:border-l border-line bg-[var(--rail)]">
       <div className="sticky top-0">
-        <Tile label="Alerts on X">
+        <Tile label="Alerts on Twitter">
           <p className="flex items-center gap-2 text-[13px] text-t2">
             <Dot tone="idle" /> Not connected
           </p>
@@ -245,7 +241,7 @@ function StatusColumn() {
           </div>
           <p className="mt-2 text-[12px] text-t3">Plans from $5 a month.</p>
         </Tile>
-        <Tile label="Watched X posts">
+        <Tile label="Watched Twitter posts">
           <p className="text-[13px] tabular-nums text-t1">
             {status.poolUsed} <span className="text-t3">of {status.poolLimit} in your free week</span>
           </p>

@@ -48,7 +48,7 @@ import { AppShell } from "./shell";
 
 // One onboarding, which the feed holds (owner, Oct 5: "The feed itself will have the onboarding if the feed has not
 // been constructed"): /v2/one/feed?agent=none, in the page's one column. At rest it is the run's page with nothing
-// looked up yet. The page line: "Set up your agent", then the X handle, the sentence and Build my agent on one line
+// looked up yet. The page line: "Set up your agent", then the Twitter handle, the sentence and Build my agent on one line
 // (no card). Under it two working columns: the seven steps of the real engine on the left (empty rings, one line
 // each saying what the step does), and the centre, which holds the shared source table every run starts from. The
 // right column does not exist until step 1 finds the person; then it opens (300ms) with ONE identity block (picture,
@@ -60,7 +60,7 @@ import { AppShell } from "./shell";
 
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
 const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
-/** The chosen sources' kinds. The recorded run chose sites, feeds and X accounts; it chose no GitHub repository. */
+/** The chosen sources' kinds. The recorded run chose sites, feeds and Twitter accounts; it chose no GitHub repository. */
 const kinds = groups.filter((g) => g.id !== "github" && sources.some((s) => s.group === g.id));
 const chosenTotal = sources.filter((s) => s.group !== "github").length;
 
@@ -83,7 +83,7 @@ const bandOrder: Band[] = ["strong", "possible", "set-aside"];
 const before: Run = { states: oneStepIds.map(() => "waiting"), progress: oneStepIds.map(() => 0) };
 const idx = (id: OneStepId) => oneStepIds.indexOf(id);
 
-const HANDLE_REQUIRED = "Type the X handle your agent is built around.";
+const HANDLE_REQUIRED = "Type the Twitter handle your agent is built around.";
 const PLACEHOLDER = "One sentence. Name the topics, people or products you care about.";
 
 /** The replay clock: plays from zero, pauses, resumes and replays. Reduced motion keeps every step and only drops
@@ -236,7 +236,7 @@ export function OneOnboarding({
                 style={{ boxShadow: "var(--top-light)" }}
               >
                 <XLogo className="size-3 text-t1" />@{shownHandle}
-                <span className="sr-only">, your X account</span>
+                <span className="sr-only">, your Twitter account</span>
               </span>
             ) : (
               <SetupLine
@@ -341,7 +341,7 @@ const primary =
 const quietButton =
   "rounded-sm text-[12.5px] text-t3 underline decoration-line-strong underline-offset-4 transition-colors hover:text-t1 hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50";
 
-/** The setup on the page line, no card: the X handle (220px, @ and the X mark inside), the sentence (one line,
+/** The setup on the page line, no card: the Twitter handle (220px, @ and the X mark inside), the sentence (one line,
  * flexible, the counter inside). Build my agent follows at the line's right end. */
 function SetupLine({
   handle,
@@ -404,7 +404,7 @@ function SetupLine({
 }
 
 const tableKinds: { kind: TableRow["kind"]; group: Group; label: string }[] = [
-  { kind: "x_account", group: "x", label: "X accounts" },
+  { kind: "x_account", group: "x", label: "Twitter accounts" },
   { kind: "rss", group: "rss", label: "RSS feeds" },
   { kind: "website", group: "website", label: "Websites" },
 ];
@@ -461,7 +461,7 @@ function runningLine(id: OneStepId, run: Run, handle: string) {
   const p = run.progress[idx(id)];
   switch (id) {
     case "profile":
-      return `Looking up @${handle} on X.`;
+      return `Looking up @${handle} on Twitter.`;
     case "posts":
       return `Read ${Math.max(1, Math.ceil(p * postsRead))} of ${postsRead} newest posts.`;
     case "gather":
@@ -484,7 +484,7 @@ const briefF = (p: number) => Math.max(0, Math.min(1, (p - 0.15) / 0.85));
 function stepLineFor(id: OneStepId, run: Run, started: boolean, handle: string) {
   const state = run.states[idx(id)];
   if (!started || state === "waiting") return oneStepDoes[id];
-  if (state === "failed") return "The X timeline did not answer.";
+  if (state === "failed") return "The Twitter timeline did not answer.";
   return state === "done" || state === "skipped" ? oneStepLine[id] : runningLine(id, run, handle);
 }
 
@@ -693,7 +693,7 @@ function Stream({
         ) : null}
 
         {search !== "waiting" ? (
-          <section aria-label="Search X for more accounts">
+          <section aria-label="Search Twitter for more accounts">
             <Label>{oneStepTitle.search}</Label>
             <p className="mt-1 text-[13px] text-t2">{oneStepLine.search}</p>
           </section>
@@ -797,7 +797,7 @@ function Chip({ c, dim }: { c: Candidate; dim?: boolean }) {
     >
       {isX ? <XAvatar handle={c.target.replace("https://x.com/", "")} size={20} className={cn(dim && "opacity-60 grayscale")} /> : <SiteIcon host={hostOf(c.target)} size={20} className={cn("rounded-[5px]", dim && "opacity-60 grayscale")} />}
       <span>{c.name}</span>
-      <span className="font-mono text-[9.5px] tracking-[0.1em] text-t3 uppercase">{isX ? "X" : c.kind === "rss" ? "RSS" : "Web"}</span>
+      <span className="font-mono text-[9.5px] tracking-[0.1em] text-t3 uppercase">{isX ? "Twitter" : c.kind === "rss" ? "RSS" : "Web"}</span>
     </motion.li>
   );
 }
@@ -821,7 +821,7 @@ function PostBody({ post: p }: { post: (typeof posts)[number] }) {
 }
 
 /** The right column, once step 1 has found the person: ONE identity block (the picture with the name beside it and
- * the handle under the name, About with their X bio, then Brief: the sentence, then the summary streaming in at
+ * the handle under the name, About with their Twitter bio, then Brief: the sentence, then the summary streaming in at
  * step 5), and the newest posts under it. */
 function You({ run, sentence }: { run: Run; sentence: string }) {
   const postsState = run.states[idx("posts")];

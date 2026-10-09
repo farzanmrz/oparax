@@ -6,7 +6,7 @@ export const HANDLE = "farzanmrz";
 export const auth = {
   login: {
     title: "Log In",
-    subtitle: "Log in with X, Google or your email and password.",
+    subtitle: "Log in with Twitter, Google or your email and password.",
     submit: "Log in",
     forgot: "Forgot password?",
     noAccount: "No account?",
@@ -14,11 +14,11 @@ export const auth = {
   },
   signup: {
     title: "Sign Up",
-    subtitle: "Create your Oparax account with X, Google or an email and password.",
+    subtitle: "Create your Oparax account with Twitter, Google or an email and password.",
     submit: "Sign up",
     haveAccount: "Already have an account?",
   },
-  x: "Continue with X",
+  x: "Continue with Twitter",
   google: "Continue with Google",
   or: "or",
   email: "Email",
@@ -38,11 +38,11 @@ export const auth = {
 
 export const setup = {
   title: "Set Up Your Agent",
-  handleLabel: "X account",
-  verifiedHelp: "Your agent is built around this X account.",
+  handleLabel: "Twitter account",
+  verifiedHelp: "Your agent is built around this Twitter account.",
   // Preview copy (round 1 change 8): the product's typed help explains the bot procedure here, too early.
   typedHelp:
-    "Use the X account whose public posts describe your interests. You will connect alerts from that account after setup.",
+    "Use the Twitter account whose public posts describe your interests. You will connect alerts from that account after setup.",
   handlePlaceholder: "your_handle",
   beatLabel: "What do you want to follow?",
   beatPlaceholder: "The tools and ideas changing how people build with AI",
@@ -52,10 +52,10 @@ export const setup = {
   submit: "Build my agent",
   waitlistSubmit: "Join the waiting list",
   waitlistStatus: "Building is unavailable right now. You can join the waiting list.",
-  refreshX: "Sign out and continue with X",
+  refreshX: "Sign out and continue with Twitter",
   notFoundVerified:
-    "We could not find the X account saved by your sign-in. If you changed your handle, sign out and continue with X again.",
-  notFoundTyped: (handle: string) => `We could not find @${handle} on X. Check the spelling and try again.`,
+    "We could not find the Twitter account saved by your sign-in. If you changed your handle, sign out and continue with Twitter again.",
+  notFoundTyped: (handle: string) => `We could not find @${handle} on Twitter. Check the spelling and try again.`,
 };
 
 export const building = {
@@ -75,19 +75,19 @@ export const feedCopy = {
   empty: "No relevant news yet.",
   trial: (days: number) => `${days} days left in your free week. Plans from $5 a month.`,
   pool: (used: number, limit: number) => `${used} of ${limit} watched posts used in your free week.`,
-  poolOut: "Your free week's watched X posts are used up. Sites and feeds keep running.",
+  poolOut: "Your free week's watched Twitter posts are used up. Sites and feeds keep running.",
 };
 
 export const alerts = {
-  get: "Get alerts on X",
+  get: "Get alerts on Twitter",
   explain: `Opens a message to @oparax_ai with "Start alerts" typed. Send it from @${HANDLE} to connect alerts; that message is how Oparax confirms the account is yours. The bot will not reply.`,
   check: "Check connection",
-  failed: "X connection could not start. Try again.",
+  failed: "Twitter connection could not start. Try again.",
   // Preview copy (round 1 change 21): the plan cadence for the fixture state, the free week.
   cadence: "Daily alerts in your free week.",
   active: "Alerts on. Send STOP to the bot to stop.",
   paused: "Alerts paused. Send RESUME to the bot to continue.",
-  stopped: 'Alerts stopped. Send "Start alerts" from your X account to turn them on again.',
+  stopped: 'Alerts stopped. Send "Start alerts" from your Twitter account to turn them on again.',
 };
 
 export const planStates = {
@@ -98,13 +98,13 @@ export const planStates = {
 };
 
 export const plans = [
-  { tier: "hobby", label: "Hobby, $5 a month", name: "Hobby", price: "$5", detail: "100 watched X posts a month, one DM a day" },
+  { tier: "hobby", label: "Hobby, $5 a month", name: "Hobby", price: "$5", detail: "100 watched Twitter posts a month, one DM a day" },
   {
     tier: "creator",
     label: "Creator, $30 a month",
     name: "Creator",
     price: "$30",
-    detail: "3,000 watched X posts a month, one DM a day",
+    detail: "3,000 watched Twitter posts a month, one DM a day",
   },
   {
     tier: "wire",
@@ -112,7 +112,7 @@ export const plans = [
     name: "Wire",
     price: "$99",
     // Preview copy (round 1 change 23); the product says "a digest every 15 minutes".
-    detail: "4,000 watched X posts a month, alerts every 15 minutes when there is news.",
+    detail: "4,000 watched Twitter posts a month, alerts every 15 minutes when there is news.",
   },
 ] as const;
 

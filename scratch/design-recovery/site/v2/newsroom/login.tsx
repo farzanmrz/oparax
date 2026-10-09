@@ -47,9 +47,9 @@ function Preview() {
       </ul>
       <div className="mt-auto grid grid-cols-2 gap-3 border-t border-line px-6 py-5">
         <StatusTile tone="caution" label="FREE WEEK" icon={<CalendarDays className="size-[18px]" />}>
-          {status.trialDays} days, {status.poolLimit} watched X posts
+          {status.trialDays} days, {status.poolLimit} watched Twitter posts
         </StatusTile>
-        <StatusTile tone="post" label="ALERTS ON X" icon={<XLogo className="size-4" />}>
+        <StatusTile tone="post" label="ALERTS ON TWITTER" icon={<XLogo className="size-4" />}>
           A direct message, daily
         </StatusTile>
       </div>

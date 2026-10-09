@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { alerts } from "@/next/copy";
 import { cn } from "@/lib/utils";
-import { AlertsButton, AlertsPreviewNote, AppFrame, BASE, Label, PrimaryButton, ShowProvider, ShowToggle, TopBar, useShow } from "./chrome";
+import { AlertsButton, AlertsPreviewNote, AppFrame, BASE, Label, PrimaryButton, ShowProvider, TopBar, useShow } from "./chrome";
 import { beat, brief, groups, sources, status, type Group, type Source } from "./data";
 import { Dot, GroupGlyph, Segments, SourceMark } from "./marks";
 
@@ -44,7 +44,6 @@ export function Ready() {
                 <div className="flex h-12 items-center gap-3 border-b border-line px-6">
                   <span className="text-[13px] font-semibold text-t1">Chosen sources</span>
                   <span className="text-[12.5px] text-t3">with the reason for each</span>
-                  <ShowToggle className="ml-auto w-[160px]" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2">
                   <Board groups={["x", "github", "producthunt"]} className="sm:border-r border-line" />
@@ -66,7 +65,7 @@ export function Ready() {
                 <div className="border-b border-line px-5 py-5">
                   <Label>Free week</Label>
                   <p className="mt-2 text-[13.5px] text-t1">
-                    <span className="font-semibold tabular-nums">{status.daysLeft}</span> days and <span className="font-semibold tabular-nums">{status.poolLimit}</span> watched X posts
+                    <span className="font-semibold tabular-nums">{status.daysLeft}</span> days and <span className="font-semibold tabular-nums">{status.poolLimit}</span> watched Twitter posts
                   </p>
                   <div className="mt-2.5">
                     <Segments total={status.trialDays} filled={status.daysLeft} />
@@ -74,7 +73,7 @@ export function Ready() {
                   <p className="mt-2 text-[12.5px] text-t3">Started now. Plans from $5 a month after it ends.</p>
                 </div>
                 <div className="px-5 py-5">
-                  <Label>Alerts on X</Label>
+                  <Label>Alerts on Twitter</Label>
                   <p className="mt-2 flex items-center gap-2 text-[13px] text-t2">
                     <Dot tone="idle" /> Not connected
                   </p>

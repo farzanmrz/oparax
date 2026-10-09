@@ -14,12 +14,12 @@ import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine, SignOut } from "./shell";
 
 // The one Settings page: account, plan, sources and notifications (owner, Oct 4: "Why are you making notifications
 // and sources this separate shit?"). Two columns in the page's one column. Left, the body: the sources as ONE lifted
-// panel, four sections divided by hairlines (X accounts, RSS feeds, Websites, GitHub), each a heading line (the kind
+// panel, four sections divided by hairlines (Twitter accounts, RSS feeds, Websites, GitHub), each a heading line (the kind
 // mark, the kind name, Add source at the right) over one-line rows (logo, name, handle or address; an x at the right
 // on hover and focus; the reason under the row on click). No counts except the shared limit for websites and feeds,
-// said once. Right, a 360px sticky block, one object: the person, the plan, X DMs and Sign out.
+// said once. Right, a 360px sticky block, one object: the person, the plan, Twitter DMs and Sign out.
 
-/** The Oparax bot on X. Alerts arrive as DMs from it once the person has messaged it. */
+/** The Oparax bot on Twitter. Alerts arrive as DMs from it once the person has messaged it. */
 const BOT = "oparax_ai";
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -69,7 +69,7 @@ export function OneSettings() {
             );
           })}
         </div>
-        <aside aria-label="Account" className="lg:sticky lg:top-[84px]">
+        <aside aria-label="Account" className="lg:sticky lg:top-[76px]">
           <div className={cn(lift, "divide-y divide-line")} style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}>
             <div className="p-5">
               <div className="flex items-center gap-3">
@@ -99,7 +99,7 @@ export function OneSettings() {
                   <span className="font-medium text-t1">{status.daysLeft}</span> days left
                 </span>
                 <span>
-                  {status.poolUsed} of {status.poolLimit} watched X posts used
+                  {status.poolUsed} of {status.poolLimit} watched Twitter posts used
                 </span>
               </p>
             </div>
@@ -108,9 +108,9 @@ export function OneSettings() {
                 <span className="grid size-6 place-items-center rounded-md border border-line-strong bg-[var(--raised)]" style={{ boxShadow: "var(--top-light)" }}>
                   <XLogo className="size-3 text-t1" />
                 </span>
-                X DMs
+                Twitter DMs
               </p>
-              <p className="mt-2 text-[12.5px] text-t3">Oparax messages @{HANDLE} on X when a story matters.</p>
+              <p className="mt-2 text-[12.5px] text-t3">Oparax messages @{HANDLE} on Twitter when a story matters.</p>
               <a
                 href={`https://x.com/messages/compose?recipient_id=${BOT}`}
                 target="_blank"

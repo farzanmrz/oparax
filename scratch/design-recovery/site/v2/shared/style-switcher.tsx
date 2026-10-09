@@ -9,8 +9,8 @@ const STYLES = [
   { key: "deck", label: "Deck" },
   { key: "one", label: "One" },
 ];
+// Login is settled (owner, Oct 8: the accepted login), so it is no longer a page to review; its routes still work.
 const PAGES = [
-  { key: "login", label: "Login" },
   { key: "setup", label: "Setup" },
   { key: "building", label: "Building" },
   { key: "ready", label: "Ready" },
@@ -20,7 +20,6 @@ const PAGES = [
 /** The One style merges setup, building and ready into onboarding, sign up into login, and sources and
  * notifications into settings. */
 const ONE_PAGES = [
-  { key: "login", label: "Login" },
   { key: "onboarding", label: "Onboarding" },
   { key: "feed", label: "Feed" },
   { key: "settings", label: "Settings" },

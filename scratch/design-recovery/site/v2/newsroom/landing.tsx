@@ -35,7 +35,7 @@ import { GitHubMark, GoogleMark, GroupGlyph, ItemMark, KindChip, SiteIcon, Sourc
 import { ItemImage, ReleaseBlock } from "./media";
 
 // Newsroom landing. Sign up first, beside the product working on real data: the hero's lifted table window
-// replays the Next.js 15 day of October 21, 2024 (a blog article, a GitHub release and an X post arrive as
+// replays the Next.js 15 day of October 21, 2024 (a blog article, a GitHub release and an Twitter post arrive as
 // rows and join into one story, which goes out as an X direct message). Below: the sources desk of the recorded
 // run with each source's latest item, then the plans as one table with the free week as its live top row.
 
@@ -92,7 +92,7 @@ function SignUpButtons({ q, className }: { q: string; className?: string }) {
   return (
     <div className={cn("grid gap-2", className)}>
       <Link href={`/v2/newsroom/setup${q}`} className={cn(primaryClass, "h-10 w-full text-[14px]")}>
-        <XLogo className="size-3.5" /> Continue with X
+        <XLogo className="size-3.5" /> Continue with Twitter
       </Link>
       <div className="grid grid-cols-2 gap-2">
         <Link href={`/v2/newsroom/setup${q}`} className={cn(secondaryClass, "h-10")}>
@@ -153,8 +153,8 @@ function Hero({ q, settled }: { q: string; settled: boolean }) {
             Oparax turns the news you follow into sourced stories.
           </h1>
           <p className="mt-5 text-[15.5px] leading-[1.6] text-t2">
-            Pick what you follow. Oparax watches the X accounts, RSS feeds, websites, GitHub and Product Hunt around it, groups
-            related articles and posts into one story with its sources attached, and can alert you on X.
+            Pick what you follow. Oparax watches the Twitter accounts, RSS feeds, websites, GitHub and Product Hunt around it, groups
+            related articles and posts into one story with its sources attached, and can alert you on Twitter.
           </p>
         </div>
         <Lifted className="p-4 xl:mt-7">
@@ -375,7 +375,7 @@ function SourcesDesk() {
         <div className="min-w-0">
           <h2 className="text-[34px] leading-[1.1] font-semibold tracking-[-0.03em] text-t1">Every source weighed the same</h2>
           <p className="mt-3 max-w-[640px] text-[15px] leading-[1.6] text-t2">
-            X accounts, RSS feeds, websites and GitHub repositories go through one check against your sentence. A sample desk for
+            Twitter accounts, RSS feeds, websites and GitHub repositories go through one check against your sentence. A sample desk for
             @{HANDLE} (illustrative reasons), with the latest item from each source.
           </p>
           <Lifted strong className="mt-7 rounded-[14px]">
@@ -515,7 +515,7 @@ function Plans({ q }: { q: string }) {
           <div>
             <h2 className="text-[34px] leading-[1.1] font-semibold tracking-[-0.03em] text-t1">Pick your pace</h2>
             <p className="mt-3 max-w-[620px] text-[15px] leading-[1.6] text-t2">
-              Every plan includes your story feed and unlimited websites and RSS feeds. Choose how much of X to watch and how often to
+              Every plan includes your story feed and unlimited websites and RSS feeds. Choose how much of Twitter to watch and how often to
               hear from us.
             </p>
           </div>
@@ -530,8 +530,8 @@ function Plans({ q }: { q: string }) {
           >
             <span>PLAN</span>
             <span>PRICE</span>
-            <span>WATCHED X POSTS</span>
-            <span>ALERTS ON X</span>
+            <span>WATCHED TWITTER POSTS</span>
+            <span>ALERTS ON TWITTER</span>
             <span className="text-right">WEBSITES AND RSS FEEDS</span>
           </div>
           <div className={cn("grid items-center gap-5 border-b border-line bg-[var(--caution-soft)]/60 px-5 py-3.5", PLAN)}>

@@ -6,17 +6,33 @@ import { XLogo } from "@/pro/shared/brand";
 import { auth } from "@/next/copy";
 import { cn } from "@/lib/utils";
 
-// One log in and sign up form for the three v2 styles. Each style's login.tsx puts it inside that style's own
+// One log in and sign up form for the v2 styles, matching the product's accepted card (components/auth/one-card.tsx,
+// lib/auth/content.ts, October 8): "Log in to Oparax", Email then Password, "Forgot password?", the main button
+// "Login", "New to Oparax? Sign up" flipping the card to sign up in place, then "or" and the two provider buttons in
+// layout C (an 18px logo and the label centred together as one group, 10px apart). Each style's login.tsx puts it inside that style's own
 // sign-up composition and passes that style's field, label and radius classes, so the form is adapted per style.
 // "Sign up" switches the same form in place: a confirm field slides open and the copy changes, no page change.
 
-export function GoogleG({ size = 16 }: { size?: number }) {
+/** The standard multicolour Google G, the same in light and dark (the product's provider-buttons.tsx). */
+export function GoogleG({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
-      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.874 2.6836-6.615z"
+      />
+      <path
+        fill="#34A853"
+        d="M9 18c2.43 0 4.4673-.8059 5.9564-2.1805l-2.9087-2.2581c-.8059.54-1.8368.859-3.0477.859-2.344 0-4.3282-1.5831-5.036-3.7104H.9574v2.3318C2.4382 15.9832 5.4818 18 9 18z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M3.964 10.71c-.18-.54-.2822-1.1168-.2822-1.71s.1023-1.17.2823-1.71V4.9582H.9573A8.9965 8.9965 0 0 0 0 9c0 1.4523.3477 2.8268.9573 4.0418L3.964 10.71z"
+      />
+      <path
+        fill="#EA4335"
+        d="M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.346l2.5813-2.5814C13.4632.8918 11.426 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.964 7.29C4.6718 5.1627 6.656 3.5795 9 3.5795z"
+      />
     </svg>
   );
 }
@@ -60,6 +76,9 @@ export function AuthForm({
     setMode(next);
     setError(null);
   };
+  // Both provider buttons share one structure: the logo in an 18px slot and the label, one group centred, 10px apart.
+  const row = "flex items-center gap-2.5";
+  const slot = "flex size-[18px] shrink-0 items-center justify-center";
   const btn = cn("inline-flex h-10 w-full items-center justify-center gap-2.5 text-[14px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", radius);
   // Providers are neutral, never blue: white in light, the raised dark surface in dark. Only the main button is blue.
   const provider = cn(
@@ -119,7 +138,7 @@ export function AuthForm({
           </p>
         ) : null}
         <button type="submit" className={cn(primary, "mt-5")}>
-          {signup ? auth.signup.submit : auth.login.submit}
+          {signup ? "Sign up" : "Login"}
         </button>
         <p className="mt-3 text-center text-[13px] text-t3">
           {signup ? `${auth.signup.haveAccount} ` : "New to Oparax? "}
@@ -137,12 +156,20 @@ export function AuthForm({
 
       <div className="grid gap-2.5">
         <button type="button" className={provider} onClick={() => router.push(`${base}/setup`)}>
-          <XLogo className="size-3.5 text-black dark:text-white" />
-          {auth.x}
+          <span className={row}>
+            <span className={slot}>
+              <XLogo className="size-[18px] text-black dark:text-white" />
+            </span>
+            <span>{signup ? "Continue with Twitter" : "Login with Twitter"}</span>
+          </span>
         </button>
         <button type="button" className={provider} onClick={() => router.push(`${base}/setup?handle=typed`)}>
-          <GoogleG />
-          {auth.google}
+          <span className={row}>
+            <span className={slot}>
+              <GoogleG />
+            </span>
+            <span>{signup ? "Continue with Google" : "Login with Google"}</span>
+          </span>
         </button>
       </div>
     </div>

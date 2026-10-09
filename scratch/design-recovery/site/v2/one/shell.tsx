@@ -3,21 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import { ChevronDown, Layers, LogOut, Moon, Sun } from "lucide-react";
 import { OparaxMark } from "@/pro/shared/brand";
 import { THEME_KEY } from "@/next/theme";
 import { cn } from "@/lib/utils";
 import { lift, Stage } from "@/v2/deck/chrome";
-import { status } from "@/v2/deck/data";
-import { Segments } from "@/v2/deck/marks";
+import { groups, itemsFrom, sources, status } from "@/v2/deck/data";
+import { GroupGlyph, Segments, SourceMark } from "@/v2/deck/marks";
 import { BASE } from "./card";
 
-// The One shell (owner, Oct 4: "we'd have a consistent running header for oparax"). Deck's open ground (Stage)
-// and one header line on every page: the mark and wordmark, Feed and Settings, flexible space, then the account
-// (the initial, the signed-in email, a chevron). Nothing else in the bar. The account menu holds the plan as one
-// object, the Light and Dark switch and Sign out. Login keeps the same line with the mark and a labelled
-// Appearance switch, since there is no account. Every page, header included, sits in ONE centred column (one.css,
-// .one-column): 48px margins at 1440, 290px at 2560.
+// The One shell (owner, Oct 8: "take the actual header and sidebar from the window and remove the name handle").
+// Window's thin header (48px, one hairline under it) runs the full width: the mark and wordmark, Feed and Settings
+// (the current page underlined in brand), flexible space, and the account at the far right exactly as the One had
+// it (the initial, the signed-in email, a chevron; the menu holds the plan, the Light and Dark switch and Sign out).
+// Nothing else in the bar. Under it at the left, Window's source rail: All sources, then Twitter accounts, RSS feeds,
+// Websites and GitHub under small capitalized headings, each with its kind's mark, each row with the source's real
+// avatar or favicon. The page body sits to the right of the rail on Deck's lit ground. Login keeps the header line
+// with the mark and a labelled Appearance switch, since there is no account.
 
 const NAV = [
   { href: `${BASE}/feed`, label: "Feed" },
@@ -97,14 +99,15 @@ export function ThemeSwitch({ className }: { className?: string }) {
   );
 }
 
-/** The running header line. `app` adds the navigation and the account; without it, the labelled Appearance switch. */
+/** Window's thin header. `app` adds Feed, Settings and the account; without it (login), the labelled Appearance
+ * switch, in the page's one column. */
 export function OneHeader({ app = true }: { app?: boolean }) {
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-[var(--page)]/80 backdrop-blur-md">
-      <div className={cn(column, "flex h-14 items-center gap-8")}>
-        <Link href={app ? `${BASE}/feed` : `${BASE}/login`} className="flex shrink-0 items-center gap-2 rounded-sm text-[17px] font-semibold tracking-tight text-t1 focus-visible:outline-2 focus-visible:outline-ring">
-          <OparaxMark className="size-[22px]" />
+    <header className={cn("sticky top-0 z-40 border-b border-line", app ? "bg-[var(--window)]" : "bg-[var(--page)]/80 backdrop-blur-md")}>
+      <div className={cn(app ? "px-4" : column, "flex h-12 items-center gap-7")}>
+        <Link href={app ? `${BASE}/feed` : `${BASE}/login`} className="flex shrink-0 items-center gap-2 rounded-sm text-[15px] font-semibold tracking-[-0.01em] text-t1 focus-visible:outline-2 focus-visible:outline-ring">
+          <OparaxMark className="size-[18px]" />
           Oparax
         </Link>
         {app ? (
@@ -117,7 +120,7 @@ export function OneHeader({ app = true }: { app?: boolean }) {
                   href={href}
                   aria-current={on ? "page" : undefined}
                   className={cn(
-                    "relative flex items-center text-[13.5px] transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                    "relative flex items-center text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-ring",
                     on ? "font-medium text-t1" : "text-t3 hover:text-t1",
                   )}
                 >
@@ -202,7 +205,7 @@ function Account() {
               <Segments total={status.trialDays} filled={status.daysLeft} />
             </div>
             <p className="mt-2 text-[12px] tabular-nums text-t3">
-              {status.poolUsed} of {status.poolLimit} watched X posts used
+              {status.poolUsed} of {status.poolLimit} watched Twitter posts used
             </p>
           </div>
           <div className="flex items-center gap-3 p-4">
@@ -235,13 +238,99 @@ export function SignOut({ className }: { className?: string }) {
   );
 }
 
-/** Every page inside the app: Deck's ground, the running header, the page in the one column. */
-export function AppShell({ children, light }: { children: React.ReactNode; light?: number }) {
+/** Every page inside the app: Window's thin header across the top, Window's source rail at the left, and the page
+ * on Deck's lit ground beside it. On the feed the rail filters the stories (`selected`, `onSelect`); on the other
+ * pages a row opens the feed filtered to that source. */
+export function AppShell({
+  children,
+  light,
+  selected = null,
+  onSelect,
+}: {
+  children: React.ReactNode;
+  light?: number;
+  selected?: string | null;
+  onSelect?: (id: string | null) => void;
+}) {
   return (
     <Stage light={light}>
       <OneHeader />
-      <main className={cn(column, "relative flex-1 pt-7", switcherClear)}>{children}</main>
+      <div className="relative flex flex-1">
+        <SourceRail selected={selected} onSelect={onSelect} />
+        <main className={cn("relative min-w-0 flex-1 px-6 pt-7 lg:px-8", switcherClear)}>{children}</main>
+      </div>
     </Stage>
+  );
+}
+
+/** Window's source rail (v2/window/feed.tsx), without the Name and Handle switch: All sources, then each kind under
+ * its small capitalized heading with the kind's mark, one row per source (its avatar or favicon, the name, how many
+ * items in the feed came from it). */
+function SourceRail({ selected, onSelect }: { selected: string | null; onSelect?: (id: string | null) => void }) {
+  const row = (on: boolean) =>
+    cn(
+      "flex h-[28px] w-full items-center gap-2 rounded-md px-2 text-left text-[12.5px] text-t2 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring",
+      on && "bg-[var(--brand-soft)] text-t1 shadow-[inset_0_0_0_1px_var(--brand-line)] hover:bg-[var(--brand-soft)]",
+    );
+  const item = (id: string | null, on: boolean, children: React.ReactNode, title?: string) =>
+    onSelect ? (
+      <button type="button" onClick={() => onSelect(id)} aria-pressed={on} title={title} className={row(on)}>
+        {children}
+      </button>
+    ) : (
+      <Link href={id ? `${BASE}/feed?source=${id}` : `${BASE}/feed`} title={title} className={row(on)}>
+        {children}
+      </Link>
+    );
+  return (
+    <aside aria-label="Sources" className="hidden w-[228px] shrink-0 border-r border-line bg-[var(--rail)] lg:block">
+      <div className="sticky top-12 max-h-[calc(100svh-48px)] overflow-y-auto pb-6">
+        <ul className="px-2 pt-3">
+          <li>
+            {item(
+              null,
+              selected === null,
+              <>
+                <Layers className={cn("size-3.5 text-t3", selected === null && "text-[var(--brand)]")} aria-hidden="true" />
+                All sources
+              </>,
+            )}
+          </li>
+        </ul>
+        {groups.map((g) => {
+          const list = sources.filter((s) => s.group === g.id);
+          if (!list.length) return null;
+          return (
+            <section key={g.id} aria-label={g.label} className="pt-4">
+              <p className="flex items-center gap-1.5 px-4 pb-1.5 font-mono text-[10.5px] font-medium tracking-[0.12em] text-t3 uppercase">
+                <GroupGlyph group={g.id} className="size-3" />
+                {g.label}
+              </p>
+              <ul className="px-2">
+                {list.map((s) => {
+                  const on = selected === s.id;
+                  const n = itemsFrom(s.id).length;
+                  return (
+                    <li key={s.id}>
+                      {item(
+                        on ? null : s.id,
+                        on,
+                        <>
+                          <SourceMark source={s} size={15} className={s.group === "x" ? "" : "rounded-[4px]"} />
+                          <span className="min-w-0 flex-1 truncate leading-tight">{s.name}</span>
+                          {n > 0 ? <span className="shrink-0 text-[11px] tabular-nums text-t3">{n}</span> : null}
+                        </>,
+                        `${s.handle}${s.why ? `: ${s.why}` : s.focus ? `: ${s.focus}` : ""}`,
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 
