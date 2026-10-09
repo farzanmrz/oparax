@@ -1,0 +1,50 @@
+The picture check is incomplete: [img/](/Users/farzanm4/Desktop/repos/oparax/img) is empty. I could not reopen `now-rest`, `now-run-chosen`, `now-feed`, `now-settings` or the accepted pictures named in the brief. This is a transcript-and-code agreement proposal, not visual sign-off.
+
+**1. My revisions to Astra’s round-one proposal**
+
+I withdraw moving Feed and Settings into the sidebar. His explicit instruction was “make it feed and settings at the top of the header.” Today he asks for a sidebar and a separate page-heading area; those can coexist. [Owner transcript](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/history/owner-oct5-8.md:161)
+
+I also withdraw requiring the source directory to remain Settings’ main surface. The host’s source aside beside distinct account, plan and Notifications objects gives each task a clearer home, provided source identities and errors remain readable.
+
+I accept four useful feed tiles instead of limiting the proposal to two. I accept the host’s timing for the ready transition: preserve the accumulating stream during work, then foreground the chosen set when ready. The explanatory “starting set” sentence belongs with that result, leaving Before Build focused on the form.
+
+**2. Grok: response to every proposed change**
+
+- **Shell: ACCEPT** the running header, separate title band, Clustered/Direct beside Feed, and lifted 264px source aside inside the fixed column. Accept Deck typography, Newsroom group icons, real marks, aligned numbers, three rows followed by a clearly separated Show more, no name/handle switch, and complete collapse. **CHANGE:** keep the reopen control at the bottom left too. He said “sidebar close and open should literally be at the bottom.” [History](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/history/owner-history.md:1037)
+- **Before Build: ACCEPT** seven steps left and one substantial central card containing handle, beat and Build my agent, without catalogue, introductory paragraph or empty profile placeholder. The card becomes the working surface in place.
+- **Run: ACCEPT** real gathering counts, bands, logo pills, quiet set-aside results, checkpoint animation and the coherent profile/bio/brief/posts block appearing on the right after profile retrieval. Twitter uses blue, articles from websites and RSS use teal, GitHub its neutral mark. **CHANGE:** put the error and retry inside the central surface while retaining completed work; the failed step remains marked on the left. Reject the alternative source aside plus horizontal steps: “Layout can be columns for the list, not at the top.” [Later instruction](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/history/owner-oct5-8.md:206)
+- **Ready: CHANGE** the final ordering so chosen Twitter accounts, RSS feeds and websites lead, with completed bands below and reasons expandable. The generated brief stays right. Open your feed belongs with the result.
+- **Feed: ACCEPT** activity, report-kind, agent-state and allowance tiles; a checking row only during actual checking; three cards across at 1440 with the aside open; integrated images; every fact; neutral imageless cards; source selection and All sources; no search toolbar. **CHANGE:** remove forced equal-height stretching. Omit zero source badges, but retain meaningful zero activity or exhausted allowance. Counts must cover the stated reporting period, not the current pagination page.
+- **Digest: CHANGE** its placement without attaching Skipped to it. Digests become compact cards with their full summary, reason and date; skipped reports remain a separate expandable object. They are separate datasets in [the page](/Users/farzanm4/Desktop/repos/oparax/app/[handle]/page.tsx:154).
+- **Settings: ACCEPT** source management left and account objects in the main area, without source-count badges. Keep Add, remove, source errors and existing watch controls. **CHANGE:** remove the blanket payment gate. “Add source, remove source is gated only by sign-up, not by payment.” This does not independently change billing or scheduling entitlements. [Ruling](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/history/owner-oct5-8.md:621)
+- **Login and finish: ACCEPT** leaving login’s composition intact, preserving Twitter wording and current button corrections, and judging the eventual renders against the accepted feeds and named near misses.
+
+**3. Gemini Pro: response to every proposed change**
+
+- **Diagnosis: CHANGE** “the product lost shadows and imagery” to “the composition fails to make their hierarchy felt.” [OneCard](/Users/farzanm4/Desktop/repos/oparax/components/one/card.tsx) already supplies image treatment and lifted surfaces; [the fixture](/Users/farzanm4/Desktop/repos/oparax/lib/local-preview/fixture.ts:89) deliberately sets story images to null. The catalogue is real starting data, although presenting it as the product’s coverage is misleading.
+- **Shell: CHANGE** the fixed navigation rail to the in-column source aside described above, retaining the running header. Put branding, account and primary navigation in that header once. The cited `deck/rail.tsx` and `window/rail.tsx` do not exist; the relevant devices are in their respective `feed.tsx` files.
+- **Onboarding: ACCEPT** the lifted central form becoming the real run in place. Retain the seven-step left aside and delayed profile block right. Existing `PhaseList` and AI Elements `Shimmer` already provide the required step treatment; a new component is unnecessary.
+- **Feed depth and tiles: ACCEPT** real images, meaningful status objects and the fixed shadow recipe. **REJECT backing plates:** “The cards showing the previous part at the top, that looks really stupid.” Earlier praise of Deck does not reverse that later specific rejection. [Exact words](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/history/owner-history.md:871)
+- **Feed reading: CHANGE** “primary facts” to **every fact**. Accept citations above the story and an optional source disclosure, including AI Elements Sources if it preserves that placement. Nothing required to understand the story moves behind a click.
+- **Settings: ACCEPT** compact lifted groups, visible notification state and readable source rows. **CHANGE** active/paused toggles to the actual Twitter state plus Message @oparax_ai button; he explicitly rejected a DM toggle. Omit source-count decoration on Settings. [Owner’s settings instructions](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/focus-review/history/owner-oct5-8.md:29)
+- **Life and loop: ACCEPT** depth, imagery and varied objects as the remedy, with rendered drafts judged before the real build. The fixed theme and Width rule remain intact. No login redesign follows from “sidebar on all pages.”
+
+**4. Host: response to every proposed change**
+
+- **Shell: ACCEPT** the header, title band and lifted source aside, including row anatomy, group separation and complete collapse. Apply the bottom-left reopen correction above.
+- **Before Build/run: ACCEPT** the central form, seven steps left, real stream replacing the form, chosen set first at ready, bands retained below, central error/retry, and profile appearing right only after its checkpoint. Keep the submitted sentence distinguishable from the generated brief.
+- **Feed: ACCEPT** the four proposed tiles, conditional checking row, three-column composition, 172px images where supplied, source row, every fact, no backing plates, digest cards and source filtering. Apply content-sized card heights and truthful metric periods. Preserve Skipped separately. A reports-by-kind tile is a proposed addition; the frozen Deck’s [Tiles function](/Users/farzanm4/Desktop/repos/oparax/scratch/design-recovery/site/v2/deck/feed.tsx:174) contains three tiles.
+- **Settings: ACCEPT** sources in the aside with sign-up-gated Add/remove; person, plan/Plans and Notifications in the main area; Twitter state/button, alert time, timezone and both digest controls grouped coherently. **CHANGE:** allow long source identities and errors to wrap instead of clipping them to satisfy the narrow aside. Include configured accounts that are currently unwatched.
+- **Login and near misses: ACCEPT** no change, and explicitly reject six uniform boxes with a sidebar added, an isolated small form in empty ground, and the blocky “hunk” rail.
+
+The biggest improvement is the visible source aside beside stories whose height and imagery reflect their content. The loop fails again if component presence substitutes for looking at the rendered pages.
+
+## I accept
+
+1. **Shell and sidebar:** Fixed-width column; running Oparax/Feed/Settings/account header; separate title band; lifted left aside; bottom collapse/reopen control; no duplicate navigation or collapsed icon strip.
+2. **Before Build and run:** Seven steps left; central handle/beat/Build card becomes checkpoint-driven work; profile and generated brief right; chosen sources first at ready, bands below, Open your feed with the result; failures retain work and offer retry centrally.
+3. **Feed:** Source aside with filtering; truthful activity, report-kind, agent-state and allowance tiles; conditional checking row; content-sized cards, three across at 1440, integrated images and every fact; no backing plates; digest cards and separate Skipped disclosure.
+4. **Settings:** Readable source-management aside without count badges; sign-up-gated Add/remove; distinct person, plan and Notifications objects in the main area; source errors visible; actual Twitter state and message button.
+5. **Login:** Keep the separated Deck fan and form, email first, layout C, multicolor Google G, X logo, Twitter naming, and Login/Continue wording.
+
+OPEN: I retain the header, reject backing plates and payment-gated source editing, and foreground chosen sources at ready; those differences still require the other lanes’ explicit agreement, and visual acceptance requires the missing pictures.
