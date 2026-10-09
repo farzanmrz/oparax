@@ -22,7 +22,7 @@ import {
   type Source,
   type View,
 } from "./data";
-import { Arrive, Checking, useArrival } from "./live";
+import { Arrive, useArrival } from "./live";
 import { Dot, GroupGlyph, GroupLabel, Segments, SourceMark, WeekBars } from "./marks";
 import { StoryStack, PEEK, type LabelMode } from "./stack";
 
@@ -62,7 +62,7 @@ export function DeckFeed({
   const view: View = "clustered";
   const [sourceId, setSourceId] = useState<string | null>(sources.some((s) => s.id === initialSource) ? initialSource : null);
   const mode: LabelMode = "name";
-  const { arrived, pending } = useArrival(settled);
+  const { arrived } = useArrival(settled);
 
   // Keep the URL in step so each state has an address (and survives a reload).
   useEffect(() => {
@@ -115,7 +115,6 @@ export function DeckFeed({
               mode={mode}
               freshId={selected ? null : freshId}
               visible={visible}
-              lead={!selected && pending > 0 ? <CheckingRow pending={pending} /> : null}
             />
           </div>
         </div>
@@ -124,26 +123,16 @@ export function DeckFeed({
   );
 }
 
-function CheckingRow({ pending }: { pending: number }) {
-  return (
-    <div className="flex h-12 items-center rounded-xl border border-dashed border-[var(--caution)]/45 bg-[var(--caution-soft)]/60 px-4">
-      <Checking pending={pending} />
-    </div>
-  );
-}
-
 function StackColumns({
   list,
   mode,
   freshId,
   visible,
-  lead,
 }: {
   list: FeedStory[];
   mode: LabelMode;
   freshId: string | null;
   visible: (s: FeedStory) => boolean;
-  lead: React.ReactNode;
 }) {
   const two = useMemo(() => toColumns(list, 2), [list]);
   const render = (col: FeedStory[], ci: number) => (
@@ -161,7 +150,6 @@ function StackColumns({
   );
   return (
     <>
-      {lead ? <div className="mt-6">{lead}</div> : null}
       <div className="mt-6 hidden items-start gap-6 md:grid md:grid-cols-2">{two.map((col, ci) => render(col, ci))}</div>
       <div className="mt-6 grid gap-6 md:hidden">{render(list, 0)}</div>
     </>

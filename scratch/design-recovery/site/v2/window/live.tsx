@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import StatusMark from "@/components/react-bits/StatusMark";
-import { Shimmer } from "@/components/ai-elements/shimmer";
 import { cn } from "@/lib/utils";
 import { ARRIVAL_DELAY_MS, status } from "./data";
 
@@ -75,20 +73,6 @@ export function NewFlag({ className }: { className?: string }) {
       )}
     >
       New
-    </span>
-  );
-}
-
-/** The live checking line: amber in-progress mark, moving label, count from the pending value. */
-export function Checking({ pending, compact = false, className }: { pending: number; compact?: boolean; className?: string }) {
-  if (pending <= 0) return null;
-  const label = `Checking ${pending} ${pending === 1 ? "item" : "items"} against your sentence`;
-  return (
-    <span role="status" className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      <StatusMark status="running" size={compact ? 15 : 17} color="var(--caution)" strokeWidth={2} />
-      <Shimmer as="span" duration={2.2} className="truncate text-[13px] font-medium [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
-        {label}
-      </Shimmer>
     </span>
   );
 }

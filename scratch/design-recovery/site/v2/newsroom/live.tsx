@@ -86,8 +86,3 @@ export function LiveLine({ label, size = 15, className }: { label: string; size?
     </span>
   );
 }
-
-export function Checking({ pending, className }: { pending: number; className?: string }) {
-  if (pending <= 0) return null;
-  return <LiveLine className={className} label={`Checking ${pending} ${pending === 1 ? "item" : "items"} against your sentence`} />;
-}

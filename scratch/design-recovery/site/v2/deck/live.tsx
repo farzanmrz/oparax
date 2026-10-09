@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import StatusMark from "@/components/react-bits/StatusMark";
-import { Shimmer } from "@/components/ai-elements/shimmer";
 import { cn } from "@/lib/utils";
 import { ARRIVAL_DELAY_MS, status } from "./data";
 
@@ -70,18 +68,5 @@ export function FreshRing() {
       aria-hidden="true"
       className={cn("pointer-events-none absolute inset-0 z-20 rounded-xl ring-2 ring-[var(--brand)] ring-inset transition-opacity duration-1000", on ? "opacity-100" : "opacity-0")}
     />
-  );
-}
-
-export function Checking({ pending, label, className }: { pending: number; label?: string; className?: string }) {
-  if (pending <= 0) return null;
-  const text = label ?? `Checking ${pending} ${pending === 1 ? "item" : "items"} against your sentence`;
-  return (
-    <span role="status" className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      <StatusMark status="running" size={15} color="var(--caution)" strokeWidth={2} />
-      <Shimmer as="span" duration={2.2} className="truncate text-[13px] font-medium [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
-        {text}
-      </Shimmer>
-    </span>
   );
 }

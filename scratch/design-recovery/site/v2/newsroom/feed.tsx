@@ -28,12 +28,12 @@ import {
   type View,
 } from "./data";
 import { AlertsButton, Facts, LiveDots, Lifted, Masthead, Page, StatusTile } from "./chrome";
-import { Arrive, Checking, NewFlag, useArrival } from "./live";
+import { Arrive, NewFlag, useArrival } from "./live";
 import { Dot, GroupGlyph, Handle, KindChip, Segments, SourceMark } from "./marks";
 import { StoryMedia } from "./media";
 
 // Newsroom feed, fixed. Carried from the accepted Newsroom (next/council/newsroom.tsx): one lifted table
-// window under a mono uppercase header, a live checking row on top, status tiles and a small chart beside it.
+// window under a mono uppercase header, status tiles and a small chart beside it.
 // Fixed: every row shows its facts on arrival (no expand); every row has one media object of the same
 // footprint (image, post, release or article card); the left list holds every source, grouped by kind, and
 // filters the table; sources by name (no Name or Handle switch, no search, the clustered view only, owner Oct 8); no "reports"; each count said once and with its unit.
@@ -45,7 +45,7 @@ type Label = "name" | "handle";
 
 export function NewsroomFeed({ view, theme, settled = false }: { view: View; theme?: string; settled?: boolean }) {
   const list = storiesFor(view);
-  const { arrived, pending } = useArrival(settled);
+  const { arrived } = useArrival(settled);
   const [selected, setSelected] = useState<string | null>(null);
   const label: Label = "name";
 
@@ -100,13 +100,6 @@ export function NewsroomFeed({ view, theme, settled = false }: { view: View; the
                 <span aria-hidden="true" className="hidden xl:block" />
                 <span className="text-right">PUBLISHED</span>
               </div>
-              {pending > 0 ? (
-                <div className={cn("grid h-11 items-center gap-5 border-b border-line bg-[var(--caution-soft)]/60 px-4", COLS)}>
-                  <span className="font-mono text-[10.5px] tracking-[0.08em] text-[var(--caution)]">LIVE</span>
-                  <Checking pending={pending} className="xl:col-span-2" />
-                  <span className="text-right font-mono text-[10px] tracking-[0.08em] text-t3">REPLAY</span>
-                </div>
-              ) : null}
               {visible.length === 0 ? (
                 source ? (
                   <SourceEmpty source={source} label={label} />

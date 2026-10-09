@@ -17,7 +17,7 @@ import {
   type Source,
   type View,
 } from "./data";
-import { Arrive, Checking, useArrival } from "./live";
+import { Arrive, useArrival } from "./live";
 import { Dot, KindBars, Segments, SourceMark } from "./marks";
 import { StoryBlock } from "./story";
 
@@ -120,7 +120,7 @@ function SourceRow({ source, count, on, onSelect }: { source: Source; count?: nu
 function Column({ view, theme, selected, onClear }: { view: View; theme?: string; selected: string | null; onClear: () => void }) {
   const all = storiesFrom(view, null);
   const list = storiesFrom(view, selected);
-  const { arrived, pending } = useArrival();
+  const { arrived } = useArrival();
   const newestId = all[0].id;
   const visible = arrived ? list : list.filter((s) => s.id !== newestId);
   const src = selected ? sourceById.get(selected) : null;
@@ -134,11 +134,6 @@ function Column({ view, theme, selected, onClear }: { view: View; theme?: string
             <ArrowUpDown className="size-3" aria-hidden="true" /> Newest first
           </span>
         </div>
-        {pending > 0 && !src ? (
-          <div className="flex h-11 items-center border-t border-line-soft bg-[var(--caution-soft)]/50 px-6">
-            <Checking pending={pending} compact />
-          </div>
-        ) : null}
       </div>
       {visible.length === 0 && src ? <Empty source={src} onClear={onClear} /> : null}
       <ol>

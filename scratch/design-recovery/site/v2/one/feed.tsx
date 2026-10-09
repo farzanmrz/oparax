@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { sources, stories, storyHasSource, type FeedStory, type View } from "@/v2/deck/data";
-import { Arrive, Checking, useArrival } from "@/v2/deck/live";
+import { Arrive, useArrival } from "@/v2/deck/live";
 import { StoryCard } from "./card";
 import { AppShell, PageLine } from "./shell";
 
-// The One feed inside the shell. The page line: Feed, and Deck's amber checking line at the right while a check
-// runs. The clustered view is the only view (owner, Oct 8: the Clustered and Direct switch is removed). Then the
+// The One feed inside the shell. The page line: Feed. The clustered view is the only view (owner, Oct 8: the Clustered and Direct switch is removed). Then the
 // stories in a grid read newest first across rows, left to right: three columns at 1440, two narrower, four at
 // 2560. Cards in a row share the row's height (the grid stretches them), the picture stays 172px on top, and every
 // fact shows. The shell's source rail at the left filters the feed; the feed never moves.
@@ -24,7 +23,7 @@ export function OneFeed({
   settled: boolean;
 }) {
   const [sourceId, setSourceId] = useState<string | null>(sources.some((s) => s.id === initialSource) ? initialSource : null);
-  const { pending } = useArrival(settled);
+  useArrival(settled);
 
   // Keep the URL in step so each state has an address (and survives a reload).
   useEffect(() => {
@@ -45,7 +44,7 @@ export function OneFeed({
 
   return (
     <AppShell selected={sourceId} onSelect={setSourceId}>
-      <PageLine title="Feed" right={!selected && pending > 0 ? <Checking pending={pending} /> : null} />
+      <PageLine title="Feed" />
       <Grid list={list} freshId={freshId} />
     </AppShell>
   );
