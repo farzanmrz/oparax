@@ -51,6 +51,7 @@ export function OneFrame({
   live = false,
   extra,
   aside,
+  fill = false,
   children,
 }: {
   title: React.ReactNode;
@@ -59,6 +60,8 @@ export function OneFrame({
   /** The one control the band may hold beside the title: the feed's view switch. */
   extra?: React.ReactNode;
   aside: FrameAside | null;
+  /** The work stretches to the aside's height, for a single card that should stand as tall as the aside. */
+  fill?: boolean;
   children: React.ReactNode;
 }) {
   const name = aside?.name ?? "";
@@ -119,7 +122,9 @@ export function OneFrame({
             </div>
           </aside>
         ) : null}
-        <div className="@container min-w-0">{children}</div>
+        <div className={cn("@container min-w-0", fill && "flex flex-col self-stretch")}>
+          {children}
+        </div>
       </div>
     </>
   );

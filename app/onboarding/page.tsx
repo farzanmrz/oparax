@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { RefreshXIdentityButton } from "@/components/auth/refresh-x-identity";
-import { runCard } from "@/components/one/stage";
+import { restCard } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { readAuthContext } from "@/lib/auth/identity";
 import { signedInDestination } from "@/lib/auth/oauth";
@@ -29,7 +29,7 @@ export default async function OnboardingPage({
       <>
         <PostHogUserContext id={user.id} email={user.email} />
         <SetupStage email={user.email ?? null}>
-          <div className={cn(runCard, "flex flex-col items-start gap-3 p-5")}>
+          <div className={cn(restCard, "items-start gap-3 p-5")}>
             <p role="alert" className="text-[13.5px] leading-relaxed text-[var(--error)]">
               {onboardingContent.xIdentityUnreadable}
             </p>

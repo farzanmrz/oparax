@@ -26,6 +26,7 @@ export function SetupStage({
         <OneFrame
           title={onboardingContent.title}
           aside={stepsAside(<PhaseList phases={restPhases} />)}
+          fill
         >
           {children}
         </OneFrame>

@@ -58,7 +58,7 @@ export function OneCard({
           />
           <span
             aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-t from-[var(--window)]/55 via-transparent to-transparent"
+            className="absolute inset-0 hidden bg-gradient-to-t from-[var(--window)]/55 via-transparent to-transparent dark:block"
           />
         </div>
       ) : null}

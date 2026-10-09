@@ -52,6 +52,9 @@ export function OneRun({
 }) {
   const router = useRouter();
   const building = !failed && !ready;
+  // Before Jev's scores exist the card leads with the person's sentence at story-title size, the handle above it
+  // and the run's activity lines under it (owner review, October 8); once the bands arrive the line goes quiet.
+  const early = building && run.candidates === null;
   // Mark the address while building so the refresh that lands after completion keeps this page in place.
   useEffect(() => {
     if (building && !preview) router.replace(`/${handle}?built=1`, { scroll: false });
@@ -81,15 +84,27 @@ export function OneRun({
         )}
       >
         <section aria-label={copy.runLabel} className={runCard}>
-          <p className="flex min-w-0 items-baseline gap-2.5 border-b border-line px-5 py-3.5 text-[13px]">
-            <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-t1">
-              <BrandIcon name="x" className="size-3 self-center" />@{displayHandle}
-              <span className="sr-only">{copy.yourAccount}</span>
-            </span>
-            <span className="min-w-0 truncate text-t3">{beat}</span>
-          </p>
+          {early ? (
+            <div className="px-5 pt-5">
+              <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line-strong bg-[var(--window)] px-2.5 text-[12.5px] font-medium text-t1 shadow-[var(--top-light)]">
+                <BrandIcon name="x" className="size-3" />@{displayHandle}
+                <span className="sr-only">{copy.yourAccount}</span>
+              </span>
+              <p className="mt-3 text-[21px] leading-[1.3] font-semibold tracking-[-0.01em] text-t1">
+                {beat}
+              </p>
+            </div>
+          ) : (
+            <p className="flex min-w-0 items-baseline gap-2.5 border-b border-line px-5 py-3.5 text-[13px]">
+              <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-t1">
+                <BrandIcon name="x" className="size-3 self-center" />@{displayHandle}
+                <span className="sr-only">{copy.yourAccount}</span>
+              </span>
+              <span className="min-w-0 truncate text-t3">{beat}</span>
+            </p>
+          )}
           {stopped}
-          <div className="grid gap-5 px-5 py-5 empty:hidden">
+          <div className={cn("grid gap-5 px-5 py-5 empty:hidden", early && "pt-4")}>
             <Stream view={view} run={run} ready={ready} />
           </div>
           {open}

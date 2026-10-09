@@ -11,38 +11,53 @@ export const previewNotice = "Development preview with example data. Nothing her
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
 
-// The example agent's sources are rows of the shared source table (real names, so their logos are real); the example
-// stories are invented text about the example person's sentence, credited to those sources. Times are set from the
-// moment the page is drawn, so the week's tiles count the example stories. Three stories carry a real public picture
-// from the design preview's data (scratch/design-recovery/site/next/data/feed.ts); three have none.
-const rowsOf = (kind: string, count: number) =>
-  seedTable.filter((row) => row.kind === kind).slice(0, count);
+// The example agent's sources are rows of the shared source table (real names, so their logos are real). Every
+// example story is real content from those sources: the three with pictures are the lab's verified Deck reports
+// (scratch/design-recovery/site/next/data/feed.ts), each with its own page's picture, headline and facts; the three
+// without are the sources' recent posts and titles as the table stores them (docs/source-table-seed.json), restated
+// only as far as that text goes. Times are set from the moment the page is drawn, so the week's tiles count them.
+const rowsOf = (...ids: string[]) =>
+  ids.map((id) => {
+    const row = seedTable.find((r) => r.id === id);
+    if (!row) throw new Error(`No source table row ${id}`);
+    return row;
+  });
 const sourceRows = {
-  accounts: rowsOf("x_account", 5),
-  rss: rowsOf("rss", 5),
-  websites: rowsOf("website", 3),
+  accounts: rowsOf("x-cursor_ai", "x-linear"),
+  rss: rowsOf(
+    "hugging-face-community-ml-research-blog",
+    "vercel-product-and-platform-news",
+    "latent-space-ai-engineering-newsletter-and-podcast",
+    "simon-willison-personal-tech-blog",
+    "cognition-devin-product-updates",
+  ),
 };
 const handleOf = (target: string) => target.replace(/\/+$/, "").split("/").pop() ?? target;
-const rowById = new Map(
-  [...sourceRows.accounts, ...sourceRows.rss, ...sourceRows.websites].map((row) => [row.id, row]),
-);
+const rowById = new Map([...sourceRows.accounts, ...sourceRows.rss].map((row) => [row.id, row]));
 
+/** Each picture is its own page's og image, shown only on that page's story. */
 const images = {
-  hf: "https://cdn-uploads.huggingface.co/production/uploads/638e39b249de7ae552d977b5/uKnK93gjkKbmJmSx94WO2.png",
-  simon: "https://static.simonwillison.net/static/2026/live-20260929-092441.webp",
-  vercel:
-    "https://assets.vercel.com/image/upload/contentful/image/e5382hct74si/4VUQPah80J1WYBwplwXQjh/341d68a8100d89550907348d511d49db/image__111_.png",
+  olmo: "https://cdn-uploads.huggingface.co/production/uploads/638e39b249de7ae552d977b5/uKnK93gjkKbmJmSx94WO2.png",
+  vercelAgent:
+    "https://assets.vercel.com/image/upload/contentful/image/e5382hct74si/51AkvmukWt34TIFhJ3XTdX/d5b58e4e05bbcc635816d8658d54617e/image__41_.png",
+  simonDevDay: "https://static.simonwillison.net/static/2026/live-20260929-092441.webp",
 };
 
 /** One example report from a preview source: a post from an account, an article from a site or feed. */
-function report(n: number, rowId: string, published: string, title: string): PublicItem {
+function report(
+  n: number,
+  rowId: string,
+  published: string,
+  title: string,
+  url?: string,
+): PublicItem {
   const row = rowById.get(rowId);
   if (!row) throw new Error(`No preview source ${rowId}`);
   const post = row.kind === "x_account";
   const handle = handleOf(row.target);
   return {
     id: post ? `x:18900000000000001${String(n).padStart(2, "0")}` : `example-item-${n}`,
-    url: post ? `https://x.com/${handle}` : new URL(row.target).origin,
+    url: url ?? (post ? `https://x.com/${handle}` : new URL(row.target).origin),
     title,
     published_at: published,
     kind: post ? "post" : "article",
@@ -90,88 +105,134 @@ function story(
 function exampleFeed(now: number) {
   const at = (days: number, hours: number) =>
     new Date(now - days * DAY - hours * HOUR).toISOString();
-  const deepmind = sourceRows.accounts[0].id;
-  const deepseek = sourceRows.accounts[1].id;
-  const qwen = sourceRows.accounts[2].id;
-  const lovable = sourceRows.accounts[3].id;
-  const composio = sourceRows.accounts[4].id;
-  const [google, altman, hf, openai, simon] = sourceRows.rss.map((row) => row.id);
-  const [bolt, , anthropic] = sourceRows.websites.map((row) => row.id);
+  const [cursor, linear] = sourceRows.accounts.map((row) => row.id);
+  const [hf, vercel, latent, simon, cognition] = sourceRows.rss.map((row) => row.id);
 
   const stories: Story[] = [
     story(
       storyIds.written,
-      "Teams gain a clearer review step for agent work",
+      "Olmo-core 3 scales open MoE training past a trillion parameters",
       [
-        "The new tool lets a team inspect proposed agent actions before they run.",
-        "Its release announcement also describes a shared review queue.",
+        "Olmo-core 3 is built to scale MoE training into the trillion-parameter range.",
+        "On eight B300 GPUs, a 47B MoE processed 52,000 tokens per second per GPU, up from 19,400.",
+        "The next-generation Olmo will use an MoE architecture.",
+        "Researchers can use it to train their own MoEs.",
       ],
-      images.hf,
+      images.olmo,
       [
-        report(1, hf, at(0, 2), "A clearer review step for agent work"),
-        report(2, deepmind, at(0, 3), "Reviewing what an agent proposes before it runs"),
+        report(
+          1,
+          hf,
+          at(0, 2),
+          "Introducing Olmo-core 3: Open, scalable training infrastructure for large MoEs",
+          "https://huggingface.co/blog/allenai/olmocore3",
+        ),
       ],
     ),
     story(
       storyId(1),
-      "A review queue now holds every proposed agent change until a person approves it",
+      "Cursor introduces Rollouts, which watch changes as they deploy",
       [
-        "Each proposed change waits in one shared queue.",
-        "A reviewer sees the diff, the agent's stated reason and the files it touched.",
-        "Approvals and rejections are kept as a record the team can search later.",
+        "Rollouts write a monitoring plan, then watch changes as they deploy.",
+        "Cursor also made a major update to Security Reviewer.",
+        "Rollouts and Security Reviewer are available today on Teams and Enterprise plans.",
       ],
-      images.simon,
+      null,
       [
-        report(3, simon, at(1, 1), "Notes from a talk on agent review queues"),
-        report(4, deepseek, at(1, 2), "Every proposed change now waits for a person"),
-        report(5, openai, at(1, 4), "A shared queue for agent changes"),
-        report(6, altman, at(1, 6), "On keeping people in the loop"),
-        report(7, qwen, at(1, 7), "Our agents now ask before they change files"),
+        report(
+          2,
+          cursor,
+          at(0, 5),
+          "Rollouts and Security Reviewer are available today on Teams and Enterprise plans.",
+        ),
+        report(
+          3,
+          cursor,
+          at(0, 6),
+          "Along with Rollouts, we've made a major update to Security Reviewer.",
+        ),
+        report(
+          4,
+          cursor,
+          at(0, 7),
+          "Introducing Rollouts. Rollouts write a monitoring plan, then watch changes as they deploy.",
+        ),
+      ],
+    ),
+    story(
+      storyId(2),
+      "Vercel Agent can now install private npm packages",
+      [
+        "Vercel Agent installs private dependencies from npm and custom registries.",
+        "Credentials stay outside the sandbox, so the agent cannot read them.",
+        "It reads only team-shared variables, not project-scoped ones.",
+      ],
+      images.vercelAgent,
+      [
+        report(
+          5,
+          vercel,
+          at(1, 1),
+          "Vercel Agent now installs private packages from npm and custom registries",
+          "https://vercel.com/changelog/vercel-agent-now-installs-private-packages-from-npm-and-custom-registries",
+        ),
       ],
     ),
     story(storyIds.noCard, null, [], null, [
-      report(8, simon, at(2, 3), "A workflow note on reviewing agent changes"),
+      report(6, cognition, at(1, 6), "Introducing Code Scans"),
     ]),
     story(
-      storyId(2),
-      "An agent framework adds a dry run mode",
-      ["A dry run lists what the agent would do without doing it."],
-      null,
-      [report(9, bolt, at(3, 2), "Dry runs for agent builds")],
-    ),
-    story(
       storyId(3),
-      "Two coding agent makers publish how their approval steps work, and where they differ on what counts as a risky change",
+      "OpenAI launches GPT-6.1 Sol at a fifth of Astra's price",
       [
-        "One asks for approval before any file outside the project is touched.",
-        "The other asks before any command that reaches the network.",
-        "Both log the approval next to the change itself.",
-        "Neither lets the agent approve its own change.",
+        "OpenAI launched GPT-6.1 Sol at DevDay 2026.",
+        "OpenAI pitches it as near-Astra intelligence for a fifth of the price.",
+        "API pricing is $2/$10 per million tokens, with cached input at $0.10.",
+        "A new Ultrafast mode generates up to 300 tokens a second.",
+        "Artificial Analysis places it 1 point below Astra at $0.72 per task.",
       ],
-      images.vercel,
+      images.simonDevDay,
       [
-        report(10, anthropic, at(4, 1), "How our approval step works"),
-        report(11, lovable, at(4, 5), "What counts as a risky change"),
+        report(
+          7,
+          latent,
+          at(2, 3),
+          "[AINews] OpenAI DevDay 2026: Dots, 6.1 Sol, Ultrafast, Decisions API, Agents API, Spaces, Marketplace, and 1.2 Billion ChatGPT WAU",
+          "https://www.latent.space/p/ainews-openai-devday-2026-dots-61",
+        ),
+        report(
+          8,
+          simon,
+          at(2, 17),
+          "OpenAI DevDay 2026 live blog",
+          "https://simonwillison.net/2026/Sep/29/openai-devday-2026-live-blog/",
+        ),
       ],
     ),
     story(
       storyId(4),
-      "A survey of teams running agents finds most review every change",
+      "Linear's coding agent gets a secure setup for environment secrets",
       [
-        "Most of the teams asked review every agent change before it runs.",
-        "Smaller teams review fewer changes than larger ones.",
+        "Linear announced a secure setup for its coding agent.",
+        "Coding sessions can now access environment secrets.",
+        "Other improvements include support for open-weight models.",
       ],
       null,
       [
-        report(12, google, at(5, 2), "A survey of teams running agents"),
-        report(13, composio, at(5, 4), "Most teams review every agent change"),
+        report(9, linear, at(3, 2), "New: Secure setup for Linear coding agent"),
+        report(
+          10,
+          linear,
+          at(3, 4),
+          "Other coding agent improvements include environment secrets and support for open-weight models.",
+        ),
       ],
     ),
   ];
   const items = [
     ...new Map(stories.flatMap((s) => s.reports).map((item) => [item.id, item])).values(),
   ].sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
-  const skipped = report(14, google, at(2, 6), "A roundup of this week's model releases");
+  const skipped = report(11, latent, at(2, 8), "[AINews] not much happened today");
   const feed: MonitorFeed = {
     stories,
     articles: items.map((item) => ({ item, card: null, score: null })),
@@ -365,25 +426,35 @@ const profileState: BuildState = {
   profileComplete: true,
 };
 const postsState: BuildState = { ...profileState, posts };
-// Example scores for every table row, spread so most rows fall below the possible line as in a real run; the rows
-// the example answer picks are set by hand below.
+// Example scores: Jev's bands set by hand for the example sentence (tools that let teams review what AI agents change).
+// Strong and possible are the table's agent, coding-agent and review sources; every other row, the football and
+// general news desks among them, falls below the possible line, spread so the set-aside band reads as a real run.
 const spread = (id: string) => {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return (h % 1000) / 1000;
 };
-const exampleScores = Object.fromEntries(
-  seedTable.map((row) => [row.id, Math.round(spread(row.id) ** 3 * 90) / 100]),
-);
+const fits: Record<string, number> = {
+  "x-cursor_ai": 0.88,
+  "cognition-devin-product-updates": 0.84,
+  "langchain-product-and-engineering-blog": 0.81,
+  "sarthak-rastogi-ai-agent-engineering": 0.79,
+  "q-example_review": 0.77,
+  "x-linear": 0.76,
+  "x-github": 0.64,
+  "x-cognition": 0.6,
+  "builder-io-company-blog": 0.57,
+  "x-bcherny": 0.53,
+  "simon-willison-personal-tech-blog": 0.5,
+  "melty-labs-changelog": 0.46,
+  "x-svpino": 0.42,
+  "x-qoder_ai_ide": 0.38,
+};
 const scoredState: BuildState = {
   ...postsState,
   scores: {
-    ...exampleScores,
-    "langchain-product-and-engineering-blog": 0.86,
-    "sarthak-rastogi-ai-agent-engineering": 0.78,
-    "x-cursor_ai": 0.81,
-    "q-example_review": 0.74,
-    "google-ai-news-and-product-updates": 0.22,
+    ...Object.fromEntries(seedTable.map((row) => [row.id, Math.round(spread(row.id) * 30) / 100])),
+    ...fits,
   },
 };
 const chosenState: BuildState = {
@@ -472,7 +543,7 @@ export const previewSources: MonitorSources = {
     why: row.focus,
     watched: false,
   })),
-  sources: [...sourceRows.rss, ...sourceRows.websites].map((row) => ({
+  sources: sourceRows.rss.map((row) => ({
     source_id: row.id,
     why: row.focus,
     sources: {

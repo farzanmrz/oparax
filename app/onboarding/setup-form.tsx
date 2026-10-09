@@ -7,7 +7,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { z } from "zod";
 import { RefreshXIdentityButton } from "@/components/auth/refresh-x-identity";
 import { BrandIcon } from "@/components/brand-icon";
-import { primaryButton, runCard } from "@/components/one/stage";
+import { primaryButton, restCard } from "@/components/one/stage";
 import { Spinner } from "@/components/ui/spinner";
 import {
   onboardingContent,
@@ -168,7 +168,7 @@ export function SetupForm({
       onSubmit={submit}
       aria-busy={pending}
       aria-label={onboardingContent.title}
-      className={runCard}
+      className={restCard}
     >
       <div className="grid gap-5 px-5 pt-5 pb-5">
         <div className="grid gap-2">
@@ -245,7 +245,7 @@ export function SetupForm({
           </span>
         </label>
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 border-t border-line px-5 py-3.5">
+      <div className="mt-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2 border-t border-line px-5 py-3.5">
         <div className="mr-auto flex min-w-0 flex-col gap-1.5 text-[12.5px] leading-relaxed empty:hidden">
           {closed ? (
             <p role="status" className="text-t1">

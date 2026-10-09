@@ -43,13 +43,15 @@ export function PersonCard({
   profile,
   displayHandle,
   email,
+  className,
 }: {
   profile: Profile | null;
   displayHandle: string;
   email: string | null;
+  className?: string;
 }) {
   return (
-    <section aria-label={monitorContent.menu.account} className={card}>
+    <section aria-label={monitorContent.menu.account} className={cn(card, className)}>
       <div className="flex items-center gap-3.5">
         <ProfileAvatar profile={profile} />
         <div className="min-w-0">
@@ -281,6 +283,7 @@ export function NotificationsCard({
   failedDeliveries,
   alerts,
   digests,
+  className,
 }: {
   handle: string;
   monitorId: string;
@@ -292,6 +295,7 @@ export function NotificationsCard({
   failedDeliveries: number | null;
   alerts: { hour: number; timezone: string; timezones: string[]; cadence: "daily" | "every_15m" };
   digests: { github: boolean; productHunt: boolean };
+  className?: string;
 }) {
   const on = botState === "active";
   const paused = botState === "paused";
@@ -309,7 +313,7 @@ export function NotificationsCard({
           ? monitorContent.botStopped
           : monitorContent.botHelp(displayHandle);
   return (
-    <section aria-label={dm.title} className={cn(lift, "divide-y divide-line")}>
+    <section aria-label={dm.title} className={cn(lift, "divide-y divide-line", className)}>
       <div className="p-5">
         <p className="text-[15px] font-semibold text-t1">{dm.title}</p>
         <div className="mt-4 flex items-center gap-2.5">

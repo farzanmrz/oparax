@@ -70,7 +70,12 @@ export function readRun(
     gather: ready || gathered !== null,
     jev: ready || candidates !== null,
     choose: ready || run.chosen !== null,
-    search: ready || (searchTerms ? run.turns >= 2 || saving : enough || saving),
+    // With no search logged, the search is over once the saved answer did not ask for one.
+    search:
+      ready ||
+      (searchTerms
+        ? run.turns >= 2 || saving
+        : enough || saving || (run.chosen !== null && !run.searchAsked)),
     save: ready,
   };
   const result: Record<PhaseId, string | null> = {
@@ -91,7 +96,9 @@ export function readRun(
         : copy.searched(searchTerms)
       : enough
         ? copy.enough
-        : null,
+        : run.chosen !== null && !run.searchAsked
+          ? copy.notAsked
+          : null,
     save: ready ? copy.saved : null,
   };
 
@@ -109,13 +116,13 @@ export function readRun(
       ? { id, state: "failed", result: monitorContent.buildReason }
       : { id, state: "running", result: null };
   });
+  // The title band names the running phase itself (owner review, October 8).
+  const running = phases.find((p) => p.state === "running");
   const heading = failed
     ? copy.stoppedTitle
     : ready
       ? copy.ready
-      : done.choose
-        ? copy.saving
-        : copy.choosing;
+      : copy.phases[running?.id ?? "save"].title;
   const last = lines.at(-1);
   const activity = !failed && !ready && last ? displayLine(last) : null;
   return { phases, heading, gathered, searchTerms, activity };

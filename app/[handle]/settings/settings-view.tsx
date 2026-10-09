@@ -114,11 +114,13 @@ export function SettingsView({
             ),
           }}
         >
-          <div className="mx-auto grid w-full max-w-[520px] gap-5">
+          {/* Across the work column: the person and the plan side by side, Notifications the full row below. */}
+          <div className="grid w-full grid-cols-1 gap-6 @min-[640px]:grid-cols-2">
             <PersonCard
               profile={data.profile}
               displayHandle={monitor.display_handle}
               email={email}
+              className={plan ? undefined : "@min-[640px]:col-span-2"}
             />
             {plan ? (
               <PlanCard
@@ -142,6 +144,7 @@ export function SettingsView({
               failedDeliveries={data.failedDeliveries}
               alerts={{ hour: monitor.alert_hour, timezone, timezones, cadence: state.cadence }}
               digests={{ github: monitor.digest_github, productHunt: monitor.digest_product_hunt }}
+              className="@min-[640px]:col-span-2"
             />
           </div>
         </OneFrame>

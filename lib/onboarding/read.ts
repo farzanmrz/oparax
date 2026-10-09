@@ -62,6 +62,8 @@ export type Onboarding = {
   turns: number;
   /** The X search ran and did not answer. */
   searchFailed: boolean;
+  /** The model's saved answer asked for the one X search (its search terms are not null). */
+  searchAsked: boolean;
 };
 
 /** A run with nothing saved yet, for a state that does not parse or a session that does not own it. */
@@ -75,6 +77,7 @@ export const emptyOnboarding: Onboarding = {
   brief: null,
   turns: 0,
   searchFailed: false,
+  searchAsked: false,
 };
 
 type Row = (typeof seedTable)[number];
@@ -251,5 +254,6 @@ export function toOnboarding(state: BuildState): Onboarding {
       : null,
     turns: state.turns ?? 0,
     searchFailed: Boolean(state.searchResult?.failed),
+    searchAsked: Boolean(answer?.search?.trim()),
   };
 }

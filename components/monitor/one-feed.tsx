@@ -1,11 +1,10 @@
-import { Layers, Rows3 } from "lucide-react";
+import { Layers, Newspaper, Rows3 } from "lucide-react";
 import Link from "next/link";
 import { BrandIcon } from "@/components/brand-icon";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { OneCard } from "@/components/one/card";
 import { OneFrame } from "@/components/one/frame";
 import type { ShellPlan } from "@/components/one/header";
-import { GitHubTile } from "@/components/one/marks";
 import { Masonry, type MasonryItem } from "@/components/one/masonry";
 import { SourceList } from "@/components/one/source-list";
 import { lift } from "@/components/one/stage";
@@ -155,7 +154,10 @@ function DigestCard({
   return (
     <section aria-label={copy.digestCard} className={cn(lift, "min-w-0 overflow-hidden")}>
       <p className="flex items-center gap-2.5 border-b border-line px-4 py-3 text-[13px] font-semibold text-t1">
-        <GitHubTile size={22} />
+        {/* A neutral mark: the card holds every digest kind, and each row carries its own. */}
+        <span className="grid size-[22px] shrink-0 place-items-center rounded-[5px] bg-raised text-t2">
+          <Newspaper className="size-3.5" aria-hidden="true" />
+        </span>
         {copy.digestCard}
       </p>
       <ul className="divide-y divide-line">
