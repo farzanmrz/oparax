@@ -79,8 +79,7 @@ export const settingsContent = {
     invalid: "Check the settings you entered and try again.",
     signedOut: "Please sign in to change settings.",
     wrongAccount: "This agent belongs to another account. Sign in to the account that created it.",
-    readOnly:
-      "Settings are read-only until your subscription is active. Choose a plan to change them.",
+    paidOnly: "Twitter counts refresh on a paid plan.",
     unavailable: "Settings could not be saved. Try again.",
     source: "Paste the site's feed or its news section page.",
     missingSource: "This source is no longer on your page.",

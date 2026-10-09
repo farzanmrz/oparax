@@ -55,6 +55,7 @@ export const monitorContent = {
     more: "Show more",
     less: "Show less",
     collapse: "Collapse",
+    add: "Add",
     empty: "Your agent chooses its sources once it is built.",
   },
   noNewsFrom: (name: string) => `Nothing from ${name} in your feed yet.`,
@@ -202,6 +203,8 @@ export const monitorContent = {
     },
   ],
   notifications: {
+    title: "Notifications",
+    states: { active: "Connected", none: "Not connected", paused: "Paused", stopped: "Stopped" },
     xdm: "Twitter DMs",
     xdmLine: (handle: string) => `Oparax messages @${handle} on Twitter when a story matters.`,
     message: "Message @oparax_ai",

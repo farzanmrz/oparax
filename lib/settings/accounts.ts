@@ -65,52 +65,57 @@ export async function setWatchedForOwner(
 }
 
 export async function refreshCountsForOwner(handle: unknown): Promise<SettingsResult> {
-  return changeSettings(z.object({ handle: handleSchema }), { handle }, async (_input, monitor) => {
-    const gate = await guards();
-    if (gate.killSwitch) return { ok: false, error: errors.countsClosed };
-    const claim = await claimRun(`settings-counts:${monitor.id}`, 360);
-    if (!claim) return { ok: true };
-    after(async () => {
-      try {
-        const db = createAdminClient();
-        const { data: current, error: monitorError } = await db
-          .from("monitors")
-          .select("*")
-          .eq("id", monitor.id)
-          .eq("user_id", monitor.user_id ?? "")
-          .maybeSingle();
-        if (monitorError) throw monitorError;
-        if (!current || monitorState(current).state !== "paid") return;
-        const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString();
-        const { data, error } = await db
-          .from("monitor_accounts")
-          .select("handle")
-          .eq("monitor_id", monitor.id)
-          .or(`counts_checked_at.is.null,counts_checked_at.lt.${cutoff}`);
-        if (error) throw error;
-        const results = await Promise.allSettled(
-          data.map(async (account) => {
-            const postsPerDay = await xCounts(account.handle, { monitorId: monitor.id });
-            // A failed count remains unknown, never zero or freshly checked.
-            if (postsPerDay === null) return;
-            const { error: saveError } = await db
-              .from("monitor_accounts")
-              .update({ posts_per_day: postsPerDay, counts_checked_at: new Date().toISOString() })
-              .eq("monitor_id", monitor.id)
-              .eq("handle", account.handle);
-            if (saveError) throw saveError;
-          }),
-        );
-        for (const result of results) if (result.status === "rejected") throw result.reason;
-        revalidatePath(`/${monitor.handle}/settings`);
-      } catch (error) {
-        reportServerException(error, { tags: { area: "settings", stage: "counts" } });
-      } finally {
-        await claim.release();
-      }
-    });
-    return { ok: true };
-  });
+  return changeSettings(
+    z.object({ handle: handleSchema }),
+    { handle },
+    async (_input, monitor) => {
+      const gate = await guards();
+      if (gate.killSwitch) return { ok: false, error: errors.countsClosed };
+      const claim = await claimRun(`settings-counts:${monitor.id}`, 360);
+      if (!claim) return { ok: true };
+      after(async () => {
+        try {
+          const db = createAdminClient();
+          const { data: current, error: monitorError } = await db
+            .from("monitors")
+            .select("*")
+            .eq("id", monitor.id)
+            .eq("user_id", monitor.user_id ?? "")
+            .maybeSingle();
+          if (monitorError) throw monitorError;
+          if (!current || monitorState(current).state !== "paid") return;
+          const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString();
+          const { data, error } = await db
+            .from("monitor_accounts")
+            .select("handle")
+            .eq("monitor_id", monitor.id)
+            .or(`counts_checked_at.is.null,counts_checked_at.lt.${cutoff}`);
+          if (error) throw error;
+          const results = await Promise.allSettled(
+            data.map(async (account) => {
+              const postsPerDay = await xCounts(account.handle, { monitorId: monitor.id });
+              // A failed count remains unknown, never zero or freshly checked.
+              if (postsPerDay === null) return;
+              const { error: saveError } = await db
+                .from("monitor_accounts")
+                .update({ posts_per_day: postsPerDay, counts_checked_at: new Date().toISOString() })
+                .eq("monitor_id", monitor.id)
+                .eq("handle", account.handle);
+              if (saveError) throw saveError;
+            }),
+          );
+          for (const result of results) if (result.status === "rejected") throw result.reason;
+          revalidatePath(`/${monitor.handle}/settings`);
+        } catch (error) {
+          reportServerException(error, { tags: { area: "settings", stage: "counts" } });
+        } finally {
+          await claim.release();
+        }
+      });
+      return { ok: true };
+    },
+    "paid",
+  );
 }
 
 export async function setAlertHourForOwner(
@@ -230,6 +235,6 @@ export async function portalForOwner(handle: unknown) {
       if (!monitor.stripe_customer_id) return { ok: false as const, error: errors.billing };
       return { ok: true as const, url: "/api/stripe/portal", monitorId: monitor.id };
     },
-    true,
+    "billing",
   );
 }

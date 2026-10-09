@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import { OneFrame } from "@/components/one/frame";
 import { column, OneShell, planOf, type ShellMonitor } from "@/components/one/shell";
-import { AccountBlock } from "@/components/settings/account-block";
+import { NotificationsCard, PersonCard, PlanCard } from "@/components/settings/account-block";
 import {
   type FollowedRepo,
   type SettingsAccount,
@@ -9,6 +10,7 @@ import {
 } from "@/components/settings/sources-panel";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { monitorContent } from "@/lib/monitor/content";
 import type { Profile } from "@/lib/monitor/read";
 import { monitorState } from "@/lib/monitor-state";
 import { settingsContent as copy } from "@/lib/settings/content";
@@ -60,8 +62,9 @@ export function SettingsElsewhere({ children }: { children: ReactNode }) {
 }
 
 /**
- * The owner's one Settings page (design preview v2/one/settings.tsx) inside the One shell: the sources as the main
- * body and, at the right, the account block (the person, the plan, alerts, digests, X DMs, Sign out).
+ * The owner's one Settings page inside the One shell (council, October 8): the title band, the sources as the lifted
+ * aside (Add on each kind, remove on each row, gated by sign-up only), and three small lifted objects in one centred
+ * column: the person, the plan, and Notifications.
  */
 export function SettingsView({
   handle,
@@ -74,11 +77,10 @@ export function SettingsView({
   email: string | null;
   monitor: SettingsMonitor;
   data: SettingsData;
-  /** Shown above the page line; the development preview's banner. */
+  /** Shown above the title band; the development preview's banner. */
   notice?: ReactNode;
 }) {
   const state = monitorState(monitor);
-  const readOnly = state.state !== "paid";
   const timezones = ["UTC", ...Intl.supportedValuesOf("timeZone")];
   const timezone =
     monitor.alert_timezone && timezones.includes(monitor.alert_timezone)
@@ -95,39 +97,54 @@ export function SettingsView({
         className={`${column} relative flex-1 scroll-mt-20 pt-7 pb-24`}
       >
         {notice}
-        <Title />
-        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <SourcesPanel
-            handle={handle}
-            readOnly={readOnly}
-            sources={data.sources}
-            accounts={data.accounts}
-            repos={data.repos}
-            poolLeft={Math.max(0, monitor.pool_limit - monitor.pool_used)}
-          />
-          <AccountBlock
-            handle={handle}
-            monitorId={monitor.id}
-            displayHandle={monitor.display_handle}
-            email={email}
-            profile={data.profile}
-            plan={
-              plan && {
-                ...plan,
-                paidThrough: monitor.paid_through,
-                lapsed: state.state === "lapsed",
-                subscribed,
-                billing: subscribed && Boolean(monitor.stripe_customer_id),
-              }
-            }
-            alerts={{ hour: monitor.alert_hour, timezone, timezones, cadence: state.cadence }}
-            digests={{ github: monitor.digest_github, productHunt: monitor.digest_product_hunt }}
-            botState={monitor.bot_state}
-            open={state.state === "trial" || state.state === "paid"}
-            failedDeliveries={data.failedDeliveries}
-            readOnly={readOnly}
-          />
-        </div>
+        <OneFrame
+          title={copy.title}
+          aside={{
+            name: "sources",
+            label: monitorContent.aside.title,
+            body: (
+              <SourcesPanel
+                handle={handle}
+                paid={state.state === "paid"}
+                sources={data.sources}
+                accounts={data.accounts}
+                repos={data.repos}
+                poolLeft={Math.max(0, monitor.pool_limit - monitor.pool_used)}
+              />
+            ),
+          }}
+        >
+          <div className="mx-auto grid w-full max-w-[520px] gap-5">
+            <PersonCard
+              profile={data.profile}
+              displayHandle={monitor.display_handle}
+              email={email}
+            />
+            {plan ? (
+              <PlanCard
+                handle={handle}
+                monitorId={monitor.id}
+                plan={{
+                  ...plan,
+                  paidThrough: monitor.paid_through,
+                  lapsed: state.state === "lapsed",
+                  subscribed,
+                  billing: subscribed && Boolean(monitor.stripe_customer_id),
+                }}
+              />
+            ) : null}
+            <NotificationsCard
+              handle={handle}
+              monitorId={monitor.id}
+              displayHandle={monitor.display_handle}
+              botState={monitor.bot_state}
+              open={state.state === "trial" || state.state === "paid"}
+              failedDeliveries={data.failedDeliveries}
+              alerts={{ hour: monitor.alert_hour, timezone, timezones, cadence: state.cadence }}
+              digests={{ github: monitor.digest_github, productHunt: monitor.digest_product_hunt }}
+            />
+          </div>
+        </OneFrame>
       </main>
     </OneShell>
   );

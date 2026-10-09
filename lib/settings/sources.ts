@@ -49,21 +49,27 @@ export async function changeSettings<T, R extends { ok: true } = { ok: true }>(
     monitor: Tables<"monitors">,
     userId: string,
   ) => Promise<R | { ok: false; error: string }>,
-  billing = false,
+  /**
+   * Who may make the change beyond owning the agent: anyone signed up ("owner", the owner's October 6 ruling for
+   * sources: "gated only by sign-up, not by payment"), a paid plan ("paid", for work that spends on paid Twitter
+   * calls), or a paid or lapsed plan ("billing", the subscription portal).
+   */
+  gate: "owner" | "paid" | "billing" = "owner",
 ): Promise<R | { ok: false; error: string }> {
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: errors.invalid };
-  // Every mutation uses the same ownership and paid-state boundary, including crafted calls.
+  // Every mutation uses the same ownership boundary and its gate, including crafted calls.
   const handle = z.object({ handle: handleSchema }).safeParse(raw);
   if (!handle.success) return { ok: false, error: errors.invalid };
   try {
     const owned = await ownedMonitor(handle.data.handle);
     if (!owned.ok) return { ok: false, error: owned.error };
     const state = monitorState(owned.monitor).state;
-    if (state !== "paid" && !(billing && state === "lapsed"))
-      return { ok: false, error: errors.readOnly };
+    if (gate === "paid" && state !== "paid") return { ok: false, error: errors.paidOnly };
+    if (gate === "billing" && state !== "paid" && state !== "lapsed")
+      return { ok: false, error: errors.billing };
     const result = await work(parsed.data, owned.monitor, owned.userId);
-    if (result.ok && !billing) {
+    if (result.ok && gate !== "billing") {
       revalidatePath(`/${owned.monitor.handle}/settings`);
       revalidatePath(`/${owned.monitor.handle}`);
     }

@@ -49,7 +49,7 @@ export function GroupLabel({
   );
 }
 
-/** Which rows show: the first three, plus any row that must stay in view (selected, or carrying an error). */
+/** Which rows show: the first three, then any later row that must stay in view (selected, or carrying an error). */
 export function useShowMore() {
   const [more, setMore] = useState<Set<string>>(() => new Set());
   const toggle = (kind: string) =>
@@ -65,7 +65,7 @@ export function useShowMore() {
 export function visibleRows<T>(rows: T[], open: boolean, pinned: (row: T) => boolean) {
   if (open || rows.length <= SHOWN) return rows;
   const first = rows.slice(0, SHOWN);
-  return [...rows.filter((row) => pinned(row) && !first.includes(row)), ...first];
+  return [...first, ...rows.filter((row) => pinned(row) && !first.includes(row))];
 }
 
 export function ShowMore({ open, onClick }: { open: boolean; onClick: () => void }) {
