@@ -1,0 +1,9 @@
+I'll read the brief and the guidance index first, then only the review material those files name.The brief asks for a yes or no on four corrected wordings. I'll check those lines against the owner's quotes and the round 3 notes.Round 3 left four wordings open. I'll check Astra's and Grok's corrections against the owner's quotes before answering.The four lines cite specific quotes. I'll check those sentences and the Deck meter they describe.## I accept
+
+(d) yes
+
+(i) no: "your brief comes right at the top of the right sidebar, and the center is free to show just the sources themselves" (Oct 4). During the run: once Build is clicked the handle chip and the Build button leave the title line. The card becomes the run in place: the running step as its title, that step's streamed reasoning as it arrives, its work (the gathering pills, then Strong match, Possible match, Set aside), and the chosen sources as removable pills with a cross. The duplicate "Checked N of M" under the title goes. The profile stays on the right: picture, name beside it, handle under, About, the brief at the top of that block once written, newest posts. At Ready: "Your agent is ready", the chosen sources alone in the centre, the brief once at the top of the right side, Open your feed. The finished progress bar, the "Gathering candidates 153 from the source list" line and the "106 more candidates were scored and set aside the same way" sentence go.
+
+(m) yes
+
+checklist no: "your brief comes right at the top of the right sidebar, and the center is free to show just the sources themselves" (Oct 4). Rule 26 and rule 62 as written. Rule 63: "At Ready the centre is the chosen sources alone, and the brief appears once, at the top of the right side."
