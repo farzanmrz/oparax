@@ -119,7 +119,7 @@ export function OneFrame({
             </div>
           </aside>
         ) : null}
-        <div className="min-w-0">{children}</div>
+        <div className="@container min-w-0">{children}</div>
       </div>
     </>
   );

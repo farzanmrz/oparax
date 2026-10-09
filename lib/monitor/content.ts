@@ -25,6 +25,30 @@ export const monitorContent = {
   brief: "Your Brief",
   feedTitle: "Feed",
   kinds: { post: "Post", article: "Article" },
+  tiles: {
+    stories: "Stories this week",
+    byDate: "By publication date",
+    range: (from: string, to: string) => `${from} to ${to}`,
+    reports: "Reports by kind",
+    posts: (n: number) => `${n} ${n === 1 ? "post" : "posts"}`,
+    articles: (n: number) => `${n} ${n === 1 ? "article" : "articles"}`,
+    digests: (n: number) => `${n} ${n === 1 ? "digest" : "digests"}`,
+    agent: "Agent",
+    live: "Live",
+    stopped: "Stopped",
+    checking: (n: number) => `${n} checking`,
+    failed: (n: number) => `${n} failed`,
+    watching: (sites: number, accounts: number) =>
+      [
+        sites ? `${sites} ${sites === 1 ? "site or feed" : "sites and feeds"}` : null,
+        accounts ? `${accounts} Twitter ${accounts === 1 ? "account" : "accounts"}` : null,
+      ]
+        .filter(Boolean)
+        .join(", "),
+    pool: (used: number, limit: number) => `${used} of ${limit} watched posts`,
+    checkingRow: (n: number) => `Checking ${n} ${n === 1 ? "item" : "items"} against your sentence`,
+  },
+  digestCard: "Daily digest",
   aside: {
     title: "Sources",
     all: "All sources",
@@ -57,7 +81,6 @@ export const monitorContent = {
   noNews: "No relevant news yet.",
   failedItems: (n: number) => `Could not process ${n} items.`,
   pendingItems: (n: number) => `${n} items being checked.`,
-  score: (score: number) => `${score.toFixed(2)} against your beat`,
   unverified: "Unverified report",
   reports: (n: number) => `${n} further reports`,
   source: "Source",

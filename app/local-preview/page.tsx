@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OwnerFeed } from "@/components/monitor/one-feed";
-import { column, OneShell } from "@/components/one/shell";
+import { column, OneShell, planOf } from "@/components/one/shell";
 import {
   previewEmail,
   previewFeed,
   previewHandle,
   previewMonitor,
   previewSources,
+  previewStats,
   previewTitle,
 } from "@/lib/local-preview/fixture";
 import { monitorContent } from "@/lib/monitor/content";
@@ -31,11 +32,12 @@ export default async function LocalPreviewPage({
   const feed = previewFeed(story, source);
   if (story && !feed.storyFound) notFound();
   const view = typeof search.view === "string" ? search.view : undefined;
+  const monitor = previewMonitor();
 
   return (
     <OneShell
       email={previewEmail}
-      monitor={previewMonitor()}
+      monitor={monitor}
       skip={{ href: "#monitor-content", label: monitorContent.skipToNews }}
       className="ph-no-autocapture"
     >
@@ -47,12 +49,15 @@ export default async function LocalPreviewPage({
         <PreviewNotice />
         <OwnerFeed
           feed={feed}
+          stats={previewStats()}
           sources={previewSources}
           handle={previewHandle}
           view={view}
           storyId={story}
           source={source}
           digests={{ github: true, productHunt: true }}
+          live
+          plan={planOf(monitor)}
         />
       </main>
     </OneShell>

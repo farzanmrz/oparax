@@ -1,5 +1,6 @@
 import type { SettingsData, SettingsMonitor } from "@/app/[handle]/settings/settings-view";
 import seedTable from "@/docs/source-table-seed.json";
+import { type FeedStats, feedStats } from "@/lib/monitor/present";
 import type { BuildLog, MonitorFeed, MonitorSources, PublicItem } from "@/lib/monitor/read";
 import type { BuildState, Post } from "@/lib/onboarding/types";
 
@@ -7,252 +8,235 @@ export const previewHandle = "local-preview";
 export const previewTitle = "Local preview";
 export const previewNotice = "Development preview with example data. Nothing here is live.";
 
-const sourceIds = {
-  site: "c601f31b-f29e-4684-a249-124510864cd2",
-  account: "2061da12-108a-4c32-8980-37d3141943b7",
-} as const;
+const DAY = 86_400_000;
+const HOUR = 3_600_000;
 
-const reportIds = {
-  post: "x:1890000000000000001",
-  article: "0123456789abcdef0123456789abcdef01234567",
-  later: "89abcdef0123456789abcdef0123456789abcdef",
-} as const;
-
-const reports: Record<"post" | "article" | "later", PublicItem> = {
-  post: {
-    id: reportIds.post,
-    url: "https://example.com/posts/tool-launch",
-    title: "A new tool helps teams review agent actions",
-    published_at: "2026-09-28T17:00:00+00:00",
-    kind: "post",
-    lang: "en",
-    source_id: sourceIds.account,
-    author: { handle: "example_builder", name: "Example Builder" },
-    publisher: "Example Builder",
-  },
-  article: {
-    id: reportIds.article,
-    url: "https://example.com/articles/agent-review",
-    title: "Teams can now inspect an agent's proposed changes before they run",
-    published_at: "2026-09-28T16:00:00+00:00",
-    kind: "article",
-    lang: "en",
-    source_id: sourceIds.site,
-    author: null,
-    publisher: "Example Journal",
-  },
-  later: {
-    id: reportIds.later,
-    url: "https://example.com/articles/workflow-notes",
-    title: "A workflow note on reviewing agent changes",
-    published_at: "2026-09-27T14:00:00+00:00",
-    kind: "article",
-    lang: "en",
-    source_id: sourceIds.site,
-    author: null,
-    publisher: "Example Journal",
-  },
+// The example agent's sources are rows of the shared source table (real names, so their logos are real); the example
+// stories are invented text about the example person's sentence, credited to those sources. Times are set from the
+// moment the page is drawn, so the week's tiles count the example stories. Three stories carry a real public picture
+// from the design preview's data (scratch/design-recovery/site/next/data/feed.ts); three have none.
+const rowsOf = (kind: string, count: number) =>
+  seedTable.filter((row) => row.kind === kind).slice(0, count);
+const sourceRows = {
+  accounts: rowsOf("x_account", 5),
+  rss: rowsOf("rss", 5),
+  websites: rowsOf("website", 3),
 };
+const handleOf = (target: string) => target.replace(/\/+$/, "").split("/").pop() ?? target;
+const rowById = new Map(
+  [...sourceRows.accounts, ...sourceRows.rss, ...sourceRows.websites].map((row) => [row.id, row]),
+);
+
+const images = {
+  hf: "https://cdn-uploads.huggingface.co/production/uploads/638e39b249de7ae552d977b5/uKnK93gjkKbmJmSx94WO2.png",
+  simon: "https://static.simonwillison.net/static/2026/live-20260929-092441.webp",
+  vercel:
+    "https://assets.vercel.com/image/upload/contentful/image/e5382hct74si/4VUQPah80J1WYBwplwXQjh/341d68a8100d89550907348d511d49db/image__111_.png",
+};
+
+/** One example report from a preview source: a post from an account, an article from a site or feed. */
+function report(n: number, rowId: string, published: string, title: string): PublicItem {
+  const row = rowById.get(rowId);
+  if (!row) throw new Error(`No preview source ${rowId}`);
+  const post = row.kind === "x_account";
+  const handle = handleOf(row.target);
+  return {
+    id: post ? `x:18900000000000001${String(n).padStart(2, "0")}` : `example-item-${n}`,
+    url: post ? `https://x.com/${handle}` : new URL(row.target).origin,
+    title,
+    published_at: published,
+    kind: post ? "post" : "article",
+    lang: "en",
+    source_id: post ? `x-${handle}` : row.id,
+    author: post ? { handle, name: row.name } : null,
+    publisher: row.name,
+  };
+}
 
 const storyIds = {
   written: "14696e43-7a44-4c2d-a20f-4935a8b292a5",
   noCard: "55c2406d-d96e-40cd-a9d4-bd33f647d96a",
 } as const;
+const storyId = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
-// More example stories so the level rows show cards of different heights and several sources each. Example data:
-// example.com addresses, no pictures (a picture needs a public https address).
-const exampleItem = (
-  n: number,
-  kind: "post" | "article",
-  publisher: string,
-  hour: number,
-): PublicItem => ({
-  id: `example-item-${n}`,
-  url: `https://example.com/${kind}s/${n}`,
-  title: `Example ${kind} ${n}`,
-  published_at: `2026-09-27T${String(hour).padStart(2, "0")}:00:00+00:00`,
-  kind,
-  lang: "en",
-  source_id: kind === "post" ? sourceIds.account : sourceIds.site,
-  author: kind === "post" ? { handle: `example_${n}`, name: publisher } : null,
-  publisher,
-});
-const exampleStory = (
-  n: number,
-  headline: string,
+type Story = MonitorFeed["stories"][number];
+function story(
+  id: string,
+  headline: string | null,
   facts: string[],
-  items: PublicItem[],
-): MonitorFeed["stories"][number] => ({
-  id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
-  fallback_title: headline,
-  last_changed_at: items[0].published_at,
-  image: null,
-  status: "written",
-  card: {
-    headline,
-    headline_from: "writer",
-    image: null,
-    facts: facts.map((text) => ({ text, support: 0.9, attribution: 0.9, evidence: [] })),
-    publishers: [],
-  },
-  reports: items,
-});
-const moreStories = [
-  exampleStory(
-    1,
-    "A review queue now holds every proposed agent change until a person approves it",
-    [
-      "Each proposed change waits in one shared queue.",
-      "A reviewer sees the diff, the agent's stated reason and the files it touched.",
-      "Approvals and rejections are kept as a record the team can search later.",
-    ],
-    [
-      exampleItem(1, "article", "Example Journal", 17),
-      exampleItem(2, "post", "Example Builder", 16),
-      exampleItem(3, "article", "Example Weekly", 15),
-      exampleItem(4, "article", "Example Daily", 14),
-      exampleItem(5, "post", "Example Reviewer", 13),
-    ],
-  ),
-  exampleStory(
-    2,
-    "An agent framework adds a dry run mode",
-    ["A dry run lists what the agent would do without doing it."],
-    [exampleItem(6, "article", "Example Framework Blog", 12)],
-  ),
-  exampleStory(
-    3,
-    "Two coding agent makers publish how their approval steps work, and where they differ on what counts as a risky change",
-    [
-      "One asks for approval before any file outside the project is touched.",
-      "The other asks before any command that reaches the network.",
-      "Both log the approval next to the change itself.",
-      "Neither lets the agent approve its own change.",
-    ],
-    [exampleItem(7, "post", "Example Maker", 11), exampleItem(8, "article", "Example Journal", 10)],
-  ),
-  exampleStory(
-    4,
-    "A survey of teams running agents finds most review every change",
-    [
-      "Most of the teams asked review every agent change before it runs.",
-      "Smaller teams review fewer changes than larger ones.",
-    ],
-    [
-      exampleItem(9, "article", "Example Research", 9),
-      exampleItem(10, "post", "Example Analyst", 8),
-    ],
-  ),
-];
+  image: string | null,
+  reports: PublicItem[],
+): Story {
+  return {
+    id,
+    fallback_title: headline ?? reports[0].title,
+    last_changed_at: reports[0].published_at,
+    image,
+    status: headline ? "written" : "no_card",
+    card: headline
+      ? {
+          headline,
+          headline_from: "writer",
+          image,
+          facts: facts.map((text) => ({ text, support: 0.9, attribution: 0.9, evidence: [] })),
+          publishers: [],
+        }
+      : null,
+    reports,
+  };
+}
 
-// Newest first, as the feed read orders them.
-const stories: MonitorFeed["stories"] = (
-  [
-    {
-      id: storyIds.written,
-      fallback_title: "A clearer way to review agent work",
-      last_changed_at: "2026-09-28T18:00:00+00:00",
-      image: null,
-      status: "written",
-      card: {
-        headline: "Teams gain a clearer review step for agent work",
-        headline_from: "writer",
-        image: null,
-        facts: [
-          {
-            text: "The new tool lets a team inspect proposed agent actions before they run.",
-            support: 0.94,
-            attribution: 0.97,
-            evidence: [
-              { item: reportIds.article, span: "inspect proposed changes before they run" },
-            ],
-          },
-          {
-            text: "Its release announcement also describes a shared review queue.",
-            support: 0.91,
-            attribution: 0.95,
-            evidence: [{ item: reportIds.post, span: "a shared review queue" }],
-          },
-        ],
-        publishers: [
-          {
-            source_id: sourceIds.site,
-            name: "Example Journal",
-            url: "https://example.com/articles/agent-review",
-          },
-          {
-            source_id: sourceIds.account,
-            name: "Example Builder",
-            url: "https://example.com/posts/tool-launch",
-          },
-        ],
+/** The example feed as the feed read would return it at `now`, newest first. */
+function exampleFeed(now: number) {
+  const at = (days: number, hours: number) =>
+    new Date(now - days * DAY - hours * HOUR).toISOString();
+  const deepmind = sourceRows.accounts[0].id;
+  const deepseek = sourceRows.accounts[1].id;
+  const qwen = sourceRows.accounts[2].id;
+  const lovable = sourceRows.accounts[3].id;
+  const composio = sourceRows.accounts[4].id;
+  const [google, altman, hf, openai, simon] = sourceRows.rss.map((row) => row.id);
+  const [bolt, , anthropic] = sourceRows.websites.map((row) => row.id);
+
+  const stories: Story[] = [
+    story(
+      storyIds.written,
+      "Teams gain a clearer review step for agent work",
+      [
+        "The new tool lets a team inspect proposed agent actions before they run.",
+        "Its release announcement also describes a shared review queue.",
+      ],
+      images.hf,
+      [
+        report(1, hf, at(0, 2), "A clearer review step for agent work"),
+        report(2, deepmind, at(0, 3), "Reviewing what an agent proposes before it runs"),
+      ],
+    ),
+    story(
+      storyId(1),
+      "A review queue now holds every proposed agent change until a person approves it",
+      [
+        "Each proposed change waits in one shared queue.",
+        "A reviewer sees the diff, the agent's stated reason and the files it touched.",
+        "Approvals and rejections are kept as a record the team can search later.",
+      ],
+      images.simon,
+      [
+        report(3, simon, at(1, 1), "Notes from a talk on agent review queues"),
+        report(4, deepseek, at(1, 2), "Every proposed change now waits for a person"),
+        report(5, openai, at(1, 4), "A shared queue for agent changes"),
+        report(6, altman, at(1, 6), "On keeping people in the loop"),
+        report(7, qwen, at(1, 7), "Our agents now ask before they change files"),
+      ],
+    ),
+    story(storyIds.noCard, null, [], null, [
+      report(8, simon, at(2, 3), "A workflow note on reviewing agent changes"),
+    ]),
+    story(
+      storyId(2),
+      "An agent framework adds a dry run mode",
+      ["A dry run lists what the agent would do without doing it."],
+      null,
+      [report(9, bolt, at(3, 2), "Dry runs for agent builds")],
+    ),
+    story(
+      storyId(3),
+      "Two coding agent makers publish how their approval steps work, and where they differ on what counts as a risky change",
+      [
+        "One asks for approval before any file outside the project is touched.",
+        "The other asks before any command that reaches the network.",
+        "Both log the approval next to the change itself.",
+        "Neither lets the agent approve its own change.",
+      ],
+      images.vercel,
+      [
+        report(10, anthropic, at(4, 1), "How our approval step works"),
+        report(11, lovable, at(4, 5), "What counts as a risky change"),
+      ],
+    ),
+    story(
+      storyId(4),
+      "A survey of teams running agents finds most review every change",
+      [
+        "Most of the teams asked review every agent change before it runs.",
+        "Smaller teams review fewer changes than larger ones.",
+      ],
+      null,
+      [
+        report(12, google, at(5, 2), "A survey of teams running agents"),
+        report(13, composio, at(5, 4), "Most teams review every agent change"),
+      ],
+    ),
+  ];
+  const items = [
+    ...new Map(stories.flatMap((s) => s.reports).map((item) => [item.id, item])).values(),
+  ].sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
+  const skipped = report(14, google, at(2, 6), "A roundup of this week's model releases");
+  const feed: MonitorFeed = {
+    stories,
+    articles: items.map((item) => ({ item, card: null, score: null })),
+    skipped: [{ item: skipped, card: null, score: null }],
+    digests: [
+      {
+        id: "662b7c56-e2c5-4dbc-a0ab-4451235cfa87",
+        kind: "github",
+        name: "example/review-tool",
+        url: "https://example.com/github/review-tool",
+        description: "A sample repository for reviewing proposed agent actions.",
+        why_now: "A new release was published.",
+        created_at: at(0, 6),
       },
-      reports: [reports.article, reports.post],
-    },
-    {
-      id: storyIds.noCard,
-      fallback_title: "A workflow note on reviewing agent changes",
-      last_changed_at: "2026-09-27T15:00:00+00:00",
-      image: null,
-      status: "no_card",
-      card: null,
-      reports: [reports.later],
-    },
-    ...moreStories,
-  ] satisfies MonitorFeed["stories"]
-).sort((a, b) => (a.last_changed_at < b.last_changed_at ? 1 : -1));
-
-const feed: MonitorFeed = {
-  stories,
-  articles: [
-    { item: reports.post, card: null, score: 0.93 },
-    { item: reports.article, card: null, score: 0.89 },
-  ],
-  skipped: [{ item: reports.later, card: null, score: 0.28 }],
-  digests: [
-    {
-      id: "662b7c56-e2c5-4dbc-a0ab-4451235cfa87",
-      kind: "github",
-      name: "example/review-tool",
-      url: "https://example.com/github/review-tool",
-      description: "A sample repository for reviewing proposed agent actions.",
-      why_now: "A new release was published.",
-      created_at: "2026-09-28T09:00:00+00:00",
-    },
-    {
-      id: "5a8b8147-60d0-4d90-904a-e3af5a09b7b6",
-      kind: "product_hunt",
-      name: "Review Tool",
-      url: "https://example.com/product-hunt/review-tool",
-      description: "A sample product entry about agent reviews.",
-      why_now: "It appeared in today's discovery digest.",
-      created_at: "2026-09-28T08:00:00+00:00",
-    },
-  ],
-  pending: 0,
-  failed: 0,
-  storiesBefore: undefined,
-  storiesBeforeId: undefined,
-  articlesBefore: undefined,
-  articlesBeforeId: undefined,
-  storyFound: false,
-};
+      {
+        id: "5a8b8147-60d0-4d90-904a-e3af5a09b7b6",
+        kind: "product_hunt",
+        name: "Review Tool",
+        url: "https://example.com/product-hunt/review-tool",
+        description: "A sample product entry about agent reviews.",
+        why_now: "It appeared in today's discovery digest.",
+        created_at: at(0, 7),
+      },
+    ],
+    // The checking state: two items are being checked against the sentence and one could not be processed.
+    pending: 2,
+    failed: 1,
+    storiesBefore: undefined,
+    storiesBeforeId: undefined,
+    articlesBefore: undefined,
+    articlesBeforeId: undefined,
+    storyFound: false,
+  };
+  return { feed, items };
+}
 
 /** The example feed; a source from the aside keeps only what came from it, as the feed read does. */
 export function previewFeed(storyId?: string, source?: string | null): MonitorFeed {
+  const { feed } = exampleFeed(Date.now());
   const from = (item: PublicItem) => !source || item.source_id === source;
   return {
     ...feed,
-    stories: stories.filter((story) => story.reports.some(from)),
+    stories: feed.stories.filter((s) => s.reports.some(from)),
     articles: feed.articles.filter(({ item }) => from(item)),
-    storyFound: storyId !== undefined && stories.some((story) => story.id === storyId),
+    storyFound: storyId !== undefined && feed.stories.some((s) => s.id === storyId),
   };
+}
+
+/** The tiles' numbers, computed from the example feed exactly as the feed read computes them. */
+export function previewStats(): FeedStats {
+  const now = Date.now();
+  const { feed, items } = exampleFeed(now);
+  return feedStats(
+    {
+      stories: feed.stories.map((s) => s.reports[0].published_at),
+      items: items.map((item) => ({ kind: item.kind, source_ids: [item.source_id] })),
+      digests: feed.digests.length,
+    },
+    new Date(now),
+  );
 }
 
 // The signed-in pages at rest, mid-run, failed and in settings, for the same example person. A run is frozen at one
 // checkpoint: build_state exactly as the engine saves it there, and the build_log lines reported up to it.
 
-const DAY = 86_400_000;
 const person = { id: "1890000000000000000", handle: "example_builder", name: "Example Builder" };
 
 /** The example person's one sentence. */
@@ -480,33 +464,25 @@ export function previewBuildingMonitor(status: "building" | "failed") {
   return { ...previewMonitor(), status, trial_started_at: null, pool_used: 0 };
 }
 
-/** The example agent's sources for the feed's source list: rows of the shared table, a few of each kind. */
+/** The example agent's sources for the feed's aside: the rows the example stories are credited to. */
 export const previewSources: MonitorSources = {
-  accounts: seedTable
-    .filter((row) => row.kind === "x_account")
-    .slice(0, 5)
-    .map((row) => ({
-      handle: row.target.split("/").pop() ?? row.id,
+  accounts: sourceRows.accounts.map((row) => ({
+    handle: handleOf(row.target),
+    name: row.name,
+    why: row.focus,
+    watched: false,
+  })),
+  sources: [...sourceRows.rss, ...sourceRows.websites].map((row) => ({
+    source_id: row.id,
+    why: row.focus,
+    sources: {
+      id: row.id,
       name: row.name,
-      why: row.focus,
-      watched: false,
-    })),
-  sources: (["rss", "website"] as const).flatMap((kind) =>
-    seedTable
-      .filter((row) => row.kind === kind)
-      .slice(0, kind === "rss" ? 4 : 2)
-      .map((row) => ({
-        source_id: row.id,
-        why: row.focus,
-        sources: {
-          id: row.id,
-          name: row.name,
-          kind: row.kind,
-          focus: row.focus,
-          target: row.target,
-          unreadable_streak: 0,
-          paused_at: null,
-        },
-      })),
-  ),
+      kind: row.kind,
+      focus: row.focus,
+      target: row.target,
+      unreadable_streak: 0,
+      paused_at: null,
+    },
+  })),
 };

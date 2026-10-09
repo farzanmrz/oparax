@@ -159,3 +159,58 @@ export function asideGroups(
     ] satisfies AsideGroup[]
   ).filter((group) => group.rows.length);
 }
+
+const DAY = 86_400_000;
+
+/** One day of the week chart: its UTC date, its label ("Oct 8") and the stories published that day. */
+export type WeekDay = { day: string; label: string; count: number };
+/** The feed's numbers for one complete period, the last seven UTC days including today. */
+export type FeedStats = {
+  week: WeekDay[];
+  stories: number;
+  kinds: { posts: number; articles: number; digests: number };
+  /** Matching items this week by source id. */
+  bySource: Map<string, number>;
+};
+
+/** The first instant of the seven-day period that ends today (UTC). */
+export function weekStart(now = new Date()) {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 6 * DAY);
+}
+
+/**
+ * The period's numbers from its rows: each story by the day its newest report was published, each matching item by
+ * kind and by every source it was seen from, and the digests written in the period.
+ */
+export function feedStats(
+  {
+    stories,
+    items,
+    digests,
+  }: { stories: string[]; items: { kind: string; source_ids: string[] }[]; digests: number },
+  now = new Date(),
+): FeedStats {
+  const start = weekStart(now).getTime();
+  const week: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start + i * DAY);
+    return {
+      day: d.toISOString().slice(0, 10),
+      label: `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`,
+      count: 0,
+    };
+  });
+  for (const published of stories) {
+    const i = Math.floor((Date.parse(published) - start) / DAY);
+    if (i >= 0 && i < 7) week[i].count += 1;
+  }
+  const bySource = new Map<string, number>();
+  for (const item of items)
+    for (const id of item.source_ids) bySource.set(id, (bySource.get(id) ?? 0) + 1);
+  const posts = items.filter((item) => item.kind === "post").length;
+  return {
+    week,
+    stories: week.reduce((sum, d) => sum + d.count, 0),
+    kinds: { posts, articles: items.length - posts, digests },
+    bySource,
+  };
+}

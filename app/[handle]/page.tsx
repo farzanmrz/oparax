@@ -9,14 +9,21 @@ import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-buildin
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { StateBanner } from "@/components/monitor/state-banner";
 import { OneRun } from "@/components/one/run";
-import { column, OneShell } from "@/components/one/shell";
+import { column, OneShell, planOf } from "@/components/one/shell";
 import { Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { monitorContent as copy } from "@/lib/monitor/content";
-import { readBuildLog, readFeed, readMonitor, readSources, readViewer } from "@/lib/monitor/read";
+import {
+  readBuildLog,
+  readFeed,
+  readFeedStats,
+  readMonitor,
+  readSources,
+  readViewer,
+} from "@/lib/monitor/read";
 import { monitorState } from "@/lib/monitor-state";
 import { readRun } from "@/lib/onboarding/phases";
 import { emptyOnboarding, readOnboarding } from "@/lib/onboarding/read";
@@ -61,13 +68,14 @@ export default async function MonitorPage({ params, searchParams }: Props) {
     !story && search.built === "1" && !building && !failed && monitor.build_finished_at !== null;
   const onboarding = isOwner && (building || failed || justBuilt);
   const ready = !building && !failed && !onboarding;
-  const [feed, log, run, sources] = await Promise.all([
+  const [feed, log, run, sources, stats] = await Promise.all([
     ready
       ? readFeed(monitor, { before, beforeId, view, storyId: story, source: source ?? undefined })
       : null,
     building || failed || onboarding ? readBuildLog(monitor.id) : [],
     onboarding ? readOnboarding(monitor.id) : null,
     ready && isOwner ? readSources(monitor) : null,
+    ready && isOwner ? readFeedStats(monitor) : null,
   ]);
   if (story && !feed?.storyFound) notFound();
   if (onboarding) {
@@ -128,15 +136,18 @@ export default async function MonitorPage({ params, searchParams }: Props) {
               failed={failed}
             />
           </div>
-        ) : feed && sources ? (
+        ) : feed && sources && stats ? (
           <OwnerFeed
             feed={feed}
+            stats={stats}
             sources={sources}
             handle={monitor.handle}
             view={view}
             storyId={story}
             source={source}
             digests={{ github: monitor.digest_github, productHunt: monitor.digest_product_hunt }}
+            live={state.state === "trial" || state.state === "paid"}
+            plan={planOf(monitor)}
             banner={
               search.error === "activation" || stopped ? (
                 <div className="mb-6 space-y-4">

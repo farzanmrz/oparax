@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { z } from "zod";
+import { feedStats, weekStart } from "@/lib/monitor/present";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -274,6 +275,44 @@ export async function readFeed(
   };
 }
 export type MonitorFeed = Awaited<ReturnType<typeof readFeed>>;
+
+/**
+ * The owner's feed numbers for the last seven UTC days, read whole (not the page of cards): stories by the day their
+ * newest report was published, the matching articles and posts with the sources they were seen from, and the
+ * digests written. The caller has already proved the viewer owns this monitor.
+ */
+export async function readFeedStats(monitor: PublicMonitor) {
+  const db = createAdminClient();
+  const start = weekStart().toISOString();
+  const [stories, items, digests] = await Promise.all([
+    db
+      .from("stories")
+      .select("last_published_at")
+      .eq("monitor_id", monitor.id)
+      .or("status.eq.written,and(status.eq.no_card,fallback_title.neq.)")
+      .gte("last_published_at", start)
+      .range(0, 4999),
+    db
+      .from("monitor_items")
+      .select("items!inner(kind,source_ids)")
+      .eq("monitor_id", monitor.id)
+      .eq("fit_band", "on")
+      .in("card_status", ["written", "no_card", "write_failed"])
+      .gte("items.published_at", start)
+      .range(0, 4999),
+    db
+      .from("digest_items")
+      .select("id", { count: "exact", head: true })
+      .eq("monitor_id", monitor.id)
+      .gte("created_at", start),
+  ]);
+  for (const result of [stories, items, digests]) if (result.error) throw result.error;
+  return feedStats({
+    stories: (stories.data ?? []).map((story) => story.last_published_at),
+    items: (items.data ?? []).map((row) => row.items),
+    digests: digests.count ?? 0,
+  });
+}
 
 /** The agent's sites, feeds and X accounts for its Sources page, public like the feed. */
 export async function readSources(monitor: PublicMonitor) {
