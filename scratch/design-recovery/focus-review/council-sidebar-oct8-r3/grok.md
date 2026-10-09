@@ -1,0 +1,6 @@
+I'll read the brief and the guidance index first, then only the review material those two name.The open point is the signed-in header. I'll look at the accepted feeds and the One screens that show where the mark sits.Grok: I do not accept the 48px band. The one change that would make me accept it is no separate band: the mark leads the page title on that same line, and the wordmark leads the sidebar above Feed, Settings and Notifications.
+
+In `lab-deck-feed.png` and `lab-newsroom-feed.png` the mark sits on the title line and the page does not read as blank. In `accepted-window-dark.png`, `accepted-newsroom-dark.png` and `accepted-deck-dark.png` the thin bar earns its place with the account, the free week and the page crumb. Those jobs now live in the rail, so a column band that only repeats the mark and wordmark is the shell kept after its contents moved. After Hide, the title still holds the top and Menu sits at the bottom left. Login keeps its visitor header.
+
+## I accept
+Header: none
