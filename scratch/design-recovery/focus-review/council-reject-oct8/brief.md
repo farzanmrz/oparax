@@ -1,0 +1,35 @@
+# Council: the owner rejected the One design on the product; judge for yourselves what is wrong and agree on the changes (October 8, 2026)
+
+Repo: /Users/farzanm4/Desktop/repos/oparax, branch beta, read-only for you. You are one of three frontend designers in one council. The host adds no diagnosis to this brief on purpose (owner: "don't influence the council let them judge for themselves and then you guys reach consensus"). Read everything below, look at every picture, then give your own judgment and proposal. No em dashes.
+
+## 1. The transcript: read it, it is the ground truth of what he wants
+- scratch/design-recovery/focus-review/history/owner-history.md: every design message he wrote October 2 to 4, verbatim, with the "What he said he loves" and "What he said he hates" lists at the end (lines 1152 onward). Read the whole file.
+- scratch/design-recovery/focus-review/history/owner-oct5-8.md: every message he wrote from October 5 to today, verbatim, extracted from the session transcript (99 messages). Read the whole file. His design rulings during today's walk are at the end: the social buttons (layout C, "Login with Twitter" and "Continue with Twitter", the four-colour Google G), "Twitter" as the platform name everywhere with the X logo kept, and the rejection quoted in section 3.
+- scratch/design-recovery/focus-review/PAGE-NOTES.md: his page notes October 4 to 8, verbatim.
+- scratch/design-recovery/focus-review/RUN-STATE.md: how the One design went through 16 passes in the lab and was ported into the product (the top section; the newest bullets at the bottom).
+- The design lab's pass 16 (frozen, the reference the product was ported from): scratch/design-recovery/site/v2/one/{shell,onboarding,feed,card,settings,login}.tsx and site/v2/deck/* (the accepted Deck feed's code), site/v2/window/*, site/v2/newsroom/*.
+- The product code as it is now: components/one/{shell,header,run,card,stage,marks}.tsx, app/onboarding/{page,setup-stage,setup-form}.tsx, app/[handle]/page.tsx, components/monitor/one-feed.tsx, components/monitor/one-sources.tsx, app/[handle]/settings/*, components/auth/one-card.tsx, lib/local-preview/fixture.ts (the example data behind the pictures), app/globals.css (.one-column), DESIGN.md (the fixed theme, including the Width rule he said yes to).
+- The design skill, for the bar and the method only: ~/.agents/skills/reference-led-design/SKILL.md and its examples/ folders (accepted, near-misses, rejected). The owner says the skill is incomplete; it does not override his words.
+
+## 2. The pictures (in img/ at the repo root; open every one)
+Current product pages, example data, 1440x900 dark:
+- now-login.png, now-rest.png (onboarding before Build), now-run-profile.png, now-run-scoring.png, now-run-jev.png, now-run-chosen.png, now-run-done.png, now-failed.png, now-feed.png, now-feed-light.png, now-settings.png
+The three feeds he loved on October 2 (the bar), and the Deck login he liked best:
+- accepted-deck-dark.png, accepted-window-dark.png, accepted-newsroom-dark.png, accepted-deck-login.png
+
+## 3. His rejection today, verbatim
+"I'm looking at the Before Build page, and right off the bat, there are things wrong with it. For example, the header says, "Development preview with example data. Nothing here is live." The fact that "Set up your agent" is a page heading is not different from what we see locally on Feed and all, but the page header is kind of mashing into your handle, the tools, and the ideas for how people build, at the top left. You set a section where the page header comes, and I've decided that I want a sidebar like the one I like from Deck. Settings can also show the same thing. I don't care. It's too lifeless without it.
+
+This thing I'm looking at, Local Preview REST, says, "Every agent starts from these. Your run scores them for your beat." Are you fucking stupid? That's just for these specific examples we've tested. We're claiming to monitor the entire web. The fuck is wrong with you? I just meant the central area where the actual content starts appearing, like I'm seeing "Gathering candidate blah blah blah." That's where you can make a card. Inside that card, you can say your handle and description of your beat. "Build my agent." You click that in place, and it changes, but the feed is extremely lifeless. Settings are lifeless. It's completely lifeless. I don't know what the fuck you did, but there need to be massive changes. /council, make the changes, because I'm rejecting this design overall. It's just horrible."
+
+Then: "fuck the skill, you were doing so good with the design iterations we were working off deck and window and newsroom and the one design. Our skill aint complete yet that was the point ... uve become misaligned to what designing we were doing and what I want. Go through this conversation ... pass ur understanding to /council and reach consensus then change the design but also take screenshots of current pages to pass to council members".
+
+Facts you need: the "Development preview with example data" banner exists only on the dev-only /local-preview pages, never on the product; the shared source table has 150 rows and is the starting set every agent is scored from, and the product monitors any site, feed or Twitter account a person adds (adding is gated by sign-up only, his ruling of October 6); the real run page polls every 3 seconds and shows bands and pills at checkpoints (never a probability, never sample people); the fixed theme in DESIGN.md is not open; the Width rule stands.
+
+## 4. What we need from you
+1. Judge for yourself, as a human looking at the pictures: put now-rest, now-run-chosen, now-feed and now-settings beside accepted-deck-dark (and window and newsroom). Say in plain words what the accepted feeds have that the product pages lack, page by page, citing the picture and, where it helps, the lab file that had it and the product file that lost it. Say also where the current pages are right and must be kept.
+2. Read his words and say what he is asking for, in order of weight, quoting him. Where his words conflict with each other over time (for example the sidebar: loved in Deck October 4, a floating bubble October 4, dropped for a running header in pass 16 October 5, wanted back today), say which is the live ruling and why.
+3. Propose the changes, per page (shell and sidebar; onboarding before Build and the run; feed; settings; login only if something is still wrong), as objects and where they sit, the real data in every slot, the catalog component or lab device behind each, what is readable without a click, and the nearest near miss it must not become. Keep what works. Stay inside the theme. Do not propose a new direction from scratch unless you say why the One cannot be saved.
+4. Name the single biggest change that would make him say the pages are alive again, and the one thing that would make it the loop again.
+
+Be concrete and short. Numbered answers with picture and file citations. The host will send every proposal to the other two verbatim for a second round, and the three of you must reach one agreement before anything is built.
