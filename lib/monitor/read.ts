@@ -69,6 +69,8 @@ export function profileOf(raw: unknown): Profile | null {
 // Explicit columns keep payment identifiers, activation secrets and checkpoints off this surface.
 const monitorColumns =
   "id,handle,display_handle,beat,profile,brief,status,build_step,build_tries,build_finished_at,user_id,tier,trial_started_at,paid_through,pool_limit,pool_used,pool_period_start,cadence,subscription_status,budget_exhausted_at,bot_state,digest_github,digest_product_hunt";
+/** A source id as the tables store it: a table row id, web-host-hash, or x-handle. */
+const sourceIdSchema = z.string().regex(/^[A-Za-z0-9_.:-]{1,300}$/);
 const itemColumns = "id,url,title,published_at,kind,lang,source_id,author,sources(name)";
 const storyColumns = "id,fallback_title,last_changed_at,image,status,card";
 
@@ -124,9 +126,17 @@ export async function readBuildLog(monitorId: string): Promise<BuildLog> {
 
 export async function readFeed(
   monitor: PublicMonitor,
-  options: { before?: string; beforeId?: string; view?: string; storyId?: string } = {},
+  options: {
+    before?: string;
+    beforeId?: string;
+    view?: string;
+    storyId?: string;
+    /** A source id from the feed's aside: only stories and articles with an item from it. */
+    source?: string;
+  } = {},
 ) {
   const db = createAdminClient();
+  const source = sourceIdSchema.safeParse(options.source).data;
   const before = z.iso.datetime({ offset: true }).safeParse(options.before).data;
   const articlesView = options.view === "articles" && !options.storyId;
   const storyCursor = z.uuid().safeParse(options.beforeId).data;
@@ -142,6 +152,18 @@ export async function readFeed(
     .order("last_changed_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(30);
+  if (source) {
+    // The stories holding an item seen from this source, newest first; the page then reads them as usual.
+    const { data, error } = await db
+      .from("story_items")
+      .select("story_id,stories!inner(monitor_id),items!inner(source_ids)")
+      .eq("stories.monitor_id", monitor.id)
+      .contains("items.source_ids", [source])
+      .order("added_at", { ascending: false })
+      .limit(300);
+    if (error) throw error;
+    storiesQuery = storiesQuery.in("id", [...new Set(data.map((row) => row.story_id))]);
+  }
   if (before && !articlesView) {
     storiesQuery = storyCursor
       ? storiesQuery.or(
@@ -158,6 +180,7 @@ export async function readFeed(
     .order("items(published_at)", { ascending: false })
     .order("items(id)", { ascending: false })
     .limit(30);
+  if (source) articlesQuery = articlesQuery.contains("items.source_ids", [source]);
   if (before && articlesView) {
     articlesQuery = itemCursor
       ? articlesQuery.or(

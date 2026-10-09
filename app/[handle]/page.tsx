@@ -4,15 +4,13 @@ import { z } from "zod";
 import { AgentHeader } from "@/components/monitor/agent-header";
 import { Building } from "@/components/monitor/building";
 import { DigestBlock } from "@/components/monitor/digest-block";
-import { OneFeed } from "@/components/monitor/one-feed";
-import { overlayGroups } from "@/components/monitor/one-sources";
+import { FeedViews, OneFeed, OwnerFeed } from "@/components/monitor/one-feed";
 import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-building";
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { StateBanner } from "@/components/monitor/state-banner";
 import { OneRun } from "@/components/one/run";
 import { column, OneShell } from "@/components/one/shell";
 import { SourceTable } from "@/components/one/source-table";
-import { SourcesOverlay } from "@/components/one/sources-overlay";
 import { Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
@@ -30,6 +28,7 @@ type Props = {
     before?: string | string[];
     beforeId?: string | string[];
     view?: string | string[];
+    source?: string | string[];
     error?: string | string[];
     built?: string | string[];
   }>;
@@ -57,13 +56,16 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   const before = typeof search.before === "string" ? search.before : undefined;
   const beforeId = typeof search.beforeId === "string" ? search.beforeId : undefined;
   const view = typeof search.view === "string" ? search.view : undefined;
+  const source = typeof search.source === "string" && !story ? search.source : null;
   // The owner watches the build on the One onboarding page, which ends in place once the build completes.
   const justBuilt =
     !story && search.built === "1" && !building && !failed && monitor.build_finished_at !== null;
   const onboarding = isOwner && (building || failed || justBuilt);
   const ready = !building && !failed && !onboarding;
   const [feed, log, run, sources] = await Promise.all([
-    ready ? readFeed(monitor, { before, beforeId, view, storyId: story }) : null,
+    ready
+      ? readFeed(monitor, { before, beforeId, view, storyId: story, source: source ?? undefined })
+      : null,
     building || failed || onboarding ? readBuildLog(monitor.id) : [],
     onboarding ? readOnboarding(monitor.id) : null,
     ready && isOwner ? readSources(monitor) : null,
@@ -98,6 +100,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   }
   const stopped =
     state.state === "frozen" || state.state === "lapsed" || state.state === "exhausted";
+  const direct = !story && view === "articles";
   const content = (
     <>
       {isOwner ? <PostHogUserContext id={viewer.userId} /> : null}
@@ -127,30 +130,63 @@ export default async function MonitorPage({ params, searchParams }: Props) {
               failed={failed}
             />
           </div>
-        ) : feed ? (
-          <>
-            <OneFeed
-              feed={feed}
-              handle={monitor.handle}
-              view={view}
-              storyId={story}
-              owner={isOwner}
-              title={copy.title(monitor.display_handle)}
-              banner={
-                <>
-                  {isOwner && search.error === "activation" ? (
-                    <Alert variant="destructive" className="mt-4">
+        ) : feed && sources ? (
+          <OwnerFeed
+            feed={feed}
+            sources={sources}
+            handle={monitor.handle}
+            view={view}
+            storyId={story}
+            source={source}
+            digests={{ github: monitor.digest_github, productHunt: monitor.digest_product_hunt }}
+            banner={
+              search.error === "activation" || stopped ? (
+                <div className="mb-6 space-y-4">
+                  {search.error === "activation" ? (
+                    <Alert variant="destructive">
                       <AlertDescription>{copy.activationFailed}</AlertDescription>
                     </Alert>
                   ) : null}
-                  {stopped ? (
-                    <div className="mt-4">
-                      <StateBanner monitor={monitor} state={state} isOwner={isOwner} />
-                    </div>
-                  ) : null}
-                </>
-              }
-            />
+                  {stopped ? <StateBanner monitor={monitor} state={state} isOwner /> : null}
+                </div>
+              ) : null
+            }
+          />
+        ) : feed ? (
+          <section aria-labelledby="feed-title">
+            <header className="flex min-h-9 flex-wrap items-center gap-x-5 gap-y-3">
+              <h1
+                id="feed-title"
+                className="shrink-0 text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1"
+              >
+                {copy.title(monitor.display_handle)}
+              </h1>
+              <FeedViews handle={monitor.handle} direct={direct} source={source} />
+            </header>
+            <p className="mt-3 text-[13.5px] text-t3">
+              {direct ? copy.directLine : copy.clusteredLine}
+            </p>
+            {stopped ? (
+              <div className="mt-4">
+                <StateBanner monitor={monitor} state={state} isOwner={false} />
+              </div>
+            ) : null}
+            {feed.pending || feed.failed ? (
+              <div role="status" className="mt-3 space-y-1 text-[12.5px] text-t3">
+                {feed.pending ? <p>{copy.pendingItems(feed.pending)}</p> : null}
+                {feed.failed ? <p>{copy.failedItems(feed.failed)}</p> : null}
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <OneFeed
+                feed={feed}
+                handle={monitor.handle}
+                direct={direct}
+                storyId={story}
+                source={source}
+                empty={copy.noNews}
+              />
+            </div>
             <div className="mt-12 grid gap-8 desk:grid-cols-2">
               <SkippedList items={feed.skipped} />
               <DigestBlock
@@ -159,8 +195,7 @@ export default async function MonitorPage({ params, searchParams }: Props) {
                 productHunt={monitor.digest_product_hunt}
               />
             </div>
-            {sources ? <SourcesOverlay groups={overlayGroups(sources)} /> : null}
-          </>
+          </section>
         ) : null}
       </main>
     </>

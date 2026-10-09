@@ -1,5 +1,12 @@
 import { monitorContent as copy, safeWebUrl } from "@/lib/monitor/content";
-import type { DisplayItem, DisplayStory, PublicItem, VerifiedCard } from "@/lib/monitor/read";
+import type {
+  DisplayItem,
+  DisplayStory,
+  MonitorSources,
+  PublicItem,
+  VerifiedCard,
+} from "@/lib/monitor/read";
+import { normalizeValidHandle } from "@/lib/x/handle";
 
 // The display shape of the One feed card, adapted from the public feed read. Display only: no item bodies, scores
 // or evidence spans reach the card.
@@ -89,4 +96,66 @@ export function when(iso: string, now = new Date()) {
   const day = `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
   if (d.getUTCFullYear() !== now.getUTCFullYear()) return `${day}, ${d.getUTCFullYear()}`;
   return `${day}, ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+export type AsideKind = "x" | "rss" | "website" | "github";
+/** One source in the aside: its feed filter key (the items' source id), its look, and its count when known. */
+export type AsideRow = {
+  key: string;
+  name: string;
+  /** The @handle for an account, the host for a site or feed. */
+  address: string;
+  /** The X handle for the avatar, the host for the favicon. */
+  mark: string;
+  count: number | null;
+  href: string;
+  on: boolean;
+};
+export type AsideGroup = { kind: AsideKind; label: string; rows: AsideRow[] };
+
+/** The source id a feed item carries for this X account (lib/accounts/posts.ts). */
+export const accountSourceId = (handle: string) => `x-${handle}`;
+
+/**
+ * The agent's sources for the feed's aside: Twitter accounts, RSS feeds, then websites, empty kinds left out. Each row
+ * links to the feed filtered to it; `counts` holds items this week by source id, when the read has them.
+ */
+export function asideGroups(
+  data: MonitorSources,
+  {
+    href,
+    selected,
+    counts,
+  }: { href: (key: string) => string; selected: string | null; counts: Map<string, number> | null },
+): AsideGroup[] {
+  const row = (key: string, name: string, address: string, mark: string): AsideRow => ({
+    key,
+    name,
+    address,
+    mark,
+    // A zero is left out, never shown as a count.
+    count: counts?.get(key) || null,
+    href: href(key),
+    on: key === selected,
+  });
+  const accounts = data.accounts.flatMap((account) => {
+    const handle = normalizeValidHandle(account.handle);
+    if (!handle) return [];
+    const name = account.name && account.name !== handle ? account.name : `@${handle}`;
+    return [row(accountSourceId(handle), name, `@${handle}`, handle)];
+  });
+  const sites = (kind: "rss" | "website") =>
+    data.sources.flatMap(({ source_id, sources: source }) =>
+      source && source.kind === kind
+        ? [row(source_id, source.name, hostOf(source.target), hostOf(source.target))]
+        : [],
+    );
+  const groups = copy.onboarding.groups;
+  return (
+    [
+      { kind: "x", label: groups.x, rows: accounts },
+      { kind: "rss", label: groups.rss, rows: sites("rss") },
+      { kind: "website", label: groups.website, rows: sites("website") },
+    ] satisfies AsideGroup[]
+  ).filter((group) => group.rows.length);
 }

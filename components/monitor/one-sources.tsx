@@ -1,7 +1,6 @@
 import { Globe, Rss } from "lucide-react";
 import { BrandIcon } from "@/components/brand-icon";
 import { SourceMark } from "@/components/one/marks";
-import type { OverlayGroup } from "@/components/one/sources-overlay";
 import { lift } from "@/components/one/stage";
 import { monitorContent as copy, safeWebUrl } from "@/lib/monitor/content";
 import type { MonitorSources } from "@/lib/monitor/read";
@@ -32,7 +31,7 @@ const hostOf = (url: string) => {
 };
 
 /** The sources by kind, X accounts, RSS feeds then websites; empty kinds are left out. */
-export function sourceGroups(data: MonitorSources) {
+function sourceGroups(data: MonitorSources) {
   const today = new Date().toISOString().slice(0, 10);
   const accounts: Row[] = data.accounts.flatMap((account) => {
     const handle = normalizeValidHandle(account.handle);
@@ -76,15 +75,6 @@ export function sourceGroups(data: MonitorSources) {
     { kind: "rss" as const, label: copy.onboarding.groups.rss, rows: site("rss") },
     { kind: "website" as const, label: copy.onboarding.groups.website, rows: site("website") },
   ].filter((group) => group.rows.length);
-}
-
-/** The feed's source list needs only each row's name and mark. */
-export function overlayGroups(data: MonitorSources): OverlayGroup[] {
-  return sourceGroups(data).map(({ kind, label, rows }) => ({
-    kind,
-    label,
-    rows: rows.map(({ key, name, mark }) => ({ key, name, mark })),
-  }));
 }
 
 export function OneSources({ data }: { data: MonitorSources }) {

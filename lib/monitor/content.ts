@@ -24,14 +24,15 @@ export const monitorContent = {
   },
   brief: "Your Brief",
   feedTitle: "Feed",
-  sourcesOverlay: {
+  aside: {
     title: "Sources",
-    open: "Open sources",
-    close: "Close sources",
+    all: "All sources",
     more: "Show more",
     less: "Show less",
+    collapse: "Collapse",
     empty: "Your agent chooses its sources once it is built.",
   },
+  noNewsFrom: (name: string) => `Nothing from ${name} in your feed yet.`,
   clustered: "Clustered",
   direct: "Direct",
   clusteredLine: "Articles and posts about the same event, stacked into one story.",

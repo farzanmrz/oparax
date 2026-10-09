@@ -238,9 +238,13 @@ const feed: MonitorFeed = {
   storyFound: false,
 };
 
-export function previewFeed(storyId?: string): MonitorFeed {
+/** The example feed; a source from the aside keeps only what came from it, as the feed read does. */
+export function previewFeed(storyId?: string, source?: string | null): MonitorFeed {
+  const from = (item: PublicItem) => !source || item.source_id === source;
   return {
     ...feed,
+    stories: stories.filter((story) => story.reports.some(from)),
+    articles: feed.articles.filter(({ item }) => from(item)),
     storyFound: storyId !== undefined && stories.some((story) => story.id === storyId),
   };
 }

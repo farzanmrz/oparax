@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { DigestBlock } from "@/components/monitor/digest-block";
-import { OneFeed } from "@/components/monitor/one-feed";
-import { overlayGroups } from "@/components/monitor/one-sources";
-import { SkippedList } from "@/components/monitor/skipped-list";
+import { OwnerFeed } from "@/components/monitor/one-feed";
 import { column, OneShell } from "@/components/one/shell";
-import { SourcesOverlay } from "@/components/one/sources-overlay";
 import {
   previewEmail,
   previewFeed,
@@ -27,11 +23,12 @@ export default async function LocalPreviewPage({
   searchParams,
 }: {
   params: Promise<{ story?: string }>;
-  searchParams: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<{ view?: string | string[]; source?: string | string[] }>;
 }) {
   if (process.env.NODE_ENV !== "development") notFound();
   const [{ story }, search] = await Promise.all([params, searchParams]);
-  const feed = previewFeed(story);
+  const source = typeof search.source === "string" && !story ? search.source : null;
+  const feed = previewFeed(story, source);
   if (story && !feed.storyFound) notFound();
   const view = typeof search.view === "string" ? search.view : undefined;
 
@@ -48,19 +45,15 @@ export default async function LocalPreviewPage({
         className={`${column} relative flex-1 pt-7 pb-24 wrap-anywhere`}
       >
         <PreviewNotice />
-        <OneFeed
+        <OwnerFeed
           feed={feed}
+          sources={previewSources}
           handle={previewHandle}
           view={view}
           storyId={story}
-          owner
-          title={monitorContent.title(previewHandle)}
+          source={source}
+          digests={{ github: true, productHunt: true }}
         />
-        <div className="mt-12 grid gap-8 desk:grid-cols-2">
-          <SkippedList items={feed.skipped} />
-          <DigestBlock items={feed.digests} github productHunt />
-        </div>
-        <SourcesOverlay groups={overlayGroups(previewSources)} />
       </main>
     </OneShell>
   );
