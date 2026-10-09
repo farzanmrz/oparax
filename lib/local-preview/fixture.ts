@@ -472,8 +472,8 @@ export const previewRun: Record<
   done: { step: 3, ready: true, state: chosenState, log: [...toAnswer, saving] },
 };
 
-/** The first try stopped while reading posts; one retry is left. */
-export const previewFailed = { step: 2, state: profileState, log: [lookingUp, found, reading] };
+/** The first try stopped after Jev scored, while choosing; one retry is left. */
+export const previewFailed = { step: 3, state: scoredState, log: toAnswer };
 
 /** The monitor while its run is under way or stopped: the free week has not started and nothing is watched yet. */
 export function previewBuildingMonitor(status: "building" | "failed") {

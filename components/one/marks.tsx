@@ -3,7 +3,7 @@
 // Identity marks from the One design (preview v2/deck/marks.tsx): a site's favicon from Google's favicon service
 // (DuckDuckGo second), an X account's avatar from unavatar, a glyph last. Real logos keep their own colors.
 
-import { Globe, Rss } from "lucide-react";
+import { Globe, Newspaper, Rss } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BrandIcon } from "@/components/brand-icon";
 import { cn } from "@/lib/utils";
@@ -144,4 +144,44 @@ export function GroupGlyph({ kind, className }: { kind: string; className?: stri
   if (kind === "rss") return <Rss className={className} strokeWidth={2} aria-hidden="true" />;
   if (kind === "github") return <BrandIcon name="github" className={className} />;
   return <Globe className={className} strokeWidth={2} aria-hidden="true" />;
+}
+
+/** What an item or a source carries: a Twitter post, an article from a site or feed, or a GitHub repository. */
+export type Kind = "post" | "article" | "github";
+
+const kindStyle: Record<Kind, string> = {
+  post: "bg-[var(--kind-post-soft)] text-[var(--kind-post)]",
+  article: "bg-[var(--kind-article-soft)] text-[var(--kind-article)]",
+  github: "bg-[var(--kind-github-soft)] text-[var(--kind-github)]",
+};
+
+export function KindGlyph({ kind, className }: { kind: Kind; className?: string }) {
+  if (kind === "post") return <BrandIcon name="x" className={cn("size-2.5", className)} />;
+  if (kind === "github") return <BrandIcon name="github" className={cn("size-3", className)} />;
+  return <Newspaper className={cn("size-3", className)} strokeWidth={1.75} aria-hidden="true" />;
+}
+
+/** A kind as a coloured chip: its glyph and, when given, its word or count ("Post", "2 articles"). */
+export function KindChip({
+  kind,
+  children,
+  className,
+}: {
+  kind: Kind;
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full font-medium whitespace-nowrap",
+        children ? "h-[22px] px-2 text-[11.5px]" : "size-[18px] justify-center",
+        kindStyle[kind],
+        className,
+      )}
+    >
+      <KindGlyph kind={kind} />
+      {children}
+    </span>
+  );
 }

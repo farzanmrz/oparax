@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { OneRun } from "@/components/one/run";
 import { column, OneShell } from "@/components/one/shell";
-import { SourceTable } from "@/components/one/source-table";
 import {
   previewBeat,
   previewBuildingMonitor,
@@ -52,7 +51,6 @@ export default async function LocalPreviewRunPage({
           failed={false}
           ready={point.ready}
           canRetry={false}
-          table={<SourceTable />}
           preview
         />
       </main>

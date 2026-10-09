@@ -14,8 +14,7 @@ export const metadata: Metadata = {
 export default function LocalPreviewRestPage() {
   if (process.env.NODE_ENV !== "development") notFound();
   return (
-    <SetupStage email={previewEmail}>
-      <PreviewNotice />
+    <SetupStage email={previewEmail} notice={<PreviewNotice />}>
       <SetupForm verifiedHandle={null} buildsOpen error={undefined} />
     </SetupStage>
   );

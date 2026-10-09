@@ -10,7 +10,6 @@ import { SkippedList } from "@/components/monitor/skipped-list";
 import { StateBanner } from "@/components/monitor/state-banner";
 import { OneRun } from "@/components/one/run";
 import { column, OneShell } from "@/components/one/shell";
-import { SourceTable } from "@/components/one/source-table";
 import { Stage } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
@@ -92,7 +91,6 @@ export default async function MonitorPage({ params, searchParams }: Props) {
             failed={failed}
             ready={justBuilt}
             canRetry={monitor.build_tries < 2}
-            table={<SourceTable />}
           />
         </main>
       </OneShell>

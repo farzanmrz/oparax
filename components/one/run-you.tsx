@@ -7,8 +7,8 @@ import type { Onboarding, OnboardingPost } from "@/lib/onboarding/read";
 import { cn } from "@/lib/utils";
 
 // The run's right column, once the profile checkpoint exists (design preview v2/one/onboarding.tsx You): one identity
-// block (the picture, the name beside it and the handle under it, About with the X bio, then Brief: the sentence
-// first and the written brief once the answer exists), then the newest posts once they are saved.
+// block (the picture, the name beside it and the handle under it, About with the Twitter bio, the typed sentence, then
+// the written brief once the answer exists), then the newest posts once they are saved.
 
 const copy = monitorContent.onboarding;
 const day = (iso: string) =>
@@ -50,37 +50,38 @@ export function RunYou({
           </div>
         ) : null}
         <div className="mt-4 border-t border-line pt-4">
-          <p className="text-[13px] font-semibold text-t1">{copy.brief}</p>
+          <p className="text-[13px] font-semibold text-t1">{copy.sentence}</p>
           <p className="mt-2 flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
             <Quote className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
             {beat}
           </p>
-          {brief ? (
-            <>
-              <p className="mt-2.5 text-[13px] leading-[1.55] text-t2">{brief.summary}</p>
-              {brief.interests.length ? (
-                <div className="mt-3 text-[12.5px]">
-                  <p className="mb-1.5 text-t3">{copy.interests}</p>
-                  <ul className="flex flex-wrap gap-1.5">
-                    {brief.interests.map((topic) => (
-                      <li
-                        key={topic}
-                        className="rounded-full border border-[var(--brand-line)] bg-[var(--brand-soft)] px-2 py-0.5 text-[11.5px] text-t1"
-                      >
-                        {topic}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {brief.languages.length ? (
-                <p className="mt-3 text-[12.5px] text-t3">
-                  {copy.language} <span className="ml-1 text-t1">{brief.languages.join(", ")}</span>
-                </p>
-              ) : null}
-            </>
-          ) : null}
         </div>
+        {brief ? (
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="text-[13px] font-semibold text-t1">{copy.brief}</p>
+            <p className="mt-1.5 text-[13px] leading-[1.55] text-t2">{brief.summary}</p>
+            {brief.interests.length ? (
+              <div className="mt-3 text-[12.5px]">
+                <p className="mb-1.5 text-t3">{copy.interests}</p>
+                <ul className="flex flex-wrap gap-1.5">
+                  {brief.interests.map((topic) => (
+                    <li
+                      key={topic}
+                      className="rounded-full border border-[var(--brand-line)] bg-[var(--brand-soft)] px-2 py-0.5 text-[11.5px] text-t1"
+                    >
+                      {topic}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {brief.languages.length ? (
+              <p className="mt-3 text-[12.5px] text-t3">
+                {copy.language} <span className="ml-1 text-t1">{brief.languages.join(", ")}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       {posts?.length ? (

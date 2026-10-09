@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OneRun } from "@/components/one/run";
 import { column, OneShell } from "@/components/one/shell";
-import { SourceTable } from "@/components/one/source-table";
 import {
   previewBeat,
   previewBuildingMonitor,
@@ -43,7 +42,6 @@ export default function LocalPreviewFailedPage() {
           failed
           ready={false}
           canRetry
-          table={<SourceTable />}
           preview
         />
       </main>

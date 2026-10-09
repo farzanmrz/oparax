@@ -18,6 +18,8 @@ export type RunView = {
   gathered: number | null;
   /** The X search terms, once the log shows the search ran. */
   searchTerms: string | null;
+  /** The engine's newest log line while the run is under way, as a page shows it. */
+  activity: string | null;
 };
 
 const GATHERED = /^Gathered (\d+) from the source list, (\d+) accounts you quoted$/;
@@ -114,5 +116,7 @@ export function readRun(
       : done.choose
         ? copy.saving
         : copy.choosing;
-  return { phases, heading, gathered, searchTerms };
+  const last = lines.at(-1);
+  const activity = !failed && !ready && last ? displayLine(last) : null;
+  return { phases, heading, gathered, searchTerms, activity };
 }

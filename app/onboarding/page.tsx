@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { RefreshXIdentityButton } from "@/components/auth/refresh-x-identity";
+import { runCard } from "@/components/one/stage";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { readAuthContext } from "@/lib/auth/identity";
 import { signedInDestination } from "@/lib/auth/oauth";
 import { guards } from "@/lib/guards/guards";
 import { reportServerException } from "@/lib/observability/posthog-server";
 import { onboardingContent, setupErrorSchema } from "@/lib/onboarding/content";
+import { cn } from "@/lib/utils";
 import { SetupForm } from "./setup-form";
 import { SetupStage } from "./setup-stage";
 
@@ -27,10 +29,7 @@ export default async function OnboardingPage({
       <>
         <PostHogUserContext id={user.id} email={user.email} />
         <SetupStage email={user.email ?? null}>
-          <h1 className="text-[28px] leading-none font-semibold tracking-[-0.025em] text-t1">
-            {onboardingContent.title}
-          </h1>
-          <div className="mt-4 flex flex-col items-start gap-3">
+          <div className={cn(runCard, "flex flex-col items-start gap-3 p-5")}>
             <p role="alert" className="text-[13.5px] leading-relaxed text-[var(--error)]">
               {onboardingContent.xIdentityUnreadable}
             </p>

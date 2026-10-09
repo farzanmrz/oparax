@@ -1,30 +1,34 @@
+import { OneFrame } from "@/components/one/frame";
 import { PhaseList } from "@/components/one/phases";
 import { column, OneShell } from "@/components/one/shell";
-import { SourceTable } from "@/components/one/source-table";
-import { monitorContent } from "@/lib/monitor/content";
+import { stepsAside } from "@/components/one/stage";
+import { onboardingContent } from "@/lib/onboarding/content";
 import { restPhases } from "@/lib/onboarding/phases";
 
 /**
- * The One onboarding at rest inside the shell (the person has no agent yet): the page line the children hold, then
- * the seven phases with empty rings beside the shared source table every run starts from. No right column.
+ * The One onboarding at rest inside the shell (the person has no agent yet): the title band, the seven steps with
+ * empty rings in the lifted aside, and the one card the children hold. No right column before the profile exists.
  */
 export function SetupStage({
   email,
+  notice,
   children,
 }: {
   email: string | null;
+  /** Shown above the title band; the development preview's banner. */
+  notice?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <OneShell email={email} monitor={null}>
       <main className={`${column} relative flex-1 pt-7 pb-24`}>
-        {children}
-        <div className="mt-6 grid grid-cols-1 items-start gap-6 desk:grid-cols-[264px_minmax(0,1fr)]">
-          <PhaseList phases={restPhases} />
-          <section aria-label={monitorContent.onboarding.tableLabel} className="min-w-0">
-            <SourceTable />
-          </section>
-        </div>
+        {notice}
+        <OneFrame
+          title={onboardingContent.title}
+          aside={stepsAside(<PhaseList phases={restPhases} />)}
+        >
+          {children}
+        </OneFrame>
       </main>
     </OneShell>
   );
