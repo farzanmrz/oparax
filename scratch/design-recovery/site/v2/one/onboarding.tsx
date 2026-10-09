@@ -44,14 +44,16 @@ import { beat, groups, HANDLE, hostOf, sources, type Group, type Source } from "
 import { EASE } from "@/v2/deck/live";
 import { GroupGlyph, SiteIcon, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { AppShell, RailMark, RailTitle } from "./shell";
+import { AppShell, RailMark, railRow } from "./shell";
 
 // One onboarding, which the feed holds (owner, Oct 5: "The feed itself will have the onboarding if the feed has not
 // been constructed"): /v2/one/feed?agent=none, in the page's one column. At rest it is the run's page with nothing
 // looked up yet. The page line: "Set up your agent", then the Twitter handle, the sentence and Build my agent on one line
-// (no card). The seven steps of the real engine stand in the shell's rail, in its middle band where the sources go
-// (empty rings, one line each saying what the step does), through rest, the run and ready; the kept sources take
-// their place only once the person opens Feed. Under the page line the centre holds the shared source table every
+// (no card). The seven steps of the real engine stand in the shell's rail, in its middle where the sources go, each
+// ONE line in the rail's 32px row with its status mark in the icon slot, through rest, the run and ready; the kept
+// sources take their place only once the person opens Feed. The current step's line (its live count while it runs,
+// the result once the run is done) is one quiet sentence under the page line. Under it the centre holds the shared
+// source table every
 // run starts from. The right column does not exist until step 1 finds the person; then it opens (300ms) with ONE identity block (picture,
 // name beside it, handle under, About, Brief) and the newest posts under it, and the centre narrows. Once the run
 // gathers, the centre ACCUMULATES top to bottom and never removes a block: the candidates gathered, Jev's verdict
@@ -191,8 +193,12 @@ export function OneOnboarding({
     replay();
   };
 
+  // The current step's one line on the page: the running (or failed) step's live line, the save line once ready.
+  const current = run.states.findIndex((s) => s === "running" || s === "failed");
+  const note = !started ? null : current >= 0 ? stepLineFor(oneStepIds[current], run, started, shownHandle) : done ? oneStepLine.save : null;
+
   const controls = started ? (
-    <div className="mx-4 mt-1 flex items-center gap-x-4 border-t border-line pt-3">
+    <div className="flex items-center gap-x-4 px-4 pt-2">
       <button
         type="button"
         disabled={!live || done}
@@ -208,7 +214,7 @@ export function OneOnboarding({
   ) : null;
 
   return (
-    <AppShell middle={<Timeline run={run} started={started} handle={shownHandle} controls={controls} />}>
+    <AppShell middle={<Timeline run={run} started={started} controls={controls} />}>
       <MotionConfig reducedMotion="user">
         <form
           noValidate
@@ -278,6 +284,9 @@ export function OneOnboarding({
             )}
           </div>
         </form>
+        {started ? (
+          <p className={cn("mt-1 min-h-5 text-[13px] leading-5", run.states.includes("failed") ? "text-[var(--error)]" : "text-t3")}>{note}</p>
+        ) : null}
         {message && !started ? (
           <p
             id="setup-error"
@@ -488,28 +497,26 @@ function stepLineFor(id: OneStepId, run: Run, started: boolean, handle: string) 
   return state === "done" || state === "skipped" ? oneStepLine[id] : runningLine(id, run, handle);
 }
 
-/** The seven steps in the rail's middle band, the same list and states as before: the mark, the name and one line
- * (what the step does while it waits, its live count while it runs, its result once done), the amber ground while a
- * step runs. Pause and Replay sit under the list once the run has started. */
-function Timeline({ run, started, handle, controls }: { run: Run; started: boolean; handle: string; controls: React.ReactNode }) {
+/** The seven steps in the rail's middle, each ONE line in the rail's row (the same 32px row as Feed, Settings and
+ * Notifications): the status mark in the icon slot (an empty ring while waiting, the --ok check once done, the
+ * --caution ring and the --raised fill on the current step, --error when it failed) and the step's name. The step's
+ * line is on the page. Pause and Replay sit under the list once the run has started. */
+function Timeline({ run, started, controls }: { run: Run; started: boolean; controls: React.ReactNode }) {
   return (
-    <section aria-label="Steps" className="pb-4">
-      <RailTitle>Steps</RailTitle>
-      <ol className="px-2 pt-1 pb-1">
+    <section aria-label="Steps" className="pb-3">
+      <ol className="flex flex-col gap-[2px]">
         {oneStepIds.map((id, i) => {
           const state = run.states[i];
-          const line = stepLineFor(id, run, started, handle);
+          const waiting = !started || state === "waiting";
           return (
             <li
               key={id}
               id={`step-${id}`}
-              className={cn("grid grid-cols-[20px_1fr] gap-x-3 rounded-lg px-2 py-2", state === "running" && "bg-[var(--caution-soft)]")}
+              title={oneStepTitle[id]}
+              className={cn(railRow, (state === "running" || state === "failed") && "bg-raised")}
             >
-              <span className="pt-px">{started ? <StepMark state={state} size={20} /> : <EmptyRing />}</span>
-              <div className="min-w-0">
-                <StepName id={id} state={state} started={started} />
-                {line ? <p className={cn("mt-0.5 text-[12px] leading-snug", state === "failed" ? "text-[var(--error)]" : "text-t3")}>{line}</p> : null}
-              </div>
+              <span className="grid size-[15px] shrink-0 place-items-center">{waiting ? <EmptyRing /> : <StepMark state={state} size={15} />}</span>
+              <StepName id={id} state={state} started={started} />
             </li>
           );
         })}
@@ -519,24 +526,36 @@ function Timeline({ run, started, handle, controls }: { run: Run; started: boole
   );
 }
 
+/** The rail's name for a step: the step's own title, shortened only where it cannot fit one line of the 240px rail
+ * (the full title stays in the row's title and for screen readers). */
+const railName: Partial<Record<OneStepId, string>> = { choose: "Choose sources, write brief", search: "Search for more accounts" };
+
 function StepName({ id, state, started }: { id: OneStepId; state: Run["states"][number]; started: boolean }) {
   return (
-    <p className={cn("text-[13px] leading-snug", !started || state === "waiting" ? "text-t3" : "font-medium text-t1")}>
-      {state === "running" ? (
-        <Shimmer as="span" duration={1.8} className="font-medium [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
-          {oneStepTitle[id]}
-        </Shimmer>
-      ) : (
-        oneStepTitle[id]
+    <span
+      className={cn(
+        "min-w-0 flex-1 truncate",
+        !started || state === "waiting" ? "text-t3" : state === "running" ? "font-medium text-t1" : state === "failed" ? "text-[var(--error)]" : "text-t2",
       )}
-    </p>
+    >
+      <span aria-hidden={railName[id] ? true : undefined}>
+        {state === "running" ? (
+          <Shimmer as="span" duration={1.8} className="font-medium [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
+            {railName[id] ?? oneStepTitle[id]}
+          </Shimmer>
+        ) : (
+          (railName[id] ?? oneStepTitle[id])
+        )}
+      </span>
+      {railName[id] ? <span className="sr-only">{oneStepTitle[id]}</span> : null}
+    </span>
   );
 }
 
 /** A step before the run: an empty ring, no state yet. */
 function EmptyRing() {
   return (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden="true" fill="none" stroke="var(--line-strong)" strokeWidth={2}>
+    <svg viewBox="0 0 24 24" width={15} height={15} aria-hidden="true" fill="none" stroke="var(--line-strong)" strokeWidth={2.4}>
       <circle cx="12" cy="12" r="9" />
     </svg>
   );

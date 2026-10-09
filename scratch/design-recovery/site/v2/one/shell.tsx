@@ -3,29 +3,30 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Sun } from "lucide-react";
+import { Bell, ChevronDown, List, Moon, PanelLeftClose, PanelLeftOpen, Settings, Sun } from "lucide-react";
 import { OparaxMark } from "@/pro/shared/brand";
 import { THEME_KEY } from "@/next/theme";
 import { cn } from "@/lib/utils";
 import { Stage } from "@/v2/deck/chrome";
-import { groups, itemsFrom, sources, status, type Group, type Source } from "@/v2/deck/data";
-import { GroupGlyph, Segments, SourceMark } from "@/v2/deck/marks";
+import { groups, sources, status, type Group, type Source } from "@/v2/deck/data";
+import { GroupGlyph, SourceMark } from "@/v2/deck/marks";
 import { BASE } from "./card";
 
-// The One shell (council on the One's chrome, October 8, rounds 1 to 3). No header on the signed-in pages: one
-// continuous rail at the left of the page column (Window's rail: --rail ground, hairlines at its edges) holds
-// everything, top to bottom, in three bands. The top band: the Oparax mark and wordmark in a 48px line (12px under
-// the top edge) level with the page title, then Feed, Settings and Notifications (the current page underlined in brand) over a hairline. The
-// middle band: Sources, his watched sources grouped under collapsible headings (13.5px semibold, the kind icon in its
-// hue, the count, a chevron), the rows indented under them; on the onboarding page the seven steps stand here
-// instead. The foot, pinned on --raised over a hairline: FREE WEEK and its meter, Light and Dark, the person, Sign
-// out and Hide. Hide removes the whole rail; a labelled Menu at the bottom left brings it back, and while it is
-// hidden the mark leads the page title. Login keeps its own visitor header line.
+// The One shell (council on the One's rail, October 8, Grok's specification with the round 2 changes). No header on
+// the signed-in pages: one 240px rail fixed to the viewport's left edge (--rail ground, one --line on its right) and
+// the page's column centred in the width that remains, under the Width rule. Top to bottom: the brand head (the mark
+// and "Oparax", not a link, a hairline under it); Feed, Settings and Notifications as 32px rows (icon at x16, label
+// at x36, the current page a 2px brand bar at the rail's edge and a --raised fill); his watched sources under
+// collapsible headings (the kind icon at x16 and the text at x36), each row the logo at x16 and the name only at x36;
+// on the onboarding page the seven steps stand in that middle instead. The foot, on the same ground under one
+// hairline: FREE WEEK and days left, the seven segments, posts used, then Theme, Sign out and Hide. Hide removes the
+// whole rail; a labelled Menu at the bottom left brings it back, and while it is hidden the mark leads the page
+// title. Login keeps its own visitor header line.
 
 const NAV = [
-  { href: `${BASE}/feed`, label: "Feed" },
-  { href: `${BASE}/settings`, label: "Settings" },
-  { href: `${BASE}/notifications`, label: "Notifications" },
+  { href: `${BASE}/feed`, label: "Feed", Icon: List },
+  { href: `${BASE}/settings`, label: "Settings", Icon: Settings },
+  { href: `${BASE}/notifications`, label: "Notifications", Icon: Bell },
 ];
 
 /** Preview account email: the sample account has no stored address, so the form's placeholder domain is used. */
@@ -33,6 +34,9 @@ export const ACCOUNT_EMAIL = "farzan@newsroom.com";
 
 /** The one column every page and the header sit in. */
 export const column = "one-column";
+
+/** The same column centred in the width beside the rail (one.css). */
+const railColumn = "one-column-rail";
 
 /** Clear ground under every page so the lab switcher (bottom right, about 100px tall) covers no control, plus 72px. */
 export const switcherClear = "pb-[184px]";
@@ -136,23 +140,6 @@ export function OneHeader() {
   );
 }
 
-/** Sign out as a bordered action. */
-export function SignOut({ className }: { className?: string }) {
-  return (
-    <Link
-      href={`${BASE}/login`}
-      className={cn(
-        "inline-flex h-8 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring",
-        className,
-      )}
-      style={{ boxShadow: "var(--top-light)" }}
-    >
-      <LogOut className="size-3.5 text-t3" aria-hidden="true" />
-      Sign out
-    </Link>
-  );
-}
-
 /** Whether the rail is showing, so the page title line can carry the mark while it is hidden. */
 const RailContext = createContext(true);
 const RAIL_KEY = "oparax-one-rail";
@@ -168,9 +155,9 @@ export function RailMark() {
   );
 }
 
-/** Every page inside the app: the rail at the left of the page column and the page beside it on Deck's lit
- * ground. On the feed the rail filters the stories (`selected`, `onSelect`); on the other pages a source row opens
- * the feed filtered to that source. `middle` replaces the sources (the onboarding's seven steps). */
+/** Every page inside the app: the rail fixed at the viewport's left edge and the page in its column beside it, on
+ * Deck's lit ground. On the feed the rail filters the stories (`selected`, `onSelect`); on the other pages a source
+ * row opens the feed filtered to that source. `middle` replaces the sources (the onboarding's seven steps). */
 export function AppShell({
   children,
   light,
@@ -209,11 +196,9 @@ export function AppShell({
   return (
     <Stage light={light}>
       <RailContext.Provider value={open}>
-        <div className={cn(column, "relative flex flex-1 items-start")}>
-          {open ? (
-            <Rail selected={selected} onSelect={onSelect} middle={middle} onHide={() => choose(false)} hideRef={hide} />
-          ) : null}
-          <main className={cn("relative min-w-0 flex-1 pt-3", open && "lg:pl-8", switcherClear)}>{children}</main>
+        {open ? <Rail selected={selected} onSelect={onSelect} middle={middle} onHide={() => choose(false)} hideRef={hide} /> : null}
+        <div className={cn(open ? railColumn : column, "relative flex flex-1 items-start")}>
+          <main className={cn("relative min-w-0 flex-1 pt-3", switcherClear)}>{children}</main>
         </div>
         {open ? null : (
           <button
@@ -232,7 +217,11 @@ export function AppShell({
   );
 }
 
-/** The rail: the mark and the pages, the sources (or the steps), the foot. One surface, three bands. */
+/** The one rail row: 32px, inset 8px from both sides with an 8px radius, the icon or mark at x16 and the text at x36
+ * (8px inset, 8px padding, a 15px icon, 5px). Feed, Settings and Notifications use it, and the onboarding's steps. */
+export const railRow = "relative mx-2 flex h-8 items-center gap-[5px] rounded-lg pr-2 pl-2 text-[13px] transition-colors";
+
+/** The rail: the brand head, the pages, the sources (or the steps), the foot. */
 function Rail({
   selected,
   onSelect,
@@ -248,62 +237,49 @@ function Rail({
 }) {
   const pathname = usePathname();
   return (
-    <aside
-      aria-label="Oparax"
-      className="sticky top-0 hidden h-svh w-[264px] shrink-0 flex-col self-start border-x border-line bg-[var(--rail)] lg:flex"
-    >
-      <div className="shrink-0 border-b border-line pt-3">
-        <div className="flex h-12 items-center px-4">
-          <Link
-            href={`${BASE}/feed`}
-            className="flex items-center gap-2 rounded-sm text-[15px] font-semibold tracking-[-0.01em] text-t1 focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <OparaxMark className="size-[18px]" />
-            Oparax
-          </Link>
-        </div>
-        <nav aria-label="Pages" className="flex h-10 items-stretch gap-5 px-4">
-          {NAV.map(({ href, label }) => {
-            const on = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={on ? "page" : undefined}
-                onClick={(e) => {
-                  // On the feed, Feed shows the whole feed again: it clears a pressed source.
-                  if (on && onSelect) {
-                    e.preventDefault();
-                    onSelect(null);
-                  }
-                }}
-                className={cn(
-                  "relative flex items-center text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-ring",
-                  on ? "font-medium text-t1" : "text-t3 hover:text-t1",
-                )}
-              >
-                {label}
-                {on ? <span aria-hidden="true" className="absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-[var(--brand)]" /> : null}
-              </Link>
-            );
-          })}
-        </nav>
+    <aside aria-label="Oparax" className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col border-r border-line bg-[var(--rail)] lg:flex">
+      <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-4">
+        <OparaxMark className="size-[18px] shrink-0 text-t1" />
+        <span className="text-[15px] leading-5 font-semibold tracking-[-0.01em] text-t1">Oparax</span>
       </div>
+      <nav aria-label="Pages" className="flex shrink-0 flex-col gap-[2px] pt-2 pb-3">
+        {NAV.map(({ href, label, Icon }) => {
+          const on = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={on ? "page" : undefined}
+              onClick={(e) => {
+                // On the feed, Feed shows the whole feed again: it clears a pressed source.
+                if (on && onSelect) {
+                  e.preventDefault();
+                  onSelect(null);
+                }
+              }}
+              className={cn(
+                railRow,
+                "group/nav font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+                on ? "bg-raised text-t1" : "text-t2 hover:bg-raised/60 hover:text-t1",
+              )}
+            >
+              {on ? <span aria-hidden="true" className="absolute inset-y-0 -left-2 w-[2px] bg-[var(--brand)]" /> : null}
+              <Icon className={cn("size-[15px] shrink-0", on ? "text-t1" : "text-t3 group-hover/nav:text-t2")} aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
       <div className="min-h-0 flex-1 overflow-y-auto">{middle ?? <Sources selected={selected} onSelect={onSelect} />}</div>
       <Foot onHide={onHide} hideRef={hideRef} />
     </aside>
   );
 }
 
-/** A band's title in Deck's type ("Sources", "Steps"). */
-export function RailTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="px-4 pt-4 text-[13px] font-semibold text-t1">{children}</h2>;
-}
-
-/** His watched sources, grouped. Each group is a collapsible summary (starts open) that cannot be mistaken for a
- * row: 13.5px semibold --t1, the kind icon in its hue, the count, a chevron, a hairline above every group after the
- * first. Rows are 12.5px --t2 under it, indented to the heading's text, with the source's real logo or avatar, its
- * name, handle or host, and how many items in the feed came from it, aligned under the group's count. */
+/** His watched sources, grouped. Each group is a collapsible heading (starts open) that cannot be mistaken for a row:
+ * 13px semibold --t1, the kind icon in its hue at x16, the text at x36, the group's count and a chevron at the right,
+ * a hairline above every group after the first. The rows sit on the heading's lines: the real logo or avatar at x16
+ * under the kind icon, the name only at x36 under the heading's text. An empty group is absent. */
 function Sources({ selected, onSelect }: { selected: string | null; onSelect?: (id: string | null) => void }) {
   const [closed, setClosed] = useState<Set<Group>>(() => new Set());
   const toggle = (g: Group) =>
@@ -315,29 +291,31 @@ function Sources({ selected, onSelect }: { selected: string | null; onSelect?: (
     });
   const present = groups.filter((g) => sources.some((s) => s.group === g.id));
   return (
-    <div className="pb-4">
-      <RailTitle>Sources</RailTitle>
+    <div className="pb-3">
       {present.map((g, i) => {
         const list = sources.filter((s) => s.group === g.id);
         const open = !closed.has(g.id);
         return (
-          <section key={g.id} aria-label={g.label} className={cn(i > 0 ? "mt-2 border-t border-line" : "mt-1")}>
+          <section key={g.id} aria-label={g.label} className={cn("pb-2", i > 0 && "border-t border-line")}>
             <h3>
               <button
                 type="button"
                 onClick={() => toggle(g.id)}
                 aria-expanded={open}
                 aria-controls={`rail-${g.id}`}
-                className="flex w-full items-center gap-2 px-4 pt-4 pb-1.5 text-left text-[13.5px] font-semibold text-t1 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                className={cn(
+                  "flex w-full items-center gap-1.5 px-4 pb-1 text-left text-[13px] leading-[18px] font-semibold text-t1 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+                  i > 0 && "pt-[14px]",
+                )}
               >
                 <GroupGlyph group={g.id} className={cn("size-3.5 shrink-0", hue[g.id])} />
                 <span className="min-w-0 flex-1 truncate">{g.label}</span>
-                <span className="text-[11.5px] font-normal tabular-nums text-t3">{list.length}</span>
-                <ChevronDown className={cn("size-3.5 shrink-0 text-t3 transition-transform", !open && "-rotate-90")} aria-hidden="true" />
+                <span className="font-mono text-[11px] font-normal tabular-nums text-t3">{list.length}</span>
+                <ChevronDown className={cn("size-3 shrink-0 text-t4 transition-transform", !open && "-rotate-90")} aria-hidden="true" />
               </button>
             </h3>
             {open ? (
-              <ul id={`rail-${g.id}`} className="px-2">
+              <ul id={`rail-${g.id}`}>
                 {list.map((s) => (
                   <SourceRow key={s.id} source={s} on={selected === s.id} onSelect={onSelect} />
                 ))}
@@ -350,35 +328,27 @@ function Sources({ selected, onSelect }: { selected: string | null; onSelect?: (
   );
 }
 
-/** What follows a source's name: the handle for Twitter accounts, the host for feeds and sites. */
-const secondOf = (s: Source) => (s.group === "x" ? s.handle : s.group === "github" ? null : s.mark);
-
+/** A source row: 30px, the logo (16px) at x16 and the name at x36, nothing else. Pressed is the --raised fill. */
 function SourceRow({ source: s, on, onSelect }: { source: Source; on: boolean; onSelect?: (id: string | null) => void }) {
-  const n = itemsFrom(s.id).length;
-  const second = secondOf(s);
   const cls = cn(
-    "flex h-[30px] w-full items-center gap-2 rounded-md pr-[30px] pl-[30px] text-left text-[12.5px] text-t2 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-ring",
-    on && "bg-[var(--brand-soft)] text-t1 shadow-[inset_0_0_0_1px_var(--brand-line)] hover:bg-[var(--brand-soft)]",
+    "mx-2 flex h-[30px] items-center gap-1 rounded-lg px-2 text-left text-[13px] transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+    on ? "bg-raised text-t1" : "text-t2 hover:bg-raised/60 hover:text-t1",
   );
-  const title = `${s.name}${second ? ` ${second}` : ""}${s.why ? `: ${s.why}` : s.focus ? `: ${s.focus}` : ""}`;
+  const title = `${s.name}${s.why ? `: ${s.why}` : s.focus ? `: ${s.focus}` : ""}`;
   const body = (
     <>
       <SourceMark source={s} size={16} className={s.group === "x" ? "" : "rounded-[4px]"} />
-      <span className="min-w-0 flex-1 truncate leading-tight">
-        {s.name}
-        {second ? <span className="ml-1.5 text-[11.5px] text-t3">{second}</span> : null}
-      </span>
-      {n > 0 ? <span className="shrink-0 text-[11px] tabular-nums text-t3">{n}</span> : null}
+      <span className="min-w-0 flex-1 truncate">{s.name}</span>
     </>
   );
   return (
-    <li>
+    <li className="flex">
       {onSelect ? (
-        <button type="button" onClick={() => onSelect(on ? null : s.id)} aria-pressed={on} title={title} className={cls}>
+        <button type="button" onClick={() => onSelect(on ? null : s.id)} aria-pressed={on} title={title} className={cn(cls, "flex-1")}>
           {body}
         </button>
       ) : (
-        <Link href={`${BASE}/feed?source=${s.id}`} title={title} className={cls}>
+        <Link href={`${BASE}/feed?source=${s.id}`} title={title} className={cn(cls, "flex-1")}>
           {body}
         </Link>
       )}
@@ -386,43 +356,40 @@ function SourceRow({ source: s, on, onSelect }: { source: Source; on: boolean; o
   );
 }
 
-/** The foot, pinned under the middle on --raised: FREE WEEK with its meter, days left and posts used; Light and
- * Dark; the person; Sign out; Hide. */
+/** The foot, pinned under one hairline on the rail's own ground: FREE WEEK and days left, the seven segments on their
+ * own line, posts used; then one line with Theme, Sign out and Hide. The account lives on Settings. */
 function Foot({ onHide, hideRef }: { onHide: () => void; hideRef: React.RefObject<HTMLButtonElement | null> }) {
+  const { dark, choose } = useTheme();
+  const ThemeIcon = dark ? Sun : Moon;
+  const icon =
+    "grid size-7 shrink-0 place-items-center rounded-md text-t3 transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring";
   return (
-    <div className="shrink-0 border-t border-line bg-[var(--raised)] px-4 pt-3.5 pb-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="font-mono text-[10.5px] font-medium tracking-[0.12em] text-[var(--caution)] uppercase">Free week</p>
-        <p className="text-[12px] text-t2">
-          <span className="font-medium text-t1 tabular-nums">{status.daysLeft}</span> days left
-        </p>
-      </div>
-      <div className="mt-2">
-        <Segments total={status.trialDays} filled={status.daysLeft} />
-      </div>
-      <p className="mt-1.5 text-[11.5px] tabular-nums text-t3">
-        {status.poolUsed} of {status.poolLimit} watched Twitter posts used
+    <div className="shrink-0 border-t border-line px-4 pt-3 pb-1 font-mono text-[11px] leading-4">
+      <p className="flex items-baseline justify-between gap-3">
+        <span className="font-medium tracking-[0.12em] text-[var(--caution)] uppercase">Free week</span>
+        <span className="tabular-nums text-t3">{status.daysLeft} days left</span>
       </p>
-      <ThemeSwitch className="mt-3.5 w-full" />
-      <p className="mt-3.5 flex min-w-0 items-center gap-2 text-[12.5px]">
-        <span
-          aria-hidden="true"
-          className="grid size-[22px] shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-[11px] font-semibold text-[var(--brand)] uppercase shadow-[inset_0_0_0_1px_var(--brand-line)]"
-        >
-          {ACCOUNT_EMAIL.charAt(0)}
-        </span>
-        <span className="min-w-0 truncate font-medium text-t1">{ACCOUNT_EMAIL}</span>
+      <div className="mt-2 flex gap-1" aria-hidden="true">
+        {Array.from({ length: status.trialDays }, (_, i) => (
+          <span key={i} className={cn("h-[3px] w-[18px] rounded-full", i < status.daysLeft ? "bg-[var(--caution)]" : "bg-line-strong")} />
+        ))}
+      </div>
+      <p className="mt-2 tabular-nums text-t3">
+        {status.poolUsed} of {status.poolLimit} posts
       </p>
-      <div className="mt-3 flex items-center gap-2">
-        <SignOut className="flex-1 justify-center" />
-        <button
-          ref={hideRef}
-          type="button"
-          onClick={onHide}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-t3 transition-colors hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
+      <div className="mt-1 flex h-9 items-center gap-1 font-sans">
+        <button type="button" aria-label="Theme" title={dark ? "Light" : "Dark"} onClick={() => choose(!dark)} className={cn(icon, "-ml-[7px]")}>
+          <ThemeIcon className="size-3.5" aria-hidden="true" />
+        </button>
+        <Link
+          href={`${BASE}/login`}
+          className="rounded-sm text-[12px] text-t3 transition-colors hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
         >
+          Sign out
+        </Link>
+        <span className="flex-1" />
+        <button ref={hideRef} type="button" aria-label="Hide" title="Hide" onClick={onHide} className={cn(icon, "-mr-[7px]")}>
           <PanelLeftClose className="size-3.5" aria-hidden="true" />
-          Hide
         </button>
       </div>
     </div>

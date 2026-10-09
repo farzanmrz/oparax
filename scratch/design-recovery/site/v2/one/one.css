@@ -20,3 +20,19 @@
   width: 100%;
   padding-inline: clamp(48px, calc((100vw - 1400px) / 4), 290px);
 }
+
+/* The rail (council on the One's rail, Oct 8): a 240px rail fixed at the viewport's left edge from 1024px up, and the
+ * column centred in the width that remains under the same rule. Margin = clamp(48px, (remaining - 1400px) / 4,
+ * 290px): at 1440 the remaining 1200 gives 48 (a 1104px column), at 2560 the remaining 2320 gives 230 (1860). Below
+ * 1024 the rail is hidden and this is the plain column. */
+.one-column-rail {
+  width: 100%;
+  padding-inline: clamp(48px, calc((100vw - 1400px) / 4), 290px);
+}
+@media (min-width: 1024px) {
+  .one-column-rail {
+    --one-rail-margin: clamp(48px, calc((100vw - 240px - 1400px) / 4), 290px);
+    padding-left: calc(240px + var(--one-rail-margin));
+    padding-right: var(--one-rail-margin);
+  }
+}
