@@ -1,6 +1,11 @@
-import { redirect } from "next/navigation";
+import { OneNotifications, type DmState } from "@/v2/one/notifications";
 
-// Sources and notifications live on the Settings page.
-export default function Page() {
-  redirect("/v2/one/settings");
+export const metadata = { title: "Oparax | One: Notifications" };
+
+const STATES: DmState[] = ["connected", "waiting", "paused", "stopped"];
+
+// Twitter DMs, the alert hour and the digests. ?dm=connected|waiting|paused|stopped picks the sample DM state.
+export default async function Page({ searchParams }: { searchParams: Promise<{ dm?: string }> }) {
+  const { dm } = await searchParams;
+  return <OneNotifications dm={STATES.find((s) => s === dm) ?? "waiting"} />;
 }

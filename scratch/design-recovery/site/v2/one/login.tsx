@@ -23,7 +23,7 @@ export function OneLogin({ initial = "login" }: { initial?: "login" | "signup" }
   const [front, mid, back] = [stories.clustered[3], stories.clustered[0], stories.clustered[4]];
   return (
     <Stage light={760}>
-      <OneHeader app={false} />
+      <OneHeader />
       {/* The composition (420px form plus the 808px fan) is centred inside the page column, so on a wide screen it
           sits in the middle instead of at the column's left edge (owner, Oct 5: "the login has shifted to the left"). */}
       <main className={cn(column, "relative flex flex-1 items-center py-10")}>

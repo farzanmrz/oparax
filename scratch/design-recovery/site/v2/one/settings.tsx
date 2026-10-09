@@ -3,24 +3,21 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Plus, X as CloseIcon } from "lucide-react";
-import { XLogo } from "@/pro/shared/brand";
 import { profile, SITES_MAX } from "@/next/data/onboarding";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
-import { groups, HANDLE, sources as initialSources, status, type Group, type Source } from "@/v2/deck/data";
-import { GroupGlyph, Segments, SourceMark, XAvatar } from "@/v2/deck/marks";
+import { groups, HANDLE, sources as initialSources, type Group, type Source } from "@/v2/deck/data";
+import { GroupGlyph, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine, SignOut } from "./shell";
+import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine } from "./shell";
 
-// The one Settings page: account, plan, sources and notifications (owner, Oct 4: "Why are you making notifications
-// and sources this separate shit?"). Two columns in the page's one column. Left, the body: the sources as ONE lifted
+// The Settings page: sources management and the account (council on the One's chrome, Oct 8: Twitter DMs, the
+// alert hour and the digests moved to the Notifications page; the free week meter, the theme and Sign out live in
+// the rail's foot). Two columns in the page's one column. Left, the body: the sources as ONE lifted
 // panel, four sections divided by hairlines (Twitter accounts, RSS feeds, Websites, GitHub), each a heading line (the kind
 // mark, the kind name, Add source at the right) over one-line rows (logo, name, handle or address; an x at the right
 // on hover and focus; the reason under the row on click). No counts except the shared limit for websites and feeds,
-// said once. Right, a 360px sticky block, one object: the person, the plan, Twitter DMs and Sign out.
-
-/** The Oparax bot on Twitter. Alerts arrive as DMs from it once the person has messaged it. */
-const BOT = "oparax_ai";
+// said once. Right, a 360px sticky block, one object: the person and the plan.
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -69,7 +66,7 @@ export function OneSettings() {
             );
           })}
         </div>
-        <aside aria-label="Account" className="lg:sticky lg:top-[76px]">
+        <aside aria-label="Account" className="lg:sticky lg:top-6">
           <div className={cn(lift, "divide-y divide-line")} style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}>
             <div className="p-5">
               <div className="flex items-center gap-3">
@@ -83,7 +80,7 @@ export function OneSettings() {
             </div>
             <div className="p-5">
               <div className="flex items-baseline gap-3">
-                <p className="text-[13.5px] font-semibold text-t1">Free week</p>
+                <p className="text-[13.5px] font-semibold text-t1">Plan</p>
                 <Link
                   href={`${BASE}/landing#pricing`}
                   className="ml-auto shrink-0 rounded-sm text-[13px] text-t2 underline decoration-line-strong underline-offset-4 transition-colors hover:text-t1 hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring"
@@ -91,38 +88,7 @@ export function OneSettings() {
                   Plans
                 </Link>
               </div>
-              <div className="mt-2.5">
-                <Segments total={status.trialDays} filled={status.daysLeft} />
-              </div>
-              <p className="mt-2 flex justify-between gap-3 text-[12px] tabular-nums text-t3">
-                <span>
-                  <span className="font-medium text-t1">{status.daysLeft}</span> days left
-                </span>
-                <span>
-                  {status.poolUsed} of {status.poolLimit} watched Twitter posts used
-                </span>
-              </p>
-            </div>
-            <div className="p-5">
-              <p className="flex items-center gap-2.5 text-[13.5px] font-semibold text-t1">
-                <span className="grid size-6 place-items-center rounded-md border border-line-strong bg-[var(--raised)]" style={{ boxShadow: "var(--top-light)" }}>
-                  <XLogo className="size-3 text-t1" />
-                </span>
-                Twitter DMs
-              </p>
-              <p className="mt-2 text-[12.5px] text-t3">Oparax messages @{HANDLE} on Twitter when a story matters.</p>
-              <a
-                href={`https://x.com/messages/compose?recipient_id=${BOT}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_0_0_1px_rgb(36_89_232/0.6),0_6px_18px_-6px_rgb(58_108_244/0.6)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                <XLogo className="size-3" />
-                Message @{BOT}
-              </a>
-            </div>
-            <div className="p-5">
-              <SignOut />
+              <p className="mt-1 text-[12.5px] text-t2">Free week. Plans from $5 a month.</p>
             </div>
           </div>
         </aside>

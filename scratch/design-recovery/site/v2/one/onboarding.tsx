@@ -44,14 +44,15 @@ import { beat, groups, HANDLE, hostOf, sources, type Group, type Source } from "
 import { EASE } from "@/v2/deck/live";
 import { GroupGlyph, SiteIcon, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { AppShell } from "./shell";
+import { AppShell, RailMark, RailTitle } from "./shell";
 
 // One onboarding, which the feed holds (owner, Oct 5: "The feed itself will have the onboarding if the feed has not
 // been constructed"): /v2/one/feed?agent=none, in the page's one column. At rest it is the run's page with nothing
 // looked up yet. The page line: "Set up your agent", then the Twitter handle, the sentence and Build my agent on one line
-// (no card). Under it two working columns: the seven steps of the real engine on the left (empty rings, one line
-// each saying what the step does), and the centre, which holds the shared source table every run starts from. The
-// right column does not exist until step 1 finds the person; then it opens (300ms) with ONE identity block (picture,
+// (no card). The seven steps of the real engine stand in the shell's rail, in its middle band where the sources go
+// (empty rings, one line each saying what the step does), through rest, the run and ready; the kept sources take
+// their place only once the person opens Feed. Under the page line the centre holds the shared source table every
+// run starts from. The right column does not exist until step 1 finds the person; then it opens (300ms) with ONE identity block (picture,
 // name beside it, handle under, About, Brief) and the newest posts under it, and the centre narrows. Once the run
 // gathers, the centre ACCUMULATES top to bottom and never removes a block: the candidates gathered, Jev's verdict
 // for each (the band word, never the number) and the three bands, the chosen sources as removable pills, the search
@@ -191,7 +192,7 @@ export function OneOnboarding({
   };
 
   const controls = started ? (
-    <div className="flex items-center gap-x-4 border-t border-line px-4 py-3">
+    <div className="mx-4 mt-1 flex items-center gap-x-4 border-t border-line pt-3">
       <button
         type="button"
         disabled={!live || done}
@@ -207,7 +208,7 @@ export function OneOnboarding({
   ) : null;
 
   return (
-    <AppShell>
+    <AppShell middle={<Timeline run={run} started={started} handle={shownHandle} controls={controls} />}>
       <MotionConfig reducedMotion="user">
         <form
           noValidate
@@ -216,9 +217,10 @@ export function OneOnboarding({
             e.preventDefault();
             submit();
           }}
-          className="flex min-h-10 items-center gap-6"
+          className="flex min-h-12 items-center gap-6"
         >
-          <div aria-live="polite" className="shrink-0">
+          <div aria-live="polite" className="flex shrink-0 items-center gap-3">
+            <RailMark />
             <motion.h1
               key={heading}
               initial={reduce ? false : { opacity: 0, y: 4 }}
@@ -286,9 +288,7 @@ export function OneOnboarding({
           </p>
         ) : null}
 
-        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
-          <Timeline run={run} started={started} handle={shownHandle} controls={controls} />
-
+        <div className="mt-6">
           <div className="flex min-w-0 items-start">
             <section
               aria-label={gathering ? "Your run" : "The shared source table"}
@@ -488,13 +488,14 @@ function stepLineFor(id: OneStepId, run: Run, started: boolean, handle: string) 
   return state === "done" || state === "skipped" ? oneStepLine[id] : runningLine(id, run, handle);
 }
 
-/** The seven steps as records on one lifted card: the mark, the name and one line (what the step does while it
- * waits, its live count while it runs, its result once done), the amber mark while a step runs. Pause and Replay
- * sit at its foot once the run has started. */
+/** The seven steps in the rail's middle band, the same list and states as before: the mark, the name and one line
+ * (what the step does while it waits, its live count while it runs, its result once done), the amber ground while a
+ * step runs. Pause and Replay sit under the list once the run has started. */
 function Timeline({ run, started, handle, controls }: { run: Run; started: boolean; handle: string; controls: React.ReactNode }) {
   return (
-    <aside aria-label="Steps" className={cn(lift, "overflow-hidden lg:sticky lg:top-[84px]")} style={liftStyle}>
-      <ol className="px-3 pt-3 pb-1">
+    <section aria-label="Steps" className="pb-4">
+      <RailTitle>Steps</RailTitle>
+      <ol className="px-2 pt-1 pb-1">
         {oneStepIds.map((id, i) => {
           const state = run.states[i];
           const line = stepLineFor(id, run, started, handle);
@@ -502,7 +503,7 @@ function Timeline({ run, started, handle, controls }: { run: Run; started: boole
             <li
               key={id}
               id={`step-${id}`}
-              className={cn("grid grid-cols-[20px_1fr] gap-x-3 rounded-lg px-2 py-2.5", state === "running" && "bg-[var(--caution-soft)]")}
+              className={cn("grid grid-cols-[20px_1fr] gap-x-3 rounded-lg px-2 py-2", state === "running" && "bg-[var(--caution-soft)]")}
             >
               <span className="pt-px">{started ? <StepMark state={state} size={20} /> : <EmptyRing />}</span>
               <div className="min-w-0">
@@ -514,7 +515,7 @@ function Timeline({ run, started, handle, controls }: { run: Run; started: boole
         })}
       </ol>
       {controls}
-    </aside>
+    </section>
   );
 }
 
@@ -655,7 +656,7 @@ function Stream({
         ) : null}
 
         {choose !== "waiting" ? (
-          <section id="block-choose" aria-label="Choose sources and write the brief" className="scroll-mt-[84px]">
+          <section id="block-choose" aria-label="Choose sources and write the brief" className="scroll-mt-6">
             <Label running={choose === "running"}>{oneStepTitle.choose}</Label>
             <div className="mt-3 grid gap-4">
               {kinds.map((k) => {
