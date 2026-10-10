@@ -1,0 +1,13 @@
+{
+  "target": "lab",
+  "port": 3000,
+  "started": "2026-10-10T13:07:10-07:00",
+  "pages": [
+    "http://localhost:3000/v2/one/feed?agent=none",
+    "http://localhost:3000/v2/one/feed",
+    "http://localhost:3000/v2/one/settings",
+    "http://localhost:3000/v2/one/notifications",
+    "http://localhost:3000/v2/rb/app-sidebar-1"
+  ],
+  "note": "The One in two council directions, A and B, switched with the Direction row at the bottom right (?dir=b); the React Bits Pro sidebars at /v2/rb/app-sidebar-1 to 7 for comparison."
+}
