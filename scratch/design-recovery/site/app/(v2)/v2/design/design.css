@@ -1,0 +1,11 @@
+/* The local design gallery's sheet: the One's theme by reference, utilities for the gallery, the One, Deck and
+ * the shadcn parts it draws. Same shape as v2/one/one.css. */
+@reference "../../../(next)/next.css";
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "./";
+@source "../../../../v2/design";
+@source "../../../../v2/one";
+@source "../../../../v2/deck";
+@source "../../../../components/ui";
+@source "../../../../pro/shared";
