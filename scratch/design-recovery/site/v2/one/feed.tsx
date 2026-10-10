@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X as CloseIcon } from "lucide-react";
 import { sources, stories, storyHasSource, type FeedStory, type Source, type View } from "@/v2/deck/data";
 import { ViewSwitch } from "@/v2/deck/chrome";
+import { Tiles } from "@/v2/deck/feed";
 import { SourceMark } from "@/v2/deck/marks";
 import { Arrive, useArrival } from "@/v2/deck/live";
 import { StoryCard } from "./card";
@@ -33,6 +34,10 @@ export function OneFeed({
   settled: boolean;
 }) {
   const search = useSearchParams();
+  // The council's three colour directions (Oct 10), shown behind ?life=1 until the owner says yes: the kind chip
+  // and the brand source name on every card, Deck's status tiles above the cards (the free week meter's new
+  // home), and the active Clustered or Direct pill in solid blue.
+  const life = search.get("life") === "1";
   const [view, setView] = useState<View>(search.get("view") === "direct" ? "direct" : (initialView ?? "clustered"));
   const [sourceId, setSourceId] = useState<string | null>(sources.some((s) => s.id === initialSource) ? initialSource : null);
   useArrival(settled);
@@ -41,6 +46,7 @@ export function OneFeed({
   useEffect(() => {
     const q = new URLSearchParams(location.search);
     q.set("view", view);
+    if (!life) q.delete("life");
     q.delete("panel");
     if (sourceId) q.set("source", sourceId);
     else q.delete("source");
@@ -57,9 +63,14 @@ export function OneFeed({
       <PageLine
         title="Feed"
         beside={selected ? <FilterChip source={selected} onClear={() => setSourceId(null)} /> : null}
-        right={<ViewSwitch view={view} onChange={setView} />}
+        right={<ViewSwitch view={view} onChange={setView} solid={life} />}
       />
-      {selected && !list.length ? <p className="mt-6 text-[13.5px] text-t2">Nothing from {selected.name} this week.</p> : <Grid list={list} imageHeight={IMAGE_H} />}
+      {life ? (
+        <div className="mt-6">
+          <Tiles />
+        </div>
+      ) : null}
+      {selected && !list.length ? <p className="mt-6 text-[13.5px] text-t2">Nothing from {selected.name} this week.</p> : <Grid list={list} imageHeight={IMAGE_H} life={life} />}
     </AppShell>
   );
 }
@@ -72,7 +83,7 @@ function columnsFor(width: number) {
 /** Packed columns, newest first: each card is measured once drawn and the next card goes under the shortest column
  * (the leftmost on a tie), so each card ends after its own text and the one below it moves up. Until the cards are
  * measured they are dealt in turn, which is the plain row order. */
-function Grid({ list, imageHeight }: { list: FeedStory[]; imageHeight: number }) {
+function Grid({ list, imageHeight, life }: { list: FeedStory[]; imageHeight: number; life: boolean }) {
   const frame = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(3);
   const [heights, setHeights] = useState<Record<string, number>>({});
@@ -131,7 +142,7 @@ function Grid({ list, imageHeight }: { list: FeedStory[]; imageHeight: number })
           {col.map((s) => (
             <Arrive key={s.id} index={list.indexOf(s)} className="min-w-0">
               <div data-story={s.id}>
-                <StoryCard story={s} imageHeight={imageHeight} />
+                <StoryCard story={s} imageHeight={imageHeight} life={life} />
               </div>
             </Arrive>
           ))}

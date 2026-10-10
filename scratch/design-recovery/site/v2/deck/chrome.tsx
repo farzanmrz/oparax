@@ -167,7 +167,7 @@ export function AlertsButton({ className, full = false }: { className?: string; 
   );
 }
 
-export function ViewSwitch({ view, onChange, className }: { view: View; onChange: (v: View) => void; className?: string }) {
+export function ViewSwitch({ view, onChange, className, solid = false }: { view: View; onChange: (v: View) => void; className?: string; solid?: boolean }) {
   const icon = { clustered: Layers, direct: Rows3 };
   return (
     <div
@@ -195,7 +195,7 @@ export function ViewSwitch({ view, onChange, className }: { view: View; onChange
             onClick={() => onChange(v)}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] text-t3 transition-colors hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring",
-              on && "bg-[var(--brand-soft)] text-t1 shadow-[inset_0_0_0_1px_var(--brand-line)]",
+              on && (solid ? "bg-primary text-primary-foreground" : "bg-[var(--brand-soft)] text-t1 shadow-[inset_0_0_0_1px_var(--brand-line)]"),
             )}
           >
             <Icon className={cn("size-3.5", on && "text-[var(--brand)]")} aria-hidden="true" />

@@ -2,8 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
-import { itemLabel, newest, sourceOf, when, type FeedStory, type ItemView } from "@/v2/deck/data";
-import { ItemMark } from "@/v2/deck/marks";
+import { itemLabel, kindOf, newest, sourceOf, when, type FeedStory, type ItemView } from "@/v2/deck/data";
+import { ItemMark, KindChip } from "@/v2/deck/marks";
 
 // The One story card: the Deck's StoryCard (v2/deck/stack.tsx) with the owner's changes only: one card per story
 // (no plates, no peek), no "N Articles" kind chip, every fact without its publisher parentheses, and one top row
@@ -44,7 +44,7 @@ export function FactList({ story, size = "sm", className }: { story: FeedStory; 
 const MAX_MARKS = 3;
 
 /** The card's top row: marks (three, then +N), the lead source's name, the time. */
-function SourceLine({ story, mode, size }: { story: FeedStory; mode: LabelMode; size: number }) {
+function SourceLine({ story, mode, size, life }: { story: FeedStory; mode: LabelMode; size: number; life?: boolean }) {
   const list = sourcesIn(story);
   const shown = list.slice(0, MAX_MARKS);
   const extra = list.length - shown.length;
@@ -63,7 +63,8 @@ function SourceLine({ story, mode, size }: { story: FeedStory; mode: LabelMode; 
         ))}
         {extra > 0 ? <span className="ml-1.5 text-[11.5px] font-medium tabular-nums text-t3">+{extra}</span> : null}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-t1">{itemLabel(lead, mode)}</span>
+      <span className={cn("min-w-0 flex-1 truncate text-[12.5px] font-medium", life ? "text-[var(--brand)]" : "text-t1")}>{itemLabel(lead, mode)}</span>
+      {life ? <KindChip kind={kindOf(lead)} count={story.items.length} className="shrink-0" /> : null}
       <span className="shrink-0 text-[11.5px] tabular-nums whitespace-nowrap text-t3">{when(newest(story).published_at)}</span>
     </div>
   );
@@ -89,6 +90,7 @@ export function StoryCard({
   imageHeight = 148,
   size = "sm",
   compact = false,
+  life = false,
   className,
 }: {
   story: FeedStory;
@@ -97,12 +99,14 @@ export function StoryCard({
   size?: "sm" | "md";
   /** Headline only. */
   compact?: boolean;
+  /** Council, Oct 10 (colour): the kind chip on the source row and the source name in the brand blue. */
+  life?: boolean;
   className?: string;
 }) {
   // Owner, Oct 9: the source logo and name at the top, then the picture, then the news.
   return (
     <article className={cn(lift, "relative z-10 flex flex-col overflow-hidden", size === "md" ? "p-5" : "p-3", className)} style={liftStyle}>
-      <SourceLine story={story} mode={mode} size={18} />
+      <SourceLine story={story} mode={mode} size={18} life={life} />
       {story.card.image ? (
         <div className="relative mt-3 shrink-0 overflow-hidden rounded-lg" style={{ height: imageHeight }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

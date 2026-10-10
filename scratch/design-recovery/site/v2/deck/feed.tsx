@@ -142,7 +142,7 @@ function StackColumns({
   );
 }
 
-function Tiles() {
+export function Tiles() {
   return (
     <div className="grid gap-4 sm:grid-cols-3">
       <Tile label="This week">

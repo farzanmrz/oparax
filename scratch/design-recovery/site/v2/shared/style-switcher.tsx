@@ -30,7 +30,7 @@ const HIDE_KEY = "v2-switcher-hidden";
 // These routes exist in some styles only: the One merges sign up into login (and the other styles keep both).
 const toOne: Record<string, string> = { signup: "login" };
 // Query keys that belong to one page, dropped when moving to another page or style; the rest (theme) carry over.
-const PAGE_KEYS = ["at", "agent", "state", "source", "settled", "panel", "view", "handle", "error", "why"];
+const PAGE_KEYS = ["at", "agent", "state", "source", "settled", "panel", "view", "handle", "error", "why", "life"];
 
 /** Which review page a route is: the One shows its onboarding on /feed?agent=none; the others spread it over setup, building and ready. */
 function roleOf(style: Style, page: string, search: URLSearchParams): Role | null {
@@ -169,6 +169,16 @@ export function StyleSwitcher() {
     return `${pathname}${s ? `?${s}` : ""}`;
   };
 
+  // The colour directions on the One's feed (council, Oct 10): Before is the locked feed, After turns them on.
+  const life = search.get("life") === "1";
+  const lifeHref = (on: boolean) => {
+    const q = new URLSearchParams(search.toString());
+    if (on) q.set("life", "1");
+    else q.delete("life");
+    const s = q.toString();
+    return `${pathname}${s ? `?${s}` : ""}`;
+  };
+
   if (hidden) {
     return (
       <div style={dock}>
@@ -181,7 +191,17 @@ export function StyleSwitcher() {
 
   return (
     <div style={dock}>
-      {current === "one" && role === "onboarding" && step !== "rest" ? (
+      {current === "one" && role === "feed" ? (
+        <nav aria-label="Colour" style={{ ...shell, height: STEP_ROW_H }}>
+          <span style={{ padding: "6px 4px 6px 10px", fontSize: 12, color: "#8d939e" }}>Colour</span>
+          <a href={lifeHref(false)} aria-current={!life ? "true" : undefined} style={pill(!life, true)}>
+            Before
+          </a>
+          <a href={lifeHref(true)} aria-current={life ? "true" : undefined} style={pill(life, true)}>
+            After
+          </a>
+        </nav>
+      ) : current === "one" && role === "onboarding" && step !== "rest" ? (
         <nav aria-label="Direction" style={{ ...shell, height: STEP_ROW_H }}>
           <span style={{ padding: "6px 4px 6px 10px", fontSize: 12, color: "#8d939e" }}>Direction</span>
           {(["a", "b"] as const).map((d) => (
