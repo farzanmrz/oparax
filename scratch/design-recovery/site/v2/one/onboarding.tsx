@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Quote as QuoteMark, Sparkles, X as CloseIcon } from "lucide-react";
+import { ArrowRight, Check, CircleDashed, Quote as QuoteMark, Sparkles, X as CloseIcon } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion, MotionConfig, useReducedMotion } from "motion/react";
 import {
   isDone,
@@ -44,6 +44,7 @@ import { EASE } from "@/v2/deck/live";
 import { GroupGlyph, SiteIcon, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
 import { AppShell, hue, RailMark, railRow } from "./shell";
+import { useDirection, type Dir } from "./direction";
 
 // One onboarding, which the feed holds (owner, Oct 5: "The feed itself will have the onboarding if the feed has not
 // been constructed"): /v2/one/feed?agent=none, in the page's one column (council, Oct 9, items g, h and i). Before
@@ -136,6 +137,7 @@ export function OneOnboarding({
   blank?: boolean;
 }) {
   const reduce = useReducedMotion();
+  const dir = useDirection();
   const [started, setStarted] = useState(startedAtLoad);
   // A frozen state stays frozen until Replay; Build my agent and Replay run the clock.
   const [live, setLive] = useState(mode.kind === "replay" && startedAtLoad);
@@ -219,6 +221,7 @@ export function OneOnboarding({
             </p>
             {started ? (
               <Stream
+                dir={dir}
                 run={run}
                 handle={shownHandle}
                 removed={removed}
@@ -501,6 +504,7 @@ function Label({ running, children, className }: { running?: boolean; children: 
  * Set aside groups as Jev places each candidate (the band word, never the number), and the candidates gathered and
  * not yet checked. At Ready the step section is gone: the chosen sources, then the three completed groups. */
 function Stream({
+  dir,
   run,
   handle,
   removed,
@@ -508,6 +512,7 @@ function Stream({
   whyOf,
   onWhy,
 }: {
+  dir: Dir;
   run: Run;
   handle: string;
   removed: Set<string>;
@@ -553,10 +558,7 @@ function Stream({
               const open = list.find((s) => s.id === whyOf);
               return (
                 <div key={k.id} role="group" aria-label={k.label}>
-                  <p className="flex items-center gap-2 text-[13px] font-semibold text-t1">
-                    <GroupGlyph group={k.id} className={cn("size-3.5 shrink-0", hue[k.id])} />
-                    {k.label}
-                  </p>
+                  <KindHead dir={dir} group={k.id} label={k.label} />
                   <ul className="mt-2 flex flex-wrap gap-1.5">
                     <AnimatePresence initial={false}>
                       {list.map((s) => (
@@ -575,40 +577,173 @@ function Stream({
           </section>
         ) : null}
 
-        {bandOrder.map((band) => {
-          const list = checked.filter((c) => bandOf(c.score) === band);
-          if (!list.length) return null;
-          const total = jev === "done" ? (band === "set-aside" ? setAsideCount : kept.filter((c) => bandOf(c.score) === band).length) : list.length;
-          const hidden = band === "set-aside" && jev === "done" ? setAsideCount - droppedSample.length : 0;
-          return (
-            <motion.section key={band} layout="position" aria-label={bandLabel[band]} className="p-5">
-              <p className="flex items-baseline gap-2">
-                <span className={cn("text-[13.5px] font-semibold", bandTone[band])}>{bandLabel[band]}</span>
-                <span className="text-[12.5px] tabular-nums text-t3">{total}</span>
-              </p>
-              <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                {list.map((c) => (
-                  <Chip key={c.id} c={c} dim={band === "set-aside"} />
-                ))}
-                {hidden > 0 ? (
-                  <li className="flex h-8 items-center rounded-full border border-dashed border-line px-3 text-[12.5px] tabular-nums text-t3">{hidden} more</li>
-                ) : null}
-              </ul>
-            </motion.section>
-          );
-        })}
+        {checked.length ? <Verdicts dir={dir} checked={checked} done={jev === "done"} /> : null}
 
         {pile.length ? (
-          <section aria-label="Gathered candidates" className="p-5">
-            <ul className="flex flex-wrap gap-1.5">
-              {pile.map((c) => (
-                <Chip key={c.id} c={c} />
-              ))}
-            </ul>
+          <section aria-label="Gathered candidates" className="grid gap-4 p-5">
+            {candidateKinds.map((k) => {
+              const list = pile.filter((c) => kindKey(c) === k.key);
+              if (!list.length) return null;
+              return (
+                <div key={k.key} role="group" aria-label={k.label}>
+                  <KindHead dir={dir} group={k.group} label={k.label} />
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {list.map((c) => (
+                      <Chip key={c.id} c={c} />
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </section>
         ) : null}
       </div>
     </LayoutGroup>
+  );
+}
+
+/** The three areas a candidate falls in (owner, Oct 9: "They can be separate areas: RSS feeds, websites, tweets"). */
+const candidateKinds: { key: "x" | "rss" | "website"; group: Group; label: string }[] = [
+  { key: "x", group: "x", label: "Tweets" },
+  { key: "rss", group: "rss", label: "RSS feeds" },
+  { key: "website", group: "website", label: "Websites" },
+];
+const kindKey = (c: Candidate): "x" | "rss" | "website" => (c.kind === "x_account" ? "x" : c.kind === "rss" ? "rss" : "website");
+
+/** A kind's heading inside the run card: 15px semibold with the kind mark. Direction A draws it as a band on the
+ * raised ground across the card (the Settings A header); B leaves it as type on the card. */
+function KindHead({ dir, group, label, count }: { dir: Dir; group: Group; label: string; count?: number }) {
+  return (
+    <p
+      className={cn(
+        "flex items-center gap-2 text-[15px] leading-5 font-semibold text-t1",
+        dir === "a" && "-mx-5 h-10 bg-[var(--raised)] px-5",
+      )}
+    >
+      <GroupGlyph group={group} className={cn("size-4 shrink-0", hue[group])} />
+      {label}
+      {count !== undefined ? <span className="font-mono text-[11px] font-normal tabular-nums text-t3">{count}</span> : null}
+    </p>
+  );
+}
+
+const verdictMark: Record<Band, React.ReactNode> = {
+  strong: <Check className="size-3.5 text-[var(--ok)]" strokeWidth={2.5} aria-hidden="true" />,
+  possible: <CircleDashed className="size-3.5 text-[var(--caution)]" strokeWidth={2} aria-hidden="true" />,
+  "set-aside": <span aria-hidden="true" className="block size-1.5 rounded-full bg-t4" />,
+};
+
+function CandidateMark({ c, size, dim }: { c: Candidate; size: number; dim?: boolean }) {
+  return c.kind === "x_account" ? (
+    <XAvatar handle={c.target.replace("https://x.com/", "")} size={size} className={cn(dim && "opacity-60 grayscale")} />
+  ) : (
+    <SiteIcon host={hostOf(c.target)} size={size} className={cn("rounded-[5px]", dim && "opacity-60 grayscale")} />
+  );
+}
+
+/** Step 4's judgments. Direction A gives the three verdicts three bodies (council, Oct 9): Strong match as a row of
+ * Deck tiles (logo, name, reason), Possible match as rows (mark, name, reason), Set aside as one line of names.
+ * Direction B is a ledger: under each kind, every checked candidate as a row, Strong first (48px with its reason and
+ * the --ok mark), then Possible (32px, the --caution mark, its reason), then Set aside (28px, name only); every row
+ * names its verdict at the right. */
+function Verdicts({ dir, checked, done }: { dir: Dir; checked: Candidate[]; done: boolean }) {
+  const of = (band: Band) => checked.filter((c) => bandOf(c.score) === band);
+  const hidden = done ? setAsideCount - droppedSample.length : 0;
+  if (dir === "b") {
+    return (
+      <section aria-label="Jev's verdicts" className="grid gap-4 p-5">
+        {candidateKinds.map((k) => {
+          const list = bandOrder.flatMap((band) => of(band).filter((c) => kindKey(c) === k.key));
+          if (!list.length) return null;
+          return (
+            <div key={k.key} role="group" aria-label={k.label}>
+              <KindHead dir={dir} group={k.group} label={k.label} count={list.length} />
+              <ul className="mt-2 flex flex-col">
+                {list.map((c) => {
+                  const band = bandOf(c.score);
+                  const reason = reasonOf.get(c.id);
+                  return (
+                    <motion.li
+                      key={c.id}
+                      layoutId={`cand-${c.id}`}
+                      className={cn(
+                        "flex items-center gap-2.5 border-b border-line last:border-b-0",
+                        band === "strong" ? "min-h-12 py-1.5" : band === "possible" ? "min-h-8 py-1" : "min-h-7 py-0.5",
+                      )}
+                    >
+                      <span className="grid size-5 shrink-0 place-items-center">{verdictMark[band]}</span>
+                      <CandidateMark c={c} size={band === "set-aside" ? 16 : 20} dim={band === "set-aside"} />
+                      <span className={cn("min-w-0 flex-1 text-[13px] leading-[1.4]", band === "set-aside" ? "truncate text-t3" : "text-t1")}>
+                        <span className="font-medium">{c.name}</span>
+                        {band !== "set-aside" && reason ? <span className="ml-2 text-t2">{reason}</span> : null}
+                      </span>
+                      <span className={cn("shrink-0 text-[11.5px] font-medium", bandTone[band])}>{bandLabel[band]}</span>
+                    </motion.li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+        {hidden > 0 ? <p className="text-[12.5px] tabular-nums text-t3">{hidden} more set aside.</p> : null}
+      </section>
+    );
+  }
+  const strong = of("strong");
+  const possible = of("possible");
+  const aside = of("set-aside");
+  return (
+    <>
+      {strong.length ? (
+        <motion.section layout="position" aria-label={bandLabel.strong} className="p-5">
+          <p className="flex items-baseline gap-2">
+            <span className={cn("text-[15px] font-semibold", bandTone.strong)}>{bandLabel.strong}</span>
+            <span className="text-[12.5px] tabular-nums text-t3">{strong.length}</span>
+          </p>
+          <ul className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            {strong.map((c) => (
+              <motion.li key={c.id} layoutId={`cand-${c.id}`} className={cn(lift, "flex items-start gap-2.5 p-3")} style={liftStyle}>
+                <CandidateMark c={c} size={24} />
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-semibold text-t1">{c.name}</span>
+                  {reasonOf.get(c.id) ? <span className="mt-0.5 block text-[12.5px] leading-[1.45] text-t2">{reasonOf.get(c.id)}</span> : null}
+                </span>
+              </motion.li>
+            ))}
+          </ul>
+        </motion.section>
+      ) : null}
+      {possible.length ? (
+        <motion.section layout="position" aria-label={bandLabel.possible} className="p-5">
+          <p className="flex items-baseline gap-2">
+            <span className={cn("text-[15px] font-semibold", bandTone.possible)}>{bandLabel.possible}</span>
+            <span className="text-[12.5px] tabular-nums text-t3">{possible.length}</span>
+          </p>
+          <ul className="mt-2 flex flex-col">
+            {possible.map((c) => (
+              <motion.li key={c.id} layoutId={`cand-${c.id}`} className="flex min-h-8 items-center gap-2.5 border-b border-line py-1 last:border-b-0">
+                <span className="grid size-5 shrink-0 place-items-center">{verdictMark.possible}</span>
+                <CandidateMark c={c} size={20} />
+                <span className="min-w-0 flex-1 truncate text-[13px] text-t1">
+                  <span className="font-medium">{c.name}</span>
+                  {reasonOf.get(c.id) ? <span className="ml-2 text-t2">{reasonOf.get(c.id)}</span> : null}
+                </span>
+              </motion.li>
+            ))}
+          </ul>
+        </motion.section>
+      ) : null}
+      {aside.length ? (
+        <motion.section layout="position" aria-label={bandLabel["set-aside"]} className="p-5">
+          <p className="text-[13px] leading-[1.6] text-t3">
+            <span className="font-semibold">{bandLabel["set-aside"]}</span>
+            <span className="ml-2 tabular-nums">{done ? setAsideCount : aside.length}</span>
+            <span className="ml-3">{aside.map((c) => c.name).join(", ")}</span>
+            {hidden > 0 ? <span>, and {hidden} more</span> : null}
+          </p>
+        </motion.section>
+      ) : null}
+    </>
   );
 }
 
@@ -667,7 +802,6 @@ function Chip({ c, dim }: { c: Candidate; dim?: boolean }) {
     >
       {isX ? <XAvatar handle={c.target.replace("https://x.com/", "")} size={20} className={cn(dim && "opacity-60 grayscale")} /> : <SiteIcon host={hostOf(c.target)} size={20} className={cn("rounded-[5px]", dim && "opacity-60 grayscale")} />}
       <span>{c.name}</span>
-      <span className="font-mono text-[9.5px] tracking-[0.1em] text-t3 uppercase">{isX ? "Twitter" : c.kind === "rss" ? "RSS" : "Web"}</span>
     </motion.li>
   );
 }
@@ -718,8 +852,17 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
         className={cn(lift, "p-4")}
         style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
       >
+        <div className="flex items-center gap-3">
+          <XAvatar handle={HANDLE} size={40} />
+          <div className="min-w-0">
+            <p className="truncate text-[15px] leading-tight font-semibold text-t1">{profile.name}</p>
+            <p className="mt-0.5 truncate text-[13px] leading-tight text-t3">{profile.handle}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
+
         {chooseState !== "waiting" ? (
-          <div className="mb-4 border-b border-line pb-4">
+          <div className="mt-4 border-t border-line pt-4">
             <p className="text-[13px] font-semibold text-t1">Brief</p>
             <p className="mt-2 flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
               <QuoteMark className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
@@ -735,19 +878,6 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
             ) : null}
           </div>
         ) : null}
-
-        <div className="flex items-center gap-3">
-          <XAvatar handle={HANDLE} size={48} />
-          <div className="min-w-0">
-            <p className="truncate text-[15px] leading-tight font-semibold text-t1">{profile.name}</p>
-            <p className="mt-0.5 truncate text-[13px] leading-tight text-t3">{profile.handle}</p>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <p className="text-[13px] font-semibold text-t1">About</p>
-          <p className="mt-1.5 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
-        </div>
       </section>
 
       {postsState !== "waiting" ? (

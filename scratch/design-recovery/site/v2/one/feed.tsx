@@ -9,6 +9,7 @@ import { SourceMark } from "@/v2/deck/marks";
 import { Arrive, useArrival } from "@/v2/deck/live";
 import { StoryCard } from "./card";
 import { AppShell, PageLine } from "./shell";
+import { useDirection, type Dir } from "./direction";
 
 // The One feed inside the shell. The page line: Feed, and at its right end Deck's Clustered and Direct switch (owner,
 // Oct 9: "make it a toggle on the right of our header"), kept in the URL as ?view= the way Deck kept it. Then the
@@ -19,7 +20,9 @@ import { AppShell, PageLine } from "./shell";
 // source shows only that source's stories (one line when it has none) and adds Window's "from {name}" chip beside
 // the title, cleared by its x, by pressing the row again, or by Feed in the rail.
 
-const IMAGE_H = 172;
+/** Direction A caps the picture at 132px under the source row; B keeps the full 172px (owner, Oct 9: "reducing the
+ * image size slightly, I guess, or not, whatever looks better"). */
+const IMAGE_H: Record<Dir, number> = { a: 132, b: 172 };
 
 export function OneFeed({
   initialView,
@@ -35,6 +38,7 @@ export function OneFeed({
   const [view, setView] = useState<View>(search.get("view") === "direct" ? "direct" : (initialView ?? "clustered"));
   const [sourceId, setSourceId] = useState<string | null>(sources.some((s) => s.id === initialSource) ? initialSource : null);
   useArrival(settled);
+  const dir = useDirection();
 
   // Keep the URL in step so each state has an address (and survives a reload).
   useEffect(() => {
@@ -58,7 +62,7 @@ export function OneFeed({
         beside={selected ? <FilterChip source={selected} onClear={() => setSourceId(null)} /> : null}
         right={<ViewSwitch view={view} onChange={setView} />}
       />
-      {selected && !list.length ? <p className="mt-6 text-[13.5px] text-t2">Nothing from {selected.name} this week.</p> : <Grid list={list} />}
+      {selected && !list.length ? <p className="mt-6 text-[13.5px] text-t2">Nothing from {selected.name} this week.</p> : <Grid list={list} imageHeight={IMAGE_H[dir]} />}
     </AppShell>
   );
 }
@@ -71,7 +75,7 @@ function columnsFor(width: number) {
 /** Packed columns, newest first: each card is measured once drawn and the next card goes under the shortest column
  * (the leftmost on a tie), so each card ends after its own text and the one below it moves up. Until the cards are
  * measured they are dealt in turn, which is the plain row order. */
-function Grid({ list }: { list: FeedStory[] }) {
+function Grid({ list, imageHeight }: { list: FeedStory[]; imageHeight: number }) {
   const frame = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(3);
   const [heights, setHeights] = useState<Record<string, number>>({});
@@ -130,7 +134,7 @@ function Grid({ list }: { list: FeedStory[] }) {
           {col.map((s) => (
             <Arrive key={s.id} index={list.indexOf(s)} className="min-w-0">
               <div data-story={s.id}>
-                <StoryCard story={s} imageHeight={IMAGE_H} />
+                <StoryCard story={s} imageHeight={imageHeight} />
               </div>
             </Arrive>
           ))}

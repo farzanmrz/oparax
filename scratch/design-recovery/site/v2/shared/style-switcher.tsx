@@ -161,6 +161,16 @@ export function StyleSwitcher() {
   const off: React.CSSProperties = { opacity: 0.38, cursor: "not-allowed" };
   const STEP_ROW_H = 34;
 
+  // The One's two council directions (Oct 9): a row of its own, kept in ?dir= so every One page shows the same one.
+  const dir = search.get("dir") === "b" ? "b" : "a";
+  const dirHref = (d: "a" | "b") => {
+    const q = new URLSearchParams(search.toString());
+    if (d === "a") q.delete("dir");
+    else q.set("dir", "b");
+    const s = q.toString();
+    return `${pathname}${s ? `?${s}` : ""}`;
+  };
+
   if (hidden) {
     return (
       <div style={dock}>
@@ -173,6 +183,18 @@ export function StyleSwitcher() {
 
   return (
     <div style={dock}>
+      {current === "one" ? (
+        <nav aria-label="Direction" style={{ ...shell, height: STEP_ROW_H }}>
+          <span style={{ padding: "6px 4px 6px 10px", fontSize: 12, color: "#8d939e" }}>Direction</span>
+          {(["a", "b"] as const).map((d) => (
+            <a key={d} href={dirHref(d)} aria-current={d === dir ? "true" : undefined} style={pill(d === dir, true)}>
+              {d.toUpperCase()}
+            </a>
+          ))}
+        </nav>
+      ) : (
+        <div aria-hidden="true" style={{ height: STEP_ROW_H }} />
+      )}
       <nav aria-label="Compare styles" style={shell}>
         {STYLES.map((s) => (
           <a key={s.key} href={styleHref(s.key)} aria-current={s.key === current ? "page" : undefined} style={pill(s.key === current)}>

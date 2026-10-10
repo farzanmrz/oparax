@@ -31,8 +31,8 @@
 }
 @media (min-width: 1024px) {
   .one-column-rail {
-    --one-rail-margin: clamp(48px, calc((100vw - 240px - 1400px) / 4), 290px);
-    padding-left: calc(240px + var(--one-rail-margin));
+    --one-rail-margin: clamp(48px, calc((100vw - var(--one-rail-w, 240px) - 1400px) / 4), 290px);
+    padding-left: calc(var(--one-rail-w, 240px) + var(--one-rail-margin));
     padding-right: var(--one-rail-margin);
   }
 }

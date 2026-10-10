@@ -99,22 +99,20 @@ export function StoryCard({
   compact?: boolean;
   className?: string;
 }) {
+  // Owner, Oct 9: the source logo and name at the top, then the picture, then the news.
   return (
-    <article className={cn(lift, "relative z-10 flex flex-col overflow-hidden", className)} style={liftStyle}>
+    <article className={cn(lift, "relative z-10 flex flex-col overflow-hidden", size === "md" ? "p-5" : "p-3", className)} style={liftStyle}>
+      <SourceLine story={story} mode={mode} size={18} />
       {story.card.image ? (
-        <div className="relative shrink-0 overflow-hidden border-b border-line" style={{ height: imageHeight }}>
+        <div className="relative mt-3 shrink-0 overflow-hidden rounded-lg" style={{ height: imageHeight }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={story.card.image} alt="" loading="lazy" className="size-full object-cover" />
-          <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[var(--window)]/55 via-transparent to-transparent" />
         </div>
       ) : null}
-      <div className={cn("relative flex-1", size === "md" ? "p-5" : "p-4")}>
-        <SourceLine story={story} mode={mode} size={story.card.image ? 18 : 20} />
-        <h3 className={cn("mt-2.5 font-semibold tracking-[-0.01em] text-t1", size === "md" ? "text-[21px] leading-[1.25]" : "text-[16.5px] leading-[1.3]")}>
-          {story.card.headline}
-        </h3>
-        {compact ? null : <FactList story={story} size={size} className="mt-2.5" />}
-      </div>
+      <h3 className={cn("mt-3 font-semibold tracking-[-0.01em] text-t1", size === "md" ? "text-[21px] leading-[1.25]" : "text-[17px] leading-[1.3]")}>
+        {story.card.headline}
+      </h3>
+      {compact ? null : <FactList story={story} size={size} className="mt-2.5" />}
     </article>
   );
 }
