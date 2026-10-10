@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X as CloseIcon } from "lucide-react";
 import { sources, stories, storyHasSource, type FeedStory, type Source, type View } from "@/v2/deck/data";
 import { ViewSwitch } from "@/v2/deck/chrome";
@@ -12,8 +12,9 @@ import { AppShell, PageLine } from "./shell";
 
 // The One feed inside the shell. The page line: Feed, and at its right end Deck's Clustered and Direct switch (owner,
 // Oct 9: "make it a toggle on the right of our header"), kept in the URL as ?view= the way Deck kept it. Then the
-// stories in a grid read newest first across rows, left to right: three columns at 1440, two narrower, four at
-// 2560. Each card is as tall as its own content, the picture stays 172px on top, and every fact shows. The shell's
+// stories packed into columns (owner, Oct 9: "why aren't they dynamically aligning?"): newest first, each next card
+// goes under the shortest column, so a short card never leaves a hole beside a tall one. Three columns at 1440, two
+// narrower, four at 2560. Each card is as tall as its own content, the picture stays 172px on top, and every fact shows. The shell's
 // source rail at the left filters the feed; the feed never moves. Nothing pressed means the whole feed; a pressed
 // source shows only that source's stories (one line when it has none) and adds Window's "from {name}" chip beside
 // the title, cleared by its x, by pressing the row again, or by Feed in the rail.
@@ -62,14 +63,78 @@ export function OneFeed({
   );
 }
 
-/** Rows read left to right, newest first; each card ends after its own text. */
+/** The columns the width allows: one under 620px, two under 980, three under 1860, four above. */
+function columnsFor(width: number) {
+  return width >= 1860 ? 4 : width >= 980 ? 3 : width >= 620 ? 2 : 1;
+}
+
+/** Packed columns, newest first: each card is measured once drawn and the next card goes under the shortest column
+ * (the leftmost on a tie), so each card ends after its own text and the one below it moves up. Until the cards are
+ * measured they are dealt in turn, which is the plain row order. */
 function Grid({ list }: { list: FeedStory[] }) {
+  const frame = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(3);
+  const [heights, setHeights] = useState<Record<string, number>>({});
+
+  useLayoutEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const width = new ResizeObserver(([entry]) => setCols(columnsFor(entry.contentRect.width)));
+    width.observe(el);
+    setCols(columnsFor(el.getBoundingClientRect().width));
+    return () => width.disconnect();
+  }, []);
+
+  // After every draw, read each card's height straight from the page; the state changes only when a height did,
+  // so this settles after one pass. A font or picture arriving later changes a height and the columns repack.
+  const measure = () => {
+    const el = frame.current;
+    if (!el) return;
+    setHeights((prev) => {
+      let next = prev;
+      el.querySelectorAll<HTMLElement>("[data-story]").forEach((node) => {
+        const id = node.dataset.story;
+        const h = Math.round(node.getBoundingClientRect().height);
+        if (id && prev[id] !== h) next = next === prev ? { ...prev, [id]: h } : { ...next, [id]: h };
+      });
+      return next;
+    });
+  };
+  useLayoutEffect(measure);
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const watch = new ResizeObserver(measure);
+    el.querySelectorAll<HTMLElement>("[data-story]").forEach((node) => watch.observe(node));
+    return () => watch.disconnect();
+  });
+
+  const columns: FeedStory[][] = Array.from({ length: cols }, () => []);
+  const tall = new Array<number>(cols).fill(0);
+  const gap = 24;
+  list.forEach((s, i) => {
+    const h = heights[s.id];
+    let at = i % cols;
+    if (h !== undefined) {
+      at = 0;
+      for (let c = 1; c < cols; c += 1) if (tall[c] < tall[at]) at = c;
+    }
+    columns[at].push(s);
+    tall[at] += (h ?? 0) + gap;
+  });
+
   return (
-    <div className="mt-6 grid grid-cols-1 items-start gap-6 min-[768px]:grid-cols-2 min-[1280px]:grid-cols-3 min-[2200px]:grid-cols-4">
-      {list.map((s, i) => (
-        <Arrive key={s.id} index={i} className="min-w-0">
-          <StoryCard story={s} imageHeight={IMAGE_H} />
-        </Arrive>
+    <div ref={frame} className="mt-6 flex items-start gap-6">
+      {columns.map((col, c) => (
+        <div key={c} className="flex min-w-0 flex-1 flex-col gap-6">
+          {col.map((s) => (
+            <Arrive key={s.id} index={list.indexOf(s)} className="min-w-0">
+              <div data-story={s.id}>
+                <StoryCard story={s} imageHeight={IMAGE_H} />
+              </div>
+            </Arrive>
+          ))}
+        </div>
       ))}
     </div>
   );
