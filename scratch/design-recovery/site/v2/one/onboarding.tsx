@@ -10,7 +10,6 @@ import {
   oneRunAt,
   oneRunFailed,
   oneRunFrozen,
-  oneStepDoes,
   oneStepIds,
   oneStepLine,
   oneStepTitle,
@@ -24,6 +23,8 @@ import {
   bandOf,
   brief,
   candidateCount,
+  chosenAccounts,
+  chosenSites,
   droppedSample,
   kept,
   posts,
@@ -49,12 +50,13 @@ import { AppShell, hue, RailMark, railRow } from "./shell";
 // Build the title "Set up your agent" stands alone on its line and the centre is one lifted card: the Twitter handle,
 // the sentence and Build my agent, nothing else. The rail holds the Oparax head, the seven steps under the product's
 // full names (next/building/steps.ts) and the foot; no Feed, Settings or Notifications before the agent is saved.
-// Build happens in place: the same card becomes the run, titled with the running step, that step's lines streaming in
-// under it, then its work: the chosen sources as removable pills, the Strong match, Possible match and Set aside
+// Build happens in place: the same card becomes the run, titled with the running step, the run's recorded lines for
+// that step streaming in under it (Jev's verdicts with their reasons, the chosen sources with theirs), then its work: the chosen sources as removable pills, the Strong match, Possible match and Set aside
 // groups, and the candidates still waiting to be checked. The right column opens once step 1 finds the person: the
 // brief at its top once written, the picture with the name beside it and the handle under, About, then the newest
 // posts. At Ready the title is "Your agent is ready" with Open your feed, and the card holds the chosen sources first,
-// then the three completed groups. The replay runs 48 seconds; ?at=1..7 and ?at=done freeze it.
+// then the three completed groups, and the rail is the after-save rail (Feed, Settings, Notifications, his sources).
+// The replay runs 48 seconds; ?at=1..7 and ?at=done freeze it.
 
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
 const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
@@ -188,7 +190,7 @@ export function OneOnboarding({
   };
 
   return (
-    <AppShell middle={<Timeline run={run} started={started} />}>
+    <AppShell middle={done ? undefined : <Timeline run={run} started={started} />}>
       <MotionConfig reducedMotion="user">
         <div className="flex min-h-12 items-center gap-6">
           <div aria-live="polite" className="flex shrink-0 items-center gap-3">
@@ -379,17 +381,48 @@ function runningLine(id: OneStepId, run: Run, handle: string) {
 const pillsF = (p: number) => Math.min(1, p / 0.8);
 const briefF = (p: number) => Math.max(0, Math.min(1, (p - 0.15) / 0.85));
 
-/** The running step's lines as they stream in: what the step does arrives word by word over the first 40 percent of
- * the step, then its live line from the recorded run. A skipped or failed step shows its result line whole. */
-function streamFor(id: OneStepId, run: Run, handle: string) {
+/** The reasons the run recorded for the sources it chose (next/data/onboarding.ts, the whys on the picks). */
+const reasonOf = new Map<string, string>([...chosenSites, ...chosenAccounts].map((c) => [c.id, c.why]));
+
+/** One streamed line: a candidate or source with its verdict and reason, or one of the step's recorded lines. */
+type StreamLine = { key: string; name?: string; band?: Band; text: string };
+
+/** The running step's stream, from what the recorded run holds and nothing else. Jev: one line per candidate as Jev
+ * reaches it (the name, the band word, the recorded reason where the run kept one). Choose: one line per chosen
+ * source as it arrives, with its reason. The other steps: the step's own recorded line. The live count closes the
+ * stream while the step runs. */
+function streamFor(id: OneStepId, run: Run, handle: string, checked: Candidate[], arrived: Source[]): StreamLine[] {
   const state = run.states[idx(id)];
-  if (state === "failed") return { text: `${oneStepDoes[id]} The Twitter timeline did not answer.`, typing: false };
-  if (state === "skipped") return { text: `${oneStepDoes[id]} ${oneStepLine[id]}`, typing: false };
-  const p = run.progress[idx(id)];
-  const words = oneStepDoes[id].split(" ");
-  const shown = Math.min(words.length, Math.ceil((p / 0.4) * words.length));
-  const does = words.slice(0, Math.max(1, shown)).join(" ");
-  return { text: shown >= words.length ? `${does} ${runningLine(id, run, handle)}` : does, typing: true };
+  if (state === "failed") return [{ key: "failed", text: "The Twitter timeline did not answer." }];
+  if (state === "skipped") return [{ key: "skipped", text: oneStepLine[id] }];
+  const live = { key: "live", text: runningLine(id, run, handle) };
+  if (id === "jev") return [...checked.map((c) => ({ key: c.id, name: c.name, band: bandOf(c.score), text: reasonOf.get(c.id) ?? "" })), live];
+  if (id === "choose") return [...arrived.map((s) => ({ key: s.id, name: s.name, text: s.why ?? "" })), live];
+  return [live];
+}
+
+/** The stream under the running step's name: newest line at the bottom and kept in view, a caret on the last line
+ * while the step runs. */
+function StreamLog({ lines, running, failed }: { lines: StreamLine[]; running: boolean; failed: boolean }) {
+  const ref = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines.length]);
+  return (
+    <ul ref={ref} className="mt-2 max-h-[220px] overflow-y-auto text-[13px] leading-[1.55]">
+      {lines.map((l, i) => (
+        <li key={l.key} className={cn("py-0.5", failed ? "text-[var(--error)]" : "text-t2")}>
+          {l.name ? <span className="font-medium text-t1">{l.name}</span> : null}
+          {l.band ? <span className={cn("ml-2 font-medium", bandTone[l.band])}>{bandLabel[l.band]}</span> : null}
+          {l.name ? (l.text ? <span className="ml-2 text-t3">{l.text}</span> : null) : l.text}
+          {running && i === lines.length - 1 ? (
+            <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" />
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** The seven steps alone in the rail's middle, each in the rail's row (32px for one line; a long name wraps to a
@@ -494,7 +527,8 @@ function Stream({
   const pile = gathered.slice(checkedN);
   const current = run.states.findIndex((s) => s === "running" || s === "failed");
   const step = current >= 0 ? oneStepIds[current] : null;
-  const stream = step ? streamFor(step, run, handle) : null;
+  const arrived = kinds.flatMap((k) => take(sources.filter((s) => s.group === k.id), pillsF(chooseP)));
+  const stream = step ? streamFor(step, run, handle, checked, arrived) : null;
 
   return (
     <LayoutGroup>
@@ -504,10 +538,7 @@ function Stream({
             <Label running={run.states[current] === "running"} className="text-[15px]">
               {oneStepTitle[step]}
             </Label>
-            <p className={cn("mt-2 text-[13.5px] leading-[1.55]", run.states[current] === "failed" ? "text-[var(--error)]" : "text-t2")}>
-              {stream.text}
-              {stream.typing ? <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" /> : null}
-            </p>
+            <StreamLog lines={stream} running={run.states[current] === "running"} failed={run.states[current] === "failed"} />
           </section>
         ) : null}
 

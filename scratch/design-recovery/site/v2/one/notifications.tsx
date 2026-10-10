@@ -61,7 +61,6 @@ function TwitterDms({ state }: { state: DmState }) {
           {word[state]}
         </span>
       </div>
-      <p className="mt-2 text-[12.5px] text-t3">Oparax messages @{HANDLE} on Twitter when a story matters.</p>
       {on ? null : (
         <a
           href={`https://x.com/messages/compose?text=${encodeURIComponent("Start alerts")}`}

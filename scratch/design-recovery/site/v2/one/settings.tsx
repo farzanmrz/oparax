@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Plus, X as CloseIcon } from "lucide-react";
-import { profile, SITES_MAX } from "@/next/data/onboarding";
+import { profile } from "@/next/data/onboarding";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
 import { groups, HANDLE, sources as initialSources, type Group, type Source } from "@/v2/deck/data";
@@ -16,15 +16,14 @@ import { ACCOUNT_EMAIL as EMAIL, AppShell, hue, PageLine } from "./shell";
 // the rail's foot). Two columns in the page's one column. Left, the body: the sources as ONE lifted
 // panel, four sections divided by hairlines (Twitter accounts, RSS feeds, Websites, GitHub), each a heading line (the kind
 // mark, the kind name, Add source at the right) over one-line rows (logo, name, handle or address; an x at the right
-// on hover and focus; the reason under the row on click). No counts except the shared limit for websites and feeds,
-// said once. Right, a 360px sticky block, one object: the person and the plan.
+// on hover and focus; the reason under the row on click). No counts (owner, Oct 4: "There should be no numbers next
+// to the sources"). Right, a 360px sticky block, one object: the person and the plan.
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 export function OneSettings() {
   const [list, setList] = useState<Source[]>(initialSources);
   const [open, setOpen] = useState<string | null>(null);
-  const sitesAndFeeds = list.filter((s) => s.group === "rss" || s.group === "website").length;
   const remove = (id: string) => {
     setList((prev) => prev.filter((s) => s.id !== id));
     if (open === id) setOpen(null);
@@ -50,11 +49,6 @@ export function OneSettings() {
                     Add source
                   </button>
                 </div>
-                {g.id === "rss" ? (
-                  <p className="mt-0.5 pl-[38px] text-[12px] tabular-nums text-t3">
-                    {sitesAndFeeds} of {SITES_MAX} websites and feeds
-                  </p>
-                ) : null}
                 <ul className="mt-2 grid items-start gap-x-4 xl:grid-cols-2">
                   {members.map((s) => (
                     <SourceRow key={s.id} source={s} group={g.id} open={open === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)} onRemove={() => remove(s.id)} />
