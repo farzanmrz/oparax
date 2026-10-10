@@ -181,7 +181,6 @@ export function AppShell({
   middle?: React.ReactNode;
 }) {
   const dir = useDirection();
-  const pathname = usePathname();
   const [open, setOpen] = useState(true);
   const moved = useRef(false);
   const show = useRef<HTMLButtonElement>(null);
@@ -206,8 +205,10 @@ export function AppShell({
   };
   // Direction B: a 64px icon rail that stays, and a 220px panel that belongs to Feed (and to the onboarding's steps);
   // Hide closes the panel only. Direction A: one 240px rail that Hide removes whole.
-  const panelPage = !!middle || pathname === `${BASE}/feed`;
-  const width = dir === "b" ? (open && panelPage ? 284 : 64) : open ? 240 : 0;
+  // The panel is on every page (council render review, Oct 9: the word mark, the theme and the foot's words must stay
+  // on Settings and Notifications too); on those pages a source row opens the feed filtered to it.
+  const panelPage = true;
+  const width = dir === "b" ? (open && panelPage ? 284 : 64) : open ? 248 : 0;
   return (
     <Stage light={light}>
       <RailContext.Provider value={dir === "b" || open}>
@@ -260,10 +261,11 @@ function Head() {
   );
 }
 
-/** Direction A (council, Oct 9: app-sidebar-5's tree with app-sidebar-1's head and foot): one 240px rail. Feed is a
+/** Direction A (council, Oct 9: app-sidebar-5's tree with app-sidebar-1's head and foot): one 248px rail. Feed is a
  * row with a chevron that opens in place; the four kinds sit under it as 15px headings indented 16px, and their rows
  * (a logo and the name) start on the heading's text (owner, Oct 8: "indent the items exactly where the heading is").
- * Settings and Notifications follow the tree after 16px of air, at Feed's indent. On the onboarding page the seven
+ * The tree scrolls; Settings and Notifications stay pinned under it, above the foot, so the three categories are
+ * always on screen together. On the onboarding page the seven
  * steps stand in the middle instead. The foot is the third region. */
 function Rail({
   selected,
@@ -283,11 +285,11 @@ function Rail({
   const feedHref = `${BASE}/feed`;
   const onFeed = pathname === feedHref;
   return (
-    <aside aria-label="Oparax" className="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col border-r border-line bg-[var(--rail)] lg:flex">
+    <aside aria-label="Oparax" className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-line bg-[var(--rail)] lg:flex">
       <Head />
       <div className={cn("min-h-0 flex-1 overflow-y-auto", middle && "pt-2")}>
         {middle ?? (
-          <nav aria-label="Pages" className="flex flex-col gap-[2px] pt-2 pb-3">
+          <nav aria-label="Feed" className="flex flex-col gap-[2px] pt-2 pb-2">
             <div className={cn(railRow, "group/nav pr-1 font-medium", onFeed ? selectedRow : quietRow)}>
               <Link
                 href={feedHref}
@@ -314,25 +316,27 @@ function Rail({
               </button>
             </div>
             {feedOpen ? <Sources selected={selected} onSelect={onSelect} inset /> : null}
-            <div className="mt-4 flex flex-col gap-[2px]">
-              {NAV.slice(1).map(({ href, label, Icon }) => {
-                const on = pathname === href;
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    aria-current={on ? "page" : undefined}
-                    className={cn(railRow, "group/nav font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring", on ? selectedRow : quietRow)}
-                  >
-                    <Icon className={cn("size-[15px] shrink-0", on ? "text-[var(--brand)]" : "text-t3 group-hover/nav:text-t2")} aria-hidden="true" />
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
           </nav>
         )}
       </div>
+      {middle ? null : (
+        <nav aria-label="Pages" className="flex shrink-0 flex-col gap-[2px] border-t border-line pt-3 pb-1">
+          {NAV.slice(1).map(({ href, label, Icon }) => {
+            const on = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={on ? "page" : undefined}
+                className={cn(railRow, "group/nav font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring", on ? selectedRow : quietRow)}
+              >
+                <Icon className={cn("size-[15px] shrink-0", on ? "text-[var(--brand)]" : "text-t3 group-hover/nav:text-t2")} aria-hidden="true" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
       <Foot onHide={onHide} hideRef={hideRef} hideLabel="Hide sidebar" />
     </aside>
   );
@@ -376,7 +380,7 @@ function RailB({
       )}
       <div className="flex min-h-0 flex-1">
         <nav aria-label="Pages" className="flex w-[64px] shrink-0 flex-col items-center gap-1 border-r border-line pt-3 pb-3">
-          {NAV.map(({ href, label, Icon }) => {
+          {(middle ? [] : NAV).map(({ href, label, Icon }) => {
             const on = pathname === href;
             return (
               <Link

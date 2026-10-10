@@ -535,8 +535,54 @@ function Stream({
   const arrived = kinds.flatMap((k) => take(sources.filter((s) => s.group === k.id), pillsF(chooseP)));
   const stream = step ? streamFor(step, run, handle, checked, arrived) : null;
 
+  const doneB = dir === "b" && !step && choose === "done";
+  const chosen = (k: (typeof kinds)[number]) =>
+    take(
+      sources.filter((s) => s.group === k.id),
+      pillsF(chooseP),
+    ).filter((s) => !removed.has(s.id));
+  const pills = (k: (typeof kinds)[number], list: Source[]) => {
+    const open = list.find((s) => s.id === whyOf);
+    return (
+      <>
+        <ul className="flex flex-wrap gap-1.5">
+          <AnimatePresence initial={false}>
+            {list.map((s) => (
+              <Pill key={s.id} source={s} group={k.id} on={whyOf === s.id} onWhy={() => onWhy(s.id)} onRemove={() => onRemove(s.id)} />
+            ))}
+          </AnimatePresence>
+        </ul>
+        {open?.why ? (
+          <p className="mt-2 text-[13px] leading-[1.5] text-t2">
+            <span className="font-medium text-t1">{open.name}</span> {open.why}
+          </p>
+        ) : null}
+      </>
+    );
+  };
+
   return (
     <LayoutGroup>
+      {doneB ? (
+        // Ready in direction B: the chosen sources as Settings B draws them, the kind heading on the page ground over a
+        // card that holds only the pills; the completed verdicts follow in their own card.
+        <div className="mb-6 flex flex-col gap-6">
+          {kinds.map((k) => {
+            const list = chosen(k);
+            if (!list.length) return null;
+            return (
+              <section key={k.id} aria-label={k.label}>
+                <div className="flex h-8 items-center px-1">
+                  <KindHead dir={dir} group={k.id} label={k.label} />
+                </div>
+                <div className={cn(lift, "mt-3 p-4")} style={liftStyle}>
+                  {pills(k, list)}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      ) : null}
       <div className={cn(lift, "divide-y divide-line")} style={liftStyle}>
         {step && stream ? (
           <section aria-label={oneStepTitle[step]} className="p-5">
@@ -547,7 +593,7 @@ function Stream({
           </section>
         ) : null}
 
-        {choose !== "waiting" ? (
+        {choose !== "waiting" && !doneB ? (
           <section aria-label="Your sources" className="grid gap-4 p-5">
             {kinds.map((k) => {
               const list = take(
