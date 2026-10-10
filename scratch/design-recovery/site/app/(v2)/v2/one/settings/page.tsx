@@ -1,10 +1,6 @@
-import { OneSettings } from "@/v2/one/settings";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Oparax | One: Settings" };
-
-// The page reads ?dir= (the council's two directions) on the client, so it renders on request, like the feed.
-export const dynamic = "force-dynamic";
-
+// There is no Settings page (owner, Oct 10): Sources, Notifications and Account are the pages.
 export default function Page() {
-  return <OneSettings />;
+  redirect("/v2/one/sources");
 }

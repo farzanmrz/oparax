@@ -3,11 +3,11 @@
   "port": 3000,
   "started": "2026-10-10T13:09:31-07:00",
   "pages": [
-    "http://localhost:3000/v2/one/feed?agent=none",
     "http://localhost:3000/v2/one/feed",
-    "http://localhost:3000/v2/one/settings",
+    "http://localhost:3000/v2/one/sources",
     "http://localhost:3000/v2/one/notifications",
-    "http://localhost:3000/v2/rb/app-sidebar-1"
+    "http://localhost:3000/v2/one/account",
+    "http://localhost:3000/v2/one/feed?agent=none"
   ],
-  "note": "The One in two council directions, A and B, switched with the Direction row at the bottom right (?dir=b); the React Bits Pro sidebars at /v2/rb/app-sidebar-1 to 7 for comparison."
+  "note": "The One with the Oct 10 sidebar (Navigation, Feed groups, name foot), the band card everywhere, no Settings page; the Direction row still switches the feed picture size and the onboarding verdicts (A or B)."
 }

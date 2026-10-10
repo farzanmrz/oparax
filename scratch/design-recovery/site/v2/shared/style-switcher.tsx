@@ -4,12 +4,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // Review-only control, one fixed arrangement on every design (owner, Oct 8): the style row (Window, Newsroom,
-// Deck, One), the step toggles (only on the onboarding pages) and the page row (Onboarding, Feed, Settings,
-// Notifications; a page a style does not have is shown disabled), always
+// Deck, One), the step toggles (only on the onboarding pages) and the page row (Onboarding, Feed, Sources,
+// Notifications, Account; a page a style does not have is shown disabled), always
 // at the bottom right, always the same size and order. Nothing here depends on which style is showing.
 
 type Style = "window" | "newsroom" | "deck" | "one";
-type Role = "onboarding" | "feed" | "settings" | "notifications";
+type Role = "onboarding" | "feed" | "sources" | "notifications" | "account";
 type Step = "rest" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "ready";
 
 const STYLES: { key: Style; label: string }[] = [
@@ -21,8 +21,9 @@ const STYLES: { key: Style; label: string }[] = [
 const ROLES: { key: Role; label: string }[] = [
   { key: "onboarding", label: "Onboarding" },
   { key: "feed", label: "Feed" },
-  { key: "settings", label: "Settings" },
+  { key: "sources", label: "Sources" },
   { key: "notifications", label: "Notifications" },
+  { key: "account", label: "Account" },
 ];
 const STEPS: { key: Step; label: string; title: string }[] = [
   { key: "rest", label: "Rest", title: "Before Build" },
@@ -41,8 +42,9 @@ function roleOf(style: Style, page: string, search: URLSearchParams): Role | nul
   if (style === "one") {
     if (page === "onboarding" || (page === "feed" && search.get("agent") === "none")) return "onboarding";
     if (page === "feed" || page === "") return "feed";
-    if (page === "settings" || page === "sources") return "settings";
+    if (page === "settings" || page === "sources") return "sources";
     if (page === "notifications") return "notifications";
+    if (page === "account") return "account";
     return null;
   }
   if (page === "setup" || page === "building" || page === "ready") return "onboarding";
@@ -97,8 +99,9 @@ export function StyleSwitcher() {
   /** The one address of a review page in a style, or null when that style has no such page. */
   const hrefFor = (style: Style, r: Role, s: Step | null = null): string | null => {
     if (r === "feed") return withQuery(`/v2/${style}/feed`);
-    if (r === "settings") return style === "one" ? withQuery("/v2/one/settings") : null;
+    if (r === "sources") return style === "one" ? withQuery("/v2/one/sources") : null;
     if (r === "notifications") return style === "one" ? withQuery("/v2/one/notifications") : null;
+    if (r === "account") return style === "one" ? withQuery("/v2/one/account") : null;
     const at = s === "ready" ? "done" : s && s !== "rest" ? s : null;
     if (style === "one") return withQuery("/v2/one/feed", { agent: "none", ...(at ? { at } : {}) });
     if (s === "rest") return withQuery(`/v2/${style}/setup`);

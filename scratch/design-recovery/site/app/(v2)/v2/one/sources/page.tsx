@@ -1,6 +1,10 @@
-import { redirect } from "next/navigation";
+import { OneSources } from "@/v2/one/settings";
 
-// Sources are managed on the Settings page.
+export const metadata = { title: "Oparax | One: Sources" };
+
+// The page reads ?dir= on the client through the shell, so it renders on request.
+export const dynamic = "force-dynamic";
+
 export default function Page() {
-  redirect("/v2/one/settings");
+  return <OneSources />;
 }

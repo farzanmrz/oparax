@@ -43,7 +43,8 @@ import { beat, groups, HANDLE, hostOf, sources, type Group, type Source } from "
 import { EASE } from "@/v2/deck/live";
 import { GroupGlyph, SiteIcon, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { AppShell, hue, RailMark, railRow } from "./shell";
+import { AppShell, hue, RailMark, railRow, title } from "./shell";
+import { BandCard } from "./card-band";
 import { useDirection, type Dir } from "./direction";
 
 // One onboarding, which the feed holds (owner, Oct 5: "The feed itself will have the onboarding if the feed has not
@@ -209,7 +210,7 @@ export function OneOnboarding({
           </div>
           {done ? (
             <PrimaryLink href={`${BASE}/feed`} className="ml-auto h-10 shrink-0 px-4 text-[13.5px]">
-              Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
+              Open Your Feed <ArrowRight className="size-3.5" aria-hidden="true" />
             </PrimaryLink>
           ) : null}
         </div>
@@ -258,7 +259,7 @@ export function OneOnboarding({
                   />
                   <button type="submit" className={cn(primary, "h-10 shrink-0")}>
                     <Sparkles className="size-3.5" aria-hidden="true" />
-                    {setup.submit}
+                    {title(setup.submit)}
                   </button>
                 </div>
                 {message ? (
@@ -417,7 +418,7 @@ function StreamLog({ lines, running, failed }: { lines: StreamLine[]; running: b
       {lines.map((l, i) => (
         <li key={l.key} className={cn("py-0.5", failed ? "text-[var(--error)]" : "text-t2")}>
           {l.name ? <span className="font-medium text-t1">{l.name}</span> : null}
-          {l.band ? <span className={cn("ml-2 font-medium", bandTone[l.band])}>{bandLabel[l.band]}</span> : null}
+          {l.band ? <span className={cn("ml-2 font-medium", bandTone[l.band])}>{title(bandLabel[l.band])}</span> : null}
           {l.name ? (l.text ? <span className="ml-2 text-t3">{l.text}</span> : null) : l.text}
           {running && i === lines.length - 1 ? (
             <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" />
@@ -667,7 +668,7 @@ function KindHead({ dir, group, label, count }: { dir: Dir; group: Group; label:
       )}
     >
       <GroupGlyph group={group} className={cn("size-4 shrink-0", hue[group])} />
-      {label}
+      {title(label)}
       {count !== undefined ? <span className="font-mono text-[11px] font-normal tabular-nums text-t3">{count}</span> : null}
     </p>
   );
@@ -723,7 +724,7 @@ function Verdicts({ dir, checked, done }: { dir: Dir; checked: Candidate[]; done
                         <span className="font-medium">{c.name}</span>
                         {band !== "set-aside" && reason ? <span className="ml-2 text-t2">{reason}</span> : null}
                       </span>
-                      <span className={cn("shrink-0 text-[11.5px] font-medium", bandTone[band])}>{bandLabel[band]}</span>
+                      <span className={cn("shrink-0 text-[11.5px] font-medium", bandTone[band])}>{title(bandLabel[band])}</span>
                     </motion.li>
                   );
                 })}
@@ -741,9 +742,9 @@ function Verdicts({ dir, checked, done }: { dir: Dir; checked: Candidate[]; done
   return (
     <>
       {strong.length ? (
-        <motion.section layout="position" aria-label={bandLabel.strong} className="p-5">
+        <motion.section layout="position" aria-label={title(bandLabel.strong)} className="p-5">
           <p className="flex items-baseline gap-2">
-            <span className={cn("text-[15px] font-semibold", bandTone.strong)}>{bandLabel.strong}</span>
+            <span className={cn("text-[15px] font-semibold", bandTone.strong)}>{title(bandLabel.strong)}</span>
             <span className="text-[12.5px] tabular-nums text-t3">{strong.length}</span>
           </p>
           <ul className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -760,9 +761,9 @@ function Verdicts({ dir, checked, done }: { dir: Dir; checked: Candidate[]; done
         </motion.section>
       ) : null}
       {possible.length ? (
-        <motion.section layout="position" aria-label={bandLabel.possible} className="p-5">
+        <motion.section layout="position" aria-label={title(bandLabel.possible)} className="p-5">
           <p className="flex items-baseline gap-2">
-            <span className={cn("text-[15px] font-semibold", bandTone.possible)}>{bandLabel.possible}</span>
+            <span className={cn("text-[15px] font-semibold", bandTone.possible)}>{title(bandLabel.possible)}</span>
             <span className="text-[12.5px] tabular-nums text-t3">{possible.length}</span>
           </p>
           <ul className="mt-2 flex flex-col">
@@ -780,9 +781,9 @@ function Verdicts({ dir, checked, done }: { dir: Dir; checked: Candidate[]; done
         </motion.section>
       ) : null}
       {aside.length ? (
-        <motion.section layout="position" aria-label={bandLabel["set-aside"]} className="p-5">
+        <motion.section layout="position" aria-label={title(bandLabel["set-aside"])} className="p-5">
           <p className="text-[13px] leading-[1.6] text-t3">
-            <span className="font-semibold">{bandLabel["set-aside"]}</span>
+            <span className="font-semibold">{title(bandLabel["set-aside"])}</span>
             <span className="ml-2 tabular-nums">{done ? setAsideCount : aside.length}</span>
             <span className="ml-3">{aside.map((c) => c.name).join(", ")}</span>
             {hidden > 0 ? <span>, and {hidden} more</span> : null}
@@ -893,20 +894,13 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
 
   return (
     <div className="grid gap-5">
-      <section
-        aria-label="Your profile"
-        className={cn(lift, "p-4")}
+      <BandCard
+        glyph={<XAvatar handle={HANDLE} size={24} />}
+        heading={profile.name}
+        action={<span className="text-[13px] text-t3">{profile.handle}</span>}
         style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
       >
-        <div className="flex items-center gap-3">
-          <XAvatar handle={HANDLE} size={40} />
-          <div className="min-w-0">
-            <p className="truncate text-[15px] leading-tight font-semibold text-t1">{profile.name}</p>
-            <p className="mt-0.5 truncate text-[13px] leading-tight text-t3">{profile.handle}</p>
-          </div>
-        </div>
-        <p className="mt-3 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
-
+        <p className="text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
         {chooseState !== "waiting" ? (
           <div className="mt-4 border-t border-line pt-4">
             <p className="text-[13px] font-semibold text-t1">Brief</p>
@@ -924,38 +918,30 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
             ) : null}
           </div>
         ) : null}
-      </section>
+      </BandCard>
 
       {postsState !== "waiting" ? (
-        <div>
-          <p className="mb-2.5 text-[13px] font-semibold text-t1">
-            {postsState === "running" ? (
-              <Shimmer
-                as="span"
-                duration={1.8}
-                className="font-semibold [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]"
-              >
-                Your newest posts
+        <BandCard
+          glyph={<XLogo className="size-3.5 shrink-0 text-t1" />}
+          heading={
+            postsState === "running" ? (
+              <Shimmer as="span" duration={1.8} className="font-semibold [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
+                Your Newest Posts
               </Shimmer>
             ) : (
-              "Your newest posts"
-            )}
-          </p>
-          <ul className="grid gap-2.5">
+              "Your Newest Posts"
+            )
+          }
+          bodyClassName="px-4 py-2"
+        >
+          <ul className="divide-y divide-line">
             {shownPosts.map((p) => (
-              <motion.li
-                key={p.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                className={cn(lift, "p-3")}
-                style={liftStyle}
-              >
+              <motion.li key={p.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE }} className="py-3">
                 <PostBody post={p} />
               </motion.li>
             ))}
           </ul>
-        </div>
+        </BandCard>
       ) : null}
     </div>
   );
