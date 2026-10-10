@@ -4,11 +4,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // Review-only control, one fixed arrangement on every design (owner, Oct 8): the style row (Window, Newsroom,
-// Deck, One), the step toggles (only on the onboarding pages) and the page row (Onboarding, Feed, Settings), always
+// Deck, One), the step toggles (only on the onboarding pages) and the page row (Onboarding, Feed, Settings,
+// Notifications; a page a style does not have is shown disabled), always
 // at the bottom right, always the same size and order. Nothing here depends on which style is showing.
 
 type Style = "window" | "newsroom" | "deck" | "one";
-type Role = "onboarding" | "feed" | "settings";
+type Role = "onboarding" | "feed" | "settings" | "notifications";
 type Step = "rest" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "ready";
 
 const STYLES: { key: Style; label: string }[] = [
@@ -21,6 +22,7 @@ const ROLES: { key: Role; label: string }[] = [
   { key: "onboarding", label: "Onboarding" },
   { key: "feed", label: "Feed" },
   { key: "settings", label: "Settings" },
+  { key: "notifications", label: "Notifications" },
 ];
 const STEPS: { key: Step; label: string; title: string }[] = [
   { key: "rest", label: "Rest", title: "Before Build" },
@@ -39,7 +41,8 @@ function roleOf(style: Style, page: string, search: URLSearchParams): Role | nul
   if (style === "one") {
     if (page === "onboarding" || (page === "feed" && search.get("agent") === "none")) return "onboarding";
     if (page === "feed" || page === "") return "feed";
-    if (page === "settings" || page === "sources" || page === "notifications") return "settings";
+    if (page === "settings" || page === "sources") return "settings";
+    if (page === "notifications") return "notifications";
     return null;
   }
   if (page === "setup" || page === "building" || page === "ready") return "onboarding";
@@ -95,6 +98,7 @@ export function StyleSwitcher() {
   const hrefFor = (style: Style, r: Role, s: Step | null = null): string | null => {
     if (r === "feed") return withQuery(`/v2/${style}/feed`);
     if (r === "settings") return style === "one" ? withQuery("/v2/one/settings") : null;
+    if (r === "notifications") return style === "one" ? withQuery("/v2/one/notifications") : null;
     const at = s === "ready" ? "done" : s && s !== "rest" ? s : null;
     if (style === "one") return withQuery("/v2/one/feed", { agent: "none", ...(at ? { at } : {}) });
     if (s === "rest") return withQuery(`/v2/${style}/setup`);
@@ -200,7 +204,7 @@ export function StyleSwitcher() {
           const active = r.key === role;
           if (!href) {
             return (
-              <span key={r.key} aria-disabled="true" title="No settings page in this style" style={{ ...pill(false), ...off }}>
+              <span key={r.key} aria-disabled="true" title={`No ${r.label.toLowerCase()} page in this style`} style={{ ...pill(false), ...off }}>
                 {r.label}
               </span>
             );

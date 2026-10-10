@@ -9,7 +9,7 @@ import { lift, liftStyle } from "@/v2/deck/chrome";
 import { groups, HANDLE, sources as initialSources, type Group, type Source } from "@/v2/deck/data";
 import { GroupGlyph, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine } from "./shell";
+import { ACCOUNT_EMAIL as EMAIL, AppShell, hue, PageLine } from "./shell";
 
 // The Settings page: sources management and the account (council on the One's chrome, Oct 8: Twitter DMs, the
 // alert hour and the digests moved to the Notifications page; the free week meter, the theme and Sign out live in
@@ -39,9 +39,7 @@ export function OneSettings() {
             return (
               <section key={g.id} aria-label={g.label} className="px-3 pt-3.5 pb-2.5">
                 <div className="flex items-center gap-2.5 px-2">
-                  <span className="grid size-5 place-items-center text-t3">
-                    <GroupGlyph group={g.id} className="size-3.5" />
-                  </span>
+                  <GroupGlyph group={g.id} className={cn("size-3.5 shrink-0", hue[g.id])} />
                   <h2 className="text-[15px] font-semibold text-t1">{g.label}</h2>
                   <button
                     type="button"

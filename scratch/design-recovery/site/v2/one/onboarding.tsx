@@ -30,10 +30,8 @@ import {
   postsRead,
   profile,
   setAsideCount,
-  sourceTable,
   type Band,
   type Candidate,
-  type TableRow,
 } from "@/next/data/onboarding";
 import { setup } from "@/next/copy";
 import { Shimmer } from "@/components/ai-elements/shimmer";
@@ -44,22 +42,19 @@ import { beat, groups, HANDLE, hostOf, sources, type Group, type Source } from "
 import { EASE } from "@/v2/deck/live";
 import { GroupGlyph, SiteIcon, SourceMark, XAvatar } from "@/v2/deck/marks";
 import { BASE } from "./card";
-import { AppShell, RailMark, railRow } from "./shell";
+import { AppShell, hue, RailMark, railRow } from "./shell";
 
 // One onboarding, which the feed holds (owner, Oct 5: "The feed itself will have the onboarding if the feed has not
-// been constructed"): /v2/one/feed?agent=none, in the page's one column. At rest it is the run's page with nothing
-// looked up yet. The page line: "Set up your agent", then the Twitter handle, the sentence and Build my agent on one line
-// (no card). The seven steps of the real engine stand in the shell's rail, in its middle where the sources go, each
-// ONE line in the rail's 32px row with its status mark in the icon slot, through rest, the run and ready; the kept
-// sources take their place only once the person opens Feed. The current step's line (its live count while it runs,
-// the result once the run is done) is one quiet sentence under the page line. Under it the centre holds the shared
-// source table every
-// run starts from. The right column does not exist until step 1 finds the person; then it opens (300ms) with ONE identity block (picture,
-// name beside it, handle under, About, Brief) and the newest posts under it, and the centre narrows. Once the run
-// gathers, the centre ACCUMULATES top to bottom and never removes a block: the candidates gathered, Jev's verdict
-// for each (the band word, never the number) and the three bands, the chosen sources as removable pills, the search
-// line, the save line. The replay runs 48 seconds (next/building/steps.ts) and can be paused and replayed;
-// ?at=1..7 and ?at=done freeze it.
+// been constructed"): /v2/one/feed?agent=none, in the page's one column (council, Oct 9, items g, h and i). Before
+// Build the title "Set up your agent" stands alone on its line and the centre is one lifted card: the Twitter handle,
+// the sentence and Build my agent, nothing else. The rail holds the Oparax head, the seven steps under the product's
+// full names (next/building/steps.ts) and the foot; no Feed, Settings or Notifications before the agent is saved.
+// Build happens in place: the same card becomes the run, titled with the running step, that step's lines streaming in
+// under it, then its work: the chosen sources as removable pills, the Strong match, Possible match and Set aside
+// groups, and the candidates still waiting to be checked. The right column opens once step 1 finds the person: the
+// brief at its top once written, the picture with the name beside it and the handle under, About, then the newest
+// posts. At Ready the title is "Your agent is ready" with Open your feed, and the card holds the chosen sources first,
+// then the three completed groups. The replay runs 48 seconds; ?at=1..7 and ?at=done freeze it.
 
 const take = <T,>(list: T[], f: number) => list.slice(0, Math.ceil(f * list.length));
 const day = (iso: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
@@ -175,7 +170,6 @@ export function OneOnboarding({
   const shownHandle = handle.trim() || HANDLE;
   // The right column exists only once step 1 has found the person.
   const found = started && st("profile") === "done";
-  const gathering = started && st("gather") !== "waiting";
 
   const replay = () => {
     setLive(true);
@@ -193,38 +187,10 @@ export function OneOnboarding({
     replay();
   };
 
-  // The current step's one line on the page: the running (or failed) step's live line, the save line once ready.
-  const current = run.states.findIndex((s) => s === "running" || s === "failed");
-  const note = !started ? null : current >= 0 ? stepLineFor(oneStepIds[current], run, started, shownHandle) : done ? oneStepLine.save : null;
-
-  const controls = started ? (
-    <div className="flex items-center gap-x-4 px-4 pt-2">
-      <button
-        type="button"
-        disabled={!live || done}
-        onClick={clock.playing ? clock.pause : clock.resume}
-        className={quietButton}
-      >
-        {live && !clock.playing && !done ? "Resume" : "Pause"}
-      </button>
-      <button type="button" onClick={replay} className={quietButton}>
-        Replay
-      </button>
-    </div>
-  ) : null;
-
   return (
-    <AppShell middle={<Timeline run={run} started={started} controls={controls} />}>
+    <AppShell middle={<Timeline run={run} started={started} />}>
       <MotionConfig reducedMotion="user">
-        <form
-          noValidate
-          aria-label="Set up your agent"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-          className="flex min-h-12 items-center gap-6"
-        >
+        <div className="flex min-h-12 items-center gap-6">
           <div aria-live="polite" className="flex shrink-0 items-center gap-3">
             <RailMark />
             <motion.h1
@@ -237,107 +203,85 @@ export function OneOnboarding({
               {heading}
             </motion.h1>
           </div>
-          <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-3">
+          {done ? (
+            <PrimaryLink href={`${BASE}/feed`} className="ml-auto h-10 shrink-0 px-4 text-[13.5px]">
+              Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
+            </PrimaryLink>
+          ) : null}
+        </div>
+
+        <div className="mt-6 flex min-w-0 items-start">
+          <section aria-label={started ? "Your run" : "Set up your agent"} className="min-w-0 flex-1">
+            <p className="sr-only" aria-live="polite">
+              {oneAnnounce(run)}
+            </p>
             {started ? (
-              <span
-                className="inline-flex h-10 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13px] font-medium text-t1"
-                style={{ boxShadow: "var(--top-light)" }}
-              >
-                <XLogo className="size-3 text-t1" />@{shownHandle}
-                <span className="sr-only">, your Twitter account</span>
-              </span>
-            ) : (
-              <SetupLine
-                handle={handle}
-                text={text}
-                handleError={handleError}
-                error={error}
-                message={message}
-                onHandle={(v) => {
-                  setHandle(v.replace(/^@/, ""));
-                  if (v.trim()) setHandleError(false);
-                }}
-                onText={(v) => {
-                  setText(v);
-                  if (v.trim()) setError(false);
-                }}
+              <Stream
+                run={run}
+                handle={shownHandle}
+                removed={removed}
+                onRemove={(id) => setRemoved((prev) => new Set(prev).add(id))}
+                whyOf={whyOf}
+                onWhy={(id) => setWhyOf((cur) => (cur === id ? null : id))}
               />
-            )}
-            {done ? (
-              <PrimaryLink href={`${BASE}/feed`} className="h-10 shrink-0 px-4 text-[13.5px]">
-                Open your feed <ArrowRight className="size-3.5" aria-hidden="true" />
-              </PrimaryLink>
             ) : (
-              <button
-                type="submit"
-                disabled={started}
-                aria-disabled={started}
-                className={cn(
-                  primary,
-                  "h-10 shrink-0",
-                  started && "cursor-not-allowed opacity-55 hover:brightness-100",
-                )}
+              <form
+                noValidate
+                aria-label="Set up your agent"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submit();
+                }}
+                className={cn(lift, "p-5")}
+                style={liftStyle}
               >
-                <Sparkles className="size-3.5" aria-hidden="true" />
-                {setup.submit}
-              </button>
+                <div className="flex items-center gap-3">
+                  <SetupLine
+                    handle={handle}
+                    text={text}
+                    handleError={handleError}
+                    error={error}
+                    message={message}
+                    onHandle={(v) => {
+                      setHandle(v.replace(/^@/, ""));
+                      if (v.trim()) setHandleError(false);
+                    }}
+                    onText={(v) => {
+                      setText(v);
+                      if (v.trim()) setError(false);
+                    }}
+                  />
+                  <button type="submit" className={cn(primary, "h-10 shrink-0")}>
+                    <Sparkles className="size-3.5" aria-hidden="true" />
+                    {setup.submit}
+                  </button>
+                </div>
+                {message ? (
+                  <p id="setup-error" role="alert" className="mt-2 text-[12.5px] text-[var(--error)]">
+                    {message}
+                  </p>
+                ) : null}
+              </form>
             )}
-          </div>
-        </form>
-        {started ? (
-          <p className={cn("mt-1 min-h-5 text-[13px] leading-5", run.states.includes("failed") ? "text-[var(--error)]" : "text-t3")}>{note}</p>
-        ) : null}
-        {message && !started ? (
-          <p
-            id="setup-error"
-            role="alert"
-            className="mt-2 text-right text-[12.5px] text-[var(--error)]"
-          >
-            {message}
-          </p>
-        ) : null}
+          </section>
 
-        <div className="mt-6">
-          <div className="flex min-w-0 items-start">
-            <section
-              aria-label={gathering ? "Your run" : "The shared source table"}
-              className="min-w-0 flex-1"
-            >
-              <p className="sr-only" aria-live="polite">
-                {oneAnnounce(run)}
-              </p>
-              {gathering ? (
-                <Stream
-                  run={run}
-                  removed={removed}
-                  onRemove={(id) => setRemoved((prev) => new Set(prev).add(id))}
-                  follow={live && clock.playing}
-                  whyOf={whyOf}
-                  onWhy={(id) => setWhyOf((cur) => (cur === id ? null : id))}
-                />
-              ) : (
-                <SourceTable />
-              )}
-            </section>
-
-            <AnimatePresence initial={false}>
-              {found ? (
-                <motion.aside
-                  key="you"
-                  aria-label="You"
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 364, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
-                  className="shrink-0 overflow-hidden"
-                >
-                  <div className="w-[364px] pl-6">
-                    <You run={run} sentence={sentence} />
-                  </div>
-                </motion.aside>
-              ) : null}
-            </AnimatePresence>
-          </div>
+          <AnimatePresence initial={false}>
+            {found ? (
+              <motion.aside
+                key="you"
+                aria-label="You"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 364, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
+                className="shrink-0 overflow-hidden"
+              >
+                <div className="w-[364px] pl-6">
+                  <You run={run} sentence={sentence} />
+                </div>
+              </motion.aside>
+            ) : null}
+          </AnimatePresence>
         </div>
       </MotionConfig>
     </AppShell>
@@ -347,11 +291,9 @@ const field =
   "flex items-center gap-2 rounded-md border border-line-strong bg-[var(--well)] px-3 transition-shadow focus-within:border-[var(--brand)] focus-within:shadow-[0_0_0_3px_var(--brand-soft)]";
 const primary =
   "inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-[13.5px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_0_0_1px_rgb(36_89_232/0.6),0_6px_18px_-6px_rgb(58_108_244/0.6)] transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
-const quietButton =
-  "rounded-sm text-[12.5px] text-t3 underline decoration-line-strong underline-offset-4 transition-colors hover:text-t1 hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50";
 
-/** The setup on the page line, no card: the Twitter handle (220px, @ and the X mark inside), the sentence (one line,
- * flexible, the counter inside). Build my agent follows at the line's right end. */
+/** The setup inside the card: the Twitter handle (220px, @ and the X mark inside), the sentence (one line, flexible,
+ * the counter inside). Build my agent follows at the line's right end. */
 function SetupLine({
   handle,
   text,
@@ -412,59 +354,6 @@ function SetupLine({
   );
 }
 
-const tableKinds: { kind: TableRow["kind"]; group: Group; label: string }[] = [
-  { kind: "x_account", group: "x", label: "Twitter accounts" },
-  { kind: "rss", group: "rss", label: "RSS feeds" },
-  { kind: "website", group: "website", label: "Websites" },
-];
-const addressOf = (url: string) => url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
-
-/** The centre before the run gathers: the shared source table the run starts from (docs/source-table-seed.json),
- * one lifted panel, grouped by kind under plain 13px labels, one line per row (logo, name, handle or address). The
- * table holds no GitHub rows, so no GitHub group is drawn. */
-function SourceTable() {
-  return (
-    <div className={cn(lift, "divide-y divide-line")} style={liftStyle}>
-      <p className="px-5 py-3.5 text-[13px] text-t3">
-        Every agent starts from these; your run scores them for your beat.
-      </p>
-      {tableKinds.map(({ kind, group, label }) => {
-        const rows = sourceTable.filter((r) => r.kind === kind);
-        return (
-          <section key={kind} aria-label={label} className="px-3 pt-3.5 pb-3">
-            <p className="flex items-center gap-2 px-2 text-[13px] font-semibold text-t1">
-              <span className="grid size-[18px] place-items-center text-t3">
-                <GroupGlyph group={group} className="size-3.5" />
-              </span>
-              {label}
-            </p>
-            <ul className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-x-2">
-              {rows.map((r) => {
-                const isX = kind === "x_account";
-                const handle = isX
-                  ? `@${r.target.replace("https://x.com/", "")}`
-                  : addressOf(r.target);
-                return (
-                  <li key={r.id} className="flex h-8 min-w-0 items-center gap-2.5 rounded-md px-2">
-                    {isX ? (
-                      <XAvatar handle={handle} size={18} />
-                    ) : (
-                      <SiteIcon host={hostOf(r.target)} size={18} className="rounded-[5px]" />
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-[13px]">
-                      <span className="font-medium text-t1">{r.name}</span>
-                      <span className="ml-1.5 text-[12px] text-t3">{handle}</span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
 /** What a step is doing while it runs: the live count from the recorded run, never a timer's invention. */
 function runningLine(id: OneStepId, run: Run, handle: string) {
   const p = run.progress[idx(id)];
@@ -490,18 +379,23 @@ function runningLine(id: OneStepId, run: Run, handle: string) {
 const pillsF = (p: number) => Math.min(1, p / 0.8);
 const briefF = (p: number) => Math.max(0, Math.min(1, (p - 0.15) / 0.85));
 
-function stepLineFor(id: OneStepId, run: Run, started: boolean, handle: string) {
+/** The running step's lines as they stream in: what the step does arrives word by word over the first 40 percent of
+ * the step, then its live line from the recorded run. A skipped or failed step shows its result line whole. */
+function streamFor(id: OneStepId, run: Run, handle: string) {
   const state = run.states[idx(id)];
-  if (!started || state === "waiting") return oneStepDoes[id];
-  if (state === "failed") return "The Twitter timeline did not answer.";
-  return state === "done" || state === "skipped" ? oneStepLine[id] : runningLine(id, run, handle);
+  if (state === "failed") return { text: `${oneStepDoes[id]} The Twitter timeline did not answer.`, typing: false };
+  if (state === "skipped") return { text: `${oneStepDoes[id]} ${oneStepLine[id]}`, typing: false };
+  const p = run.progress[idx(id)];
+  const words = oneStepDoes[id].split(" ");
+  const shown = Math.min(words.length, Math.ceil((p / 0.4) * words.length));
+  const does = words.slice(0, Math.max(1, shown)).join(" ");
+  return { text: shown >= words.length ? `${does} ${runningLine(id, run, handle)}` : does, typing: true };
 }
 
-/** The seven steps in the rail's middle, each ONE line in the rail's row (the same 32px row as Feed, Settings and
- * Notifications): the status mark in the icon slot (an empty ring while waiting, the --ok check once done, the
- * --caution ring and the --raised fill on the current step, --error when it failed) and the step's name. The step's
- * line is on the page. Pause and Replay sit under the list once the run has started. */
-function Timeline({ run, started, controls }: { run: Run; started: boolean; controls: React.ReactNode }) {
+/** The seven steps alone in the rail's middle, each in the rail's row (32px for one line; a long name wraps to a
+ * second line): the status mark in the icon slot (an empty ring while waiting, the --ok check once done, the
+ * --caution ring and the --raised fill on the current step, --error when it failed) and the step's full name. */
+function Timeline({ run, started }: { run: Run; started: boolean }) {
   return (
     <section aria-label="Steps" className="pb-3">
       <ol className="flex flex-col gap-[2px]">
@@ -512,42 +406,34 @@ function Timeline({ run, started, controls }: { run: Run; started: boolean; cont
             <li
               key={id}
               id={`step-${id}`}
-              title={oneStepTitle[id]}
-              className={cn(railRow, (state === "running" || state === "failed") && "bg-raised")}
+              className={cn(railRow, "h-auto min-h-8 items-start py-[7px] leading-[18px]", (state === "running" || state === "failed") && "bg-raised")}
             >
-              <span className="grid size-[15px] shrink-0 place-items-center">{waiting ? <EmptyRing /> : <StepMark state={state} size={15} />}</span>
+              <span className="grid h-[18px] w-[15px] shrink-0 place-items-center">{waiting ? <EmptyRing /> : <StepMark state={state} size={15} />}</span>
               <StepName id={id} state={state} started={started} />
             </li>
           );
         })}
       </ol>
-      {controls}
     </section>
   );
 }
 
-/** The rail's name for a step: the step's own title, shortened only where it cannot fit one line of the 240px rail
- * (the full title stays in the row's title and for screen readers). */
-const railName: Partial<Record<OneStepId, string>> = { choose: "Choose sources, write brief", search: "Search for more accounts" };
-
+/** The rail's name for a step: the product's own title, in full. */
 function StepName({ id, state, started }: { id: OneStepId; state: Run["states"][number]; started: boolean }) {
   return (
     <span
       className={cn(
-        "min-w-0 flex-1 truncate",
+        "min-w-0 flex-1",
         !started || state === "waiting" ? "text-t3" : state === "running" ? "font-medium text-t1" : state === "failed" ? "text-[var(--error)]" : "text-t2",
       )}
     >
-      <span aria-hidden={railName[id] ? true : undefined}>
-        {state === "running" ? (
-          <Shimmer as="span" duration={1.8} className="font-medium [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
-            {railName[id] ?? oneStepTitle[id]}
-          </Shimmer>
-        ) : (
-          (railName[id] ?? oneStepTitle[id])
-        )}
-      </span>
-      {railName[id] ? <span className="sr-only">{oneStepTitle[id]}</span> : null}
+      {state === "running" ? (
+        <Shimmer as="span" duration={1.8} className="font-medium [--color-background:var(--t1)] [--color-muted-foreground:var(--t3)]">
+          {oneStepTitle[id]}
+        </Shimmer>
+      ) : (
+        oneStepTitle[id]
+      )}
     </span>
   );
 }
@@ -576,18 +462,21 @@ function Label({ running, children, className }: { running?: boolean; children: 
   );
 }
 
-/** The centre once the run starts. It ACCUMULATES top to bottom and nothing is removed when a later step starts:
- * the candidates gathered, Jev's verdicts and the three bands, the chosen sources, the search line, the save line. */
+/** The run, in place of the setup card: ONE lifted card in sections divided by hairlines. While the run is on, the
+ * first section is the running step's full name (shimmering) with its lines streaming in under it. Then the step's
+ * work, sources first: the chosen sources as removable pills under their kind, the Strong match, Possible match and
+ * Set aside groups as Jev places each candidate (the band word, never the number), and the candidates gathered and
+ * not yet checked. At Ready the step section is gone: the chosen sources, then the three completed groups. */
 function Stream({
   run,
+  handle,
   removed,
   onRemove,
   whyOf,
   onWhy,
-  follow,
 }: {
-  follow: boolean;
   run: Run;
+  handle: string;
   removed: Set<string>;
   onRemove: (id: string) => void;
   whyOf: string | null;
@@ -596,8 +485,6 @@ function Stream({
   const gather = run.states[idx("gather")];
   const jev = run.states[idx("jev")];
   const choose = run.states[idx("choose")];
-  const search = run.states[idx("search")];
-  const save = run.states[idx("save")];
   const gatherF = gather === "done" ? 1 : gather === "running" ? run.progress[idx("gather")] : 0;
   const jevF = jev === "done" ? 1 : jev === "running" ? run.progress[idx("jev")] : 0;
   const chooseP = choose === "done" ? 1 : choose === "running" ? run.progress[idx("choose")] : 0;
@@ -605,160 +492,92 @@ function Stream({
   const checkedN = jev === "waiting" ? 0 : Math.ceil(jevF * order.length);
   const checked = order.slice(0, checkedN);
   const pile = gathered.slice(checkedN);
-  const count = Math.round(gatherF * candidateCount);
-
-  // While the replay runs, when the sources start arriving, bring them into view: the bands above are tall, and the newest work is what
-  // the person is watching. The blocks above stay where they are, a scroll up away.
-  const reduce = useReducedMotion();
-  const choosing = choose !== "waiting";
-  useEffect(() => {
-    if (choosing && follow) document.getElementById("block-choose")?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
-  }, [choosing, follow, reduce]);
+  const current = run.states.findIndex((s) => s === "running" || s === "failed");
+  const step = current >= 0 ? oneStepIds[current] : null;
+  const stream = step ? streamFor(step, run, handle) : null;
 
   return (
     <LayoutGroup>
-      <div className="grid gap-5">
-        <section aria-label="Gathering candidates">
-          <div className="flex items-baseline gap-3">
-            <Label running={gather === "running"}>Gathering candidates</Label>
-            <span className="text-[22px] leading-none font-semibold tabular-nums text-t1">{count}</span>
-            <span className="text-[12.5px] text-t3">from the source list and the accounts you quoted</span>
-          </div>
-          {pile.length ? (
-            <ul className="mt-3 flex flex-wrap gap-1.5">
-              {pile.map((c) => (
-                <Chip key={c.id} c={c} />
-              ))}
-            </ul>
-          ) : null}
-        </section>
-
-        {jev !== "waiting" ? (
-          <section aria-label="Jev scores every candidate">
-            <div className="flex items-center gap-4">
-              <Label running={jev === "running"}>Jev scores every candidate</Label>
-              <p className="flex items-center gap-2.5 text-[12.5px] tabular-nums text-t2">
-                Checked {Math.round(jevF * candidateCount)} of {candidateCount}
-                <span className="block h-1.5 w-40 rounded-full bg-line-strong" aria-hidden="true">
-                  <span className="block h-full rounded-full bg-[var(--caution)]" style={{ width: `${jevF * 100}%` }} />
-                </span>
-              </p>
-            </div>
-            <VerdictLog list={checked} done={jev === "done"} />
-            {checkedN > 0 ? (
-              <div className="mt-5 grid gap-5">
-                {bandOrder.map((band) => {
-                  const list = checked.filter((c) => bandOf(c.score) === band);
-                  if (!list.length) return null;
-                  const total = jev === "done" ? (band === "set-aside" ? setAsideCount : kept.filter((c) => bandOf(c.score) === band).length) : list.length;
-                  const hidden = band === "set-aside" && jev === "done" ? setAsideCount - droppedSample.length : 0;
-                  return (
-                    <motion.section key={band} layout="position" className={cn(lift, "p-4")} style={liftStyle}>
-                        <p className="flex items-baseline gap-2">
-                          <span className={cn("text-[13.5px] font-semibold", bandTone[band])}>{bandLabel[band]}</span>
-                          <span className="text-[12.5px] tabular-nums text-t3">{total}</span>
-                        </p>
-                        <ul className="mt-2.5 flex flex-wrap gap-1.5">
-                          {list.map((c) => (
-                            <Chip key={c.id} c={c} dim={band === "set-aside"} />
-                          ))}
-                          {hidden > 0 ? (
-                            <li className="flex h-8 items-center rounded-full border border-dashed border-line px-3 text-[12.5px] tabular-nums text-t3">{hidden} more</li>
-                          ) : null}
-                        </ul>
-                    </motion.section>
-                  );
-                })}
-              </div>
-            ) : null}
+      <div className={cn(lift, "divide-y divide-line")} style={liftStyle}>
+        {step && stream ? (
+          <section aria-label={oneStepTitle[step]} className="p-5">
+            <Label running={run.states[current] === "running"} className="text-[15px]">
+              {oneStepTitle[step]}
+            </Label>
+            <p className={cn("mt-2 text-[13.5px] leading-[1.55]", run.states[current] === "failed" ? "text-[var(--error)]" : "text-t2")}>
+              {stream.text}
+              {stream.typing ? <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" /> : null}
+            </p>
           </section>
         ) : null}
 
         {choose !== "waiting" ? (
-          <section id="block-choose" aria-label="Choose sources and write the brief" className="scroll-mt-6">
-            <Label running={choose === "running"}>{oneStepTitle.choose}</Label>
-            <div className="mt-3 grid gap-4">
-              {kinds.map((k) => {
-                const list = take(
-                  sources.filter((s) => s.group === k.id),
-                  pillsF(chooseP),
-                ).filter((s) => !removed.has(s.id));
-                if (!list.length) return null;
-                const open = list.find((s) => s.id === whyOf);
-                return (
-                  <div key={k.id} role="group" aria-label={k.label}>
-                    <p className="flex items-center gap-2 text-[13px] font-semibold text-t1">
-                      <span className="grid size-[18px] place-items-center text-t3">
-                        <GroupGlyph group={k.id} className="size-3.5" />
-                      </span>
-                      {k.label}
+          <section aria-label="Your sources" className="grid gap-4 p-5">
+            {kinds.map((k) => {
+              const list = take(
+                sources.filter((s) => s.group === k.id),
+                pillsF(chooseP),
+              ).filter((s) => !removed.has(s.id));
+              if (!list.length) return null;
+              const open = list.find((s) => s.id === whyOf);
+              return (
+                <div key={k.id} role="group" aria-label={k.label}>
+                  <p className="flex items-center gap-2 text-[13px] font-semibold text-t1">
+                    <GroupGlyph group={k.id} className={cn("size-3.5 shrink-0", hue[k.id])} />
+                    {k.label}
+                  </p>
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    <AnimatePresence initial={false}>
+                      {list.map((s) => (
+                        <Pill key={s.id} source={s} group={k.id} on={whyOf === s.id} onWhy={() => onWhy(s.id)} onRemove={() => onRemove(s.id)} />
+                      ))}
+                    </AnimatePresence>
+                  </ul>
+                  {open?.why ? (
+                    <p className="mt-2 text-[13px] leading-[1.5] text-t2">
+                      <span className="font-medium text-t1">{open.name}</span> {open.why}
                     </p>
-                    <ul className="mt-2 flex flex-wrap gap-1.5">
-                      <AnimatePresence initial={false}>
-                        {list.map((s) => (
-                          <Pill key={s.id} source={s} group={k.id} on={whyOf === s.id} onWhy={() => onWhy(s.id)} onRemove={() => onRemove(s.id)} />
-                        ))}
-                      </AnimatePresence>
-                    </ul>
-                    {open?.why ? (
-                      <p className="mt-2 text-[13px] leading-[1.5] text-t2">
-                        <span className="font-medium text-t1">{open.name}</span> {open.why}
-                      </p>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </section>
         ) : null}
 
-        {search !== "waiting" ? (
-          <section aria-label="Search Twitter for more accounts">
-            <Label>{oneStepTitle.search}</Label>
-            <p className="mt-1 text-[13px] text-t2">{oneStepLine.search}</p>
-          </section>
-        ) : null}
+        {bandOrder.map((band) => {
+          const list = checked.filter((c) => bandOf(c.score) === band);
+          if (!list.length) return null;
+          const total = jev === "done" ? (band === "set-aside" ? setAsideCount : kept.filter((c) => bandOf(c.score) === band).length) : list.length;
+          const hidden = band === "set-aside" && jev === "done" ? setAsideCount - droppedSample.length : 0;
+          return (
+            <motion.section key={band} layout="position" aria-label={bandLabel[band]} className="p-5">
+              <p className="flex items-baseline gap-2">
+                <span className={cn("text-[13.5px] font-semibold", bandTone[band])}>{bandLabel[band]}</span>
+                <span className="text-[12.5px] tabular-nums text-t3">{total}</span>
+              </p>
+              <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                {list.map((c) => (
+                  <Chip key={c.id} c={c} dim={band === "set-aside"} />
+                ))}
+                {hidden > 0 ? (
+                  <li className="flex h-8 items-center rounded-full border border-dashed border-line px-3 text-[12.5px] tabular-nums text-t3">{hidden} more</li>
+                ) : null}
+              </ul>
+            </motion.section>
+          );
+        })}
 
-        {save !== "waiting" ? (
-          <section aria-label="Save your agent">
-            <Label running={save === "running"}>{oneStepTitle.save}</Label>
-            <p className="mt-1 text-[13px] text-t2">{save === "done" ? "Saved." : "Saving your sources and your brief."}</p>
+        {pile.length ? (
+          <section aria-label="Gathered candidates" className="p-5">
+            <ul className="flex flex-wrap gap-1.5">
+              {pile.map((c) => (
+                <Chip key={c.id} c={c} />
+              ))}
+            </ul>
           </section>
         ) : null}
       </div>
     </LayoutGroup>
-  );
-}
-
-/** Jev's verdicts, one line per candidate as it is scored, newest at the bottom: the logo, the name and the band
- * word. Never the number (the product shows three bands). The log holds every line and keeps the newest in view. */
-function VerdictLog({ list, done }: { list: Candidate[]; done: boolean }) {
-  const ref = useRef<HTMLUListElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [list.length, done]);
-  if (!list.length) return null;
-  return (
-    <ul
-      ref={ref}
-      aria-label="Jev's verdicts"
-      tabIndex={0}
-      className="mt-3 max-h-[236px] overflow-y-auto rounded-lg border border-line bg-[var(--well)] px-3 py-2 focus-visible:outline-2 focus-visible:outline-ring"
-    >
-      {list.map((c) => {
-        const band = bandOf(c.score);
-        const isX = c.kind === "x_account";
-        return (
-          <li key={c.id} className="flex h-7 items-center gap-2.5 text-[12.5px] text-t2">
-            {isX ? <XAvatar handle={c.target.replace("https://x.com/", "")} size={18} /> : <SiteIcon host={hostOf(c.target)} size={18} className="rounded-[5px]" />}
-            <span className="w-[200px] min-w-0 truncate">{c.name}</span>
-            <span className={cn("font-medium", bandTone[band])}>{bandLabel[band]}</span>
-          </li>
-        );
-      })}
-      {done ? <li className="flex h-7 items-center text-[12.5px] text-t3">{setAsideCount - droppedSample.length} more candidates were scored and set aside the same way.</li> : null}
-    </ul>
   );
 }
 
@@ -840,9 +659,9 @@ function PostBody({ post: p }: { post: (typeof posts)[number] }) {
   );
 }
 
-/** The right column, once step 1 has found the person: ONE identity block (the picture with the name beside it and
- * the handle under the name, About with their Twitter bio, then Brief: the sentence, then the summary streaming in at
- * step 5), and the newest posts under it. */
+/** The right column, once step 1 has found the person: ONE identity block (the brief at its top once step 5 starts
+ * writing it: the sentence, then the summary streaming in; then the picture with the name beside it and the handle
+ * under the name, About with their Twitter bio), and the newest posts under it. */
 function You({ run, sentence }: { run: Run; sentence: string }) {
   const postsState = run.states[idx("posts")];
   const chooseState = run.states[idx("choose")];
@@ -868,12 +687,28 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
         className={cn(lift, "p-4")}
         style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
       >
+        {chooseState !== "waiting" ? (
+          <div className="mb-4 border-b border-line pb-4">
+            <p className="text-[13px] font-semibold text-t1">Brief</p>
+            <p className="mt-2 flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
+              <QuoteMark className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
+              {sentence}
+            </p>
+            {summary ? (
+              <p className="mt-2.5 text-[13px] leading-[1.55] text-t2">
+                {summary}
+                {chooseState === "running" ? (
+                  <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" />
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="flex items-center gap-3">
           <XAvatar handle={HANDLE} size={48} />
           <div className="min-w-0">
-            <p className="truncate text-[15px] leading-tight font-semibold text-t1">
-              {profile.name}
-            </p>
+            <p className="truncate text-[15px] leading-tight font-semibold text-t1">{profile.name}</p>
             <p className="mt-0.5 truncate text-[13px] leading-tight text-t3">{profile.handle}</p>
           </div>
         </div>
@@ -881,25 +716,6 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
         <div className="mt-4">
           <p className="text-[13px] font-semibold text-t1">About</p>
           <p className="mt-1.5 text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
-        </div>
-
-        <div className="mt-4 border-t border-line pt-4">
-          <p className="text-[13px] font-semibold text-t1">Brief</p>
-          <p className="mt-2 flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
-            <QuoteMark
-              className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]"
-              aria-hidden="true"
-            />
-            {sentence}
-          </p>
-          {summary ? (
-            <p className="mt-2.5 text-[13px] leading-[1.55] text-t2">
-              {summary}
-              {chooseState === "running" ? (
-                <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" />
-              ) : null}
-            </p>
-          ) : null}
         </div>
       </section>
 

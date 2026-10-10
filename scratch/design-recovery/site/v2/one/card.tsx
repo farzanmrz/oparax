@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
 import { itemLabel, newest, sourceOf, when, type FeedStory, type ItemView } from "@/v2/deck/data";
 import { ItemMark } from "@/v2/deck/marks";
-import { FreshRing, NewFlag } from "@/v2/deck/live";
 
 // The One story card: the Deck's StoryCard (v2/deck/stack.tsx) with the owner's changes only: one card per story
 // (no plates, no peek), no "N Articles" kind chip, every fact without its publisher parentheses, and one top row
@@ -73,23 +72,20 @@ function SourceLine({ story, mode, size }: { story: FeedStory; mode: LabelMode; 
 export function StoryStack({
   story,
   mode = "name",
-  fresh = false,
   imageHeight = 148,
   className,
 }: {
   story: FeedStory;
   mode?: LabelMode;
-  fresh?: boolean;
   imageHeight?: number;
   className?: string;
 }) {
-  return <StoryCard story={story} mode={mode} fresh={fresh} imageHeight={imageHeight} className={className} />;
+  return <StoryCard story={story} mode={mode} imageHeight={imageHeight} className={className} />;
 }
 
 export function StoryCard({
   story,
   mode = "name",
-  fresh = false,
   imageHeight = 148,
   size = "sm",
   compact = false,
@@ -97,7 +93,6 @@ export function StoryCard({
 }: {
   story: FeedStory;
   mode?: LabelMode;
-  fresh?: boolean;
   imageHeight?: number;
   size?: "sm" | "md";
   /** Headline only. */
@@ -106,7 +101,6 @@ export function StoryCard({
 }) {
   return (
     <article className={cn(lift, "relative z-10 flex flex-col overflow-hidden", className)} style={liftStyle}>
-      {fresh ? <FreshRing /> : null}
       {story.card.image ? (
         <div className="relative shrink-0 overflow-hidden border-b border-line" style={{ height: imageHeight }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -116,11 +110,6 @@ export function StoryCard({
       ) : null}
       <div className={cn("relative flex-1", size === "md" ? "p-5" : "p-4")}>
         <SourceLine story={story} mode={mode} size={story.card.image ? 18 : 20} />
-        {fresh ? (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <NewFlag />
-          </div>
-        ) : null}
         <h3 className={cn("mt-2.5 font-semibold tracking-[-0.01em] text-t1", size === "md" ? "text-[21px] leading-[1.25]" : "text-[16.5px] leading-[1.3]")}>
           {story.card.headline}
         </h3>
@@ -140,7 +129,6 @@ export function OneCard({
   image?: "thumb" | "hero";
   imageHeight?: number;
   compact?: boolean;
-  fresh?: boolean;
   className?: string;
 }) {
   void _image;
