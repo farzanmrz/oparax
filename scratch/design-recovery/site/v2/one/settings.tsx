@@ -12,7 +12,9 @@ import { AppShell, hue, PageLine, title } from "./shell";
 // card per kind, the four side by side across the page's column (owner, Oct 10): the kind mark, the kind
 // name in Title Case and Add Source in the band; rows under it, each the logo, the name and the handle or address
 // on one line with a cross at the right end that removes it ("a trash can or a cross maybe?": the cross, quiet and
-// always there). The reason opens under a row on click. No counts (owner, Oct 4).
+// always there). Pressing it removes the source at once, no dialog (owner, Oct 10: "when the cross is pressed, no
+// dialog box needs to open up. It's okay. They can add it simply again"). The reason opens under a row on click.
+// No counts (owner, Oct 4).
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 

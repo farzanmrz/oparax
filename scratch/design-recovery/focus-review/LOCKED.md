@@ -11,3 +11,10 @@ What the owner has fixed on the One, in his words. A locked thing is not revisit
 - The onboarding heading: "Setup Feed Agent", the same on every state.
 
 Pending his one look at the margins, then locked and removed from his review toggles: Sources, Notifications, Account ("I still have to go through the notifications, sources, and account page to quickly see if now the cards are adjusted properly as per the margin. Once that is done, you can remove those from me toggling it").
+
+## Added October 10, after his look at the margins
+
+- Notifications: "Notifications look fine." Sources: "Sources look fine." The One's feed layout: "Feed looks fine." (Its colour is still open: "don't remove the feed ... because the coloring thing, we're still checking.")
+- Account, its structure: "Username, email, and password are all in one block of account settings. Payment and subscription is one block where there will be multiple plans. We already have the three plans we've decided on. Delete account will be at the bottom as a danger zone."
+- Sources, removing: "for sources, when the cross is pressed, no dialog box needs to open up. It's okay. They can add it simply again."
+- Out of his review: Sources, Notifications, Account, and the Window, Newsroom and Deck feeds ("Remove the feed also from newsroom deck and window because I don't want to revisit it"). The routes stay; the switcher no longer offers them.

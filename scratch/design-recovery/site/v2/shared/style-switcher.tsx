@@ -12,18 +12,13 @@ type Style = "window" | "newsroom" | "deck" | "one";
 type Role = "onboarding" | "feed" | "sources" | "notifications" | "account";
 type Step = "rest" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "ready";
 
-const STYLES: { key: Style; label: string }[] = [
-  { key: "window", label: "Window" },
-  { key: "newsroom", label: "Newsroom" },
-  { key: "deck", label: "Deck" },
-  { key: "one", label: "One" },
-];
+// Oct 10: the owner locked the sidebar, Sources, Notifications and Account and took the Window, Newsroom and Deck
+// feeds out of his review ("remove those from all the views"); the rows now hold only what is still open: the One's
+// onboarding (its steps) and the One's feed (its colour is still being checked). The routes themselves stay.
+const STYLES: { key: Style; label: string }[] = [{ key: "one", label: "One" }];
 const ROLES: { key: Role; label: string }[] = [
   { key: "onboarding", label: "Onboarding" },
   { key: "feed", label: "Feed" },
-  { key: "sources", label: "Sources" },
-  { key: "notifications", label: "Notifications" },
-  { key: "account", label: "Account" },
 ];
 const STEPS: { key: Step; label: string; title: string }[] = [
   { key: "rest", label: "Rest", title: "Before Build" },
@@ -198,6 +193,7 @@ export function StyleSwitcher() {
       ) : (
         <div aria-hidden="true" style={{ height: STEP_ROW_H }} />
       )}
+      {STYLES.length > 1 ? (
       <nav aria-label="Compare styles" style={shell}>
         {STYLES.map((s) => (
           <a key={s.key} href={styleHref(s.key)} aria-current={s.key === current ? "page" : undefined} style={pill(s.key === current)}>
@@ -205,6 +201,7 @@ export function StyleSwitcher() {
           </a>
         ))}
       </nav>
+      ) : null}
       {role === "onboarding" ? (
         <nav aria-label="Onboarding steps" style={{ ...shell, height: STEP_ROW_H, overflowX: "auto" }}>
           {STEPS.map((s) => (
