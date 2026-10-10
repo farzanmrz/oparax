@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { CircleAlert, Layers, X as Close } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AlertsButton, Header, lift, liftStyle, Stage, Tile } from "./chrome";
+import { AlertsButton, lift, liftStyle, Tile } from "./chrome";
+import { AppShell, PageLine } from "@/v2/one/shell";
 import {
   groups,
   itemsFrom,
@@ -81,45 +82,30 @@ export function DeckFeed({
   // The newest story is on the page from the start; only its New marker and edge light replay its arrival.
   const visible = (_: FeedStory) => true;
 
+  // The One's rail is the chrome on every style now (owner, Oct 10): Deck keeps its tiles and stacks; a rail row
+  // filters the stacks.
   return (
-    <Stage>
-      <main className="relative mx-auto w-full max-w-[1400px] px-4 pt-8 pb-20 lg:px-8">
-        <Header
-          title="Your Feed"
-          actions={<AlertsButton />}
-          sub={
-            <p className="text-[13.5px] text-t3">
-              Articles and posts about the same event, stacked into one story.
-            </p>
-          }
-          note={`${PREVIEW_NOTE} The newest story's arrival is a replay.`}
+    <AppShell selected={sourceId} onSelect={setSourceId}>
+      <PageLine title="Feed" right={<AlertsButton />} />
+      <div className="mt-6 min-w-0">
+        <Tiles />
+
+        {selected ? <SourceHeader source={selected} mode={mode} onClear={() => setSourceId(null)} /> : null}
+
+        {selected && list.length === 0 ? (
+          <p className="mt-6 text-[13.5px] text-t2">
+            Nothing from {mode === "name" ? selected.name : selected.handle} has matched your sentence yet. Everything else in your feed:
+          </p>
+        ) : null}
+
+        <StackColumns
+          list={selected && list.length === 0 ? all : list}
+          mode={mode}
+          freshId={selected ? null : freshId}
+          visible={visible}
         />
-
-        <div className="mt-7 grid items-start gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
-          <SourceList selected={sourceId} onSelect={setSourceId} mode={mode} />
-          <SourceStrip selected={sourceId} onSelect={setSourceId} mode={mode} />
-
-          <div className="min-w-0">
-            <Tiles />
-
-            {selected ? <SourceHeader source={selected} mode={mode} onClear={() => setSourceId(null)} /> : null}
-
-            {selected && list.length === 0 ? (
-              <p className="mt-6 text-[13.5px] text-t2">
-                Nothing from {mode === "name" ? selected.name : selected.handle} has matched your sentence yet. Everything else in your feed:
-              </p>
-            ) : null}
-
-            <StackColumns
-              list={selected && list.length === 0 ? all : list}
-              mode={mode}
-              freshId={selected ? null : freshId}
-              visible={visible}
-            />
-          </div>
-        </div>
-      </main>
-    </Stage>
+      </div>
+    </AppShell>
   );
 }
 

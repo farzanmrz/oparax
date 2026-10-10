@@ -1,0 +1,21 @@
+/* The One's page column, shared by every style now that the One's rail is the chrome on all of them (owner, Oct 10:
+ * "Even if I want to look at deck newsroom or window, I'm seeing it with the things already fixed"). Plain CSS, no
+ * Tailwind, so any sheet can import it. Side margin = clamp(48px, (viewport - 1400px) / 4, 290px). */
+.one-column {
+  width: 100%;
+  padding-inline: clamp(48px, calc((100vw - 1400px) / 4), 290px);
+}
+
+/* Beside the rail: the column centred in the width that remains, under the same rule; the rail's width comes from
+ * --one-rail-w (248px open, 0 hidden). Below 1024px the rail is hidden and this is the plain column. */
+.one-column-rail {
+  width: 100%;
+  padding-inline: clamp(48px, calc((100vw - 1400px) / 4), 290px);
+}
+@media (min-width: 1024px) {
+  .one-column-rail {
+    --one-rail-margin: clamp(48px, calc((100vw - var(--one-rail-w, 248px) - 1400px) / 4), 290px);
+    padding-left: calc(var(--one-rail-w, 248px) + var(--one-rail-margin));
+    padding-right: var(--one-rail-margin);
+  }
+}

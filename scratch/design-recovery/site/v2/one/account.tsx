@@ -10,13 +10,13 @@ import { BandCard, bandButton } from "./card-band";
 import { ACCOUNT_EMAIL as EMAIL, AppShell, PageLine } from "./shell";
 
 // The Account page (owner, Oct 10): the person, the plan, the password and deleting the account, each a band card in
-// one 640px column. Plans and pricing are their own page; the Plan card only links there.
+// two columns across the page's column. Plans and pricing are their own page; the Plan card only links there.
 
 export function OneAccount() {
   return (
     <AppShell>
       <PageLine title="Account" />
-      <div className="mt-6 flex max-w-[640px] flex-col gap-4">
+      <div className="mt-6 grid items-start gap-4 md:grid-cols-2">
         <BandCard glyph={<XAvatar handle={HANDLE} size={24} />} heading={profile.name} action={<span className="text-[13px] text-t3">{profile.handle}</span>}>
           <p className="text-[13px] text-t2">{EMAIL}</p>
         </BandCard>

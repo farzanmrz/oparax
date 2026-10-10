@@ -186,7 +186,7 @@ export function StyleSwitcher() {
 
   return (
     <div style={dock}>
-      {current === "one" ? (
+      {current === "one" && role === "onboarding" && step !== "rest" ? (
         <nav aria-label="Direction" style={{ ...shell, height: STEP_ROW_H }}>
           <span style={{ padding: "6px 4px 6px 10px", fontSize: 12, color: "#8d939e" }}>Direction</span>
           {(["a", "b"] as const).map((d) => (

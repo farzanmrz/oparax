@@ -4,7 +4,9 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ArrowUpDown, Layers, Rows3, X as Close } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AlertsButton, AlertsPreviewNote, AppFrame, Label, ShowProvider, TopBar, useShow } from "./chrome";
+import { AlertsButton, AlertsPreviewNote, Label, ShowProvider, useShow } from "./chrome";
+import { lift, liftStyle } from "@/v2/deck/chrome";
+import { AppShell, PageLine } from "@/v2/one/shell";
 import {
   groups,
   PREVIEW_NOTE,
@@ -29,15 +31,17 @@ import { StoryBlock } from "./story";
 export function WindowFeed({ view, theme, source }: { view: View; theme?: string; source?: string | null }) {
   const initial = source && sourceById.has(source) ? source : null;
   const [selected, setSelected] = useState<string | null>(initial);
+  // The One's rail is the chrome on every style now (owner, Oct 10); Window keeps its lifted window with the story
+  // column and the status column, and a rail row filters the column.
   return (
     <ShowProvider>
-      <div className="palette-council flex min-h-svh flex-col">
-        <AppFrame bar={<TopBar note={`${PREVIEW_NOTE}. The newest story replays its arrival.`} />} className="flex min-h-[760px] flex-col lg:flex-row">
-          <Rail view={view} selected={selected} onSelect={setSelected} />
+      <AppShell selected={selected} onSelect={setSelected}>
+        <PageLine title="Feed" />
+        <div className={cn(lift, "mt-6 flex min-h-[760px] flex-col overflow-hidden lg:flex-row")} style={liftStyle}>
           <Column view={view} theme={theme} selected={selected} onClear={() => setSelected(null)} />
           <StatusColumn />
-        </AppFrame>
-      </div>
+        </div>
+      </AppShell>
     </ShowProvider>
   );
 }

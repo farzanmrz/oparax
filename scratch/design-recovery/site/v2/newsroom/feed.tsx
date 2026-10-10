@@ -27,7 +27,8 @@ import {
   type Story,
   type View,
 } from "./data";
-import { AlertsButton, Facts, LiveDots, Lifted, Masthead, Page, StatusTile } from "./chrome";
+import { AlertsButton, Facts, LiveDots, Lifted, StatusTile } from "./chrome";
+import { AppShell, PageLine } from "@/v2/one/shell";
 import { Arrive, NewFlag, useArrival } from "./live";
 import { Dot, GroupGlyph, Handle, KindChip, Segments, SourceMark } from "./marks";
 import { StoryMedia } from "./media";
@@ -56,22 +57,11 @@ export function NewsroomFeed({ view, theme, settled = false }: { view: View; the
 
   const source = selected ? sourceById.get(selected) ?? null : null;
 
+  // The One's rail is the chrome on every style now (owner, Oct 10): Newsroom keeps its table; a rail row filters it.
   return (
-    <Page>
-      <Masthead title="Your Feed" />
-        <main className="min-w-0 flex-1 px-4 pt-4 pb-14 lg:px-7">
-          <div className="flex items-center justify-between gap-6">
-            <div>
-              <p className="text-[13.5px] text-t3">
-                Articles and posts about the same event, joined into one story. Newest first.
-              </p>
-            </div>
-            <AlertsButton />
-          </div>
-
-          <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-start">
-          <SourceRail selected={selected} onSelect={setSelected} label={label} />
-          <div className="min-w-0 flex-1">
+    <AppShell selected={selected} onSelect={setSelected}>
+      <PageLine title="Feed" right={<AlertsButton />} />
+      <div className="mt-6 min-w-0">
           <div className="flex items-center gap-2.5">
             {source ? (
               <span className="inline-flex h-8 items-center gap-2 rounded-md border border-[var(--brand-line)] bg-[var(--brand-soft)] pr-1 pl-2.5 text-[12.5px] text-t1">
@@ -127,10 +117,8 @@ export function NewsroomFeed({ view, theme, settled = false }: { view: View; the
               ) : null}
             </Lifted>
           </div>
-          </div>
-          </div>
-        </main>
-    </Page>
+      </div>
+    </AppShell>
   );
 }
 

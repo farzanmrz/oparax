@@ -9,6 +9,9 @@
 @source "../../pro";
 @source "../../next";
 @source "../../components/ai-elements";
+/* The One's rail is the chrome on every style (owner, Oct 10): its classes and its column rules load everywhere. */
+@source "../../v2/one";
+@import "../../v2/one/column.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 

@@ -15,9 +15,10 @@ import { BASE } from "./card";
 
 // The One shell (owner, Oct 10, from the Design canvas): one 248px rail fixed to the viewport's left edge: the head
 // (the mark and "Oparax" opening the feed, the theme icon and Hide at the right), the group "Navigation" (Feed,
-// Sources, Notifications, Account), the group "Feed" (the four kinds as headers, their sources indented), and a
+// Sources, Notifications, Account), the group "Filter" (the four kinds as headers, their sources indented; a row
+// filters the feed to that source), and a
 // darker foot with the initial, the name and Sign Out. Hide removes the whole rail; the same panel icon, fixed at
-// the bottom left, brings it back. The page's column is centred in the width that remains, under the Width rule,
+// the top left where Hide sat, brings it back. The page's column is centred in the width that remains, under the Width rule,
 // and scrolls to the viewport's bottom with 160px of ground after its last block. Before an agent exists the seven
 // steps stand in the rail's middle. Login keeps its own visitor header line.
 
@@ -227,7 +228,7 @@ export function AppShell({
               aria-label="Show Sidebar"
               title="Show Sidebar"
               onClick={() => choose(true)}
-              className={cn(panelIcon, "fixed bottom-4 left-4 z-40 hidden lg:grid")}
+              className={cn(panelIcon, "fixed top-[14px] left-4 z-40 hidden lg:grid")}
             >
               <PanelLeft className="size-3.5" aria-hidden="true" />
             </button>
@@ -308,7 +309,7 @@ function Rail({
               })}
             </nav>
             <div>
-              <GroupLabel>Feed</GroupLabel>
+              <GroupLabel>Filter</GroupLabel>
               <Sources selected={selected} onSelect={onSelect} />
             </div>
           </>

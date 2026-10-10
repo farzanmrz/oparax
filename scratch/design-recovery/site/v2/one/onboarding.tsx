@@ -161,13 +161,8 @@ export function OneOnboarding({
           : oneRunAt(clock.elapsed);
   const done = started && isDone(run);
   const st = (id: OneStepId) => run.states[idx(id)];
-  const heading = !started
-    ? "Set up your agent"
-    : done
-      ? "Your agent is ready"
-      : st("choose") === "done"
-        ? "Saving your agent"
-        : "Choosing sources";
+  // One heading on every state (owner, Oct 10: "the page heading will not change").
+  const heading = "Setup Feed Agent";
   const message = [handleError ? HANDLE_REQUIRED : null, error ? setup.beatRequired : null]
     .filter(Boolean)
     .join(" ");

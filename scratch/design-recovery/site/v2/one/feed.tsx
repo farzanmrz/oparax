@@ -9,7 +9,6 @@ import { SourceMark } from "@/v2/deck/marks";
 import { Arrive, useArrival } from "@/v2/deck/live";
 import { StoryCard } from "./card";
 import { AppShell, PageLine } from "./shell";
-import { useDirection, type Dir } from "./direction";
 
 // The One feed inside the shell. The page line: Feed, and at its right end Deck's Clustered and Direct switch (owner,
 // Oct 9: "make it a toggle on the right of our header"), kept in the URL as ?view= the way Deck kept it. Then the
@@ -20,9 +19,8 @@ import { useDirection, type Dir } from "./direction";
 // source shows only that source's stories (one line when it has none) and adds Window's "from {name}" chip beside
 // the title, cleared by its x, by pressing the row again, or by Feed in the rail.
 
-/** Direction A caps the picture at 132px under the source row; B keeps the full 172px (owner, Oct 9: "reducing the
- * image size slightly, I guess, or not, whatever looks better"). */
-const IMAGE_H: Record<Dir, number> = { a: 132, b: 172 };
+/** The picture under the source row, capped at 132px (direction A, the one he liked on Oct 10). */
+const IMAGE_H = 132;
 
 export function OneFeed({
   initialView,
@@ -38,7 +36,6 @@ export function OneFeed({
   const [view, setView] = useState<View>(search.get("view") === "direct" ? "direct" : (initialView ?? "clustered"));
   const [sourceId, setSourceId] = useState<string | null>(sources.some((s) => s.id === initialSource) ? initialSource : null);
   useArrival(settled);
-  const dir = useDirection();
 
   // Keep the URL in step so each state has an address (and survives a reload).
   useEffect(() => {
@@ -62,7 +59,7 @@ export function OneFeed({
         beside={selected ? <FilterChip source={selected} onClear={() => setSourceId(null)} /> : null}
         right={<ViewSwitch view={view} onChange={setView} />}
       />
-      {selected && !list.length ? <p className="mt-6 text-[13.5px] text-t2">Nothing from {selected.name} this week.</p> : <Grid list={list} imageHeight={IMAGE_H[dir]} />}
+      {selected && !list.length ? <p className="mt-6 text-[13.5px] text-t2">Nothing from {selected.name} this week.</p> : <Grid list={list} imageHeight={IMAGE_H} />}
     </AppShell>
   );
 }

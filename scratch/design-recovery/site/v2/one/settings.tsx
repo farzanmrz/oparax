@@ -9,7 +9,7 @@ import { BandCard, bandButton } from "./card-band";
 import { AppShell, hue, PageLine, title } from "./shell";
 
 // The Sources page (owner, Oct 10: no Settings page; Sources, Notifications and Account are the pages). One band
-// card per kind in two columns at a measured width ("unnecessarily wide" at the full width): the kind mark, the kind
+// card per kind, the four side by side across the page's column (owner, Oct 10): the kind mark, the kind
 // name in Title Case and Add Source in the band; rows under it, each the logo, the name and the handle or address
 // on one line with a cross at the right end that removes it ("a trash can or a cross maybe?": the cross, quiet and
 // always there). The reason opens under a row on click. No counts (owner, Oct 4).
@@ -26,7 +26,7 @@ export function OneSources() {
   return (
     <AppShell>
       <PageLine title="Sources" />
-      <div className="mt-6 grid max-w-[880px] items-start gap-4 lg:grid-cols-2">
+      <div className="mt-6 grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
         {groups.map((g) => {
           const members = list.filter((s) => s.group === g.id);
           if (!members.length) return null;
@@ -38,7 +38,7 @@ export function OneSources() {
               action={
                 <button type="button" className={bandButton} style={{ boxShadow: "var(--top-light)" }}>
                   <Plus className="size-3.5" aria-hidden="true" />
-                  Add Source
+                  Add
                 </button>
               }
               bodyClassName="px-2 py-2"

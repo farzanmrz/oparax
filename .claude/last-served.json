@@ -7,7 +7,10 @@
     "http://localhost:3000/v2/one/sources",
     "http://localhost:3000/v2/one/notifications",
     "http://localhost:3000/v2/one/account",
-    "http://localhost:3000/v2/one/feed?agent=none"
+    "http://localhost:3000/v2/one/feed?agent=none",
+    "http://localhost:3000/v2/window/feed",
+    "http://localhost:3000/v2/deck/feed",
+    "http://localhost:3000/v2/newsroom/feed"
   ],
-  "note": "The One with the Oct 10 sidebar (Navigation, Feed groups, name foot), the band card everywhere, no Settings page; the Direction row still switches the feed picture size and the onboarding verdicts (A or B)."
+  "note": "The One with the locked Oct 10 sidebar (Navigation, Filter, name foot; theme and hide in the head, show at the top left), the band card everywhere, Sources four across, Account two across, the onboarding heading Setup Feed Agent; the same rail on the Window, Deck and Newsroom feeds. Locked items: scratch/design-recovery/focus-review/LOCKED.md."
 }

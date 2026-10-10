@@ -37,7 +37,7 @@ export function OneNotifications({ dm = "waiting" }: { dm?: DmState }) {
     <AppShell>
       <PageLine title="Notifications" />
       <BandCard
-        className="mt-6 max-w-[640px]"
+        className="mt-6"
         glyph={<XLogo className="size-4 shrink-0 text-t1" />}
         heading="Twitter DMs"
         action={
