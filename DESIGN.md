@@ -8,16 +8,16 @@ The images are in `~/.agents/skills/reference-led-design/examples/accepted/`. Th
 
 | Token | Dark | Light | Job |
 |---|---|---|---|
-| `--page` | `#0b0c0f` | `#eceef2` | quiet ground, faint blue tint |
-| `--window` | `#111317` | `#ffffff` | the one lifted surface |
-| `--rail` | `#0e1013` | `#f7f8fa` | navigation, a step below the window |
-| `--card` / `--tile-bg` | `#121418` / `#15181d` | `#ffffff` | cards and tiles |
-| `--raised` | `#191c22` | `#f4f5f8` | hover, selected rows |
-| `--well` | `#0d0f12` | `#f6f7f9` | inset wells |
+| `--page` | `#0a0b0e` | `#e2e5eb` | quiet ground, faint blue tint |
+| `--window` | `#14171d` | `#ffffff` | the one lifted surface |
+| `--rail` | `#0f1217` | `#f7f8fa` | navigation, a step below the window |
+| `--card` / `--tile-bg` | `#14171d` / `#171b21` | `#ffffff` | cards and tiles |
+| `--raised` | `#1e222a` | `#eaedf3` | hover, selected rows, the band on a card |
+| `--well` | `#0c0e11` | `#e9ecf2` | inset wells |
 
 ## Lines and text
 
-- Lines: `--line` white 7.5 percent (light: ink 10 percent), `--line-soft` 4.5 (6), `--line-strong` 13 (16).
+- Lines: `--line` white 9 percent (light: ink 14 percent), `--line-soft` 5.5 (8), `--line-strong` 15 (20). Owner, October 10 ("stick with depth"): the light grounds step further apart and the lines firmed so the sidebar, the band and the cards separate in light as they do in dark.
 - Text tiers, order of reading by brightness: `--t1` `#f3f5f8`, `--t2` `#c9ced7`, `--t3` `#8d939e`, `--t4` `#646a75` (light: `#0e1116`, `#343a45`, `#5f6672`, `#878d99`). `--t4` is about 3.2:1 in dark: decoration and small labels only, never body text.
 
 ## Color, each hue one job
@@ -38,10 +38,10 @@ Each has a `-soft` fill for chips. Real logos, favicons, avatars and article ima
 
 Every screen lifts its main surface or surfaces off the page with these tokens, as the accepted feeds do in different ways: Window sets a lifted window inside a lit stage frame with cards on it, Newsroom lifts one table window, Deck lifts cards and stacks on a lit page. The tokens only create depth when the composition lifts something; panels lying flat on the page fail.
 
-- `--stage-light`: radial light from the top behind the main surface (dark: `rgb(170 190 230 / 0.2)` fading out; light: brand blue at 11 percent).
+- `--stage-light`: radial light from the top behind the main surface (dark: `rgb(170 190 230 / 0.16)` fading out; light: none, since October 10, the blue mist made the top cards sit on the palest ground).
 - `--stage-frame`: the lit frame gradient around a window (dark `#23262d` to `#0d0e11`; light `#dfe3ea` to `#eceef2`).
 - `--window-shadow`: four layers, hairline ring, 1px top highlight, 16 to 32px and 48 to 96px soft drops (dark at 0.6 to 0.75 black; light at 0.1 to 0.22 ink).
-- `--card-shadow`: three layers, ring, 2 to 4px, 12 to 28px.
+- `--card-shadow`: three layers, ring, 2 to 4px, 12 to 30px (light at ink 0.1 to 0.18, dark at black 0.32 to 0.6).
 - `--top-light`: a 1px inset top highlight on raised surfaces.
 - `--dot-grid`: faint dot texture for stages.
 

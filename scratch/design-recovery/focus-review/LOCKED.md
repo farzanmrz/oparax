@@ -18,3 +18,7 @@ Pending his one look at the margins, then locked and removed from his review tog
 - Account, its structure: "Username, email, and password are all in one block of account settings. Payment and subscription is one block where there will be multiple plans. We already have the three plans we've decided on. Delete account will be at the bottom as a danger zone."
 - Sources, removing: "for sources, when the cross is pressed, no dialog box needs to open up. It's okay. They can add it simply again."
 - Out of his review: Sources, Notifications, Account, and the Window, Newsroom and Deck feeds ("Remove the feed also from newsroom deck and window because I don't want to revisit it"). The routes stay; the switcher no longer offers them.
+
+## October 10, evening
+
+- The theme's surfaces: "Yeah, stick with depth" (the council's Depth direction, council-washed-oct10, written into palettes.css and DESIGN.md). The colour elements (kind chips, status tiles, solid selection) are not added: "we don't need color before/after ... just with the depth you added, and that fixes our feed."

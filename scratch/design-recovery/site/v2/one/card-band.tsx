@@ -27,7 +27,7 @@ export function BandCard({
 }) {
   return (
     <section className={cn(lift, "overflow-hidden", className)} style={{ ...liftStyle, ...style }}>
-      <div className="band-head flex h-11 shrink-0 items-center gap-2.5 bg-[var(--raised)] px-4">
+      <div className="flex h-11 shrink-0 items-center gap-2.5 bg-[var(--raised)] px-4">
         {glyph}
         <h2 className="min-w-0 flex-1 truncate text-[15px] leading-5 font-semibold text-t1">{heading}</h2>
         {action ? <span className="ml-auto flex shrink-0 items-center gap-2">{action}</span> : null}

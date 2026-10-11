@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Bell, BookMarked, ChevronDown, List, Moon, PanelLeft, Rss, Sun, UserRound } from "lucide-react";
 import { OparaxMark } from "@/pro/shared/brand";
@@ -187,9 +187,6 @@ export function AppShell({
   middle?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
-  // The tone review (one.css, council Oct 10): ?tone=depth or ?tone=edges overrides the surface tokens on this page.
-  const tone = useSearchParams().get("tone");
-  const toneClass = tone === "depth" ? "tone-depth" : tone === "edges" ? "tone-edges" : undefined;
   const moved = useRef(false);
   const show = useRef<HTMLButtonElement>(null);
   const hide = useRef<HTMLButtonElement>(null);
@@ -213,7 +210,7 @@ export function AppShell({
   };
   const width = open ? 248 : 0;
   return (
-    <Stage light={light} className={toneClass}>
+    <Stage light={light}>
       <RailContext.Provider value={open}>
         <div style={{ "--one-rail-w": `${width}px` } as React.CSSProperties}>
           {open ? <Rail selected={selected} onSelect={onSelect} middle={middle} onHide={() => choose(false)} hideRef={hide} /> : null}
