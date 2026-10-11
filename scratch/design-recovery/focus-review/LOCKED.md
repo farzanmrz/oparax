@@ -22,3 +22,8 @@ Pending his one look at the margins, then locked and removed from his review tog
 ## October 10, evening
 
 - The theme's surfaces: "Yeah, stick with depth" (the council's Depth direction, council-washed-oct10, written into palettes.css and DESIGN.md). The colour elements (kind chips, status tiles, solid selection) are not added: "we don't need color before/after ... just with the depth you added, and that fixes our feed."
+
+## October 10, night
+
+- Sources, Notifications and Account, as they stand on the Depth theme: "Yeah, these are fine. You can log these also as they are for account notifications and sources."
+- Everything but the onboarding is locked: "The only thing remaining now is the onboarding, so I guess the switcher at the bottom can just be the switchers for onboarding, and everything else is locked." The lab switcher now shows only the onboarding step row (Rest, 1 to 7, Ready) and the Direction row on steps 1 to 7.

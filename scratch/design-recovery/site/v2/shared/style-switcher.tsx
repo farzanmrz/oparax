@@ -16,10 +16,9 @@ type Step = "rest" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "ready";
 // feeds out of his review ("remove those from all the views"); the rows now hold only what is still open: the One's
 // onboarding (its steps) and the One's feed (its colour is still being checked). The routes themselves stay.
 const STYLES: { key: Style; label: string }[] = [{ key: "one", label: "One" }];
-const ROLES: { key: Role; label: string }[] = [
-  { key: "onboarding", label: "Onboarding" },
-  { key: "feed", label: "Feed" },
-];
+// Oct 10, night: everything but the onboarding is locked ("the switcher at the bottom can just be the switchers for
+// onboarding"), so the page row is gone; the dock shows only on the onboarding page, with its step row.
+const ROLES: { key: Role; label: string }[] = [];
 const STEPS: { key: Step; label: string; title: string }[] = [
   { key: "rest", label: "Rest", title: "Before Build" },
   ...(["1", "2", "3", "4", "5", "6", "7"] as const).map((n) => ({ key: n, label: n, title: `Frozen at step ${n}` })),
@@ -81,6 +80,7 @@ export function StyleSwitcher() {
 
   const role = roleOf(current, page, search);
   const step = role === "onboarding" ? stepOf(current, page, search) : null;
+  if (role !== "onboarding") return null;
 
   const carry = new URLSearchParams(search.toString());
   for (const k of PAGE_KEYS) carry.delete(k);
@@ -216,29 +216,8 @@ export function StyleSwitcher() {
             </a>
           ))}
         </nav>
-      ) : (
-        // Holds the toggle row's place so the rows above never move between pages.
-        <div aria-hidden="true" style={{ height: STEP_ROW_H }} />
-      )}
-      <nav aria-label="Pages in this style" style={shell}>
-        {ROLES.map((r) => {
-          const href = hrefFor(current, r.key, r.key === "onboarding" ? "rest" : null);
-          const active = r.key === role;
-          if (!href) {
-            return (
-              <span key={r.key} aria-disabled="true" title={`No ${r.label.toLowerCase()} page in this style`} style={{ ...pill(false), ...off }}>
-                {r.label}
-              </span>
-            );
-          }
-          // The Onboarding pill opens the style's onboarding page as it stands (building, or the One's feed state).
-          const target = r.key === "onboarding" && !active ? hrefFor(current, "onboarding", current === "one" ? "rest" : null) : href;
-          return (
-            <a key={r.key} href={active ? withQueryKeep(pathname, search) : target!} aria-current={active ? "page" : undefined} style={pill(active)}>
-              {r.label}
-            </a>
-          );
-        })}
+      ) : null}
+      <nav aria-label="Review" style={shell}>
         <button
           type="button"
           onClick={() => toggle(true)}

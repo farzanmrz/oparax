@@ -3,14 +3,8 @@
   "port": 3000,
   "started": "2026-10-10T13:09:31-07:00",
   "pages": [
-    "http://localhost:3000/v2/one/feed",
-    "http://localhost:3000/v2/one/sources",
-    "http://localhost:3000/v2/one/notifications",
-    "http://localhost:3000/v2/one/account",
     "http://localhost:3000/v2/one/feed?agent=none",
-    "http://localhost:3000/v2/window/feed",
-    "http://localhost:3000/v2/deck/feed",
-    "http://localhost:3000/v2/newsroom/feed"
+    "http://localhost:3000/v2/one/feed"
   ],
-  "note": "The One with the locked Oct 10 sidebar (Navigation, Filter, name foot; theme and hide in the head, show at the top left), the band card everywhere, Sources four across, Account two across, the onboarding heading Setup Feed Agent; the same rail on the Window, Deck and Newsroom feeds. Locked items: scratch/design-recovery/focus-review/LOCKED.md."
+  "note": "Everything but the onboarding is locked (scratch/design-recovery/focus-review/LOCKED.md). The lab switcher shows only on the onboarding page: the step row (Rest, 1 to 7, Ready) and the Direction A or B row on steps 1 to 7."
 }
