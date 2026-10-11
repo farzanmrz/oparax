@@ -179,6 +179,16 @@ export function StyleSwitcher() {
     return `${pathname}${s ? `?${s}` : ""}`;
   };
 
+  // The tone review (council, Oct 10): Now is the theme as it stands; Depth and Edges are the two directions.
+  const tone = search.get("tone");
+  const toneHref = (t: string | null) => {
+    const q = new URLSearchParams(search.toString());
+    if (t) q.set("tone", t);
+    else q.delete("tone");
+    const s = q.toString();
+    return `${pathname}${s ? `?${s}` : ""}`;
+  };
+
   if (hidden) {
     return (
       <div style={dock}>
@@ -191,6 +201,20 @@ export function StyleSwitcher() {
 
   return (
     <div style={dock}>
+      {current === "one" ? (
+        <nav aria-label="Tone" style={{ ...shell, height: STEP_ROW_H }}>
+          <span style={{ padding: "6px 4px 6px 10px", fontSize: 12, color: "#8d939e" }}>Tone</span>
+          {[
+            { key: null, label: "Now" },
+            { key: "depth", label: "Depth" },
+            { key: "edges", label: "Edges" },
+          ].map((t) => (
+            <a key={t.label} href={toneHref(t.key)} aria-current={(tone ?? null) === t.key ? "true" : undefined} style={pill((tone ?? null) === t.key, true)}>
+              {t.label}
+            </a>
+          ))}
+        </nav>
+      ) : null}
       {current === "one" && role === "feed" ? (
         <nav aria-label="Colour" style={{ ...shell, height: STEP_ROW_H }}>
           <span style={{ padding: "6px 4px 6px 10px", fontSize: 12, color: "#8d939e" }}>Colour</span>

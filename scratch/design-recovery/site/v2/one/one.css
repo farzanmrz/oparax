@@ -15,3 +15,73 @@
 @source "../../next";
 
 @import "./column.css";
+
+/* Tone review (council, Oct 10, on "the light UI just comes across as very washed"): two token sets the owner can
+ * switch between on every One page (?tone=depth or ?tone=edges; none is the theme as it stands). Nothing in
+ * DESIGN.md changes until he picks one. Depth: a deeper page, the rail a lighter panel on it, the band a real step,
+ * a card shadow that reads, the blue stage light off in light. Edges: near-white grounds kept, every outer edge a
+ * firmer line, a hairline under each band. Dark moves a step with each so the two modes stay one system. */
+.tone-depth {
+  --page: #e2e5eb;
+  --rail: #f7f8fa;
+  --window: #ffffff;
+  --card: #ffffff;
+  --tile-bg: #ffffff;
+  --raised: #eaedf3;
+  --well: #e9ecf2;
+  --line: rgb(16 24 40 / 0.14);
+  --line-soft: rgb(16 24 40 / 0.08);
+  --line-strong: rgb(16 24 40 / 0.2);
+  --card-shadow: 0 0 0 1px rgb(16 24 40 / 0.1), 0 2px 4px rgb(16 24 40 / 0.07), 0 12px 26px -8px rgb(16 24 40 / 0.18);
+  --stage-light: none;
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+.dark .tone-depth,
+.tone-depth.dark {
+  --page: #0a0b0e;
+  --rail: #0f1217;
+  --window: #14171d;
+  --card: #14171d;
+  --tile-bg: #171b21;
+  --raised: #1e222a;
+  --well: #0c0e11;
+  --line: rgb(255 255 255 / 0.09);
+  --line-soft: rgb(255 255 255 / 0.055);
+  --line-strong: rgb(255 255 255 / 0.15);
+  --card-shadow: 0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.32), 0 14px 30px -10px rgb(0 0 0 / 0.6);
+  --stage-light: radial-gradient(80% 65% at 50% 0%, rgb(170 190 230 / 0.16), transparent 75%);
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+.tone-edges {
+  --page: #e8ebf0;
+  --rail: #f2f4f7;
+  --window: #ffffff;
+  --card: #ffffff;
+  --tile-bg: #ffffff;
+  --raised: #eef1f6;
+  --well: #e7eaef;
+  --line: rgb(16 24 40 / 0.18);
+  --line-soft: rgb(16 24 40 / 0.1);
+  --line-strong: rgb(16 24 40 / 0.26);
+  --card-shadow: 0 1px 3px rgb(16 24 40 / 0.08), 0 8px 20px -4px rgb(16 24 40 / 0.14);
+  --stage-light: none;
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 1);
+}
+.dark .tone-edges,
+.tone-edges.dark {
+  --page: #0b0c0f;
+  --rail: #0e1014;
+  --window: #12151a;
+  --card: #12151a;
+  --tile-bg: #15181d;
+  --raised: #181b22;
+  --well: #0d0f12;
+  --line: rgb(255 255 255 / 0.13);
+  --line-soft: rgb(255 255 255 / 0.07);
+  --line-strong: rgb(255 255 255 / 0.2);
+  --card-shadow: 0 0 0 1px rgb(0 0 0 / 0.6), 0 2px 4px rgb(0 0 0 / 0.35), 0 12px 28px -10px rgb(0 0 0 / 0.6);
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+.tone-edges .band-head {
+  box-shadow: inset 0 -1px 0 var(--line);
+}
