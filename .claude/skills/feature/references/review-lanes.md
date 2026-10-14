@@ -4,10 +4,10 @@ Used by the feature critique (plans and amendments) and by `/qc`. A stage that r
 
 | Stage | Profile | Lanes |
 | --- | --- | --- |
-| Feature critique | `critique` | `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-muse`, `critique-claude-opus` |
-| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-muse`, `qc-claude-opus` |
+| Feature critique | `critique` | `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-claude-opus` |
+| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-claude-opus` |
 
-Six critique reviewers and seven QC reviewers, all at high effort, the same from Claude Code and Codex (owner, September 29; Kimi removed October 13: "stop using the Chinese models completely"). Do not add or remove a lane. Opus runs as a separate `claude -p` process through the same runner; never dispatch a Claude review subagent instead.
+Five critique reviewers and six QC reviewers, all at high effort, the same from Claude Code and Codex (owner, September 29; Kimi removed October 13: "stop using the Chinese models completely"; every Cursor lane removed the same day: "no Cursor lane should remain at all"). Do not add or remove a lane. Opus runs as a separate `claude -p` process through the same runner; never dispatch a Claude review subagent instead.
 
 ## What lanes may do
 
@@ -43,4 +43,4 @@ A failed lane gets exactly one resume, only when its result names a real `resume
 python3 .claude/scripts/review-lanes.py resume --run-dir "$run_dir" --lane critique-grok-resume --source-lane critique-grok
 ```
 
-A usable resume stands in for its lane; `RESUME_UNAVAILABLE` means the lane is dead, with no fresh fallback. Codex lanes do not resume; Cursor lanes resume their own session; Grok and agy resumes are held to five turns. Owner exception, September 27: a Grok lane failing on exhausted usage (HTTP 402) is rerun once inside the same lane on Grok 4.7 through Cursor, and Grok lanes start on Cursor until the weekly reset (Tuesday 17:22 Pacific; a failure within two hours after the reset retries after 20 minutes). Its extract line ends with `replaced=grok:... via=cursor reason=grok-usage-exhausted until=<reset>`.
+A usable resume stands in for its lane; `RESUME_UNAVAILABLE` means the lane is dead, with no fresh fallback. Codex lanes do not resume; Grok and agy resumes are held to five turns. A Grok lane that fails on exhausted usage stays failed; the Cursor fallback was removed October 13 (owner).

@@ -22,8 +22,6 @@ COMMON = (
     ("agy-pro", "pro"),
     ("agy-flash", "flash"),
     ("grok", "grok"),
-    # Owner, 2026-09-23: models outside the other vendors, run on his Cursor Pro+ pool.
-    ("cursor-muse", "muse"),
     ("claude-opus", "opus"),
 )
 PROFILES = {
