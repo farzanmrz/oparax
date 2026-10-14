@@ -22,6 +22,8 @@ COMMON = (
     ("agy-pro", "pro"),
     ("agy-flash", "flash"),
     ("grok", "grok"),
+    # Owner, 2026-10-13: Muse Wonder through Muse Code on his Everyday subscription.
+    ("muse-wonder", "wonder"),
     ("claude-opus", "opus"),
 )
 PROFILES = {
