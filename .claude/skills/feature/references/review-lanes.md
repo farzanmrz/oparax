@@ -35,7 +35,7 @@ python3 .claude/scripts/review-lanes.py wait --run-dir "$run_dir" --lane critiqu
 python3 .claude/scripts/review-lanes.py extract --run-dir "$run_dir" --lane critique-codex-astra
 ```
 
-`wait` reports `RUNNING`, `DONE`, `FAILED`, `DIED` or `TIMED_OUT`; extract a terminal lane at once. `extract` reports `OK` (disposition every finding), `NO_FINDINGS` (the lane found nothing; never call it dead), or `INVALID`, `EMPTY_RESULT`, `FAILED`, `TIMED_OUT` (no usable payload). Read `<run-dir>/<lane>.findings.json` only after `OK` or `NO_FINDINGS`, never raw, partial or reasoning output.
+`wait` reports `RUNNING`, `DONE`, `FAILED`, `DIED` or `TIMED_OUT`; extract a terminal lane at once. `extract` reports `OK` (disposition every finding), `NO_FINDINGS` (the lane found nothing; never call it dead), or `INVALID`, `EMPTY_RESULT`, `FAILED`, `TIMED_OUT` (no usable payload), or `OUT_OF_USAGE` (the CLI said its subscription usage ran out; the line names the provider and the message): that lane is skipped, gets no resume, and the stage's report to the owner names it ("Grok skipped: out of usage"; owner, October 13). Read `<run-dir>/<lane>.findings.json` only after `OK` or `NO_FINDINGS`, never raw, partial or reasoning output.
 
 A failed lane gets exactly one resume, only when its result names a real `resume_id`, as a separate lane named `<lane>-resume`:
 
@@ -43,4 +43,4 @@ A failed lane gets exactly one resume, only when its result names a real `resume
 python3 .claude/scripts/review-lanes.py resume --run-dir "$run_dir" --lane critique-grok-resume --source-lane critique-grok
 ```
 
-A usable resume stands in for its lane; `RESUME_UNAVAILABLE` means the lane is dead, with no fresh fallback. Codex lanes do not resume; Muse lanes resume their own session; Grok, agy and Muse resumes are held to five turns. A Grok lane that fails on exhausted usage stays failed; the Cursor fallback was removed October 13 (owner).
+A usable resume stands in for its lane; `RESUME_UNAVAILABLE` means the lane is dead, with no fresh fallback, except `reason=out-of-usage`, which is the skipped lane above. Codex lanes do not resume; Muse lanes resume their own session; Grok, agy and Muse resumes are held to five turns. A Grok lane that fails on exhausted usage is `OUT_OF_USAGE` and skipped; the Cursor fallback was removed October 13 (owner).

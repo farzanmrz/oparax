@@ -87,7 +87,7 @@ One background subagent on an explicitly named mechanical model (Sonnet in Claud
 
 ## 6. Fold everything into one fix list
 
-Extract each lane as it ends (`OK`: every finding; `NO_FINDINGS`: nothing found, never dead; otherwise the one permitted resume, else dead; never invent findings). Your review and every lane stand equal. Merge duplicates; two lanes raising one point is high confidence. Spot-read cited code when a finding is contentious or a citation looks invented. Drop only for a reason a stranger would accept: it misreads the code (cite where), relitigates a settled decision, targets an excluded path or another component, rests on a skill rule without quoting our line, or duplicates an accepted item. Anything decision-shaped becomes an open question, never a fix.
+Extract each lane as it ends (`OK`: every finding; `NO_FINDINGS`: nothing found, never dead; `OUT_OF_USAGE`: skipped, no resume, never dead; otherwise the one permitted resume, else dead; never invent findings). Your review and every lane stand equal. Merge duplicates; two lanes raising one point is high confidence. Spot-read cited code when a finding is contentious or a citation looks invented. Drop only for a reason a stranger would accept: it misreads the code (cite where), relitigates a settled decision, targets an excluded path or another component, rests on a skill rule without quoting our line, or duplicates an accepted item. Anything decision-shaped becomes an open question, never a fix.
 
 Each accepted finding becomes one self-contained item: `file`, `line`, `fix` (the approach in one or two lines, never a patch) and `owner` (one plain line: what was wrong for a user, what the fix does). A `fix` you composed rather than took from verified lane evidence is checked against every lane's evidence, then traced in the repo, else becomes an open question; if any were composed, one fresh read-only subagent on an explicitly named judgment model (Opus in Claude Code, Sol or Astra in Codex) attacks only those approaches, and its findings are folded in the same way.
 
@@ -123,7 +123,7 @@ Each accepted finding becomes one self-contained item: `file`, `line`, `fix` (th
 
 ## 8. Report plainly
 
-No code terms, raw findings, paths or counts. **What got built** (one or two lines from your coverage read). **Gates:** GREEN, fixes handed over after RED, or STOP. **Fixes for the builder:** each `owner` line, or "none". **Open questions:** each with its tradeoff. **One closing line:** each lane's elapsed seconds, and "the <lane> review did not come back" for a dead lane. If asked what was dropped, answer plainly; never volunteer it.
+No code terms, raw findings, paths or counts. **What got built** (one or two lines from your coverage read). **Gates:** GREEN, fixes handed over after RED, or STOP. **Fixes for the builder:** each `owner` line, or "none". **Open questions:** each with its tradeoff. **One closing line:** each lane's elapsed seconds, "the <lane> review did not come back" for a dead lane, and "<lane> skipped: out of usage" for an `OUT_OF_USAGE` lane (owner, October 13). If asked what was dropped, answer plainly; never volunteer it.
 
 ## 9. Hand the fixes to the builder, then stop
 
