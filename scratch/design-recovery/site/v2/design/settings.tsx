@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, KeyRound, Plus, Rss, Trash2, UserRound } from "lucide-react";
+import { Bell, KeyRound, Plus, Rss, Trash2, UserRound, X as CloseIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { lift, liftStyle } from "@/v2/deck/chrome";
@@ -18,7 +18,7 @@ import { Gallery, Way } from "./shared";
 
 const present = groups.filter((g) => sources.some((s) => s.group === g.id));
 
-function Band({ glyph, title, action, children, className }: { glyph: React.ReactNode; title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function Band({ glyph, title, action, children, className }: { glyph: React.ReactNode; title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
     <section className={cn(lift, "overflow-hidden", className)} style={liftStyle}>
       <div className="flex h-11 items-center gap-2.5 bg-[var(--raised)] px-4">
@@ -33,7 +33,7 @@ function Band({ glyph, title, action, children, className }: { glyph: React.Reac
 
 const small = "inline-flex h-7 items-center gap-1.5 rounded-md border border-line-strong bg-[var(--window)] px-2.5 text-[12.5px] font-medium text-t2";
 
-function KindCards({ cols = 1 }: { cols?: 1 | 2 }) {
+export function KindCards({ cols = 1 }: { cols?: 1 | 2 }) {
   return (
     <div className={cn("grid gap-4", cols === 2 && "md:grid-cols-2")}>
       {present.map((g) => (
@@ -59,6 +59,9 @@ function KindCards({ cols = 1 }: { cols?: 1 | 2 }) {
                     <span className="text-[13.5px] font-medium text-t1">{s.name}</span>
                     <span className="ml-2 text-[12.5px] text-t3">{s.handle}</span>
                   </span>
+                  <span aria-label={`Remove ${s.name}`} className="grid size-7 shrink-0 place-items-center rounded-md text-t4 hover:bg-raised hover:text-[var(--error)]">
+                    <CloseIcon className="size-3.5" aria-hidden="true" />
+                  </span>
                 </li>
               ))}
           </ul>
@@ -68,7 +71,7 @@ function KindCards({ cols = 1 }: { cols?: 1 | 2 }) {
   );
 }
 
-function Dms() {
+export function Dms() {
   return (
     <Band glyph={<XLogo className="size-4 text-t1" />} title="Twitter DMs" action={<span className="text-[13px] text-t3">Not connected</span>}>
       <div className="px-2 py-1">
@@ -82,7 +85,7 @@ function Dms() {
   );
 }
 
-function Account() {
+export function Account() {
   return (
     <div className="grid gap-4">
       <Band glyph={<KeyRound className="size-4 text-t2" />} title="Password" action={<span className={small}>Change</span>}>
