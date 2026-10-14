@@ -23,7 +23,6 @@ COMMON = (
     ("agy-flash", "flash"),
     ("grok", "grok"),
     # Owner, 2026-09-23: models outside the other vendors, run on his Cursor Pro+ pool.
-    ("cursor-kimi", "kimi"),
     ("cursor-muse", "muse"),
     ("claude-opus", "opus"),
 )

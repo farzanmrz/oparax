@@ -4,10 +4,10 @@ Used by the feature critique (plans and amendments) and by `/qc`. A stage that r
 
 | Stage | Profile | Lanes |
 | --- | --- | --- |
-| Feature critique | `critique` | `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-kimi`, `critique-cursor-muse`, `critique-claude-opus` |
-| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-kimi`, `qc-cursor-muse`, `qc-claude-opus` |
+| Feature critique | `critique` | `critique-codex-astra`, `critique-agy-pro`, `critique-agy-flash`, `critique-grok`, `critique-cursor-muse`, `critique-claude-opus` |
+| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-agy-pro`, `qc-agy-flash`, `qc-grok`, `qc-cursor-muse`, `qc-claude-opus` |
 
-Seven critique reviewers and eight QC reviewers, all at high effort, the same from Claude Code and Codex (owner, September 29). Do not add or remove a lane. Opus runs as a separate `claude -p` process through the same runner; never dispatch a Claude review subagent instead.
+Six critique reviewers and seven QC reviewers, all at high effort, the same from Claude Code and Codex (owner, September 29; Kimi removed October 13: "stop using the Chinese models completely"). Do not add or remove a lane. Opus runs as a separate `claude -p` process through the same runner; never dispatch a Claude review subagent instead.
 
 ## What lanes may do
 
