@@ -8,10 +8,8 @@ the builders' skill folders by their central path; the runner exposes each as a 
 
 import argparse
 from pathlib import Path
-import shutil
 import subprocess
 import sys
-import time
 
 SCRIPTS = Path.home() / ".agents/skills/council/scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -58,8 +56,6 @@ def main():
             "--add-dir", action="append", default=[], metavar="DIR",
             help="a skill folder every lane may read, by its central path (repeatable)",
         )
-    trash = commands.add_parser("trash-pictures", help="owner, October 14: once a round is done, move img/ pictures to the Trash")
-    trash.add_argument("--checkout", default=".")
     for name in ("wait", "extract", "resume"):
         command = commands.add_parser(name)
         command.add_argument("--run-dir", required=True)
@@ -101,16 +97,6 @@ def main():
                 ] + extra,
                 check=True,
             )
-    elif args.command == "trash-pictures":
-        folder = Path(args.checkout).expanduser().resolve() / "img"
-        pictures = sorted(p for p in folder.iterdir() if p.is_file()) if folder.is_dir() else []
-        if pictures:
-            trash = Path.home() / ".Trash" / f"img-{time.strftime('%Y%m%d-%H%M%S')}"
-            trash.mkdir(parents=True, exist_ok=True)
-            for picture in pictures:
-                shutil.move(str(picture), str(trash / picture.name))
-        print(f"PICTURES: {len(pictures)} moved to the Trash")
-        return
     else:
         command = base + ["--lane", args.lane]
         if args.command == "wait":
@@ -118,6 +104,22 @@ def main():
         elif args.command == "resume":
             command += ["--source-lane", args.source_lane]
         subprocess.run(command, check=True)
+        if args.command == "extract":
+            delete_pictures_when_done(run_dir, checkout_root(Path.cwd()) or Path.cwd())
+
+
+def delete_pictures_when_done(run_dir, checkout):
+    """Owner, October 14: the pictures were passed to the lanes; once every lane of this run has
+    answered (each has an exit file), they are deleted from img/ so they never pile up."""
+    lanes = [p for p in run_dir.glob("*.json") if not p.name.endswith((".findings.json", ".cursor-config"))]
+    if not lanes or any(not p.with_suffix(".exit").exists() for p in lanes):
+        return
+    folder = checkout / "img"
+    pictures = sorted(p for p in folder.iterdir() if p.is_file()) if folder.is_dir() else []
+    for picture in pictures:
+        picture.unlink()
+    if pictures:
+        print(f"PICTURES: {len(pictures)} deleted from {folder}")
 
 
 if __name__ == "__main__":
