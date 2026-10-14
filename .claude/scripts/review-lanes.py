@@ -19,8 +19,6 @@ RUNNER = SCRIPTS / "lanes.py"
 # These profiles are shared by the Claude and Codex workflow entry points: (lane, council name).
 # Model ids live in providers.py, so a model bump is made there once.
 COMMON = (
-    ("agy-pro", "pro"),
-    ("agy-flash", "flash"),
     ("grok", "grok"),
     # Owner, 2026-10-13: Muse Wonder through Muse Code on his Everyday subscription.
     ("muse-wonder", "wonder"),
