@@ -8,8 +8,10 @@ the builders' skill folders by their central path; the runner exposes each as a 
 
 import argparse
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import time
 
 SCRIPTS = Path.home() / ".agents/skills/council/scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -56,6 +58,8 @@ def main():
             "--add-dir", action="append", default=[], metavar="DIR",
             help="a skill folder every lane may read, by its central path (repeatable)",
         )
+    trash = commands.add_parser("trash-pictures", help="owner, October 14: once a round is done, move img/ pictures to the Trash")
+    trash.add_argument("--checkout", default=".")
     for name in ("wait", "extract", "resume"):
         command = commands.add_parser(name)
         command.add_argument("--run-dir", required=True)
@@ -67,7 +71,7 @@ def main():
     args = parser.parse_args()
     if not RUNNER.is_file():
         parser.error(f"Global council lane runner is missing: {RUNNER}. Restore the installed skill; do not substitute a lane script.")
-    run_dir = Path(args.run_dir).expanduser().resolve()
+    run_dir = Path(args.run_dir).expanduser().resolve() if getattr(args, "run_dir", None) else None
     base = [sys.executable, str(RUNNER), args.command, "--run-dir", str(run_dir)]
     if args.command in ("preview", "start"):
         brief = Path(args.brief).expanduser().resolve()
@@ -97,6 +101,16 @@ def main():
                 ] + extra,
                 check=True,
             )
+    elif args.command == "trash-pictures":
+        folder = Path(args.checkout).expanduser().resolve() / "img"
+        pictures = sorted(p for p in folder.iterdir() if p.is_file()) if folder.is_dir() else []
+        if pictures:
+            trash = Path.home() / ".Trash" / f"img-{time.strftime('%Y%m%d-%H%M%S')}"
+            trash.mkdir(parents=True, exist_ok=True)
+            for picture in pictures:
+                shutil.move(str(picture), str(trash / picture.name))
+        print(f"PICTURES: {len(pictures)} moved to the Trash")
+        return
     else:
         command = base + ["--lane", args.lane]
         if args.command == "wait":

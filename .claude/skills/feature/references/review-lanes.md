@@ -35,7 +35,7 @@ python3 .claude/scripts/review-lanes.py wait --run-dir "$run_dir" --lane critiqu
 python3 .claude/scripts/review-lanes.py extract --run-dir "$run_dir" --lane critique-codex-astra
 ```
 
-`wait` reports `RUNNING`, `DONE`, `FAILED`, `DIED` or `TIMED_OUT`; extract a terminal lane at once. `extract` reports `OK` (disposition every finding), `NO_FINDINGS` (the lane found nothing; never call it dead), or `INVALID`, `EMPTY_RESULT`, `FAILED`, `TIMED_OUT` (no usable payload), or `OUT_OF_USAGE` (the CLI said its subscription usage ran out; the line names the provider and the message): that lane is skipped, gets no resume, and the stage's report to the owner names it ("Grok skipped: out of usage"; owner, October 13). Read `<run-dir>/<lane>.findings.json` only after `OK` or `NO_FINDINGS`, never raw, partial or reasoning output.
+`wait` reports `RUNNING`, `DONE`, `FAILED`, `DIED` or `TIMED_OUT`; extract a terminal lane at once. `extract` reports `OK` (disposition every finding), `NO_FINDINGS` (the lane found nothing; never call it dead), or `INVALID`, `EMPTY_RESULT`, `FAILED`, `TIMED_OUT` (no usable payload), or `OUT_OF_USAGE` (the CLI said its subscription usage ran out; the line names the provider and the message): that lane is skipped, gets no resume, and the stage's report to the owner names it ("Grok skipped: out of usage"; owner, October 13). Read `<run-dir>/<lane>.findings.json` only after `OK` or `NO_FINDINGS`, never raw, partial or reasoning output. When the last lane is in, run `python3 .claude/scripts/review-lanes.py trash-pictures` so the round's pictures leave `img/` for the Trash (owner, October 14).
 
 A failed lane gets exactly one resume, only when its result names a real `resume_id`, as a separate lane named `<lane>-resume`:
 

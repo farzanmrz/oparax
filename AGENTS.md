@@ -43,7 +43,7 @@ Prove user ownership with RLS before privileged work. Revalidate client input on
 
 ## Images (owner, October 5, 2026)
 
-Every screenshot or render an agent takes is saved under `img/` at the repo root, with a short name; nowhere else (a Bash hook refuses screenshot commands aimed elsewhere). Council rounds read pictures only from `img/`: `council.py start --images a.png,b.png` empties the folder, copies the round's pictures in, tells every lane the folder and the file names, and attaches them for the codex route. Every lane is told its time budget in minutes (default 14, the most under the runner's 15-minute cut).
+Every screenshot or render an agent takes is saved under `img/` at the repo root, with a short name; nowhere else (a Bash hook refuses screenshot commands aimed elsewhere). Council rounds read pictures only from `img/`: `council.py start --images a.png,b.png` empties the folder, copies the round's pictures in, tells every lane the folder and the file names, and attaches them for the codex route. Every lane is told its time budget in minutes (default 14, the most under the runner's 15-minute cut). Once a round is done, its pictures are moved from `img/` to the Trash (owner, October 14: "once done then we must move those images to trash so they don't accumulate"); `council.py collect` does this when every lane has answered, and a critique or QC round clears the folder the same way when it ends.
 
 ## Recording (owner, October 8, 2026)
 
