@@ -7,8 +7,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ProviderButtons } from "@/components/auth/provider-buttons";
+import { BrandHeader } from "@/components/one/brand-header";
 import { OneCard } from "@/components/one/card";
-import { BrandHeader } from "@/components/one/header";
 import { liftHigh, primaryButton, Stage } from "@/components/one/stage";
 import { Spinner } from "@/components/ui/spinner";
 import { type AuthFormState, loginAction, signupAction } from "@/lib/auth/actions";
@@ -74,13 +74,13 @@ function Fan() {
       aria-label={authFan.label}
     >
       <div className="absolute -top-6 left-[292px] w-[400px] rotate-[3deg]">
-        <OneCard story={authFan.back} compact />
+        <OneCard story={authFan.back} compact imageHeight={150} />
       </div>
       <div className="absolute top-0 left-[112px] w-[400px] -rotate-[3.5deg]">
-        <OneCard story={authFan.middle} compact />
+        <OneCard story={authFan.middle} compact imageHeight={150} />
       </div>
       <div className="absolute top-24 left-[256px] w-[440px]">
-        <OneCard story={authFan.front} />
+        <OneCard story={authFan.front} imageHeight={170} />
       </div>
     </section>
   );

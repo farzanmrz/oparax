@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * The Oparax theme (DESIGN.md, fixed October 2, 2026): the .palette-council values from the design preview, light on
+ * The Oparax theme (DESIGN.md, fixed October 2, 2026; the Depth surfaces of October 10): the .palette-council values from the lab, light on
  * :root and dark on .dark, so portals read them too. The shadcn names map onto it (background = page, card = card,
  * primary = the brand solid, border = line, ring = brand); the One names are what the converted pages read.
  */
@@ -43,15 +43,15 @@
   --sidebar-accent-foreground: #0e1116;
   --sidebar-border: rgb(16 24 40 / 0.1);
   --sidebar-ring: #2459e8;
-  --page: #eceef2;
+  --page: #e2e5eb;
   --window: #ffffff;
   --rail: #f7f8fa;
   --tile-bg: #ffffff;
-  --raised: #f4f5f8;
-  --well: #f6f7f9;
-  --line: rgb(16 24 40 / 0.1);
-  --line-soft: rgb(16 24 40 / 0.06);
-  --line-strong: rgb(16 24 40 / 0.16);
+  --raised: #eaedf3;
+  --well: #e9ecf2;
+  --line: rgb(16 24 40 / 0.14);
+  --line-soft: rgb(16 24 40 / 0.08);
+  --line-strong: rgb(16 24 40 / 0.2);
   --t1: #0e1116;
   --t2: #343a45;
   --t3: #5f6672;
@@ -71,18 +71,13 @@
   --caution-soft: rgb(200 133 4 / 0.12);
   --error: #d93a40;
   --error-soft: rgb(217 58 64 / 0.1);
-  --stage-light: radial-gradient(
-    90% 70% at 50% 0%,
-    rgb(36 89 232 / 0.11),
-    rgb(36 89 232 / 0.03) 45%,
-    transparent 75%
-  );
+  --stage-light: none;
   --stage-frame: linear-gradient(180deg, #dfe3ea 0%, #e8ebf0 40%, #eceef2 100%);
   --window-shadow:
     0 0 0 1px rgb(16 24 40 / 0.07), 0 1px 2px rgb(16 24 40 / 0.05), 0 12px 24px -8px rgb(16 24 40 / 0.1),
     0 40px 80px -24px rgb(16 24 40 / 0.22);
   --card-shadow:
-    0 0 0 1px rgb(16 24 40 / 0.07), 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 16px -6px rgb(16 24 40 / 0.1);
+    0 0 0 1px rgb(16 24 40 / 0.1), 0 2px 4px rgb(16 24 40 / 0.07), 0 12px 26px -8px rgb(16 24 40 / 0.18);
   --top-light: inset 0 1px 0 rgb(255 255 255 / 0.9);
   --dot-grid: radial-gradient(rgb(16 24 40 / 0.12) 1px, transparent 1px);
 }
@@ -91,7 +86,7 @@
   color-scheme: dark;
   --background: #0b0c0f;
   --foreground: #f3f5f8;
-  --card: #121418;
+  --card: #14171d;
   --card-foreground: #f3f5f8;
   --popover: #16191e;
   --popover-foreground: #f3f5f8;
@@ -120,15 +115,15 @@
   --sidebar-accent-foreground: #f3f5f8;
   --sidebar-border: rgb(255 255 255 / 0.075);
   --sidebar-ring: #5b8cff;
-  --page: #0b0c0f;
-  --window: #111317;
-  --rail: #0e1013;
-  --tile-bg: #15181d;
-  --raised: #191c22;
-  --well: #0d0f12;
-  --line: rgb(255 255 255 / 0.075);
-  --line-soft: rgb(255 255 255 / 0.045);
-  --line-strong: rgb(255 255 255 / 0.13);
+  --page: #0a0b0e;
+  --window: #14171d;
+  --rail: #0f1217;
+  --tile-bg: #171b21;
+  --raised: #1e222a;
+  --well: #0c0e11;
+  --line: rgb(255 255 255 / 0.09);
+  --line-soft: rgb(255 255 255 / 0.055);
+  --line-strong: rgb(255 255 255 / 0.15);
   --t1: #f3f5f8;
   --t2: #c9ced7;
   --t3: #8d939e;
@@ -148,19 +143,14 @@
   --caution-soft: rgb(242 184 75 / 0.13);
   --error: #f2555a;
   --error-soft: rgb(242 85 90 / 0.13);
-  --stage-light: radial-gradient(
-    80% 65% at 50% 0%,
-    rgb(170 190 230 / 0.2),
-    rgb(120 150 220 / 0.06) 45%,
-    transparent 78%
-  );
+  --stage-light: radial-gradient(80% 65% at 50% 0%, rgb(170 190 230 / 0.16), transparent 75%);
   --stage-frame: linear-gradient(180deg, #23262d 0%, #15171b 38%, #0d0e11 100%);
   --window-shadow:
     0 0 0 1px rgb(0 0 0 / 0.6), 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 32px -12px rgb(0 0 0 / 0.6),
     0 48px 96px -24px rgb(0 0 0 / 0.75);
   --card-shadow:
-    0 0 0 1px rgb(0 0 0 / 0.45), 0 2px 4px rgb(0 0 0 / 0.25), 0 12px 28px -10px rgb(0 0 0 / 0.55);
-  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.06);
+    0 0 0 1px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.32), 0 14px 30px -10px rgb(0 0 0 / 0.6);
+  --top-light: inset 0 1px 0 rgb(255 255 255 / 0.07);
   --dot-grid: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
 }
 
@@ -267,11 +257,24 @@
   }
 }
 
-/* One centred column on every signed-in page, the header's content inside it (DESIGN.md Width). Side margin =
- * clamp(48px, (viewport - 1400px) / 4, 290px): 48px at 1440 (a 1344px column), 290px at 2560 (a 1980px column). */
+/* One centred column on every page (DESIGN.md Width). Side margin = clamp(48px, (viewport - 1400px) / 4, 290px):
+ * 48px at 1440 (a 1344px column), 290px at 2560 (a 1980px column). Beside the rail, the same column is centred in the
+ * width that remains; the rail's width comes from --one-rail-w (248px open, 0 hidden). Below 1024px the rail is a
+ * sheet and the column is the plain one. */
 @layer components {
   .one-column {
     width: 100%;
     padding-inline: clamp(48px, calc((100vw - 1400px) / 4), 290px);
+  }
+  .one-column-rail {
+    width: 100%;
+    padding-inline: clamp(48px, calc((100vw - 1400px) / 4), 290px);
+  }
+  @media (min-width: 1024px) {
+    .one-column-rail {
+      --one-rail-margin: clamp(48px, calc((100vw - var(--one-rail-w, 248px) - 1400px) / 4), 290px);
+      padding-left: calc(var(--one-rail-w, 248px) + var(--one-rail-margin));
+      padding-right: var(--one-rail-margin);
+    }
   }
 }

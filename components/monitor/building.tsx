@@ -7,7 +7,7 @@ import {
   ChainOfThoughtStep,
 } from "@/components/ai-elements/chain-of-thought";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { ProfileAvatar } from "@/components/monitor/agent-header";
+import { ProfileAvatar } from "@/components/one/profile-avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { monitorContent as copy } from "@/lib/monitor/content";
 import type { BuildLog, Profile } from "@/lib/monitor/read";

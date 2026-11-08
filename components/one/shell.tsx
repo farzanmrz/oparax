@@ -1,82 +1,72 @@
-import { Stage } from "@/components/one/stage";
+import { AppShell, type ShellPerson } from "@/components/one/app-shell";
 import { monitorContent } from "@/lib/monitor/content";
-import { monitorState, TRIAL_DAYS } from "@/lib/monitor-state";
-import { settingsContent } from "@/lib/settings/content";
-import type { Tables } from "@/lib/supabase/database.types";
-import { OneHeader, type ShellPlan } from "./header";
+import { asideGroups } from "@/lib/monitor/present";
+import type { MonitorSources, Profile } from "@/lib/monitor/read";
+import { feedHref } from "@/lib/monitor/routes";
 
-// The One shell on the owner's signed-in pages (design preview v2/one/shell.tsx, pass 16): the page ground and one
-// running header line, its content in the page column (DESIGN.md Width, the .one-column class in globals.css).
+// The One shell on the signed-in pages (lab v2/one/shell.tsx AppShell): the rail at the left with the four pages and
+// the agent's sources as the feed's filters, the page in its column beside it. The page passes what it has read:
+// the person's agent (or none before the build), its sources for the Filter group, and which source the feed shows.
 
-/** The one column every signed-in page and the header sit in. */
-export const column = "one-column";
+export type ShellAgent = {
+  handle: string;
+  display_handle: string;
+  profile: Profile | null;
+};
 
-export type ShellMonitor = Pick<
-  Tables<"monitors">,
-  | "handle"
-  | "status"
-  | "trial_started_at"
-  | "paid_through"
-  | "tier"
-  | "pool_limit"
-  | "pool_used"
-  | "cadence"
-  | "budget_exhausted_at"
->;
-
-const tierNames = new Map<string, string>(Object.entries(settingsContent.billing.tiers));
-
-/** The plan as the header and settings show it; null before the free week starts. */
-export function planOf(monitor: ShellMonitor): ShellPlan | null {
-  const free = monitor.tier === "free";
-  // The free week starts when the build succeeds; until then there is no plan to show and no countdown.
-  if (free && !monitor.trial_started_at) return null;
-  return {
-    name: tierNames.get(monitor.tier) ?? settingsContent.billing.unknownTier,
-    daysLeft: free ? monitorState(monitor).daysLeft : null,
-    days: TRIAL_DAYS,
-    used: monitor.pool_used,
-    limit: monitor.pool_limit,
-  };
+/** The person in the rail's foot: the profile's name, else the handle, else the signed-in address. */
+export function personOf(agent: ShellAgent | null, email: string | null): ShellPerson {
+  const name = agent?.profile?.name || (agent ? `@${agent.display_handle}` : null) || email || "";
+  const letters = name.replace(/^@/, "");
+  return { name, initial: letters.charAt(0) || monitorContent.menu.account.charAt(0) };
 }
 
 /**
- * The ground and the header. `email` is the signed-in address; `monitor` is the person's own agent, or null before
- * they have one (Feed then leads to onboarding, Settings is hidden and there is no plan).
+ * The rail and the ground. `agent` is the person's own agent, or null before they have one (the head then leads to
+ * onboarding and `middle` holds the steps). `sources` fills the Filter group when the page has read them; `selected`
+ * is the source the feed shows, `direct` whether the feed shows Direct, so a row keeps the view.
  */
 export function OneShell({
   email,
-  monitor,
-  skip,
+  agent,
+  sources = null,
+  selected = null,
+  direct = false,
+  middle,
   light,
   className,
   children,
 }: {
   email: string | null;
-  monitor: ShellMonitor | null;
-  /** The skip link to the page's main content, first in the tab order. */
-  skip?: { href: string; label: string };
+  agent: ShellAgent | null;
+  sources?: MonitorSources | null;
+  selected?: string | null;
+  direct?: boolean;
+  middle?: React.ReactNode;
   light?: number;
   className?: string;
   children: React.ReactNode;
 }) {
+  const groups =
+    agent && sources
+      ? asideGroups(sources, {
+          href: (key) => feedHref(agent.handle, direct, key === selected ? null : key),
+          selected,
+          counts: null,
+        })
+      : [];
   return (
-    <Stage light={light} className={className}>
-      {skip ? (
-        <a
-          href={skip.href}
-          className="sr-only rounded-md focus:not-sr-only focus:fixed focus:top-2 focus:left-4 focus:z-50 focus:bg-background focus:p-3 focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {skip.label}
-        </a>
-      ) : null}
-      <OneHeader
-        label={email ?? monitorContent.menu.account}
-        feed={monitor ? `/${monitor.handle}` : "/onboarding"}
-        settings={monitor ? `/${monitor.handle}/settings` : null}
-        plan={monitor ? planOf(monitor) : null}
-      />
+    <AppShell
+      home={agent ? `/${agent.handle}` : "/onboarding"}
+      handle={agent?.handle ?? null}
+      groups={groups}
+      selected={selected}
+      middle={middle}
+      person={personOf(agent, email)}
+      light={light}
+      className={className}
+    >
       {children}
-    </Stage>
+    </AppShell>
   );
 }

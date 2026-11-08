@@ -1,31 +1,8 @@
-import Image from "next/image";
 import { cardShadow } from "@/components/monitor/item-card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ProfileAvatar } from "@/components/one/profile-avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { monitorContent as copy, safeWebUrl } from "@/lib/monitor/content";
+import { monitorContent as copy } from "@/lib/monitor/content";
 import type { Brief, Profile } from "@/lib/monitor/read";
-
-export function ProfileAvatar({ profile }: { profile: Profile | null }) {
-  const image = safeWebUrl(profile?.image, true);
-  const allowed = image && new URL(image).hostname === "pbs.twimg.com";
-  return (
-    <Avatar className="size-12">
-      {allowed ? (
-        <Image
-          src={image}
-          alt={copy.imageAlt}
-          width={48}
-          height={48}
-          sizes="48px"
-          className="size-12 rounded-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-      ) : (
-        <AvatarFallback>{profile?.name.slice(0, 1) ?? "@"}</AvatarFallback>
-      )}
-    </Avatar>
-  );
-}
 
 export function AgentHeader({
   handle,
