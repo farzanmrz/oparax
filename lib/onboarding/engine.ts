@@ -547,10 +547,9 @@ export async function runOnboarding({
     }),
     "</candidates>",
   ].join("\n");
-  const messages: ModelMessage[] = [
-    { role: "system", content: INSTRUCTIONS },
-    { role: "user", content: withImages(firstMessage) },
-  ];
+  // The AI SDK refuses a system message inside `messages`; the prompt travels as `instructions`, and the cost bound
+  // and the telemetry still count it.
+  const messages: ModelMessage[] = [{ role: "user", content: withImages(firstMessage) }];
   async function ask() {
     await report(3, "Choosing recommendations and writing the brief");
     const answer = await withCost(
@@ -559,12 +558,13 @@ export async function runOnboarding({
         kind: "onboarding",
         monitorId,
         runId,
-        usdReserved: lunaBound(messages),
+        usdReserved: lunaBound([{ role: "system", content: INSTRUCTIONS }, ...messages]),
       },
       async () => {
         const started = Date.now();
         const r = await generateText({
           model: MODEL,
+          instructions: INSTRUCTIONS,
           messages,
           output: Output.object({ schema: AnswerSchema }),
           reasoning: "high",
@@ -575,7 +575,7 @@ export async function runOnboarding({
         const cost = gatewayCost(r.providerMetadata);
         onGeneration({
           model: MODEL,
-          messages: [...messages],
+          messages: [{ role: "system", content: INSTRUCTIONS }, ...messages],
           output: JSON.stringify(r.output),
           usage: r.usage,
           latencyMs: Date.now() - started,

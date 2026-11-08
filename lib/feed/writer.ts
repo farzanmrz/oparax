@@ -48,10 +48,10 @@ export async function writeDraft(
   let message = user;
   for (let index = 0; index < (repair ? 1 : 2); index++) {
     requireTime(context);
-    const messages = [
-      { role: "system" as const, content: WRITER_SYSTEM },
-      { role: "user" as const, content: message },
-    ];
+    // The AI SDK refuses a system message inside `messages`; the prompt travels as `instructions`, and the cost bound
+    // and the telemetry still count it.
+    const messages = [{ role: "user" as const, content: message }];
+    const prompt = [{ role: "system" as const, content: WRITER_SYSTEM }, ...messages];
     const started = Date.now();
     const attempt: Attempt = {
       user: message,
@@ -75,12 +75,13 @@ export async function writeDraft(
           monitorId: context.monitorId,
           sourceId: context.item.source_id,
           runId: context.runId,
-          usdReserved: qwenBound(messages),
+          usdReserved: qwenBound(prompt),
         },
         async () => {
           try {
             const result = await generateText({
               model: MODEL,
+              instructions: WRITER_SYSTEM,
               messages,
               output: Output.object({ schema: cardSchema }),
               reasoning: "medium",
@@ -164,7 +165,7 @@ export async function writeDraft(
         latencyMs: attempt.latencyMs,
         streamed: false,
         generationId,
-        inputMessages: messages,
+        inputMessages: prompt,
         outputText: attempt.raw,
         properties: {
           $ai_session_id: null,
