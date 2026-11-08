@@ -1,8 +1,8 @@
-import type { SettingsData, SettingsMonitor } from "@/app/[handle]/settings/settings-view";
 import seedTable from "@/docs/source-table-seed.json";
-import { type FeedStats, feedStats } from "@/lib/monitor/present";
 import type { BuildLog, MonitorFeed, MonitorSources, PublicItem } from "@/lib/monitor/read";
 import type { BuildState, Post } from "@/lib/onboarding/types";
+import type { SettingsData } from "@/lib/settings/read";
+import type { Tables } from "@/lib/supabase/database.types";
 
 export const previewHandle = "local-preview";
 export const previewTitle = "Local preview";
@@ -281,20 +281,6 @@ export function previewFeed(storyId?: string, source?: string | null): MonitorFe
   };
 }
 
-/** The tiles' numbers, computed from the example feed exactly as the feed read computes them. */
-export function previewStats(): FeedStats {
-  const now = Date.now();
-  const { feed, items } = exampleFeed(now);
-  return feedStats(
-    {
-      stories: feed.stories.map((s) => s.reports[0].published_at),
-      items: items.map((item) => ({ kind: item.kind, source_ids: [item.source_id] })),
-      digests: feed.digests.length,
-    },
-    new Date(now),
-  );
-}
-
 // The signed-in pages at rest, mid-run, failed and in settings, for the same example person. A run is frozen at one
 // checkpoint: build_state exactly as the engine saves it there, and the build_log lines reported up to it.
 
@@ -326,10 +312,41 @@ export function previewMonitor(now = Date.now()) {
     digest_github: true,
     digest_product_hunt: true,
     stripe_customer_id: null,
-  } satisfies SettingsMonitor & { handle: string; display_handle: string };
+  } satisfies Pick<
+    Tables<"monitors">,
+    | "id"
+    | "handle"
+    | "display_handle"
+    | "status"
+    | "trial_started_at"
+    | "paid_through"
+    | "tier"
+    | "pool_limit"
+    | "pool_used"
+    | "cadence"
+    | "budget_exhausted_at"
+    | "alert_hour"
+    | "alert_timezone"
+    | "bot_state"
+    | "digest_github"
+    | "digest_product_hunt"
+    | "stripe_customer_id"
+  >;
 }
 
 const firstSentence = (text: string) => text.split(/(?<=\.)\s/)[0] ?? text;
+
+/** The example person as the rail's foot and head know them. */
+export const previewAgent = {
+  handle: previewHandle,
+  display_handle: person.handle,
+  profile: {
+    name: person.name,
+    bio: "Building review tools for agent teams.",
+    image: null,
+    site: null,
+  },
+};
 
 /** The example agent's settings: rows of the shared table, a few of each kind, two accounts watched. */
 export const previewSettings: SettingsData = {

@@ -105,7 +105,7 @@ export async function refreshCountsForOwner(handle: unknown): Promise<SettingsRe
             }),
           );
           for (const result of results) if (result.status === "rejected") throw result.reason;
-          revalidatePath(`/${monitor.handle}/settings`);
+          revalidatePath(`/${monitor.handle}/sources`);
         } catch (error) {
           reportServerException(error, { tags: { area: "settings", stage: "counts" } });
         } finally {

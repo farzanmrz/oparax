@@ -1,16 +1,40 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { NotificationsPage } from "@/components/one/notifications-page";
+import { monitorContent as copy } from "@/lib/monitor/content";
 import { readMonitor, readViewer } from "@/lib/monitor/read";
+import { monitorState } from "@/lib/monitor-state";
+import { Elsewhere, OwnerPage, readOwnerPage } from "../owner-page";
 
-// Notifications now live on the one Settings page (X DMs in its account block); the old address leads there for the
-// owner and to the agent's page for everyone else.
-export default async function NotificationsPage({
-  params,
-}: {
-  params: Promise<{ handle: string }>;
-}) {
+type Props = { params: Promise<{ handle: string }> };
+
+export const runtime = "nodejs";
+export const metadata: Metadata = {
+  title: copy.notifications.title,
+  robots: { index: false, follow: false },
+};
+
+// The owner's Notifications page (owner, Oct 10: locked): the Twitter DM connection. Everyone else is sent to the
+// agent's page.
+export default async function NotificationsRoute({ params }: Props) {
   const { handle } = await params;
   const [monitor, viewer] = await Promise.all([readMonitor(handle), readViewer()]);
   if (!monitor) notFound();
-  const owner = viewer.userId !== null && viewer.userId === monitor.user_id;
-  redirect(owner ? `/${monitor.handle}/settings` : `/${monitor.handle}`);
+  if (viewer.userId === null)
+    redirect(`/login?next=${encodeURIComponent(`/${monitor.handle}/notifications`)}`);
+  if (viewer.userId !== monitor.user_id) redirect(`/${monitor.handle}`);
+  const { owned } = await readOwnerPage(monitor.handle, "notifications");
+  if (!owned.ok) return <Elsewhere title={copy.notifications.title} />;
+  const state = monitorState(owned.monitor);
+  return (
+    <OwnerPage owned={owned} title={copy.notifications.title}>
+      <NotificationsPage
+        monitorId={owned.monitor.id}
+        displayHandle={owned.monitor.display_handle}
+        botState={owned.monitor.bot_state}
+        open={state.state === "trial" || state.state === "paid"}
+        failedDeliveries={owned.data.failedDeliveries}
+      />
+    </OwnerPage>
+  );
 }

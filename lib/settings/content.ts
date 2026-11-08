@@ -1,6 +1,8 @@
 export const settingsContent = {
   title: "Settings",
   skip: "Skip to settings",
+  none: "None yet.",
+  account: { username: "Username", email: "Email" },
   signIn: "Sign in to your account",
   loadError: "Settings could not be loaded. Reload the page to try again.",
   save: "Save",
@@ -67,8 +69,13 @@ export const settingsContent = {
       "Star threshold alerts for this repository will stop. You can follow it again later.",
   },
   billing: {
+    plan: "Plan",
     through: "Paid through",
     plans: "Plans",
+    freeWeek: (n: number) => `Free week, ${n} ${n === 1 ? "day" : "days"} left`,
+    aMonth: (price: string) => `${price} a month`,
+    current: "Current plan",
+    choose: "Choose",
     manage: "Manage subscription",
     opening: "Opening subscription…",
     tiers: { free: "Free week", hobby: "Hobby", creator: "Creator", wire: "Wire" },

@@ -70,7 +70,8 @@ export async function changeSettings<T, R extends { ok: true } = { ok: true }>(
       return { ok: false, error: errors.billing };
     const result = await work(parsed.data, owned.monitor, owned.userId);
     if (result.ok && gate !== "billing") {
-      revalidatePath(`/${owned.monitor.handle}/settings`);
+      for (const page of ["sources", "notifications", "account"])
+        revalidatePath(`/${owned.monitor.handle}/${page}`);
       revalidatePath(`/${owned.monitor.handle}`);
     }
     return result;
