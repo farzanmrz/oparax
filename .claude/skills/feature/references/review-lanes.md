@@ -4,10 +4,10 @@ Used by the feature critique (plans and amendments) and by `/qc`. A stage that r
 
 | Stage | Profile | Lanes |
 | --- | --- | --- |
-| Feature critique | `critique` | `critique-codex-astra`, `critique-grok`, `critique-muse-wonder`, `critique-claude-opus` |
-| QC | `qc` | `qc-codex-sol`, `qc-codex-astra`, `qc-grok`, `qc-muse-wonder`, `qc-claude-opus` |
+| Feature critique | `critique` | `critique-codex-astra`, `critique-grok`, `critique-muse-wonder`, `critique-agy-argon`, `critique-claude-opus` |
+| QC | `qc` | `qc-codex-sol`, `qc-codex-terra`, `qc-codex-astra`, `qc-grok`, `qc-muse-wonder`, `qc-agy-argon`, `qc-claude-opus` |
 
-Four critique reviewers and five QC reviewers, all at high effort, the same from Claude Code and Codex (owner, September 29; Kimi removed October 13: "stop using the Chinese models completely"; every Cursor lane removed the same day: "no Cursor lane should remain at all"; Muse Wonder added the same day through Muse Code; Gemini Pro and Flash dropped October 14 after a 2-week audit found 4 unique accepted findings in 38 runs). Do not add or remove a lane. Opus runs as a separate `claude -p` process through the same runner; never dispatch a Claude review subagent instead.
+Five critique reviewers and seven QC reviewers, all at high effort, the same from Claude Code and Codex (owner, September 29; Kimi removed October 13: "stop using the Chinese models completely"; every Cursor lane removed the same day: "no Cursor lane should remain at all"; Muse Wonder added the same day through Muse Code; Gemini Pro and Flash dropped October 14 after a 2-week audit found 4 unique accepted findings in 38 runs; Gemini 4 Argon added to both and GPT-6.1 Terra beside Sol in QC, October 28). The lineups live in `LINEUPS` in the council skill's `providers.py`, which also feeds `/council`, so a council model change updates these lanes in the same edit. Do not add or remove a lane. Opus runs as a separate `claude -p` process through the same runner; never dispatch a Claude review subagent instead.
 
 ## What lanes may do
 

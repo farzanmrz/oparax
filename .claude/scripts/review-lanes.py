@@ -13,20 +13,18 @@ import sys
 
 SCRIPTS = Path.home() / ".agents/skills/council/scripts"
 sys.path.insert(0, str(SCRIPTS))
-from providers import MODELS  # noqa: E402
+from providers import LINEUPS, MODELS  # noqa: E402
 
 RUNNER = SCRIPTS / "lanes.py"
 # These profiles are shared by the Claude and Codex workflow entry points: (lane, council name).
-# Model ids live in providers.py, so a model bump is made there once.
-COMMON = (
-    ("grok", "grok"),
-    # Owner, 2026-10-13: Muse Wonder through Muse Code on his Everyday subscription.
-    ("muse-wonder", "wonder"),
-    ("claude-opus", "opus"),
-)
+# Model ids and both lineups live in providers.py, so a council change reaches them in one edit
+# (owner, October 28). A lane is named <provider>-<name> (codex-astra), or just grok.
 PROFILES = {
-    "critique": (("codex-astra", "astra"),) + COMMON,
-    "qc": (("codex-sol", "sol"), ("codex-astra", "astra")) + COMMON,
+    profile: tuple(
+        (name if MODELS[name][0] == name else f"{MODELS[name][0]}-{name}", name)
+        for name in LINEUPS[lineup]
+    )
+    for profile, lineup in (("critique", "feature"), ("qc", "qc"))
 }
 
 
