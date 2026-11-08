@@ -1,45 +1,32 @@
-import { Layers, Newspaper, Rows3 } from "lucide-react";
+import { X as CloseIcon, Layers, Newspaper, Rows3 } from "lucide-react";
 import Link from "next/link";
 import { BrandIcon } from "@/components/brand-icon";
 import { SkippedList } from "@/components/monitor/skipped-list";
+import { PageLine } from "@/components/one/app-shell";
+import { BandCard } from "@/components/one/band-card";
 import { OneCard } from "@/components/one/card";
-import { OneFrame } from "@/components/one/frame";
-import type { ShellPlan } from "@/components/one/header";
-import { Masonry, type MasonryItem } from "@/components/one/masonry";
-import { SourceList } from "@/components/one/source-list";
+import { Grid, type GridItem } from "@/components/one/grid";
+import { SourceMark } from "@/components/one/marks";
 import { lift } from "@/components/one/stage";
-import { CheckingRow, FeedTiles } from "@/components/one/tiles";
 import { monitorContent as copy, safeWebUrl } from "@/lib/monitor/content";
 import {
   asideGroups,
-  type FeedStats,
   type FeedStory,
   toFeedArticle,
   toFeedStory,
   when,
 } from "@/lib/monitor/present";
 import type { MonitorFeed, MonitorSources } from "@/lib/monitor/read";
+import { feedHref } from "@/lib/monitor/routes";
 import { cn } from "@/lib/utils";
 
-// The One feed (design preview v2/one/feed.tsx, council October 8): content-sized cards in columns, newest first
-// across: three at 1440 with the aside open, four at 2560. Clustered is the stories, Direct the matching articles one
-// card each (view=articles); both page with the existing cursor and keep the aside's source filter (source=).
+// The One feed inside the shell (lab v2/one/feed.tsx; owner, Oct 10: "Feed looks fine"). The page line: Feed, the
+// "from {name}" chip beside it while a source is pressed, and at its right end the Clustered and Direct switch
+// (owner, Oct 9: "make it a toggle on the right of our header"). Then the stories packed into columns, newest first.
+// The rail's Filter rows press a source; the chip's x, or Feed in the rail, shows the whole feed again. Clustered is
+// the stories, Direct the matching articles one card each (view=articles); both page with the existing cursor.
 
-/** A card's height before layout, from its picture, headline and facts, for placing it in the shortest column. */
-function estimate(story: FeedStory) {
-  const lines = (text: string, perLine: number) => Math.max(1, Math.ceil(text.length / perLine));
-  const facts = story.facts.reduce((h, fact) => h + 8 + lines(fact, 46) * 20, 0);
-  return (story.image ? 172 : 0) + 64 + lines(story.headline, 34) * 21 + (facts || 22);
-}
-
-/** The feed's address for a view and a source. */
-export function feedHref(handle: string, direct: boolean, source: string | null) {
-  const query = new URLSearchParams();
-  if (direct) query.set("view", "articles");
-  if (source) query.set("source", source);
-  const rest = query.toString();
-  return `/${handle}${rest ? `?${rest}` : ""}`;
-}
+export { feedHref };
 
 /** Clustered and Direct, as links that keep the source filter. */
 export function FeedViews({
@@ -56,7 +43,10 @@ export function FeedViews({
     { on: direct, href: feedHref(handle, true, source), label: copy.direct, icon: Rows3 },
   ];
   return (
-    <nav aria-label={copy.feed} className="flex rounded-lg border border-line bg-well p-0.5">
+    <nav
+      aria-label={copy.feed}
+      className="flex rounded-lg border border-line bg-[var(--well)] p-0.5"
+    >
       {tabs.map(({ on, href, label, icon: Icon }) => (
         <Link
           key={label}
@@ -72,6 +62,38 @@ export function FeedViews({
         </Link>
       ))}
     </nav>
+  );
+}
+
+/** The filter chip beside the title: the source's mark, "from" and its name, and an x that shows the whole feed. */
+function FilterChip({
+  kind,
+  mark,
+  name,
+  clear,
+}: {
+  kind: "x" | "site" | "github";
+  mark: string;
+  name: string;
+  clear: string;
+}) {
+  return (
+    <span className="inline-flex h-7 min-w-0 items-center gap-1.5 rounded-full border border-[var(--brand-line)] bg-[var(--brand-soft)] pr-1 pl-2 text-[12.5px] text-t1">
+      <SourceMark
+        kind={kind}
+        mark={mark}
+        size={14}
+        className={kind === "x" ? "" : "rounded-[3px]"}
+      />
+      <span className="truncate">{copy.from(name)}</span>
+      <Link
+        href={clear}
+        aria-label={copy.wholeFeed}
+        className="grid size-5 shrink-0 place-items-center rounded-full text-t3 transition-colors hover:bg-raised hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <CloseIcon className="size-3" aria-hidden="true" />
+      </Link>
+    </span>
   );
 }
 
@@ -91,8 +113,8 @@ export function OneFeed({
   source: string | null;
   /** The line when nothing matches. */
   empty: string;
-  /** The owner's digest card, placed in the first row. */
-  digest?: MasonryItem | null;
+  /** The owner's digest card, placed among the first cards. */
+  digest?: GridItem | null;
 }) {
   const list: FeedStory[] = direct
     ? feed.articles.map(toFeedArticle)
@@ -105,19 +127,18 @@ export function OneFeed({
     view: direct ? "articles" : "stories",
   });
   if (source) more.set("source", source);
-  const cards: MasonryItem[] = list.map((story) => ({
+  const cards: GridItem[] = list.map((story) => ({
     key: story.id,
-    height: estimate(story),
-    node: <OneCard story={story} className="min-w-0" />,
+    node: <OneCard story={story} />,
   }));
   if (digest) cards.splice(2, 0, digest);
   return (
     <>
       <h2 className="sr-only">{direct ? copy.articles : copy.stories}</h2>
       {list.length ? (
-        <Masonry items={cards} />
+        <Grid items={cards} />
       ) : feed.pending && !source ? null : (
-        <p className="text-[14px] text-t2">{empty}</p>
+        <p className="text-[13.5px] text-t2">{empty}</p>
       )}
       {before ? (
         <div className="mt-8 flex justify-center">
@@ -136,7 +157,7 @@ export function OneFeed({
   );
 }
 
-/** The newest digest of each kind the person follows, as one small lifted card. */
+/** The newest digest of each kind the person follows, in the one band card. */
 function DigestCard({
   items,
   github,
@@ -152,21 +173,18 @@ function DigestCard({
     productHunt ? newest("product_hunt") : undefined,
   ].filter((item) => item !== undefined);
   return (
-    <section aria-label={copy.digestCard} className={cn(lift, "min-w-0 overflow-hidden")}>
-      <p className="flex items-center gap-2.5 border-b border-line px-4 py-3 text-[13px] font-semibold text-t1">
-        {/* A neutral mark: the card holds every digest kind, and each row carries its own. */}
-        <span className="grid size-[22px] shrink-0 place-items-center rounded-[5px] bg-raised text-t2">
-          <Newspaper className="size-3.5" aria-hidden="true" />
-        </span>
-        {copy.digestCard}
-      </p>
+    <BandCard
+      glyph={<Newspaper className="size-4 shrink-0 text-t2" strokeWidth={2} aria-hidden="true" />}
+      heading={copy.digestCard}
+      bodyClassName="px-4 py-1"
+    >
       <ul className="divide-y divide-line">
         {shown.map((item) => {
           const href = safeWebUrl(item.url);
           const hunt = item.kind === "product_hunt";
           return (
-            <li key={item.id} className="px-4 py-3.5">
-              <p className="flex min-w-0 items-center gap-2 text-[14px] font-medium text-t1">
+            <li key={item.id} className="py-3">
+              <p className="flex min-w-0 items-center gap-2 text-[13.5px] font-medium text-t1">
                 <BrandIcon
                   name={hunt ? "producthunt" : "github"}
                   className={cn("size-4 shrink-0", hunt ? "" : "text-[var(--kind-github)]")}
@@ -198,82 +216,65 @@ function DigestCard({
           );
         })}
       </ul>
-    </section>
+    </BandCard>
   );
 }
 
 /**
- * The owner's feed: the title band ("Feed" and the view switch), the source aside with this week's count per source,
- * and the work: the plan states, the Deck's four tiles, the checking row while items are checked, the cards with the
- * digest card among them, and Skipped under the cards.
+ * The owner's feed: the page line (Feed, the pressed source's chip, the view switch), then the cards with the digest
+ * card among them, and Skipped under the cards. The rail beside it holds the sources as the feed's filters.
  */
 export function OwnerFeed({
   feed,
-  stats,
   sources,
   handle,
   view,
   storyId,
   source,
   digests,
-  live,
-  plan,
   banner,
 }: {
   feed: MonitorFeed;
-  stats: FeedStats;
   sources: MonitorSources;
   handle: string;
   view?: string;
   storyId?: string;
   source: string | null;
   digests: { github: boolean; productHunt: boolean };
-  /** The agent is watching: the free week or a paid plan. */
-  live: boolean;
-  plan: ShellPlan | null;
   banner?: React.ReactNode;
 }) {
   const direct = !storyId && view === "articles";
   const groups = asideGroups(sources, {
-    href: (key) => feedHref(handle, direct, key === source ? null : key),
+    href: () => "",
     selected: source,
-    counts: stats.bySource,
+    counts: null,
   });
-  const selected = groups.flatMap((group) => group.rows).find((row) => row.on) ?? null;
+  const selected = groups
+    .flatMap((group) => group.rows.map((row) => ({ ...row, kind: group.kind })))
+    .find((row) => row.on);
   const hasDigest = feed.digests.some(
     (item) =>
       (item.kind === "github" && digests.github) ||
       (item.kind === "product_hunt" && digests.productHunt),
   );
   return (
-    <OneFrame
-      title={copy.feedTitle}
-      extra={<FeedViews handle={handle} direct={direct} source={source} />}
-      aside={{
-        name: "sources",
-        label: copy.aside.title,
-        body: (
-          <SourceList
-            groups={groups}
-            all={{ href: feedHref(handle, direct, null), on: source === null }}
-          />
-        ),
-      }}
-    >
-      {banner}
-      <FeedTiles
-        stats={stats}
-        live={live}
-        pending={feed.pending}
-        failed={feed.failed}
-        watching={{ sites: sources.sources.length, accounts: sources.accounts.length }}
-        plan={plan}
+    <>
+      <PageLine
+        title={copy.feedTitle}
+        home={`/${handle}`}
+        beside={
+          selected ? (
+            <FilterChip
+              kind={selected.kind === "x" ? "x" : selected.kind === "github" ? "github" : "site"}
+              mark={selected.mark}
+              name={selected.name}
+              clear={feedHref(handle, direct, null)}
+            />
+          ) : null
+        }
+        right={<FeedViews handle={handle} direct={direct} source={source} />}
       />
-      {feed.pending ? (
-        <div className="mt-6">
-          <CheckingRow pending={feed.pending} />
-        </div>
-      ) : null}
+      {banner}
       <div className="mt-6">
         <OneFeed
           feed={feed}
@@ -286,7 +287,6 @@ export function OwnerFeed({
             hasDigest && !source
               ? {
                   key: "digest",
-                  height: 220,
                   node: (
                     <DigestCard
                       items={feed.digests}
@@ -304,6 +304,6 @@ export function OwnerFeed({
           <SkippedList items={feed.skipped} />
         </div>
       ) : null}
-    </OneFrame>
+    </>
   );
 }

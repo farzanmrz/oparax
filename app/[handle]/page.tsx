@@ -9,21 +9,15 @@ import { RefreshWhileBuilding } from "@/components/monitor/refresh-while-buildin
 import { SkippedList } from "@/components/monitor/skipped-list";
 import { StateBanner } from "@/components/monitor/state-banner";
 import { OneRun } from "@/components/one/run";
-import { column, OneShell, planOf } from "@/components/one/shell";
+import { OneShell } from "@/components/one/shell";
 import { Stage } from "@/components/one/stage";
+import { RailProfile, Timeline } from "@/components/one/timeline";
 import { PostHogUserContext } from "@/components/posthog-user-context";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { monitorContent as copy } from "@/lib/monitor/content";
-import {
-  readBuildLog,
-  readFeed,
-  readFeedStats,
-  readMonitor,
-  readSources,
-  readViewer,
-} from "@/lib/monitor/read";
+import { readBuildLog, readFeed, readMonitor, readSources, readViewer } from "@/lib/monitor/read";
 import { monitorState } from "@/lib/monitor-state";
 import { readRun } from "@/lib/onboarding/phases";
 import { emptyOnboarding, readOnboarding } from "@/lib/onboarding/read";
@@ -68,39 +62,47 @@ export default async function MonitorPage({ params, searchParams }: Props) {
     !story && search.built === "1" && !building && !failed && monitor.build_finished_at !== null;
   const onboarding = isOwner && (building || failed || justBuilt);
   const ready = !building && !failed && !onboarding;
-  const [feed, log, run, sources, stats] = await Promise.all([
+  const [feed, log, run, sources] = await Promise.all([
     ready
       ? readFeed(monitor, { before, beforeId, view, storyId: story, source: source ?? undefined })
       : null,
     building || failed || onboarding ? readBuildLog(monitor.id) : [],
     onboarding ? readOnboarding(monitor.id) : null,
-    ready && isOwner ? readSources(monitor) : null,
-    ready && isOwner ? readFeedStats(monitor) : null,
+    // The owner's rail lists the agent's sources once they exist: on the feed, and at the end of the run.
+    isOwner && (ready || justBuilt) ? readSources(monitor) : null,
   ]);
   if (story && !feed?.storyFound) notFound();
   if (onboarding) {
     const shown = run ?? emptyOnboarding;
+    const view = readRun(log, shown, { failed, ready: justBuilt });
     return (
-      <OneShell email={viewer.email} monitor={monitor}>
+      <OneShell
+        email={viewer.email}
+        agent={monitor}
+        sources={sources}
+        // The rail holds the steps while the run is on; once the agent is saved it is the after-save rail.
+        middle={
+          justBuilt ? undefined : (
+            <>
+              <Timeline phases={view.phases} />
+              {shown.profile ? <RailProfile profile={shown.profile} /> : null}
+            </>
+          )
+        }
+        className="wrap-anywhere"
+      >
         <PostHogUserContext id={viewer.userId} />
         <RefreshWhileBuilding building={building} />
-        <main
-          id="monitor-content"
-          tabIndex={-1}
-          className={`${column} relative flex-1 pt-7 pb-24 wrap-anywhere`}
-        >
-          <OneRun
-            monitorId={monitor.id}
-            handle={monitor.handle}
-            displayHandle={monitor.display_handle}
-            beat={monitor.beat}
-            view={readRun(log, shown, { failed, ready: justBuilt })}
-            run={shown}
-            failed={failed}
-            ready={justBuilt}
-            canRetry={monitor.build_tries < 2}
-          />
-        </main>
+        <OneRun
+          monitorId={monitor.id}
+          handle={monitor.handle}
+          beat={monitor.beat}
+          view={view}
+          run={shown}
+          failed={failed}
+          ready={justBuilt}
+          canRetry={monitor.build_tries < 2}
+        />
       </OneShell>
     );
   }
@@ -110,12 +112,12 @@ export default async function MonitorPage({ params, searchParams }: Props) {
   const content = (
     <>
       {isOwner ? <PostHogUserContext id={viewer.userId} /> : null}
-      <main
+      <div
         id="monitor-content"
         tabIndex={-1}
         className={
           isOwner
-            ? `${column} relative flex-1 pt-7 pb-24 wrap-anywhere`
+            ? "wrap-anywhere"
             : "relative mx-auto w-full max-w-[1800px] flex-1 px-4 pt-8 pb-24 wrap-anywhere desk:px-8"
         }
       >
@@ -136,21 +138,18 @@ export default async function MonitorPage({ params, searchParams }: Props) {
               failed={failed}
             />
           </div>
-        ) : feed && sources && stats ? (
+        ) : feed && sources ? (
           <OwnerFeed
             feed={feed}
-            stats={stats}
             sources={sources}
             handle={monitor.handle}
             view={view}
             storyId={story}
             source={source}
             digests={{ github: monitor.digest_github, productHunt: monitor.digest_product_hunt }}
-            live={state.state === "trial" || state.state === "paid"}
-            plan={planOf(monitor)}
             banner={
               search.error === "activation" || stopped ? (
-                <div className="mb-6 space-y-4">
+                <div className="mt-6 space-y-4">
                   {search.error === "activation" ? (
                     <Alert variant="destructive">
                       <AlertDescription>{copy.activationFailed}</AlertDescription>
@@ -206,13 +205,19 @@ export default async function MonitorPage({ params, searchParams }: Props) {
             </div>
           </section>
         ) : null}
-      </main>
+      </div>
     </>
   );
   const skip = { href: "#monitor-content", label: copy.skipToNews };
   if (isOwner)
     return (
-      <OneShell email={viewer.email} monitor={monitor} skip={skip}>
+      <OneShell
+        email={viewer.email}
+        agent={monitor}
+        sources={sources}
+        selected={source}
+        direct={direct}
+      >
         {content}
       </OneShell>
     );
