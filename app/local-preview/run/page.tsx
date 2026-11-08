@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { OneRun } from "@/components/one/run";
-import { column, OneShell } from "@/components/one/shell";
+import { OneShell } from "@/components/one/shell";
+import { RailProfile, Timeline } from "@/components/one/timeline";
 import {
+  previewAgent,
   previewBeat,
-  previewBuildingMonitor,
   previewCheckpoints,
   previewEmail,
   previewHandle,
   previewMonitor,
   previewRun,
+  previewSources,
   previewTitle,
 } from "@/lib/local-preview/fixture";
 import { readRun } from "@/lib/onboarding/phases";
@@ -32,28 +34,34 @@ export default async function LocalPreviewRunPage({
   const { at } = await searchParams;
   const point = previewRun[z.enum(previewCheckpoints).catch("profile").parse(at)];
   const run = toOnboarding(point.state);
-  const monitor = point.ready ? previewMonitor() : previewBuildingMonitor("building");
+  const view = readRun(point.log, run, { failed: false, ready: point.ready });
   return (
-    <OneShell email={previewEmail} monitor={monitor}>
-      <main
-        id="monitor-content"
-        tabIndex={-1}
-        className={`${column} relative flex-1 pt-7 pb-24 wrap-anywhere`}
-      >
-        <PreviewNotice />
-        <OneRun
-          monitorId={monitor.id}
-          handle={previewHandle}
-          displayHandle={monitor.display_handle}
-          beat={previewBeat}
-          view={readRun(point.log, run, { failed: false, ready: point.ready })}
-          run={run}
-          failed={false}
-          ready={point.ready}
-          canRetry={false}
-          preview
-        />
-      </main>
+    <OneShell
+      email={previewEmail}
+      agent={previewAgent}
+      sources={point.ready ? previewSources : null}
+      middle={
+        point.ready ? undefined : (
+          <>
+            <Timeline phases={view.phases} />
+            {run.profile ? <RailProfile profile={run.profile} /> : null}
+          </>
+        )
+      }
+      className="wrap-anywhere"
+    >
+      <PreviewNotice />
+      <OneRun
+        monitorId={previewMonitor().id}
+        handle={previewHandle}
+        beat={previewBeat}
+        view={view}
+        run={run}
+        failed={false}
+        ready={point.ready}
+        canRetry={false}
+        preview
+      />
     </OneShell>
   );
 }

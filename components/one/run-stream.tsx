@@ -1,15 +1,12 @@
 "use client";
 
-// What the run card carries, top to bottom, as the log and the checkpoints allow (council, October 8): the gathered
-// count, Jev's one request as an amber line until its scores exist, then the three bands as logo pills with a kind
-// chip each, then the chosen sources under their kinds, then the search. At ready the chosen sources lead and the
-// bands fold under "Scored N candidates". Nothing moves on a timer; the page refreshes and shows what is saved.
-
-import { ChevronRight } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { CircleDashed } from "lucide-react";
 import { useState } from "react";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { GroupGlyph, KindChip, SourceMark } from "@/components/one/marks";
+import { hue } from "@/components/one/app-shell";
+import { GroupGlyph, SourceMark } from "@/components/one/marks";
+import { lift, titleCase } from "@/components/one/stage";
+import { shimmerClass } from "@/components/one/timeline";
 import { monitorContent } from "@/lib/monitor/content";
 import type { RunView } from "@/lib/onboarding/phases";
 import type {
@@ -20,210 +17,96 @@ import type {
 } from "@/lib/onboarding/read";
 import { cn } from "@/lib/utils";
 
+// The run, in place of the setup card (lab v2/one/onboarding.tsx Stream, Direction A): ONE lifted card in sections
+// divided by hairlines. While the run is on, the first section is the running step's name (shimmering) with the
+// engine's newest line under it. Then the step's work, sources first: the chosen sources as pills under their kind's
+// band across the card, then Jev's verdicts: Strong Match as a row of tiles (logo, name), Possible Match as rows,
+// Set Aside as one line of names. At Ready the step section is gone: the chosen sources, then the completed groups.
+// Nothing moves on a timer; the page refreshes and shows what is saved.
+
 const copy = monitorContent.onboarding;
-const bands: Band[] = ["strong", "possible", "aside"];
+const kinds = ["x", "rss", "website"] as const;
+/** Set-aside names shown before "and N more". */
+const ASIDE_SHOWN = 12;
 const bandTone: Record<Band, string> = {
   strong: "text-[var(--ok)]",
-  possible: "text-t1",
+  possible: "text-t2",
   aside: "text-t3",
 };
-/** Set-aside candidates shown before "N more". */
-const ASIDE_SHOWN = 12;
 
-/** A block's label: 13px semibold, shimmering while its phase runs. */
-function Label({ running, children }: { running?: boolean; children: string }) {
+/** A kind's heading inside the run card, Direction A: a band on the raised ground across the card. */
+function KindHead({ kind }: { kind: (typeof kinds)[number] }) {
   return (
-    <h2 className="text-[13px] font-semibold text-t1">
-      {running ? (
-        <Shimmer as="span" duration={1.8} className="font-semibold">
-          {children}
-        </Shimmer>
-      ) : (
-        children
-      )}
-    </h2>
+    <p className="-mx-5 flex h-10 items-center gap-2 bg-[var(--raised)] px-5 text-[15px] leading-5 font-semibold text-t1">
+      <GroupGlyph kind={kind} className={cn("size-4 shrink-0", hue[kind])} />
+      {titleCase(copy.groups[kind])}
+    </p>
   );
 }
 
-export function Stream({ view, run, ready }: { view: RunView; run: Onboarding; ready: boolean }) {
-  const state = (id: string) => view.phases.find((p) => p.id === id)?.state ?? "waiting";
-  const gather = state("gather");
-  const jev = state("jev");
-  const choose = state("choose");
-  const search = state("search");
-
-  if (gather === "waiting")
-    return view.activity ? (
-      <p className="text-[13px] text-t2">
-        <Shimmer as="span" duration={1.8}>
-          {view.activity}
-        </Shimmer>
-      </p>
-    ) : null;
-
-  const gathered = (
-    <section aria-label={copy.gathering} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <Label running={gather === "running"}>{copy.gathering}</Label>
-      {view.gathered !== null ? (
-        <span className="text-[22px] leading-none font-semibold text-t1 tabular-nums">
-          {view.gathered}
-        </span>
-      ) : null}
-      <span className="text-[12.5px] text-t3">{copy.gatheredFrom}</span>
-    </section>
-  );
-  const scored = run.candidates ? (
-    <div className="grid gap-4">
-      {bands.map((band) => (
-        <BandBlock
-          key={band}
-          band={band}
-          list={run.candidates?.filter((c) => c.band === band) ?? []}
-        />
-      ))}
-    </div>
-  ) : null;
-  const chosen =
-    choose !== "waiting" ? (
-      <section aria-label={copy.phases.choose.title}>
-        <Label running={choose === "running"}>{copy.phases.choose.title}</Label>
-        {run.chosen ? <Chosen list={run.chosen} /> : null}
-      </section>
-    ) : null;
-  const searched =
-    view.searchTerms && search !== "waiting" ? (
-      <section aria-label={copy.phases.search.title}>
-        <Label running={search === "running"}>{copy.phases.search.title}</Label>
-        <p className="mt-1 text-[13px] text-t2">
-          {view.phases.find((p) => p.id === "search")?.result ?? copy.searched(view.searchTerms)}
-        </p>
-      </section>
-    ) : null;
-
-  if (ready)
-    return (
-      <>
-        {chosen}
-        {searched}
-        {scored && run.candidates ? (
-          <details className="group border-t border-line pt-4">
-            <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-sm text-[13px] text-t2 transition-colors hover:text-t1 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-              <ChevronRight
-                className="size-3.5 text-t3 transition-transform group-open:rotate-90"
-                aria-hidden="true"
-              />
-              {copy.scored(run.candidates.length)}
-            </summary>
-            <div className="mt-4">{scored}</div>
-          </details>
-        ) : null}
-      </>
-    );
-
+export function Stream({
+  view,
+  run,
+  ready,
+  stopped,
+}: {
+  view: RunView;
+  run: Onboarding;
+  ready: boolean;
+  /** The stopped line and its retry, when the run failed. */
+  stopped?: React.ReactNode;
+}) {
+  const current = view.phases.find((p) => p.state === "running" || p.state === "failed");
+  const running = current?.state === "running";
+  // The engine's newest line is the running step's own only once it says more than a finished step's result.
+  const activity =
+    view.activity && !view.phases.some((p) => p.result === view.activity) ? view.activity : null;
   return (
-    <>
-      {gathered}
-      {jev !== "waiting" ? (
-        <section aria-label={copy.phases.jev.title}>
-          <div className="flex items-center gap-4">
-            <Label running={jev === "running"}>{copy.phases.jev.title}</Label>
-            {jev === "running" ? <Activity /> : null}
-          </div>
-          {scored ? <div className="mt-3">{scored}</div> : null}
+    <div className={cn(lift, "divide-y divide-line")}>
+      {current && !ready ? (
+        <section aria-label={copy.phases[current.id].title} className="p-5">
+          <h2 className="text-[15px] font-semibold text-t1">
+            {running ? (
+              <Shimmer as="span" duration={1.8} className={cn(shimmerClass, "font-semibold")}>
+                {copy.phases[current.id].title}
+              </Shimmer>
+            ) : (
+              copy.phases[current.id].title
+            )}
+          </h2>
+          {running && activity ? (
+            <p className="mt-2 text-[13px] leading-[1.55] text-t2">
+              {activity}
+              <span
+                aria-hidden="true"
+                className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle"
+              />
+            </p>
+          ) : null}
+          {stopped}
         </section>
       ) : null}
-      {chosen}
-      {searched}
-    </>
+
+      {run.chosen?.length ? <Chosen list={run.chosen} /> : null}
+
+      {run.candidates ? <Verdicts list={run.candidates} /> : null}
+    </div>
   );
 }
 
-/** The one sign of Jev's single request: an amber line that moves without a count, since nothing is counted. */
-function Activity() {
-  const reduce = useReducedMotion();
-  return (
-    <span
-      role="status"
-      className="relative block h-1.5 w-40 overflow-hidden rounded-full bg-line-strong"
-    >
-      <span className="sr-only">{copy.scoring}</span>
-      <motion.span
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-[var(--caution)]"
-        initial={{ x: "-100%" }}
-        animate={reduce ? { x: "100%" } : { x: ["-100%", "300%"] }}
-        transition={
-          reduce ? { duration: 0 } : { duration: 1.6, ease: "easeInOut", repeat: Infinity }
-        }
-      />
-    </span>
-  );
-}
-
-/** A candidate's kind as its chip: blue Post for an account, teal Article for a site or feed, GitHub's mark. */
-function CandidateKind({ kind }: { kind: OnboardingCandidate["kind"] }) {
-  if (kind === "x") return <KindChip kind="post">{monitorContent.kinds.post}</KindChip>;
-  if (kind === "github") return <KindChip kind="github" />;
-  return <KindChip kind="article">{monitorContent.kinds.article}</KindChip>;
-}
-
-function BandBlock({ band, list }: { band: Band; list: OnboardingCandidate[] }) {
-  if (!list.length) return null;
-  const shown = band === "aside" ? list.slice(0, ASIDE_SHOWN) : list;
-  const hidden = list.length - shown.length;
-  return (
-    <section>
-      <p className="flex items-baseline gap-2">
-        <span className={cn("text-[13px] font-semibold", bandTone[band])}>{copy.bands[band]}</span>
-        <span className="text-[12px] text-t3 tabular-nums">{list.length}</span>
-      </p>
-      <ul className="mt-2 flex flex-wrap gap-1.5">
-        {shown.map((c) => (
-          <li
-            key={c.key}
-            className={cn(
-              "flex h-8 items-center gap-2 rounded-full border py-1 pr-1.5 pl-1.5 text-[12.5px]",
-              band === "aside"
-                ? "border-dashed border-line text-t3"
-                : "border-line-strong bg-[var(--window)] text-t1 shadow-[var(--top-light)]",
-            )}
-          >
-            <SourceMark
-              kind={c.kind === "x" ? "x" : c.kind === "github" ? "github" : "site"}
-              mark={c.mark}
-              size={20}
-              className={band === "aside" ? "opacity-60 grayscale" : undefined}
-            />
-            <span className="whitespace-nowrap">{c.name}</span>
-            <CandidateKind kind={c.kind} />
-          </li>
-        ))}
-        {hidden > 0 ? (
-          <li className="flex h-8 items-center rounded-full border border-dashed border-line px-3 text-[12.5px] text-t3 tabular-nums">
-            {copy.more(hidden)}
-          </li>
-        ) : null}
-      </ul>
-    </section>
-  );
-}
-
-/** The chosen sources under Twitter accounts, RSS feeds and websites; a pill opens its reason under its kind. */
+/** The chosen sources under their kinds; a pill opens its reason in a quiet line under the group. */
 function Chosen({ list }: { list: OnboardingSource[] }) {
   const [why, setWhy] = useState<string | null>(null);
-  const groups = (["x", "rss", "website"] as const)
-    .map((kind) => ({ kind, list: list.filter((s) => s.kind === kind) }))
-    .filter((group) => group.list.length);
+  const groups = kinds
+    .map((kind) => ({ kind, rows: list.filter((s) => s.kind === kind) }))
+    .filter((group) => group.rows.length);
   return (
-    <div className="mt-3 grid gap-4">
-      {groups.map(({ kind, list: rows }) => {
+    <section aria-label={copy.yourSources} className="grid gap-4 p-5">
+      {groups.map(({ kind, rows }) => {
         const open = rows.find((s) => s.key === why);
         return (
           <section key={kind} aria-label={copy.groups[kind]}>
-            <p className="flex items-center gap-1.5 font-mono text-[10.5px] tracking-[0.12em] text-t3 uppercase">
-              <GroupGlyph kind={kind} className="size-3" />
-              {copy.groups[kind]}
-            </p>
+            <KindHead kind={kind} />
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {rows.map((source) => (
                 <Pill
@@ -234,7 +117,7 @@ function Chosen({ list }: { list: OnboardingSource[] }) {
                 />
               ))}
             </ul>
-            {open ? (
+            {open?.why ? (
               <p className="mt-2 text-[13px] leading-[1.5] text-t2">
                 <span className="font-medium text-t1">{open.name}</span> {open.why}
               </p>
@@ -242,11 +125,11 @@ function Chosen({ list }: { list: OnboardingSource[] }) {
           </section>
         );
       })}
-    </div>
+    </section>
   );
 }
 
-/** A chosen source: the logo, the name and the handle or address. */
+/** A chosen source as a pill: the logo, the name and the handle or address on one line. */
 function Pill({ source, on, onWhy }: { source: OnboardingSource; on: boolean; onWhy: () => void }) {
   const x = source.kind === "x";
   return (
@@ -258,16 +141,103 @@ function Pill({ source, on, onWhy }: { source: OnboardingSource; on: boolean; on
         className={cn(
           "flex h-8 items-center gap-2 rounded-full border pr-3 pl-1.5 text-[12.5px] shadow-[var(--top-light)] transition-colors focus-visible:outline-2 focus-visible:outline-ring",
           on
-            ? "border-[var(--brand-line)] bg-raised"
+            ? "border-[var(--brand-line)] bg-[var(--raised)]"
             : "border-line-strong bg-[var(--window)] hover:bg-raised",
         )}
       >
-        <SourceMark kind={x ? "x" : "site"} mark={source.address} size={20} />
+        <SourceMark
+          kind={x ? "x" : "site"}
+          mark={source.address}
+          size={20}
+          className={x ? "" : "rounded-[5px]"}
+        />
         <span className="font-medium whitespace-nowrap text-t1">{source.name}</span>
         {source.name !== source.address ? (
           <span className="whitespace-nowrap text-t3">{source.address}</span>
         ) : null}
       </button>
     </li>
+  );
+}
+
+function CandidateMark({ c, size, dim }: { c: OnboardingCandidate; size: number; dim?: boolean }) {
+  return (
+    <SourceMark
+      kind={c.kind === "x" ? "x" : c.kind === "github" ? "github" : "site"}
+      mark={c.mark}
+      size={size}
+      className={cn(c.kind !== "x" && "rounded-[5px]", dim && "opacity-60 grayscale")}
+    />
+  );
+}
+
+/** Jev's verdicts, Direction A: Strong Match as a row of tiles, Possible Match as rows, Set Aside as one line. */
+function Verdicts({ list }: { list: OnboardingCandidate[] }) {
+  const strong = list.filter((c) => c.band === "strong");
+  const possible = list.filter((c) => c.band === "possible");
+  const aside = list.filter((c) => c.band === "aside");
+  const shownAside = aside.slice(0, ASIDE_SHOWN);
+  const hidden = aside.length - shownAside.length;
+  return (
+    <>
+      {strong.length ? (
+        <section aria-label={copy.bands.strong} className="p-5">
+          <p className="flex items-baseline gap-2">
+            <span className={cn("text-[15px] font-semibold", bandTone.strong)}>
+              {copy.bands.strong}
+            </span>
+            <span className="text-[12.5px] text-t3 tabular-nums">{strong.length}</span>
+          </p>
+          <ul className="mt-3 grid gap-2.5 desk:grid-cols-2 xl:grid-cols-3">
+            {strong.map((c) => (
+              <li key={c.key} className={cn(lift, "flex items-center gap-2.5 p-3")}>
+                <CandidateMark c={c} size={24} />
+                <span className="min-w-0 truncate text-[13px] font-semibold text-t1">{c.name}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {possible.length ? (
+        <section aria-label={copy.bands.possible} className="p-5">
+          <p className="flex items-baseline gap-2">
+            <span className={cn("text-[15px] font-semibold", bandTone.possible)}>
+              {copy.bands.possible}
+            </span>
+            <span className="text-[12.5px] text-t3 tabular-nums">{possible.length}</span>
+          </p>
+          <ul className="mt-2 flex flex-col">
+            {possible.map((c) => (
+              <li
+                key={c.key}
+                className="flex min-h-8 items-center gap-2.5 border-b border-line py-1 last:border-b-0"
+              >
+                <span className="grid size-5 shrink-0 place-items-center">
+                  <CircleDashed
+                    className="size-3.5 text-[var(--caution)]"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                </span>
+                <CandidateMark c={c} size={20} />
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-t1">
+                  {c.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {aside.length ? (
+        <section aria-label={copy.bands.aside} className="p-5">
+          <p className="text-[13px] leading-[1.6] text-t3">
+            <span className="font-semibold">{copy.bands.aside}</span>
+            <span className="ml-2 tabular-nums">{aside.length}</span>
+            <span className="ml-3">{shownAside.map((c) => c.name).join(", ")}</span>
+            {hidden > 0 ? <span>{copy.andMore(hidden)}</span> : null}
+          </p>
+        </section>
+      ) : null}
+    </>
   );
 }

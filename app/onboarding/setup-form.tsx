@@ -7,7 +7,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { z } from "zod";
 import { RefreshXIdentityButton } from "@/components/auth/refresh-x-identity";
 import { BrandIcon } from "@/components/brand-icon";
-import { primaryButton, restCard } from "@/components/one/stage";
+import { lift, primaryButton, titleCase } from "@/components/one/stage";
 import { Spinner } from "@/components/ui/spinner";
 import {
   onboardingContent,
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { isReservedHandle, normalizeValidHandle } from "@/lib/x/handle";
 
 const field =
-  "rounded-lg border border-line-strong bg-well text-t1 transition-shadow focus-within:border-[var(--brand)] focus-within:shadow-[0_0_0_3px_var(--brand-soft)]";
+  "flex items-center gap-2 rounded-md border border-line-strong bg-[var(--well)] px-3 text-t1 transition-shadow focus-within:border-[var(--brand)] focus-within:shadow-[0_0_0_3px_var(--brand-soft)]";
 
 const buildResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), redirect: z.string().regex(/^\/[A-Za-z0-9_]{1,15}$/) }),
@@ -42,7 +42,7 @@ export function SetupForm({
   error?: SetupErrorCode;
 }) {
   const handleInput = useRef<HTMLInputElement>(null);
-  const beatInput = useRef<HTMLTextAreaElement>(null);
+  const beatInput = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
   const [handle, setHandle] = useState("");
   const [beat, setBeat] = useState("");
@@ -159,8 +159,9 @@ export function SetupForm({
       )
     ) : null;
 
-  // The lead card (council, October 8): the Twitter account (locked when the Twitter sign-in supplied it), the one
-  // sentence with its counter, and Build my agent at the card's foot with the status and error lines beside it.
+  // The one card (owner, Oct 10; lab v2/one/onboarding.tsx SetupLine): the Twitter handle (220px, @ and the X mark
+  // inside; the sign-in's handle as a chip when it supplied one), the sentence on one line with its counter inside,
+  // and Build My Agent at the line's right end. The status and error lines sit under the line.
   return (
     <form
       action="/api/build"
@@ -168,112 +169,72 @@ export function SetupForm({
       onSubmit={submit}
       aria-busy={pending}
       aria-label={onboardingContent.title}
-      className={restCard}
+      className={cn(lift, "p-5")}
     >
-      <div className="grid gap-5 px-5 pt-5 pb-5">
-        <div className="grid gap-2">
-          <p className="text-[13px] font-semibold text-t1">{onboardingContent.handleLabel}</p>
-          {verifiedHandle ? (
-            <span className="inline-flex h-10 w-fit items-center gap-2 rounded-lg border border-line-strong bg-[var(--window)] px-3 text-[13.5px] font-medium text-t1 shadow-[var(--top-light)]">
-              <BrandIcon name="x" className="size-3 text-t1" />@{verifiedHandle}
-              <span className="sr-only">, {onboardingContent.verifiedBadge}</span>
-            </span>
-          ) : (
-            <label
-              className={cn(
-                field,
-                "flex h-10 w-full max-w-[280px] items-center gap-2 px-3",
-                handleInvalid && "border-[var(--error)]",
-              )}
-            >
-              <span className="sr-only">{onboardingContent.handleLabel}</span>
-              <span aria-hidden="true" className="text-[14px] text-t3">
-                @
-              </span>
-              <input
-                ref={handleInput}
-                id="handle"
-                name="handle"
-                className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={onboardingContent.handlePlaceholder}
-                value={handle}
-                onChange={(event) => setHandle(event.target.value.replace(/^@/, ""))}
-                aria-describedby={handleInvalid ? "setup-error" : undefined}
-                aria-invalid={handleInvalid || undefined}
-                required
-              />
-              <BrandIcon name="x" className="size-3.5 shrink-0 text-t3" />
-            </label>
-          )}
-        </div>
-        <label className="grid gap-2">
-          <span className="text-[13px] font-semibold text-t1">{onboardingContent.beatLabel}</span>
-          <span
+      <div className="flex flex-wrap items-center gap-3">
+        {verifiedHandle ? (
+          <span className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-line-strong bg-[var(--window)] px-3 text-[13.5px] font-medium text-t1 shadow-[var(--top-light)]">
+            <BrandIcon name="x" className="size-3 text-t1" />@{verifiedHandle}
+            <span className="sr-only">, {onboardingContent.verifiedBadge}</span>
+          </span>
+        ) : (
+          <label
             className={cn(
               field,
-              "flex flex-col gap-1 px-3 pt-2.5 pb-2",
-              beatInvalid && "border-[var(--error)]",
+              "h-10 w-full shrink-0 desk:w-[220px]",
+              handleInvalid && "border-[var(--error)]",
             )}
           >
-            <textarea
-              ref={beatInput}
-              id="beat"
-              name="beat"
-              rows={3}
-              className="min-h-[66px] w-full resize-none bg-transparent text-[15px] leading-[1.5] text-t1 outline-none placeholder:text-t3"
+            <span className="sr-only">{onboardingContent.handleLabel}</span>
+            <span aria-hidden="true" className="text-[14px] text-t3">
+              @
+            </span>
+            <input
+              ref={handleInput}
+              id="handle"
+              name="handle"
+              className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
               autoComplete="off"
-              placeholder={onboardingContent.beatPlaceholder}
-              value={beat}
-              onChange={(event) => setBeat(event.target.value)}
-              onKeyDown={(event) => {
-                // One sentence: Enter builds, as the one-line field did.
-                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
-              aria-describedby={beatInvalid ? "beat-count setup-error" : "beat-count"}
-              aria-invalid={beatInvalid || undefined}
-              maxLength={300}
+              spellCheck={false}
+              placeholder={onboardingContent.handlePlaceholder}
+              value={handle}
+              onChange={(event) => setHandle(event.target.value.replace(/^@/, ""))}
+              aria-describedby={handleInvalid ? "setup-error" : undefined}
+              aria-invalid={handleInvalid || undefined}
               required
             />
-            <span id="beat-count" className="self-end text-[11.5px] text-t3 tabular-nums">
-              {onboardingContent.beatCount(beat.length)}
-            </span>
+            <BrandIcon name="x" className="size-3.5 shrink-0 text-t3" />
+          </label>
+        )}
+        <label
+          className={cn(field, "h-10 min-w-[240px] flex-1", beatInvalid && "border-[var(--error)]")}
+        >
+          <span className="sr-only">{onboardingContent.beatLabel}</span>
+          <input
+            ref={beatInput}
+            id="beat"
+            name="beat"
+            className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-t1 outline-none placeholder:text-t3"
+            autoComplete="off"
+            placeholder={onboardingContent.beatPlaceholder}
+            value={beat}
+            onChange={(event) => setBeat(event.target.value)}
+            aria-describedby={beatInvalid ? "beat-count setup-error" : "beat-count"}
+            aria-invalid={beatInvalid || undefined}
+            maxLength={300}
+            required
+          />
+          <span
+            id="beat-count"
+            aria-hidden="true"
+            className="shrink-0 text-[11.5px] text-t3 tabular-nums"
+          >
+            {onboardingContent.beatCount(beat.length)}
           </span>
         </label>
-      </div>
-      <div className="mt-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2 border-t border-line px-5 py-3.5">
-        <div className="mr-auto flex min-w-0 flex-col gap-1.5 text-[12.5px] leading-relaxed empty:hidden">
-          {closed ? (
-            <p role="status" className="text-t1">
-              {onboardingContent.buildsUnavailable}
-            </p>
-          ) : null}
-          {message ? (
-            <p id="setup-error" role="alert" className="text-[var(--error)]">
-              {message}
-            </p>
-          ) : null}
-          {waitlistFailure ? (
-            <p role="alert" className="text-[var(--error)]">
-              {waitlistFailure === "bot"
-                ? onboardingContent.browserError
-                : onboardingContent.waitlistFailed}
-            </p>
-          ) : null}
-          {saved ? (
-            <p role="status" className="text-t1">
-              {onboardingContent.saved}
-            </p>
-          ) : null}
-          {refreshX ? <RefreshXIdentityButton /> : null}
-        </div>
         <button
           type="submit"
-          className={cn(primaryButton, "shrink-0 text-[13.5px]")}
+          className={cn(primaryButton, "h-10 shrink-0")}
           disabled={pending || saved}
         >
           {pending ? (
@@ -287,8 +248,33 @@ export function SetupForm({
               : onboardingContent.waitlist
             : pending
               ? onboardingContent.pending
-              : onboardingContent.submit}
+              : titleCase(onboardingContent.submit)}
         </button>
+      </div>
+      <div className="mt-2 flex flex-col gap-1.5 text-[12.5px] leading-relaxed empty:hidden">
+        {closed ? (
+          <p role="status" className="text-t1">
+            {onboardingContent.buildsUnavailable}
+          </p>
+        ) : null}
+        {message ? (
+          <p id="setup-error" role="alert" className="text-[var(--error)]">
+            {message}
+          </p>
+        ) : null}
+        {waitlistFailure ? (
+          <p role="alert" className="text-[var(--error)]">
+            {waitlistFailure === "bot"
+              ? onboardingContent.browserError
+              : onboardingContent.waitlistFailed}
+          </p>
+        ) : null}
+        {saved ? (
+          <p role="status" className="text-t1">
+            {onboardingContent.saved}
+          </p>
+        ) : null}
+        {refreshX ? <RefreshXIdentityButton /> : null}
       </div>
     </form>
   );

@@ -1,13 +1,13 @@
-import { OneFrame } from "@/components/one/frame";
-import { PhaseList } from "@/components/one/phases";
-import { column, OneShell } from "@/components/one/shell";
-import { stepsAside } from "@/components/one/stage";
-import { onboardingContent } from "@/lib/onboarding/content";
+import { PageLine } from "@/components/one/app-shell";
+import { OneShell } from "@/components/one/shell";
+import { Timeline } from "@/components/one/timeline";
+import { monitorContent } from "@/lib/monitor/content";
 import { restPhases } from "@/lib/onboarding/phases";
 
 /**
- * The One onboarding at rest inside the shell (the person has no agent yet): the title band, the seven steps with
- * empty rings in the lifted aside, and the one card the children hold. No right column before the profile exists.
+ * The One onboarding at rest inside the shell (owner, Oct 10: "The onboarding sidebar at rest is locked"): the rail
+ * holds the Oparax head, the seven steps with empty rings and the foot; the heading "Setup Feed Agent" stands alone
+ * on its line and the centre is the one card the children hold.
  */
 export function SetupStage({
   email,
@@ -15,22 +15,15 @@ export function SetupStage({
   children,
 }: {
   email: string | null;
-  /** Shown above the title band; the development preview's banner. */
+  /** Shown above the heading; the development preview's banner. */
   notice?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <OneShell email={email} monitor={null}>
-      <main className={`${column} relative flex-1 pt-7 pb-24`}>
-        {notice}
-        <OneFrame
-          title={onboardingContent.title}
-          aside={stepsAside(<PhaseList phases={restPhases} />)}
-          fill
-        >
-          {children}
-        </OneFrame>
-      </main>
+    <OneShell email={email} agent={null} middle={<Timeline phases={restPhases} />}>
+      {notice}
+      <PageLine title={monitorContent.onboarding.heading} home="/onboarding" />
+      <div className="mt-6">{children}</div>
     </OneShell>
   );
 }
