@@ -168,13 +168,23 @@ export function useFollow(run: Run, enabled: boolean) {
 
 export const oneStepIds = stepIds;
 export type OneStepId = StepId;
-export const oneStepTitle = stepTitle;
+/** The One's step names, as a person reads them in the rail: at most four words each (owner, Nov 8: "Imagine
+ * there's a user looking at this... at max, they should be 4 words"). */
+export const oneStepTitle: Record<OneStepId, string> = {
+  profile: "Retrieving profile",
+  posts: "Reading posts",
+  gather: "Finding possible sources",
+  jev: "Scoring each source",
+  choose: "Choosing your sources",
+  search: "Finding more accounts",
+  save: "Saving your agent",
+};
 export const oneStepDoes = stepDoes;
 
 /** What each step says once it has finished. Counts come from the recorded run, never from a timer. */
 export const oneStepLine: Record<OneStepId, string> = {
   ...stepLine,
-  jev: `Jev kept ${kept.length} of ${candidateCount} candidates`,
+  jev: `Jev kept ${kept.length} of ${candidateCount} sources`,
   choose: `Chose ${sitesAndFeeds} sites and feeds and ${accounts} Twitter accounts, wrote your brief`,
 };
 

@@ -168,8 +168,10 @@ export function OneOnboarding({
     .join(" ");
   const sentence = text.trim() || beat;
   const shownHandle = handle.trim() || HANDLE;
-  // The right column exists only once step 1 has found the person.
+  // Step 1's find puts the person's profile under the steps in the rail (owner, Nov 8); the right column opens with
+  // step 2's posts.
   const found = started && st("profile") === "done";
+  const reading = started && st("posts") !== "waiting";
 
   const replay = () => {
     setLive(true);
@@ -188,7 +190,16 @@ export function OneOnboarding({
   };
 
   return (
-    <AppShell middle={done ? undefined : <Timeline run={run} started={started} />}>
+    <AppShell
+      middle={
+        done ? undefined : (
+          <>
+            <Timeline run={run} started={started} />
+            {found ? <RailProfile /> : null}
+          </>
+        )
+      }
+    >
       <MotionConfig reducedMotion="user">
         <div className="flex min-h-12 items-center gap-6">
           <div aria-live="polite" className="flex shrink-0 items-center gap-3">
@@ -267,7 +278,7 @@ export function OneOnboarding({
           </section>
 
           <AnimatePresence initial={false}>
-            {found ? (
+            {reading ? (
               <motion.aside
                 key="you"
                 aria-label="You"
@@ -364,7 +375,7 @@ function runningLine(id: OneStepId, run: Run, handle: string) {
     case "posts":
       return `Read ${Math.max(1, Math.ceil(p * postsRead))} of ${postsRead} newest posts.`;
     case "gather":
-      return `${Math.round(p * candidateCount)} candidates so far.`;
+      return `${Math.round(p * candidateCount)} possible sources so far.`;
     case "jev":
       return `Checked ${Math.round(p * candidateCount)} of ${candidateCount}.`;
     case "choose":
@@ -467,6 +478,30 @@ function StepName({ id, state, started }: { id: OneStepId; state: Run["states"][
         oneStepTitle[id]
       )}
     </span>
+  );
+}
+
+/** The person step 1 found, under the steps in the rail: a divider, then picture, name, handle and their Twitter bio
+ * set straight on the rail, no block (owner, Nov 8: "put some sort of a divider... below that divider"). */
+function RailProfile() {
+  const reduce = useReducedMotion();
+  return (
+    <motion.section
+      aria-label="Your Twitter profile"
+      initial={reduce ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className="mx-2 mb-3 border-t border-line px-2 pt-4"
+    >
+      <div className="flex items-center gap-2.5">
+        <XAvatar handle={HANDLE} size={32} />
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-semibold text-t1">{profile.name}</p>
+          <p className="truncate text-[12px] text-t3">{profile.handle}</p>
+        </div>
+      </div>
+      <p className="mt-2.5 text-[12.5px] leading-[1.5] text-t2">{profile.bio}</p>
+    </motion.section>
   );
 }
 
@@ -622,7 +657,7 @@ function Stream({
         {checked.length ? <Verdicts dir={dir} checked={checked} done={jev === "done"} /> : null}
 
         {pile.length ? (
-          <section aria-label="Gathered candidates" className="grid gap-4 p-5">
+          <section aria-label="Possible sources" className="grid gap-4 p-5">
             {candidateKinds.map((k) => {
               const list = pile.filter((c) => kindKey(c) === k.key);
               if (!list.length) return null;
@@ -866,9 +901,8 @@ function PostBody({ post: p }: { post: (typeof posts)[number] }) {
   );
 }
 
-/** The right column, once step 1 has found the person: ONE identity block (the brief at its top once step 5 starts
- * writing it: the sentence, then the summary streaming in; then the picture with the name beside it and the handle
- * under the name, About with their Twitter bio), and the newest posts under it. */
+/** The right column, from step 2: the brief once step 5 starts writing it (the sentence, then the summary streaming
+ * in), and the newest posts. The person's profile sits under the steps in the rail (owner, Nov 8). */
 function You({ run, sentence }: { run: Run; sentence: string }) {
   const postsState = run.states[idx("posts")];
   const chooseState = run.states[idx("choose")];
@@ -889,31 +923,23 @@ function You({ run, sentence }: { run: Run; sentence: string }) {
 
   return (
     <div className="grid gap-5">
-      <BandCard
-        glyph={<XAvatar handle={HANDLE} size={24} />}
-        heading={profile.name}
-        action={<span className="text-[13px] text-t3">{profile.handle}</span>}
-        style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
-      >
-        <p className="text-[13px] leading-[1.5] text-t2">{profile.bio}</p>
-        {chooseState !== "waiting" ? (
-          <div className="mt-4 border-t border-line pt-4">
-            <p className="text-[13px] font-semibold text-t1">Brief</p>
-            <p className="mt-2 flex gap-2 text-[13px] leading-[1.45] font-medium text-t1">
-              <QuoteMark className="mt-0.5 size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
-              {sentence}
+      {chooseState !== "waiting" ? (
+        <BandCard
+          glyph={<QuoteMark className="size-3.5 shrink-0 text-[var(--brand)]" aria-hidden="true" />}
+          heading="Brief"
+          style={{ boxShadow: "var(--window-shadow), var(--top-light)" }}
+        >
+          <p className="text-[13px] leading-[1.45] font-medium text-t1">{sentence}</p>
+          {summary ? (
+            <p className="mt-2.5 text-[13px] leading-[1.55] text-t2">
+              {summary}
+              {chooseState === "running" ? (
+                <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" />
+              ) : null}
             </p>
-            {summary ? (
-              <p className="mt-2.5 text-[13px] leading-[1.55] text-t2">
-                {summary}
-                {chooseState === "running" ? (
-                  <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-[1px] bg-[var(--brand)] align-middle" />
-                ) : null}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-      </BandCard>
+          ) : null}
+        </BandCard>
+      ) : null}
 
       {postsState !== "waiting" ? (
         <BandCard
