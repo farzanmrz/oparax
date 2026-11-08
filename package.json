@@ -29,7 +29,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "fast-xml-parser": "^5.10.1",
-    "jsdom": "^27.0.0",
+    "jsdom": "^27.3.0",
     "lucide-react": "^1.48.0",
     "motion": "^13.4.4",
     "next": "16.2.12",
