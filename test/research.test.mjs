@@ -26,6 +26,8 @@ test('clear named-employer brief finds fellow employees and keeps outreach pause
     existing:[{company:'Barbour',person:'Other Person',botId:'sample'}]});
   await f.run();
   assert.equal(f.requests[1].options.tool.type,'vercel:parallel_search');
+  for(const request of f.requests)assert.equal(request.options.modelId,process.env.OUTREACH_RESEARCH_MODEL||'openai/gpt-6.2-astra');
+  assert.equal(f.b.lastRun.model,f.requests[1].options.modelId);
   const context=JSON.parse(f.requests[1].messages[1].content);
   assert.equal(context.mode,'people');
   assert.deepEqual(context.alreadySaved,[{company:'Barbour',person:'Other Person'}]);
