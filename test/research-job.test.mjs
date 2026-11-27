@@ -74,11 +74,11 @@ test('normal production continuation uses one independent dispatch even if anoth
   const prior=process.env.VERCEL_ENV;
   process.env.VERCEL_ENV='production';
   try{
-    const req={payload:JSON.stringify({workspace:'owner',agent:'agent'}),signature:'stub'};
+    const req={payload:JSON.stringify({workspace:'owner',agent:'agent',requestedAt:'start',page:4}),signature:'stub'};
     for(const dbReply of [2,null]){
       const calls=[];
       await dispatchContinuation(req,{rpc:async(name,params)=>{calls.push([name,params]);return dbReply;},fetch:()=>{throw Error('Unexpected HTTP fallback');}});
-      assert.deepEqual(calls,[['outreach_wake_research',{uid:'owner',agent_id:'agent'}]]);
+      assert.deepEqual(calls,[['outreach_wake_research_page',{uid:'owner',agent_id:'agent',requested_at:'start',batch_index:4}]]);
     }
   }finally{if(prior===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=prior;}
 });

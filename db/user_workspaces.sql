@@ -136,3 +136,22 @@ end $$;
 revoke all on function public.outreach_wake_research(uuid,uuid),public.outreach_redeem_research_wake(uuid,uuid,text,integer,text) from public,anon,authenticated;
 grant execute on function public.outreach_wake_research(uuid,uuid),public.outreach_redeem_research_wake(uuid,uuid,text,integer,text) to service_role;
 notify pgrst,'reload schema';
+
+-- Reject a stale continuation from a worker whose cursor was already superseded.
+create or replace function public.outreach_wake_research_page(uid uuid,agent_id uuid,requested_at text,batch_index integer) returns bigint
+language plpgsql security definer set search_path='' as $$
+declare
+  workspace jsonb;
+  agent jsonb;
+begin
+  select w.data into workspace from outreach.user_workspaces w where w.user_id=uid for update;
+  select a.value into agent from jsonb_array_elements(workspace->'bots') a(value)
+    where a.value->>'id'=agent_id::text;
+  if agent is null or agent->>'researchRequestedAt' is distinct from requested_at
+    or agent#>>'{researchJob,id}' is distinct from requested_at
+    or (agent#>>'{researchJob,pages}')::integer is distinct from batch_index then return null;end if;
+  return public.outreach_wake_research(uid,agent_id);
+end $$;
+revoke all on function public.outreach_wake_research_page(uuid,uuid,text,integer) from public,anon,authenticated;
+grant execute on function public.outreach_wake_research_page(uuid,uuid,text,integer) to service_role;
+notify pgrst,'reload schema';
