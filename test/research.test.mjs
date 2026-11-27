@@ -4,7 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {research,model} from '../lib/agent.mjs';
 import {view} from '../lib/store.mjs';
 import {queueResearch,continuationRequest} from '../lib/research-job.mjs';
-import {candidateRows,validatePlan} from '../lib/research.mjs';
+import {candidateRows,validatePlan,outreachDraft} from '../lib/research.mjs';
 import {attributedProfile,profileResults} from '../lib/research-profiles.mjs';
 
 const brief='Find sourcing staff, designers and buyers at the footwear company Barbour.';
@@ -188,4 +188,15 @@ test('real verifier publishes beyond the retired 50 limit while fresh evidence k
   const f=fixture({services:{profilePage:async({page})=>pageOf(Array.from({length:13},(_,i)=>person(page*13+i)),page)}});
   for(let page=0;page<4;page++)await f.run(page);
   assert.equal(f.b.researchJob.qualified,52);assert.equal(f.b.researchJob.goal,null);assert.equal(f.b.lastRun.status,'continuing');
+});
+
+test('a billing interruption between verification and drafting saves the person without a sendable template',()=>{
+  const verified={person:'Test Contact',role:'Buyer',company:'Example firm',linkedinUrl:'https://www.linkedin.com/in/test-contact'};
+  const draft=outreachDraft(verified,'The service budget is exhausted.');
+  assert.equal(draft.linkedinUrl,verified.linkedinUrl);
+  assert.equal(draft.body,'');
+  assert.equal(draft.linkedin,'');
+  assert.ok(draft.draftQuestion);
+  const complete={...verified,subject:'Reviewed subject',body:'Reviewed offer',linkedin:'Reviewed DM'};
+  assert.equal(outreachDraft(complete,'The service budget is exhausted.').body,complete.body);
 });
