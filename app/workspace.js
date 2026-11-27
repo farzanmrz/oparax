@@ -1,5 +1,6 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
+import {loginCallback} from '../lib/login.mjs';
 const nav=['Agents','Prospects','LinkedIn queue','Activity','Mailbox'];
 const paths={Agents:'M4 5h16v12H4z M8 21h8 M12 17v4',Prospects:'M3 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2 M13 5a4 4 0 1 1 0 7 M21 20v-2a4 4 0 0 0-3-4 M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0', 'LinkedIn queue':'M4 5h16v12H9l-5 4z M8 9h8 M8 13h5',Activity:'M2 12h5l3-8 4 16 3-8h5',Mailbox:'M3 5h18v14H3z M3 6l9 7 9-7',plus:'M12 5v14 M5 12h14',arrow:'M5 12h14 M13 6l6 6-6 6',close:'M5 5l14 14 M5 19L19 5',shield:'M12 2l8 4v6c0 5-4 8-8 10-4-2-8-5-8-10V6z M8 12l3 3 5-6'};
 function Icon({n,size=18}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[n]}/></svg>}
@@ -15,19 +16,60 @@ export default function Workspace({url,anon,preview = null}){
  async function token(s){if(!s)throw Error('Sign in first.');if(s.expires>Date.now()+45000)return s.access;
  const res=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh})});if(!res.ok){session(null);D(null);throw Error('Your session expired. Sign in again.')}const v=await res.json();const next={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+v.expires_in*1000};session(next);return next.access}
  async function load(s){const t=await token(s);const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store'});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');D(v)}
- useEffect(()=>{if(preview)return;(async()=>{try{let s=JSON.parse(sessionStorage.getItem('oparax.sales.session')||'null');const hash=new URLSearchParams(location.hash.slice(1));if(hash.has('access_token')){s={access:hash.get('access_token'),refresh:hash.get('refresh_token'),expires:Date.now()+Number(hash.get('expires_in')||3600)*1000};session(s);history.replaceState(null,'',location.pathname)}else if(hash.has('error')){throw Error(hash.get('error_description')||'Sign-in link expired.')}if(s){A(s);await load(s)}}catch(e){E(e.message)}finally{R(true)}})()},[]);
+ const started=useRef(false);
+ useEffect(()=>{
+   if(preview||started.current)return;
+   started.current=true;
+   (async()=>{
+     try {
+       const callback=loginCallback(location.search,location.hash);
+       let current;
+       if(callback.error||callback.session||callback.verification) {
+         history.replaceState(null,'',location.pathname);
+         if(callback.error)throw Error(callback.error);
+         current=callback.session;
+         if(callback.verification) {
+           const result=await fetch(url+'/auth/v1/verify',{
+             method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},
+             body:JSON.stringify(callback.verification)
+           });
+           const v=await result.json();
+           if(!result.ok||!v.access_token||!v.refresh_token)throw Error('This email link is invalid or has expired. Request a fresh link below.');
+           current={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+Number(v.expires_in||3600)*1000};
+         }
+         session(current);
+       } else {
+         current=JSON.parse(sessionStorage.getItem('oparax.sales.session')||'null');
+       }
+       if(current){A(current);await load(current);}
+     } catch(error){E(error.message);} finally {R(true);}
+   })();
+ },[preview,url,anon]);
  async function act(action,p={},close=true){if(preview){N('Sign in to perform this action in your workspace.');return false}B(true);E('');N('');try{const t=await token(auth);const r=await fetch('/api/desk',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({action,...p})});const v=await r.json();if(!r.ok)throw Error(v.error);D(v);if(close)M('');return true}catch(e){E(e.message);return false}finally{B(false)}}
- async function login(e){e.preventDefault();B(true);E('');Y(false);try{const r=await fetch('/api/signin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:new FormData(e.target).get('email')})});const v=await r.json();if(!r.ok)throw Error(v.error);Y(true)}catch(e){E(e.message)}finally{B(false)}}
+ const requesting=useRef(false);
+ async function login(e) {
+   e.preventDefault();
+   if(requesting.current)return;
+   requesting.current=true;
+   const email=String(new FormData(e.currentTarget).get('email')||'').trim();
+   B(true);E('');Y(false);
+   try {
+     const response=await fetch('/api/signin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+     const result=await response.json();
+     if(!response.ok)throw Error(result.error);
+     Y(email);
+   } catch(error){E(error.message);} finally{requesting.current=false;B(false);}
+ }
  function logout(){if(auth)fetch(url+'/auth/v1/logout',{method:'POST',headers:{apikey:anon,Authorization:'Bearer '+auth.access}}).catch(()=>{});session(null);D(null);Y(false);E('')}
  const notice=err?<p role="alert" className="error">{err}</p>:msg?<p role="status" className="notice">{msg}</p>:null;
- if(!d)return <main className="entry"><header><Brand/><span className="tiny">Sales workspace</span></header><section className="entrygrid"><div className="signin"><div className="over"><i className="blueDot"/>PRIVATE WORKSPACE</div><h1>Your sales<br/>workspace<span>.</span></h1><p>Give your agents a market to research. Review the buyers they find and manage every conversation in one place.</p><a href="/preview">Explore the workspace preview →</a><form onSubmit={login}><Field name="email" type="email" label="Work email" required placeholder="you@company.com" autoComplete="email"/><button className="primary wide" disabled={busy||!ready}>{busy?'Sending…':sent?'Send another sign-in link':'Email me a sign-in link'}<Icon n="arrow"/></button></form>{sent&&<p className="notice">Check your workspace email for a private sign-in link.</p>}{notice}{auth&&<button onClick={logout}>Clear session</button>}</div><Preview/></section></main>;
+ if(!d)return <main className="entry"><header><Brand/><span className="tiny">Sales workspace</span></header><section className="entrygrid"><div className="signin"><div className="over"><i className="blueDot"/>SALES OUTREACH</div><h1>Your sales<br/>workspace<span>.</span></h1><p>Give your agents a market to research. Review the buyers they find and manage every conversation in one place.</p><a href="/preview">Explore the workspace preview →</a><p>Sign up or sign in with any email address.</p><form onSubmit={login}><Field name="email" type="email" label="Email address" required placeholder="you@example.com" autoComplete="email"/><button className="primary wide" disabled={busy||!ready}>{busy?'Sending…':sent?'Send another sign-in link':'Email me a sign-in link'}<Icon n="arrow"/></button></form>{sent&&<p className="notice">Check {sent} for your sign-in link.</p>}{notice}{auth&&<button onClick={logout}>Clear session</button>}</div><Preview/></section></main>;
  const b=d.bots.find(x=>x.id===sel),l=d.leads.find(x=>x.id===sel);
  function go(p){S(null);P(p);M('');E('');N('');Q('')}
  function open(m){E('');N('');if(preview&&['connect','agentmail'].includes(m)){N('Sign in to connect your own mailbox.');return}M(m)}
  const filtered=d.leads.filter(x=>[x.company,x.person,x.email,x.fit].join(' ').toLowerCase().includes(search.toLowerCase()));
  function handleForm(action,extra={}){return e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));act(action,{...f,...extra})}}
  async function copy(v){try{await navigator.clipboard.writeText(v);N('Draft copied.')}catch{E('Select the draft and copy it manually.')}}
- return <div className="app"><aside><Brand/><div className="over navtitle">WORKSPACE</div><nav>{nav.map(n=><button className={page===n?'selected':''} key={n} onClick={()=>go(n)}><Icon n={n}/>{n}{n==='LinkedIn queue'&&d.leads.filter(l=>l.linkedinState==='draft'&&!['stopped','replied'].includes(l.status)).length>0&&<small>{d.leads.filter(l=>l.linkedinState==='draft'&&!['stopped','replied'].includes(l.status)).length}</small>}</button>)}</nav><div className="account"><i>F</i><div>{preview?'Sample workspace':'Farzan'}<small>{preview?'Public preview':'Workspace owner'}</small></div>{preview?<a href="/">Sign in</a>:<button onClick={logout} title="Sign out" aria-label="Sign out">↗</button>}</div></aside>
+ return <div className="app"><aside><Brand/><div className="over navtitle">WORKSPACE</div><nav>{nav.map(n=><button className={page===n?'selected':''} key={n} onClick={()=>go(n)}><Icon n={n}/>{n}{n==='LinkedIn queue'&&d.leads.filter(l=>l.linkedinState==='draft'&&!['stopped','replied'].includes(l.status)).length>0&&<small>{d.leads.filter(l=>l.linkedinState==='draft'&&!['stopped','replied'].includes(l.status)).length}</small>}</button>)}</nav><div className="account"><i>{preview?'S':d.userEmail?.[0]?.toUpperCase()}</i><div>{preview?'Sample workspace':d.userEmail}<small>{preview?'Public preview':'Workspace owner'}</small></div>{preview?<a href="/">Sign in</a>:<button onClick={logout} title="Sign out" aria-label="Sign out">↗</button>}</div></aside>
  <main className="desk"><header className="bar"><span>Oparax <em>/</em> {preview?'Preview · Sample data':'Sales workspace'}</span>{preview?<a href="/">Sign in</a>:<button disabled={busy} onClick={()=>load(auth).then(()=>N('Workspace refreshed.')).catch(e=>E(e.message))}>Refresh</button>}</header>
  <div className="work"><div className="pagehead"><div><div className="over">SALES WORKSPACE</div><h1>{page==='Agents'&&b?b.name:page}</h1></div>{page==='Agents'&&!b&&<button className="primary" onClick={()=>open('create')}><Icon n="plus"/>New agent</button>}{page==='Prospects'&&d.bots.length>0&&<button onClick={()=>open('manual')}>Add prospect</button>}</div>{!modal&&notice}
  {page==='Agents'&&!b&&<><div className="stats">{[['Agents',d.bots.length],['Prospects',d.leads.length],['Emails sent',d.leads.reduce((s,l)=>s+l.stage,0)],['Replies',d.leads.filter(l=>l.status==='replied').length]].map(([k,v])=><div key={k}><small>{k}</small><strong>{v}</strong></div>)}</div><h2>Campaign agents</h2>{!d.bots.length?<div className="empty"><Signal/><h2>Create your first sales agent</h2><p>Choose a market and give the agent a brief to start researching buyers.</p><button className="primary" onClick={()=>open('create')}>Create agent <Icon n="arrow"/></button></div>:<div className="cards">{d.bots.map(x=><button className="card" key={x.id} onClick={()=>S(x.id)}><span className="cardtop"><Icon n="Agents" size={24}/><span className={'pill '+(x.active?'on':'')}>{x.active?'Active':'Paused'}</span></span><h2>{x.name}</h2><p>{x.brief}</p><small>{d.leads.filter(l=>l.botId===x.id).length} prospects · Every {x.cadence}h</small></button>)}</div>}</>}
