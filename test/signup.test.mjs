@@ -23,7 +23,7 @@ test('new signups use the submitted address and accepted duplicates do not send 
  t.mock.method(globalThis,'fetch',async(url,options)=>{
    const path=new URL(url).pathname;
    if(path.endsWith('outreach_signin_claim'))return Response.json(accepted?'accepted':'claimed');
-   if(path.endsWith('outreach_signin_finish')){accepted=JSON.parse(options.body).ok;return Response.json(null);}
+   if(path.endsWith('outreach_signin_finish')){accepted=JSON.parse(options.body).ok;return new Response(null,{status:204});}
    assert.equal(path,'/auth/v1/otp');
    sent.push(JSON.parse(options.body));
    return Response.json({});
