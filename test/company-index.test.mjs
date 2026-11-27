@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {companyQueries,discoverProfilePage,resolveCompanyProof} from '../lib/company-index.mjs';
+import {companyQueries,currentRequestedRole,discoverProfilePage,resolveCompanyProof} from '../lib/company-index.mjs';
 
 const firm='Northwind';
 const plan={mode:'people',target:'Find buyers, sourcing staff and designers at Northwind, the footwear company.',employers:[firm],roles:['buyer','designer','sourcing']};
@@ -144,4 +144,34 @@ test('anchored queries use established industry, legal name or HQ without imposi
   assert.ok(queries.some(q=>q==='site:linkedin.com/in/ "Northwind" buyer'));
   assert.ok(queries.some(q=>q.includes('footwear')));
   assert.ok(companyQueries(plan,context,0).queries.every(q=>!q.includes('Dunbar')));
+});
+
+test('dated role-first Experience controls both initial discovery and held retries, including conflicting provider headlines',async()=>{
+  const held=profile('lois','Lois Sleightholme - Barbour | LinkedIn',
+    '**Lois Sleightholme**\n**Design Manager**\n### About\nFootwear designer specialising in boots, flat sandals and heels.\n### Experience\n- **Design Manager**\n**Barbour**\nApril 2024 - Present\nSouth Shields, England, United Kingdom\n- **Footwear Designer**\n**River Island**\n2020 - 2024');
+  const branded={...plan,employers:['Barbour']};
+  const wrong=profile('lois','Lois Sleightholme - Senior Footwear Designer at Barbour | LinkedIn');
+  assert.equal(currentRequestedRole(held,'Barbour',branded),'Design Manager');
+  const checked=await discover([wrong,held],{plan:branded,context:{company:'Barbour'}});
+  assert.deepEqual(checked.rows.map(r=>[r.role,r.profileHit.snippet]),[['Design Manager',held.snippet]]);
+  assert.equal(currentRequestedRole(held,'River Island',branded),'');
+  const unrelated={...held,snippet:held.snippet.replace('- **Design Manager**','- **Operations Manager**')};
+  assert.equal(currentRequestedRole(unrelated,'Barbour',branded),'');
+  const rejected=await discover([wrong,unrelated],{plan:branded,context:{company:'Barbour'},
+    articleSearch:async()=>[{title:'Lois Sleightholme is Senior Footwear Designer at Barbour',url:'https://press.example/p',snippet:''}]});
+  assert.equal(rejected.rows.length,0);
+});
+
+test('linked (Current) annotations are removed from exact present titles, never used in place of dates',()=>{
+  const url='https://www.linkedin.com/company/j-barbour-%26-sons-ltd';
+  const full='Head of Global Procurement (Sourcing & Production) & Costing';
+  const header='### '+full+' - [Barbour]('+url+') (Current)';
+  const grouped='### Experience\n### [Barbour]('+url+')\n#### Design Manager Footwear (Current)\nJun 2023 - Present';
+  assert.equal(currentRequestedRole(profile('christy','Christy Lawson',grouped),'Barbour',plan),'Design Manager Footwear');
+  for(const heading of ['### Experience\n','']) {
+    const hit=profile('james','James Michael McGarr',heading+header+'\n\nSep 2023 - Present\nSouth Shields');
+    assert.equal(currentRequestedRole(hit,'Barbour',plan),full);
+    assert.equal(currentRequestedRole({...hit,snippet:heading+header+'\n\nSep 2023 - Nov 2025'},'Barbour',plan),'');
+    assert.equal(currentRequestedRole({...hit,snippet:heading+header},'Barbour',plan),'');
+  }
 });

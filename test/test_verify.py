@@ -220,6 +220,25 @@ class EvidenceTests(unittest.TestCase):
         self.assertIsNone(result(block.replace('Senior Designer','Senior Engineer')))
         self.assertIsNone(result(block.replace('[Barbour]','[Barbour EHS]')))
 
+    def test_lois_indexed_current_title_outranks_previous_job_and_about(self):
+        markers=[('location','South Shields','https://www.barbour.com/us/our-history.html')]
+        prefix='**Lois Sleightholme**\n**Design Manager**\n**Design Manager Footwear & Collaborations Co-ordinator (Accessories)**\nAbout\nFootwear designer specialising in footwear design.\n### Experience\n'
+        block='- **Design Manager**\n**Barbour**\nApril 2024 - Present\nSouth Shields, England, United Kingdom\n- **Footwear Designer**\n**River Island**\nApr 2019 - March 2024\nLondon, United Kingdom'
+        def run(role,experience):
+            return verifier.indexed_employment(dict(company='Barbour',person='Lois Sleightholme',role=role,
+                researchTarget=dict(company='Barbour',industry='footwear'),
+                profileHit=dict(url='https://www.linkedin.com/in/loissleightholme',title='Lois Sleightholme',
+                                snippet=prefix+experience)),markers)
+        accepted=run('Design Manager',block)
+        self.assertIsNotNone(accepted)
+        self.assertEqual(accepted['bridge']['matchType'],'location')
+        self.assertIn('April 2024 - Present',accepted['linkedinEvidence'])
+        self.assertNotIn('River Island',accepted['linkedinEvidence'])
+        self.assertIsNone(run('Footwear Designer',block))
+        self.assertIsNone(run('Design Manager',block.replace('**Barbour**','**Barbour EHS**')))
+        self.assertIsNone(run('Design Manager',block.replace('2024 - Present','2024 - May 2026')))
+        self.assertIsNone(run('Design Manager',block.replace('**Design Manager**','**Vacancy for Design Manager**')))
+
     def test_direct_role_source_can_corroborate_company_from_its_other_product_lines(self):
         article='https://press.example/womenswear'
         official='https://www.barbour.com/us/footwear-guide.html'

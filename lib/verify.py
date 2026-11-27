@@ -508,6 +508,31 @@ def identity_markers(page, url, company, target, read_page, extra=True):
     return markers
 
 
+def bullet_experience(snippet):
+    """Read explicitly dated role-first entries without crossing the next job boundary."""
+    section = re.search(r'(?:^|\n)#{1,4}\s+Experience\s*\n(.+?)(?=\n#{1,3}\s+[A-Za-z]|$)',snippet,re.I|re.S)
+    if not section:
+        return []
+    records = []
+    # For this format the job is a bullet and the employer is its own bold field.
+    for block in re.split(r'(?m)^\s*[-*]\s+(?=\*\*)',section[1])[1:]:
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if len(lines)<3:
+            continue
+        title = re.fullmatch(r'\*\*([^*\n]+)\*\*',lines[0])
+        firm = re.fullmatch(r'\*\*([^*\n]+)\*\*',lines[1])
+        dated = re.match(r'^(?:[A-Za-z]{3,9}\s+)?(?:19|20)\d{2}\s*[-–—]\s*'
+                         r'(?P<end>present|current|(?:[A-Za-z]{3,9}\s+)?(?:19|20)\d{2})\b',lines[2],re.I)
+        if not (title and firm and dated):
+            continue
+        detail=lines[:3]
+        if len(lines)>3 and re.fullmatch(r"[\w .’'-]+(?:,\s*[\w .’'-]+){1,3}",lines[3]):
+            detail.append(lines[3])
+        records.append((words(title[1]),words(firm[1]),dated['end'].lower() in ('present','current'),
+                        '\n'.join(detail)))
+    return records
+
+
 def current_markdown_experience(snippet,role,companies):
     section = re.search(r'(?:^|\n)#{1,3}\s+Experience\s*\n(.+?)(?=\n#{1,2}\s+[A-Za-z]|$)',snippet,re.I|re.S)
     if not section:
@@ -576,6 +601,16 @@ def indexed_employment(row, markers=()):
     # Each piece is independently attributable. A following former position or unrelated
     # role buried in the person's history may not supply missing employment proof.
     companies = [company]+[words(v) for kind,v,_ in markers if kind=='legal_name']
+    current_records = bullet_experience(snippet)
+    if current_records:
+        for current_role,employer,present,description in current_records:
+            if not present or employer not in companies or current_role!=role or SOCIAL.search(description):
+                continue
+            proof = identity_match(description,markers)
+            if proof or any(tuple(starts(role,t)) for t in industry if t):
+                return {'linkedinUrl':url,'linkedinEvidence':(title+' · '+description)[:650],'bridge':proof}
+        # An explicit current or dated position overrides boilerplate skill or About text.
+        return None
     precise_job = current_markdown_experience(snippet,role,companies)
     if precise_job and not SOCIAL.search(precise_job):
         proof = identity_match(precise_job,markers)
