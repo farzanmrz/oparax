@@ -18,7 +18,7 @@ test('each chat and draft includes the workspace business profile, only the assi
   const gateway=async(messages,opts)=>{const parsed=JSON.parse(messages[1].content);observed.push({parsed,opts,prompt:messages[0].content});return JSON.stringify(parsed.recipient?generated:{action:'answer',answer:'Ask the buyer which insole specifications they need.'});};
   await planCommand(scope,gateway);await writeDraft({...scope,prospect:person},gateway);
   for(const call of observed){
-    assert.equal(call.opts.modelId,'spacexai/grok-4.3');assert.equal(call.parsed.seller.businessProfile.productsServices,'Custom leather insoles');
+    assert.equal(call.opts.modelId,'spacexai/grok-4.7');assert.equal(call.parsed.seller.businessProfile.productsServices,'Custom leather insoles');
     assert.deepEqual(call.parsed.seller.customSkills,[{name:'First touch',instructions:'Use one short question.'}]);
     assert.doesNotMatch(JSON.stringify(call.parsed),/credentials must never leak|UNASSIGNED_CONTENT|WORKSPACE_SECRET/);
     assert.match(call.prompt,/never evidence/);
@@ -38,7 +38,7 @@ test('first outreach, LinkedIn and follow-up use profile and playbook. Editing m
   const d={...structuredClone(workspace),bots:[bot],leads:[],messages:[],events:[],suppressed:[]};
   const before=salesContext(d,bot),oldRow={...person};
   let calls=0;
-  const gateway=async(messages,opts)=>{calls++;assert.equal(opts.modelId,'spacexai/grok-4.3');const input=JSON.parse(messages[1].content);
+  const gateway=async(messages,opts)=>{calls++;assert.equal(opts.modelId,'spacexai/grok-4.7');const input=JSON.parse(messages[1].content);
     assert.equal(input.seller.businessProfile.productsServices,'Custom leather insoles');assert.equal(input.recipients[0].company,person.company);
     return JSON.stringify({drafts:[{ref:'0',...generated}]});};
   await prepareCampaignDrafts([oldRow],before,{brief:bot.brief,gateway});assert.equal(calls,1);
@@ -64,7 +64,7 @@ test('model choices are per agent, auto is cheap on routine and hard-ranked plan
   assert.equal(resolveAgentModel({}, {task:'planning',message:difficult}).modelId,'openai/gpt-6.2-astra');
   assert.equal(resolveAgentModel({}, {task:'research',message:difficult}).modelId,'openai/gpt-6.2-sol');
   const bots=[{},{}];setModelPreference({},bots[0],'grok');
-  for(const task of ['research','planning','draft','conversation'])assert.equal(resolveAgentModel(bots[0],{task,complex:true}).modelId,'spacexai/grok-4.3');
+  for(const task of ['research','planning','draft','conversation'])assert.equal(resolveAgentModel(bots[0],{task,complex:true}).modelId,'spacexai/grok-4.7');
   assert.equal(resolveAgentModel(bots[1]).modelId,'openai/gpt-6.2-sol');assert.throws(()=>setModelPreference({},bots[0],'made-up'));
 });
 test('model usage records Gateway costs when available and labels text-price estimates otherwise',()=>{
@@ -76,8 +76,10 @@ test('model usage records Gateway costs when available and labels text-price est
   assert.equal(actual.costUsd,0.0027);assert.equal(actual.costBasis,'gateway');assert.equal(modelUsage({},r).costUsd,undefined);
   const grok=resolveAgentModel(bot);
   const estimate=(route,tokens)=>modelUsage({usage:{prompt_tokens:tokens,completion_tokens:200}},route).costUsd;
-  assert.equal(estimate(grok,200000),(200000*1.25+200*2.5)/1e6);
-  assert.equal(estimate(grok,200001),(200001*2.5+200*5)/1e6);
+  assert.equal(estimate(grok,200000),(200000*2+200*6)/1e6);
+  assert.equal(estimate(grok,200001),(200001*4+200*12)/1e6);
+  const legacy=modelUsage({model:'spacexai/grok-4.3',usage:{input_tokens:1000,output_tokens:200}},grok);
+  assert.equal(legacy.modelId,'spacexai/grok-4.3');assert.equal(legacy.costUsd,(1000*1.25+200*2.5)/1e6);
   assert.equal(estimate(r,272000),(272000*2+200*10)/1e6);
   assert.equal(estimate(r,272001),(272001*4+200*15)/1e6);
 });
@@ -89,7 +91,7 @@ test('the public research planning entry point uses current seller context and t
   await research('b',{requestedAt:'run',page:0},{
     edit:async fn=>fn(d),
     model:async(messages,opts)=>{
-      called++;const input=JSON.parse(messages[1].content);assert.equal(opts.modelId,'spacexai/grok-4.3');
+      called++;const input=JSON.parse(messages[1].content);assert.equal(opts.modelId,'spacexai/grok-4.7');
       assert.equal(input.seller.businessProfile.company,'Bridge Works');assert.deepEqual(input.seller.customSkills,[{name:'First touch',instructions:'Use one short question.'}]);
       assert.doesNotMatch(JSON.stringify(input),/UNASSIGNED_CONTENT|WORKSPACE_SECRET|credentials must never leak/);
       return JSON.stringify({mode:'people',question:'Which region should the buyer list cover?',target:'Footwear buyers',roles:['buyers']});
@@ -103,10 +105,10 @@ test('a reported cost from the chat gateway is emitted exactly once by the actua
   const {model}=await import('../lib/agent.mjs');const saved=globalThis.fetch,env=process.env.AI_GATEWAY_API_KEY;
   process.env.AI_GATEWAY_API_KEY='local-test';
   const records=[];let actual;
-  globalThis.fetch=async(url,opts)=>{actual=JSON.parse(opts.body);return Response.json({model:'spacexai/grok-4.3',usage:{prompt_tokens:200,completion_tokens:50,cost:'0.00037'},choices:[{message:{content:'{"ok":true}'}}]});};
+  globalThis.fetch=async(url,opts)=>{actual=JSON.parse(opts.body);return Response.json({model:'spacexai/grok-4.7',usage:{prompt_tokens:200,completion_tokens:50,cost:'0.00037'},choices:[{message:{content:'{"ok":true}'}}]});};
   try{
     await model([{role:'user',content:'Return a test object.'}],{...resolveAgentModel(bot,{task:'draft'}),effort:'low',onUsage:r=>records.push(r)});
-    assert.equal(actual.model,'spacexai/grok-4.3');assert.equal(actual.reasoning,undefined);
+    assert.equal(actual.model,'spacexai/grok-4.7');assert.equal(actual.reasoning,undefined);
     assert.equal(records.length,1);assert.equal(records[0].costUsd,0.00037);assert.equal(records[0].costBasis,'gateway');
   }finally{
     globalThis.fetch=saved;

@@ -46,7 +46,7 @@ test('paid native calls report the selected bot, actual model and gateway usage 
   process.env.SUPABASE_SECRET_KEY='fixture-only';
   const w=fixture(),{ctx,t}=await context(w,{message:'Describe an introduction',requestId:'usage-fixture',modelPreference:'grok'});
   const {modelId,onUsage}=await eveModelCall(ctx,w.deps);
-  assert.equal(modelId,'spacexai/grok-4.3');
+  assert.equal(modelId,'spacexai/grok-4.7');
   const usage={inputTokens:{total:1000},outputTokens:{total:100}};
   const providerMetadata={gateway:{cost:'0.0023'}},reported='provider-actual-model';
   let writes=0,receipt={status:'unconfirmed'},local=null;

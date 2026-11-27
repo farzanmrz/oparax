@@ -24,7 +24,7 @@ test('Eve creates one durable named bot/session, authorizes only its literal com
   assert.equal(reloaded.sessionId,fresh.sessionId);
   assert.ok(await eveCaller(request(base+'/stream',reloaded.bearer),w.deps));
   assert.equal(await eveCaller(request(base,reloaded.bearer,{message:input.message}),w.deps),null);
-  const ctx={session:{id:fresh.sessionId,auth:{current:principal,initiator:principal}}};assert.equal(await eveModel(ctx,w.deps),'spacexai/grok-4.3');
+  const ctx={session:{id:fresh.sessionId,auth:{current:principal,initiator:principal}}};assert.equal(await eveModel(ctx,w.deps),'spacexai/grok-4.7');
   let seen;
   const result=await runEveSalesTurn(ctx,{...w.deps,messageAgent:async arg=>{seen={...arg,owner:workspaceId()};w.d.conversationReceipts={[input.requestId]:{agentId:fresh.agentId}};w.d.messages.push({role:'user',botId:fresh.agentId,requestId:input.requestId},{role:'assistant',botId:fresh.agentId,content:'Checked the saved workspace.'});return {};}});
   assert.deepEqual(seen,{id:fresh.agentId,message:input.message,requestId:input.requestId,owner:uid});assert.equal(result.reply,'Checked the saved workspace.');
