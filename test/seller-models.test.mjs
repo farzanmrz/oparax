@@ -74,6 +74,12 @@ test('model usage records Gateway costs when available and labels text-price est
   assert.equal(basis.inputTokens,1000);assert.equal(basis.outputTokens,200);assert.equal(basis.requestedModel,r.modelId);
   const actual=modelUsage({model:r.modelId,usage:{prompt_tokens:1000,completion_tokens:200,cost:'0.0027'}},r);
   assert.equal(actual.costUsd,0.0027);assert.equal(actual.costBasis,'gateway');assert.equal(modelUsage({},r).costUsd,undefined);
+  const grok=resolveAgentModel(bot);
+  const estimate=(route,tokens)=>modelUsage({usage:{prompt_tokens:tokens,completion_tokens:200}},route).costUsd;
+  assert.equal(estimate(grok,200000),(200000*1.25+200*2.5)/1e6);
+  assert.equal(estimate(grok,200001),(200001*2.5+200*5)/1e6);
+  assert.equal(estimate(r,272000),(272000*2+200*10)/1e6);
+  assert.equal(estimate(r,272001),(272001*4+200*15)/1e6);
 });
 
 test('the public research planning entry point uses current seller context and the bot pin before any public query',async()=>{

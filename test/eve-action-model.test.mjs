@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {actionMiddleware,failureReason,recordNoAction,modelReceipt,localSalesCall} from '../lib/eve-action-model.mjs';
 import {noActionMessage,budgetMessage} from '../lib/eve-turn-receipt.mjs';
-import {prepareEveSession,eveCaller} from '../lib/eve-bridge.mjs';
+import {prepareEveSession,eveCaller,eveModelCall} from '../lib/eve-bridge.mjs';
 import {view} from '../lib/store.mjs';
 
 const tool={type:'tool-call',toolCallId:'one',toolName:'handle_sales_request',input:JSON.stringify({action:'status',text:null,name:null,prospectId:null,channel:null,existingDraft:null,concrete:null})};
@@ -42,6 +42,30 @@ async function context(w,raw){
  const req=new Request('https://example.org/eve/v1/session/'+t.sessionId,{method:'POST',headers:{authorization:'Bearer '+t.bearer},body:JSON.stringify({message:raw.message,idempotencyKey:t.deliveryKey})});
  const caller=await eveCaller(req,w.deps);return {t,ctx:{session:{id:t.sessionId,auth:{current:caller,initiator:caller}}}};
 }
+test('paid native calls report the selected bot, actual model and gateway usage once for generated and streamed replies',async()=>{
+  process.env.SUPABASE_SECRET_KEY='fixture-only';
+  const w=fixture(),{ctx,t}=await context(w,{message:'Describe an introduction',requestId:'usage-fixture',modelPreference:'grok'});
+  const {modelId,onUsage}=await eveModelCall(ctx,w.deps);
+  assert.equal(modelId,'spacexai/grok-4.3');
+  const usage={inputTokens:{total:1000},outputTokens:{total:100}};
+  const providerMetadata={gateway:{cost:'0.0023'}},reported='provider-actual-model';
+  let writes=0,receipt={status:'unconfirmed'},local=null;
+  const mw=actionMiddleware({getReceipt:async()=>receipt,getLocalCall:async()=>local,fail:async()=>noActionMessage,
+    onUsage:async value=>{writes++;await onUsage(value);}});
+  w.d.bots[0].modelPreference='premium'; // The in-flight generation keeps its original selection.
+  await mw.wrapGenerate({doGenerate:async()=>({content:[tool],response:{modelId:reported},usage,providerMetadata})});
+  const stored=()=>view(w.d).bots.find(b=>b.id===t.agentId).lastModelUsage;
+  assert.equal(stored().preference,'grok');assert.equal(stored().requestedModel,modelId);assert.equal(stored().modelId,reported);
+  assert.equal(stored().inputTokens,1000);assert.equal(stored().outputTokens,100);assert.equal(stored().costUsd,0.0023);
+  const nativeStream=await mw.wrapStream({doStream:async()=>({stream:parts([{type:'response-metadata',modelId},tool,{type:'finish',usage}])})});
+  await collect(nativeStream.stream);
+  assert.equal(stored().modelId,modelId);assert.equal(stored().costBasis,'estimated_standard_text');assert.equal(writes,2);
+  const never=async()=>assert.fail('unexpected generation');
+  local=tool;await mw.wrapGenerate({doGenerate:never});await collect((await mw.wrapStream({doStream:never})).stream);
+  local=null;receipt={status:'confirmed',answer:'Recorded.'};
+  await mw.wrapGenerate({doGenerate:never});await collect((await mw.wrapStream({doStream:never})).stream);
+  assert.equal(writes,2);
+});
 test('a wrapped upstream 402 records a billing-safe no-action outcome, survives reload and retries the identical signed owner command',async()=>{
  process.env.SUPABASE_SECRET_KEY='fixture-only';
  const w=fixture(),raw={requestId:'gateway-fixture',message:'Describe a customer introduction',searchSources:['web']};
