@@ -180,7 +180,7 @@ test('RocketReach-only works without public web, and replay uses the same provid
   const result=await w.send(input);assert.equal(result.work,null);assert.equal(w.data.bots[0].researchJob,undefined);
   assert.equal(result.sourceWork.length,1);assert.deepEqual((await w.send(input)).sourceWork,result.sourceWork);
   const {runSourceTask}=await import('../lib/source-tasks.mjs');
-  let calls=0;const deps={...w.services,rocketreach:async (id,{requestId,remaining})=>{calls++;assert.equal(id,result.agentId);assert.equal(remaining,50);assert.equal(requestId,result.sourceWork[0].requestId);}};
+  let calls=0;const deps={...w.services,rocketreach:async (id,{requestId,remaining})=>{calls++;assert.equal(id,result.agentId);assert.equal(remaining,undefined);assert.equal(requestId,result.sourceWork[0].requestId);}};
   await Promise.all([runSourceTask(result.agentId,result.sourceWork[0],deps),runSourceTask(result.agentId,result.sourceWork[0],deps)]);
   assert.equal(calls,1);assert.deepEqual((await w.send(input)).sourceWork,[]);
 });

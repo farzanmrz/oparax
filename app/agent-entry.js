@@ -1,5 +1,5 @@
 'use client';
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import './agent-entry.css';
 
 const draftKey='oparax.sales.signinBrief';
@@ -31,8 +31,9 @@ function bindBrief(text,email){
 function Arrow(){return <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>;}
 
 export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,initialPage}){
-  const direct=initialPage==='Prospects'||initialPage==='Research';
+  const direct=['Prospects','Research','Business memory','Skills & connections'].includes(initialPage);
   const [step,setStep]=useState(direct?'signin':'brief');
+  useEffect(()=>{if(direct)setStep('signin')},[direct]);
   const [brief,setBrief]=useState('');
   const input=useRef(null);
   const signin=step==='signin'||sent||auth;

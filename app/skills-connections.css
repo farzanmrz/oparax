@@ -1,0 +1,18 @@
+.sales-settings{display:grid;gap:1rem;max-width:55rem;min-width:0}
+.sales-settings .panel{margin:0;min-width:0}
+.sales-settings h2{margin:0 0 .65rem}
+.sales-scope{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem}
+.sales-scope label{display:grid;gap:.3rem;min-width:min(17rem,100%);margin:0}
+.sales-scope p{flex-basis:100%;margin:0}
+.sales-services,.sales-capabilities{padding:0;margin:0;list-style:none}
+.sales-services li,.sales-capabilities li{padding:.75rem 0;border-top:1px solid var(--line)}
+.sales-services li:first-child,.sales-capabilities li:first-child{border:0}
+.sales-services li>div:first-child,.sales-capabilities li>label,.sales-connector-actions,.sales-connector-actions form>div{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.sales-services p,.sales-capabilities p{margin:.3rem 0;color:var(--muted);font-size:.88rem;overflow-wrap:anywhere}
+.sales-capabilities label{margin:0;cursor:pointer}
+.sales-capabilities input[type=checkbox]{width:1rem;min-height:1rem;height:1rem;margin:0;accent-color:var(--accent)}
+.sales-capabilities small{font-size:.76rem;color:var(--muted)}
+.sales-connector-actions{margin-top:.45rem}
+.sales-connector-actions form{display:grid;max-width:100%;gap:.4rem}
+.sales-connector-actions label{margin:0}
+.sales-connector-actions p{width:100%}

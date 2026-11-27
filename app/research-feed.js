@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
+import {researchCeiling,verifiedCount} from './research-outcome';
 import {readResearchStream} from './research-events.mjs';
 
 const activityKinds={
@@ -9,7 +10,7 @@ const activityKinds={
 const stateLabels={
   queued:'Queued',planning:'Reading the brief',searching:'Searching',verifying:'Checking sources',
   profiles:'Checking profiles',running:'In progress',continuing:'Next batch queued',
-  goal_met:'Goal reached',exhausted:'Search exhausted below goal',needs_input:'Waiting for your answer',
+  goal_met:'Requested limit reached',exhausted:'Search coverage complete',needs_input:'Waiting for your answer',
   failed:'Research interrupted'
 };
 function domainOf(value){
@@ -69,15 +70,15 @@ export default function ResearchFeed({agent,active,getToken}){
   const status=active?(current?.status||agent.lastRun?.status||job?.status):(job?.status||current?.status);
   const qualified=Math.max(job?.qualified||0,current?.qualified||0);
   const examined=Math.max(job?.counts?.candidates||0,current?.examined||0);
-  const goal=job?.goal||current?.goal||agent.researchGoal||50;
+  const goal=job?researchCeiling(agent):current?.goal;
   const connectionLabels={live:'Live',connecting:'Connecting…',reconnecting:'Reconnecting…',unavailable:'Showing saved activity'};
   return <section id="research-activity" className="panel researchfeed" aria-labelledby="research-activity-title">
     <div className="row"><h2 id="research-activity-title">Research activity</h2>
       {active&&connectionLabels[connection]&&<span role="status" className={'pill '+(connection==='live'?'on':'')}>{connectionLabels[connection]}</span>}
     </div>
     {(job||current)&&<div className="feedsummary">
-      <strong>{qualified} of {goal} verified people</strong><small>{examined} candidates surfaced{status&&stateLabels[status]?' · '+stateLabels[status]:''}</small>
-      <progress value={qualified} max={goal} aria-label="Verified people found"/>
+      <strong>{verifiedCount(qualified,goal)}</strong><small>{examined} candidates surfaced{status&&stateLabels[status]?' · '+stateLabels[status]:''}</small>
+      {goal>0&&<progress value={qualified} max={goal} aria-label="Verified people found"/>}
     </div>}
     {status==='continuing'&&<p>The next batch is queued. Research continues when you leave this page.</p>}
     {rows.length?<ol className="feedrows" aria-label="Research actions, newest first">{rows.map(entry=><li key={entry.id}>

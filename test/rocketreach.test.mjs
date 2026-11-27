@@ -142,7 +142,7 @@ test('invalidated keys are disconnected and an exhausted workspace allowance yie
   assert.equal(view(f.d).rocketReach.connected,false);
   const g=fixture();g.d.rocketReach.ledger=Array.from({length:10},(_,i)=>({kind:'search',key:'k'+i,at:new Date().toISOString()}));
   assert.equal((await g.run()).continuing,false);assert.equal(g.calls.length,0);
-  assert.equal(g.d.bots[0].rocketReach.receipt.status,'partial');
+  assert.equal(g.d.bots[0].rocketReach.receipt.status,'budget_limited');
   assert.match(g.d.bots[0].rocketReach.receipt.message,/00:00 UTC/);
 });
 
@@ -155,4 +155,14 @@ test('industry and geography filters are grounded in the owner brief and a super
   assert.equal(body.page_size,3);assert.deepEqual(body.query,{company_industry_keywords:['footwear'],current_title:['Buyer'],geo:['Philadelphia']});
   const g=fixture();g.d.bots[0].sourceTask={id:'current',providers:{rocketreach:{requestId:'different-request'}}};
   assert.equal((await g.run()).continuing,false);assert.equal(g.calls.length,0);
+});
+
+test('an open-ended directory search can pass fifty, and missing public verification is distinct from a dry source',async()=>{
+  const f=fixture();f.deps.plan={...plan,goal:null};
+  f.state.reply=(url,opts)=>{const p=JSON.parse(opts.body);return {pagination:{total:53},profiles:Array.from({length:p.start===1?50:3},(_,i)=>raw(i+p.start))};};
+  for(let i=0;i<10&&(await f.run()).continuing;i++){}
+  assert.equal(f.d.leads.length,53);assert.equal(f.d.bots[0].rocketReach.receipt.status,'exhausted');
+  const g=fixture();g.deps.plan={...plan,goal:null};g.state.reply=()=>({profiles:[raw(1)]});
+  g.deps.verifySelections=async(id,rows)=>({verified:[],held:rows.map(r=>({...r,evidenceUnavailable:true}))});
+  await g.run();assert.equal(g.d.bots[0].rocketReach.receipt.status,'verification_incomplete');
 });

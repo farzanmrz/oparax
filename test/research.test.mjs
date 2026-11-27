@@ -49,7 +49,7 @@ function pageOf(rows,page) {
 
 test('one request qualifies and saves exactly fifty unique named profiles across four durable batches',async()=>{
   let plans=0;
-  const f=fixture({services:{
+  const f=fixture({brief:'Find up to 50 buyers at the footwear company Barbour.',services:{
     model:async()=>{plans++;return JSON.stringify(plan);},
     profilePage:async({page})=>pageOf(Array.from({length:13},(_,i)=>person(page*13+i)),page)
   }});
@@ -71,7 +71,7 @@ test('an explicitly requested quota is fulfilled without publishing overflow',as
   const f=fixture({brief:'Find 2 buyers at the footwear company Barbour.',
     answers:[{...plan,requestedCount:2,countPhrase:'2 buyers'}],services:{profilePage:async()=>pageOf([person(0),person(1),person(2)],0)}});
   await f.run();assert.equal(f.b.researchJob.goal,2);assert.equal(f.data.leads.length,2);assert.equal(f.b.lastRun.status,'goal_met');
-  assert.equal(validatePlan(JSON.stringify({...plan,requestedCount:2026,countPhrase:'2026 buyers'}),{brief}).goal,50);
+  assert.equal(validatePlan(JSON.stringify({...plan,requestedCount:2026,countPhrase:'2026 buyers'}),{brief}).goal,null);
 });
 
 test('exact employer, role and a real personal profile are required before automatic publication',async()=>{
@@ -115,8 +115,8 @@ test('stale page and paused timer do not run research',async()=>{
 });
 test('genuine exhaustion is distinct from provider failures and follows varied scope-preserving attempts',async()=>{
   const f=fixture({services:{profilePage:async()=>({searched:false,exhausted:true,rows:[]})}});
-  for(let i=0;i<6;i++)await f.run(i);
-  assert.equal(f.b.lastRun.status,'exhausted');assert.equal(f.b.researchJob.queries.length,6);assert.equal(f.data.leads.length,0);
+  for(let i=0;i<10&&f.b.researchRequestedAt;i++)await f.run(i);
+  assert.equal(f.b.lastRun.status,'exhausted');assert.equal(f.b.lastRun.receipt.reason,'diminishing_returns');assert.ok(f.b.researchJob.queries.length>1);assert.equal(f.data.leads.length,0);
   const outage=fixture({services:{profilePage:async()=>{throw Error('offline');},articleSearch:async()=>{throw Error('down');},model:async(messages,options)=>{if(options.tool)throw Error('down');return JSON.stringify(plan);}}});
   await outage.run();assert.equal(outage.b.lastRun.status,'failed');assert.equal(outage.b.researchJob.dryPages,0);
 });

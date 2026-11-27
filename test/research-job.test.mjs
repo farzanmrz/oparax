@@ -7,6 +7,7 @@ test('one job keeps a single quota and counts distinct contacts across batches',
   const b={};
   const id=queueResearch(b);
   assert.equal(queueResearch(b),id);
+  b.researchJob.goal=50;
   for(let page=0;page<7;page++){
     const job=ensureResearchJob(b,id);
     assert.equal(job.pages,page);
@@ -57,7 +58,7 @@ test('a clarifying answer resumes the same quota without recounting previously c
   advanceResearchJob(b,{page:0,status:'needs_input',question:'Which company?',terminalReason:'I need a company.'});
   assert.equal(b.researchRequestedAt,undefined);
   assert.equal(queueResearch(b,{resume:true}),id);
-  assert.equal(b.researchJob.goal,50);
+  assert.equal(b.researchJob.goal,null);
 });
 
 test('a result on the last new query cannot trap a completed search in an endless loop',()=>{

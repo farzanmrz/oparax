@@ -9,3 +9,24 @@ test('workspace view never serializes provider credentials, raw mail references,
  assert.equal(JSON.stringify(out).includes(marker),false);
  assert.equal(out.mailbox.email,'sender@example.com');assert.equal(out.agentMailConnected,true);
 });
+
+test('a research receipt exposes aggregate evidence and preserves an open-ended request',()=>{
+ const receipt={reason:'diminishing_returns',uniqueCandidates:82,uniqueQualified:17,ceiling:null,productiveBatches:4,successfulBatches:7,
+   sourceFamilies:['Professional profile index',{raw:'private-profile'}],distinctQueries:25,heldForEvidence:9,scope:'UK buyers',summary:'17 verified contacts.',pending:['private-profile']};
+ const [agent]=view({bots:[{brief:'Find buyers',researchJob:{plan:{limitVersion:2},goal:null},lastRun:{status:'exhausted',receipt}}]}).bots;
+ assert.deepEqual(agent.lastRun.receipt,{...Object.fromEntries(Object.entries(receipt).filter(([k])=>k!=='pending')),sourceFamilies:['Professional profile index']});
+ assert.equal(agent.researchJob.goal,null);
+ assert.doesNotMatch(JSON.stringify(agent),/private-profile/);
+});
+
+test('a legacy quota is displayed only if the customer explicitly requested a ceiling',()=>{
+ const bot={brief:'Find buyers at Example',sourceTask:{goal:50},researchGoal:50,researchJob:{goal:50,qualified:50,status:'goal_met'},lastRun:{status:'goal_met',summary:'Reached your requested maximum of 50.'}};
+ const implicit=view({bots:[bot]}).bots[0];
+ assert.equal(implicit.taskGoal,undefined);
+ assert.equal(implicit.researchJob.goal,null);
+ assert.equal(implicit.researchJob.status,'completed');
+ assert.doesNotMatch(implicit.lastRun.summary,/requested maximum/);
+ const explicit=view({bots:[{...bot,clarifications:[{answer:'Find up to 10 buyers.'}]}]}).bots[0];
+ assert.equal(explicit.taskGoal,10);
+ assert.equal(explicit.researchJob.goal,10);
+});

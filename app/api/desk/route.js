@@ -1,3 +1,5 @@
+import {setSalesSkill,requireSkill,skillEnabled} from '../../../lib/sales-skills.mjs';
+import {setModelPreference} from '../../../lib/agent-models.mjs';
 import {Fault,edit,event,failure,now,verifiedUser,withWorkspace,read,view} from '../../../lib/store.mjs';
 import {addLead,bot,createBot,email,lead,note,settings,stop,text} from '../../../lib/domain.mjs';
 import {inbox,linkKey} from '../../../lib/agentmail.mjs';
@@ -62,10 +64,10 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
        throw new Fault(b.lastRun.question||'Answer the research question to continue.',409);
      }
      const sourceWork=stageSourceTasks(d,b);
-     if(!selectedSearchSources(b).includes('web')){showSourceGate(d,b);return {sourceWork};}
+     if(!selectedSearchSources(b).includes('web')||!skillEnabled(b,'public_research')){showSourceGate(d,b);return {sourceWork};}
      if(b.lease&&Date.parse(b.lease.until)>Date.now())return {sourceWork};
      delete b.searchGate;
-     const requestedAt=queueResearch(b,{resume:action==='clarifyResearch'});
+     const requestedAt=queueResearch(b,{resume:action==='clarifyResearch'||b.researchJob?.status==='paused_skill'});
      if(b.researchJob)b.researchJob.searchSource='web';
      return {work:{requestedAt,page:b.researchJob?.pages||0},sourceWork};
    });
@@ -74,7 +76,9 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
  else if(action==='chat'){if(!text(p.message,2000))throw new Fault('Write a message first.');await chat(id,text(p.message,2000))}
  else if(action==='connect')await connect(p);
  else await edit(d=>{switch(action){
- case 'create':{const created=bot(d,createBot(d,p));const sources=normalizeSearchSources(p.searchSources??p.searchSource);if(sources.length){created.searchSource=sources[0];created.searchSources=sources;}break;}
+ case 'setSalesSkill':{setSalesSkill(d,bot(d,id),p.skill,p.enabled);break;}
+ case 'setModelPreference':{setModelPreference(d,bot(d,id),p.modelPreference);break;}
+ case 'create':{const created=bot(d,createBot(d,p));if(p.modelPreference!==undefined)setModelPreference(d,created,p.modelPreference);const sources=normalizeSearchSources(p.searchSources??p.searchSource);if(sources.length){created.searchSource=sources[0];created.searchSources=sources;}break;}
  case 'save':{
    const b=bot(d,id),next=settings(p);
    if(b.brief!==next.brief){
@@ -83,10 +87,10 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
    }
    Object.assign(b,next);event(d,'Updated '+b.name);break
  }
- case 'activate':{const b=bot(d,id);if(p.autoEmail===true&&!d.mailbox)throw new Fault('Connect a mailbox before enabling email.');b.active=true;b.autoEmail=p.autoEmail===true;b.next=now();stageSourceTasks(d,b);if(!selectedSearchSources(b).includes('web'))showSourceGate(d,b);event(d,b.name+' · campaign activated');break}
+ case 'activate':{const b=bot(d,id);if(p.autoEmail===true)requireSkill(b,'email_delivery');if(p.autoEmail===true&&!d.mailbox)throw new Fault('Connect a mailbox before enabling email.');b.active=true;b.autoEmail=p.autoEmail===true;b.next=now();stageSourceTasks(d,b);if(!selectedSearchSources(b).includes('web')||!skillEnabled(b,'public_research'))showSourceGate(d,b);event(d,b.name+' · campaign activated');break}
  case 'pause':{const b=bot(d,id);b.active=false;b.autoEmail=false;event(d,'Paused '+b.name);break}
  case 'manual':{const b=bot(d,id);if(p.linkedinUrl&&(!text(p.person)||!linkedinProfileUrl(p.linkedinUrl)))throw new Fault('A LinkedIn profile needs a contact name and an HTTPS linkedin.com/in/ profile link.');if(p.email&&!email(p.email))throw new Fault('Enter a valid email.');if(!addLead(d,b,{...p,companyVerification:null,linkedinEvidence:''}))throw new Fault('This prospect already exists.',409);event(d,'Added '+text(p.company,150));break}
- case 'draft':{const l=lead(d,id);if(l.linkedinState==='sent')throw new Fault('This note was already marked sent.');if(!text(p.linkedin,1500))throw new Fault('Write a LinkedIn note first.');l.linkedin=text(p.linkedin,1500);break}
+ case 'draft':{const l=lead(d,id);requireSkill(bot(d,l.botId),'draft_outreach');if(l.linkedinState==='sent')throw new Fault('This note was already marked sent.');if(!text(p.linkedin,1500))throw new Fault('Write a LinkedIn note first.');l.linkedin=text(p.linkedin,1500);break}
  case 'linked':{const l=lead(d,id);if(l.linkedinState==='sent')return;l.linkedinState='sent';event(d,l.company+' · LinkedIn marked sent');break}
  case 'suppress':stop(d,lead(d,id),'stopped');break;
  case 'disconnect':d.mailbox=null;for(const b of d.bots)b.autoEmail=false;event(d,'Mailbox disconnected');break;

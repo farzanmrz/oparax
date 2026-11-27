@@ -11,7 +11,7 @@ test('commands accept actionable new and revised briefs and reject unsupported o
   const expected={action:'research',name:'Barbour buyers and designers',brief:args.message};
   const seen=[];
   assert.deepEqual(await planCommand(args,async(m,opts)=>{seen.push(opts.modelId);return JSON.stringify(expected);}),expected);
-  assert.equal(seen[0],process.env.OUTREACH_COMMAND_MODEL||'openai/gpt-6.2-astra');
+  assert.equal(seen[0],'openai/gpt-6.2-sol');
   assert.equal((await planCommand({...args,agent},reply({...expected,action:'refine'}))).action,'refine');
   assert.equal((await planCommand(args,reply({action:'send',email:'sample@example.com'}))).action,'clarify');
   assert.equal((await planCommand(args,reply({action:'answer',answer:"Done! I've emailed the prospect."}))).action,'clarify');

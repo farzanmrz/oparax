@@ -1,6 +1,8 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import ResearchFeed from './research-feed';
+import {ChatComposer,EveActivity} from './eve-chat';
+import {ResearchOutcome,researchCeiling,verifiedCount} from './research-outcome';
 import AgentComputer from './agent-computer';
 import SendDraft from './send-draft';
 import {MailboxResearch,RocketReachSource,SourcePicker,sourceName} from './search-sources';
@@ -27,8 +29,8 @@ export function agentState(agent){
   if(agent?.searchGate?.status==='awaiting_selection')return {label:'Ready for your selections',tone:'attention'};
   if(phase==='needs_input')return {label:'Needs your input',tone:'attention'};
   if(phase==='failed')return {label:'Needs attention',tone:'attention'};
-  if(phase==='goal_met')return {label:'Goal reached',tone:'ready'};
-  if(phase==='exhausted')return {label:'Search exhausted',tone:'idle'};
+  if(phase==='goal_met')return {label:'Limit reached',tone:'ready'};
+  if(phase==='exhausted')return {label:'Research complete',tone:'idle'};
   if(agent?.active)return {label:'Scheduled',tone:'ready'};
   return {label:'Ready',tone:'idle'};
 }
@@ -43,8 +45,8 @@ function Message({message,name}){
     {!legacyCopy&&<p>{message.content}</p>}{draft&&<div className="thread-draft"><strong>Draft for {draft.person}</strong>{draft.to&&<p>To · {draft.to}</p>}{draft.senderEmail&&<p>From · {draft.senderEmail}</p>}{draft.body&&<section><small>Email</small>{draft.subject&&<p><strong>{draft.subject}</strong></p>}<p>{draft.body}</p></section>}{draft.linkedin&&<section><small>LinkedIn</small><p>{draft.linkedin}</p></section>}</div>}{delivery&&<div className="thread-delivery"><strong>{({sent:'Accepted by sender',sending:'Sending',needs_review:'Delivery needs review',rejected:'Send rejected'})[delivery.status]||'Delivery receipt'}</strong><p>{[delivery.provider,delivery.from&&'From '+delivery.from,delivery.to&&'To '+delivery.to].filter(Boolean).join(' · ')}</p>{delivery.providerId&&<small>Receipt {delivery.providerId}</small>}</div>}</div>
   </article>;
 }
-export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource}){
-  const [botName,setBotName]=useState(''),[panels,setPanels]=useState({});
+export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource,onTeach,startingName='',stream}){
+  const [botName,setBotName]=useState(startingName||''),[panels,setPanels]=useState({});
   const [personId,setPersonId]=useState(null),[chooseSource,setChooseSource]=useState(false);
   const [value,setValue]=useState(initialDraft),[pending,setPending]=useState(''),[activity,setActivity]=useState(!!showActivity||(!isDemo&&agentState(agent).tone==='working')),[settings,setSettings]=useState(false);
   const scroller=useRef(null),field=useRef(null),follow=useRef(true),request=useRef(null),sending=useRef(false);
@@ -112,15 +114,17 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
     <div className="thread-scroll" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<85}}>
       <div className="thread-flow">
         {agent?.id&&!isDemo&&<div id="bot-desktop-panel" hidden={!panels.desktop}><AgentComputer ref={item=>{desktopRef.current.desktop=item}} agent={agent} provider="desktop" getToken={getToken}/></div>}
-        {!agent&&<div className="thread-welcome"><h2>What should your sales bot work on?</h2><p>Your bot keeps its own brief, sources and conversation.</p><label>Bot name (optional)<input value={botName} maxLength={65} placeholder="Barbour Scout" onChange={e=>setBotName(e.target.value)}/></label></div>}
+        {!agent&&<div className="thread-welcome"><h2>What should your sales bot work on?</h2><p>Your bot keeps its own brief, sources and conversation.</p><label>Bot name (optional)<input value={botName} maxLength={65} placeholder="Barbour Scout" onChange={e=>setBotName(e.target.value)}/></label><div className="teach-bot"><button type="button" onClick={()=>onTeach(value,botName)}>Business memory</button><p>{workspace.businessMemory?.company?'This bot uses the saved details for '+workspace.businessMemory.company+'.':'Teach your bots about your company, buyers and voice.'}</p></div></div>}
         {showSources&&<SourcePicker key={agent.id+'/'+sourceKey+'/'+(managedRequest?.key||'')} selected={suggested} busy={busy||!!pending} onApply={chosen=>send('Use these research sources: '+chosen.map(sourceName).join(', ')+'.',chosen)}/>}
-        {agent&&<div className="thread-goal"><strong>{isDemo?'Sample research':(job||Number.isInteger(agent.taskQualified))?`${agent.taskQualified??job?.qualified??0} of ${job?.goal||agent.taskGoal||agent.researchGoal||50} verified people`:`Goal · ${agent.taskGoal||agent.researchGoal||50} verified people`}</strong><span>{isDemo?'Fictional company and contacts':job?`Public web · ${job.counts?.candidates||0} candidates surfaced · ${job.counts?.checked||0} source checks`:'Employer and personal LinkedIn profile checked'}</span></div>}
+        {agent&&<div className="thread-goal"><strong>{isDemo?'Sample research':verifiedCount(agent.taskQualified??job?.qualified??leads.length,researchCeiling(agent))}</strong><span>{isDemo?'Fictional company and contacts':job?`Public web · ${job.counts?.candidates||0} candidates surfaced · ${job.counts?.checked||0} source checks`:'Employer and personal LinkedIn profile checked'}</span></div>}
+        {agent&&!isDemo&&<ResearchOutcome agent={agent}/>}
         {agent&&!sourcePending&&<div className="thread-source"><small>Search sources · {sources.length?sources.map(sourceName).join(' + '):'Choose sources'}{isDemo?' (demo)':''}</small><button type="button" disabled={busy} aria-expanded={showSources} aria-controls="thread-search-sources" onClick={()=>setChooseSource(!chooseSource)}>{chooseSource?'Close':sources.length?'Change sources':'Choose sources'}</button></div>}
 
         <div className="thread-messages" aria-label="Conversation">
           {showBrief&&<article className="thread-brief"><small>Research brief</small><p>{agent.brief}</p></article>}
           {messages.map(m=>{const person=['prospectDraft','sendReview'].includes(m.details?.type)&&leads.find(l=>l.id===m.details.prospectId);const records=person?.reviewDrafts?.filter(item=>item.botId===agent.id)||[];const referenced=m.details?.draftId||m.details?.requestId||m.details?.id;const matching=referenced?records.filter(item=>item.id===referenced):records.filter(item=>item.channel===m.details?.channel&&item.body===m.details?.body&&item.linkedin===m.details?.linkedin&&item.subject===m.details?.subject);const draft=matching.length===1?matching[0]:null;return <div key={m.id}><Message message={m} name={name}/>{person&&draft&&m.details?.requiresConfirmation!==false&&<SendDraft agent={agent} lead={person} draft={draft} workspace={workspace} getToken={getToken} onRefresh={onRefresh} onOpen={onOpen} onFindEmail={onFindEmail} preview={isDemo}/>}</div>})}
-          {pending&&<Message message={{role:'user',content:pending}} name={name}/>}
+          {pending&&!messages.slice(-1).some(m=>m.role==='user'&&m.content===pending)&&<Message message={{role:'user',content:pending}} name={name}/>}
+          {!isDemo&&<EveActivity snapshot={stream} pending={pending} messages={messages}/>}
         </div>
 
         {agent&&!!sources.length&&<section className="source-readiness" aria-label="Selected research sources">
@@ -146,12 +150,10 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
       </div>
     </div>
     <div className="thread-compose"><div className="thread-quick" aria-label="Suggested actions">{actions.map(action=><button type="button" key={action.label} disabled={busy||!!pending} onClick={()=>action.message?send(action.message):fill(action.text)}>{action.label}</button>)}</div>
-      <form onSubmit={e=>{e.preventDefault();send()}}><label className="composer-label" htmlFor="agent-message">{agent?'Message '+name:'First task for your bot'}</label>
-        <div className="composer-input"><textarea id="agent-message" ref={field} value={value} maxLength={2000} rows={2} placeholder={question?'Reply to your agent…':agent?'Ask for research, a draft or an update…':'Find sourcing managers at…'} disabled={!!pending} onChange={e=>{setValue(e.target.value);if(!e.target.value&&initialDraft)onClearDraft()}}
-          onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();send()}}}/>
-          <button type="submit" className="primary composer-send" aria-label={agent?'Send message':'Create bot and send task'} disabled={busy||!value.trim()||!!pending}>{pending?'Sending…':agent?'Send':'Create bot'} <span aria-hidden="true">↑</span></button>
-        </div>
-      </form>
+      <ChatComposer value={value} onChange={text=>{setValue(text);if(!text&&initialDraft)onClearDraft()}} onSubmit={text=>send(text)}
+        agent={agent} field={field} disabled={busy} isBusy={!!pending||stream?.status==='busy'}
+        placeholder={question?'Reply to your bot…':agent?'Ask for research, a draft or an update…':'Find sourcing managers at…'}/>
+
     </div>
   </section>;
 }
