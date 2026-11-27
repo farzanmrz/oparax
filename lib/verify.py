@@ -26,6 +26,8 @@ class Page(HTMLParser):
         super().__init__()
         self.blocks = []
         self.parts = []
+        self.links = {}
+        self.active_link = None
         self.hidden = 0
         self.date = ''
 
@@ -48,8 +50,14 @@ class Page(HTMLParser):
             self.hidden += 1
         if not self.hidden and tag in BLOCKS:
             self.flush()
+        if not self.hidden and tag == 'a':
+            self.active_link = (attrs.get('href') or '', [])
 
     def handle_endtag(self, tag):
+        if tag == 'a' and self.active_link:
+            href, pieces = self.active_link
+            self.links.setdefault(len(self.blocks), []).append((href, ' '.join(''.join(pieces).split())))
+            self.active_link = None
         if tag in HIDDEN:
             self.hidden = max(0, self.hidden - 1)
         if not self.hidden and tag in BLOCKS:
@@ -58,6 +66,8 @@ class Page(HTMLParser):
     def handle_data(self, value):
         if not self.hidden:
             self.parts.append(value)
+            if self.active_link:
+                self.active_link[1].append(value)
 
     def finish(self):
         self.close()
@@ -140,13 +150,26 @@ CONNECTORS = set('the a an of for at from with as s is serves serving who she he
 PAST = re.compile(r'\b(former(?:ly)?|previous(?:ly)?|retired|ex|departing|outgoing|was|resigned|departed|late)\b', re.I)
 
 
+def company_starts(line, tokens, values, company):
+    for pos in starts(values, company):
+        end = pos + len(company)
+        # Name prefixes such as “Barbour” in “Barbour Engineering” don't identify the employer.
+        if end < len(tokens) and line[tokens[end-1].end():tokens[end].start()].isspace():
+            qualifier = tokens[end].group()
+            if qualifier[0].isupper() and fold(qualifier) not in {
+                    'director', 'head', 'manager', 'chair', 'vice', 'president', 'ceo', 'cfo', 'chief',
+                    'designer', 'buyer', 'limited', 'ltd', 'inc', 'plc', 'llc'}:
+                continue
+        yield pos
+
+
 def attribution(line, tokens, company, person, role):
     values = [fold(m.group()) for m in tokens]
     for p in starts(values, person):
         for r in starts(values, role):
             if abs(r - p) > len(role) + len(person) + 12:
                 continue
-            for c in starts(values, company):
+            for c in company_starts(line, tokens, values, company):
                 anchors = sorted([(p, p + len(person)), (r, r + len(role)), (c, c + len(company))])
                 if anchors[-1][1] - anchors[0][0] > len(person) + len(role) + len(company) + 12:
                     continue
@@ -165,14 +188,73 @@ def attribution(line, tokens, company, person, role):
     return None
 
 
-def org_attribution(tokens, company, quote):
+def org_attribution(line, tokens, company, quote):
     if len(quote) < 3:
         return None
     values = [fold(m.group()) for m in tokens]
     for q in starts(values, quote):
-        for c in starts(values, company):
+        for c in company_starts(line, tokens, values, company):
             if c <= q + len(quote) + 12 and q <= c + len(company) + 12:
                 return tokens[min(q, c)].start(), tokens[max(q + len(quote), c + len(company)) - 1].end()
+    return None
+
+
+def matches_domain(url, domain):
+    try:
+        u = urlsplit(url)
+        host = (u.hostname or '').casefold().rstrip('.')
+        return (u.scheme in ('http', 'https') and u.username is None and u.password is None
+                and (host == domain or host.endswith('.' + domain)))
+    except ValueError:
+        return False
+
+
+def company_verification(page, index, url, name, target, attribution_text):
+    company = words(name)
+    wanted = words(target.get('company') or '')
+    if wanted and company != wanted:
+        return None
+    evidence = {'name': name, 'source': url, 'evidence': attribution_text}
+    domain = (target.get('domain') or '').lower().rstrip('.')
+    nearby = sorted(range(max(0, index - 3), min(len(page.blocks), index + 4)),
+                    key=lambda i: abs(i - index))
+    if domain:
+        if matches_domain(url, domain):
+            return dict(evidence, domain=domain)
+        for i in nearby:
+            for href, label in page.links.get(i, ()):
+                # The visible link itself must identify this company, not an unrelated sponsor.
+                if words(label) in (company, company + ['website']) and matches_domain(urljoin(url, href), domain):
+                    return dict(evidence, domain=domain,
+                                evidence=attribution_text + ' · ' + label + ' → ' + domain)
+        return None
+    terms = [words(t) for t in [target.get('industry'), *(target.get('industryTerms') or [])]
+             if isinstance(t, str) and t.strip()]
+    if not terms or any(list(starts(words(attribution_text), term)) for term in terms):
+        return evidence
+
+    # Only a nearby clause describing what this employer does counts. E.g. a citation
+    # elsewhere on the page to a footwear customer does not make the employer a shoe brand.
+    relation = set(('the a an s is as of for its own new british global heritage independent luxury retailer manufacturer '
+                    'producer designer brand company specialist label designs makes manufactures produces sells supplies '
+                    'imports sources launches launched unveils unveiled develops latest first ever premium mens womens men '
+                    'women children line range collection collections releases released handmade leather handcrafted durable '
+                    'in outdoor lifestyle and').split())
+    for i in nearby:
+        for clause in re.split(r'[.!?;]|\s[–—]\s', page.blocks[i]):
+            tokens = list(WORD.finditer(clause))
+            values = [fold(m.group()) for m in tokens]
+            for c in company_starts(clause, tokens, values, company):
+                for term in terms:
+                    for j in starts(values, term):
+                        lo, hi = sorted([(c, c + len(company)), (j, j + len(term))])
+                        gap = values[lo[1]:hi[0]]
+                        if len(gap) > 7 or not set(gap) <= relation:
+                            continue
+                        start, end = tokens[lo[0]].start(), tokens[hi[1] - 1].end()
+                        if len(clause[start:end]) > 220:
+                            continue
+                        return dict(evidence, evidence=clause[start:end])
     return None
 
 
@@ -213,18 +295,22 @@ def verify(row):
     quote = words(row.get('quote') or '')
     if not company or (person and (len(person) < 2 or not role)):
         return {'status': 'unsupported'}
-    for line in page.blocks:
+    for index, line in enumerate(page.blocks):
         tokens = list(WORD.finditer(line))
         if person:
             match = attribution(line, tokens, company, person, role)
         else:
-            match = org_attribution(tokens, company, quote)
+            match = org_attribution(line, tokens, company, quote)
         if not match:
             continue
         start, end = match
         evidence = line[start:end]
+        company_proof = company_verification(page, index, url, row['company'],
+                                             row.get('researchTarget') or {}, evidence)
+        if not company_proof:
+            continue
         lead = {**row, 'source': url, 'sourceDate': page.date, 'quote': evidence,
-                'evidence': evidence, 'email': verified_email(row, line, url, match)}
+                'evidence': evidence, 'companyVerification': company_proof, 'email': verified_email(row, line, url, match)}
         return {'status': 'verified', 'lead': lead}
     return {'status': 'unsupported'}
 

@@ -96,16 +96,16 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    return ()=>{cancelled=true;controller.abort();clearTimeout(timer)};
  },[pendingResearch,auth,preview]);
  useEffect(()=>{
-   if(!auth||!ready||preview||busy||pendingResearch)return;
+   if(!activeSession.current||!ready||preview||busy||pendingResearch)return;
    const controller=new AbortController();let loading=false;
    function refresh(){
      if(document.visibilityState!=='visible'||loading)return;
      loading=true;
-     load(auth,controller.signal).catch(error=>{if(!controller.signal.aborted)E(error.message)}).finally(()=>{loading=false});
+     load(activeSession.current,controller.signal).catch(error=>{if(!controller.signal.aborted)E(error.message)}).finally(()=>{loading=false});
    }
    document.addEventListener('visibilitychange',refresh);window.addEventListener('pageshow',refresh);
    return ()=>{controller.abort();document.removeEventListener('visibilitychange',refresh);window.removeEventListener('pageshow',refresh)};
- },[auth,ready,preview,busy,pendingResearch]);
+ },[!!auth,ready,preview,busy,pendingResearch]);
  async function act(action,p={},close=true){
    const running=action==='research'||action==='clarifyResearch';
    B(true);E('');N('');if(running)setResearching(p.id);
@@ -163,7 +163,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  function showProspects(id){go('Prospects');setAgentFilter(id)}
  const inProgress=b&&(researching===b.id||b.researchRequestedAt||b.lease&&Date.parse(b.lease.until)>Date.now());
  const run=b?.lastRun, needsAnswer=run?.status==='needs_input';
- const headings={needs_input:'Your input is needed',no_matches:'No verified matches',failed:'Research interrupted',error:'Research interrupted',duplicates:'Prospects already saved',saved:'Prospects saved',no_new:'No new prospects',already_saved:'Prospects already saved',added:'Prospects saved',unverified:'Sources could not confirm a match',planning:'Reading your brief',searching:'Searching public sources',verifying:'Checking the sources'};
+ const headings={needs_input:'Your input is needed',no_matches:'No verified matches',failed:'Research interrupted',error:'Research interrupted',duplicates:'Prospects already saved',saved:'Prospects saved',enriched:'Prospects updated',profiles:'Matching LinkedIn profiles',no_new:'No new prospects',already_saved:'Prospects already saved',added:'Prospects saved',unverified:'Sources could not confirm a match',planning:'Reading your brief',searching:'Searching public sources',verifying:'Checking the sources'};
  const leadCount=b?d.leads.filter(lead=>lead.botId===b.id).length:0;
  function handleForm(action,extra={}){return e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));act(action,{...f,...extra})}}
  async function copy(v){try{await navigator.clipboard.writeText(v);N('Draft copied.')}catch{E('Select the draft and copy it manually.')}}
@@ -175,8 +175,8 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  <section className="panel researchpanel"><div className="row"><h2>Research brief</h2><span className={'pill '+(b.active?'on':'')}>{b.active?'Scheduled':'On demand'}</span></div><p className="brief">{b.brief}</p>
  {preview&&<p className="demohint">Try the search with a fictional staff profile. Explore the buyer and outreach drafts it produces.</p>}
  <div className="controls"><button className="primary" disabled={busy||!!inProgress||needsAnswer} onClick={()=>act('research',{id:b.id})}>{inProgress?(preview?'Reading sample profile…':'Researching…'):preview?'Run sample research':'Run research once'}</button>{!preview&&<button disabled={busy||!!inProgress} onClick={()=>open('save')}>Edit brief</button>}</div>
- {inProgress&&<p className="runprogress" role="status">{preview?'Reading the sample staff profile.':run?.status==='planning'?'Reading your brief.':run?.status==='verifying'?'Checking the public sources for each candidate.':'Searching public sources for matches.'}</p>}
- {!inProgress&&run&&<div className="runoutcome" aria-live="polite"><h3>{headings[run.status]||'Research result'}</h3>{run.model&&<small>Research model · {run.model.split('/').pop()}</small>}{typeof run.target==='string'&&run.target&&<small>Search target · {run.target}</small>}<p>{run.summary}</p>{run.counts&&<div className="runmetrics">{[['Candidates',run.counts.candidates],['Sources checked',run.counts.checked],['Sources unavailable',run.counts.unavailable],['Unverified',run.counts.unsupported],['Already saved',run.counts.duplicates],['New prospects',run.counts.added]].filter(([,value])=>Number.isInteger(value)).map(([label,value])=><small key={label}>{label} <strong>{value}</strong></small>)}</div>}
+ {inProgress&&<p className="runprogress" role="status">{preview?'Reading the sample staff profile.':run?.status==='planning'?'Reading your brief.':run?.status==='verifying'?'Checking names, roles and employers against public sources.':run?.status==='profiles'?'Matching LinkedIn profiles by name and employer.':'Searching public sources for matches.'}</p>}
+ {!inProgress&&run&&<div className="runoutcome" aria-live="polite"><h3>{headings[run.status]||'Research result'}</h3>{run.model&&<small>Research model · {run.model.split('/').pop()}</small>}{typeof run.target==='string'&&run.target&&<small>Search target · {run.target}</small>}<p>{run.summary}</p>{run.counts&&<div className="runmetrics">{[['Candidates',run.counts.candidates],['Sources checked',run.counts.checked],['Sources unavailable',run.counts.unavailable],['Unverified',run.counts.unsupported],['Already saved',run.counts.duplicates],['New prospects',run.counts.added],['LinkedIn lookups',run.counts.profileChecks],['Profiles linked',run.counts.profilesMatched]].filter(([,value])=>Number.isInteger(value)).map(([label,value])=><small key={label}>{label} <strong>{value}</strong></small>)}</div>}
  {run.question&&<form key={run.question} onSubmit={handleForm('clarifyResearch',{id:b.id,question:run.question})}><Field name="answer" label={run.question} area rows={2} maxLength={2000} required/><button disabled={busy}>Answer and run research</button></form>}</div>}
  {!inProgress&&!run&&b.error&&<p className="error" role="alert">{b.error}</p>}
  {!!leadCount&&<button className="prospectlink" onClick={()=>showProspects(b.id)}>View {leadCount} {leadCount===1?'prospect':'prospects'} <Icon n="arrow"/></button>}

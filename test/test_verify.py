@@ -58,6 +58,33 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(self.check(line, **row)['status'], 'verified')
         self.assertEqual(self.check(line, **row, company='Others')['status'], 'unsupported')
 
+    def test_industry_is_grounded_in_this_company(self):
+        target = dict(company='Barbour', industry='footwear', industryTerms=['shoes'])
+        result = self.check('<p>Constance Brown, Buyer at Barbour.</p><p>Barbour designs leather shoes.</p>',
+                            person='Constance Brown', role='Buyer', researchTarget=target)
+        self.assertEqual(result['lead']['companyVerification']['evidence'], 'Barbour designs leather shoes')
+        other = '<p>Constance Brown, Buyer at Barbour.</p><p>Acme designs footwear for the event.</p>'
+        namesake = '<p>Constance Brown, Buyer at Barbour Engineering.</p><p>Barbour designs leather shoes.</p>'
+        footer = '<p>Constance Brown, Buyer at Barbour.</p><footer>Barbour designs footwear.</footer>'
+        for html in [other, namesake, footer]:
+            self.assertEqual(self.check(html, person='Constance Brown', role='Buyer',
+                                        researchTarget=target)['status'], 'unsupported')
+        result = self.check('<p>Nicholas Drury, Head of Footwear at Barbour.</p>', researchTarget=target)
+        self.assertEqual(result['status'], 'verified')
+
+    def test_requested_domain_requires_a_contextual_link_or_first_party_source(self):
+        target = dict(company='Barbour', domain='barbour.com', industry='footwear')
+        html = '<p>Nicholas Drury, Head of Footwear at <a href="https://www.barbour.com/">Barbour</a>.</p>'
+        result = self.check(html, researchTarget=target)
+        self.assertEqual(result['lead']['companyVerification']['domain'], 'barbour.com')
+        self.assertEqual(self.check(html.replace('barbour.com', 'barbour.com.example'), researchTarget=target)['status'],
+                         'unsupported')
+        self.assertEqual(self.check(html.replace('<a href="https://www.barbour.com/">Barbour</a>', 'Barbour') +
+                                    '<footer><a href="https://www.barbour.com/">Barbour</a></footer>',
+                                    researchTarget=target)['status'], 'unsupported')
+        self.assertEqual(self.check('<p>Nicholas Drury, Head of Footwear at Barbour.</p>',
+                                    researchTarget={'company':'Acme'})['status'], 'unsupported')
+
     def test_inaccessible_source_is_reported_separately(self):
         with patch.object(verifier, 'fetch', side_effect=OSError):
             self.assertEqual(verifier.verify(CANDIDATE), {'status':'unavailable'})
