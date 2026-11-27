@@ -47,7 +47,7 @@ function Message({message,name}){
     {!legacyCopy&&<p>{message.content}</p>}{draft&&<div className="thread-draft"><strong>Draft for {draft.person}</strong>{draft.to&&<p>To · {draft.to}</p>}{draft.senderEmail&&<p>From · {draft.senderEmail}</p>}{draft.body&&<section><small>Email</small>{draft.subject&&<p><strong>{draft.subject}</strong></p>}<p>{draft.body}</p></section>}{draft.linkedin&&<section><small>LinkedIn</small><p>{draft.linkedin}</p></section>}</div>}{delivery&&<div className="thread-delivery"><strong>{({sent:'Accepted by sender',sending:'Sending',needs_review:'Delivery needs review',rejected:'Send rejected'})[delivery.status]||'Delivery receipt'}</strong><p>{[delivery.provider,delivery.from&&'From '+delivery.from,delivery.to&&'To '+delivery.to].filter(Boolean).join(' · ')}</p>{delivery.providerId&&<small>Receipt {delivery.providerId}</small>}</div>}</div>
   </article>;
 }
-export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource,onTeach,startingName='',startingModel='auto',stream}){
+export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource,onTeach,onRetryTurn,startingName='',startingModel='auto',stream}){
   const [chosenModel,setChosenModel]=useState(startingModel||'auto');
   const [botName,setBotName]=useState(startingName||''),[panels,setPanels]=useState({});
   const [personId,setPersonId]=useState(null),[chooseSource,setChooseSource]=useState(false);
@@ -82,7 +82,7 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   useEffect(()=>{if(webWorking&&!lastWorking.current)setActivity(true);lastWorking.current=webWorking},[webWorking]);
   const showBrief=agent?.brief&&!messages.some(m=>m.role==='user'&&m.content.trim()===agent.brief.trim());
   useEffect(()=>{if(showActivity&&!sourcePending){setActivity(true);requestAnimationFrame(()=>document.getElementById('thread-activity-panel')?.scrollIntoView({block:'nearest'}))}},[showActivity,sourcePending]);
-  useEffect(()=>{const el=scroller.current;if(el&&follow.current&&!showActivity&&!sourcePending)el.scrollTop=el.scrollHeight},[agent?.id,messages.length,pending,leads.length,showActivity,sourcePending,stream?.parts?.at(-1)?.text]);
+  useEffect(()=>{const el=scroller.current;if(el&&follow.current&&!showActivity&&!sourcePending)el.scrollTop=el.scrollHeight},[agent?.id,messages.length,pending,leads.length,showActivity,sourcePending,stream?.status,agent?.chatTurn?.status]);
   useEffect(()=>{
     if(!sourcePending||!scroller.current)return;
     const el=scroller.current;el.scrollTop=0;
@@ -127,7 +127,7 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
           {showBrief&&<article className="thread-brief"><small>Research brief</small><p>{agent.brief}</p></article>}
           {messages.map(m=>{const person=['prospectDraft','sendReview'].includes(m.details?.type)&&leads.find(l=>l.id===m.details.prospectId);const records=person?.reviewDrafts?.filter(item=>item.botId===agent.id)||[];const referenced=m.details?.draftId||m.details?.requestId||m.details?.id;const matching=referenced?records.filter(item=>item.id===referenced):records.filter(item=>item.channel===m.details?.channel&&item.body===m.details?.body&&item.linkedin===m.details?.linkedin&&item.subject===m.details?.subject);const draft=matching.length===1?matching[0]:null;return <div key={m.id}><Message message={m} name={name}/>{person&&draft&&m.details?.requiresConfirmation!==false&&<SendDraft agent={agent} lead={person} draft={draft} workspace={workspace} getToken={getToken} onRefresh={onRefresh} onOpen={onOpen} onFindEmail={onFindEmail} preview={isDemo}/>}</div>})}
           {pending&&!messages.slice(-1).some(m=>m.role==='user'&&m.content===pending)&&<Message message={{role:'user',content:pending}} name={name}/>}
-          {!isDemo&&<EveActivity snapshot={stream} pending={pending} messages={messages}/>}
+          {!isDemo&&<EveActivity snapshot={stream} turn={agent?.chatTurn} pending={pending} messages={messages} onRetry={onRetryTurn} canManageBudget={workspace?.canManageModelBudget===true}/>}
         </div>
 
         {agent&&!!sources.length&&<section className="source-readiness" aria-label="Selected research sources">

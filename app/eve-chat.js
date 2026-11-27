@@ -5,6 +5,7 @@
 import {useCallback,useEffect,useId,useRef,useState} from 'react';
 import {useEveAgent} from 'eve/react';
 import {activeTurn} from 'eve/events';
+import {budgetMessage,isModelBudgetFailure,visibleEveTools} from './eve-result.mjs';
 
 export async function prepareEveSession(getToken,payload,signal){
   const res=await fetch('/api/eve-session',{method:'POST',cache:'no-store',signal,
@@ -32,18 +33,11 @@ function Session({ticket,command,getToken,onSnapshot,onSettled,onAccepted}){
   useEffect(()=>{
     if(!command||command.started||command.ticket.sessionId!==ticket.sessionId||agent.status==='resuming')return;
     command.started=true;
-    agent.send(command.payload.message,{idempotencyKey:command.payload.requestId,turnPolicy:'queue'}).then(()=>onAccepted(command)).catch(e=>command.reject(e));
+    agent.send(command.payload.message,{idempotencyKey:ticket.deliveryKey||command.payload.requestId,turnPolicy:'queue'}).then(()=>onAccepted(command)).catch(e=>command.reject(new Error(isModelBudgetFailure(e)?budgetMessage:'The bot could not confirm the request. Refresh the conversation to check its status.')));
   },[command,ticket.sessionId,agent.status,agent.send,onAccepted]);
   useEffect(()=>{
-    const latestUser=agent.messages.findLast(m=>m.role==='user');
-    const userText=(latestUser?.parts||[]).filter(part=>part.type==='text').map(part=>part.text).join('').trim();
-    const tail=agent.messages.at(-1),last=tail?.role==='assistant'?tail:null;
-    const parts=(last?.parts||[]).flatMap(part=>{
-      if(part.type==='text'&&part.text)return [{type:'text',text:part.text}];
-      if(part.type==='tool')return [{type:'tool',state:part.state,name:part.name,callId:part.callId}];
-      return [];
-    });
-    onSnapshot({id:ticket.agentId,sessionId:ticket.sessionId,status:agent.status,parts,userText,error:agent.error?.message||''});
+    const tools=visibleEveTools(agent.messages.at(-1));
+    onSnapshot({id:ticket.agentId,sessionId:ticket.sessionId,status:agent.status,tools,reason:isModelBudgetFailure(agent.error)?'model_budget':null,error:agent.error?'The live connection was interrupted.':''});
   },[ticket.agentId,ticket.sessionId,agent.messages,agent.status,agent.error,onSnapshot]);
   return null;
 }
@@ -69,21 +63,25 @@ export function EveBotBridge({selectedId,command,getToken,onSnapshot,onSettled,o
   return bound?<Session key={bound.sessionId} ticket={bound} command={command} getToken={readToken} onSnapshot={update} onSettled={settle} onAccepted={accept}/>:null;
 }
 
-export function EveActivity({snapshot,messages,pending}){
-  if(!snapshot)return null;
-  const busy=snapshot.status==='busy'||snapshot.status==='resuming';
-  const parts=snapshot.parts||[],last=messages.filter(m=>m.role==='assistant').at(-1);
-  const tools=parts.filter(p=>p.type==='tool');
-  const text=parts.filter(p=>p.type==='text').map(p=>p.text).join('\n').trim();
-  const showText=text&&!(last?.content||'').includes(text);
-  const pendingUser=snapshot.userText&&busy&&!pending&&!messages.some(m=>m.role==='user'&&m.content===snapshot.userText);
-  if(!busy&&!snapshot.error&&!showText&&!tools.length&&!pendingUser)return null;
+export function EveActivity({snapshot,turn,messages,pending,onRetry,canManageBudget=false}){
+  const [retrying,setRetrying]=useState(false);
+  const busy=snapshot?.status==='busy'||snapshot?.status==='resuming';
+  const budget=turn?.status!=='confirmed'&&(turn?.reason==='model_budget'||snapshot?.reason==='model_budget');
+  const incomplete=turn&&['unconfirmed','failed'].includes(turn.status);
+  const userVisible=messages.some(m=>m.role==='user'&&(m.requestId===turn?.requestId||m.content===turn?.message));
+  const persistedAnswer=turn?.status==='confirmed'&&turn.answer&&!messages.some(m=>m.role==='assistant'&&(m.content===turn.answer||turn.answer.includes(m.content)));
+  if(!busy&&!budget&&!snapshot?.error&&!incomplete&&!persistedAnswer)return null;
+  async function retry(){
+    if(retrying||busy||pending)return;
+    setRetrying(true);try{await onRetry?.()}finally{setRetrying(false)}
+  }
   return <section className="eve-turn" aria-label="Bot response">
-    {pendingUser&&<p><strong>You</strong> · {snapshot.userText}</p>}
-    {snapshot.error&&<p role="alert" className="error">{snapshot.error}</p>}
-    {(busy||pending)&&<small role="status">{snapshot.status==='resuming'?'Reconnecting to the conversation…':'Bot is working…'}</small>}
-    {tools.length>0&&<details><summary>Tool activity</summary><ul>{tools.map((part,i)=><li key={part.callId||i}>{String(part.name||'Tool').replace(/[_-]+/g,' ')} · {part.state}</li>)}</ul></details>}
-    {showText&&<p>{text}</p>}
+    {turn?.message&&!pending&&!userVisible&&<p><strong>You</strong> · {turn.message}</p>}
+    {budget?<div role="alert" className="error"><p>{budgetMessage}</p><p>{canManageBudget?'Review the AI Gateway budget in Vercel before retrying.':'Retry after the Oparax operator restores service.'}</p></div>:snapshot?.error&&<p role="alert" className="error">{snapshot.error}</p>}
+    {!budget&&(busy||pending||retrying)&&<small role="status">{snapshot?.status==='resuming'?'Reconnecting to the conversation…':retrying?'Retrying this request…':'Bot is working…'}</small>}
+    {busy&&!!snapshot?.tools?.length&&<details open><summary>Live tool activity</summary><ul>{snapshot.tools.map((part,i)=><li key={part.id||i}>Sales request · {part.state}</li>)}</ul></details>}
+    {persistedAnswer&&<p>{turn.answer}</p>}
+    {incomplete&&!busy&&!pending&&!retrying&&<div role="status">{!budget&&<p>{turn.status==='failed'?'The bot finished without completing this request.':'This request has no confirmed result yet.'}</p>}<button type="button" onClick={retry}>{budget?'Retry after budget is restored':'Retry this request'}</button></div>}
   </section>;
 }
 

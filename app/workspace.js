@@ -6,6 +6,7 @@ import AgentThread,{agentState,providerBusy,Provenance} from './agent-thread';
 import SendDraft from './send-draft';
 import BotModel from './bot-model';
 import {EveBotBridge,prepareEveSession} from './eve-chat';
+import {retryTurnPayload} from './eve-result.mjs';
 import BusinessMemory from './business-memory';
 import SkillsConnections from './skills-connections';
 import {ResearchOutcome,researchCeiling,verifiedCount} from './research-outcome';
@@ -73,7 +74,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  const [draftId,setDraftId]=useState(null),[draftType,setDraftType]=useState('LinkedIn'),[activityFor,setActivityFor]=useState(initialAgentId),
    [managedRequest,setManagedRequest]=useState(null),[initialDraft,setInitialDraft]=useState(''),[mobileRoster,setMobileRoster]=useState(false);
  const [eveCommand,setEveCommand]=useState(null),[eveSnapshot,setEveSnapshot]=useState(null);
- const activeTurnRequest=useRef(null);
+ const activeTurnRequest=useRef(null),loadGeneration=useRef(0),appliedLoad=useRef(0);
  const [skillId,setSkillId]=useState(null),[teaching,setTeaching]=useState(null);
  const activeSession=useRef(null),refreshing=useRef(null),pendingOwner=useRef(null),selectedRef=useRef(sel);
  selectedRef.current=sel;
@@ -106,7 +107,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    })().finally(()=>{if(refreshing.current===entry)refreshing.current=null});
    return entry.request;
  }
- async function load(s,signal){if(!s)return;const t=await token();const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store',signal});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');if(!signal?.aborted&&activeSession.current)D(v)}
+ async function load(s,signal){if(!s)return;const generation=++loadGeneration.current,t=await token();const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store',signal});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');if(!signal?.aborted&&activeSession.current&&generation>appliedLoad.current){appliedLoad.current=generation;D(v)}return v}
  const started=useRef(false);
  useEffect(()=>{
    if(preview||started.current)return;
@@ -150,6 +151,14 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
      } catch(error){E(error.message);} finally {R(true);}
    })();
  },[preview,url,anon]);
+ const displayedBot=sel?d?.bots.find(bot=>bot.id===sel):d?.bots[0];
+ const unconfirmed=page==='Agents'&&displayedBot?.chatTurn?.status==='unconfirmed'?displayedBot.chatTurn.requestId:null;
+ useEffect(()=>{
+   if(preview||!auth||!unconfirmed)return;
+   const controller=new AbortController();
+   const timers=[1800,4500,9500,18500].map(ms=>setTimeout(()=>load(auth,controller.signal).catch(()=>{}),ms));
+   return ()=>{controller.abort();timers.forEach(clearTimeout)};
+ },[preview,auth,unconfirmed]);
  const pendingResearch=!!researching||d?.bots.some(researchingAgent);
  const pollingInterval=researching||d?.bots.some(agent=>agent.lease&&Date.parse(agent.lease.until)>Date.now())?2500:10000;
  useEffect(()=>{
@@ -256,8 +265,8 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
      onOpen={name=>{if(name==='inbox')S(owner.id);open(name)}} onFindEmail={()=>manageSource(owner,'rocketreach',person.id)} preview={!!preview}/>;
  }
  function clearLandingDraft(){clearPendingBrief();setInitialDraft('')}
- async function sendAgentMessage(message,requestId,searchSources,botName,modelPreference){
-   const original=sel,payload={...(b?{id:b.id}:{}),message,requestId,...(Array.isArray(searchSources)?{searchSources}:{}),...(!b&&botName?{botName}:{}),...(!b&&modelPreference?{modelPreference}:{})};
+ async function sendAgentMessage(message,requestId,searchSources,botName,modelPreference,retryPayload){
+   const original=sel,payload=retryPayload||{...(b?{id:b.id}:{}),message,requestId,...(Array.isArray(searchSources)?{searchSources}:{}),...(!b&&botName?{botName}:{}),...(!b&&modelPreference?{modelPreference}:{})};
    if(preview){
      const result=await act('messageAgent',payload,false);
      if(!result)return false;
@@ -271,11 +280,17 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
        const ticket=await prepareEveSession(token,payload);
        if(!activeSession.current||activeTurnRequest.current!==call)return false;
        await new Promise((resolve,reject)=>{Object.assign(call,{ticket,payload,resolve,reject});setEveCommand(call)});
-       if(!b){await load(auth);if(selectedRef.current===newThread||selectedRef.current===original)selectAgent(ticket.agentId)}
+       await load(auth);
+       if(!b&&(selectedRef.current===newThread||selectedRef.current===original))selectAgent(ticket.agentId)
      }catch(e){E(e.message||'Your bot could not accept the message.');return false}
      finally{if(activeTurnRequest.current===call){activeTurnRequest.current=null;setEveCommand(null)}}
    }
    if(initialDraft)clearLandingDraft();setTeaching(null);return true;
+ }
+ function retryChatTurn(){
+   const payload=retryTurnPayload(b);
+   if(!payload||preview)return false;
+   return sendAgentMessage(payload.message,payload.requestId,undefined,undefined,undefined,payload);
  }
  function open(m){E('');N('');if(preview&&['connect','agentmail'].includes(m)){N('Sign in to connect your own mailbox.');return}M(m)}
  const filtered=publishedLeads.filter(x=>(!agentFilter||belongsToCampaign(x,agentFilter))&&[x.company,x.person,x.role,x.email,x.fit].join(' ').toLowerCase().includes(search.toLowerCase()));
@@ -293,7 +308,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  <div className="room-content">{page==='Agents'?<AgentThread key={b?.id||newThread} agent={b} messages={b?d.messages.filter(x=>x.botId===b.id):[]} leads={b?publishedLeads.filter(x=>belongsToCampaign(x,b.id)):[]}
    isDemo={!!preview} stream={(!preview&&eveSnapshot?.id===(b?.id||eveCommand?.ticket.agentId))?eveSnapshot:null} busy={busy} getToken={token} onTeach={(brief,name,model)=>{setTeaching({brief,name,model});go('Business memory')}} startingName={!b?teaching?.name:''} startingModel={!b?teaching?.model:'auto'} notice={!modal?(notice||(!b&&sel&&sel!==newThread?<p className="error" role="alert">This agent is unavailable in this workspace. Choose an agent in the sidebar or start a new conversation.</p>:null)):null} initialDraft={!b?(teaching?.brief??initialDraft):''} onClearDraft={()=>{clearLandingDraft();setTeaching(null)}}
    workspace={d} onAction={(action,input)=>act(action,input,false)} onOpen={open} onRefresh={refreshDesk} managedRequest={managedRequest?.agentId===b?.id?managedRequest:null}
-   onFindEmail={lead=>manageSource(b,'rocketreach',lead.id)} onSend={sendAgentMessage} onImport={(source,people)=>act('importSelectedLeads',{id:b.id,source,people},false)} showActivity={!!b&&activityFor===b.id} onShowProspects={()=>b&&showProspects(b.id)}
+   onFindEmail={lead=>manageSource(b,'rocketreach',lead.id)} onSend={sendAgentMessage} onRetryTurn={retryChatTurn} onImport={(source,people)=>act('importSelectedLeads',{id:b.id,source,people},false)} showActivity={!!b&&activityFor===b.id} onShowProspects={()=>b&&showProspects(b.id)}
    tools={b?(openActivity,openSource,openComputer,manageProvider)=><><div className="thread-tool-actions"><button onClick={()=>go('Skills & connections',b.id)}>Bot skills</button><button onClick={()=>go('Business memory')}>Business memory</button><button disabled={busy} onClick={()=>open('save')}>Edit bot</button><button disabled={busy} onClick={()=>b.active?act('pause',{id:b.id}):open('activate')}>{b.active?'Pause schedule':'Schedule research'}</button></div><BotModel agent={b} busy={busy} isDemo={!!preview} onAction={(action,p)=>act(action,p,false)}/><AgentTools agent={b} workspace={d} demo={!!preview} busy={busy} onOpen={open} onAction={act} onNavigate={go} onShowActivity={()=>preview?go('Activity'):openActivity()} onChooseSource={openSource} onManageSource={manageProvider} onOpenComputer={preview?openSource:openComputer} onShowProspects={()=>showProspects(b.id)}/></>:null}/>:<>
  <div className="pagehead"><div><h1>{page==='LinkedIn queue'?'Drafts':page}</h1></div>{page==='Prospects'&&d.bots.length>0&&<button onClick={()=>open('manual')}>Add prospect</button>}</div>{!modal&&notice}
  {page==='Business memory'&&<BusinessMemory key={d.userEmail||'sample'} memory={d.businessMemory} isDemo={!!preview} getToken={token} onRefresh={refreshDesk} returnToBot={teaching?()=>selectAgent(newThread):null}/>}
