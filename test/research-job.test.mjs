@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {withWorkspace} from '../lib/store.mjs';
-import {queueResearch,ensureResearchJob,advanceResearchJob,continuationRequest,verifyContinuation} from '../lib/research-job.mjs';
+import {queueResearch,ensureResearchJob,advanceResearchJob,continuationRequest,verifyContinuation,dispatchContinuation} from '../lib/research-job.mjs';
 
 test('one job keeps a single quota and counts distinct contacts across batches',()=>{
   const b={};
@@ -58,4 +58,27 @@ test('a clarifying answer resumes the same quota without recounting previously c
   assert.equal(b.researchRequestedAt,undefined);
   assert.equal(queueResearch(b,{resume:true}),id);
   assert.equal(b.researchJob.goal,50);
+});
+
+test('a result on the last new query cannot trap a completed search in an endless loop',()=>{
+  const b={};queueResearch(b);
+  for(let page=0;page<4;page++){
+    advanceResearchJob(b,{page,queries:['role facet '+page],candidates:['person '+page],
+      qualifiedIds:page===3?['last-person']:[],status:'added',facetsCovered:page===3});
+  }
+  assert.equal(b.researchJob.dryPages,0);
+  assert.equal(advanceResearchJob(b,{page:4,queries:['role facet 0'],candidates:['person 0'],status:'no_matches',facetsCovered:true}).status,'exhausted');
+});
+
+test('normal production continuation uses one independent dispatch even if another worker claimed it',async()=>{
+  const prior=process.env.VERCEL_ENV;
+  process.env.VERCEL_ENV='production';
+  try{
+    const req={payload:JSON.stringify({workspace:'owner',agent:'agent'}),signature:'stub'};
+    for(const dbReply of [2,null]){
+      const calls=[];
+      await dispatchContinuation(req,{rpc:async(name,params)=>{calls.push([name,params]);return dbReply;},fetch:()=>{throw Error('Unexpected HTTP fallback');}});
+      assert.deepEqual(calls,[['outreach_wake_research',{uid:'owner',agent_id:'agent'}]]);
+    }
+  }finally{if(prior===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=prior;}
 });

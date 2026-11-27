@@ -87,3 +87,36 @@ test('thin employer-only search discovers corroborated titles across indexes and
   assert.ok(!page.checkedKeys.includes('https://www.linkedin.com/in/prospect-40'));
   assert.equal(new Set(page.rows.map(r=>r.linkedinUrl)).size,page.rows.length);
 });
+test('a member sharing an open job never inherits that job title or the role in a reaction',async()=>{
+  const postings=[
+    'Activity\nMember shared this\nGraphic Designer Barbour, South Shields, England.',
+    'We are hiring. Graphic Designer Barbour, South Shields, England.',
+    'Job posting: Graphic Designer at Barbour, South Shields.',
+    'Joan Brown shared this job. Graphic Designer at Barbour.',
+    'Recommendations received • Michael is a Graphic Designer at Barbour.',
+    'Graphic Designer at Barbour job vacancy. Apply today.',
+    'Graphic Designer at Barbour · Open position available. Apply now.'
+  ];
+  const h=postings.map((s,i)=>profile('poster'+i,'Jane Stone - Barbour | LinkedIn',s));
+  const brandedPlan={...plan,employers:['Barbour'],target:'Find design staff at Barbour.'};
+  const result=await discover(h,{plan:brandedPlan,context:{company:'Barbour',industry:'footwear'},
+    call:async()=>JSON.stringify({items:h.map((_,index)=>({index,role:'Graphic Designer'}))})});
+  assert.deepEqual(result.rows,[]);
+});
+test('revisits a bounded set of deferred identities even when no subsequent broad query returns them',async()=>{
+  const people=['Ada','Beth','Cara','Dina','Ella','Fay','Gia','Hope','Ira','Jia','Kim','Lila','Mia','Nia'];
+  const hits=people.map((person,i)=>profile('prev-'+i,person+' Lee - Northwind | LinkedIn','Northwind'));
+  const pending=hits.map((h,i)=>({company:firm,person:people[i]+' Lee',profileHit:h,reason:'Additional named role lookup pending'}));
+  pending[0].reason='Job title could not be attributed after named profile and independent source searches';
+  const calls=[];
+  const result=await discover([], {pending,page:200,visited:[hits[1].url],search:async(q,opts)=>{
+    calls.push(...q);
+    if(opts.profiles&&q.some(s=>s.includes('Cara Lee')))return [profile('prev-2','Cara Lee - Footwear Designer at Northwind | LinkedIn')];
+    return [];
+  }});
+  assert.equal(result.exhausted,false);assert.equal(result.diagnostics.namedLookups,8);
+  assert.deepEqual(result.rows.map(x=>x.person),['Cara Lee']);
+  assert.ok(calls.every(q=>!q.includes('Ada Lee')&&!q.includes('Beth Lee')));
+  assert.equal(result.candidateKeys.length,8);assert.ok(result.checkedKeys.every(k=>result.candidateKeys.includes(k)));
+  assert.equal((await discover([], {page:200,pending:pending.slice(0,1)})).exhausted,true);
+});
