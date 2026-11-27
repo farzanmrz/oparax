@@ -72,6 +72,38 @@ test('a planner budget block is visible in the desk before any search, waits for
   assert.equal(f.b.researchJob.qualified,1);assert.ok(searches>0);
 });
 
+test('retry replays an interrupted verification page and its article query without skipping discovered people',async()=>{
+  for(const scheduled of [false,true]){
+    let interrupted=true;
+    const pages=[];
+    const f=fixture({services:{
+      profilePage:async({page})=>{pages.push(page);return pageOf([person(page)],page);},
+      verify:async(_,rows)=>{
+        if(interrupted)throw Error('Verifier temporarily offline');
+        return realVerifier(rows);
+      }
+    }});
+    await f.run();
+    assert.equal(f.b.lastRun.receipt.reason,'source_error');
+    assert.ok(f.b.lastRun.receipt.distinctQueries>0);
+    assert.equal(f.b.researchJob.pages,0);
+    assert.equal(f.b.researchJob.indexCursors.Barbour,undefined);
+    assert.deepEqual(f.b.researchJob.seen,[]);
+    interrupted=false;
+    if(scheduled){
+      f.b.active=true;f.b.next=new Date(0).toISOString();
+      await f.trigger({scheduled:true});
+    }else{
+      assert.equal(queueResearch(f.b,{resume:true}),'request');await f.run();
+    }
+    assert.equal(f.b.researchJob.id,'request');
+    assert.deepEqual(pages,[0,0]);
+    assert.deepEqual(f.data.leads.map(p=>p.person),[person(0).person]);
+    assert.equal(f.b.researchJob.articleFacets.length,1);
+    assert.equal(f.b.researchJob.blockedPages,0);
+  }
+});
+
 test('an HTTP 402 from the model returns an actionable safe failure',async t=>{
   const original=process.env.AI_GATEWAY_API_KEY;process.env.AI_GATEWAY_API_KEY='test';
   t.after(()=>{if(original===undefined)delete process.env.AI_GATEWAY_API_KEY;else process.env.AI_GATEWAY_API_KEY=original;});
@@ -188,6 +220,37 @@ test('real verifier publishes beyond the retired 50 limit while fresh evidence k
   const f=fixture({services:{profilePage:async({page})=>pageOf(Array.from({length:13},(_,i)=>person(page*13+i)),page)}});
   for(let page=0;page<4;page++)await f.run(page);
   assert.equal(f.b.researchJob.qualified,52);assert.equal(f.b.researchJob.goal,null);assert.equal(f.b.lastRun.status,'continuing');
+});
+
+test('market research follows fresh evidence past its initial source survey, then stops after distinct dry searches',async()=>{
+  let rounds=0;
+  const marketPlan={...plan,target:'Footwear buyers in the UK',employers:[],companyContexts:[]};
+  const records=Array.from({length:8},(_,i)=>{
+    const p=person(i);
+    return {...p,source:'https://example.org/team/'+i,quote:p.person+', Footwear Buyer at Barbour.'};
+  });
+  const pages=Object.fromEntries(records.map(p=>[p.source,'<p>Barbour designs footwear.</p><p>'+p.quote+'</p>']));
+  const f=fixture({brief:'Find buyers at UK footwear companies.',services:{
+    profilePage:async()=>({searched:false,exhausted:true}),
+    articleSearch:async context=>{
+      if(rounds>=6)assert.ok(context.previousQueries.length);
+      const row=records[rounds++];
+      const hits=row?[{url:row.source,title:row.person,snippet:row.quote}]:[];
+      hits.executedQueries=['distinct credible source query '+rounds];return hits;
+    },
+    model:async messages=>{
+      const payload=JSON.parse(messages.at(-1).content);
+      if(!payload.articles)return JSON.stringify(marketPlan);
+      return JSON.stringify({candidates:records.filter(r=>payload.articles.some(h=>h.url===r.source))});
+    },
+    verify:async(_,rows)=>realVerifier(rows,pages),
+    profileSearch:async()=>({failed:false,results:records.map(r=>r.profileHit)})
+  }});
+  for(let page=0;page<12&&f.b.researchRequestedAt;page++)await f.run(page);
+  assert.equal(rounds,10);
+  assert.equal(f.b.researchJob.qualified,8);
+  assert.equal(f.b.lastRun.receipt.reason,'diminishing_returns');
+  assert.equal(f.b.researchRequestedAt,undefined);
 });
 
 test('a billing interruption between verification and drafting saves the person without a sendable template',()=>{

@@ -76,8 +76,8 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  const [eveCommand,setEveCommand]=useState(null),[eveSnapshot,setEveSnapshot]=useState(null);
  const activeTurnRequest=useRef(null),loadGeneration=useRef(0),appliedLoad=useRef(0);
  const [skillId,setSkillId]=useState(null),[teaching,setTeaching]=useState(null);
- const activeSession=useRef(null),refreshing=useRef(null),pendingOwner=useRef(null),selectedRef=useRef(sel);
- selectedRef.current=sel;
+ const activeSession=useRef(null),refreshing=useRef(null),pendingOwner=useRef(null),viewRef=useRef({page,sel});
+ viewRef.current={page,sel};
  useEffect(()=>{
    if(preview)return;
    const apply=()=>{const route=currentRoute();P(route.page);S(route.id);setSkillId(route.skillId||null);M('');setActivityFor(route.id&&route.id!==newThread?route.id:null);setMobileRoster(false)};
@@ -92,6 +92,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    if(typeof brief==='string'&&brief){setInitialDraft(brief);S(newThread);P('Agents')}
  },[preview,d?.userEmail,initialAgentId]);
  function session(s){activeSession.current=s;A(s);if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else{
+   appliedLoad.current=++loadGeneration.current;
    sessionStorage.removeItem('oparax.sales.session');pendingOwner.current=null;setEveSnapshot(null);setEveCommand(null);activeTurnRequest.current?.reject?.(new Error('The sign-in session changed.'));activeTurnRequest.current=null;setTeaching(null);setInitialDraft('');S(initialAgentId);P(initialPage);
  }}
  async function token(){
@@ -277,12 +278,25 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
      if(!b&&original!==newThread)S(newThread);
      const call={};activeTurnRequest.current=call;
      try{
-       const ticket=await prepareEveSession(token,payload);
-       if(!activeSession.current||activeTurnRequest.current!==call)return false;
-       await new Promise((resolve,reject)=>{Object.assign(call,{ticket,payload,resolve,reject});setEveCommand(call)});
-       await load(auth);
-       if(!b&&(selectedRef.current===newThread||selectedRef.current===original))selectAgent(ticket.agentId)
-     }catch(e){E(e.message||'Your bot could not accept the message.');return false}
+       let deliveryError;
+       try{
+         const ticket=await prepareEveSession(token,payload);
+         if(activeTurnRequest.current!==call)return false;
+         await new Promise((resolve,reject)=>{Object.assign(call,{ticket,payload,resolve,reject});setEveCommand(call)});
+       }catch(error){deliveryError=error}
+       if(activeTurnRequest.current!==call)return false;
+       // The workspace records the bot and request before the native session starts.
+       // Its receipt can survive an interrupted transport, including on the first message.
+       const latest=await load(auth);
+       if(activeTurnRequest.current!==call)return false;
+       const saved=latest.bots.find(bot=>bot.chatTurn?.requestId===payload.requestId&&(!payload.id||bot.id===payload.id));
+       const target=call.ticket?.agentId||saved?.id,view=viewRef.current;
+       if(!b&&target&&view.page==='Agents'&&(view.sel===newThread||view.sel===original))selectAgent(target);
+       if(deliveryError&&saved?.chatTurn?.status!=='confirmed'){
+         if(saved&&!b){clearLandingDraft();setTeaching(null)}
+         throw deliveryError;
+       }
+     }catch(e){if(activeTurnRequest.current===call)E(e.message||'Your bot could not accept the message.');return false}
      finally{if(activeTurnRequest.current===call){activeTurnRequest.current=null;setEveCommand(null)}}
    }
    if(initialDraft)clearLandingDraft();setTeaching(null);return true;

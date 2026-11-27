@@ -1,5 +1,6 @@
 {
   "framework":"nextjs",
+  "buildCommand":"next build",
   "fluid":true,
   "regions":["iad1"],
   "crons":[{"path":"/api/tick","schedule":"*/10 * * * *"}],
