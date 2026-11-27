@@ -49,7 +49,7 @@ test('rejects invented roles, former roles, other employers and unrelated activi
 test('distinct raw-provider fallback and company source provenance',async()=>{
   const h=profile('test-c','Leah Mint - Buyer at Northwind | LinkedIn');
   const result=await discover([], {search:async(_,options)=>{if(options.profiles&&options.provider==='exa')return [h];if(options.profiles)throw Error('rate limited');return [];}});
-  assert.deepEqual(result.rows.map(x=>x.person),['Leah Mint']);assert.equal(result.searches,4);
+  assert.deepEqual(result.rows.map(x=>x.person),['Leah Mint']);assert.equal(result.searches,5);
   const checked=[];
   const proof=await resolveCompanyProof({context,timeout:2000,search:async()=>[{title:'Northwind footwear',url:anchor.source,snippet:anchor.evidence}],verify:async rows=>{checked.push(...rows);return [{status:'verified',lead:{companyVerification:anchor}}]}});
   assert.equal(checked[0].kind,'company');assert.equal(proof,anchor);
@@ -66,4 +66,24 @@ test('search callbacks separate submitted and provider-reported queries without 
   assert.deepEqual(events.map(e=>[e.provider,e.purpose,e.phase]),[
     ['perplexity','profiles','submitted'],['perplexity','profiles','executed'],['perplexity','corroboration','submitted']]);
   assert.ok(events[1].queries.includes('Northwind fashion designer profiles'));
+});
+test('thin employer-only search discovers corroborated titles across indexes and keeps uninvestigated profiles eligible',async()=>{
+  const names=['Ada','Beth','Cara','Dina','Ella','Fay','Gia','Hope','Ira','Jia','Kim','Lila','Mia','Nia','Opal','Pia','Quinn','Rae','Sara','Tara','Uma','Vera','Wren','Xia','Yana','Zara'];
+  const skinny=Array.from({length:45},(_,i)=>profile('prospect-'+i,names[i%26]+' '+(i<26?'Gray':'Green')+' - Northwind | LinkedIn','Northwind · United Kingdom'));
+  const calls=[];
+  const page=await discover(skinny,{limit:50,search:async(queries,opts)=>{
+    calls.push([opts.provider,opts.profiles,queries.length]);
+    if(opts.provider==='exa')return [profile('prospect-0','Ada Gray - Footwear Designer at Northwind | LinkedIn','Official shoe designer.')];
+    if(!opts.profiles)return [{url:'https://shoe.example/bio',title:'Beth Gray interviewed',snippet:'Beth Gray, Senior Buyer at Northwind, discusses footwear.'}];
+    if(queries.length>1)return [profile('prospect-2','Cara Gray - Northwind | LinkedIn','Title: Senior Buyer · Experience: Northwind')];
+    return skinny;
+  }});
+  assert.ok(calls.some(c=>c[0]==='exa'));
+  assert.equal(page.rows.find(x=>x.person==='Ada Gray').role,'Footwear Designer');
+  assert.equal(page.rows.find(x=>x.person==='Beth Gray').source,'https://shoe.example/bio');
+  assert.equal(page.rows.find(x=>x.person==='Cara Gray').role,'Senior Buyer');
+  assert.equal(page.diagnostics.thinProfiles,45);assert.equal(page.diagnostics.namedLookups,12);
+  assert.ok(page.diagnostics.deferred>20);assert.ok(page.checkedKeys.length<18);
+  assert.ok(!page.checkedKeys.includes('https://www.linkedin.com/in/prospect-40'));
+  assert.equal(new Set(page.rows.map(r=>r.linkedinUrl)).size,page.rows.length);
 });
