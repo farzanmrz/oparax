@@ -125,3 +125,32 @@ test('VM-local first boot is fenced per request, source and attempt, and recover
   await invoke('boot',aid,another,1);
   assert.equal(await invoke('inspect',aid,another),'launch 2'); // explicit failure can retry
 });
+
+test('Chrome deploys the official 1Password Web Store extension using a managed machine policy',async()=>{
+  const boot=await readFile(new URL('../lib/desktop-start.sh',import.meta.url),'utf8');
+  const policy=JSON.parse(boot.match(/<<'POLICY'\n([\s\S]*?)\nPOLICY/)[1]);
+  assert.deepEqual(policy.ExtensionSettings,{'aeblfdkhhhdcdjpifhhbdiojplfjncoa':{
+    installation_mode:'force_installed',update_url:'https://clients2.google.com/service/update2/crx',toolbar_pin:'force_pinned'
+  }});
+  assert.match(boot,/policy_dir=\/etc\/opt\/chrome\/policies\/managed/);
+  assert.ok(boot.indexOf('policy_dir=')<boot.indexOf('nohup google-chrome-stable'));
+  assert.ok(!/--load-extension|--remote-debugging/.test(boot));
+});
+
+test('a previously ready VM adopts the new desktop release even after its old request used all boot attempts',{skip:process.platform==='win32'},async t=>{
+  const dir=await mkdtemp(path.join(tmpdir(),'oparax-upgrade-'));
+  t.after(()=>rm(dir,{recursive:true,force:true}));
+  const state=path.join(dir,'state'), prior=path.join(dir,'previous-release'),current=path.join(dir,'current-release');
+  await Promise.all([mkdir(prior),mkdir(current)]);
+  const code=await readFile(new URL('../lib/desktop-job.sh',import.meta.url));
+  for(const release of [prior,current])await writeFile(path.join(release,'desktop-job.sh'),code);
+  const args=['inspect',uid,'https://sandbox.example','https://www.linkedin.com/login'];
+  const inspect=async release=>(await promisify(execFile)('bash',[path.join(release,'desktop-job.sh'),...args],{env:{...process.env,OPARAX_DESKTOP_STATE_DIR:state}})).stdout.trim();
+  assert.equal(await inspect(prior),'launch 1');
+  const job=path.join(state,'desktop-jobs',uid);
+  await writeFile(path.join(job,'phase'),'ready');
+  await writeFile(path.join(job,'attempt'),'2');
+  assert.equal(await inspect(current),'launch 1');
+  assert.equal((await readFile(path.join(job,'release'),'utf8')).trim(),'current-release');
+  assert.equal(await inspect(current),'starting');
+});

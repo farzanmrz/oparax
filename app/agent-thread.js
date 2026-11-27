@@ -56,6 +56,14 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   const hasWeb=sources.includes('web')||!sources.length&&!!job;
   const webWorking=hasWeb&&!!(agent?.researchRequestedAt||['running','continuing','queued'].includes(job?.status));
   const desktopRef=useRef({});
+  function openComputer(provider='desktop'){
+    if(!agent?.id||isDemo)return;
+    if(provider!=='desktop'){showProvider(provider,true);return}
+    setSettings(false);
+    setPanels(current=>({...current,desktop:true}));
+    desktopRef.current.desktop?.open();
+    requestAnimationFrame(()=>document.getElementById('bot-desktop-panel')?.scrollIntoView({block:'nearest'}));
+  }
   function showProvider(provider,openDesktop=false){
     setSettings(false);
     if(!sources.includes(provider)){setChooseSource(true);requestAnimationFrame(()=>document.getElementById('thread-search-sources')?.scrollIntoView({block:'nearest'}));return}
@@ -99,13 +107,14 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   ];
   return <section className="agent-thread">
     <header className="thread-header"><div className="thread-heading"><span className="thread-agent-icon" aria-hidden="true">{agent?initials(name):'+'}</span><div><h1>{name}</h1><span className={'agent-status '+state.tone}>{agent?state.label:'Create with a message'}</span></div></div>
-      {agent&&<button className="thread-tools-trigger" onClick={()=>setSettings(!settings)} aria-expanded={settings} aria-controls="agent-toolbox">Agent tools</button>}</header>
-    {settings&&<div id="agent-toolbox" className="thread-tools">{tools(()=>{setSettings(false);setActivity(true);requestAnimationFrame(()=>document.getElementById('thread-activity-panel')?.scrollIntoView({block:'nearest'}))},()=>{setSettings(false);setChooseSource(true);requestAnimationFrame(()=>document.getElementById('thread-search-sources')?.scrollIntoView({block:'nearest'}))},provider=>showProvider(provider,true),provider=>showProvider(provider))}</div>}
+      {agent&&<div className="bot-header-buttons">{!isDemo&&agent.id&&<button type="button" className="thread-tools-trigger" aria-controls="bot-desktop-panel" onClick={()=>openComputer()}>Open computer</button>}<button className="thread-tools-trigger" onClick={()=>setSettings(!settings)} aria-expanded={settings} aria-controls="agent-toolbox">Agent tools</button></div>}</header>
+    {settings&&<div id="agent-toolbox" className="thread-tools">{tools(()=>{setSettings(false);setActivity(true);requestAnimationFrame(()=>document.getElementById('thread-activity-panel')?.scrollIntoView({block:'nearest'}))},()=>{setSettings(false);setChooseSource(true);requestAnimationFrame(()=>document.getElementById('thread-search-sources')?.scrollIntoView({block:'nearest'}))},openComputer,provider=>showProvider(provider))}</div>}
     <div className="thread-scroll" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<85}}>
       <div className="thread-flow">
+        {agent?.id&&!isDemo&&<div id="bot-desktop-panel" hidden={!panels.desktop}><AgentComputer ref={item=>{desktopRef.current.desktop=item}} agent={agent} provider="desktop" getToken={getToken}/></div>}
         {!agent&&<div className="thread-welcome"><h2>What should your sales bot work on?</h2><p>Your bot keeps its own brief, sources and conversation.</p><label>Bot name (optional)<input value={botName} maxLength={65} placeholder="Barbour Scout" onChange={e=>setBotName(e.target.value)}/></label></div>}
         {showSources&&<SourcePicker key={agent.id+'/'+sourceKey+'/'+(managedRequest?.key||'')} selected={suggested} busy={busy||!!pending} onApply={chosen=>send('Use these research sources: '+chosen.map(sourceName).join(', ')+'.',chosen)}/>}
-        {agent&&<div className="thread-goal"><strong>{isDemo?'Sample research':(job||Number.isInteger(agent.taskQualified))?`${agent.taskQualified??job?.qualified??0} of ${job?.goal||agent.researchGoal||50} verified people`:`Goal · ${agent.researchGoal||50} verified people`}</strong><span>{isDemo?'Fictional company and contacts':job?`Public web · ${job.counts?.candidates||0} candidates surfaced · ${job.counts?.checked||0} source checks`:'Employer and personal LinkedIn profile checked'}</span></div>}
+        {agent&&<div className="thread-goal"><strong>{isDemo?'Sample research':(job||Number.isInteger(agent.taskQualified))?`${agent.taskQualified??job?.qualified??0} of ${job?.goal||agent.taskGoal||agent.researchGoal||50} verified people`:`Goal · ${agent.taskGoal||agent.researchGoal||50} verified people`}</strong><span>{isDemo?'Fictional company and contacts':job?`Public web · ${job.counts?.candidates||0} candidates surfaced · ${job.counts?.checked||0} source checks`:'Employer and personal LinkedIn profile checked'}</span></div>}
         {agent&&!sourcePending&&<div className="thread-source"><small>Search sources · {sources.length?sources.map(sourceName).join(' + '):'Choose sources'}{isDemo?' (demo)':''}</small><button type="button" disabled={busy} aria-expanded={showSources} aria-controls="thread-search-sources" onClick={()=>setChooseSource(!chooseSource)}>{chooseSource?'Close':sources.length?'Change sources':'Choose sources'}</button></div>}
 
         <div className="thread-messages" aria-label="Conversation">

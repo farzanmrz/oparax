@@ -121,7 +121,9 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
          try{
            const until=Number(localStorage.getItem(returnHint));localStorage.removeItem(returnHint);
            const savedAgent=JSON.parse(localStorage.getItem(agentHint)||'null');localStorage.removeItem(agentHint);
-           if(location.pathname==='/'&&savedAgent?.until>Date.now()&&typeof savedAgent.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedAgent.id)){
+           if(location.pathname==='/'&&savedAgent?.until>Date.now()&&savedAgent.id===newThread){
+             P('Agents');S(newThread);history.replaceState(null,'','/?new=1');
+           }else if(location.pathname==='/'&&savedAgent?.until>Date.now()&&typeof savedAgent.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedAgent.id)){
              P('Agents');S(savedAgent.id);history.replaceState(null,'','/research?agent='+savedAgent.id);
            }else if(location.pathname==='/'&&until>Date.now()){
              P('Prospects');history.replaceState(null,'','/prospects');
@@ -202,7 +204,8 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    B(true);E('');Y(false);
    try {
      try {
-       if(location.pathname==='/research'&&initialAgentId)localStorage.setItem(agentHint,JSON.stringify({id:initialAgentId,until:Date.now()+3600000}));
+       const returnTo=location.pathname==='/research'?initialAgentId:currentRoute().id===newThread?newThread:null;
+       if(returnTo)localStorage.setItem(agentHint,JSON.stringify({id:returnTo,until:Date.now()+3600000}));
        else localStorage.removeItem(agentHint);
        if(location.pathname==='/prospects')localStorage.setItem(returnHint,String(Date.now()+3600000));
        else localStorage.removeItem(returnHint);

@@ -29,3 +29,15 @@ test('rejects a wrong provider, expired ticket or non-secure destination',async(
     await assert.rejects(startComputer({...base,signal:new AbortController().signal},{request:async()=>Response.json({...ticket,...overrides}),now:time}),/invalid or expired/);
   }
 });
+
+test('a saved bot opens its neutral computer without a selected source or destination',async()=>{
+  const agentId='web-only-bot',calls=[];
+  const result=await startComputer({...base,agentId,provider:'desktop',signal:new AbortController().signal},{
+    request:async(path,opts)=>{
+      calls.push({path,body:JSON.parse(opts.body),auth:opts.headers.Authorization});
+      return Response.json({...ticket,provider:'desktop'});
+    },now:time
+  });
+  assert.equal(result.url,ticket.url);
+  assert.deepEqual(calls,[{path:'/api/agent-computer',body:{agentId,provider:'desktop',requestId:'stable-id'},auth:'Bearer user-access'}]);
+});

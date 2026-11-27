@@ -11,7 +11,7 @@ scripts=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 origin=$1
 destination=$2
 case "$destination" in
-  https://www.linkedin.com/login|https://www.linkedin.com/sales/home) ;;
+  about:blank|https://www.linkedin.com/login|https://www.linkedin.com/sales/home) ;;
   *) exit 2 ;;
 esac
 if ! command -v google-chrome-stable >/dev/null || ! command -v x11vnc >/dev/null || ! test -f /usr/share/novnc/vnc.html || ! test -d /usr/share/nodejs/ws; then
@@ -23,6 +23,29 @@ if ! command -v google-chrome-stable >/dev/null || ! command -v x11vnc >/dev/nul
     curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' 'https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb' -o "$package"
     sudo env DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends "$package"
   fi
+fi
+# Chrome watches managed policies on Linux. Apply this on cold and warm opens,
+# independently of the one-time OS package install. The Web Store verifies and
+# updates the signed extension; the owner interacts with it in Chrome.
+policy_dir=/etc/opt/chrome/policies/managed
+policy_path="$policy_dir/oparax-1password.json"
+password_manager_policy=$(cat <<'POLICY'
+{
+  "ExtensionSettings": {
+    "aeblfdkhhhdcdjpifhhbdiojplfjncoa": {
+      "installation_mode": "force_installed",
+      "update_url": "https://clients2.google.com/service/update2/crx",
+      "toolbar_pin": "force_pinned"
+    }
+  }
+}
+POLICY
+)
+if ! cmp -s "$policy_path" <(printf '%s\n' "$password_manager_policy"); then
+  sudo install -d -o root -g root -m 0755 "$policy_dir"
+  printf '%s\n' "$password_manager_policy" | sudo tee "$policy_dir/.oparax-1password.next" >/dev/null
+  sudo chmod 0644 "$policy_dir/.oparax-1password.next"
+  sudo mv -fT "$policy_dir/.oparax-1password.next" "$policy_path"
 fi
 export XAUTHORITY="$state/xauthority"
 if ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then

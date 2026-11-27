@@ -54,7 +54,7 @@ export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,ini
         <span className="ae-caption">OPARAX SALES BOTS</span>
         <h1>{sent?'Check your email.':auth?'Opening your workspace…':initialPage==='Prospects'?'Open your prospects.':'Open your workspace.'}</h1>
         {auth?<>{notice}<button type="button" onClick={logout}>Switch account</button></>:<>
-          <p className="ae-desc">{sent?<>We sent a sign-in link to <strong>{sent}</strong>.</>:brief.trim()?'Sign in to take this brief into your workspace.':'Sign up or sign in with any email address.'}</p>
+          <p className="ae-desc">{sent?<>A sign-in link was requested for <strong>{sent}</strong>. Check your inbox and spam folder.</>:brief.trim()?'Sign in to take this brief into your workspace.':'Sign up or sign in with any email address.'}</p>
           {brief.trim()&&!sent&&<blockquote className="ae-quote">{brief}</blockquote>}
           <form onSubmit={submitEmail} className="ae-form">
             <label htmlFor="ae-email">Email address</label>
@@ -65,12 +65,12 @@ export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,ini
         </>}
       </div>:<div className="ae-card">
         <span className="ae-caption"><span aria-hidden="true" className="ae-beacon"/>SALES BOTS</span>
-        <h1>Who should we<br/><em>reach?</em></h1>
-        <p className="ae-desc">Create a sales bot for an account or a market. Give it a brief, choose its sources, and send outreach from the same conversation.</p>
+        <h1>Create a<br/><em>sales bot.</em></h1>
+        <p className="ae-desc">Give each bot an account or a market to cover. Choose where it searches, review the people it finds, and send outreach from its conversation.</p>
         <form className="ae-composer" onSubmit={start}>
           <textarea aria-label="Your sales research brief" ref={input} maxLength={2000} rows={3} placeholder="Find sourcing directors at UK footwear brands…" value={brief} onChange={e=>setBrief(e.target.value)}
             onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){start(e);}}}/>
-          <div className="ae-controls"><span>New bot brief</span><button className="ae-continue primary" type="submit" disabled={!brief.trim()}>Continue <Arrow/></button></div>
+          <div className="ae-controls"><span>New bot brief</span><button className="ae-continue primary" type="submit" disabled={!brief.trim()}>Set up bot <Arrow/></button></div>
         </form>
         <div className="ae-examples">{examples.map(([label,value])=><button key={label} type="button" onClick={()=>{setBrief(value);input.current?.focus();}}>{label}<span aria-hidden="true">↗</span></button>)}</div>
         {notice}

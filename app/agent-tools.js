@@ -29,7 +29,6 @@ export default function AgentTools({agent,workspace,demo=false,busy=false,onOpen
   const inbox=agent.inbox?.email;
   const provisioned=!!workspace.agentMailConnected;
   const sending=!!(sender&&agent.active&&agent.autoEmail&&!demo);
-  const verifying=!demo&&agent.lastRun?.status==='verifying'&&Date.parse(agent.lease?.until)>Date.now();
 
   const sources=selectedSearchSources(agent);
   const privateSources=sources.filter(s=>s==='linkedin'||s==='sales_navigator');
@@ -58,12 +57,12 @@ export default function AgentTools({agent,workspace,demo=false,busy=false,onOpen
     <h2>Tools &amp; connections</h2>
     <ul>
       <ToolRow name={publicSearch||!sources.length?'Web research':'Public evidence'} icon="search" status={!publicSearch&&sources.length?'Verification':demo?'Sample search':agent.active?`Every ${agent.cadence}h`:'On demand'}
-        actions={<button type="button" onClick={showActivity}>View activity</button>}>
+        actions={<><button type="button" onClick={showActivity}>View activity</button><button type="button" onClick={onShowProspects}>View sources</button></>}>
         {!publicSearch&&sources.length?'Checks the people you select against public employer and role evidence.':demo?'Replay the sample search and see the evidence it uses.':'Searches the public web for people, employers and professional profiles.'}
       </ToolRow>
-      <ToolRow name="Verification computer" icon="computer" status={demo?'Sample evidence':verifying?'Checking sources':'On demand'} connected={verifying}
-        actions={<button type="button" onClick={onShowProspects}>View sources</button>}>
-        {demo?'See the source behind the sample prospect.':'An isolated computer opens source pages to check each person’s role and employer.'}
+      <ToolRow name="Bot computer" icon="computer" status={demo?'Demo':'On demand'}
+        actions={demo?<a href="/">Sign in to open a computer</a>:<button type="button" onClick={()=>onOpenComputer('desktop')}>Open computer</button>}>
+        {demo?'Each saved bot gets its own private browser in your workspace.':'Open this bot’s private browser at a blank page.'}
       </ToolRow>
       <ToolRow name="LinkedIn & Sales Navigator" icon="linkedin" status={demo?'Demo':privateSources.length?'Private browser':'Select a source'}
         actions={<>{!demo&&privateSources.length?privateSources.map(s=><button type="button" key={s} onClick={()=>openSource(s)}>Open {sourceLabel(s)}</button>):<button type="button" onClick={()=>openSource()}>Choose source</button>}<button type="button" onClick={()=>onNavigate('LinkedIn queue')}>Review drafts</button></>}>

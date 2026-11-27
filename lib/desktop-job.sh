@@ -10,13 +10,14 @@ attempt=${5:-0}
 [[ $request =~ ^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$ ]] || exit 2
 [[ $attempt =~ ^[0-9]+$ ]] || exit 2
 case "$destination" in
-  https://www.linkedin.com/login|https://www.linkedin.com/sales/home) ;;
+  about:blank|https://www.linkedin.com/login|https://www.linkedin.com/sales/home) ;;
   *) exit 2 ;;
 esac
 root=${OPARAX_DESKTOP_STATE_DIR:-"$HOME/.oparax"}
 jobs="$root/desktop-jobs"
 job="$jobs/$request"
 scripts=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+release=$(basename "$scripts")
 mkdir -p "$jobs"
 exec 8>"$jobs/lock"
 flock -w 4 8
@@ -56,12 +57,16 @@ if [[ $mode == inspect ]]; then
   [[ $(get "$job/destination") == "$destination" ]] || { echo superseded; exit 0; }
   phase=$(get "$job/phase")
   if [[ $(get "$job/origin") == "$origin" && $(get "$job/machine") == "$boot_id" ]]; then
-    if [[ $phase == ready ]] && healthy; then echo ready; exit 0; fi
+    if [[ $phase == ready && $(get "$job/release") == "$release" ]] && healthy; then echo ready; exit 0; fi
     if in_flight "$job"; then echo starting; exit 0; fi
   fi
   count=$(get "$job/attempt")
+  # Existing warm machines can have a ready marker written by an older release.
+  # Once its worker finishes, install the new policy without touching the profile.
+  if [[ $(get "$job/release") != "$release" ]]; then count=0; fi
   if (( count >= 2 )); then put "$job/phase" failed; echo failed; exit 0; fi
   count=$((count+1))
+  put "$job/release" "$release"
   put "$job/origin" "$origin"
   put "$job/machine" "$boot_id"
   put "$job/changed" "$now"
@@ -72,7 +77,7 @@ if [[ $mode == inspect ]]; then
 fi
 
 [[ $mode == boot && $active == "$request" && $(get "$job/attempt") == "$attempt" &&
-   $(get "$job/phase") == queued && $(get "$job/destination") == "$destination" &&
+   $(get "$job/phase") == queued && $(get "$job/release") == "$release" && $(get "$job/destination") == "$destination" &&
    $(get "$job/origin") == "$origin" && $(get "$job/machine") == "$boot_id" ]] || exit 0
 put "$job/pid" "$$"
 put "$job/changed" "$now"
@@ -83,7 +88,7 @@ result=failed
 if timeout -k 5s 600s bash "$scripts/desktop-start.sh" "$origin" "$destination" >/dev/null 2>&1 && healthy; then result=ready; fi
 exec 8>"$jobs/lock"
 flock -w 5 8
-if [[ $(get "$jobs/active") == "$request" && $(get "$job/attempt") == "$attempt" ]]; then
+if [[ $(get "$jobs/active") == "$request" && $(get "$job/attempt") == "$attempt" && $(get "$job/release") == "$release" ]]; then
   put "$job/changed" "$(date +%s)"
   put "$job/phase" "$result"
 fi

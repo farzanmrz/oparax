@@ -31,7 +31,13 @@ test('desktop issuance requires an authenticated owner, their agent, the selecte
   assert.match(unauth.headers.get('cache-control'),/no-store/);
   assert.equal((await launch('arbitrary-site')).status,400);
   assert.equal((await launch('linkedin')).status,404);
-  data.bots=[{id:agent,searchSource:'sales_navigator'}];
+  assert.equal((await launch('desktop')).status,404);
+  data.bots=[{id:agent}];
+  data.computerLaunch={requestId,agentId:agent,provider:'desktop',deadline:Date.now()+100000,until:Date.now()+10000};
+  assert.equal((await launch('desktop')).status,202);
+  assert.equal(data.bots[0].searchSources,undefined);
+  delete data.computerLaunch;
+  data.bots[0].searchSource='sales_navigator';
   assert.equal((await launch('linkedin')).status,409);
   data.computerLaunch={until:Date.now()+60000};
   assert.equal((await launch('sales_navigator')).status,409);
@@ -41,6 +47,10 @@ test('desktop issuance requires an authenticated owner, their agent, the selecte
   assert.equal((await waiting.json()).status,'starting');
   data.computerLaunch.until=0;data.computerLaunch.deadline=Date.now()-1;
   assert.equal((await launch('sales_navigator')).status,408);
+  data.computerLaunch={until:Date.now()+10000,agentId:'64930d0c-16dc-4268-8f1d-ce51ed7bc0ce',requestId:'abc',provider:'desktop'};
+  data.bots[0].computerLaunch={requestId,agentId:agent,provider:'sales_navigator',until:Date.now()+10000,deadline:Date.now()+100000};
+  assert.equal((await launch('sales_navigator')).status,202);
+  delete data.bots[0].computerLaunch;
   data.computerLaunch={recent:Array(12).fill(Date.now())};
   assert.equal((await launch('sales_navigator')).status,429);
 });

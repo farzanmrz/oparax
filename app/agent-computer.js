@@ -66,15 +66,16 @@ export default function AgentComputer({ref,agent,provider,getToken,onImport,busy
       else setImportError('These people could not be submitted. Check the workspace message and try again.');
     }finally{submitting.current=false;}
   }
+  const neutral=provider==='desktop';
   const receipt=agent.lastSelectedImports?.[provider]||(agent.lastSelectedImport?.source===provider?agent.lastSelectedImport:null);
-  return <section className="thread-computer" aria-label={labels[provider]+' agent computer'}>
-    <div className="row"><h2>{labels[provider]} on your agent computer</h2><button type="button" disabled={opening} onClick={openDesktop}>{starting?'Preparing computer…':opening?'Opening computer…':'Open agent computer ↗'}</button></div>
-    <p>You sign in to LinkedIn in this private browser. Oparax doesn’t yet support 1Password approval prompts.</p>
+  return <section className="thread-computer" aria-label={neutral?'Private bot computer':labels[provider]+' agent computer'}>
+    <div className="row"><h2>{neutral?'Private bot computer':labels[provider]+' on your agent computer'}</h2>{!neutral&&<button type="button" disabled={opening} onClick={openDesktop}>{starting?'Preparing computer…':opening?'Opening computer…':'Open agent computer ↗'}</button>}</div>
+    {neutral?<p>{agent.name}’s private browser opens on a blank page.</p>:<p>In the private computer, select 1Password in Chrome’s toolbar. Sign in or unlock the extension yourself, then choose your saved LinkedIn login. The icon can take a moment to appear on first launch. You can also sign in directly on LinkedIn.</p>}
     {starting&&<div className="thread-computer-wait" role="status"><p>Your private computer is starting. The first startup can take several minutes.</p><button type="button" onClick={()=>request.current?.abort(new Error('Stopped waiting for the computer. Open it again when ready.'))}>Stop waiting</button></div>}
     {error&&<p className="error" role="alert">{error}</p>}
     {opened&&<p role="status">Your agent computer opened in another tab.</p>}
     {fallback&&<p role="status"><a href={fallback.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" onClick={()=>{setOpened(true);setTimeout(()=>setFallback(null),0)}}>Open secure desktop ↗</a></p>}
-    <details ref={formRef} onToggle={e=>{if(e.currentTarget.open&&!rows.length)setRows([newRow()])}}><summary>Add selected people</summary>
+    {!neutral&&<details ref={formRef} onToggle={e=>{if(e.currentTarget.open&&!rows.length)setRows([newRow()])}}><summary>Add selected people</summary>
       <label>Paste selected people<textarea rows={4} value={paste} maxLength={40000} onChange={e=>setPaste(e.target.value)} placeholder={'Name\tRole\tCompany\tPersonal LinkedIn URL\nMaya Ellis\tBuyer\tExample Co.\thttps://www.linkedin.com/in/profile-name'}/></label>
       <p><small>Paste spreadsheet rows with name, role, company and personal LinkedIn URL, or put those four fields on separate lines for each person. Public evidence and Sales Navigator URLs can follow.</small></p>
       <button type="button" disabled={busy||!paste.trim()} onClick={pasteRows}>Load pasted people</button>
@@ -87,8 +88,8 @@ export default function AgentComputer({ref,agent,provider,getToken,onImport,busy
         <div className="controls"><button type="button" disabled={busy||rows.length>=20} onClick={()=>setRows(items=>[...items,newRow()])}>Add another person</button><button className="primary" disabled={busy||!included.length}>Verify {included.length} selected {included.length===1?'person':'people'}</button></div>
         {importError&&<p className="error" role="alert">{importError}</p>}
       </form>
-    </details>
-    {receipt&&<div className="thread-import-receipt" role="status"><strong>Last selection</strong><p>{receipt.received} submitted · {receipt.saved} saved · {receipt.existing} already saved · {receipt.held?.length||0} awaiting evidence</p>
+    </details>}
+    {!neutral&&receipt&&<div className="thread-import-receipt" role="status"><strong>Last selection</strong><p>{receipt.received} submitted · {receipt.saved} saved · {receipt.existing} already saved · {receipt.held?.length||0} awaiting evidence</p>
     {!!receipt.held?.length&&<details><summary>Review verification issues</summary><ul>{receipt.held.map((item,i)=><li key={i}>{item.person} · {item.reason} <button type="button" disabled={busy} onClick={()=>editHeld(item)}>Edit selection</button></li>)}</ul></details>}</div>}
   </section>;
 }
