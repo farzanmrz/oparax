@@ -119,6 +119,7 @@ test('profile requires attributable index metadata, accepts supported middle nam
   assert.equal(attributedProfile(p,[{...hit,title:'Lorenzo Giovanni Brunetti - Barbour | LinkedIn'}]),null);
   assert.equal(attributedProfile(p,[{...hit,title:'Lorenzo Brunetti - Finance Director at Other Firm | LinkedIn',snippet:'Lorenzo can introduce you to people at Barbour'}]),null);
   assert.equal(attributedProfile(p,[{...hit,title:'Lorenzo Brunetti - Finance Director at Barbour | LinkedIn'}]),null);
+  assert.equal(attributedProfile(p,[{...hit,title:'Lorenzo Brunetti - Footwear Designer at Barbour EHS | LinkedIn'}]),null);
   assert.equal(attributedProfile(p,[hit,{...hit,url:'https://www.linkedin.com/in/actual-02'}]),null);
   assert.throws(()=>profileResults([{toolResults:[{toolName:'perplexity_search',providerExecuted:false,output:{results:[hit]}}]}]));
 });
