@@ -180,8 +180,8 @@ class EvidenceTests(unittest.TestCase):
     def test_personal_about_experience_and_posted_jobs_are_distinct(self):
         company='https://www.barbour.com/us/footwear-guide.html'
         page=verifier.Page()
-        page.feed('<title>Barbour Footwear</title><nav><a href="/uk/womens-clothing">Women’s Clothing</a>'
-                  '<a href="/uk/outerwear">Outerwear</a></nav>'
+        page.feed('<title>Barbour Footwear</title><nav><a href="/uk/womens/womens-clothing">Clothing arrow</a>'
+                  '<a href="/uk/mens/mens-jackets">Jackets arrow</a></nav>'
                   '<p>Our headquarters are located in South Shields, England.</p>')
         page.finish()
         def run(name,role,snippet):
@@ -232,7 +232,7 @@ class EvidenceTests(unittest.TestCase):
             return verifier.verify(row,lambda url:(url,brand if url==official else page(line)))
         verified=run('<p>Nicola Brown, head of womenswear for Barbour.</p>')
         self.assertEqual(verified['status'],'verified')
-        self.assertEqual(verified['lead']['companyVerification']['identitySource'],official)
+        self.assertEqual(verified['lead']['companyVerification']['identitySource'],'https://www.barbour.com/womenswear')
         self.assertEqual(verified['lead']['source'],article)
         self.assertEqual(run('<p>Nicola Brown, head of womenswear for Barbour Engineering.</p>')['status'],'unsupported')
 

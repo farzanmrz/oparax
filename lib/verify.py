@@ -431,12 +431,25 @@ def identity_markers(page, url, company, target, read_page, extra=True):
         identity = org_url(urljoin(url, href))
         if identity:
             markers.append(('company_url',identity,url))
-    areas = set()
+    areas = {}
     for href,label in page.catalog_labels:
-        if matches_domain(urljoin(url,href),domain) and label:
-            for category, pattern in PRODUCT_AREAS.items():
-                if re.search(pattern,label,re.I): areas.add(category)
-    markers.extend(('product_area', category, url) for category in sorted(areas))
+        link=urljoin(url,href)
+        if not label or not matches_domain(link,domain):
+            continue
+        path = unquote(urlsplit(link).path).casefold()
+        taxonomy = re.sub(r"[^a-z]+",' ',path)
+        for category, pattern in PRODUCT_AREAS.items():
+            if re.search(pattern,label,re.I): areas.setdefault(category,link)
+        # Many stores label the link simply "Clothing" underneath a gender-specific
+        # menu. The official category URL and its visible label ground the category.
+        if re.search(r'\b(?:clothing|jackets?|coats?)\b',label,re.I):
+            if re.search(r'\bwomens? (?:clothing|jackets?|coats?)\b',taxonomy):
+                areas.setdefault('womenswear',link)
+            if re.search(r'\bmens? (?:clothing|jackets?|coats?)\b',taxonomy):
+                areas.setdefault('menswear',link)
+        if re.search(r'\b(?:jackets?|coats?)\b',label,re.I) and re.search(r'\b(?:jackets?|coats?)\b',taxonomy):
+            areas.setdefault('outerwear',link)
+    markers.extend(('product_area',category,origin) for category,origin in areas.items())
     company_tokens = words(company)
     for obj in page.org_data:
         if not tuple(starts(words(str(obj.get('name') or '')),company_tokens)):
