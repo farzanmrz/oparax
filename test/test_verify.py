@@ -259,5 +259,19 @@ class EvidenceTests(unittest.TestCase):
                 verifier.fetch('https://example.org')
 
 
+class IndexedTitleTests(unittest.TestCase):
+    def test_name_only_page_title_can_use_current_linked_company_experience(self):
+        indexed_employment = verifier.indexed_employment
+        row={'person':'Casey Lee','role':'Design Manager Footwear','company':'Sample Clothing',
+             'researchTarget':{'industry':'footwear'},
+             'profileHit':{'url':'https://www.linkedin.com/in/casey-lee','title':'Casey Lee',
+                           'snippet':'## Experience\n### [Sample Clothing](https://www.linkedin.com/company/sample-clothing)\n#### Design Manager Footwear\nMay 2023 - Present'}}
+        self.assertEqual(indexed_employment(row)['linkedinUrl'],row['profileHit']['url'])
+        row['profileHit']['snippet']=row['profileHit']['snippet'].replace('Present','May 2024')
+        self.assertIsNone(indexed_employment(row))
+        row['profileHit']['snippet']='No employment details.'
+        self.assertIsNone(indexed_employment(row))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -539,7 +539,7 @@ def indexed_employment(row, markers=()):
     title, snippet = str(hit.get('title') or '')[:400], str(hit.get('snippet') or '')[:12000]
     parts = re.split(r'\s+[–—-]\s+|\s*\|\s*', title)
     name, role, company = words(row.get('person') or ''), words(row.get('role') or ''), words(row.get('company') or '')
-    if not url or len(name) < 2 or not company or not role or len(parts) < 2:
+    if not url or len(name) < 2 or not company or not role:
         return None
     title_name = words(parts[0])
     if title_name != name and not (len(name) == 2 and 2 < len(title_name) <= 4 and
