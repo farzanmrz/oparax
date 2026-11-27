@@ -228,3 +228,14 @@ test('a missing fact requests clarification without saving or transmitting an in
  assert.equal(result.send,null);assert.equal(w.data.leads[0].reviewDrafts,undefined);
  assert.equal(w.data.messages.at(-1).content,'What sample price can I quote?');
 });
+test('asking what happens with a different source leaves current research in place',async()=>{
+  let plan=researchPlan;
+  const w=workspace('ask-about-sources',async()=>plan);
+  const started=await w.send(req);
+  plan={action:'answer',answer:'Sales Navigator opens in your private browser.'};
+  const reply=await w.send({id:started.agentId,requestId:'discuss-source',message:'What happens if I use LinkedIn or Sales Navigator?'});
+  assert.equal(reply.work,null);
+  assert.equal(w.data.bots[0].researchRequestedAt,started.work.requestedAt);
+  assert.equal(w.data.bots[0].searchSource,'web');
+  assert.equal(w.data.messages.at(-1).content,plan.answer);
+});

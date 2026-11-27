@@ -40,6 +40,8 @@ test('unsafe, malformed, hypothetical, negative and embedded Eve proposals becom
 test('direct authorized recipient and channel are retained; ambiguous or other workspace records never qualify',()=>{
   assert.deepEqual(check('Write an email to Jane Cole about product design',{action:'draft',channel:'email',prospectId:'jane'}),
     {action:'draft',channel:'email',prospectId:'jane'});
+  assert.equal(check("Draft an email to Jane Cole but don't send it",{action:'draft',channel:'email',prospectId:'jane'}).action,'draft');
+  assert.equal(check("Find buyers at Nike; don't contact anyone",{action:'research'}).action,'research');
   const send=check('Email Jane Cole about sample sizes',{action:'send',channel:'email',prospectId:'jane',concrete:true,purpose:'a made-up offer'});
   assert.equal(send.action,'send');assert.equal(send.purpose,'');
   assert.equal(check('Email Jane Cole about samples',{action:'send',channel:'linkedin',prospectId:'jane',concrete:true}).action,'clarify');

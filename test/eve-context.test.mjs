@@ -47,6 +47,8 @@ test('stale session, missing command or mismatched principal cannot read seller 
   delete agent.eveInputs[requestId];await assert.rejects(eveSalesContext(context(),deps),/does not belong/);
 });
 test('an unrelated existing-bot request has no prospect rows when no history reference or list was requested',async()=>{
-  const {d,deps}=fixture('Tell me about our products');d.messages=[];
+  const {d,deps}=fixture('Tell me about our products');
   assert.equal((await eveSalesContext(context(),deps)).prospects.length,0);
+  const next=fixture('Find designers at Sample');next.agent.provisional=true;
+  assert.equal((await eveSalesContext(context(),next.deps)).prospects.length,0);
 });

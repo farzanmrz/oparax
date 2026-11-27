@@ -7,7 +7,7 @@ import {visualReview} from '../../../lib/visual.mjs';
 import {after} from 'next/server';
 import {queueResearch,runResearchBatch} from '../../../lib/research-job.mjs';
 import {normalizeSearchSources,selectedSearchSources} from '../../../lib/search-source.mjs';
-import {showSourceGate,publicJobAuthorized} from '../../../lib/research-access.mjs';
+import {showSourceGate} from '../../../lib/research-access.mjs';
 import {stageSourceTasks,runSourceTask} from '../../../lib/source-tasks.mjs';
 import {connect} from '../../../lib/mail.mjs';
 import {linkedinProfileUrl} from '../../../lib/profile-url.mjs';
