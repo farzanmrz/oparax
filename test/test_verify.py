@@ -85,6 +85,103 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(self.check('<p>Nicholas Drury, Head of Footwear at Barbour.</p>',
                                     researchTarget={'company':'Acme'})['status'], 'unsupported')
 
+    def test_official_anchor_and_indexed_affiliation_need_no_personal_press_mention(self):
+        target = {'company':'Barbour', 'industry':'footwear', 'industryTerms':['shoes']}
+        page = '<p>Barbour designs leather shoes.</p>'
+        hit = {'url':'https://uk.linkedin.com/in/jane-smith-123?trk=public',
+               'title':'Jane Smith - Senior Footwear Buyer at Barbour | LinkedIn', 'snippet':''}
+        row = dict(kind='profile', person='Jane Smith', role='Senior Footwear Buyer',
+                   researchTarget=target, profileHit=hit, email='other@barbour.example')
+        company = self.check(page, kind='company', researchTarget=target)
+        self.assertEqual(company['lead']['companyVerification']['evidence'], 'Barbour designs leather shoes')
+        result = self.check(page, **row)
+        self.assertEqual(result['status'], 'verified')
+        self.assertEqual(result['lead']['linkedinUrl'], 'https://www.linkedin.com/in/jane-smith-123')
+        self.assertTrue(result['lead']['evidence'].startswith('Public LinkedIn index'))
+        self.assertEqual(result['lead']['verificationSource'], 'profile_index')
+        self.assertEqual(result['lead']['email'], '')
+        self.assertEqual(result['lead']['sourceDate'], '')
+        self.assertEqual(self.check('<p>Barbour develops software.</p>', **row)['status'], 'unsupported')
+
+    def test_profile_index_does_not_verify_namesakes_old_jobs_or_unrelated_functions(self):
+        target = {'company':'Barbour','industry':'footwear'}
+        page = '<p>Barbour designs footwear.</p>'
+        def check(title, snippet='', role='Footwear Buyer', url='https://www.linkedin.com/in/jane-smith'):
+            return self.check(page, person='Jane Smith', role=role, kind='profile', researchTarget=target,
+                              profileHit=dict(url=url,title=title,snippet=snippet))['status']
+        self.assertEqual(check('Jane Smith - Footwear Buyer at Barbour | LinkedIn'), 'verified')
+        for wrong in [
+            ('Jane Smith - Former Footwear Buyer at Barbour | LinkedIn', ''),
+            ('Jane Smith - Footwear Buyer at Barbour Engineering | LinkedIn', ''),
+            ('Jane Smith - Acme | LinkedIn','Footwear Buyer at Barbour'),
+            ('Jane Smith - Footwear Buyer at Acme | LinkedIn','Previously Footwear Buyer at Barbour'),
+            ('Jane Smith - Barbour | LinkedIn','Footwear Buyer at Barbour Jan 2019 – Sep 2022'),
+            ('Jill Smith - Footwear Buyer at Barbour | LinkedIn','')
+        ]:
+            self.assertEqual(check(*wrong), 'unsupported', wrong)
+        self.assertEqual(check('Jane Smith - Finance Director at Barbour | LinkedIn', '', 'Finance Director'),
+                         'unsupported')
+        self.assertEqual(check('Jane Smith - Footwear Buyer at Barbour | LinkedIn',
+                               url='https://linkedin.com.evil.example/in/jane'), 'unsupported')
+        result = self.check(page, kind='company', researchTarget={'company':'Barbour'})
+        self.assertEqual(result['status'], 'unsupported')
+
+    def test_exact_domain_on_profile_supplies_the_employer_bridge(self):
+        target = {'company':'Barbour','domain':'barbour.com'}
+        page = '<p>The speaker was from <a href="https://barbour.com">Barbour</a>.</p>'
+        hit = dict(url='https://uk.linkedin.com/in/jane-smith',title='Jane Smith - Buyer at Barbour | LinkedIn',
+                   snippet='Buyer at Barbour (barbour.com)')
+        result = self.check(page, kind='profile', person='Jane Smith', role='Buyer',
+                            researchTarget=target, profileHit=hit)
+        self.assertEqual(result['status'],'verified')
+        hit['snippet'] = 'Buyer at Barbour (barbour.com.biz)'
+        self.assertEqual(self.check(page, kind='profile',person='Jane Smith',role='Buyer',
+                                    researchTarget=target,profileHit=hit)['status'],'unsupported')
+
+    def test_generic_buyer_has_grounded_company_bridge(self):
+        url = 'https://www.barbour.com/us/footwear-guide.html'
+        legal_url = 'https://www.barbour.com/gb/legal/terms-of-use.html'
+        def page(html):
+            p = verifier.Page()
+            p.feed(html)
+            return p.finish()
+        brand = page('<head><title>Barbour Footwear | Discover the Collection</title></head>'
+                     '<footer><a href="/gb/legal/terms-of-use.html">Terms of use</a>'
+                     '<a href="https://www.linkedin.com/company/barbour-brand/">Official LinkedIn</a></footer>')
+        legal = page('<p>We are Barbour, a trading name of J Barbour &amp; Sons Ltd. Our main office is at '
+                     'Simonside Industrial Estate, South Shields, Tyne and Wear, NE34 9PD.</p>')
+        def run(title, snippet, person='Jane Smith', role='Buyer'):
+            hit = dict(url='https://uk.linkedin.com/in/jane-smith',title=title,snippet=snippet)
+            row = dict(kind='profile',source=url,company='Barbour',person=person,role=role,
+                       researchTarget={'company':'Barbour','industry':'footwear'},profileHit=hit)
+            return verifier.verify(row,lambda link:(link,legal if link==legal_url else brand))
+        examples = [('Jane Smith - Barbour | LinkedIn','Buyer Barbour, South Shields, England, United Kingdom','location'),
+                    ('Jane Smith - Buyer at J Barbour & Sons Ltd | LinkedIn','','legal_name'),
+                    ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour (barbour.com)','domain'),
+                    ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour https://www.linkedin.com/company/barbour-brand/','company_url')]
+        for title, snippet, kind in examples:
+            with self.subTest(kind=kind):
+                result=run(title,snippet)
+                self.assertEqual(result['status'],'verified',result)
+                proof=result['lead']['companyVerification']
+                self.assertEqual(proof['matchType'],kind)
+                self.assertEqual(proof['identitySource'],legal_url if kind in ('legal_name','location') else url)
+        for title,snippet in [('Jane Smith - Barbour | LinkedIn','Buyer Barbour, England, United Kingdom'),
+                              ('Jane Smith - Barbour EHS | LinkedIn','Buyer at Barbour EHS, South Shields'),
+                              ('Jane Smith - Barbour EHS | LinkedIn','Buyer at Barbour, South Shields'),
+                              ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour https://www.linkedin.com/company/barbour-brand-ehs/'),
+                              ('Jane Smith - HR Director at Barbour | LinkedIn','Buyer at Barbour, South Shields'),
+                              ('Jane Smith - Buyer at Acme | LinkedIn','Buyer at Barbour, South Shields')]:
+            self.assertEqual(run(title,snippet)['status'],'unsupported')
+
+    def test_repeated_employer_anchor_fetch_is_shared(self):
+        with patch.object(verifier, 'fetch', return_value=(URL, 'one page')) as request:
+            shared = verifier.coalesced_fetch()
+            with verifier.concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                results = list(pool.map(shared, [URL] * 40))
+            self.assertEqual(results, [(URL, 'one page')] * 40)
+            request.assert_called_once_with(URL)
+
     def test_inaccessible_source_is_reported_separately(self):
         with patch.object(verifier, 'fetch', side_effect=OSError):
             self.assertEqual(verifier.verify(CANDIDATE), {'status':'unavailable'})

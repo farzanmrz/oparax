@@ -2,7 +2,9 @@ import {Fault,edit,event,failure,now,verifiedUser,withWorkspace,read,view} from 
 import {addLead,bot,createBot,email,lead,note,settings,stop,text} from '../../../lib/domain.mjs';
 import {inbox,linkKey} from '../../../lib/agentmail.mjs';
 import {visualReview} from '../../../lib/visual.mjs';
-import {chat,research} from '../../../lib/agent.mjs';
+import {after} from 'next/server';
+import {queueResearch,runResearchBatch} from '../../../lib/research-job.mjs';
+import {chat} from '../../../lib/agent.mjs';
 import {connect} from '../../../lib/mail.mjs';
 import {linkedinProfileUrl} from '../../../lib/profile-url.mjs';
 export const runtime='nodejs',maxDuration=300,dynamic='force-dynamic';
@@ -22,9 +24,9 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
  else if(['inboxCreate','inboxSync','inboxReply'].includes(action))await inbox(id,action,p);
  else if(action==='visual')await visualReview(id);
  else if(action==='research'||action==='clarifyResearch'){
-   const requestedAt=await edit(d=>{
+   const request=await edit(d=>{
      const b=bot(d,id);
-     if(b.lease&&Date.parse(b.lease.until)>Date.now())throw new Fault('Research is already running. Open the agent to see its progress.',409);
+     if(b.lease&&Date.parse(b.lease.until)>Date.now()&&action==='research')return null;
      if(action==='clarifyResearch'){
        const question=b.lastRun?.question,answer=text(p.answer,1500);
        if(!question||question!==p.question||b.researchRequestedAt)throw new Fault('This research question has changed. Refresh the agent to see the latest run.',409);
@@ -34,10 +36,10 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
      }else if(b.lastRun?.status==='needs_input'&&!b.researchRequestedAt){
        throw new Fault(b.lastRun.question||'Answer the research question to continue.',409);
      }
-     b.researchRequestedAt=b.researchRequestedAt||now();
-     return b.researchRequestedAt;
+     const requestedAt=queueResearch(b,{resume:action==='clarifyResearch'});
+     return {requestedAt,page:b.researchJob?.pages||0};
    });
-   await research(id,{requestedAt});
+   if(request)after(()=>withWorkspace(user.id,()=>runResearchBatch(id,request)));
  }
  else if(action==='chat'){if(!text(p.message,2000))throw new Fault('Write a message first.');await chat(id,text(p.message,2000))}
  else if(action==='connect')await connect(p);
@@ -47,7 +49,7 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
    const b=bot(d,id),next=settings(p);
    if(b.brief!==next.brief){
      if(b.researchRequestedAt||(b.lease&&Date.parse(b.lease.until)>Date.now()))throw new Fault('Wait for the current run before changing its brief.',409);
-     delete b.lastRun;delete b.clarifications;b.error=null;
+     delete b.lastRun;delete b.researchJob;delete b.researchWake;delete b.clarifications;b.error=null;
    }
    Object.assign(b,next);event(d,'Updated '+b.name);break
  }

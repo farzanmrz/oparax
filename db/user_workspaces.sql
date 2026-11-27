@@ -73,3 +73,66 @@ end $$;
 revoke all on function public.outreach_user_read(uuid),public.outreach_user_save(uuid,bigint,jsonb),public.outreach_worker_batch(integer),public.outreach_ready(),public.outreach_signin_claim(text),public.outreach_signin_finish(text,boolean) from public,anon,authenticated;
 grant execute on function public.outreach_user_read(uuid),public.outreach_user_save(uuid,bigint,jsonb),public.outreach_worker_batch(integer),public.outreach_ready(),public.outreach_signin_claim(text),public.outreach_signin_finish(text,boolean) to service_role;
 notify pgrst,'reload schema';
+
+-- Dispatch a single already queued research page from the database after a lost invocation.
+create extension if not exists pg_net with schema extensions;
+revoke usage on schema net from public,anon,authenticated;
+revoke all privileges on all tables in schema net from public,anon,authenticated;
+revoke execute on all functions in schema net from public,anon,authenticated;
+grant usage on schema net to service_role;
+
+create or replace function public.outreach_wake_research(uid uuid,agent_id uuid) returns bigint
+language plpgsql security definer set search_path='' as $$
+declare
+  workspace jsonb;
+  agent jsonb;
+  idx integer;
+  request_at text;
+  batch integer;
+  token text;
+  wake jsonb;
+  http_id bigint;
+begin
+  select w.data into workspace from outreach.user_workspaces w where w.user_id=uid for update;
+  select a.value,(a.ord-1)::integer into agent,idx
+    from jsonb_array_elements(workspace->'bots') with ordinality a(value,ord)
+    where a.value->>'id'=agent_id::text;
+  request_at:=agent->>'researchRequestedAt';
+  if request_at is null or (agent#>>'{lease,until}')::timestamptz>clock_timestamp() then return null;end if;
+  if (agent#>>'{researchWake,expires}')::timestamptz>clock_timestamp() then return null;end if;
+  batch:=case when agent#>>'{researchJob,id}'=request_at then coalesce((agent#>>'{researchJob,pages}')::integer,0) else 0 end;
+  token:=encode(extensions.gen_random_bytes(32),'hex');
+  wake:=jsonb_build_object('hash',encode(extensions.digest(token,'sha256'),'hex'),'requestedAt',request_at,
+    'page',batch,'expires',clock_timestamp()+interval '90 seconds');
+  update outreach.user_workspaces w set rev=w.rev+1,data=jsonb_set(w.data,array['bots',idx::text,'researchWake'],wake)
+    where w.user_id=uid;
+  select net.http_post(url:='https://oparax.ai/api/tick',
+    body:=jsonb_build_object('workspace',uid,'agent',agent_id,'requestedAt',request_at,'page',batch),
+    headers:=jsonb_build_object('Content-Type','application/json','Authorization','Job '||token),timeout_milliseconds:=10000)
+    into http_id;
+  return http_id;
+end $$;
+
+create or replace function public.outreach_redeem_research_wake(uid uuid,agent_id uuid,requested_at text,batch_index integer,token_hash text) returns boolean
+language plpgsql security definer set search_path='' as $$
+declare
+  workspace jsonb;
+  agent jsonb;
+  idx integer;
+  wake jsonb;
+begin
+  if token_hash is null or length(token_hash)<>64 then return false;end if;
+  select w.data into workspace from outreach.user_workspaces w where w.user_id=uid for update;
+  select a.value,(a.ord-1)::integer into agent,idx
+    from jsonb_array_elements(workspace->'bots') with ordinality a(value,ord)
+    where a.value->>'id'=agent_id::text;
+  wake:=agent->'researchWake';
+  if wake->>'hash' is distinct from token_hash or wake->>'requestedAt' is distinct from requested_at
+    or agent->>'researchRequestedAt' is distinct from requested_at or (wake->>'page')::integer is distinct from batch_index
+    or (wake->>'expires')::timestamptz<=clock_timestamp() then return false;end if;
+  update outreach.user_workspaces w set rev=w.rev+1,data=w.data #- array['bots',idx::text,'researchWake'] where w.user_id=uid;
+  return true;
+end $$;
+revoke all on function public.outreach_wake_research(uuid,uuid),public.outreach_redeem_research_wake(uuid,uuid,text,integer,text) from public,anon,authenticated;
+grant execute on function public.outreach_wake_research(uuid,uuid),public.outreach_redeem_research_wake(uuid,uuid,text,integer,text) to service_role;
+notify pgrst,'reload schema';

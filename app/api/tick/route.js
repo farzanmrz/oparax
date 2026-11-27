@@ -1,5 +1,6 @@
 import {Fault,edit,event,failure,read,same,withWorkspace,rpc} from '../../../lib/store.mjs';
-import {research} from '../../../lib/agent.mjs';
+import {after} from 'next/server';
+import {runResearchBatch,verifyContinuation,redeemResearchWake} from '../../../lib/research-job.mjs';
 import {tickMail} from '../../../lib/mail.mjs';
 export const runtime='nodejs',maxDuration=300,dynamic='force-dynamic';
 async function tickWorkspace(){
@@ -14,7 +15,7 @@ async function tickWorkspace(){
    .sort((a,b)=>a.next.localeCompare(b.next))[0];
  if(selected){
    try {
-     await research(selected.id,requested?{requestedAt:requested.researchRequestedAt}:{scheduled:true});
+     await runResearchBatch(selected.id,requested?{requestedAt:requested.researchRequestedAt,page:requested.researchJob?.pages||0}:{scheduled:true});
    } catch(error) {
      // The dashboard may already have claimed this exact run.
      if(!(error instanceof Fault&&error.status===409))throw error;
@@ -33,4 +34,17 @@ export async function GET(req) {
     if(runs.some(run=>run.status==='rejected'))throw new Fault('One or more scheduled workspaces could not finish.',503);
     return Response.json({ok:true});
   } catch(error){return failure(error);}
+}
+
+export async function POST(req){
+  try{
+    const authorization=req.headers.get('authorization')||'';
+    if(!authorization.startsWith('Bearer ')&&!authorization.startsWith('Job '))throw new Fault('Unauthorized.',401);
+    if(Number(req.headers.get('content-length'))>900)throw new Fault('Request too large.',413);
+    const body=await req.text();
+    if(body.length>900)throw new Fault('Request too large.',413);
+    const job=authorization.startsWith('Job ')?await redeemResearchWake(body,authorization):verifyContinuation(body,authorization);
+    after(()=>withWorkspace(job.workspace,()=>runResearchBatch(job.agent,{requestedAt:job.requestedAt,page:job.page})));
+    return Response.json({queued:true},{status:202,headers:{'Cache-Control':'no-store'}});
+  }catch(error){return failure(error);}
 }

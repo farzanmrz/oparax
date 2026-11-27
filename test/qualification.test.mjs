@@ -13,3 +13,8 @@ test('the real ledger and email eligibility both require a person, employer proo
   for(const p of pending){ assert.equal(isPublishedProspect(p),false);assert.equal(canSend(d,bot,p),false);}
   assert.equal(canSend(d,bot,lead),true);
 });
+test('a signed-in dashboard exposes progress but keeps work-in-progress identities and dispatch tokens private',()=>{
+  const summary=view({leads:[],bots:[{name:'A',researchWake:{digest:'hidden'},researchJob:{goal:50,qualified:2,pages:1,status:'continuing',seen:['private person'],pending:[{person:'unmatched'}],qualifiedIds:['some-id']}}]});
+  assert.equal(summary.bots[0].researchJob.qualified,2);
+  assert.doesNotMatch(JSON.stringify(summary),/hidden|private person|unmatched|some-id/);
+});
