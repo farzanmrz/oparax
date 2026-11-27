@@ -22,7 +22,7 @@ function realVerifier(rows,pages=fixturePages) {
   assert.equal(out.status,0,out.stderr);return JSON.parse(out.stdout);
 }
 function fixture(options={}) {
-  const b={id:'sample',name:'Sourcing',brief:options.brief||brief,active:false,autoEmail:false,cadence:24,researchRequestedAt:'request'};
+  const b={id:'sample',name:'Sourcing',searchSource:'web',brief:options.brief||brief,active:false,autoEmail:false,cadence:24,researchRequestedAt:'request'};
   const data={bots:[b],leads:[],messages:[],events:[],suppressed:[]},requests=[];
   const services={
     edit:async fn=>fn(data),model:async(messages,setup)=>{requests.push({messages,setup});return JSON.stringify((options.answers||[]).shift()||plan);},

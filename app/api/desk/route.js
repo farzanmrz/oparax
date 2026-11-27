@@ -5,6 +5,9 @@ import {visualReview} from '../../../lib/visual.mjs';
 import {after} from 'next/server';
 import {queueResearch,runResearchBatch} from '../../../lib/research-job.mjs';
 import {chat} from '../../../lib/agent.mjs';
+import {normalizeSearchSource} from '../../../lib/search-source.mjs';
+import {showSourceGate,publicJobAuthorized} from '../../../lib/research-access.mjs';
+import {messageAgent} from '../../../lib/conversation.mjs';
 import {connect} from '../../../lib/mail.mjs';
 import {linkedinProfileUrl} from '../../../lib/profile-url.mjs';
 export const runtime='nodejs',maxDuration=300,dynamic='force-dynamic';
@@ -14,19 +17,28 @@ async function authenticated(req, action) {
     return await withWorkspace(user.id,()=>action(user));
   } catch(error) {return failure(error);}
 }
-async function dashboard(user) {
-  return Response.json({...view((await read()).data),userEmail:user.email},{headers:{'Cache-Control':'private, no-store'}});
+async function dashboard(user,metadata={}) {
+  return Response.json({...view((await read()).data),userEmail:user.email,...metadata},{headers:{'Cache-Control':'private, no-store'}});
 }
 export function GET(req){return authenticated(req,dashboard);}
 export function POST(req){return authenticated(req,async user=>{const raw=await req.text();if(raw.length>20000)throw new Fault('Request is too large.',413);let p;try{p=JSON.parse(raw)}catch{throw new Fault('Invalid request.')};if(!p||typeof p!=='object')throw new Fault('Invalid request.');
  const {action,id}=p;
- if(action==='agentmail')await linkKey(p.key);
+ if(action==='messageAgent'){
+   const {agentId,work}=await messageAgent(p);
+   if(work)after(()=>withWorkspace(user.id,()=>runResearchBatch(agentId,work)));
+   return dashboard(user,{agentId});
+ }
+ if(action==='importSelectedLeads'){
+   const {importSelectedLeads}=await import('../../../lib/selected-leads.mjs');
+   await importSelectedLeads(id,p);
+ }
+ else if(action==='agentmail')await linkKey(p.key);
  else if(['inboxCreate','inboxSync','inboxReply'].includes(action))await inbox(id,action,p);
  else if(action==='visual')await visualReview(id);
  else if(action==='research'||action==='clarifyResearch'){
    const request=await edit(d=>{
      const b=bot(d,id);
-     if(b.lease&&Date.parse(b.lease.until)>Date.now()&&action==='research')return null;
+     if(b.lease&&Date.parse(b.lease.until)>Date.now()&&action==='research'&&publicJobAuthorized(b))return null;
      if(action==='clarifyResearch'){
        const question=b.lastRun?.question,answer=text(p.answer,1500);
        if(!question||question!==p.question||b.researchRequestedAt)throw new Fault('This research question has changed. Refresh the agent to see the latest run.',409);
@@ -36,7 +48,10 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
      }else if(b.lastRun?.status==='needs_input'&&!b.researchRequestedAt){
        throw new Fault(b.lastRun.question||'Answer the research question to continue.',409);
      }
+     if(b.searchSource!=='web'){showSourceGate(d,b);return null;}
+     delete b.searchGate;
      const requestedAt=queueResearch(b,{resume:action==='clarifyResearch'});
+     if(b.researchJob)b.researchJob.searchSource='web';
      return {requestedAt,page:b.researchJob?.pages||0};
    });
    if(request)after(()=>withWorkspace(user.id,()=>runResearchBatch(id,request)));
@@ -44,7 +59,7 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
  else if(action==='chat'){if(!text(p.message,2000))throw new Fault('Write a message first.');await chat(id,text(p.message,2000))}
  else if(action==='connect')await connect(p);
  else await edit(d=>{switch(action){
- case 'create':createBot(d,p);break;
+ case 'create':{const created=bot(d,createBot(d,p));const source=normalizeSearchSource(p.searchSource);if(source)created.searchSource=source;break;}
  case 'save':{
    const b=bot(d,id),next=settings(p);
    if(b.brief!==next.brief){
@@ -53,7 +68,7 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
    }
    Object.assign(b,next);event(d,'Updated '+b.name);break
  }
- case 'activate':{const b=bot(d,id);if(p.autoEmail===true&&!d.mailbox)throw new Fault('Connect a mailbox before enabling email.');b.active=true;b.autoEmail=p.autoEmail===true;b.next=now();event(d,b.name+' · campaign activated');break}
+ case 'activate':{const b=bot(d,id);if(p.autoEmail===true&&!d.mailbox)throw new Fault('Connect a mailbox before enabling email.');b.active=true;b.autoEmail=p.autoEmail===true;b.next=now();if(b.searchSource!=='web')showSourceGate(d,b);event(d,b.name+' · campaign activated');break}
  case 'pause':{const b=bot(d,id);b.active=false;b.autoEmail=false;event(d,'Paused '+b.name);break}
  case 'manual':{const b=bot(d,id);if(p.linkedinUrl&&(!text(p.person)||!linkedinProfileUrl(p.linkedinUrl)))throw new Fault('A LinkedIn profile needs a contact name and an HTTPS linkedin.com/in/ profile link.');if(p.email&&!email(p.email))throw new Fault('Enter a valid email.');if(!addLead(d,b,{...p,companyVerification:null,linkedinEvidence:''}))throw new Fault('This prospect already exists.',409);event(d,'Added '+text(p.company,150));break}
  case 'draft':{const l=lead(d,id);if(l.linkedinState==='sent')throw new Fault('This note was already marked sent.');if(!text(p.linkedin,1500))throw new Fault('Write a LinkedIn note first.');l.linkedin=text(p.linkedin,1500);break}

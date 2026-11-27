@@ -1,6 +1,7 @@
 import {Fault,edit,event,failure,read,same,withWorkspace,rpc} from '../../../lib/store.mjs';
 import {after} from 'next/server';
 import {runResearchBatch,verifyContinuation,redeemResearchWake} from '../../../lib/research-job.mjs';
+import {publicJobAuthorized} from '../../../lib/research-access.mjs';
 import {tickMail} from '../../../lib/mail.mjs';
 export const runtime='nodejs',maxDuration=300,dynamic='force-dynamic';
 async function tickWorkspace(){
@@ -9,9 +10,9 @@ async function tickWorkspace(){
  const {data}=await read();
  const time=Date.now();
  const available=data.bots.filter(b=>!b.lease||Date.parse(b.lease.until)<=time);
- const requested=available.filter(b=>b.researchRequestedAt)
+ const requested=available.filter(b=>b.researchRequestedAt&&publicJobAuthorized(b,{requestedAt:b.researchRequestedAt}))
    .sort((a,b)=>a.researchRequestedAt.localeCompare(b.researchRequestedAt))[0];
- const selected=requested||available.filter(b=>b.active&&b.lastRun?.status!=='needs_input'&&Date.parse(b.next)<=time)
+ const selected=requested||available.filter(b=>b.active&&publicJobAuthorized(b,{scheduled:true})&&b.lastRun?.status!=='needs_input'&&Date.parse(b.next)<=time)
    .sort((a,b)=>a.next.localeCompare(b.next))[0];
  if(selected){
    try {

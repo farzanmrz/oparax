@@ -76,7 +76,7 @@ export default function ResearchFeed({agent,active,getToken}){
       {active&&connectionLabels[connection]&&<span role="status" className={'pill '+(connection==='live'?'on':'')}>{connectionLabels[connection]}</span>}
     </div>
     {(job||current)&&<div className="feedsummary">
-      <strong>{qualified} of {goal} verified people</strong><small>{examined} candidates examined{status&&stateLabels[status]?' · '+stateLabels[status]:''}</small>
+      <strong>{qualified} of {goal} verified people</strong><small>{examined} candidates surfaced{status&&stateLabels[status]?' · '+stateLabels[status]:''}</small>
       <progress value={qualified} max={goal} aria-label="Verified people found"/>
     </div>}
     {status==='continuing'&&<p>The next batch is queued. Research continues when you leave this page.</p>}
