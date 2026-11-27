@@ -317,13 +317,14 @@ def company_anchor(page, url, row):
     if not words(name) or not (target.get('industry') or target.get('domain')):
         return None
     industry_words = {term[0] for term in [words(t) for t in [target.get('industry') or '',*(target.get('industryTerms') or [])]] if term}
-    if page.title and official_domain(url,name,target):
+    domain = official_domain(url,name,target)
+    if page.title and domain:
         doc_title = Page()
         doc_title.blocks = [page.title]
         if tuple(starts(words(page.title),words(name))):
             proof = company_verification(doc_title,0,url,name,target,name)
             if proof:
-                return proof
+                return {**proof, 'domain':domain}
     for i, line in enumerate(page.blocks):
         tokens = list(WORD.finditer(line))
         values = [fold(m.group()) for m in tokens]
@@ -332,7 +333,7 @@ def company_anchor(page, url, row):
             visible = line[tokens[start].start():tokens[end].end()]
             proof = company_verification(page, i, url, name, target, visible)
             if proof:
-                return proof
+                return {**proof,'domain':domain} if domain else proof
     return None
 
 
@@ -514,6 +515,11 @@ def indexed_employment(row, markers=()):
         aliases = [company] + [words(value) for kind,value,_ in markers if kind=='legal_name']
         employers = [(pos,alias) for alias in aliases for pos in company_starts(segment,tokens,values,alias)]
         for position, alias in employers:
+            after = position + len(alias)
+            if after < len(tokens) and segment[tokens[after-1].end():tokens[after].start()].isspace():
+                allowed = {*CONNECTORS, 'inc','ltd','limited','llc','plc','http','https','based','in','since','where','working'}
+                if values[after] not in allowed and not tuple(starts(values[after:after+len(role)],role)):
+                    continue
             for r in starts(values, role):
                 left, right = sorted([(r, r + len(role)), (position, position + len(alias))])
                 gap = values[left[1]:right[0]]

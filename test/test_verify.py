@@ -170,6 +170,7 @@ class EvidenceTests(unittest.TestCase):
         for title,snippet in [('Jane Smith - Barbour | LinkedIn','Buyer Barbour, England, United Kingdom'),
                               ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour, Washington, England'),
                               ('Jane Smith - Barbour EHS | LinkedIn','Buyer at Barbour EHS, South Shields'),
+                              ('Jane Smith - Barbour | LinkedIn','Buyer at barbour ehs, South Shields'),
                               ('Jane Smith - Barbour EHS | LinkedIn','Buyer at Barbour, South Shields'),
                               ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour https://www.linkedin.com/company/barbour-brand-ehs/'),
                               ('Jane Smith - HR Director at Barbour | LinkedIn','Buyer at Barbour, South Shields'),

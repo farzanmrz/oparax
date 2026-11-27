@@ -23,6 +23,7 @@ function ResearchProgress({agent}){
  </section>;
 }
 const returnHint='oparax.sales.prospectsUntil';
+const agentHint='oparax.sales.returnAgent';
 function webSource(value){
  try {const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch{return ''}
 }
@@ -49,8 +50,8 @@ function Signal(){return <div className="signal" aria-hidden="true"><i/><i/><i/>
 function Field({name,label,area=false,...opts}){return <label>{label}{area?<textarea name={name} {...opts}/>:<input name={name} {...opts}/>}</label>}
 const agentFields=b=><><Field label="Agent name" name="name" required maxLength={65} defaultValue={b?.name} placeholder="UK footwear buyers"/><Field label="Campaign brief" name="brief" required area rows={4} defaultValue={b?.brief} placeholder="Who should this agent find? Describe the offer and buyers."/><div className="fields"><label>Research interval<select name="cadence" defaultValue={b?.cadence||24}>{[6,12,24,48,168].map(n=><option key={n} value={n}>{n} hours</option>)}</select></label><Field name="cap" label="Emails / day" type="number" min="1" max="100" defaultValue={b?.cap||5} required/><label>Follow-up after<select name="delay" defaultValue={b?.delay||5}>{[3,5,7,14].map(n=><option key={n} value={n}>{n} days</option>)}</select></label></div></>;
 function Preview(){return <div className="preview"><div className="previewtop"><span>WORKSPACE PREVIEW</span><span className="dots">● ● ●</span></div><Signal/><div className="pvbody"><div className="over">RESEARCH AGENT</div><h2>Footwear sourcing</h2><p>Find UK footwear brands and identify their sourcing teams.</p><div className="pvrow"><Icon n="Prospects"/><span>Prospect research</span><i>01</i></div><div className="pvrow"><Icon n="LinkedIn queue"/><span>Personalized drafts</span><i>02</i></div><div className="pvrow"><Icon n="Activity"/><span>Reply tracking</span><i>03</i></div></div></div>}
-export default function Workspace({url,anon,preview = null,initialPage = 'Agents'}){
- const [d,D]=useState(preview),[auth,A]=useState(null),[ready,R]=useState(false),[page,P]=useState(initialPage),[sel,S]=useState(preview?.bots[0]?.id??null),[modal,M]=useState(''),[err,E]=useState(''),[msg,N]=useState(''),[busy,B]=useState(false),[sent,Y]=useState(false),[search,Q]=useState(''),[incoming,I]=useState(null);
+export default function Workspace({url,anon,preview = null,initialPage = 'Agents',initialAgentId = null}){
+ const [d,D]=useState(preview),[auth,A]=useState(null),[ready,R]=useState(false),[page,P]=useState(initialPage),[sel,S]=useState(preview?.bots[0]?.id??initialAgentId),[modal,M]=useState(''),[err,E]=useState(''),[msg,N]=useState(''),[busy,B]=useState(false),[sent,Y]=useState(false),[search,Q]=useState(''),[incoming,I]=useState(null);
  const [researching,setResearching]=useState(null),[agentFilter,setAgentFilter]=useState('');
  const activeSession=useRef(null),refreshing=useRef(null);
  function session(s){activeSession.current=s;A(s);if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else sessionStorage.removeItem('oparax.sales.session')}
@@ -91,7 +92,10 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
          }
          try{
            const until=Number(localStorage.getItem(returnHint));localStorage.removeItem(returnHint);
-           if(location.pathname==='/'&&until>Date.now()){
+           const savedAgent=JSON.parse(localStorage.getItem(agentHint)||'null');localStorage.removeItem(agentHint);
+           if(location.pathname==='/'&&savedAgent?.until>Date.now()&&typeof savedAgent.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedAgent.id)){
+             P('Agents');S(savedAgent.id);history.replaceState(null,'','/research?agent='+savedAgent.id);
+           }else if(location.pathname==='/'&&until>Date.now()){
              P('Prospects');history.replaceState(null,'','/prospects');
            }
          }catch{}
@@ -165,6 +169,8 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    B(true);E('');Y(false);
    try {
      try {
+       if(location.pathname==='/research'&&initialAgentId)localStorage.setItem(agentHint,JSON.stringify({id:initialAgentId,until:Date.now()+3600000}));
+       else localStorage.removeItem(agentHint);
        if(location.pathname==='/prospects')localStorage.setItem(returnHint,String(Date.now()+3600000));
        else localStorage.removeItem(returnHint);
      }catch{}
