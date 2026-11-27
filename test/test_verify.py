@@ -148,7 +148,8 @@ class EvidenceTests(unittest.TestCase):
         brand = page('<head><title>Barbour Footwear | Discover the Collection</title></head>'
                      '<footer><a href="/gb/legal/terms-of-use.html">Terms of use</a>'
                      '<a href="https://www.linkedin.com/company/barbour-brand/">Official LinkedIn</a></footer>')
-        legal = page('<p>We are Barbour, a trading name of J Barbour &amp; Sons Ltd. Our main office is at '
+        legal = page('<p>If you are based in Washington, please review the terms below.</p>'
+                     '<p>We are Barbour, a trading name of J Barbour &amp; Sons Ltd. Our main office is at '
                      'Simonside Industrial Estate, South Shields, Tyne and Wear, NE34 9PD.</p>')
         def run(title, snippet, person='Jane Smith', role='Buyer'):
             hit = dict(url='https://uk.linkedin.com/in/jane-smith',title=title,snippet=snippet)
@@ -167,6 +168,7 @@ class EvidenceTests(unittest.TestCase):
                 self.assertEqual(proof['matchType'],kind)
                 self.assertEqual(proof['identitySource'],legal_url if kind in ('legal_name','location') else url)
         for title,snippet in [('Jane Smith - Barbour | LinkedIn','Buyer Barbour, England, United Kingdom'),
+                              ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour, Washington, England'),
                               ('Jane Smith - Barbour EHS | LinkedIn','Buyer at Barbour EHS, South Shields'),
                               ('Jane Smith - Barbour EHS | LinkedIn','Buyer at Barbour, South Shields'),
                               ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour https://www.linkedin.com/company/barbour-brand-ehs/'),

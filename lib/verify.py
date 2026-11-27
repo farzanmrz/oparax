@@ -410,17 +410,21 @@ def identity_markers(page, url, company, target, read_page, extra=True):
                 markers.append(('company_url',org_url(link),url))
     lines = page.blocks
     legal = re.compile(r'(?:trading (?:name|style) of|registered (?:name|company name) is|owned (?:and operated )?by|operated by)\s+([\w&. -]{3,85}?\b(?:Ltd\.?|Limited|LLC|Inc\.?|plc))\b',re.I)
-    hq = re.compile(r'(?:headquartered|headquarters|head office|main office|registered office|based)\s+(?:is |are )?(?:in|at)\s+(.{3,145})',re.I)
+    hq = re.compile(r'(?:headquartered|headquarters|head office|main office|registered office|based)[, ]+?(?:(?:is|are|located|remains) )*(?:in|at)\s+(.{3,145})',re.I)
     for line in lines:
         for match in legal.finditer(line):
             if tuple(starts(words(match[1]),company_tokens)):
                 markers.append(('legal_name',match[1].strip(),url))
         for match in hq.finditer(line):
+            prefix = re.split(r'[.!?;]',line[max(0,match.start()-100):match.start()])[-1]
+            if not (tuple(starts(words(prefix),company_tokens)) or re.search(
+                    r"\b(?:our|we are|we're|company(?:'s|’s)?|corporate)\s*$", prefix, re.I)):
+                continue
             address = re.split(r'[.;!]|\s[–—]\s',match[1])[0].split(',')
             for piece in address[:2]:
-                city = piece.strip()
+                city = re.split(r'\s(?:is|where|remains|and|in|which|was)\s',piece.strip(),maxsplit=1)[0]
                 if (re.fullmatch(r'[A-Z][a-z]+(?:[ -][A-Z][a-z]+){0,2}',city)
-                        and not re.search(r'\b(?:Estate|Park|Lane|Road|Avenue|Street|Square|Court|Building|Drive|London|England|Scotland|Wales|Ireland|Kingdom|States)\b',city)):
+                        and not re.search(r'\b(?:Estate|Park|Lane|Road|Avenue|Street|Square|Court|Building|Drive|London|Washington|England|Scotland|Wales|Ireland|Kingdom|States)\b',city)):
                     markers.append(('location',city,url))
     if extra and not any(t in ('location','legal_name') for t,_,_ in markers):
         candidates = []
@@ -433,13 +437,17 @@ def identity_markers(page, url, company, target, read_page, extra=True):
                 candidates.append((0,link))
             elif any(x in path for x in ('about-us','our-history','about/company','company-information')):
                 candidates.append((1,link))
-        if candidates:
+        # Regional legal pages sometimes identify a local subsidiary. Try one legal page
+        # and one company information page, always on the already corroborated domain.
+        for priority in (0,1):
+            choices = [link for rank,link in candidates if rank==priority]
+            if not choices: continue
             try:
-                final, context_page = read_page(min(candidates)[1])
+                final, context_page = read_page(min(choices))
                 if matches_domain(final,domain):
                     markers.extend(identity_markers(context_page,final,company,target,read_page,False))
             except (OSError, ValueError, LookupError, http.client.HTTPException):
-                pass
+                continue
     return markers
 
 

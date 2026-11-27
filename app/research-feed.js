@@ -82,7 +82,7 @@ export default function ResearchFeed({agent,active,getToken}){
     {status==='continuing'&&<p>The next batch is queued. Research continues when you leave this page.</p>}
     {rows.length?<ol className="feedrows" aria-label="Research actions, newest first">{rows.map(entry=><li key={entry.id}>
       <div className="feedstamp"><time dateTime={entry.at}>{eventTime(entry.at)}</time>{activityKinds[entry.kind]&&<small>{activityKinds[entry.kind]}</small>}</div>
-      <p>{entry.text}</p>{domainOf(entry.source)&&<small>{domainOf(entry.source)}</small>}
+      <p>{entry.text}</p>{domainOf(entry.source)&&<a href={entry.source} target="_blank" rel="noreferrer">{domainOf(entry.source)} ↗</a>}
     </li>)}</ol>:<p>{active?'Waiting for the first recorded action…':'Search terms, source checks and verification decisions will appear here when the agent runs.'}</p>}
   </section>;
 }
