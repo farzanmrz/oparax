@@ -28,12 +28,16 @@ begin
  return found;
 end $$;
 
-create function public.outreach_worker_batch(batch_size integer) returns setof uuid
+create or replace function public.outreach_worker_batch(batch_size integer) returns setof uuid
 language sql security definer set search_path='' as $$
  with due as (
    select user_id from outreach.user_workspaces
    where last_scheduled < now()-interval '5 minutes'
-    and (data->'mailbox' <> 'null'::jsonb or data->'bots' @> '[{"active":true}]'::jsonb)
+    and (data->'mailbox' <> 'null'::jsonb or exists (
+      select 1 from jsonb_array_elements(data->'bots') b
+      where b->>'researchRequestedAt' is not null
+        or (b->'active' = 'true'::jsonb and b#>>'{lastRun,status}' is distinct from 'needs_input')
+    ))
    order by last_scheduled,user_id limit greatest(1,least(batch_size,20)) for update skip locked
  )
  update outreach.user_workspaces w set last_scheduled=now() from due

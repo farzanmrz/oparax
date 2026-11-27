@@ -17,7 +17,7 @@ export default function Workspace({url,anon,preview = null}){
  function session(s){A(s);if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else sessionStorage.removeItem('oparax.sales.session')}
  async function token(s){if(!s)throw Error('Sign in first.');if(s.expires>Date.now()+45000)return s.access;
  const res=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh})});if(!res.ok){session(null);D(null);throw Error('Your session expired. Sign in again.')}const v=await res.json();const next={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+v.expires_in*1000};session(next);return next.access}
- async function load(s){const t=await token(s);const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store'});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');D(v)}
+ async function load(s,signal){const t=await token(s);const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store',signal});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');if(!signal?.aborted)D(v)}
  const started=useRef(false);
  useEffect(()=>{
    if(preview||started.current)return;
@@ -47,17 +47,17 @@ export default function Workspace({url,anon,preview = null}){
      } catch(error){E(error.message);} finally {R(true);}
    })();
  },[preview,url,anon]);
- const pendingResearch=d?.bots.some(agent=>agent.researchRequestedAt||agent.lease&&Date.parse(agent.lease.until)>Date.now());
+ const pendingResearch=!!researching||d?.bots.some(agent=>agent.researchRequestedAt||agent.lease&&Date.parse(agent.lease.until)>Date.now());
  useEffect(()=>{
    if(!pendingResearch||!auth||preview)return;
-   let cancelled=false,timer;
+   let cancelled=false,timer;const controller=new AbortController();
    async function poll(){
      if(cancelled)return;
-     try {await load(auth)} catch(error){if(!cancelled)E(error.message)}
+     try {await load(auth,controller.signal)} catch(error){if(!cancelled)E(error.message)}
      if(!cancelled)timer=setTimeout(poll,2500);
    }
    timer=setTimeout(poll,1500);
-   return ()=>{cancelled=true;clearTimeout(timer)};
+   return ()=>{cancelled=true;controller.abort();clearTimeout(timer)};
  },[pendingResearch,auth,preview]);
  async function act(action,p={},close=true){
    const running=action==='research'||action==='clarifyResearch';
