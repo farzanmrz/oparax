@@ -2,6 +2,25 @@
 import {useEffect,useRef,useState} from 'react';
 import {loginCallback} from '../lib/login.mjs';
 import {runSample} from './preview/sample.mjs';
+import {linkedinProfileUrl} from '../lib/profile-url.mjs';
+const returnHint='oparax.sales.prospectsUntil';
+function webSource(value){
+ try {const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch{return ''}
+}
+function ProfileLink({lead}){
+ const href=linkedinProfileUrl(lead.linkedinUrl);
+ if(!href)return <small>LinkedIn profile unconfirmed</small>;
+ const evidence=lead.linkedinEvidence;
+ const evidenceText=typeof evidence==='string'?evidence:evidence?.quote||evidence?.evidence;
+ const evidenceUrl=webSource(lead.linkedinSource||evidence?.source);
+ return <div><a href={href} target="_blank" rel="noreferrer">Open LinkedIn profile ↗</a>{evidenceText&&<p>{evidenceText}</p>}{evidenceUrl&&evidenceUrl!==href&&<small> · <a href={evidenceUrl} target="_blank" rel="noreferrer">Profile evidence ↗</a></small>}</div>;
+}
+function CompanyProof({lead}){
+ const verification=lead.companyVerification;
+ const href=webSource(verification?.source);
+ if(!verification?.name||!href||!verification.evidence)return <p><small>Company verification pending</small></p>;
+ return <details><summary>Verified company · {verification.name}</summary><p>{verification.evidence}</p><a href={href} target="_blank" rel="noreferrer">Company evidence ↗</a></details>;
+}
 const nav=['Agents','Prospects','LinkedIn queue','Activity','Mailbox'];
 const paths={Agents:'M4 5h16v12H4z M8 21h8 M12 17v4',Prospects:'M3 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2 M13 5a4 4 0 1 1 0 7 M21 20v-2a4 4 0 0 0-3-4 M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0', 'LinkedIn queue':'M4 5h16v12H9l-5 4z M8 9h8 M8 13h5',Activity:'M2 12h5l3-8 4 16 3-8h5',Mailbox:'M3 5h18v14H3z M3 6l9 7 9-7',plus:'M12 5v14 M5 12h14',arrow:'M5 12h14 M13 6l6 6-6 6',close:'M5 5l14 14 M5 19L19 5',shield:'M12 2l8 4v6c0 5-4 8-8 10-4-2-8-5-8-10V6z M8 12l3 3 5-6'};
 function Icon({n,size=18}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[n]}/></svg>}
@@ -11,13 +30,25 @@ function Signal(){return <div className="signal" aria-hidden="true"><i/><i/><i/>
 function Field({name,label,area=false,...opts}){return <label>{label}{area?<textarea name={name} {...opts}/>:<input name={name} {...opts}/>}</label>}
 const agentFields=b=><><Field label="Agent name" name="name" required maxLength={65} defaultValue={b?.name} placeholder="UK footwear buyers"/><Field label="Campaign brief" name="brief" required area rows={4} defaultValue={b?.brief} placeholder="Who should this agent find? Describe the offer and buyers."/><div className="fields"><label>Research interval<select name="cadence" defaultValue={b?.cadence||24}>{[6,12,24,48,168].map(n=><option key={n} value={n}>{n} hours</option>)}</select></label><Field name="cap" label="Emails / day" type="number" min="1" max="100" defaultValue={b?.cap||5} required/><label>Follow-up after<select name="delay" defaultValue={b?.delay||5}>{[3,5,7,14].map(n=><option key={n} value={n}>{n} days</option>)}</select></label></div></>;
 function Preview(){return <div className="preview"><div className="previewtop"><span>WORKSPACE PREVIEW</span><span className="dots">● ● ●</span></div><Signal/><div className="pvbody"><div className="over">RESEARCH AGENT</div><h2>Footwear sourcing</h2><p>Find UK footwear brands and identify their sourcing teams.</p><div className="pvrow"><Icon n="Prospects"/><span>Prospect research</span><i>01</i></div><div className="pvrow"><Icon n="LinkedIn queue"/><span>Personalized drafts</span><i>02</i></div><div className="pvrow"><Icon n="Activity"/><span>Reply tracking</span><i>03</i></div></div></div>}
-export default function Workspace({url,anon,preview = null}){
- const [d,D]=useState(preview),[auth,A]=useState(null),[ready,R]=useState(false),[page,P]=useState('Agents'),[sel,S]=useState(preview?.bots[0]?.id??null),[modal,M]=useState(''),[err,E]=useState(''),[msg,N]=useState(''),[busy,B]=useState(false),[sent,Y]=useState(false),[search,Q]=useState(''),[incoming,I]=useState(null);
+export default function Workspace({url,anon,preview = null,initialPage = 'Agents'}){
+ const [d,D]=useState(preview),[auth,A]=useState(null),[ready,R]=useState(false),[page,P]=useState(initialPage),[sel,S]=useState(preview?.bots[0]?.id??null),[modal,M]=useState(''),[err,E]=useState(''),[msg,N]=useState(''),[busy,B]=useState(false),[sent,Y]=useState(false),[search,Q]=useState(''),[incoming,I]=useState(null);
  const [researching,setResearching]=useState(null),[agentFilter,setAgentFilter]=useState('');
- function session(s){A(s);if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else sessionStorage.removeItem('oparax.sales.session')}
- async function token(s){if(!s)throw Error('Sign in first.');if(s.expires>Date.now()+45000)return s.access;
- const res=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh})});if(!res.ok){session(null);D(null);throw Error('Your session expired. Sign in again.')}const v=await res.json();const next={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+v.expires_in*1000};session(next);return next.access}
- async function load(s,signal){const t=await token(s);const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store',signal});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');if(!signal?.aborted)D(v)}
+ const activeSession=useRef(null),refreshing=useRef(null);
+ function session(s){activeSession.current=s;A(s);if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else sessionStorage.removeItem('oparax.sales.session')}
+ async function token(){
+   const s=activeSession.current;if(!s)throw Error('Sign in first.');if(s.expires>Date.now()+45000)return s.access;
+   if(refreshing.current?.session===s)return refreshing.current.request;
+   const entry={session:s};refreshing.current=entry;
+   entry.request=(async()=>{
+     const res=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh})});
+     if(activeSession.current!==s)throw Error('The sign-in session changed.');
+     if(!res.ok){session(null);D(null);throw Error('Your session expired. Sign in again.')}
+     const v=await res.json();if(activeSession.current!==s)throw Error('The sign-in session changed.');
+     const next={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+v.expires_in*1000};session(next);return next.access;
+   })().finally(()=>{if(refreshing.current===entry)refreshing.current=null});
+   return entry.request;
+ }
+ async function load(s,signal){if(!s)return;const t=await token();const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store',signal});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');if(!signal?.aborted&&activeSession.current)D(v)}
  const started=useRef(false);
  useEffect(()=>{
    if(preview||started.current)return;
@@ -39,11 +70,16 @@ export default function Workspace({url,anon,preview = null}){
            if(!result.ok||!v.access_token||!v.refresh_token)throw Error('This email link is invalid or has expired. Request a fresh link below.');
            current={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+Number(v.expires_in||3600)*1000};
          }
-         session(current);
+         try{
+           const until=Number(localStorage.getItem(returnHint));localStorage.removeItem(returnHint);
+           if(location.pathname==='/'&&until>Date.now()){
+             P('Prospects');history.replaceState(null,'','/prospects');
+           }
+         }catch{}
        } else {
          current=JSON.parse(sessionStorage.getItem('oparax.sales.session')||'null');
        }
-       if(current){A(current);await load(current);}
+       if(current){session(current);await load(current);}
      } catch(error){E(error.message);} finally {R(true);}
    })();
  },[preview,url,anon]);
@@ -59,6 +95,17 @@ export default function Workspace({url,anon,preview = null}){
    timer=setTimeout(poll,1500);
    return ()=>{cancelled=true;controller.abort();clearTimeout(timer)};
  },[pendingResearch,auth,preview]);
+ useEffect(()=>{
+   if(!auth||!ready||preview||busy||pendingResearch)return;
+   const controller=new AbortController();let loading=false;
+   function refresh(){
+     if(document.visibilityState!=='visible'||loading)return;
+     loading=true;
+     load(auth,controller.signal).catch(error=>{if(!controller.signal.aborted)E(error.message)}).finally(()=>{loading=false});
+   }
+   document.addEventListener('visibilitychange',refresh);window.addEventListener('pageshow',refresh);
+   return ()=>{controller.abort();document.removeEventListener('visibilitychange',refresh);window.removeEventListener('pageshow',refresh)};
+ },[auth,ready,preview,busy,pendingResearch]);
  async function act(action,p={},close=true){
    const running=action==='research'||action==='clarifyResearch';
    B(true);E('');N('');if(running)setResearching(p.id);
@@ -96,6 +143,10 @@ export default function Workspace({url,anon,preview = null}){
    const email=String(new FormData(e.currentTarget).get('email')||'').trim();
    B(true);E('');Y(false);
    try {
+     try {
+       if(location.pathname==='/prospects')localStorage.setItem(returnHint,String(Date.now()+3600000));
+       else localStorage.removeItem(returnHint);
+     }catch{}
      const response=await fetch('/api/signin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
      const result=await response.json();
      if(!response.ok)throw Error(result.error);
@@ -104,7 +155,7 @@ export default function Workspace({url,anon,preview = null}){
  }
  function logout(){if(auth)fetch(url+'/auth/v1/logout',{method:'POST',headers:{apikey:anon,Authorization:'Bearer '+auth.access}}).catch(()=>{});session(null);D(null);Y(false);E('')}
  const notice=err?<p role="alert" className="error">{err}</p>:msg?<p role="status" className="notice">{msg}</p>:null;
- if(!d)return <main className="entry"><header><Brand/><span className="tiny">Sales workspace</span></header><section className="entrygrid"><div className="signin"><div className="over"><i className="blueDot"/>SALES OUTREACH</div><h1>Your sales<br/>workspace<span>.</span></h1><p>Give your agents a market to research. Review the buyers they find and manage every conversation in one place.</p><a className="demolink" href="/preview">Open interactive demo <Icon n="arrow"/></a><p>Sign up or sign in with any email address.</p><form onSubmit={login}><Field name="email" type="email" label="Email address" required placeholder="you@example.com" autoComplete="email"/><button className="primary wide" disabled={busy||!ready}>{busy?'Sending…':sent?'Send another sign-in link':'Email me a sign-in link'}<Icon n="arrow"/></button></form>{sent&&<p className="notice">Check {sent} for your sign-in link.</p>}{notice}{auth&&<button onClick={logout}>Clear session</button>}</div><Preview/></section></main>;
+ if(!d)return <main className="entry"><header><Brand/><span className="tiny">Sales workspace</span></header><section className="entrygrid"><div className="signin"><div className="over"><i className="blueDot"/>SALES OUTREACH</div><h1>{initialPage==='Prospects'?<>Your<br/>prospects</>:<>Your sales<br/>workspace</>}<span>.</span></h1><p>{initialPage==='Prospects'?'Sign in to see the people your agents found and review their sources.':'Give your agents a market to research. Review the buyers they find and manage every conversation in one place.'}</p><a className="demolink" href="/preview">Open interactive demo <Icon n="arrow"/></a><p>Sign up or sign in with any email address.</p><form onSubmit={login}><Field name="email" type="email" label="Email address" required placeholder="you@example.com" autoComplete="email"/><button className="primary wide" disabled={busy||!ready}>{busy?'Sending…':sent?'Send another sign-in link':'Email me a sign-in link'}<Icon n="arrow"/></button></form>{sent&&<p className="notice">Check {sent} for your sign-in link.</p>}{notice}{auth&&<button onClick={logout}>Clear session</button>}</div><Preview/></section></main>;
  const b=d.bots.find(x=>x.id===sel),l=d.leads.find(x=>x.id===sel);
  function go(p){S(null);P(p);M('');E('');N('');Q('');setAgentFilter('')}
  function open(m){E('');N('');if(preview&&['connect','agentmail'].includes(m)){N('Sign in to connect your own mailbox.');return}M(m)}
@@ -132,8 +183,8 @@ export default function Workspace({url,anon,preview = null}){
  </section>
  <section className="panel schedulepanel"><div><h2>Research schedule</h2><p>{b.active?`Every ${b.cadence} hours · Automatic email ${b.autoEmail?'on':'off'}`:'Run once at any time, or schedule recurring searches.'}</p></div><button disabled={busy||!!inProgress} onClick={()=>b.active?act('pause',{id:b.id}):open('activate')}>{b.active?'Pause schedule':'Schedule research'}</button></section>
  <section className="panel"><div className="row"><h2>Agent inbox</h2><span className="pill">AgentMail</span></div><p>{b.inbox?.email || 'Give this agent its own address for incoming requests and replies.'}</p>{!d.agentMailConnected?<button onClick={()=>open('agentmail')}>Connect AgentMail</button>:!b.inbox?<button disabled={busy} onClick={()=>act('inboxCreate',{id:b.id})}>Create agent address</button>:<button disabled={busy} onClick={()=>act('inboxSync',{id:b.id})}>Check inbox</button>}{b.inbound?.map(m=><article className="message" key={m.id}><small>{m.from} · {dt(m.at)}</small><p><strong>{m.subject}</strong><br/>{m.preview}</p><button disabled={busy||!!b.replyState?.[m.id]} onClick={()=>{I(m);open('inboxReply')}}>{b.replyState?.[m.id]||'Reply'}</button></article>)}</section><section className="panel"><h2>Agent conversation</h2>{d.messages.filter(x=>x.botId===b.id).map(m=><div className="message" key={m.id}><small>{m.role==='user'?'YOU':b.name}</small><p>{m.content}</p></div>)}<form onSubmit={async e=>{e.preventDefault();const f=e.currentTarget;if(await act('chat',{id:b.id,message:new FormData(f).get('message')},false))f.reset()}}><Field label="Message your agent" area name="message" rows={2} required placeholder="Ask about positioning or discuss a buyer…"/><button disabled={busy} className="primary">Send message</button></form></section></>}
- {page==='Prospects'&&<>{agentFilter&&<div className="filterbar"><span>{d.bots.find(agent=>agent.id===agentFilter)?.name}</span><button onClick={()=>setAgentFilter('')}>Show all agents</button></div>}<input className="search" aria-label="Search prospects" placeholder="Search prospects…" value={search} onChange={e=>Q(e.target.value)}/>{filtered.length===0?<div className="panel"><h2>{search||agentFilter?'No matching prospects':'Your prospect ledger is empty'}</h2><p>Run agent research or add a prospect to a campaign.</p></div>:filtered.map(x=><article className="panel" key={x.id}><div className="row"><h2>{x.person||x.company}</h2><span className="pill">{preview?'Sample prospect':x.status}</span></div><small>{[x.role,x.person&&x.company,x.email||'No verified email'].filter(Boolean).join(' · ')}</small><p>{x.fit}</p>{(x.evidence||x.quote)&&<blockquote>{x.evidence||x.quote}{preview&&<cite>Fictional staff profile · Wrenfield Footwear</cite>}</blockquote>}{x.source&&<a href={x.source} target="_blank" rel="noreferrer">View source ↗</a>}{!preview&&<div className="controls"><button disabled={busy} onClick={()=>act('visual',{id:x.id})}>{busy?'Working…':'Inspect source with Sonnet'}</button></div>}{x.visual&&<p>{x.visual}</p>}<details><summary>Email draft</summary><strong>{x.subject}</strong><p>{x.body}</p></details>{!preview&&!['replied','stopped'].includes(x.status)&&<button disabled={busy} onClick={()=>act('suppress',{id:x.id})}>Stop outreach</button>}</article>)}</>}
- {page==='LinkedIn queue'&&<><section className="panel"><h2>LinkedIn sign-in</h2><p>Open LinkedIn in the browser where you use 1Password. Choose your saved LinkedIn login and complete any verification there. Copy a note below when you are ready to send.</p><a href="https://www.linkedin.com/login" target="_blank" rel="noreferrer">Open LinkedIn sign-in ↗</a></section>{!d.leads.length&&<div className="panel"><h2>No LinkedIn drafts yet</h2><p>Your agents prepare a note for each verified prospect.</p></div>}{d.leads.filter(x=>!['stopped','replied'].includes(x.status)).map(x=><article className="panel" key={x.id}><div className="row"><h2>{x.company}</h2><span className="pill">{x.linkedinState}</span></div><small>{x.person||'Company contact'}</small><p>{x.linkedin}</p>{x.linkedinState==='draft'&&<div className="controls"><button onClick={()=>copy(x.linkedin)}>Copy note</button><button onClick={()=>{S(x.id);open('draft')}}>Edit</button><a href="https://www.linkedin.com/sales/home" target="_blank" rel="noreferrer">Open Sales Navigator ↗</a><button disabled={busy} onClick={()=>act('linked',{id:x.id})}>Mark sent</button></div>}</article>)}</>}
+ {page==='Prospects'&&<>{agentFilter&&<div className="filterbar"><span>{d.bots.find(agent=>agent.id===agentFilter)?.name}</span><button onClick={()=>setAgentFilter('')}>Show all agents</button></div>}<input className="search" aria-label="Search prospects" placeholder="Search prospects…" value={search} onChange={e=>Q(e.target.value)}/>{filtered.length===0?<div className="panel"><h2>{search||agentFilter?'No matching prospects':'Your prospect ledger is empty'}</h2><p>Run agent research or add a prospect to a campaign.</p></div>:filtered.map(x=><article className="panel" key={x.id}><div className="row"><h2>{x.person||x.company}</h2><span className="pill">{preview?'Sample prospect':x.status}</span></div><small>{[x.role,x.person&&x.company,x.email||'No verified email'].filter(Boolean).join(' · ')}</small><p>{x.fit}</p>{(x.evidence||x.quote)&&<blockquote>{x.evidence||x.quote}{preview&&<cite>Fictional staff profile · Wrenfield Footwear</cite>}</blockquote>}{webSource(x.source)&&<a href={webSource(x.source)} target="_blank" rel="noreferrer">View source ↗</a>}{x.sourceDate&&<small> · Source dated <time dateTime={x.sourceDate}>{x.sourceDate}</time></small>}{!preview&&<><CompanyProof lead={x}/><ProfileLink lead={x}/></>}{!preview&&<div className="controls"><button disabled={busy} onClick={()=>act('visual',{id:x.id})}>{busy?'Working…':'Inspect source with Sonnet'}</button></div>}{x.visual&&<p>{x.visual}</p>}<details><summary>Email draft</summary><strong>{x.subject}</strong><p>{x.body}</p></details>{!preview&&!['replied','stopped'].includes(x.status)&&<button disabled={busy} onClick={()=>act('suppress',{id:x.id})}>Stop outreach</button>}</article>)}</>}
+ {page==='LinkedIn queue'&&<><section className="panel"><h2>LinkedIn sign-in</h2><p>Open LinkedIn in the browser where you use 1Password. Choose your saved LinkedIn login and complete any verification there. Copy a note below when you are ready to send.</p><a href="https://www.linkedin.com/login" target="_blank" rel="noreferrer">Open LinkedIn sign-in ↗</a></section>{!d.leads.length&&<div className="panel"><h2>No LinkedIn drafts yet</h2><p>Your agents prepare a note for each verified prospect.</p></div>}{d.leads.filter(x=>!['stopped','replied'].includes(x.status)).map(x=><article className="panel" key={x.id}><div className="row"><h2>{x.company}</h2><span className="pill">{x.linkedinState}</span></div><small>{x.person||'Company contact'}</small>{!preview&&<ProfileLink lead={x}/>}<p>{x.linkedin}</p>{x.linkedinState==='draft'&&<div className="controls"><button onClick={()=>copy(x.linkedin)}>Copy note</button><button onClick={()=>{S(x.id);open('draft')}}>Edit</button><a href="https://www.linkedin.com/sales/home" target="_blank" rel="noreferrer">Open Sales Navigator ↗</a><button disabled={busy} onClick={()=>act('linked',{id:x.id})}>Mark sent</button></div>}</article>)}</>}
  {page==='Activity'&&<section className="panel"><h2>Workspace history</h2>{d.events.length?d.events.map(x=><div className="log" key={x.id}><time>{dt(x.at)}</time><span>{x.text}</span></div>):<p>Agent runs, prospect changes, and outreach activity appear here.</p>}</section>}
  {page==='Mailbox'&&<section className="panel"><div className="row"><h2>AgentMail</h2><span className="pill">{d.agentMailConnected?'Connected':'Disconnected'}</span></div><p>Each agent can have its own address for inbound requests and replies. Create its address from the agent page.</p><button onClick={()=>open('agentmail')}>{d.agentMailConnected?'Update API key':'Connect AgentMail'}</button></section>}{page==='Mailbox'&&<section className="panel"><div className="row"><h2>Outbound email</h2><span className={'pill '+(d.mailbox?'on':'')}>{d.mailbox?'Connected':'Disconnected'}</span></div><p>{d.mailbox?d.mailbox.email:'Connect a mailbox to send campaign emails and detect replies.'}</p>{d.mailbox?<button disabled={busy} onClick={()=>act('disconnect')}>Disconnect mailbox</button>:<button className="primary" onClick={()=>open('connect')}>Connect mailbox</button>}</section>}
  </div></main>
@@ -142,6 +193,6 @@ export default function Workspace({url,anon,preview = null}){
  {modal==='activate'&&<form onSubmit={e=>{e.preventDefault();act('activate',{id:b.id,autoEmail:new FormData(e.target).has('auto')})}}><p>{preview?'This demo lets you try the schedule controls locally.':'The scheduler checks every 10 minutes. The first search becomes due when you enable the schedule.'} Research repeats every {b.cadence} hours.</p><p>Automatic email is off by default. Enabling it allows up to {b.cap} emails per day, including one follow-up after {b.delay} days.</p><label className="check"><input name="auto" type="checkbox" disabled={!d.mailbox}/>Enable automatic sending {d.mailbox?'from '+d.mailbox.email:'(connect a mailbox first)'}</label><button disabled={busy} className="primary">{preview?'Try demo schedule':'Start schedule'}</button></form>}
  {modal==='agentmail'&&<form onSubmit={handleForm('agentmail')}><Field name="key" label="AgentMail API key" type="password" required autoComplete="new-password"/><a href="https://console.agentmail.to/" target="_blank" rel="noreferrer">Open AgentMail console ↗</a><p>Your key is encrypted. Each agent gets a separate inbox when you provision it.</p><button disabled={busy} className="primary">Connect</button></form>}{modal==='inboxReply'&&incoming&&b&&<form onSubmit={handleForm('inboxReply',{id:b.id,messageId:incoming.id})}><p>{incoming.from} · {incoming.subject}</p><Field name="reply" label="Your reply" area rows={5} required/><button className="primary" disabled={busy}>Send reply</button></form>}{modal==='connect'&&<form onSubmit={handleForm('connect')}><label>Provider<select name="provider"><option value="gmail">Gmail / Google Workspace</option><option value="yahoo">Yahoo Mail</option><option value="icloud">iCloud Mail</option></select></label><Field label="Mailbox address" name="email" type="email" required/><Field name="password" type="password" label="Provider app password" autoComplete="new-password" required/><Field name="address" label="Business mailing address for email footers" required/><p>Connection checks sending access and inbox access for reply detection.</p><button className="primary" disabled={busy}>Verify and connect</button></form>}
  {modal==='draft'&&l&&<form onSubmit={handleForm('draft',{id:l.id})}><Field name="linkedin" label="Note" area rows={5} defaultValue={l.linkedin} required/><button className="primary" disabled={busy}>Save note</button></form>}
- {modal==='manual'&&<form onSubmit={handleForm('manual')}><label>Agent<select name="id">{d.bots.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>{[['company','Company'],['person','Contact name (optional)'],['email','Verified email (optional)'],['source','Public source URL'],['fit','Reason for fit'],['subject','Email subject'],['body','Email draft'],['linkedin','LinkedIn note']].map(([n,label])=><Field key={n} label={label} name={n} area={['body','linkedin'].includes(n)} type={n==='email'?'email':n==='source'?'url':'text'} required={!['email','person'].includes(n)}/>)}<button className="primary" disabled={busy}>Add prospect</button></form>}
+ {modal==='manual'&&<form onSubmit={handleForm('manual')}><label>Agent<select name="id">{d.bots.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>{[['company','Company'],['person','Contact name (optional)'],['email','Verified email (optional)'],['source','Public source URL'],['linkedinUrl','LinkedIn profile URL (optional)'],['fit','Reason for fit'],['subject','Email subject'],['body','Email draft'],['linkedin','LinkedIn note']].map(([n,label])=><Field key={n} label={label} name={n} area={['body','linkedin'].includes(n)} type={n==='email'?'email':['source','linkedinUrl'].includes(n)?'url':'text'} required={!['email','person','linkedinUrl'].includes(n)}/>)}<button className="primary" disabled={busy}>Add prospect</button></form>}
  </section></div>}</div>
 }

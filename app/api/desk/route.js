@@ -4,6 +4,7 @@ import {inbox,linkKey} from '../../../lib/agentmail.mjs';
 import {visualReview} from '../../../lib/visual.mjs';
 import {chat,research} from '../../../lib/agent.mjs';
 import {connect} from '../../../lib/mail.mjs';
+import {linkedinProfileUrl} from '../../../lib/profile-url.mjs';
 export const runtime='nodejs',maxDuration=300,dynamic='force-dynamic';
 async function authenticated(req, action) {
   try {
@@ -52,7 +53,7 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
  }
  case 'activate':{const b=bot(d,id);if(p.autoEmail===true&&!d.mailbox)throw new Fault('Connect a mailbox before enabling email.');b.active=true;b.autoEmail=p.autoEmail===true;b.next=now();event(d,b.name+' · campaign activated');break}
  case 'pause':{const b=bot(d,id);b.active=false;b.autoEmail=false;event(d,'Paused '+b.name);break}
- case 'manual':{const b=bot(d,id);if(p.email&&!email(p.email))throw new Fault('Enter a valid email.');if(!addLead(d,b,p))throw new Fault('This prospect already exists.',409);event(d,'Added '+text(p.company,150));break}
+ case 'manual':{const b=bot(d,id);if(p.linkedinUrl&&(!text(p.person)||!linkedinProfileUrl(p.linkedinUrl)))throw new Fault('A LinkedIn profile needs a contact name and an HTTPS linkedin.com/in/ profile link.');if(p.email&&!email(p.email))throw new Fault('Enter a valid email.');if(!addLead(d,b,{...p,companyVerification:null,linkedinEvidence:''}))throw new Fault('This prospect already exists.',409);event(d,'Added '+text(p.company,150));break}
  case 'draft':{const l=lead(d,id);if(l.linkedinState==='sent')throw new Fault('This note was already marked sent.');if(!text(p.linkedin,1500))throw new Fault('Write a LinkedIn note first.');l.linkedin=text(p.linkedin,1500);break}
  case 'linked':{const l=lead(d,id);if(l.linkedinState==='sent')return;l.linkedinState='sent';event(d,l.company+' · LinkedIn marked sent');break}
  case 'suppress':stop(d,lead(d,id),'stopped');break;
