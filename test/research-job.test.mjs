@@ -82,3 +82,13 @@ test('normal production continuation uses one independent dispatch even if anoth
     }
   }finally{if(prior===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=prior;}
 });
+
+test('new sparse hits do not evict a sourced person waiting on a LinkedIn identity',()=>{
+  const b={};queueResearch(b);
+  const pending=[{company:'Example',person:'Buyer One',role:'Buyer',source:'https://example.org/team',reason:'Profile index temporarily unavailable'},
+    ...Array.from({length:90},(_,i)=>({company:'Example',person:'Person '+i,reason:'Additional named role lookup pending'}))];
+  advanceResearchJob(b,{page:0,pending,queries:['buyers'],status:'page_complete'});
+  assert.ok(b.researchJob.pending.some(p=>p.person==='Buyer One'));
+  advanceResearchJob(b,{page:1,pending:[{company:'Example',person:'Buyer One',linkedinUrl:'https://www.linkedin.com/in/buyer-one',resolved:true}],queries:['designers'],status:'page_complete'});
+  assert.ok(b.researchJob.pending.every(p=>p.person!=='Buyer One'));
+});
