@@ -1,27 +1,24 @@
 import Workspace from '../workspace';
 
-export const metadata = { title: 'Workspace preview · Oparax', robots: { index: false } };
+export const metadata = { title: 'Interactive demo · Oparax', robots: { index: false } };
 
-const agent = {
-  id: 'footwear',
-  name: 'UK footwear sourcing',
-  brief: 'Find independent UK footwear brands that source finished leather and identify the right person to contact.',
-  cadence: 24, cap: 5, delay: 5, active: false, last: null
-};
-const prospect = {
-  id: 'sample-prospect', botId: agent.id, company: 'Sample Footwear Co.',
-  person: 'Sourcing team', email: 'sourcing@example.com', status: 'queued', stage: 0,
-  fit: 'This fictional buyer illustrates a brand sourcing leather for its next footwear collection.',
-  subject: 'Leather samples for your next collection',
-  body: 'Hello, would a sample set and a short material specification be useful for your next collection?',
-  linkedin: 'I saw your focus on leather footwear. Who handles material sourcing for your next collection?',
-  linkedinState: 'draft'
-};
-const sample = {
-  bots: [agent], leads: [prospect], mailbox: null, agentMailConnected: false,
-  messages: [{ id: 'sample-message', botId: agent.id, role: 'assistant', content: 'The sample buyer and its outreach drafts are ready in Prospects and LinkedIn queue.' }],
-  events: [{ id: 'sample-event', at: '2026-11-27T08:00:00Z', text: 'Prepared a sample buyer and two outreach drafts.' }]
-};
 export default function PreviewPage() {
-  return <Workspace preview={sample}/>;
+  return <Workspace preview={{
+    bots: [{
+      id: 'demo-footwear', name: 'Footwear sourcing',
+      brief: 'Find the person who buys leather for Wrenfield Footwear’s UK design team.',
+      cadence: 24, cap: 5, delay: 5, active: false, autoEmail: false, last: null
+    }],
+    leads: [], messages: [], events: [], mailbox: null, agentMailConnected: false,
+    sampleLead: {
+      id: 'demo-buyer', botId: 'demo-footwear', company: 'Wrenfield Footwear',
+      person: 'Maya Ellis', role: 'Footwear Materials Buyer', email: '', status: 'research', stage: 0,
+      fit: 'Maya selects the leathers used by Wrenfield’s UK design team.',
+      evidence: 'Maya Ellis, our Footwear Materials Buyer, selects leather for the UK design studio.',
+      subject: 'Leather samples for the UK design studio',
+      body: 'Hi Maya, would it be useful to review a small set of leather swatches for an upcoming footwear collection? I can send specifications for the finishes your studio is exploring.',
+      linkedin: 'Hi Maya, I saw you select leather for Wrenfield’s UK design studio. Which material finishes are you exploring for the next collection?',
+      linkedinState: 'draft'
+    }
+  }}/>;
 }
