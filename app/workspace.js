@@ -33,6 +33,7 @@ function ResearchProgress({agent}){
 }
 const returnHint='oparax.sales.prospectsUntil';
 const agentHint='oparax.sales.returnAgent';
+const settingsHint='oparax.sales.returnSettings';
 function webSource(value){
  try {const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch{return ''}
 }
@@ -128,12 +129,16 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
            current={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+Number(v.expires_in||3600)*1000};
          }
          try{
+           const savedSettings=JSON.parse(localStorage.getItem(settingsHint)||'null');localStorage.removeItem(settingsHint);
            const until=Number(localStorage.getItem(returnHint));localStorage.removeItem(returnHint);
            const savedAgent=JSON.parse(localStorage.getItem(agentHint)||'null');localStorage.removeItem(agentHint);
            if(location.pathname==='/'&&savedAgent?.until>Date.now()&&savedAgent.id===newThread){
              P('Agents');S(newThread);history.replaceState(null,'','/?new=1');
            }else if(location.pathname==='/'&&savedAgent?.until>Date.now()&&typeof savedAgent.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedAgent.id)){
              P('Agents');S(savedAgent.id);history.replaceState(null,'','/research?agent='+savedAgent.id);
+           }else if(location.pathname==='/'&&savedSettings?.until>Date.now()&&['Business memory','Skills & connections'].includes(savedSettings.page)){
+             const id=savedSettings.page==='Skills & connections'&&typeof savedSettings.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedSettings.id)?savedSettings.id:null;
+             P(savedSettings.page);setSkillId(id);history.replaceState(null,'',viewLinks[savedSettings.page]+(id?'&agent='+id:''));
            }else if(location.pathname==='/'&&until>Date.now()){
              P('Prospects');history.replaceState(null,'','/prospects');
            }
@@ -213,6 +218,9 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    B(true);E('');Y(false);
    try {
      try {
+       const target=currentRoute();
+       if(['Business memory','Skills & connections'].includes(target.page))localStorage.setItem(settingsHint,JSON.stringify({page:target.page,id:target.skillId,until:Date.now()+3600000}));
+       else localStorage.removeItem(settingsHint);
        const returnTo=location.pathname==='/research'?initialAgentId:currentRoute().id===newThread?newThread:null;
        if(returnTo)localStorage.setItem(agentHint,JSON.stringify({id:returnTo,until:Date.now()+3600000}));
        else localStorage.removeItem(agentHint);
@@ -248,8 +256,8 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
      onOpen={name=>{if(name==='inbox')S(owner.id);open(name)}} onFindEmail={()=>manageSource(owner,'rocketreach',person.id)} preview={!!preview}/>;
  }
  function clearLandingDraft(){clearPendingBrief();setInitialDraft('')}
- async function sendAgentMessage(message,requestId,searchSources,botName){
-   const original=sel,payload={...(b?{id:b.id}:{}),message,requestId,...(Array.isArray(searchSources)?{searchSources}:{}),...(!b&&botName?{botName}:{})};
+ async function sendAgentMessage(message,requestId,searchSources,botName,modelPreference){
+   const original=sel,payload={...(b?{id:b.id}:{}),message,requestId,...(Array.isArray(searchSources)?{searchSources}:{}),...(!b&&botName?{botName}:{}),...(!b&&modelPreference?{modelPreference}:{})};
    if(preview){
      const result=await act('messageAgent',payload,false);
      if(!result)return false;
@@ -283,7 +291,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  <div className="account"><i>{preview?'S':d.userEmail?.[0]?.toUpperCase()}</i><div>{preview?'Sample workspace':d.userEmail}<small>{preview?'Interactive demo':'Workspace owner'}</small></div>{preview?<a href="/">Sign in</a>:<button onClick={logout} title="Sign out" aria-label="Sign out">↗</button>}</div></aside>
  <main className={'room-main '+(page==='Agents'?'room-chat':'room-secondary')}><header className="room-topbar"><span>{preview?'Fictional demo':'Sales workroom'} <em>/</em> {page==='Agents'?'Conversations':page==='LinkedIn queue'?'Drafts':page}</span>{preview?<a href="/" style={{whiteSpace:'nowrap',flexShrink:0}}>Sign in</a>:<button disabled={busy} onClick={()=>load(auth).then(()=>N('Workspace refreshed.')).catch(e=>E(e.message))}>Refresh</button>}</header>
  <div className="room-content">{page==='Agents'?<AgentThread key={b?.id||newThread} agent={b} messages={b?d.messages.filter(x=>x.botId===b.id):[]} leads={b?publishedLeads.filter(x=>belongsToCampaign(x,b.id)):[]}
-   isDemo={!!preview} stream={(!preview&&eveSnapshot?.id===(b?.id||eveCommand?.ticket.agentId))?eveSnapshot:null} busy={busy} getToken={token} onTeach={(brief,name)=>{setTeaching({brief,name});go('Business memory')}} startingName={!b?teaching?.name:''} notice={!modal?(notice||(!b&&sel&&sel!==newThread?<p className="error" role="alert">This agent is unavailable in this workspace. Choose an agent in the sidebar or start a new conversation.</p>:null)):null} initialDraft={!b?(teaching?.brief??initialDraft):''} onClearDraft={()=>{clearLandingDraft();setTeaching(null)}}
+   isDemo={!!preview} stream={(!preview&&eveSnapshot?.id===(b?.id||eveCommand?.ticket.agentId))?eveSnapshot:null} busy={busy} getToken={token} onTeach={(brief,name,model)=>{setTeaching({brief,name,model});go('Business memory')}} startingName={!b?teaching?.name:''} startingModel={!b?teaching?.model:'auto'} notice={!modal?(notice||(!b&&sel&&sel!==newThread?<p className="error" role="alert">This agent is unavailable in this workspace. Choose an agent in the sidebar or start a new conversation.</p>:null)):null} initialDraft={!b?(teaching?.brief??initialDraft):''} onClearDraft={()=>{clearLandingDraft();setTeaching(null)}}
    workspace={d} onAction={(action,input)=>act(action,input,false)} onOpen={open} onRefresh={refreshDesk} managedRequest={managedRequest?.agentId===b?.id?managedRequest:null}
    onFindEmail={lead=>manageSource(b,'rocketreach',lead.id)} onSend={sendAgentMessage} onImport={(source,people)=>act('importSelectedLeads',{id:b.id,source,people},false)} showActivity={!!b&&activityFor===b.id} onShowProspects={()=>b&&showProspects(b.id)}
    tools={b?(openActivity,openSource,openComputer,manageProvider)=><><div className="thread-tool-actions"><button onClick={()=>go('Skills & connections',b.id)}>Bot skills</button><button onClick={()=>go('Business memory')}>Business memory</button><button disabled={busy} onClick={()=>open('save')}>Edit bot</button><button disabled={busy} onClick={()=>b.active?act('pause',{id:b.id}):open('activate')}>{b.active?'Pause schedule':'Schedule research'}</button></div><BotModel agent={b} busy={busy} isDemo={!!preview} onAction={(action,p)=>act(action,p,false)}/><AgentTools agent={b} workspace={d} demo={!!preview} busy={busy} onOpen={open} onAction={act} onNavigate={go} onShowActivity={()=>preview?go('Activity'):openActivity()} onChooseSource={openSource} onManageSource={manageProvider} onOpenComputer={preview?openSource:openComputer} onShowProspects={()=>showProspects(b.id)}/></>:null}/>:<>

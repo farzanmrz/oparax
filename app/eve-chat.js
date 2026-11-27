@@ -16,14 +16,14 @@ export async function prepareEveSession(getToken,payload,signal){
 }
 
 function Session({ticket,command,getToken,onSnapshot,onSettled,onAccepted}){
-  const tokenRef=useRef(ticket),renewing=useRef(null);
-  tokenRef.current=ticket.bearer!==tokenRef.current.initial?{...ticket,initial:ticket.bearer}:tokenRef.current;
+  const tokenRef=useRef(ticket),received=useRef(ticket.bearer),renewing=useRef(null);
+  if(received.current!==ticket.bearer){received.current=ticket.bearer;tokenRef.current=ticket}
   async function bearer(){
     const token=tokenRef.current,expires=typeof token.expiresAt==='number'?token.expiresAt:Date.parse(token.expiresAt);
     if(Number.isFinite(expires)&&expires>Date.now()+25000)return token.bearer;
     if(!renewing.current)renewing.current=prepareEveSession(getToken,{id:ticket.agentId}).then(next=>{
       if(next.sessionId!==ticket.sessionId)throw Error('This bot started a new session. Reopen its conversation.');
-      tokenRef.current={...next,initial:ticket.bearer};return next.bearer;
+      if(tokenRef.current===token)tokenRef.current=next;return tokenRef.current.bearer;
     }).finally(()=>{renewing.current=null});
     return renewing.current;
   }
@@ -35,13 +35,15 @@ function Session({ticket,command,getToken,onSnapshot,onSettled,onAccepted}){
     agent.send(command.payload.message,{idempotencyKey:command.payload.requestId,turnPolicy:'queue'}).then(()=>onAccepted(command)).catch(e=>command.reject(e));
   },[command,ticket.sessionId,agent.status,agent.send,onAccepted]);
   useEffect(()=>{
-    const last=agent.messages.filter(m=>m.role==='assistant').at(-1);
+    const latestUser=agent.messages.findLast(m=>m.role==='user');
+    const userText=(latestUser?.parts||[]).filter(part=>part.type==='text').map(part=>part.text).join('').trim();
+    const tail=agent.messages.at(-1),last=tail?.role==='assistant'?tail:null;
     const parts=(last?.parts||[]).flatMap(part=>{
       if(part.type==='text'&&part.text)return [{type:'text',text:part.text}];
       if(part.type==='tool')return [{type:'tool',state:part.state,name:part.name,callId:part.callId}];
       return [];
     });
-    onSnapshot({id:ticket.agentId,sessionId:ticket.sessionId,status:agent.status,parts,error:agent.error?.message||''});
+    onSnapshot({id:ticket.agentId,sessionId:ticket.sessionId,status:agent.status,parts,userText,error:agent.error?.message||''});
   },[ticket.agentId,ticket.sessionId,agent.messages,agent.status,agent.error,onSnapshot]);
   return null;
 }
@@ -74,8 +76,10 @@ export function EveActivity({snapshot,messages,pending}){
   const tools=parts.filter(p=>p.type==='tool');
   const text=parts.filter(p=>p.type==='text').map(p=>p.text).join('\n').trim();
   const showText=text&&!(last?.content||'').includes(text);
-  if(!busy&&!snapshot.error&&!showText&&!tools.length)return null;
+  const pendingUser=snapshot.userText&&busy&&!pending&&!messages.some(m=>m.role==='user'&&m.content===snapshot.userText);
+  if(!busy&&!snapshot.error&&!showText&&!tools.length&&!pendingUser)return null;
   return <section className="eve-turn" aria-label="Bot response">
+    {pendingUser&&<p><strong>You</strong> · {snapshot.userText}</p>}
     {snapshot.error&&<p role="alert" className="error">{snapshot.error}</p>}
     {(busy||pending)&&<small role="status">{snapshot.status==='resuming'?'Reconnecting to the conversation…':'Bot is working…'}</small>}
     {tools.length>0&&<details><summary>Tool activity</summary><ul>{tools.map((part,i)=><li key={part.callId||i}>{String(part.name||'Tool').replace(/[_-]+/g,' ')} · {part.state}</li>)}</ul></details>}

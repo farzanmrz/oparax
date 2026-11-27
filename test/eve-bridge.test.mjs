@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {prepareEveSession,eveCaller,eveModel,runEveSalesTurn,parseTicket,ticket} from '../lib/eve-bridge.mjs';
+import {view,workspaceId} from '../lib/store.mjs';
+const uid='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+function workspace(){let d={bots:[],leads:[],messages:[],events:[]},creates=0;
+  return {get d(){return d},get creates(){return creates},deps:{edit:async change=>{const next=structuredClone(d),result=change(next);d=next;return result;},read:async()=>({data:d}),start:async()=>{creates++;return 'wrun_test123';}}};
+}
+const request=(path,token,body)=>new Request('https://example.test'+path,{method:body===undefined?'GET':'POST',headers:{authorization:'Bearer '+token},...(body===undefined?{}:{body:JSON.stringify(body)})});
+test('Eve creates one durable named bot/session, authorizes only its literal commands, and safely restores after reload',async()=>{
+  process.env.SUPABASE_SECRET_KEY='test-fixture-only';
+  const w=workspace(),input={message:'Check status',requestId:'turn-a-00001',botName:'My worker',modelPreference:'grok'};
+  const fresh=await prepareEveSession(uid,input,w.deps),again=await prepareEveSession(uid,input,w.deps);
+  assert.equal(fresh.agentId,again.agentId);assert.equal(w.creates,1);assert.equal(w.d.bots.length,1);assert.equal(w.d.bots[0].name,'My worker');
+  await assert.rejects(prepareEveSession(uid,{...input,message:'A different message'},w.deps),/different text/);
+  const base='/eve/v1/session/'+fresh.sessionId;
+  const principal=await eveCaller(request(base,fresh.bearer,{message:input.message,turnPolicy:'queue',idempotencyKey:input.requestId}),w.deps);
+  assert.equal(principal.attributes.workspace,uid);assert.equal(principal.attributes.requestId,input.requestId);
+  assert.equal(await eveCaller(request(base,fresh.bearer,{message:'Send a different email'}),w.deps),null);
+  assert.equal(await eveCaller(request(base+'/end',fresh.bearer,{}),w.deps),null);
+  assert.equal(await eveCaller(request('/eve/v1/session/other/stream',fresh.bearer),w.deps),null);
+  assert.equal(await eveCaller(request('/eve/v1/session',fresh.bearer,{}),w.deps),null);
+  const reloaded=await prepareEveSession(uid,{id:fresh.agentId},w.deps);
+  assert.equal(reloaded.sessionId,fresh.sessionId);
+  assert.ok(await eveCaller(request(base+'/stream',reloaded.bearer),w.deps));
+  assert.equal(await eveCaller(request(base,reloaded.bearer,{message:input.message}),w.deps),null);
+  const ctx={session:{id:fresh.sessionId,auth:{current:principal,initiator:principal}}};assert.equal(await eveModel(ctx,w.deps),'spacexai/grok-4.3');
+  let seen;
+  const result=await runEveSalesTurn(ctx,{...w.deps,messageAgent:async arg=>{seen={...arg,owner:workspaceId()};w.d.messages.push({role:'user',botId:fresh.agentId,requestId:input.requestId},{role:'assistant',botId:fresh.agentId,content:'Checked the saved workspace.'});return {};}});
+  assert.deepEqual(seen,{id:fresh.agentId,message:input.message,requestId:input.requestId,owner:uid});assert.equal(result.reply,'Checked the saved workspace.');
+  const publicData=JSON.stringify(view(w.d));assert.ok(!publicData.includes('eveInputs')&&!publicData.includes('eveStartRequests'));
+  const bad={...principal,principalId:other+'/'+fresh.agentId};
+  await assert.rejects(runEveSalesTurn({session:{...ctx.session,auth:{...ctx.session.auth,current:bad}}},w.deps),/authorized/);
+});
+test('only internal, signed bootstrap tickets can create an idle native session',async()=>{
+  process.env.SUPABASE_SECRET_KEY='test-fixture-only';const token=ticket({uid,bot:other,scope:'create'});
+  assert.equal(await eveCaller(request('/eve/v1/session',token,{message:'bypass',operationId:'oparax-'+other+'-a'})),null);
+  assert.ok(await eveCaller(request('/eve/v1/session',token,{operationId:'oparax-'+other+'-a'})));
+  assert.equal(parseTicket(token+'!'),null);
+});
+test('concurrent first turns publish a single native session and a retired session can be replaced without losing the bot',async()=>{
+ process.env.SUPABASE_SECRET_KEY='test-fixture-only';
+ const w=workspace(),input={message:'Status',requestId:'concurrent-flight'};
+ let count=0;const deps={...w.deps,start:async()=>{const n=++count;await new Promise(r=>setTimeout(r,20));return 'wrun_session'+n;}};
+ const [a,b]=await Promise.all([prepareEveSession(uid,input,deps),prepareEveSession(uid,input,deps)]);
+ assert.equal(a.agentId,b.agentId);assert.equal(a.sessionId,b.sessionId);assert.equal(count,1);
+ w.d.bots[0].eveBinding.checkedAt=0;
+ const c=await prepareEveSession(uid,{id:a.agentId},{...deps,retired:async()=>true});
+ assert.equal(c.agentId,a.agentId);assert.notEqual(c.sessionId,a.sessionId);assert.equal(w.d.bots.length,1);
+});

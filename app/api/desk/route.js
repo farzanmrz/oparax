@@ -6,11 +6,9 @@ import {inbox,linkKey} from '../../../lib/agentmail.mjs';
 import {visualReview} from '../../../lib/visual.mjs';
 import {after} from 'next/server';
 import {queueResearch,runResearchBatch} from '../../../lib/research-job.mjs';
-import {chat} from '../../../lib/agent.mjs';
 import {normalizeSearchSources,selectedSearchSources} from '../../../lib/search-source.mjs';
 import {showSourceGate,publicJobAuthorized} from '../../../lib/research-access.mjs';
 import {stageSourceTasks,runSourceTask} from '../../../lib/source-tasks.mjs';
-import {messageAgent} from '../../../lib/conversation.mjs';
 import {connect} from '../../../lib/mail.mjs';
 import {linkedinProfileUrl} from '../../../lib/profile-url.mjs';
 export const runtime='nodejs',maxDuration=300,dynamic='force-dynamic';
@@ -34,11 +32,7 @@ function dispatchResearch(uid,id,work,sourceWork=[]) {
 export function GET(req){return authenticated(req,dashboard);}
 export function POST(req){return authenticated(req,async user=>{const raw=await req.text();if(raw.length>20000)throw new Fault('Request is too large.',413);let p;try{p=JSON.parse(raw)}catch{throw new Fault('Invalid request.')};if(!p||typeof p!=='object')throw new Fault('Invalid request.');
  const {action,id}=p;
- if(action==='messageAgent'){
-   const {agentId,work,sourceWork,outreachReceipt}=await messageAgent(p);
-   dispatchResearch(user.id,agentId,work,sourceWork);
-   return dashboard(user,{agentId,...(outreachReceipt?{outreachReceipt}:{})});
- }
+ if(action==='messageAgent'||action==='chat')throw new Fault('Reload Oparax to open this bot’s current conversation.',410);
  if(action==='importSelectedLeads'){
    const {importSelectedLeads}=await import('../../../lib/selected-leads.mjs');
    await importSelectedLeads(id,p);
@@ -73,7 +67,6 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
    });
    if(request)dispatchResearch(user.id,id,request.work,request.sourceWork);
  }
- else if(action==='chat'){if(!text(p.message,2000))throw new Fault('Write a message first.');await chat(id,text(p.message,2000))}
  else if(action==='connect')await connect(p);
  else await edit(d=>{switch(action){
  case 'setSalesSkill':{setSalesSkill(d,bot(d,id),p.skill,p.enabled);break;}

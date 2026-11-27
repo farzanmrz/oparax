@@ -11,11 +11,16 @@ test('only a positive instruction about people can bound a search',()=>{
     ['If only 6 exist, stop',null],['e.g. 6',null],["Don't stop at 1",null],
     ['Find all buyers. For example find 6 contacts.',null],['Find companies with 50 employees',null],
     ['We make a 50-person product. Find the buyers.',null],["Don't find 8 directors, find all of them.",null],
-    ['Find suppliers with up to 50 employees',null],['Our app serves up to 50 employees',null]
+    ['Find suppliers with up to 50 employees',null],['Our app serves up to 50 employees',null],
+    ['Our product helps buyers find 4 contacts every day. Find decision-makers.',null],
+    ['Find up to 45 contacts, but if only 6 exist stop.',45]
   ]){
     const plan={mode:'people',target:'Relevant buyers',roles:['purchasing managers'],requestedCount:50,countPhrase:'50 employees'};
     assert.equal(validatePlan(JSON.stringify(plan),{brief:clause}).goal,n,clause);
   }
+  const modelBrief='Find 6 buyers at Acme';
+  const literal={brief:modelBrief,researchLimitInput:{brief:modelBrief,instructions:['Find everyone at Acme. If only 6 exist, stop.']}};
+  assert.equal(validatePlan(JSON.stringify({mode:'people',target:modelBrief}),literal).goal,null);
   assert.equal(researchCeiling(['Find 10 buyers at Acme','No cap']),null);
 });
 

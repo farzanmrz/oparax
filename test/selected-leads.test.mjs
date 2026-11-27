@@ -73,3 +73,14 @@ test('a private selection can verify while the public search retains its own lea
   assert.equal(b.lastSelectedImports.sales_navigator.saved,1);
   assert.equal(f.d.leads[0].discoverySources[0].source,'sales_navigator');
 });
+
+test('selection does not publish over a maximum filled concurrently by another source',async()=>{
+  const f=fixture(),b=f.d.bots[0],verify=f.deps.verify;
+  b.researchLimitInput={brief:b.brief,instructions:['Find only up to 1 buyer.','Find 1 buyer.']};
+  f.deps.verify=async(...args)=>{
+    const result=await verify(...args);
+    b.researchJob.qualifiedIds=['verified-by-another-source'];return result;
+  };
+  await f.run([person]);
+  assert.equal(f.d.leads.length,0);assert.equal(b.lastSelectedImport.skippedAtLimit,1);assert.equal(b.lastSelectedImport.held.length,0);
+});

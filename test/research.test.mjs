@@ -131,3 +131,16 @@ test('raw profile metadata only, with grounded identity and no employer or perso
   const batch=candidateRows(JSON.stringify({candidates:[row,{...row,person:''},{...row,company:'Supplier Co'}]}),plan);
   assert.equal(batch.rows.length,1);assert.equal(batch.rows[0].profileHit,undefined);assert.equal(batch.rows[0].companyVerification,undefined);
 });
+
+test('a provider replaying one query for every article route reports incomplete search rather than audience exhaustion',async()=>{
+  const f=fixture({services:{profilePage:async()=>({searched:false,exhausted:true,rows:[]}),
+    articleSearch:async()=>Object.assign([],{executedQueries:['same search for every route']})}});
+  for(let page=0;page<8&&f.b.researchRequestedAt;page++)await f.run(page);
+  assert.equal(f.b.lastRun.status,'failed');assert.equal(f.b.lastRun.receipt.reason,'source_error');
+  assert.equal(f.b.lastRun.receipt.distinctQueries,1);assert.equal(f.b.lastRun.receipt.sourceFamilies.length,1);
+});
+test('real verifier publishes beyond the retired 50 limit while fresh evidence keeps arriving',async()=>{
+  const f=fixture({services:{profilePage:async({page})=>pageOf(Array.from({length:13},(_,i)=>person(page*13+i)),page)}});
+  for(let page=0;page<4;page++)await f.run(page);
+  assert.equal(f.b.researchJob.qualified,52);assert.equal(f.b.researchJob.goal,null);assert.equal(f.b.lastRun.status,'continuing');
+});

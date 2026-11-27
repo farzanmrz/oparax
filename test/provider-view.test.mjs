@@ -29,4 +29,17 @@ test('a legacy quota is displayed only if the customer explicitly requested a ce
  const explicit=view({bots:[{...bot,clarifications:[{answer:'Find up to 10 buyers.'}]}]}).bots[0];
  assert.equal(explicit.taskGoal,10);
  assert.equal(explicit.researchJob.goal,10);
+ const paraphrase='Find up to 50 buyers.';
+ const literal=view({bots:[{...bot,brief:paraphrase,researchLimitInput:{brief:paraphrase,instructions:['Find all the buyers.']}}]}).bots[0];
+ assert.equal(literal.researchJob.goal,null);
+});
+
+test('research held for evidence is separate from results over a requested limit',()=>{
+ const b={brief:'Find five buyers',lastSelectedImport:{held:[],skippedAtLimit:3},lastMailboxResearch:{held:2,skippedAtLimit:1}};
+ const agent=view({bots:[b]}).bots[0];
+ assert.deepEqual(agent.lastSelectedImport.held,[]);
+ assert.equal(agent.lastSelectedImport.skippedAtLimit,3);
+ assert.deepEqual(agent.lastMailboxResearch,{held:2,skippedAtLimit:1});
+ b.lastMailboxResearch.skippedAtLimit={private:'unexpected'};
+ assert.equal(view({bots:[b]}).bots[0].lastMailboxResearch.skippedAtLimit,undefined);
 });

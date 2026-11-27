@@ -51,8 +51,8 @@ test('saved results and status use live verified records, draft is persisted wit
   await w.send({id:agentId,message:'Show me the prospects',requestId:'give-results'});
   assert.deepEqual(w.data.messages.at(-1).details.prospectIds,['lead-real']);
   await w.send({id:agentId,message:'What is the status of this research?',requestId:'give-status'});
-  assert.match(w.data.messages.at(-1).content,/qualified 0 of 50/);
-  assert.match(w.data.messages.at(-1).content,/0 distinct public profile URLs and completed 0 source checks/);
+  assert.match(w.data.messages.at(-1).content,/qualified 0 contacts/);
+  assert.match(w.data.messages.at(-1).content,/0 candidate records and completed 0 source checks/);
   plan={action:'draft',prospectId:'lead-real',channel:'email'};
   const input={id:agentId,message:'Draft a short email for Example Person offering a footwear sample.',requestId:'draft-email'};
   await w.send(input);await w.send(input);
@@ -206,4 +206,25 @@ test('explicit concrete email persists exact recipient and draft before transpor
   await assert.rejects(w.send(input),/interrupted/);
   const retry=await w.send(input);assert.equal(retry.outreachReceipt.status,'sent');assert.equal(seen.size,1);
   assert.deepEqual(calls[0],calls[1]);assert.equal(drafted,1);assert.equal(w.data.leads[0].reviewDrafts.length,1);
+});
+
+test('explicit account memory chat bypasses model, is shared with another bot, and replays once',async()=>{
+ let calls=0;
+ const w=workspace('memory-chat',async args=>{calls++;assert.equal(args.businessProfile.productsServices,'We supply finished leather.');return {action:'answer',answer:'You supply finished leather.'}});
+ const command={message:'Save to business memory: Products: We supply finished leather.',requestId:'memory-verb'};
+ const first=await w.send(command);assert.equal(first.work,null);assert.equal(calls,0);assert.equal(w.data.businessMemory.version,1);
+ await w.send(command);assert.equal(w.data.businessMemory.version,1);assert.equal(w.data.messages.length,2);
+ await w.send({message:'What do we sell?',requestId:'second-bot-with-memory',modelPreference:'grok'});
+ assert.equal(calls,1);assert.equal(w.data.bots.length,2);assert.equal(w.data.bots[1].modelPreference,'grok');assert.equal(w.data.messages.at(-1).content,'You supply finished leather.');
+});
+
+test('a missing fact requests clarification without saving or transmitting an invented draft',async()=>{
+ let decision=researchPlan;
+ const w=workspace('clarify-missing-value',async()=>decision,async()=>({question:'What sample price can I quote?'}));
+ const {agentId}=await w.send(req);
+ await w.services.edit(d=>d.leads.push(saved('sample-lead',agentId)));
+ decision={action:'draft',prospectId:'sample-lead',channel:'email'};
+ const result=await w.send({id:agentId,requestId:'ask-sample-price',message:'Draft an email offering our current sample price.'});
+ assert.equal(result.send,null);assert.equal(w.data.leads[0].reviewDrafts,undefined);
+ assert.equal(w.data.messages.at(-1).content,'What sample price can I quote?');
 });

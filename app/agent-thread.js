@@ -1,6 +1,8 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import ResearchFeed from './research-feed';
+import BotModel from './bot-model';
+import {MODEL_CHOICES} from '../lib/agent-models.mjs';
 import {ChatComposer,EveActivity} from './eve-chat';
 import {ResearchOutcome,researchCeiling,verifiedCount} from './research-outcome';
 import AgentComputer from './agent-computer';
@@ -45,7 +47,8 @@ function Message({message,name}){
     {!legacyCopy&&<p>{message.content}</p>}{draft&&<div className="thread-draft"><strong>Draft for {draft.person}</strong>{draft.to&&<p>To · {draft.to}</p>}{draft.senderEmail&&<p>From · {draft.senderEmail}</p>}{draft.body&&<section><small>Email</small>{draft.subject&&<p><strong>{draft.subject}</strong></p>}<p>{draft.body}</p></section>}{draft.linkedin&&<section><small>LinkedIn</small><p>{draft.linkedin}</p></section>}</div>}{delivery&&<div className="thread-delivery"><strong>{({sent:'Accepted by sender',sending:'Sending',needs_review:'Delivery needs review',rejected:'Send rejected'})[delivery.status]||'Delivery receipt'}</strong><p>{[delivery.provider,delivery.from&&'From '+delivery.from,delivery.to&&'To '+delivery.to].filter(Boolean).join(' · ')}</p>{delivery.providerId&&<small>Receipt {delivery.providerId}</small>}</div>}</div>
   </article>;
 }
-export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource,onTeach,startingName='',stream}){
+export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource,onTeach,startingName='',startingModel='auto',stream}){
+  const [chosenModel,setChosenModel]=useState(startingModel||'auto');
   const [botName,setBotName]=useState(startingName||''),[panels,setPanels]=useState({});
   const [personId,setPersonId]=useState(null),[chooseSource,setChooseSource]=useState(false);
   const [value,setValue]=useState(initialDraft),[pending,setPending]=useState(''),[activity,setActivity]=useState(!!showActivity||(!isDemo&&agentState(agent).tone==='working')),[settings,setSettings]=useState(false);
@@ -79,7 +82,7 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   useEffect(()=>{if(webWorking&&!lastWorking.current)setActivity(true);lastWorking.current=webWorking},[webWorking]);
   const showBrief=agent?.brief&&!messages.some(m=>m.role==='user'&&m.content.trim()===agent.brief.trim());
   useEffect(()=>{if(showActivity&&!sourcePending){setActivity(true);requestAnimationFrame(()=>document.getElementById('thread-activity-panel')?.scrollIntoView({block:'nearest'}))}},[showActivity,sourcePending]);
-  useEffect(()=>{const el=scroller.current;if(el&&follow.current&&!showActivity&&!sourcePending)el.scrollTop=el.scrollHeight},[agent?.id,messages.length,pending,leads.length,showActivity,sourcePending]);
+  useEffect(()=>{const el=scroller.current;if(el&&follow.current&&!showActivity&&!sourcePending)el.scrollTop=el.scrollHeight},[agent?.id,messages.length,pending,leads.length,showActivity,sourcePending,stream?.parts?.at(-1)?.text]);
   useEffect(()=>{
     if(!sourcePending||!scroller.current)return;
     const el=scroller.current;el.scrollTop=0;
@@ -94,9 +97,9 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   function fill(text){setValue(text);field.current?.focus()}
   async function send(input,selected){
     const message=String(input??value).trim();if(!message||sending.current||busy)return;
-    if(!request.current||request.current.message!==message||request.current.selection!==selected?.join(',')||request.current.name!==botName)request.current={message,selection:selected?.join(','),name:botName,id:crypto.randomUUID()};
+    if(!request.current||request.current.message!==message||request.current.selection!==selected?.join(',')||request.current.name!==botName||request.current.model!==chosenModel)request.current={message,selection:selected?.join(','),name:botName,model:chosenModel,id:crypto.randomUUID()};
     sending.current=true;setPending(message);setValue(message);follow.current=true;
-    try{if(await onSend(message,request.current.id,selected,agent?undefined:botName.trim())){request.current=null;setValue('');setChooseSource(false)}}finally{sending.current=false;setPending('')}
+    try{if(await onSend(message,request.current.id,selected,agent?undefined:botName.trim(),agent?undefined:chosenModel)){request.current=null;setValue('');setChooseSource(false)}}finally{sending.current=false;setPending('')}
   }
   const actions=agent?[
     {label:isDemo?'Run sample research':failed?'Retry research':'Find prospects',message:isDemo?'Run sample research for this brief.':failed?'Retry this research run.':'Research this brief and find verified prospects.'},
@@ -114,7 +117,7 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
     <div className="thread-scroll" ref={scroller} onScroll={e=>{const el=e.currentTarget;follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<85}}>
       <div className="thread-flow">
         {agent?.id&&!isDemo&&<div id="bot-desktop-panel" hidden={!panels.desktop}><AgentComputer ref={item=>{desktopRef.current.desktop=item}} agent={agent} provider="desktop" getToken={getToken}/></div>}
-        {!agent&&<div className="thread-welcome"><h2>What should your sales bot work on?</h2><p>Your bot keeps its own brief, sources and conversation.</p><label>Bot name (optional)<input value={botName} maxLength={65} placeholder="Barbour Scout" onChange={e=>setBotName(e.target.value)}/></label><div className="teach-bot"><button type="button" onClick={()=>onTeach(value,botName)}>Business memory</button><p>{workspace.businessMemory?.company?'This bot uses the saved details for '+workspace.businessMemory.company+'.':'Teach your bots about your company, buyers and voice.'}</p></div></div>}
+        {!agent&&<div className="thread-welcome"><h2>What should your sales bot work on?</h2><p>Your bot keeps its own brief, sources and conversation.</p><label>Bot name (optional)<input value={botName} maxLength={65} placeholder="Barbour Scout" onChange={e=>setBotName(e.target.value)}/></label><details><summary>Bot model · {MODEL_CHOICES.find(m=>m.id===chosenModel)?.label||'Auto'}</summary><BotModel value={chosenModel} onChange={setChosenModel} isDemo={isDemo} busy={busy}/></details><div className="teach-bot"><button type="button" onClick={()=>onTeach(value,botName,chosenModel)}>Business memory</button><p>{workspace.businessMemory?.company?'This bot uses the saved details for '+workspace.businessMemory.company+'.':'Teach your bots about your company, buyers and voice.'}</p></div></div>}
         {showSources&&<SourcePicker key={agent.id+'/'+sourceKey+'/'+(managedRequest?.key||'')} selected={suggested} busy={busy||!!pending} onApply={chosen=>send('Use these research sources: '+chosen.map(sourceName).join(', ')+'.',chosen)}/>}
         {agent&&<div className="thread-goal"><strong>{isDemo?'Sample research':verifiedCount(agent.taskQualified??job?.qualified??leads.length,researchCeiling(agent))}</strong><span>{isDemo?'Fictional company and contacts':job?`Public web · ${job.counts?.candidates||0} candidates surfaced · ${job.counts?.checked||0} source checks`:'Employer and personal LinkedIn profile checked'}</span></div>}
         {agent&&!isDemo&&<ResearchOutcome agent={agent}/>}

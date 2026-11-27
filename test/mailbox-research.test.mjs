@@ -86,3 +86,11 @@ test('a different verified organization domain, and two e-mail identities sharin
   deps.verifyCandidates=original;assert.equal((await runMailboxResearch(id,request(),deps)).saved,0);
   assert.equal(data.leads.length,0);assert.ok(b.mailboxPending.length);
 });
+
+test('when another provider filled the requested ceiling a scheduled mailbox task performs no reads',async()=>{
+  const {b,data,deps,reads}=setup();
+  b.researchLimitInput={brief:b.brief,instructions:['Find up to 1 designer.']};
+  b.researchJob.qualifiedIds=['another-verified-person'];
+  const out=await runMailboxResearch(id,request(),deps);
+  assert.equal(out.status,'goal_met');assert.equal(reads.length,0);assert.equal(data.leads.length,0);
+});

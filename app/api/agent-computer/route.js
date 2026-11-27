@@ -1,3 +1,4 @@
+import {requireSkill,skillForSource} from '../../../lib/sales-skills.mjs';
 import {randomUUID} from 'node:crypto';
 import {Fault,edit,failure,verifiedUser,withWorkspace} from '../../../lib/store.mjs';
 import {selectedSearchSources} from '../../../lib/search-source.mjs';
@@ -22,7 +23,8 @@ export async function POST(request){
     return await withWorkspace(user.id,async()=>{
       const lease=randomUUID();
       const claim=await edit(data=>{
-        const agent=bot(data,input.agentId);
+        const agent=bot(data,input.agentId);requireSkill(agent,'computer_use');
+        if(input.provider!=='desktop')requireSkill(agent,skillForSource(input.provider));
         if(input.provider!=='desktop'&&!selectedSearchSources(agent).includes(input.provider))throw new Fault('Choose this search source in the conversation first.',409);
         // Older workspaces kept one active grant at the workspace level.
         const legacy=data.computerLaunch;
@@ -62,6 +64,7 @@ export async function POST(request){
         });
       }
       if(desktop.status==='starting')return starting();
+      await edit(data=>{const b=bot(data,input.agentId);requireSkill(b,'computer_use');if(input.provider!=='desktop')requireSkill(b,skillForSource(input.provider));});
       return Response.json({url:desktop.url,expiresAt:desktop.expiresAt,provider:input.provider},{headers:privateHeaders});
     });
   }catch(error){

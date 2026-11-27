@@ -68,3 +68,10 @@ test('owner edits create an immutable draft that is the exact version dispatched
  assert.ok(x.deliveries[0].text.startsWith(input.body));
  assert.notEqual(x.person.body,input.body);
 });
+
+test('disabled delivery capability blocks the transport and preserves the unsent draft',async()=>{
+ const x=fixture();x.data.bots[0].skillSettings={email_delivery:false};
+ await assert.rejects(sendOutreach(x.input,x.deps),/disabled/);
+ assert.equal(x.deliveries.length,0);assert.equal(x.person.reviewDrafts.length,1);
+ assert.equal((x.person.outreachReceipts||[]).length,0);
+});
