@@ -1,6 +1,6 @@
 import './globals.css';
 export const metadata={
-  title:'Oparax · Sales agent',
-  description:'Give your sales agent a brief, find verified buyers, and draft outreach together.'
+  title:'Oparax · Sales bots',
+  description:'Create sales bots to research accounts, verify buyers, and handle outreach.'
 };
 export default function Layout({children}){return <html lang="en"><body>{children}</body></html>}

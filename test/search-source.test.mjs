@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SEARCH_SOURCE_CHOICES,normalizeSearchSource,explicitSearchSource,requestingSourceChoice,sourceLabel} from '../lib/search-source.mjs';
+import {SEARCH_SOURCE_CHOICES,normalizeSearchSource,normalizeSearchSources,selectedSearchSources,parseSearchSources,explicitSearchSource,requestingSourceChoice,sourceLabel} from '../lib/search-source.mjs';
 
 test('button IDs and source names share canonical values',()=>{
   for(const {value,label} of SEARCH_SOURCE_CHOICES){
@@ -49,4 +49,44 @@ test('unresolved source requests require a choice while ordinary text and output
     'Use my LinkedIn account to send a message','Can you show all the saved results?']){
     assert.equal(requestingSourceChoice(line),false,line);
   }
+});
+
+test('normalizes five ordered, independent selections and honors empty saved preferences',()=>{
+  assert.equal(SEARCH_SOURCE_CHOICES.length,5);
+  assert.deepEqual(normalizeSearchSources(['Rocket Reach','public web','RocketReach','Email']),['rocketreach','web','email']);
+  assert.deepEqual(normalizeSearchSources(['LinkedIn','not-a-source']),[]);
+  assert.deepEqual(normalizeSearchSources('Sales Navigator'),['sales_navigator']);
+  assert.deepEqual(selectedSearchSources({searchSource:'linkedin'}),['linkedin']);
+  assert.deepEqual(selectedSearchSources({searchSource:'web',searchSources:[]}),[]);
+  assert.deepEqual(selectedSearchSources({searchSource:'web',searchSources:['email','linkedin']}),['email','linkedin']);
+});
+test('multi-source instructions permit combined runs and intentional edits',()=>{
+  const cases=[
+    ['use LinkedIn',['linkedin'],'add'],
+    ['both web and LinkedIn',['web','linkedin'],'replace'],
+    ['Use web, LinkedIn, LinkedIn Sales Navigator, RocketReach, and Email',['web','linkedin','sales_navigator','rocketreach','email'],'replace'],
+    ['Use Sales Navigator together with Rocket Reach',['sales_navigator','rocketreach'],'replace'],
+    ['also use RocketReach',['rocketreach'],'add'],['add both RocketReach and email',['rocketreach','email'],'add'],
+    ['drop web and email',['web','email'],'remove'],['remove LinkedIn',['linkedin'],'remove'],
+    ['only email',['email'],'replace'],['LinkedIn only',['linkedin'],'replace'],
+    ['Switch from the public web to LinkedIn',['linkedin'],'replace'],
+    ['All five',['web','linkedin','sales_navigator','rocketreach','email'],'replace'],
+    ['use all five sources except email',['web','linkedin','sales_navigator','rocketreach'],'replace'],
+    ['find contacts via email',['email'],'add'],['search my inbox for buyers',['email'],'add'],
+    ['Use LinkedIn, and email me their profile links',['linkedin'],'add'],
+  ];
+  for(const [line,sources,mode] of cases)assert.deepEqual(parseSearchSources(line),{sources,mode,ambiguous:false},line);
+});
+test('distinguishes alternate research sources from outreach and output requirements',()=>{
+  for(const line of ['use LinkedIn or Sales Navigator','Choose between RocketReach and email','change my search source','add web and remove LinkedIn'])
+    assert.deepEqual(parseSearchSources(line),{sources:[],mode:null,ambiguous:true},line);
+  for(const line of ['Get an email address for this contact','email Alice about our prices','Find LinkedIn profile URLs with email addresses',
+    'Write an email draft and a LinkedIn note','Use email to send the message','Companies that use RocketReach','We used all five buyers in the analysis'])
+    assert.deepEqual(parseSearchSources(line),{sources:[],mode:null,ambiguous:false},line);
+});
+
+test('general web, mixed sources, and a separate delivery channel follow literal source selection',()=>{
+  assert.deepEqual(parseSearchSources('Use a mix of LinkedIn, email, RocketReach and the general web').sources,['linkedin','email','rocketreach','web']);
+  assert.deepEqual(parseSearchSources('Search the general web and Rocket Reach, then DM them on LinkedIn.').sources,['web','rocketreach']);
+  assert.deepEqual(parseSearchSources('Find 50 footwear buyers across LinkedIn, email, RocketReach and the general web').sources,['linkedin','email','rocketreach','web']);
 });

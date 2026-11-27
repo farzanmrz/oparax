@@ -37,3 +37,21 @@ test('new sample threads wait for explicit source and never simulate a signed-in
   assert.equal(workspace.bots.find(agent=>agent.id===id).searchSource,'web');
   assert.equal(workspace.leads.length,1);
 });
+
+test('two user-named bots keep distinct identities and a three-source selection belongs only to its bot',()=>{
+  const sampleLead={id:'demo-fixture',botId:'starter',company:'Test Footwear',person:'Demo Buyer',role:'Sourcing manager',linkedin:'Fixture introduction'};
+  let data={bots:[{id:'starter',name:'Starter',searchSource:'web'}],leads:[],events:[],messages:[],sampleLead};
+  const at='2026-11-27T15:50:00Z';
+  data=sampleMessage(data,{message:'Find footwear buyers',botName:'Barbour Scout',requestId:'first'},at);
+  const first=data.agentId;
+  data=sampleMessage(data,{message:'Find design partners',botName:'Partner Scout',requestId:'second'},at);
+  const second=data.agentId;
+  assert.notEqual(first,second);assert.equal(data.bots.find(b=>b.id===first).name,'Barbour Scout');
+  assert.equal(data.bots.find(b=>b.id===second).name,'Partner Scout');assert.equal(data.leads.length,0);
+  const sources=['web','linkedin','rocketreach'];
+  data=sampleMessage(data,{id:first,message:'Use Public web, LinkedIn and RocketReach',searchSources:sources,requestId:'source-combination'},at);
+  assert.deepEqual(data.bots.find(b=>b.id===first).searchSources,sources);
+  assert.deepEqual(data.bots.find(b=>b.id===second).searchSources,[]);
+  assert.equal(data.leads.length,1);assert.equal(data.leads[0].botId,first);
+  assert.equal(data.messages.filter(m=>m.botId===second).length,2);
+});

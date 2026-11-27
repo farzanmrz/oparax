@@ -66,7 +66,7 @@ export default function AgentComputer({ref,agent,provider,getToken,onImport,busy
       else setImportError('These people could not be submitted. Check the workspace message and try again.');
     }finally{submitting.current=false;}
   }
-  const receipt=agent.lastSelectedImport?.source===provider?agent.lastSelectedImport:null;
+  const receipt=agent.lastSelectedImports?.[provider]||(agent.lastSelectedImport?.source===provider?agent.lastSelectedImport:null);
   return <section className="thread-computer" aria-label={labels[provider]+' agent computer'}>
     <div className="row"><h2>{labels[provider]} on your agent computer</h2><button type="button" disabled={opening} onClick={openDesktop}>{starting?'Preparing computer…':opening?'Opening computer…':'Open agent computer ↗'}</button></div>
     <p>You sign in to LinkedIn in this private browser. Oparax doesn’t yet support 1Password approval prompts.</p>

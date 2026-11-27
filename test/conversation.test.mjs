@@ -120,7 +120,7 @@ test('an explicit initial source works and output format is not treated as searc
 test('private source replaces running web work without starting a new discovery worker',async()=>{
   const w=workspace('switch-private',async()=>researchPlan);const first=await w.send(req);
   await w.services.edit(d=>{d.bots[0].lease={id:'old-worker',until:new Date(Date.now()+30000).toISOString()};});
-  const selected=await w.send({id:first.agentId,message:'Use LinkedIn',requestId:'make-private'});
+  const selected=await w.send({id:first.agentId,message:'Switch to LinkedIn only',requestId:'make-private'});
   assert.equal(selected.work,null);assert.equal(w.data.bots[0].researchRequestedAt,undefined);assert.equal(w.data.bots[0].lease.supersededWorker,'old-worker');
   assert.equal(w.data.bots[0].searchSource,'linkedin');assert.equal(w.data.bots[0].searchGate.status,'awaiting_selection');
   await w.services.edit(d=>assert.equal(releaseReplacedWorker(d.bots[0],'old-worker'),null));
@@ -137,7 +137,7 @@ test('ambiguous source change on an existing public agent prompts rather than co
 test('confirming the public web resumes a failed legacy job at 12 of 50 without discarding saved IDs or search cursors',async()=>{
   const w=workspace('legacy-resume',async()=>researchPlan);const start=await w.send(req);
   await w.services.edit(d=>{
-    const b=d.bots[0];delete b.searchSource;delete b.researchRequestedAt;delete b.researchJob.searchSource;
+    const b=d.bots[0];delete b.searchSource;delete b.searchSources;delete b.researchRequestedAt;delete b.researchJob.searchSource;
     b.researchJob.status='failed';b.researchJob.goal=50;b.researchJob.qualified=12;
     b.researchJob.qualifiedIds=Array.from({length:12},(_,i)=>'lead-'+i);b.researchJob.pages=8;b.researchJob.indexCursors={Barbour:8};
     b.lastRun={status:'failed',summary:'Last provider unavailable.'};b.searchGate={status:'awaiting_source'};
@@ -153,4 +153,57 @@ test('confirming the public web resumes a failed legacy job at 12 of 50 without 
   await w.services.edit(d=>{const b=d.bots[0];delete b.researchRequestedAt;b.researchJob.status='goal_met';b.researchJob.qualified=50;b.lastRun={status:'goal_met',summary:'Found 50 contacts.'};});
   const done=await w.send({id:start.agentId,message:'Public web',requestId:'terminal-confirm'});
   assert.equal(done.work,null);assert.equal(w.data.bots[0].researchJob.id,before.id);assert.equal(w.data.bots[0].researchJob.qualified,50);
+});
+
+test('multi-source Apply preserves the web cursor, stages RocketReach and reports consent without reading email',async()=>{
+  const w=workspace('multi',async()=>researchPlan);
+  await w.services.edit(d=>{d.mailbox={id:'m'};d.rocketReach={key:'test'};});
+  const a=await w.send({...req,botName:'Buyer Scout'});
+  await w.services.edit(d=>{d.bots[0].researchJob.pages=7;});
+  const chosen=await w.send({id:a.agentId,requestId:'apply-combination',message:'Use a mix of LinkedIn, email, RocketReach and the general web',botName:'Do not rename'});
+  assert.deepEqual(w.data.bots[0].searchSources,['linkedin','email','rocketreach','web']);
+  assert.equal(w.data.bots[0].name,'Buyer Scout');assert.equal(chosen.work.requestedAt,a.work.requestedAt);assert.equal(chosen.work.page,7);
+  assert.deepEqual(chosen.sourceWork.map(v=>v.source),['rocketreach']);
+  const states=view(w.data).bots[0].sourceStates;
+  assert.equal(states.email.status,'needs_consent');assert.equal(states.linkedin.status,'awaiting_selection');
+  const additional=await w.send({id:a.agentId,requestId:'add-navigator',message:'Also add Sales Navigator'});
+  assert.deepEqual(w.data.bots[0].searchSources,['linkedin','email','rocketreach','web','sales_navigator']);
+  assert.deepEqual(additional.sourceWork,chosen.sourceWork);
+  const remove=await w.send({id:a.agentId,requestId:'remove-web',message:'Remove public web'});
+  assert.equal(remove.work,null);assert.equal(w.data.bots[0].researchJob.pages,7);
+  assert.ok(w.data.bots[0].searchSources.includes('rocketreach'));assert.equal(w.data.bots[0].researchRequestedAt,undefined);
+});
+test('RocketReach-only works without public web, and replay uses the same provider request ID',async()=>{
+  const w=workspace('only-rocket',async()=>researchPlan);
+  await w.services.edit(d=>{d.rocketReach={key:'test'};});
+  const input={requestId:'only-rocket-apply',message:'Find buyers at Barbour.',searchSources:['rocketreach']};
+  const result=await w.send(input);assert.equal(result.work,null);assert.equal(w.data.bots[0].researchJob,undefined);
+  assert.equal(result.sourceWork.length,1);assert.deepEqual((await w.send(input)).sourceWork,result.sourceWork);
+  const {runSourceTask}=await import('../lib/source-tasks.mjs');
+  let calls=0;const deps={...w.services,rocketreach:async (id,{requestId,remaining})=>{calls++;assert.equal(id,result.agentId);assert.equal(remaining,50);assert.equal(requestId,result.sourceWork[0].requestId);}};
+  await Promise.all([runSourceTask(result.agentId,result.sourceWork[0],deps),runSourceTask(result.agentId,result.sourceWork[0],deps)]);
+  assert.equal(calls,1);assert.deepEqual((await w.send(input)).sourceWork,[]);
+});
+test('consented mailbox may join web, uses a stable request and never runs after changing the brief',async()=>{
+  const w=workspace('mail-join',async()=>researchPlan);
+  const a=await w.send(req);
+  await w.services.edit(d=>{const b=d.bots[0];d.mailbox={id:'m'};b.mailboxResearchConsent={mailboxId:'imap/m',signature:JSON.stringify([b.brief,[]]),mailboxKind:'connected'};});
+  const i={id:a.agentId,message:'Also use my email',requestId:'join-private'};
+  const joined=await w.send(i);assert.deepEqual(joined.sourceWork.map(x=>x.source),['email']);assert.equal(joined.work.requestedAt,a.work.requestedAt);
+  const {runSourceTask}=await import('../lib/source-tasks.mjs');let calls=0;
+  await w.services.edit(d=>{d.bots[0].brief='Find other people.';});
+  await runSourceTask(a.agentId,joined.sourceWork[0],{edit:w.services.edit,email:async()=>calls++});assert.equal(calls,0);
+});
+test('explicit concrete email persists exact recipient and draft before transport and reuses same turn on retry',async()=>{
+  let plan=researchPlan,drafted=0;const w=workspace('delivery-roundtrip',async()=>plan,async()=>{drafted++;return {subject:'Footwear samples',body:'Could I send samples?'};});
+  const {agentId}=await w.send(req);
+  await w.services.edit(d=>{d.mailbox={id:'m',email:'sender@example.org'};d.leads.push({...saved('lead-real',agentId),email:'test@example.org'});});
+  plan={action:'send',prospectId:'lead-real',channel:'email',concrete:true,purpose:'offer footwear samples'};
+  const seen=new Set(),calls=[];
+  w.services.sendOutreach=async command=>{calls.push(command);assert.equal(w.data.leads[0].reviewDrafts[0].recipientEmail,'test@example.org');
+    seen.add(command.requestId);if(calls.length===1)throw Error('connection interrupted after receipt');return {status:'sent',provider:'mock'};};
+  const input={id:agentId,requestId:'delivery-replay',message:'Email Example Person to offer footwear samples.'};
+  await assert.rejects(w.send(input),/interrupted/);
+  const retry=await w.send(input);assert.equal(retry.outreachReceipt.status,'sent');assert.equal(seen.size,1);
+  assert.deepEqual(calls[0],calls[1]);assert.equal(drafted,1);assert.equal(w.data.leads[0].reviewDrafts.length,1);
 });

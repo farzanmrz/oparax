@@ -1,6 +1,7 @@
 'use client';
 
 import './tools-panel.css';
+import {selectedSearchSources,sourceLabel} from '../lib/search-source.mjs';
 
 const paths = {
   search: 'M20.3 20.3 16 16 M17.4 10.6a6.8 6.8 0 1 1-13.6 0 6.8 6.8 0 0 1 13.6 0',
@@ -23,18 +24,25 @@ function ToolRow({name,icon,status,connected,children,actions}) {
   </li>;
 }
 
-export default function AgentTools({agent,workspace,demo=false,busy=false,onOpen,onNavigate,onShowProspects,onShowActivity,onOpenComputer,onChooseSource}) {
+export default function AgentTools({agent,workspace,demo=false,busy=false,onOpen,onNavigate,onShowProspects,onShowActivity,onOpenComputer,onChooseSource,onManageSource}) {
   const sender=workspace.mailbox?.email;
   const inbox=agent.inbox?.email;
   const provisioned=!!workspace.agentMailConnected;
   const sending=!!(sender&&agent.active&&agent.autoEmail&&!demo);
   const verifying=!demo&&agent.lastRun?.status==='verifying'&&Date.parse(agent.lease?.until)>Date.now();
 
-  const privateSource=['linkedin','sales_navigator'].includes(agent.searchSource);
-  function chooseComputer() {
-    if(!demo&&privateSource&&onOpenComputer){onOpenComputer(agent.searchSource);return;}
+  const sources=selectedSearchSources(agent);
+  const privateSources=sources.filter(s=>s==='linkedin'||s==='sales_navigator');
+  const publicSearch=sources.includes('web');
+  const rocketConnected=!!workspace.rocketReach?.connected;
+  function openSource(source) {
+    if(!demo&&source&&onOpenComputer){onOpenComputer(source);return;}
     if(onChooseSource){onChooseSource();return;}
     onNavigate('LinkedIn queue');
+  }
+  function manageSource(source){
+    if(onManageSource){onManageSource(source);return;}
+    if(onChooseSource)onChooseSource();
   }
   function showActivity() {
     if(onShowActivity){onShowActivity();return;}
@@ -49,18 +57,26 @@ export default function AgentTools({agent,workspace,demo=false,busy=false,onOpen
   return <section className="agt-tools" aria-label="Agent tools and connections">
     <h2>Tools &amp; connections</h2>
     <ul>
-      <ToolRow name={privateSource?'Public evidence':'Web research'} icon="search" status={privateSource?'Verification':demo?'Sample search':agent.active?`Every ${agent.cadence}h`:'On demand'}
+      <ToolRow name={publicSearch||!sources.length?'Web research':'Public evidence'} icon="search" status={!publicSearch&&sources.length?'Verification':demo?'Sample search':agent.active?`Every ${agent.cadence}h`:'On demand'}
         actions={<button type="button" onClick={showActivity}>View activity</button>}>
-        {privateSource?'Checks the people you select against public employer and role evidence.':demo?'Replay the sample search and see the evidence it uses.':'Searches the public web for people, employers and professional profiles.'}
+        {!publicSearch&&sources.length?'Checks the people you select against public employer and role evidence.':demo?'Replay the sample search and see the evidence it uses.':'Searches the public web for people, employers and professional profiles.'}
       </ToolRow>
       <ToolRow name="Verification computer" icon="computer" status={demo?'Sample evidence':verifying?'Checking sources':'On demand'} connected={verifying}
         actions={<button type="button" onClick={onShowProspects}>View sources</button>}>
         {demo?'See the source behind the sample prospect.':'An isolated computer opens source pages to check each person’s role and employer.'}
       </ToolRow>
-      <ToolRow name="LinkedIn & Sales Navigator" icon="linkedin" status={demo?'Demo':privateSource?'Private browser':'Select a source'}
-        actions={<><button type="button" onClick={chooseComputer}>{demo||!privateSource?'Choose source':'Open agent computer'}</button><button type="button" onClick={()=>onNavigate('LinkedIn queue')}>Review drafts</button></>}>
-        {demo?'Explore how agents review people you select in a private browser.':'Sign in inside the private computer, select people and submit their profiles for verification. You control sign-in and message delivery.'}
+      <ToolRow name="LinkedIn & Sales Navigator" icon="linkedin" status={demo?'Demo':privateSources.length?'Private browser':'Select a source'}
+        actions={<>{!demo&&privateSources.length?privateSources.map(s=><button type="button" key={s} onClick={()=>openSource(s)}>Open {sourceLabel(s)}</button>):<button type="button" onClick={()=>openSource()}>Choose source</button>}<button type="button" onClick={()=>onNavigate('LinkedIn queue')}>Review drafts</button></>}>
+        {demo?'Explore how agents review profiles you select.':'Open the selected service on the agent computer. Sign in and choose profiles to verify.'}
       </ToolRow>
+      <ToolRow name="RocketReach" icon="search" status={demo?'Demo':rocketConnected?'Connected':'Not connected'} connected={!demo&&rocketConnected}
+        actions={<button type="button" disabled={busy} onClick={()=>manageSource('rocketreach')}>{rocketConnected?'Manage RocketReach':'Connect RocketReach'}</button>}>
+        Searches for people by role and employer. Work email lookups use your RocketReach account.
+      </ToolRow>
+      {sources.includes('email')&&<ToolRow name="Mailbox research" icon="inbox" status={demo?'Demo':sender?'Connected':'Not connected'} connected={!demo&&!!sender}
+        actions={<button type="button" disabled={busy} onClick={()=>manageSource('email')}>Manage email source</button>}>
+        Checks contacts from your connected mailbox against the research brief.
+      </ToolRow>}
       <ToolRow name="Outbound mailbox" icon="outbound" status={demo?'Demo':!sender?'Not connected':sending?'Sending enabled':'Sending off'} connected={sending}
         actions={demo?<a href="/">Sign in to connect</a>:<button type="button" disabled={busy} onClick={()=>sender?onNavigate('Mailbox'):onOpen('connect')}>{sender?'Manage mailbox':'Connect mailbox'}</button>}>
         {demo?'Connect your own sender in your workspace.':sender?`${sender} · ${sending?`Up to ${agent.cap} campaign emails per day.`:'Automatic campaign email is off.'}`:'Use your email address for campaign outreach and reply tracking.'}

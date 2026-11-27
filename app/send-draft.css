@@ -1,0 +1,7 @@
+.send-draft-group{display:grid;gap:.5rem;margin-block:.65rem}
+.send-draft{padding:.55rem .7rem;border:1px solid var(--line);border-radius:.55rem;background:var(--surface);overflow-wrap:anywhere}
+.send-draft>summary{cursor:pointer;color:var(--accent-deep);font-size:.87rem;font-weight:650}
+.send-draft>form,.send-draft-senders,.send-draft-handoff{display:grid;gap:.55rem;margin-top:.45rem}
+.send-draft>form button,.send-draft-senders button,.send-draft-handoff button{justify-self:start}
+.send-draft p,.send-draft-to{margin:.5rem 0;font-size:.86rem}
+.send-draft-receipt,.send-draft-sample{font-size:.84rem;overflow-wrap:anywhere;color:var(--positive)}

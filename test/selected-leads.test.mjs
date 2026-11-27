@@ -52,7 +52,7 @@ test('unconfirmed, intake-only, wrong role, and namesake records are held and ne
   const receipt=f.d.bots[0].lastSelectedImport;assert.equal(receipt.received,4);assert.equal(receipt.saved,0);
   assert.equal(receipt.held.length,4);assert.equal(f.checks.length,0);assert.equal(f.d.leads.length,0);
   assert.ok(f.d.bots[0].selectedLeadsPending.some(p=>p.person==='Kim'&&!p.salesNavigatorUrl.includes('?')));
-  assert.equal(f.d.bots[0].lease,null);
+  assert.deepEqual(f.d.bots[0].selectedSourceLeases,{});
 });
 
 test('provider failure retains selected rows, and a source change prevents stale publication',async()=>{
@@ -61,5 +61,15 @@ test('provider failure retains selected rows, and a source change prevents stale
   assert.match(f.d.bots[0].lastSelectedImport.held[0].reason,/unavailable/);assert.equal(f.d.leads.length,0);
   f.deps.verify=async()=>{f.d.bots[0].searchSource='web';return [];};
   await assert.rejects(f.run([person]),/changed/);assert.equal(f.d.leads.length,0);
-  assert.equal(f.d.bots[0].lease,null);
+  assert.deepEqual(f.d.bots[0].selectedSourceLeases,{});
+});
+
+test('a private selection can verify while the public search retains its own lease',async()=>{
+  const f=fixture(),b=f.d.bots[0];
+  b.searchSources=['web','sales_navigator'];b.searchSource='web';
+  b.lease={id:'active-web-page',until:new Date(Date.now()+60000).toISOString()};
+  await f.run([person]);
+  assert.equal(b.lease.id,'active-web-page');
+  assert.equal(b.lastSelectedImports.sales_navigator.saved,1);
+  assert.equal(f.d.leads[0].discoverySources[0].source,'sales_navigator');
 });

@@ -2,6 +2,7 @@ import {Fault,edit,event,failure,read,same,withWorkspace,rpc} from '../../../lib
 import {after} from 'next/server';
 import {runResearchBatch,verifyContinuation,redeemResearchWake} from '../../../lib/research-job.mjs';
 import {publicJobAuthorized} from '../../../lib/research-access.mjs';
+import {pendingSourceWork,runSourceTask} from '../../../lib/source-tasks.mjs';
 import {tickMail} from '../../../lib/mail.mjs';
 export const runtime='nodejs',maxDuration=300,dynamic='force-dynamic';
 async function tickWorkspace(){
@@ -14,14 +15,18 @@ async function tickWorkspace(){
    .sort((a,b)=>a.researchRequestedAt.localeCompare(b.researchRequestedAt))[0];
  const selected=requested||available.filter(b=>b.active&&publicJobAuthorized(b,{scheduled:true})&&b.lastRun?.status!=='needs_input'&&Date.parse(b.next)<=time)
    .sort((a,b)=>a.next.localeCompare(b.next))[0];
- if(selected){
+ const sourceJobs=data.bots.flatMap(b=>pendingSourceWork(data,b).map(work=>({id:b.id,work}))).slice(0,3);
+ const runs=sourceJobs.map(({id,work})=>runSourceTask(id,work));
+ if(selected)runs.push((async()=>{
    try {
      await runResearchBatch(selected.id,requested?{requestedAt:requested.researchRequestedAt,page:requested.researchJob?.pages||0}:{scheduled:true});
    } catch(error) {
      // The dashboard may already have claimed this exact run.
      if(!(error instanceof Fault&&error.status===409))throw error;
    }
- }
+ })());
+ const outcomes=await Promise.allSettled(runs);
+ const error=outcomes.find(o=>o.status==='rejected');if(error)throw error.reason;
  if(problem)throw problem;
  }finally{await edit(d=>{if(d.tick?.id===claim)delete d.tick})}
 }

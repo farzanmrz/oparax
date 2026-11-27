@@ -13,7 +13,7 @@ test('commands accept actionable new and revised briefs and reject unsupported o
   assert.deepEqual(await planCommand(args,async(m,opts)=>{seen.push(opts.modelId);return JSON.stringify(expected);}),expected);
   assert.equal(seen[0],process.env.OUTREACH_COMMAND_MODEL||'openai/gpt-6.2-astra');
   assert.equal((await planCommand({...args,agent},reply({...expected,action:'refine'}))).action,'refine');
-  await assert.rejects(planCommand(args,reply({action:'send',email:'sample@example.com'})),/incomplete response/);
+  assert.equal((await planCommand(args,reply({action:'send',email:'sample@example.com'}))).action,'clarify');
   assert.equal((await planCommand(args,reply({action:'answer',answer:"Done! I've emailed the prospect."}))).action,'clarify');
   assert.equal((await planCommand(args,reply({action:'answer',answer:'The research schedule is paused.'}))).action,'answer');
 });

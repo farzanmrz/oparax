@@ -36,6 +36,8 @@ language sql security definer set search_path='' as $$
     and (data->'mailbox' <> 'null'::jsonb or exists (
       select 1 from jsonb_array_elements(data->'bots') b
       where b->>'researchRequestedAt' is not null
+        or exists (select 1 from jsonb_each(coalesce(b#>'{sourceTask,providers}','{}'::jsonb)) as p(source,task)
+          where b->'searchSources' ? p.source and p.task->>'status' in ('queued','running'))
         or (b->'active' = 'true'::jsonb and b#>>'{lastRun,status}' is distinct from 'needs_input')
     ))
    order by last_scheduled,user_id limit greatest(1,least(batch_size,20)) for update skip locked

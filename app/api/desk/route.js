@@ -5,8 +5,9 @@ import {visualReview} from '../../../lib/visual.mjs';
 import {after} from 'next/server';
 import {queueResearch,runResearchBatch} from '../../../lib/research-job.mjs';
 import {chat} from '../../../lib/agent.mjs';
-import {normalizeSearchSource} from '../../../lib/search-source.mjs';
+import {normalizeSearchSources,selectedSearchSources} from '../../../lib/search-source.mjs';
 import {showSourceGate,publicJobAuthorized} from '../../../lib/research-access.mjs';
+import {stageSourceTasks,runSourceTask} from '../../../lib/source-tasks.mjs';
 import {messageAgent} from '../../../lib/conversation.mjs';
 import {connect} from '../../../lib/mail.mjs';
 import {linkedinProfileUrl} from '../../../lib/profile-url.mjs';
@@ -20,17 +21,29 @@ async function authenticated(req, action) {
 async function dashboard(user,metadata={}) {
   return Response.json({...view((await read()).data),userEmail:user.email,...metadata},{headers:{'Cache-Control':'private, no-store'}});
 }
+function dispatchResearch(uid,id,work,sourceWork=[]) {
+  if(!work&&!sourceWork.length)return;
+  after(()=>withWorkspace(uid,async()=>{
+    const jobs=sourceWork.map(p=>runSourceTask(id,p));
+    if(work)jobs.push(runResearchBatch(id,work));
+    await Promise.allSettled(jobs);
+  }));
+}
 export function GET(req){return authenticated(req,dashboard);}
 export function POST(req){return authenticated(req,async user=>{const raw=await req.text();if(raw.length>20000)throw new Fault('Request is too large.',413);let p;try{p=JSON.parse(raw)}catch{throw new Fault('Invalid request.')};if(!p||typeof p!=='object')throw new Fault('Invalid request.');
  const {action,id}=p;
  if(action==='messageAgent'){
-   const {agentId,work}=await messageAgent(p);
-   if(work)after(()=>withWorkspace(user.id,()=>runResearchBatch(agentId,work)));
-   return dashboard(user,{agentId});
+   const {agentId,work,sourceWork,outreachReceipt}=await messageAgent(p);
+   dispatchResearch(user.id,agentId,work,sourceWork);
+   return dashboard(user,{agentId,...(outreachReceipt?{outreachReceipt}:{})});
  }
  if(action==='importSelectedLeads'){
    const {importSelectedLeads}=await import('../../../lib/selected-leads.mjs');
    await importSelectedLeads(id,p);
+ }
+ else if(['rocketReachConnect','rocketReachDisconnect','rocketReachSearch','rocketReachImport','rocketReachEnrich'].includes(action)){
+   const {rocketReachAction}=await import('../../../lib/rocketreach.mjs');await rocketReachAction(id||p.agentId,p);
+   if(action==='rocketReachConnect'&&(id||p.agentId)){const agentId=id||p.agentId;const tasks=await edit(d=>stageSourceTasks(d,bot(d,agentId)));dispatchResearch(user.id,agentId,null,tasks);}
  }
  else if(action==='agentmail')await linkKey(p.key);
  else if(['inboxCreate','inboxSync','inboxReply'].includes(action))await inbox(id,action,p);
@@ -38,7 +51,7 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
  else if(action==='research'||action==='clarifyResearch'){
    const request=await edit(d=>{
      const b=bot(d,id);
-     if(b.lease&&Date.parse(b.lease.until)>Date.now()&&action==='research'&&publicJobAuthorized(b))return null;
+
      if(action==='clarifyResearch'){
        const question=b.lastRun?.question,answer=text(p.answer,1500);
        if(!question||question!==p.question||b.researchRequestedAt)throw new Fault('This research question has changed. Refresh the agent to see the latest run.',409);
@@ -48,27 +61,29 @@ export function POST(req){return authenticated(req,async user=>{const raw=await 
      }else if(b.lastRun?.status==='needs_input'&&!b.researchRequestedAt){
        throw new Fault(b.lastRun.question||'Answer the research question to continue.',409);
      }
-     if(b.searchSource!=='web'){showSourceGate(d,b);return null;}
+     const sourceWork=stageSourceTasks(d,b);
+     if(!selectedSearchSources(b).includes('web')){showSourceGate(d,b);return {sourceWork};}
+     if(b.lease&&Date.parse(b.lease.until)>Date.now())return {sourceWork};
      delete b.searchGate;
      const requestedAt=queueResearch(b,{resume:action==='clarifyResearch'});
      if(b.researchJob)b.researchJob.searchSource='web';
-     return {requestedAt,page:b.researchJob?.pages||0};
+     return {work:{requestedAt,page:b.researchJob?.pages||0},sourceWork};
    });
-   if(request)after(()=>withWorkspace(user.id,()=>runResearchBatch(id,request)));
+   if(request)dispatchResearch(user.id,id,request.work,request.sourceWork);
  }
  else if(action==='chat'){if(!text(p.message,2000))throw new Fault('Write a message first.');await chat(id,text(p.message,2000))}
  else if(action==='connect')await connect(p);
  else await edit(d=>{switch(action){
- case 'create':{const created=bot(d,createBot(d,p));const source=normalizeSearchSource(p.searchSource);if(source)created.searchSource=source;break;}
+ case 'create':{const created=bot(d,createBot(d,p));const sources=normalizeSearchSources(p.searchSources??p.searchSource);if(sources.length){created.searchSource=sources[0];created.searchSources=sources;}break;}
  case 'save':{
    const b=bot(d,id),next=settings(p);
    if(b.brief!==next.brief){
      if(b.researchRequestedAt||(b.lease&&Date.parse(b.lease.until)>Date.now()))throw new Fault('Wait for the current run before changing its brief.',409);
-     delete b.lastRun;delete b.researchJob;delete b.researchWake;delete b.clarifications;b.error=null;
+     delete b.sourceTask;delete b.lastRun;delete b.researchJob;delete b.researchWake;delete b.clarifications;b.error=null;
    }
    Object.assign(b,next);event(d,'Updated '+b.name);break
  }
- case 'activate':{const b=bot(d,id);if(p.autoEmail===true&&!d.mailbox)throw new Fault('Connect a mailbox before enabling email.');b.active=true;b.autoEmail=p.autoEmail===true;b.next=now();if(b.searchSource!=='web')showSourceGate(d,b);event(d,b.name+' · campaign activated');break}
+ case 'activate':{const b=bot(d,id);if(p.autoEmail===true&&!d.mailbox)throw new Fault('Connect a mailbox before enabling email.');b.active=true;b.autoEmail=p.autoEmail===true;b.next=now();stageSourceTasks(d,b);if(!selectedSearchSources(b).includes('web'))showSourceGate(d,b);event(d,b.name+' · campaign activated');break}
  case 'pause':{const b=bot(d,id);b.active=false;b.autoEmail=false;event(d,'Paused '+b.name);break}
  case 'manual':{const b=bot(d,id);if(p.linkedinUrl&&(!text(p.person)||!linkedinProfileUrl(p.linkedinUrl)))throw new Fault('A LinkedIn profile needs a contact name and an HTTPS linkedin.com/in/ profile link.');if(p.email&&!email(p.email))throw new Fault('Enter a valid email.');if(!addLead(d,b,{...p,companyVerification:null,linkedinEvidence:''}))throw new Fault('This prospect already exists.',409);event(d,'Added '+text(p.company,150));break}
  case 'draft':{const l=lead(d,id);if(l.linkedinState==='sent')throw new Fault('This note was already marked sent.');if(!text(p.linkedin,1500))throw new Fault('Write a LinkedIn note first.');l.linkedin=text(p.linkedin,1500);break}

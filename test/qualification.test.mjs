@@ -33,3 +33,10 @@ test('a previously qualified person appears in each matching campaign with one m
   associateQualifiedProspect(unverified,'second');
   assert.equal(belongsToCampaign(unverified,'second'),false);
 });
+
+test('the same verified profile and employer identify one prospect under a name variation',async()=>{
+ const {verifiedProfileMatch}=await import('../lib/domain.mjs');
+ const original={person:'Nicholas Example',company:'Barbour',linkedinUrl:'https://www.linkedin.com/in/test-person'};
+ assert.equal(verifiedProfileMatch([original],{person:'Nick Example',company:'BARBOUR',linkedinUrl:'https://uk.linkedin.com/in/test-person/?trk=source'}),original);
+ assert.equal(verifiedProfileMatch([original],{...original,company:'Unrelated Co'}),undefined);
+});

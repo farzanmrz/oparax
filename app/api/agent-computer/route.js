@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {Fault,edit,failure,verifiedUser,withWorkspace} from '../../../lib/store.mjs';
+import {selectedSearchSources} from '../../../lib/search-source.mjs';
 import {bot} from '../../../lib/domain.mjs';
 import {openAgentDesktop} from '../../../lib/agent-desktop.mjs';
 
@@ -22,7 +23,7 @@ export async function POST(request){
       const lease=randomUUID();
       const claim=await edit(data=>{
         const agent=bot(data,input.agentId);
-        if(agent.searchSource!==input.provider)throw new Fault('Choose this search source in the conversation first.',409);
+        if(!selectedSearchSources(agent).includes(input.provider))throw new Fault('Choose this search source in the conversation first.',409);
         const at=Date.now(),previous=data.computerLaunch;
         const sameRequest=previous?.requestId===input.requestId;
         if(sameRequest&&(previous.agentId!==input.agentId||previous.provider!==input.provider)){

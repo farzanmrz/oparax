@@ -51,7 +51,7 @@ export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,ini
     </header>
     <section className="ae-stage">
       {signin?<div className="ae-card ae-auth">
-        <span className="ae-caption">OPARAX SALES AGENT</span>
+        <span className="ae-caption">OPARAX SALES BOTS</span>
         <h1>{sent?'Check your email.':auth?'Opening your workspace…':initialPage==='Prospects'?'Open your prospects.':'Open your workspace.'}</h1>
         {auth?<>{notice}<button type="button" onClick={logout}>Switch account</button></>:<>
           <p className="ae-desc">{sent?<>We sent a sign-in link to <strong>{sent}</strong>.</>:brief.trim()?'Sign in to take this brief into your workspace.':'Sign up or sign in with any email address.'}</p>
@@ -64,18 +64,18 @@ export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,ini
           {!sent&&!direct&&<button type="button" className="ae-link" onClick={()=>setStep('brief')}>{brief.trim()?'Edit your brief':'Write a brief'}</button>}
         </>}
       </div>:<div className="ae-card">
-        <span className="ae-caption"><span aria-hidden="true" className="ae-beacon"/>SALES AGENT</span>
+        <span className="ae-caption"><span aria-hidden="true" className="ae-beacon"/>SALES BOTS</span>
         <h1>Who should we<br/><em>reach?</em></h1>
-        <p className="ae-desc">Give your agent a market or an account. Choose where to look, review verified buyers, and draft your first introduction.</p>
+        <p className="ae-desc">Create a sales bot for an account or a market. Give it a brief, choose its sources, and send outreach from the same conversation.</p>
         <form className="ae-composer" onSubmit={start}>
           <textarea aria-label="Your sales research brief" ref={input} maxLength={2000} rows={3} placeholder="Find sourcing directors at UK footwear brands…" value={brief} onChange={e=>setBrief(e.target.value)}
             onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){start(e);}}}/>
-          <div className="ae-controls"><span>New agent brief</span><button className="ae-continue primary" type="submit" disabled={!brief.trim()}>Continue <Arrow/></button></div>
+          <div className="ae-controls"><span>New bot brief</span><button className="ae-continue primary" type="submit" disabled={!brief.trim()}>Continue <Arrow/></button></div>
         </form>
         <div className="ae-examples">{examples.map(([label,value])=><button key={label} type="button" onClick={()=>{setBrief(value);input.current?.focus();}}>{label}<span aria-hidden="true">↗</span></button>)}</div>
         {notice}
       </div>}
     </section>
-    <footer className="ae-footer"><span className="ae-wordmark">Oparax</span><a href="/preview">Explore a sample agent <span aria-hidden="true">↗</span></a></footer>
+    <footer className="ae-footer"><span className="ae-wordmark">Oparax</span><a href="/preview">Explore a sample bot <span aria-hidden="true">↗</span></a></footer>
   </main>;
 }
