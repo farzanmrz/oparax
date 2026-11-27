@@ -7,7 +7,7 @@ export function verifiedCount(qualified,limit){return qualified+' verified '+(qu
 export function ResearchOutcome({agent}){
   const run=agent?.lastRun,job=agent?.researchJob,status=job?.status||run?.status;
   const reason=run?.receipt?.reason;
-  const heading=({sources_exhausted:'Search coverage complete',diminishing_returns:'Search stopped yielding new matches',limit_reached:'Requested limit reached',source_error:'Source unavailable'})[reason]||
+  const heading=({sources_exhausted:'Search coverage complete',diminishing_returns:'Search stopped yielding new matches',limit_reached:'Requested limit reached',source_error:'Source unavailable',model_budget:'Research paused at the AI budget limit'})[reason]||
     ({exhausted:'Search coverage complete',goal_met:'Requested limit reached',paused_skill:'Research paused',needs_input:'Waiting for your answer'})[status];
   if(!heading||!['exhausted','goal_met','paused_skill','needs_input','failed'].includes(status))return null;
   const receipt=run?.receipt,summary=receipt?.summary||run?.summary;

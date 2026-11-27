@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {research} from '../lib/agent.mjs';
+import {research,model} from '../lib/agent.mjs';
+import {view} from '../lib/store.mjs';
+import {queueResearch,continuationRequest} from '../lib/research-job.mjs';
 import {candidateRows,validatePlan} from '../lib/research.mjs';
 import {attributedProfile,profileResults} from '../lib/research-profiles.mjs';
 
@@ -46,6 +48,49 @@ function pageOf(rows,page) {
   return {rows,candidateCount:rows.length,checkedKeys:rows.map(r=>r.profileHit.url),query:'site:linkedin.com/in/ Barbour job group '+page,
     searched:true,exhausted:false};
 }
+
+test('a planner budget block is visible in the desk before any search, waits for cadence, and can resume',async()=>{
+  let blocked=true,searches=0;
+  const f=fixture({services:{
+    model:async()=>{if(blocked)throw {cause:{data:{error:{upstreamStatusCode:402,apiErrorMessage:'Team budget exceeded. Current spend: $51.21 (private trace)'}}}};return JSON.stringify(plan);},
+    companyProof:async()=>{searches++;return anchor;},profilePage:async()=>{searches++;return pageOf([person(0)],0);},
+    articleSearch:async()=>{searches++;return [];}
+  }});
+  f.b.active=true;
+  await f.run();
+  assert.equal(searches,0);assert.equal(f.data.leads.length,0);
+  const receipt=view(f.data).bots[0].lastRun.receipt;
+  assert.equal(receipt.reason,'model_budget');assert.equal(receipt.distinctQueries,0);
+  assert.match(receipt.summary,/Resume research/);assert.doesNotMatch(JSON.stringify(view(f.data)),/private trace|51\.21|no matches/i);
+  assert.equal(f.b.researchRequestedAt,undefined);assert.equal(f.b.lease,null);
+  assert.equal(continuationRequest('sample',f.b),null);
+  assert.ok(Date.parse(f.b.next)-Date.now()>23*3600000);
+  await assert.rejects(f.trigger({scheduled:true}),e=>e.status===409);
+  await assert.rejects(f.run(),e=>e.status===409);
+  blocked=false;
+  assert.equal(queueResearch(f.b,{resume:true}),'request');await f.run();
+  assert.equal(f.b.researchJob.qualified,1);assert.ok(searches>0);
+});
+
+test('an HTTP 402 from the model returns an actionable safe failure',async t=>{
+  const original=process.env.AI_GATEWAY_API_KEY;process.env.AI_GATEWAY_API_KEY='test';
+  t.after(()=>{if(original===undefined)delete process.env.AI_GATEWAY_API_KEY;else process.env.AI_GATEWAY_API_KEY=original;});
+  t.mock.method(globalThis,'fetch',async()=>new Response('private billing account detail',{status:402}));
+  await assert.rejects(model([]),error=>error.status===402&&/AI Gateway budget/.test(error.message)&&!error.message.includes('private'));
+});
+
+test('budget rejection while drafting preserves verified people and holds their outreach',async()=>{
+  const f=fixture({services:{model:async(_,run)=>{
+    if(run.task==='draft')throw {statusCode:402};
+    return JSON.stringify(plan);
+  },profilePage:async()=>pageOf([person(0)],0)}});
+  f.data.businessMemory={salesProposition:'We supply materials to footwear brands.'};
+  await f.run();
+  const lead=f.data.leads[0],receipt=view(f.data).bots[0].lastRun.receipt;
+  assert.equal(receipt.reason,'model_budget');assert.equal(receipt.uniqueQualified,1);assert.equal(f.b.researchRequestedAt,undefined);
+  assert.equal(lead.body,'');assert.equal(lead.status,'research');assert.match(lead.draftQuestion,/AI Gateway budget/);
+  assert.equal(f.b.researchJob.indexCursors.Barbour,undefined);
+});
 
 test('one request qualifies and saves exactly fifty unique named profiles across four durable batches',async()=>{
   let plans=0;

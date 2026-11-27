@@ -12,6 +12,14 @@ async function discover(hits,extra={}){
     search:async(q,opts)=>opts.profiles?hits:[],call:async()=>JSON.stringify({items:[]}),...extra});
 }
 
+test('a known gateway budget rejection skips alternate providers and transient retries',async()=>{
+  const providers=[];
+  await assert.rejects(discover([],{search:async(q,{provider='perplexity'})=>{
+    providers.push(provider);throw {cause:{upstreamStatusCode:402,message:'private billing detail'}};
+  }}),error=>error.status===402&&/AI Gateway budget/.test(error.message)&&!error.message.includes('private'));
+  assert.deepEqual([...new Set(providers)],['perplexity']);assert.equal(providers.length,3);
+});
+
 test('multiple pages cover all requested roles with distinct index queries',()=>{
   const all=[];
   for(let i=0;i<25;i++){const p=companyQueries(plan,context,i); if(p.exhausted)break; all.push(...p.queries);}

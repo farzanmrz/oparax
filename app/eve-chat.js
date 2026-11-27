@@ -67,6 +67,7 @@ export function EveActivity({snapshot,turn,messages,pending,onRetry,canManageBud
   const [retrying,setRetrying]=useState(false);
   const busy=snapshot?.status==='busy'||snapshot?.status==='resuming';
   const budget=turn?.status!=='confirmed'&&(turn?.reason==='model_budget'||snapshot?.reason==='model_budget');
+  const budgetAlreadyShown=budget&&messages.filter(m=>m.role==='assistant').at(-1)?.content?.startsWith(budgetMessage);
   const incomplete=turn&&['unconfirmed','failed'].includes(turn.status);
   const userVisible=messages.some(m=>m.role==='user'&&(m.requestId===turn?.requestId||m.content===turn?.message));
   const persistedAnswer=turn?.status==='confirmed'&&turn.answer&&!messages.some(m=>m.role==='assistant'&&(m.content===turn.answer||turn.answer.includes(m.content)));
@@ -77,7 +78,7 @@ export function EveActivity({snapshot,turn,messages,pending,onRetry,canManageBud
   }
   return <section className="eve-turn" aria-label="Bot response">
     {turn?.message&&!pending&&!userVisible&&<p><strong>You</strong> · {turn.message}</p>}
-    {budget?<div role="alert" className="error"><p>{budgetMessage}</p><p>{canManageBudget?'Review the AI Gateway budget in Vercel before retrying.':'Retry after the Oparax operator restores service.'}</p></div>:snapshot?.error&&<p role="alert" className="error">{snapshot.error}</p>}
+    {budget?<div role="alert" className="error">{!budgetAlreadyShown&&<p>{budgetMessage}</p>}<p>{canManageBudget?'Review the AI Gateway budget in Vercel before retrying.':'Retry after the Oparax operator restores service.'}</p></div>:snapshot?.error&&<p role="alert" className="error">{snapshot.error}</p>}
     {!budget&&(busy||pending||retrying)&&<small role="status">{snapshot?.status==='resuming'?'Reconnecting to the conversation…':retrying?'Retrying this request…':'Bot is working…'}</small>}
     {busy&&!!snapshot?.tools?.length&&<details open><summary>Live tool activity</summary><ul>{snapshot.tools.map((part,i)=><li key={part.id||i}>Sales request · {part.state}</li>)}</ul></details>}
     {persistedAnswer&&<p>{turn.answer}</p>}

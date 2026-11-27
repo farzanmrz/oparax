@@ -70,3 +70,10 @@ test('status, saved results and explicitly scoped memory use the registered doma
    assert.deepEqual((await collect(out.stream)).filter(p=>p.type==='tool-call'),[call]);
  }
 });
+test('native tool returns only the latest committed reply after an earlier no-action attempt',async()=>{
+ const {canonicalAnswer}=await import('../lib/eve-turn-receipt.mjs');
+ const key='retry-confirmed',id='b';
+ const messages=[{botId:id,role:'user',requestId:key,eveNoAction:key},{botId:id,role:'assistant',content:'Previous failure.',eveNoAction:key},
+   {botId:id,role:'user',requestId:key},{botId:id,role:'assistant',content:'Persisted success.'},{botId:id,role:'user',requestId:'other'},{botId:id,role:'assistant',content:'Later reply.'}];
+ assert.equal(canonicalAnswer({messages},id,key),'Persisted success.');
+});

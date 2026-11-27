@@ -1,5 +1,6 @@
 import {defineTool} from 'eve/tools';
 import {z} from 'zod';
+import {recordNoAction,failureReason} from '../../lib/eve-action-model.mjs';
 import {runEveSalesTurn} from '../../lib/eve-bridge.mjs';
 export default defineTool({
   description:'Apply a proposed response to the current signed user message. The server verifies the audience, recipient, enabled skills and sender permissions and returns the recorded result.',
@@ -14,11 +15,11 @@ export default defineTool({
   }).strict(),
   async execute(input,ctx){
     const {text,...proposal}=input;
-    return runEveSalesTurn(ctx,{},{
+    try {return await runEveSalesTurn(ctx,{},{
       ...proposal,
       answer:input.action==='answer'?text:null,
       question:input.action==='clarify'?text:null,
       purpose:input.action==='send'?text:null
-    });
+    });} catch(error){return {reply:await recordNoAction(ctx,{},failureReason(error))};}
   }
 });
