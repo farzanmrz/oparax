@@ -1,7 +1,0 @@
-interface:
-  display_name: "Feature"
-  short_description: "Plan an oparax feature or bug fix, or amend the current one"
-  default_prompt: "Use $feature to talk through a new oparax slice or an amendment to the current one, write and critique the plan, and open or update the issue on approval."
-
-policy:
-  allow_implicit_invocation: false

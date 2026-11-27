@@ -1,7 +1,0 @@
-interface:
-  display_name: "Build"
-  short_description: "Build or fix the active oparax feature or bug branch"
-  default_prompt: "Use $build <N> to build the approved scope in the active ft/<N> or bf/<N> checkout (or apply its pending /qc fix list), commit per numbered step, and stop."
-
-policy:
-  allow_implicit_invocation: false

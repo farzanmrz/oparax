@@ -1,0 +1,1 @@
+export default {transpilePackages:['@vercel/sandbox','@vercel/drives','@workflow/serde'],serverExternalPackages:['imapflow','nodemailer'],outputFileTracingIncludes:{'/api/*':['./lib/verify.py','./lib/browser.cjs']}};

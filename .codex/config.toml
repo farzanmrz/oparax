@@ -1,6 +1,0 @@
-approval_policy = "never"
-
-model_verbosity = "low"
-model_reasoning_summary = "none"
-[sandbox_workspace_write]
-network_access = true

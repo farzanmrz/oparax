@@ -1,7 +1,0 @@
-.env*
-node_modules
-build
-.next
-*.log
-public/board
-public/board-v2
