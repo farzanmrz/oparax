@@ -46,7 +46,7 @@ export async function POST(request){
         if(!sameRequest&&recent.length>=12)throw new Fault('Several computer sessions were opened recently. Try again in a few minutes.',429);
         data.computerLaunch={recent:sameRequest?recent:[...recent,at]};
         agent.computerLaunch={lease,until:at+90000,requestId:input.requestId,agentId:input.agentId,provider:input.provider,
-          deadline:sameRequest?previous.deadline:at+13*60000};
+          deadline:sameRequest?previous.deadline:at+23*60000};
         return true;
       });
       if(!claim)return starting();

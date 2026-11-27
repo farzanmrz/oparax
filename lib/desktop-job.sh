@@ -33,7 +33,7 @@ in_flight() {
   [[ $changed =~ ^[0-9]+$ ]] || return 1
   age=$((now - changed))
   if [[ $phase == queued ]]; then (( age >= 0 && age < 18 )); return; fi
-  [[ $phase == running ]] && (( age >= 0 && age < 620 )) || return 1
+  [[ $phase == running ]] && (( age >= 0 && age < 1220 )) || return 1
   pid=$(get "$dir/pid")
   [[ $pid =~ ^[1-9][0-9]*$ ]] && kill -0 "$pid" 2>/dev/null &&
     tr '\0' '\n' < "/proc/$pid/cmdline" | grep -Fx "$(basename "$dir")" >/dev/null
@@ -85,7 +85,7 @@ put "$job/phase" running
 flock -u 8
 exec 8>&-
 result=failed
-if timeout -k 5s 600s bash "$scripts/desktop-start.sh" "$origin" "$destination" >/dev/null 2>&1 && healthy; then result=ready; fi
+if timeout -k 5s 1200s bash "$scripts/desktop-start.sh" "$origin" "$destination" >/dev/null 2>&1 && healthy; then result=ready; fi
 exec 8>"$jobs/lock"
 flock -w 5 8
 if [[ $(get "$jobs/active") == "$request" && $(get "$job/attempt") == "$attempt" && $(get "$job/release") == "$release" ]]; then

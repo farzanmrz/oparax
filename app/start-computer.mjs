@@ -1,4 +1,4 @@
-export const computerWaitMs=12*60*1000;
+export const computerWaitMs=22*60*1000;
 function wait(ms,signal){
   return new Promise((resolve,reject)=>{
     signal.throwIfAborted();
