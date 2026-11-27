@@ -30,6 +30,8 @@ class Page(HTMLParser):
         self.links = {}
         self.active_link = None
         self.identity_links = []
+        self.catalog_labels = []
+        self.catalog_entry = None
         self.org_data = []
         self.schema_text = None
         self.hidden = 0
@@ -55,6 +57,7 @@ class Page(HTMLParser):
                 pass
         if tag == 'a' and attrs.get('href'):
             self.identity_links.append(attrs['href'])
+            self.catalog_entry = (attrs['href'],[])
         if tag == 'script' and (attrs.get('type') or '').lower() == 'application/ld+json':
             self.schema_text = []
         if tag in HIDDEN:
@@ -79,6 +82,10 @@ class Page(HTMLParser):
             except (ValueError, TypeError):
                 pass
             self.schema_text = None
+        if tag == 'a' and self.catalog_entry:
+            href, chunks = self.catalog_entry
+            self.catalog_labels.append((href,' '.join(''.join(chunks).split())[:120]))
+            self.catalog_entry = None
         if tag == 'a' and self.active_link:
             href, pieces = self.active_link
             self.links.setdefault(len(self.blocks), []).append((href, ' '.join(''.join(pieces).split())))
@@ -90,6 +97,7 @@ class Page(HTMLParser):
 
     def handle_data(self, value):
         if self.in_title: self.title = (self.title + value)[:600]
+        if self.catalog_entry: self.catalog_entry[1].append(value)
         if self.schema_text is not None and len(value) <= 140000:
             self.schema_text.append(value)
         if not self.hidden:
@@ -385,6 +393,35 @@ def org_url(value):
         return ''
 
 
+# Product categories must actually appear on the employer's site; a retail title
+# like "buyer" on its own supplies no such identity evidence.
+PRODUCT_AREAS = {
+    'womenswear': r"\bwomenswear\b|\bwomen(?:'s|’s|s)? (?:clothing|apparel|collection|jackets|outerwear)\b",
+    'menswear': r"\bmenswear\b|\bmen(?:'s|’s|s)? (?:clothing|apparel|collection|jackets|outerwear)\b",
+    'outerwear': r'\bouterwear\b', 'knitwear': r'\bknitwear\b', 'footwear': r'\bfootwear\b',
+    'sportswear':r'\bsportswear\b', 'leather goods':r'\bleather goods\b',
+}
+SOCIAL = re.compile(r"\b(?:hiring|jobs?|vacanc(?:y|ies)|recruiting|recruitment|apply now|job openings?|"
+                    r"opening for|open position|position (?:is )?(?:available|open)|exciting opportunity|"
+                    r"opportunity (?:to join|for a)|shared this|reposted|reacted (?:to|on)|liked this|"
+                    r"(?:posted|posts?) (?:about|by)|join our team|we(?:’re|'re| are) looking for)\b",re.I)
+
+def identity_match(context, markers):
+    for kind,value,origin in markers:
+        if kind == 'domain':
+            found = re.search(r'(?<![a-z0-9.-])(?:www\.)?'+re.escape(value)+r'(?![a-z0-9.-])',context,re.I)
+        elif kind == 'company_url':
+            linked = re.findall(r'(?:https?://)?(?:(?:[a-z]{2}|www)\.)?linkedin\.com/company/[^\s?&#|,;)]+',context,re.I)
+            found = any(org_url(link if '://' in link else 'https://'+link)==value for link in linked)
+        elif kind == 'product_area':
+            found = re.search(PRODUCT_AREAS[value], context, re.I)
+        else:
+            found = tuple(starts(words(context),words(value)))
+        if found:
+            return {'matchType':kind,'identityEvidence':value,'identitySource':origin}
+    return None
+
+
 def identity_markers(page, url, company, target, read_page, extra=True):
     domain = official_domain(url, company, target)
     if not domain:
@@ -394,6 +431,12 @@ def identity_markers(page, url, company, target, read_page, extra=True):
         identity = org_url(urljoin(url, href))
         if identity:
             markers.append(('company_url',identity,url))
+    areas = set()
+    for href,label in page.catalog_labels:
+        if matches_domain(urljoin(url,href),domain) and label:
+            for category, pattern in PRODUCT_AREAS.items():
+                if re.search(pattern,label,re.I): areas.add(category)
+    markers.extend(('product_area', category, url) for category in sorted(areas))
     company_tokens = words(company)
     for obj in page.org_data:
         if not tuple(starts(words(str(obj.get('name') or '')),company_tokens)):
@@ -452,12 +495,35 @@ def identity_markers(page, url, company, target, read_page, extra=True):
     return markers
 
 
+def current_markdown_experience(snippet,role,companies):
+    section = re.search(r'(?:^|\n)#{1,3}\s+Experience\s*\n(.+?)(?=\n#{1,2}\s+[A-Za-z]|$)',snippet,re.I|re.S)
+    if not section:
+        return ''
+    lines = [l.strip(' *\t') for l in section[1].splitlines() if l.strip(' *\t')]
+    for i,line in enumerate(lines[:25]):
+        employer = re.search(r'\[([^]\n]+)\]\(https://(?:[a-z]{2}\.|www\.)?linkedin\.com/company/[^)]+\)',line,re.I)
+        if not employer or words(employer[1]) not in companies:
+            continue
+        job, block = False, [line]
+        for entry in lines[i+1:i+8]:
+            if re.search(r'\]\(https?://[^)]+/company/',entry,re.I): break
+            clean = entry.lstrip('# ').strip()
+            if entry.startswith('#') and clean:
+                if job or not tuple(starts(words(clean),role)): break
+                job = True
+            block.append(entry)
+            if re.search(r'(?:19|20)\d{2}\s*[–—-]\s*(?:Present|Current)\b',entry,re.I) and job:
+                return '\n'.join(block)
+            if PAST_INDEX.search(entry): break
+    return ''
+
+
 def indexed_employment(row, markers=()):
     hit = row.get('profileHit')
     if not isinstance(hit, dict):
         return None
     url = profile_url(hit.get('url'))
-    title, snippet = str(hit.get('title') or '')[:400], str(hit.get('snippet') or '')[:1600]
+    title, snippet = str(hit.get('title') or '')[:400], str(hit.get('snippet') or '')[:12000]
     parts = re.split(r'\s+[–—-]\s+|\s*\|\s*', title)
     name, role, company = words(row.get('person') or ''), words(row.get('role') or ''), words(row.get('company') or '')
     if not url or len(name) < 2 or not company or not role or len(parts) < 2:
@@ -496,6 +562,40 @@ def indexed_employment(row, markers=()):
     domain = (target.get('domain') or '').casefold()
     # Each piece is independently attributable. A following former position or unrelated
     # role buried in the person's history may not supply missing employment proof.
+    companies = [company]+[words(v) for kind,v,_ in markers if kind=='legal_name']
+    precise_job = current_markdown_experience(snippet,role,companies)
+    if precise_job and not SOCIAL.search(precise_job):
+        proof = identity_match(precise_job,markers)
+        if proof or any(tuple(starts(role,t)) for t in industry if t):
+            return {'linkedinUrl':url,'linkedinEvidence':(title+' · '+precise_job)[:650],'bridge':proof}
+    about = re.search(r'(?:^|\n)\s*#*\s*About\s*\n(.{2,420}?)(?:\n\s*#|$)',snippet,re.I|re.S)
+    # A result snippet can be text from a shared job advert rather than the profile owner.
+    # Only a separate self-authored About section or an explicit professional headline
+    # can survive Activity/post/job markers, never an excerpt from that listing.
+    contaminated = SOCIAL.search(snippet) or re.search(r'(?:^|\n)\s*#+\s*Activity\b',snippet,re.I)
+    if contaminated:
+        snippet = about[1].strip() if about and not SOCIAL.search(about[1]) else ''
+    # Some indexes expose the profile summary and present employer as distinct metadata
+    # fields in one record. Check exact title employer, role, and field order rather
+    # than joining arbitrary occurrences of a name and role in a search snippet.
+    employers = [company] + [words(v) for k,v,_ in markers if k=='legal_name']
+    headline_company = any(words(headline)==e for e in employers)
+    if headline_company and not PAST_INDEX.search(snippet):
+        block = re.search(r'(?:^|\s[·|]\s|\bAbout\s*[:·]\s*)([^·|\n]{2,220})\s*[·|]\s*'
+                          r'Experience\s*:\s*([^·|\n]{2,130})(?:\s*[·|]\s*(?:Location\s*:\s*)?([^·|\n]{2,90}))?',snippet,re.I)
+        own_role = block[1].strip() if block else ''
+        current_employer = (block[2].split(',')[0].strip(' .') if block else '')
+        valid_pair = (block and words(current_employer) in employers and tuple(starts(words(own_role), role))
+                       and not re.search(r'\b(?:seeking|previous|former|aspiring|graduate looking)\b',own_role,re.I)
+                       and not re.search(r'\b(?:education|former|previous)\b',block[3] or '',re.I))
+        own = re.match(r'(?:(?:about|i am|i work as)[: ]+)?(?:[a-z -]{0,40} )?'+
+                       r'\b'+r'\s+'.join(map(re.escape,role))+
+                       r'\b\s+(?:speciali[sz]ing in|responsible for|with experience in)\s+[^·|.]{2,80}',snippet,re.I)
+        if valid_pair or own:
+            ev = (block[0].strip(' ·|') if valid_pair else own[0]).strip()
+            proof = identity_match(ev,markers)
+            if proof or any(tuple(starts(words(ev),term)) for term in industry if term):
+                return {'linkedinUrl':url,'linkedinEvidence':(title+' · '+ev)[:650],'bridge':proof}
     segments = [headline] + re.split(r'(?<=[.!?])\s+|(?:\s+[·|]\s+)|\n+', snippet)
     usable = []
     for j, seg in enumerate(segments):
@@ -525,6 +625,10 @@ def indexed_employment(row, markers=()):
                 gap = values[left[1]:right[0]]
                 if len(gap) > 5 or not set(gap) <= CONNECTORS:
                     continue
+                # “Graphic Designer Barbour, South Shields” is also how LinkedIn displays
+                # a job card. A bare juxtaposition in an activity snippet is insufficient.
+                if segment!=headline and not gap and not re.search(r'\b(?:current role|experience|i am)\b',segment,re.I):
+                    continue
                 sector_in_role = any(tuple(starts(role, term)) for term in industry if term)
                 # If the role itself is generic, require an explicit industry descriptor
                 # for THIS employer in the same index snippet, or the requested domain.
@@ -539,17 +643,7 @@ def indexed_employment(row, markers=()):
                 # Each separate location/company identifier must be in the same employment
                 # snippet or the profile headline. Never reuse other work-history entries.
                 context = headline+' · '+segment
-                for kind,value,origin in markers:
-                    if kind == 'domain':
-                        found = re.search(r'(?<![a-z0-9.-])(?:www\.)?'+re.escape(value)+r'(?![a-z0-9.-])',context,re.I)
-                    elif kind == 'company_url':
-                        linked = re.findall(r'(?:https?://)?(?:(?:[a-z]{2}|www)\.)?linkedin\.com/company/[^\s?&#|,;)]+',context,re.I)
-                        found = any(org_url(link if '://' in link else 'https://'+link)==value for link in linked)
-                    else:
-                        found = tuple(starts(words(context),words(value)))
-                    if found:
-                        bridge = {'matchType':kind,'identityEvidence':value,'identitySource':origin}
-                        break
+                bridge = identity_match(context,markers)
                 if not (sector_in_role or company_proof or domain_in_segment or bridge):
                     continue
                 evidence = title if segment == headline else title + ' · ' + segment.strip()
@@ -585,6 +679,9 @@ def verify(row, read_page=None):
         proof = company_anchor(page, url, row)
         if not proof:
             return {'status': 'unsupported'}
+        identity = identity_markers(page,url,row['company'],row.get('researchTarget') or {},read_page or fetch)
+        proof['identifiers'] = [{'kind':kind,'value':value,'source':origin} for kind,value,origin in
+                                dict.fromkeys(identity) if kind in ('legal_name','location','company_url','domain')][:20]
         return {'status': 'verified', 'lead': {'company': row['company'], 'source': url,
                                                'evidence': proof['evidence'], 'companyVerification': proof}}
     company = words(row.get('company') or '')
@@ -605,6 +702,18 @@ def verify(row, read_page=None):
         evidence = line[start:end]
         company_proof = company_verification(page, index, url, row['company'],
                                              row.get('researchTarget') or {}, evidence)
+        if not company_proof and row.get('companySource') and row['companySource']!=url:
+            try:
+                author_url, author_page = (read_page or fetch)(row['companySource'])
+                target = row.get('researchTarget') or {}
+                authority = company_anchor(author_page,author_url,row)
+                if authority and official_domain(author_url,row['company'],target):
+                    markers = identity_markers(author_page,author_url,row['company'],target,read_page or fetch)
+                    link = identity_match(evidence,markers)
+                    if link:
+                        company_proof = {**authority,**link}
+            except (OSError,ValueError,LookupError,http.client.HTTPException):
+                pass
         if not company_proof:
             continue
         lead = {**row, 'source': url, 'sourceDate': page.date, 'quote': evidence,

@@ -156,7 +156,7 @@ class EvidenceTests(unittest.TestCase):
             row = dict(kind='profile',source=url,company='Barbour',person=person,role=role,
                        researchTarget={'company':'Barbour','industry':'footwear'},profileHit=hit)
             return verifier.verify(row,lambda link:(link,legal if link==legal_url else brand))
-        examples = [('Jane Smith - Barbour | LinkedIn','Buyer Barbour, South Shields, England, United Kingdom','location'),
+        examples = [('Jane Smith - Barbour | LinkedIn','Buyer at Barbour, South Shields, England, United Kingdom','location'),
                     ('Jane Smith - Buyer at J Barbour & Sons Ltd | LinkedIn','','legal_name'),
                     ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour (barbour.com)','domain'),
                     ('Jane Smith - Barbour | LinkedIn','Buyer at Barbour https://www.linkedin.com/company/barbour-brand/','company_url')]
@@ -176,6 +176,65 @@ class EvidenceTests(unittest.TestCase):
                               ('Jane Smith - HR Director at Barbour | LinkedIn','Buyer at Barbour, South Shields'),
                               ('Jane Smith - Buyer at Acme | LinkedIn','Buyer at Barbour, South Shields')]:
             self.assertEqual(run(title,snippet)['status'],'unsupported')
+
+    def test_personal_about_experience_and_posted_jobs_are_distinct(self):
+        company='https://www.barbour.com/us/footwear-guide.html'
+        page=verifier.Page()
+        page.feed('<title>Barbour Footwear</title><nav><a href="/uk/womens-clothing">Women’s Clothing</a>'
+                  '<a href="/uk/outerwear">Outerwear</a></nav>'
+                  '<p>Our headquarters are located in South Shields, England.</p>')
+        page.finish()
+        def run(name,role,snippet):
+            hit=dict(url='https://uk.linkedin.com/in/contact',title=name+' - Barbour | LinkedIn',snippet=snippet)
+            row=dict(kind='profile',company='Barbour',person=name,role=role,profileHit=hit,
+                     source=company,researchTarget={'company':'Barbour','industry':'footwear'})
+            return verifier.verify(row,lambda url:(url,page))
+        for snippet in ['Senior designer specialising in outerwear. · Experience: Barbour · Location: South Shields',
+                        'Senior designer specialising in outerwear.']:
+            proof=run('Katie Briggs','Senior Designer',snippet)
+            self.assertEqual(proof['status'],'verified',proof)
+            self.assertIn(proof['lead']['companyVerification']['matchType'], ('product_area','location'))
+        result=run('Christina Chin','Design Manager',
+                   'Design Manager at Barbour, responsible for Womenswear collections across Asia Pacific and…')
+        self.assertEqual(result['status'],'verified')
+        for snippet in ['Graphic Designer Barbour, South Shields, England, United Kingdom',
+                        'Graphic Designer at Barbour, South Shields · Open position available',
+                        'Graphic Designer · Experience: Barbour · Location: South Shields · Reposted a vacancy',
+                        'Senior Designer · Experience: Barbour EHS · Location: South Shields',
+                        'Senior Designer · Experience: Acme · Location: South Shields',
+                        'Former Senior Designer · Experience: Barbour · Location: South Shields',
+                        'About: recruiter and artist. Katie shared this. Senior Designer · Experience: Barbour, South Shields']:
+            self.assertEqual(run('Katie Briggs','Graphic Designer' if 'Graphic Designer' in snippet else 'Senior Designer',snippet)['status'],'unsupported',snippet)
+
+    def test_current_structured_experience_remains_separate_from_activity(self):
+        markers = [('company_url','linkedin.com/company/barbour-brand','https://www.barbour.com')]
+        row = dict(company='Barbour',person='Katie Briggs',role='Senior Designer',
+                   researchTarget=dict(company='Barbour',industry='footwear'))
+        def result(block):
+            return verifier.indexed_employment({**row,'profileHit':dict(
+                url='https://www.linkedin.com/in/kbriggs',title='Katie Briggs – Barbour | LinkedIn',
+                snippet='## Activity\nVacancy shared this week.\n## Experience\n'+block+'\n## Education\n2021')},markers)
+        block='[Barbour](https://www.linkedin.com/company/barbour-brand/)\n#### Senior Designer\nSep 2023 – Present'
+        self.assertIsNotNone(result(block))
+        self.assertIsNone(result(block.replace('Present','May 2025')))
+        self.assertIsNone(result(block.replace('Senior Designer','Senior Engineer')))
+        self.assertIsNone(result(block.replace('[Barbour]','[Barbour EHS]')))
+
+    def test_direct_role_source_can_corroborate_company_from_its_other_product_lines(self):
+        article='https://press.example/womenswear'
+        official='https://www.barbour.com/us/footwear-guide.html'
+        def page(html):
+            p=verifier.Page();p.feed(html);return p.finish()
+        brand=page('<title>Barbour Footwear</title><nav><a href="/womenswear">Women’s Clothing</a></nav>')
+        def run(line):
+            row=dict(company='Barbour',person='Nicola Brown',role='head of womenswear',source=article,
+                     companySource=official,researchTarget=dict(company='Barbour',industry='footwear'))
+            return verifier.verify(row,lambda url:(url,brand if url==official else page(line)))
+        verified=run('<p>Nicola Brown, head of womenswear for Barbour.</p>')
+        self.assertEqual(verified['status'],'verified')
+        self.assertEqual(verified['lead']['companyVerification']['identitySource'],official)
+        self.assertEqual(verified['lead']['source'],article)
+        self.assertEqual(run('<p>Nicola Brown, head of womenswear for Barbour Engineering.</p>')['status'],'unsupported')
 
     def test_repeated_employer_anchor_fetch_is_shared(self):
         with patch.object(verifier, 'fetch', return_value=(URL, 'one page')) as request:

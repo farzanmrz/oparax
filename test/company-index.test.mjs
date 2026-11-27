@@ -120,3 +120,28 @@ test('revisits a bounded set of deferred identities even when no subsequent broa
   assert.equal(result.candidateKeys.length,8);assert.ok(result.checkedKeys.every(k=>result.candidateKeys.includes(k)));
   assert.equal((await discover([], {page:200,pending:pending.slice(0,1)})).exhausted,true);
 });
+test('a surname alone or different corporation cannot enter the candidate pool; an independently employed namesake can',async()=>{
+  const wrong=profile('jamie-northwind','Jamie Northwind | LinkedIn','**Jamie Northwind**\n**Sourcing Director at Solstice Ltd.**');
+  const other=profile('anna-drew','Anna Drew - Senior Buyer at G E Northwind Inc. | LinkedIn','Senior Buyer at G E Northwind Inc.');
+  const same=profile('sue-northwind','Sue Northwind - Senior Designer at Northwind | LinkedIn','Footwear design.');
+  const index=await discover([wrong,other,same]);
+  assert.deepEqual(index.rows.map(p=>p.person),['Sue Northwind']);
+  assert.equal(index.candidateCount,1);assert.equal(index.diagnostics.unrelatedEmployer,2);
+  assert.ok(index.unresolved.length===0);assert.equal(index.checkedKeys.length,1);
+});
+test('current employer links under Experience bind only a proven current role, never a prior employer or a shared job',async()=>{
+  const structured='## Activity\nShared this job: Retail Designer at Northwind\n## Experience\n### [Northwind](https://www.linkedin.com/company/northwind)\n#### Head of Footwear Design\nApr 2021 - Present · 5 years\n#### Design Consultant\n2017 - 2021\n### [Other Company](https://www.linkedin.com/company/other)\n#### Chief Buyer\n2022 - Present';
+  const ended='## Experience\n### [Northwind](https://www.linkedin.com/company/northwind)\n#### Design Director\n2019 - 2022\n### [Acme](https://www.linkedin.com/company/acme)\n#### Design Partner\n2022 - Present';
+  const data=await discover([profile('jane-cur','Jane Sun | LinkedIn',structured),profile('john-old','John Li | LinkedIn',ended)]);
+  assert.deepEqual(data.rows.map(p=>[p.person,p.role]),[['Jane Sun','Head of Footwear Design']]);
+  assert.equal(data.rows[0].profileHit.snippet,structured);
+  assert.equal(data.candidateCount,1);
+});
+test('anchored queries use established industry, legal name or HQ without imposing a universal geographic limit',()=>{
+  const proof={...anchor,domain:'northwind.example',identifiers:[{kind:'legal_name',value:'N Wind Holdings Ltd'},{kind:'location',value:'Dunbar'},{kind:'country',value:'United Kingdom'}]};
+  const queries=Array.from({length:24},(_,i)=>companyQueries(plan,{...context,companyProof:proof},i).queries).flat();
+  assert.ok(queries.some(q=>q.includes('N Wind Holdings Ltd')));assert.ok(queries.some(q=>q.includes('Dunbar')));
+  assert.ok(queries.some(q=>q==='site:linkedin.com/in/ "Northwind" buyer'));
+  assert.ok(queries.some(q=>q.includes('footwear')));
+  assert.ok(companyQueries(plan,context,0).queries.every(q=>!q.includes('Dunbar')));
+});
