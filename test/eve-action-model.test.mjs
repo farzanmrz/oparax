@@ -55,8 +55,9 @@ test('paid native calls report the selected bot, actual model and gateway usage 
     onUsage:async value=>{writes++;await onUsage(value);}});
   w.d.bots[0].modelPreference='premium'; // The in-flight generation keeps its original selection.
   await mw.wrapGenerate({doGenerate:async()=>({content:[tool],response:{modelId:reported},usage,providerMetadata})});
-  const stored=()=>view(w.d).bots.find(b=>b.id===t.agentId).lastModelUsage;
-  assert.equal(stored().preference,'grok');assert.equal(stored().requestedModel,modelId);assert.equal(stored().modelId,reported);
+  const stored=()=>w.d.bots.find(b=>b.id===t.agentId).lastModelUsage;
+  assert.equal(view(w.d).bots.find(b=>b.id===t.agentId).lastModelUsage,undefined);
+  assert.equal(stored().preference,'auto');assert.equal(stored().requestedModel,modelId);assert.equal(stored().modelId,reported);
   assert.equal(stored().inputTokens,1000);assert.equal(stored().outputTokens,100);assert.equal(stored().costUsd,0.0023);
   const nativeStream=await mw.wrapStream({doStream:async()=>({stream:parts([{type:'response-metadata',modelId},tool,{type:'finish',usage}])})});
   await collect(nativeStream.stream);
@@ -126,3 +127,64 @@ test('native tool returns only the latest committed reply after an earlier no-ac
    {botId:id,role:'user',requestId:key},{botId:id,role:'assistant',content:'Persisted success.'},{botId:id,role:'user',requestId:'other'},{botId:id,role:'assistant',content:'Later reply.'}];
  assert.equal(canonicalAnswer({messages},id,key),'Persisted success.');
 });
+
+const handoff={...tool,input:JSON.stringify({...JSON.parse(tool.input),action:'request_review'})};
+const finished={unified:'tool-calls',raw:'tool-calls'};
+const commandSchema={name:'handle_sales_request',description:'Submit an action.',inputSchema:{
+  type:'object',properties:{action:{type:'string',enum:['status','clarify']}}
+}};
+function answerFrom(modelId,content){
+  return {content,response:{modelId},warnings:[],usage:{inputTokens:{total:10},outputTokens:{total:5}},finishReason:finished};
+}
+async function decideWithMiddleware(mode,mw,params,primary){
+  if(mode==='generate')return (await mw.wrapGenerate({params,doGenerate:async()=>primary()})).content;
+  const output=await mw.wrapStream({params,doStream:async()=>{
+    const result=await primary();
+    return {stream:parts([{type:'stream-start',warnings:[]},{type:'response-metadata',modelId:result.response.modelId},
+      ...result.content,{type:'finish',finishReason:result.finishReason,usage:result.usage}])};
+  }});
+  return collect(output.stream);
+}
+for(const mode of ['generate','stream']){
+  test(mode+' allows one internal difficulty review with the signed context and forwards only the checked final action',async()=>{
+    process.env.SUPABASE_SECRET_KEY='fixture-only';
+    const w=fixture(),{ctx}=await context(w,{message:'Interpret the account evidence',requestId:'review-test-'+mode});
+    const route=await eveModelCall(ctx,w.deps),recorded=[],calls=[];
+    assert.equal(route.modelId,'spacexai/grok-4.7');assert.equal(route.review.modelId,'openai/gpt-6.2-sol');
+    const prompt=[{role:'user',content:[{type:'text',text:'Signed workspace facts'}]}],signal=new AbortController().signal;
+    const mark=fn=>async info=>{await fn(info);recorded.push({...w.d.bots[0].lastModelUsage});};
+    const mw=actionMiddleware({getReceipt:()=>modelReceipt(ctx,w.deps),onUsage:mark(route.onUsage),fail:()=>assert.fail('failed'),
+      review:{onUsage:mark(route.review.onUsage),generate:async params=>{
+        calls.push('review');assert.equal(params.prompt,prompt);assert.equal(params.abortSignal,signal);
+        assert.equal(params.tools.length,1);assert.deepEqual(params.tools[0],commandSchema);
+        assert.deepEqual(params.toolChoice,{type:'tool',toolName:'handle_sales_request'});
+        return answerFrom(route.review.modelId,[{type:'text',text:'private second opinion'},tool]);
+      }}});
+    const params=await mw.transformParams({params:{prompt,abortSignal:signal,tools:[commandSchema,{name:'different_tool'}]}});
+    assert.ok(params.tools[0].inputSchema.properties.action.enum.includes('request_review'));
+    const output=await decideWithMiddleware(mode,mw,params,()=>{calls.push('routine');return answerFrom(route.modelId,[handoff]);});
+    assert.deepEqual(calls,['routine','review']);assert.deepEqual(output.filter(p=>p.type==='tool-call'),[tool]);
+    assert.ok(!JSON.stringify(output).includes('second opinion'));assert.ok(!JSON.stringify(output).includes('request_review'));
+    assert.deepEqual(recorded.map(r=>r.requestedModel),[route.modelId,route.review.modelId]);
+  });
+  test(mode+' declines malformed and repeated review signals, preserves normal clarification and does not retry HTTP failures',async()=>{
+    const clarify={...tool,input:JSON.stringify({...JSON.parse(tool.input),action:'clarify',text:'Which region?'})};
+    const malformed={...tool,input:JSON.stringify({...JSON.parse(handoff.input),channel:'email'})};
+    for(const [first,second,wantedCalls,expected] of [
+      [[clarify],null,0,'clarify'],[[malformed],null,0,'failed'],[[handoff,tool],null,0,'failed'],
+      [[handoff],[handoff],1,'failed'],[[handoff],[tool,tool],1,'failed'],
+      [Object.assign(new Error('Access denied'),{status:403}),null,0,'failed'],
+      [Object.assign(new Error('budget'),{status:402}),null,0,'model_budget'],
+      [[handoff],Object.assign(new Error('budget'),{status:402}),1,'model_budget']
+    ]){
+      let reviews=0;
+      const mw=actionMiddleware({getReceipt:read,fail:async reason=>reason==='model_budget'?'model_budget':'failed',
+        review:{onUsage:async()=>{},generate:async()=>{reviews++;if(second instanceof Error)throw second;return answerFrom('review',second);}}});
+      const params=await mw.transformParams({params:{tools:[commandSchema]}});
+      const out=await decideWithMiddleware(mode,mw,params,()=>{if(first instanceof Error)throw first;return answerFrom('routine',first);});
+      assert.equal(reviews,wantedCalls);
+      if(expected==='clarify')assert.deepEqual(out.filter(p=>p.type==='tool-call'),[clarify]);
+      else {assert.ok(out.some(p=>(p.text||p.delta)===expected));assert.equal(out.some(p=>p.type==='tool-call'),false);}
+    }
+  });
+}

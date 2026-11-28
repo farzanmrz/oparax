@@ -58,17 +58,24 @@ test('first outreach, LinkedIn and follow-up use profile and playbook. Editing m
   await prepareCampaignDrafts([{...person}],salesContext(d,disabledBot),{gateway:()=>{throw Error('Unexpected call');}});
   assert.equal(calls,1);
 });
-test('model choices are per agent, auto is cheap on routine and hard-ranked planning is bounded to that call',()=>{
-  assert.equal(resolveAgentModel({}).modelId,'openai/gpt-6.2-sol');
+test('Auto uses Grok by default, including bots with old settings, and Sol for difficult judgments',()=>{
   const difficult='Reconcile conflicting evidence from the two named employers';
-  assert.equal(resolveAgentModel({}, {task:'planning',message:difficult}).modelId,'openai/gpt-6.2-astra');
-  assert.equal(resolveAgentModel({}, {task:'research',message:difficult}).modelId,'openai/gpt-6.2-sol');
-  const bots=[{},{}];setModelPreference({},bots[0],'grok');
-  for(const task of ['research','planning','draft','conversation'])assert.equal(resolveAgentModel(bots[0],{task,complex:true}).modelId,'spacexai/grok-4.7');
-  assert.equal(resolveAgentModel(bots[1]).modelId,'openai/gpt-6.2-sol');assert.throws(()=>setModelPreference({},bots[0],'made-up'));
+  for (const modelPreference of [undefined, 'auto', 'grok', 'premium', 'efficient']) {
+    const bot={modelPreference};
+    assert.equal(resolveAgentModel(bot).modelId,'spacexai/grok-4.7');
+    for (const task of ['conversation','planning'])
+      assert.equal(resolveAgentModel(bot,{task,message:difficult}).modelId,'openai/gpt-6.2-sol');
+    for (const task of ['research','draft'])
+      assert.equal(resolveAgentModel(bot,{task,message:difficult}).modelId,'spacexai/grok-4.7');
+    if(modelPreference) {
+      setModelPreference({},bot,modelPreference);
+      assert.equal(bot.modelPreference,'auto');
+    }
+  }
+  assert.throws(()=>setModelPreference({},{},'made-up'));
 });
 test('model usage records Gateway costs when available and labels text-price estimates otherwise',()=>{
-  const r=resolveAgentModel({modelPreference:'efficient'},{task:'draft'});
+  const r=resolveAgentModel(null,{task:'planning',complex:true});
   const basis=modelUsage({model:r.modelId,usage:{prompt_tokens:1000,completion_tokens:200}},r);
   assert.equal(basis.costUsd,0.004);assert.equal(basis.costBasis,'estimated_standard_text');
   assert.equal(basis.inputTokens,1000);assert.equal(basis.outputTokens,200);assert.equal(basis.requestedModel,r.modelId);
@@ -84,7 +91,7 @@ test('model usage records Gateway costs when available and labels text-price est
   assert.equal(estimate(r,272001),(272001*4+200*15)/1e6);
 });
 
-test('the public research planning entry point uses current seller context and the bot pin before any public query',async()=>{
+test('the public research planning entry point uses current seller context and Auto before any public query',async()=>{
   const {research}=await import('../lib/agent.mjs');
   const d={...structuredClone(workspace),bots:[{...bot,searchSources:['web'],researchRequestedAt:'run',cadence:24}],leads:[],messages:[],events:[],suppressed:[]};
   let called=0;
@@ -114,4 +121,42 @@ test('a reported cost from the chat gateway is emitted exactly once by the actua
     globalThis.fetch=saved;
     if(env===undefined)delete process.env.AI_GATEWAY_API_KEY;else process.env.AI_GATEWAY_API_KEY=env;
   }
+});
+
+test('a difficult judgment discovered during Auto gets one independent Sol review before the planner returns',async t=>{
+  const {model} = await import('../lib/agent.mjs');
+  const calls = [], usage = [], answers = [];
+  t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    const request = JSON.parse(init.body);
+    calls.push(request);
+    const next = answers.shift();
+    if (typeof next === 'number') return new Response('', {status:next});
+    return Response.json({model:request.model, usage:{prompt_tokens:123,completion_tokens:10},
+      choices:[{message:{content:next}}]});
+  });
+  const env = process.env.AI_GATEWAY_API_KEY;
+  process.env.AI_GATEWAY_API_KEY = 'test-fixture-only';
+  t.after(() => {
+    if (env === undefined) delete process.env.AI_GATEWAY_API_KEY;
+    else process.env.AI_GATEWAY_API_KEY = env;
+  });
+  const scope = {message:'Which of the two people fits our brief?', agent:{modelPreference:'premium'},
+    onUsage:entry=>usage.push(entry)};
+  const review = '{"action":"request_review"}';
+  answers.push(review, '{"action":"answer","answer":"Only one candidate covers this product."}');
+  assert.deepEqual(await planCommand(scope,model), {action:'answer',answer:'Only one candidate covers this product.'});
+  assert.deepEqual(calls.map(c=>c.model), ['spacexai/grok-4.7','openai/gpt-6.2-sol']);
+  assert.deepEqual(usage.map(u=>u.modelId), calls.map(c=>c.model));
+  assert.deepEqual(calls[0].messages.slice(1), calls[1].messages.slice(1));
+  assert.match(calls[0].messages[0].content, /request_review/);
+  assert.doesNotMatch(calls[1].messages[0].content, /request_review/);
+  calls.length=0; answers.push(review, review);
+  await assert.rejects(planCommand(scope,model), /reasoning review returned no usable answer/);
+  assert.equal(calls.length,2);
+  calls.length=0; answers.push(402);
+  await assert.rejects(planCommand(scope,model), error=>error.status===402);
+  assert.equal(calls.length,1);
+  calls.length=0; answers.push('{"action":"clarify","question":"Which employer?"}');
+  await planCommand(scope,model);
+  assert.equal(calls.length,1);
 });

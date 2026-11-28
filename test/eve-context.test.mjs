@@ -26,7 +26,7 @@ function fixture(message='Write a LinkedIn draft for Jane Cole'){
 test('signed turn returns scoped sender, current permission states and minimized named contacts and historical draft references',async()=>{
   const {deps}=fixture(),result=await eveSalesContext(context(),deps);
   assert.equal(result.ownerMessage,'Write a LinkedIn draft for Jane Cole');
-  assert.equal(result.businessProfile.company,'Product Studio');assert.equal(result.agent.modelPreference,'grok');
+  assert.equal(result.businessProfile.company,'Product Studio');assert.equal(result.agent.modelPreference,'auto');
   assert.deepEqual(result.prospects,[{id:'jane',person:'Jane Cole',company:'Sample',role:'Designer',channels:{email:true,linkedin:true}}]);
   assert.deepEqual(result.history,[{role:'user',content:'Keep the first drafts short.'},{role:'assistant',type:'prospectDraft',prospectId:'jane',channel:'linkedin'}]);
   assert.deepEqual(result.playbookNames,['Short outreach']);assert.equal(result.connectors.find(c=>c.id==='rocketreach').status,'connected');

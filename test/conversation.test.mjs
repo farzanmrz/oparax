@@ -215,7 +215,7 @@ test('explicit account memory chat bypasses model, is shared with another bot, a
  const first=await w.send(command);assert.equal(first.work,null);assert.equal(calls,0);assert.equal(w.data.businessMemory.version,1);
  await w.send(command);assert.equal(w.data.businessMemory.version,1);assert.equal(w.data.messages.length,2);
  await w.send({message:'What do we sell?',requestId:'second-bot-with-memory',modelPreference:'grok'});
- assert.equal(calls,1);assert.equal(w.data.bots.length,2);assert.equal(w.data.bots[1].modelPreference,'grok');assert.equal(w.data.messages.at(-1).content,'You supply finished leather.');
+ assert.equal(calls,1);assert.equal(w.data.bots.length,2);assert.equal(w.data.bots[1].modelPreference,'auto');assert.equal(w.data.messages.at(-1).content,'You supply finished leather.');
 });
 
 test('a missing fact requests clarification without saving or transmitting an invented draft',async()=>{

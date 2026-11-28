@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {view} from '../lib/store.mjs';
+import {activitySnapshot} from '../lib/research-activity.mjs';
+
+test('existing bots expose Auto and keep model accounting out of the dashboard and activity stream',()=>{
+  const modelId='openai/gpt-6.2-astra';
+  const bot={id:'one',modelPreference:'premium',lastRun:{model:modelId,status:'running'},
+    lastModelUsage:{modelId,requestedModel:modelId,costUsd:0.07},researchJob:{id:'job'},
+    researchActivityJob:'job',researchActivity:[{kind:'started',text:'Started research batch 2 using '+modelId+'.'}]};
+  const visible=view({bots:[bot]}).bots[0];
+  assert.equal(visible.modelPreference,'auto');
+  assert.ok(!Object.hasOwn(visible,'lastModelUsage'));
+  assert.ok(!Object.hasOwn(visible.lastRun,'model'));
+  assert.equal(visible.researchActivity[0].text,'Started research batch 2.');
+  assert.deepEqual(activitySnapshot(bot).events,visible.researchActivity);
+  assert.equal(bot.lastModelUsage.modelId,modelId);
+});
 test('workspace view never serializes provider credentials, raw mail references, or OAuth state',()=>{
  const marker='test-private-credential';
  const b={id:'b',brief:'Find buyers at Example',mailboxEvidence:{privateRef:marker},mailboxScanHistory:[marker],mailboxScanLease:{private:marker},mailboxResearchConsent:{mailboxId:marker},selectedSourceLeases:{linkedin:{id:marker}}};
