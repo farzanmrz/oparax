@@ -1,9 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateCommandProposal} from '../lib/conversation-model.mjs';
+import {initialSourceGateIntent,validateCommandProposal} from '../lib/conversation-model.mjs';
 const agent={id:'agent',brief:'Find footwear buyers at Barbour.'};
 const prospects=[{id:'jane',person:'Jane Cole',role:'Buyer',company:'Barbour'},{id:'james',person:'James Noor',role:'Designer',company:'Other'}];
 const check=(message,proposal,extra={})=>validateCommandProposal({message,agent,prospects,history:[],...extra},proposal);
+
+test('only unambiguous first-time prospect briefs use the local source gate',()=>{
+  for(const message of ['Find buyers at Barbour footwear','Please identify senior procurement managers at ACME.',
+    'Can you find up to 50 footwear designers in London?', 'Find regional semiconductor engineers at Intel']){
+    assert.equal(initialSourceGateIntent(message)?.brief,message);
+  }
+  for(const message of ['Find buyers','How do I find buyers at Barbour?','Find books about buyers at Barbour',
+    'Find buyers at Barbour and then email them','Imagine I said “Find buyers at Barbour”',
+    'Find buyers at Barbour if our deal goes through','Find buyers in our existing CRM']){
+    assert.equal(initialSourceGateIntent(message),null,message);
+  }
+});
 
 test('routine Eve proposals reuse the saved-intent validation without another model and cannot supply a new search target',()=>{
   assert.deepEqual(check('Where are we on that search?',{action:'status'}),{action:'status'});

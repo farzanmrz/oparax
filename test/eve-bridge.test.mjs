@@ -48,3 +48,63 @@ test('concurrent first turns publish a single native session and a retired sessi
  const c=await prepareEveSession(uid,{id:a.agentId},{...deps,retired:async()=>true});
  assert.equal(c.agentId,a.agentId);assert.notEqual(c.sessionId,a.sessionId);assert.equal(w.d.bots.length,1);
 });
+
+test('a browser submission queues its signed literal once by key and receives a read-only native receipt',async()=>{
+  process.env.SUPABASE_SECRET_KEY='test-fixture-only';
+  const w=workspace(),calls=[],deliveries=new Map(),input={message:'Find buyers at Barbour footwear',requestId:'browser-first-00001'};
+  const deps={...w.deps,fetch:async (url,options)=>{
+    const req=new Request(url,options),caller=await eveCaller(req,w.deps);
+    assert.equal(caller.attributes.requestId,input.requestId);
+    const payload=await req.json();calls.push(payload);
+    assert.deepEqual(payload,{message:input.message,turnPolicy:'queue',idempotencyKey:input.requestId});
+    if(calls.length===1)return Response.json({code:'session_not_ready'},{status:409});
+    deliveries.set(payload.idempotencyKey,'delivery-1');
+    return Response.json({sessionId:'wrun_test123',deliveryId:deliveries.get(payload.idempotencyKey)},{status:202});
+  }};
+  const a=await prepareEveSession(uid,input,deps,true),b=await prepareEveSession(uid,input,deps,true);
+  assert.equal(a.deliveryId,'delivery-1');assert.equal(b.deliveryId,a.deliveryId);assert.equal(deliveries.size,1);
+  assert.equal(a.agentId,b.agentId);assert.equal(calls.length,3);assert.equal(w.creates,1);
+  assert.equal(parseTicket(a.bearer).scope,'read');
+  assert.equal(await eveCaller(request('/eve/v1/session/'+a.sessionId,a.bearer,calls[0]),w.deps),null);
+  assert.ok(await eveCaller(request('/eve/v1/session/'+a.sessionId+'/stream',a.bearer),w.deps));
+  const restored=await prepareEveSession(uid,{id:a.agentId},deps,true);
+  assert.equal(restored.deliveryId,undefined);assert.equal(calls.length,3);
+});
+
+test('legacy first turns rebind only after finite, delivery-free native history is proven',async()=>{
+  process.env.SUPABASE_SECRET_KEY='test-fixture-only';
+  for(const mode of ['empty','started','admitted','ambiguous','unavailable','ledger']){
+    const w=workspace(),input={message:'Find buyers at Barbour footwear',requestId:'legacy-first-00001'};
+    const old=await prepareEveSession(uid,input,w.deps);
+    const agent=w.d.bots[0];delete agent.eveBinding.serverQueue;
+    if(mode==='ledger')w.d.messages.push({botId:agent.id,role:'user',content:input.message});
+    const binds=[],posts=[],reads=[];
+    const deps={...w.deps,start:async()=>{binds.push(true);return 'wrun_currentBuild';},fetch:async(url,options)=>{
+      if(url.includes('/stream?follow=false')){
+        reads.push(url);
+        if(mode==='unavailable')return new Response(null,{status:503});
+        const facts=mode==='admitted'?[{type:'session.started'},{type:'delivery.admitted'}]:[{type:'session.started'}];
+        const lines=[{$eve:'heartbeat'},...(mode==='empty'?[]:[{facts}]),{$eve:'stream.ended'}];
+        return new Response(lines.map(JSON.stringify).join('\n'),{headers:{
+          'x-eve-stream-tail-index':mode==='empty'?'-1':'0','x-eve-session-id':mode==='ambiguous'?'wrun_other':old.sessionId
+        }});
+      }
+      const req=new Request(url,options),auth=await eveCaller(req,w.deps);assert.equal(auth.attributes.requestId,input.requestId);
+      posts.push(await req.json());return Response.json({sessionId:url.split('/').at(-1),deliveryId:'saved-delivery'},{status:202});
+    }};
+    const result=await prepareEveSession(uid,{id:agent.id,...input},deps,true);
+    const unused=['empty','started'].includes(mode);
+    assert.equal(result.sessionId,unused?'wrun_currentBuild':old.sessionId,mode);
+    assert.equal(binds.length,unused?1:0,mode);assert.equal(reads.length,mode==='ledger'?0:1,mode);
+    assert.equal(w.d.bots.length,1);assert.equal(result.agentId,old.agentId);
+    assert.equal(posts.length,1);assert.equal(posts[0].idempotencyKey,input.requestId);
+  }
+});
+
+test('an unconfirmed or mismatched native response never becomes a saved or displayed success',async()=>{
+  process.env.SUPABASE_SECRET_KEY='test-fixture-only';
+  const w=workspace(),input={message:'Check the status.',requestId:'missing-receipt-00001'};
+  const fetch=async()=>Response.json({sessionId:'wrun_other',deliveryId:'different'},{status:202});
+  await assert.rejects(prepareEveSession(uid,input,{...w.deps,fetch},true),/did not confirm delivery/);
+  assert.equal(view(w.d).bots[0].chatTurn.status,'unconfirmed');
+});

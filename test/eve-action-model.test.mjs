@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {actionMiddleware,failureReason,recordNoAction,modelReceipt,localSalesCall} from '../lib/eve-action-model.mjs';
 import {noActionMessage,budgetMessage} from '../lib/eve-turn-receipt.mjs';
-import {prepareEveSession,eveCaller,eveModelCall} from '../lib/eve-bridge.mjs';
+import {prepareEveSession,eveCaller,eveModelCall,runEveSalesTurn} from '../lib/eve-bridge.mjs';
+import {messageAgent} from '../lib/conversation.mjs';
 import {view} from '../lib/store.mjs';
 
 const tool={type:'tool-call',toolCallId:'one',toolName:'handle_sales_request',input:JSON.stringify({action:'status',text:null,name:null,prospectId:null,channel:null,existingDraft:null,concrete:null})};
@@ -93,6 +94,30 @@ test('status, saved results and explicitly scoped memory use the registered doma
    const out=await mw.wrapStream({doStream:async()=>assert.fail('called paid gateway for deterministic command')});
    assert.deepEqual((await collect(out.stream)).filter(p=>p.type==='tool-call'),[call]);
  }
+});
+test('Barbour first turn opens source selection with zero model calls, and replay keeps one authorized public job',async()=>{
+  process.env.SUPABASE_SECRET_KEY='fixture-only';
+  const w=fixture(),brief='Find buyers at Barbour footwear',jobs=[];
+  const fail=()=>assert.fail('A source gate must not require a model call.');
+  const deps={...w.deps,messageAgent:(input,overrides)=>messageAgent(input,{...w.deps,...overrides,plan:fail}),kick:async()=>jobs.push(w.d.bots[0].researchJob?.id)};
+  async function submit(raw){
+    const {t,ctx}=await context(w,raw);
+    const middleware=actionMiddleware({getReceipt:()=>modelReceipt(ctx,w.deps),getLocalCall:()=>localSalesCall(ctx,w.deps),fail});
+    const parts=await collect((await middleware.wrapStream({doStream:fail})).stream);
+    const toolCall=parts.find(p=>p.type==='tool-call');
+    if(toolCall)await runEveSalesTurn(ctx,deps,JSON.parse(toolCall.input));
+    return t.agentId;
+  }
+  const first={message:brief,requestId:'barbour-source-first'};
+  const id=await submit(first);
+  assert.equal(w.d.bots[0].brief,brief);assert.equal(w.d.bots[0].searchGate.status,'awaiting_source');
+  assert.equal(w.d.messages.at(-1).details.type,'sourceChoice');assert.equal(w.d.bots[0].researchJob,undefined);
+  await submit({...first,id});assert.equal(w.d.messages.length,2);assert.deepEqual(jobs,[]);
+  await submit({id,message:'Sales Navigator',requestId:'barbour-private'});
+  assert.equal(w.d.bots[0].searchGate.status,'awaiting_selection');assert.deepEqual(jobs,[]);
+  const select={id,message:'Use these research sources: Public web.',searchSources:['web'],requestId:'barbour-public'};
+  await submit(select);await submit(select);
+  assert.deepEqual(jobs,[w.d.bots[0].researchJob.id]);assert.equal(w.d.bots.length,1);assert.equal(w.d.messages.length,6);
 });
 test('native tool returns only the latest committed reply after an earlier no-action attempt',async()=>{
  const {canonicalAnswer}=await import('../lib/eve-turn-receipt.mjs');

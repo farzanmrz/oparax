@@ -73,7 +73,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  const [researching,setResearching]=useState(null),[agentFilter,setAgentFilter]=useState('');
  const [draftId,setDraftId]=useState(null),[draftType,setDraftType]=useState('LinkedIn'),[activityFor,setActivityFor]=useState(initialAgentId),
    [managedRequest,setManagedRequest]=useState(null),[initialDraft,setInitialDraft]=useState(''),[mobileRoster,setMobileRoster]=useState(false);
- const [eveCommand,setEveCommand]=useState(null),[eveSnapshot,setEveSnapshot]=useState(null);
+ const [eveCommand,setEveCommand]=useState(null),[eveSnapshot,setEveSnapshot]=useState(null),[deliveryFailure,setDeliveryFailure]=useState(null);
  const activeTurnRequest=useRef(null),loadGeneration=useRef(0),appliedLoad=useRef(0);
  const [skillId,setSkillId]=useState(null),[teaching,setTeaching]=useState(null);
  const activeSession=useRef(null),refreshing=useRef(null),pendingOwner=useRef(null),viewRef=useRef({page,sel});
@@ -92,7 +92,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    if(typeof brief==='string'&&brief){setInitialDraft(brief);S(newThread);P('Agents')}
  },[preview,d?.userEmail,initialAgentId]);
  function session(s){activeSession.current=s;A(s);if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else{
-   appliedLoad.current=++loadGeneration.current;
+   appliedLoad.current=++loadGeneration.current;setDeliveryFailure(null);
    sessionStorage.removeItem('oparax.sales.session');pendingOwner.current=null;setEveSnapshot(null);setEveCommand(null);activeTurnRequest.current?.reject?.(new Error('The sign-in session changed.'));activeTurnRequest.current=null;setTeaching(null);setInitialDraft('');S(initialAgentId);P(initialPage);
  }}
  async function token(){
@@ -274,7 +274,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
      if(!b&&result.agentId)selectAgent(result.agentId);
    }else{
      if(activeTurnRequest.current)return false;
-     E('');N('');
+     E('');N('');setDeliveryFailure(null);
      if(!b&&original!==newThread)S(newThread);
      const call={};activeTurnRequest.current=call;
      try{
@@ -292,10 +292,9 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
        const saved=latest.bots.find(bot=>bot.chatTurn?.requestId===payload.requestId&&(!payload.id||bot.id===payload.id));
        const target=call.ticket?.agentId||saved?.id,view=viewRef.current;
        if(!b&&target&&view.page==='Agents'&&(view.sel===newThread||view.sel===original))selectAgent(target);
-       if(deliveryError&&saved?.chatTurn?.status!=='confirmed'){
-         if(saved&&!b){clearLandingDraft();setTeaching(null)}
-         throw deliveryError;
-       }
+       if(deliveryError&&!saved)throw deliveryError;
+       if(deliveryError&&saved.chatTurn.status!=='confirmed')
+         setDeliveryFailure({agentId:saved.id,requestId:payload.requestId,error:deliveryError});
      }catch(e){if(activeTurnRequest.current===call)E(e.message||'Your bot could not accept the message.');return false}
      finally{if(activeTurnRequest.current===call){activeTurnRequest.current=null;setEveCommand(null)}}
    }
@@ -315,12 +314,12 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
  <aside className="room-sidebar"><div className="room-brand"><Brand/><button type="button" className="room-mobile-create" onClick={()=>selectAgent(newThread)}>＋ New bot</button><button className="room-roster-toggle" aria-label={mobileRoster?'Close navigation menu':'Bots & tools menu'} aria-expanded={mobileRoster} onClick={()=>setMobileRoster(!mobileRoster)}>{mobileRoster?'Close menu':'Menu'}</button></div>
  <div className="room-side-body"><button className="room-new" onClick={()=>selectAgent(newThread)}><Icon n="plus"/>New bot</button>
  <div className="room-side-label">Bots</div><nav className="room-roster" aria-label="Your sales bots">
- {d.bots.map(agent=>{const state=agentState(agent);return <button key={agent.id} className={'room-agent '+(page==='Agents'&&agent.id===b?.id?'selected':'')} aria-current={page==='Agents'&&agent.id===b?.id?'page':undefined} onClick={()=>selectAgent(agent.id)}><i className={'room-agent-dot '+state.tone}/><span><strong>{agent.name}</strong><small>{state.label}</small></span></button>})}</nav>
+ {d.bots.map(agent=>{const state=agentState(agent,{snapshot:page==='Agents'&&b?.id===agent.id&&eveSnapshot?.id===agent.id?eveSnapshot:null});return <button key={agent.id} className={'room-agent '+(page==='Agents'&&agent.id===b?.id?'selected':'')} aria-current={page==='Agents'&&agent.id===b?.id?'page':undefined} onClick={()=>selectAgent(agent.id)}><i className={'room-agent-dot '+state.tone}/><span><strong>{agent.name}</strong><small>{state.label}</small></span></button>})}</nav>
  <div className="room-side-label">Workspace</div><nav className="room-nav" aria-label="Workspace tools">{nav.filter(n=>n!=='Agents').map(n=><button className={page===n?'selected':''} key={n} onClick={()=>go(n)}><Icon n={n}/>{n==='LinkedIn queue'?'Drafts':n}</button>)}</nav></div>
  <div className="account"><i>{preview?'S':d.userEmail?.[0]?.toUpperCase()}</i><div>{preview?'Sample workspace':d.userEmail}<small>{preview?'Interactive demo':'Workspace owner'}</small></div>{preview?<a href="/">Sign in</a>:<button onClick={logout} title="Sign out" aria-label="Sign out">↗</button>}</div></aside>
  <main className={'room-main '+(page==='Agents'?'room-chat':'room-secondary')}><header className="room-topbar"><span>{preview?'Fictional demo':'Sales workroom'} <em>/</em> {page==='Agents'?'Conversations':page==='LinkedIn queue'?'Drafts':page}</span>{preview?<a href="/" style={{whiteSpace:'nowrap',flexShrink:0}}>Sign in</a>:<button disabled={busy} onClick={()=>load(auth).then(()=>N('Workspace refreshed.')).catch(e=>E(e.message))}>Refresh</button>}</header>
  <div className="room-content">{page==='Agents'?<AgentThread key={b?.id||newThread} agent={b} messages={b?d.messages.filter(x=>x.botId===b.id):[]} leads={b?publishedLeads.filter(x=>belongsToCampaign(x,b.id)):[]}
-   isDemo={!!preview} stream={(!preview&&eveSnapshot?.id===(b?.id||eveCommand?.ticket.agentId))?eveSnapshot:null} busy={busy} getToken={token} onTeach={(brief,name,model)=>{setTeaching({brief,name,model});go('Business memory')}} startingName={!b?teaching?.name:''} startingModel={!b?teaching?.model:'auto'} notice={!modal?(notice||(!b&&sel&&sel!==newThread?<p className="error" role="alert">This agent is unavailable in this workspace. Choose an agent in the sidebar or start a new conversation.</p>:null)):null} initialDraft={!b?(teaching?.brief??initialDraft):''} onClearDraft={()=>{clearLandingDraft();setTeaching(null)}}
+   isDemo={!!preview} deliveryError={b&&deliveryFailure?.agentId===b.id&&deliveryFailure.requestId===b.chatTurn?.requestId?deliveryFailure.error:null} stream={(!preview&&eveSnapshot?.id===(b?.id||eveCommand?.ticket.agentId))?eveSnapshot:null} busy={busy} getToken={token} onTeach={(brief,name,model)=>{setTeaching({brief,name,model});go('Business memory')}} startingName={!b?teaching?.name:''} startingModel={!b?teaching?.model:'auto'} notice={!modal?(notice||(!b&&sel&&sel!==newThread?<p className="error" role="alert">This agent is unavailable in this workspace. Choose an agent in the sidebar or start a new conversation.</p>:null)):null} initialDraft={!b?(teaching?.brief??initialDraft):''} onClearDraft={()=>{clearLandingDraft();setTeaching(null)}}
    workspace={d} onAction={(action,input)=>act(action,input,false)} onOpen={open} onRefresh={refreshDesk} managedRequest={managedRequest?.agentId===b?.id?managedRequest:null}
    onFindEmail={lead=>manageSource(b,'rocketreach',lead.id)} onSend={sendAgentMessage} onRetryTurn={retryChatTurn} onImport={(source,people)=>act('importSelectedLeads',{id:b.id,source,people},false)} showActivity={!!b&&activityFor===b.id} onShowProspects={()=>b&&showProspects(b.id)}
    tools={b?(openActivity,openSource,openComputer,manageProvider)=><><div className="thread-tool-actions"><button onClick={()=>go('Skills & connections',b.id)}>Bot skills</button><button onClick={()=>go('Business memory')}>Business memory</button><button disabled={busy} onClick={()=>open('save')}>Edit bot</button><button disabled={busy} onClick={()=>b.active?act('pause',{id:b.id}):open('activate')}>{b.active?'Pause schedule':'Schedule research'}</button></div><BotModel agent={b} busy={busy} isDemo={!!preview} onAction={(action,p)=>act(action,p,false)}/><AgentTools agent={b} workspace={d} demo={!!preview} busy={busy} onOpen={open} onAction={act} onNavigate={go} onShowActivity={()=>preview?go('Activity'):openActivity()} onChooseSource={openSource} onManageSource={manageProvider} onOpenComputer={preview?openSource:openComputer} onShowProspects={()=>showProspects(b.id)}/></>:null}/>:<>

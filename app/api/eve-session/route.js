@@ -20,7 +20,8 @@ export async function POST(req){
     }
     const user=await verifiedUser(req),body=await req.text();if(body.length>20000)throw new Fault('Request too large.',413);
     let input;try{input=JSON.parse(body);}catch{throw new Fault('Invalid session request.');}
-    const result=await withWorkspace(user.id,()=>prepareEveSession(user.id,input));
+    const queue=req.headers.get('x-oparax-delivery')==='queue';
+    const result=await withWorkspace(user.id,()=>prepareEveSession(user.id,input,{},queue));
     return Response.json(result,{headers:{'Cache-Control':'private, no-store'}});
   }catch(e){return failure(e);}
 }
