@@ -111,19 +111,19 @@ test('source choice precedes discovery and never switches private agents to publ
 test('an explicit initial source works and output format is not treated as search permission',async()=>{
   const privateAgent=workspace('first-private',async()=>researchPlan);
   const a=await privateAgent.send({message:'Search LinkedIn for designers at Barbour',requestId:'private-initial'});
-  assert.equal(a.work,null);assert.equal(privateAgent.data.bots[0].searchSource,'linkedin');
-  assert.equal(privateAgent.data.messages.at(-1).details.type,'browserConnection');
+  assert.ok(a.work);assert.equal(privateAgent.data.bots[0].researchJob.searchSource,'linkedin');
+  assert.match(privateAgent.data.messages.at(-1).content,/public LinkedIn profiles/);
   const none=workspace('outputs',async()=>researchPlan);
   const b=await none.send({message:'Find buyers at Barbour and give me LinkedIn profile URLs.',requestId:'output-only'});
   assert.equal(b.work,null);assert.equal(none.data.messages.at(-1).details.type,'sourceChoice');
 });
-test('private source replaces running web work without starting a new discovery worker',async()=>{
+test('a LinkedIn-only request fences the web worker and queues a profile-index job',async()=>{
   const w=workspace('switch-private',async()=>researchPlan);const first=await w.send(req);
   await w.services.edit(d=>{d.bots[0].lease={id:'old-worker',until:new Date(Date.now()+30000).toISOString()};});
   const selected=await w.send({id:first.agentId,message:'Switch to LinkedIn only',requestId:'make-private'});
-  assert.equal(selected.work,null);assert.equal(w.data.bots[0].researchRequestedAt,undefined);assert.equal(w.data.bots[0].lease.supersededWorker,'old-worker');
-  assert.equal(w.data.bots[0].searchSource,'linkedin');assert.equal(w.data.bots[0].searchGate.status,'awaiting_selection');
-  await w.services.edit(d=>assert.equal(releaseReplacedWorker(d.bots[0],'old-worker'),null));
+  assert.equal(selected.work,null);assert.notEqual(w.data.bots[0].researchRequestedAt,first.work.requestedAt);assert.equal(w.data.bots[0].lease.supersededWorker,'old-worker');
+  assert.equal(w.data.bots[0].researchJob.searchSource,'linkedin');assert.equal(w.data.bots[0].searchGate,undefined);
+  await w.services.edit(d=>assert.deepEqual(releaseReplacedWorker(d.bots[0],'old-worker'),{requestedAt:d.bots[0].researchRequestedAt,page:0}));
   assert.equal(w.data.bots[0].lease,null);
 });
 test('ambiguous source change on an existing public agent prompts rather than continuing its old source',async()=>{
@@ -132,7 +132,7 @@ test('ambiguous source change on an existing public agent prompts rather than co
   assert.equal(pending.work,null);assert.equal(w.data.bots[0].searchSource,undefined);assert.equal(w.data.bots[0].researchRequestedAt,undefined);
   assert.equal(w.data.messages.at(-1).details.type,'sourceChoice');
   const result=await w.send({id:first.agentId,message:'Switch from the public web to LinkedIn',requestId:'switch-clear'});
-  assert.equal(result.work,null);assert.equal(w.data.bots[0].searchSource,'linkedin');assert.equal(w.data.messages.at(-1).details.type,'browserConnection');
+  assert.ok(result.work);assert.equal(w.data.bots[0].researchJob.searchSource,'linkedin');assert.equal(w.data.messages.at(-1).details.type,'research');
 });
 test('confirming the public web resumes a failed legacy job at 12 of 50 without discarding saved IDs or search cursors',async()=>{
   const w=workspace('legacy-resume',async()=>researchPlan);const start=await w.send(req);
@@ -165,13 +165,13 @@ test('multi-source Apply preserves the web cursor, stages RocketReach and report
   assert.equal(w.data.bots[0].name,'Buyer Scout');assert.equal(chosen.work.requestedAt,a.work.requestedAt);assert.equal(chosen.work.page,7);
   assert.deepEqual(chosen.sourceWork.map(v=>v.source),['rocketreach']);
   const states=view(w.data).bots[0].sourceStates;
-  assert.equal(states.email.status,'needs_consent');assert.equal(states.linkedin.status,'awaiting_selection');
+  assert.equal(states.email.status,'needs_consent');assert.equal(states.linkedin.status,'running');
   const additional=await w.send({id:a.agentId,requestId:'add-navigator',message:'Also add Sales Navigator'});
   assert.deepEqual(w.data.bots[0].searchSources,['linkedin','email','rocketreach','web','sales_navigator']);
   assert.deepEqual(additional.sourceWork,chosen.sourceWork);
   const remove=await w.send({id:a.agentId,requestId:'remove-web',message:'Remove public web'});
-  assert.equal(remove.work,null);assert.equal(w.data.bots[0].researchJob.pages,7);
-  assert.ok(w.data.bots[0].searchSources.includes('rocketreach'));assert.equal(w.data.bots[0].researchRequestedAt,undefined);
+  assert.ok(remove.work);assert.equal(w.data.bots[0].researchJob.pages,0);
+  assert.ok(w.data.bots[0].searchSources.includes('rocketreach'));assert.equal(w.data.bots[0].researchJob.searchSource,'linkedin');
 });
 test('RocketReach-only works without public web, and replay uses the same provider request ID',async()=>{
   const w=workspace('only-rocket',async()=>researchPlan);

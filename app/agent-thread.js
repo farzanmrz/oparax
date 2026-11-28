@@ -20,17 +20,40 @@ export function Provenance({lead,agentId}){
   if(!entries.length)return null;
   return <div className="source-provenance" aria-label="Prospect sources">{entries.map((entry,i)=>entry.url?<a key={i} title={entry.detail} href={entry.url} target="_blank" rel="noreferrer">{entry.label} ↗</a>:<span key={i} title={entry.detail}>{entry.label}</span>)}</div>;
 }
+function ProspectReview({agent,busy,onAction}){
+  const [expanded,setExpanded]=useState(false);
+  const matches=agent.prospectReviews||[];
+  if(!matches.length)return null;
+  return <section className="thread-results" aria-label="Prospect review">
+    <h2>Matches to review ({matches.length})</h2>
+    {(expanded?matches:matches.slice(0,3)).map(person=><article className="thread-person-detail" key={person.id}>
+      <strong>{person.person}</strong>
+      <p>{person.role} · {person.company}</p>
+      {person.fit&&<p>{person.fit}</p>}
+      <p>{person.email||'No verified email'}</p>
+      <div className="thread-person-links">
+        <a href={linkedinProfileUrl(person.linkedinUrl)} target="_blank" rel="noreferrer">LinkedIn profile ↗</a>
+        {safeSource(person.companyVerification?.source)&&<a href={safeSource(person.companyVerification.source)} target="_blank" rel="noreferrer">Employer evidence ↗</a>}
+      </div>
+      <div className="controls">
+        <button className="primary" type="button" disabled={busy} onClick={()=>onAction('reviewProspect',{id:agent.id,prospectId:person.id,decision:'save'})}>Save prospect</button>
+        <button type="button" disabled={busy} onClick={()=>onAction('reviewProspect',{id:agent.id,prospectId:person.id,decision:'skip'})}>Skip</button>
+      </div>
+    </article>)}
+    {matches.length>3&&<button type="button" aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?'Show fewer matches':'Show all '+matches.length+' matches'}</button>}
+  </section>;
+}
 export function providerBusy(agent){
   return Object.values(agent?.sourceStates||{}).some(row=>['queued','working','running','searching','verifying'].includes(row?.status));
 }
-const stateDescriptions={web:'Public-source research',linkedin:'Select people in your agent computer',sales_navigator:'Select leads in your agent computer',rocketreach:'A connected RocketReach account is required',email:'An approved mailbox scope is required'};
+const stateDescriptions={web:'Search public sources',linkedin:'Search publicly indexed LinkedIn profiles',sales_navigator:'Private Sales Navigator leads can be added from your workspace browser',rocketreach:'Uses your workspace RocketReach account',email:'An approved mailbox scope is required'};
 export function agentState(agent,chat){
   const turn=chatStatus(agent?.chatTurn,chat);
   if(turn)return turn;
   const phase=agent?.researchJob?.status||agent?.lastRun?.status;
   if(agent?.searchGate?.status==='awaiting_source')return {label:'Choose a search source',tone:'attention'};
   if(providerBusy(agent)||agent?.researchRequestedAt||agent?.lease&&Date.parse(agent.lease.until)>Date.now()||['queued','running','continuing'].includes(phase))return {label:'Working',tone:'working'};
-  if(agent?.searchGate?.status==='awaiting_selection')return {label:'Ready for your selections',tone:'attention'};
+  if(agent?.searchGate?.status==='awaiting_selection'&&selectedSearchSources(agent).every(source=>source==='sales_navigator'))return {label:'Private Sales Navigator leads',tone:'idle'};
   if(phase==='needs_input')return {label:'Needs your input',tone:'attention'};
   if(phase==='failed')return {label:'Needs attention',tone:'attention'};
   if(phase==='goal_met')return {label:'Limit reached',tone:'ready'};
@@ -59,8 +82,9 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   const sourcePending=!!agent&&!sources.length&&!!(agent.searchGate?.status==='awaiting_source'||run?.status==='failed'||job?.status==='failed'||messages.some(m=>m.role==='assistant'&&m.details?.type==='sourceChoice'));
   const showSources=!!agent&&(sourcePending||chooseSource);
   const suggested=managedRequest?.source&&!sources.includes(managedRequest.source)?[...sources,managedRequest.source]:sources;
-  const hasWeb=sources.includes('web')||!sources.length&&!!job;
-  const webWorking=hasWeb&&!!(agent?.researchRequestedAt||['running','continuing','queued'].includes(job?.status));
+  const hasDiscovery=sources.includes('web')||sources.includes('linkedin')||!!job;
+  const discoveryWorking=hasDiscovery&&!!(agent?.researchRequestedAt||['running','continuing','queued'].includes(job?.status));
+  const discoveryLabel=job?.searchSource==='linkedin'?'Public LinkedIn profiles':'Public web';
   const desktopRef=useRef({});
   function openComputer(provider='desktop'){
     if(!agent?.id||isDemo)return;
@@ -79,8 +103,8 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   }
   useEffect(()=>{if(managedRequest?.source)showProvider(managedRequest.source)},[managedRequest?.key,sourceKey]);
   const question=run?.question,failed=job?.status==='failed'||run?.status==='failed';
-  const lastWorking=useRef(webWorking);
-  useEffect(()=>{if(webWorking&&!lastWorking.current)setActivity(true);lastWorking.current=webWorking},[webWorking]);
+  const lastWorking=useRef(discoveryWorking);
+  useEffect(()=>{if(discoveryWorking&&!lastWorking.current)setActivity(true);lastWorking.current=discoveryWorking},[discoveryWorking]);
   const rows=conversationRows(messages,agent?.chatTurn,pending);
   const showBrief=agent?.brief&&!rows.some(m=>m.role==='user'&&m.content.trim()===agent.brief.trim());
   useEffect(()=>{if(showActivity&&!sourcePending){setActivity(true);requestAnimationFrame(()=>document.getElementById('thread-activity-panel')?.scrollIntoView({block:'nearest'}))}},[showActivity,sourcePending]);
@@ -121,7 +145,7 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
         {agent?.id&&!isDemo&&<div id="bot-desktop-panel" hidden={!panels.desktop}><AgentComputer ref={item=>{desktopRef.current.desktop=item}} agent={agent} provider="desktop" getToken={getToken}/></div>}
         {!agent&&<div className="thread-welcome"><h2>What should your sales bot work on?</h2><p>Your bot keeps its own brief, sources and conversation.</p><label>Bot name (optional)<input value={botName} maxLength={65} placeholder="Barbour Scout" onChange={e=>setBotName(e.target.value)}/></label><BotModel/><div className="teach-bot"><button type="button" onClick={()=>onTeach(value,botName)}>Business memory</button><p>{workspace.businessMemory?.company?'This bot uses the saved details for '+workspace.businessMemory.company+'.':'Teach your bots about your company, buyers and voice.'}</p></div></div>}
         {showSources&&<SourcePicker key={agent.id+'/'+sourceKey+'/'+(managedRequest?.key||'')} selected={suggested} busy={busy||!!pending} onApply={chosen=>send('Use these research sources: '+chosen.map(sourceName).join(', ')+'.',chosen)}/>}
-        {agent&&<div className="thread-goal"><strong>{isDemo?'Sample research':verifiedCount(agent.taskQualified??job?.qualified??leads.length,researchCeiling(agent))}</strong><span>{isDemo?'Fictional company and contacts':job?`Public web · ${job.counts?.candidates||0} candidates surfaced · ${job.counts?.checked||0} source checks`:'Employer and personal LinkedIn profile checked'}</span></div>}
+        {agent&&<div className="thread-goal"><strong>{isDemo?'Sample research':verifiedCount(agent.taskQualified??job?.qualified??leads.length,researchCeiling(agent))}</strong><span>{isDemo?'Fictional company and contacts':job?`${discoveryLabel} · ${job.counts?.candidates||0} candidates surfaced · ${job.counts?.checked||0} source checks` :''}</span></div>}
         {agent&&!isDemo&&<ResearchOutcome agent={agent}/>}
         {agent&&!sourcePending&&<div className="thread-source"><small>Search sources · {sources.length?sources.map(sourceName).join(' + '):'Choose sources'}{isDemo?' (demo)':''}</small><button type="button" disabled={busy} aria-expanded={showSources} aria-controls="thread-search-sources" onClick={()=>setChooseSource(!chooseSource)}>{chooseSource?'Close':sources.length?'Change sources':'Choose sources'}</button></div>}
 
@@ -134,12 +158,15 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
         {agent&&!!sources.length&&<section className="source-readiness" aria-label="Selected research sources">
         {sources.map(provider=>{const state=agent.sourceStates?.[provider];const isPrivate=['linkedin','sales_navigator'].includes(provider);
           const providerLabel=sourceName(provider),savedSummary=state?.summary;
+          const computer=isPrivate&&!isDemo&&<AgentComputer ref={item=>{desktopRef.current[provider]=item}} agent={agent} provider={provider} getToken={getToken} busy={busy} onImport={people=>onImport(provider,people)}/>;
           const extra=provider==='rocketreach'&&workspace.rocketReach?.connected?'Account connected':provider==='email'&&workspace.mailbox?'Mailbox connected · choose an approved scope':'';
           const summary=isDemo?(provider==='web'?'Fictional public-source example':'Available in a connected workspace'):savedSummary||extra||stateDescriptions[provider];
           return <div key={provider} id={'provider-'+provider}><button type="button" className="provider-status" aria-expanded={!!panels[provider]} aria-controls={'provider-panel-'+provider} onClick={()=>setPanels(current=>({...current,[provider]:!current[provider]}))}><strong>{providerLabel}</strong><small>{summary}</small></button>
           <div id={'provider-panel-'+provider} hidden={!panels[provider]}>
             {provider==='web'&&<p>{isDemo?'Run sample research to check the fictional staff profile.':'See the submitted queries and public evidence in Research activity below.'}</p>}
-            {isPrivate&&(isDemo?<p>Sign in to use a private agent computer for {providerLabel}.</p>:<AgentComputer ref={item=>{desktopRef.current[provider]=item}} agent={agent} provider={provider} getToken={getToken} busy={busy} onImport={people=>onImport(provider,people)}/>)}
+            {provider==='linkedin'&&<><p>The bot searches public LinkedIn profiles and checks each person against your brief. Matches appear here for you to save or skip.</p>
+              {computer&&<details><summary>Open LinkedIn or add a profile yourself</summary>{computer}</details>}</>}
+            {provider==='sales_navigator'&&(computer||<p>Open the live workspace to use your private Sales Navigator session.</p>)}
             {provider==='rocketreach'&&<RocketReachSource agent={agent} connection={workspace.rocketReach} leads={leads} isDemo={isDemo} busy={busy} focusLead={managedRequest?.leadId} onAction={onAction}/>}
             {provider==='email'&&<MailboxResearch agent={agent} mailbox={workspace.mailbox} isDemo={isDemo} getToken={getToken} onConnect={()=>onOpen('connect')} onRefresh={onRefresh}/>}
           </div></div>;
@@ -147,9 +174,10 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
         {question&&!sourcePending&&!messages.slice(-1).some(m=>m.content.includes(question))&&<div className="thread-question"><strong>{name} has a question</strong><p>{question}</p></div>}
         {(agent?.error||failed)&&<div className="thread-error" role="alert"><strong>Research interrupted</strong><p>{agent?.error||run?.summary||'The run stopped before reaching its goal.'}</p></div>}
         {isDemo&&run?.sampleSteps&&<details className="thread-activity" open><summary>Sample research activity</summary><ol>{run.sampleSteps.map(step=><li key={step}>{step}</li>)}</ol></details>}
-        {!!leads.length&&<section className="thread-results"><div className="row"><h2>{isDemo?'Sample prospects':'Verified prospects'}</h2><button onClick={onShowProspects}>View all {leads.length} →</button></div><div className="thread-people">{leads.slice(0,3).map(lead=><button className="thread-person" key={lead.id} aria-expanded={personId===lead.id} onClick={()=>setPersonId(personId===lead.id?null:lead.id)}><span className="person-monogram" aria-hidden="true">{initials(lead.person)}</span><span><strong>{lead.person}</strong><small>{[lead.role,lead.company].filter(Boolean).join(' · ')}</small></span></button>)}</div>{selectedPerson&&<div className="thread-person-detail"><strong>{selectedPerson.person}</strong><Provenance lead={selectedPerson} agentId={agent.id}/><p>{selectedPerson.evidence||selectedPerson.fit}</p><div className="thread-person-links">{linkedinProfileUrl(selectedPerson.linkedinUrl)&&<a className="profile-link" href={linkedinProfileUrl(selectedPerson.linkedinUrl)} target="_blank" rel="noreferrer">Open personal LinkedIn profile ↗</a>}{safeSource(selectedPerson.companyVerification?.source)&&<a href={safeSource(selectedPerson.companyVerification.source)} target="_blank" rel="noreferrer">Employer evidence ↗</a>}{safeSource(selectedPerson.source)&&<a href={safeSource(selectedPerson.source)} target="_blank" rel="noreferrer">Role source ↗</a>}</div>
-        <button disabled={busy||!!pending} onClick={()=>send('Draft a LinkedIn introduction for '+selectedPerson.person+'.')}>Draft an introduction for {selectedPerson.person}</button><details><summary>Review LinkedIn draft</summary><p>{selectedPerson.linkedin}</p><SendDraft agent={agent} lead={selectedPerson} draft={null} channel="linkedin" workspace={workspace} getToken={getToken} onRefresh={onRefresh} onOpen={onOpen} onFindEmail={onFindEmail} preview={isDemo}/></details></div>}</section>}
-        {agent&&!isDemo&&hasWeb&&<div className="thread-activity"><button aria-controls="thread-activity-panel" aria-expanded={activity} onClick={()=>setActivity(!activity)}>{activity?'Hide public-web activity':'View public-web activity'}</button>{activity&&<div id="thread-activity-panel"><ResearchFeed agent={agent} active={webWorking} getToken={getToken}/></div>}</div>}
+        {agent&&!isDemo&&<ProspectReview key={agent.id} agent={agent} busy={busy} onAction={onAction}/>}
+        {!!leads.length&&<section className="thread-results"><div className="row"><h2>{isDemo?'Sample prospects':'Saved prospects'}</h2><button onClick={onShowProspects}>View all {leads.length} →</button></div><div className="thread-people">{leads.slice(0,3).map(lead=><button className="thread-person" key={lead.id} aria-expanded={personId===lead.id} onClick={()=>setPersonId(personId===lead.id?null:lead.id)}><span className="person-monogram" aria-hidden="true">{initials(lead.person)}</span><span><strong>{lead.person}</strong><small>{[lead.role,lead.company].filter(Boolean).join(' · ')}</small></span></button>)}</div>{selectedPerson&&<div className="thread-person-detail"><strong>{selectedPerson.person}</strong><Provenance lead={selectedPerson} agentId={agent.id}/><p>{selectedPerson.evidence||selectedPerson.fit}</p><div className="thread-person-links">{linkedinProfileUrl(selectedPerson.linkedinUrl)&&<a className="profile-link" href={linkedinProfileUrl(selectedPerson.linkedinUrl)} target="_blank" rel="noreferrer">Open personal LinkedIn profile ↗</a>}{safeSource(selectedPerson.companyVerification?.source)&&<a href={safeSource(selectedPerson.companyVerification.source)} target="_blank" rel="noreferrer">Employer evidence ↗</a>}{safeSource(selectedPerson.source)&&<a href={safeSource(selectedPerson.source)} target="_blank" rel="noreferrer">Role source ↗</a>}</div>
+        <button disabled={busy||!!pending} onClick={()=>send('Draft a LinkedIn introduction for '+selectedPerson.person+'.')}>Draft an introduction for {selectedPerson.person}</button>{selectedPerson.linkedin&&<details><summary>Review LinkedIn draft</summary><p>{selectedPerson.linkedin}</p><SendDraft agent={agent} lead={selectedPerson} draft={null} channel="linkedin" workspace={workspace} getToken={getToken} onRefresh={onRefresh} onOpen={onOpen} onFindEmail={onFindEmail} preview={isDemo}/></details>}</div>}</section>}
+        {agent&&!isDemo&&hasDiscovery&&<div className="thread-activity"><button aria-controls="thread-activity-panel" aria-expanded={activity} onClick={()=>setActivity(!activity)}>{activity?'Hide research activity':'View research activity'}</button>{activity&&<div id="thread-activity-panel"><ResearchFeed agent={agent} active={discoveryWorking} getToken={getToken}/></div>}</div>}
         {notice}
       </div>
     </div>

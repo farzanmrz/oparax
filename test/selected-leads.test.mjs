@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {importSelectedLeads} from '../lib/selected-leads.mjs';
+import {reviewProspect} from '../lib/prospect-review.mjs';
 import {isPublishedProspect} from '../lib/qualification.mjs';
 
 const person={person:'Jane Ruiz',role:'Footwear Buyer',company:'Example',linkedinUrl:'https://www.linkedin.com/in/jane-ruiz',sourceUrl:'https://example.org/team'};
 const data=()=>{
   const brief='Find footwear buyers at Example.';
-  const plan={target:brief,roles:['Buyer'],roleTerms:['buying'],employers:['Example'],companyContexts:[{company:'Example',industry:'footwear'}]};
+  const plan={target:brief,roleCategory:'footwear',roles:['Buyer'],roleTerms:['buying'],employers:['Example'],companyContexts:[{company:'Example',industry:'footwear'}]};
   const agent={id:'a',brief,searchSource:'sales_navigator',researchJob:{plan,planSignature:JSON.stringify([brief,[]])}};
   return {bots:[agent],leads:[],events:[],messages:[],suppressed:[]};
 };
@@ -29,19 +30,24 @@ test('user selections require a real owner-opened VM and the exact active source
   const f=fixture();
   await assert.rejects(f.run([person],'linkedin'),/source has changed/);
   f.deps.desktop=async()=>({state:'unconfirmed'});
-  await assert.rejects(f.run([person]),/Open this agent/);
+  await assert.rejects(f.run([person]),/Open your workspace computer/);
   assert.equal(f.checks.length,0);assert.equal(f.d.leads.length,0);
 });
 
-test('confirmed exact selected person is saved once and independently qualified; no email or outreach',async()=>{
+test('selected person is independently verified once per bot, retained for an explicit save, and never queued for outreach',async()=>{
   const f=fixture();
   await f.run([{...person,email:'arbitrary@example.test',linkedinEvidence:'caller data',companyVerification:{evidence:'caller data'}}]);
   assert.equal(f.checks.length,1);assert.equal(f.checks[0].profileHit.snippet,'Footwear Buyer at Example');
-  assert.equal(f.d.bots[0].lastSelectedImport.saved,1);assert.equal(f.d.leads.length,1);
-  const lead=f.d.leads[0];assert.ok(isPublishedProspect(lead));assert.equal(lead.email,'');assert.equal(lead.stage,0);
+  assert.equal(f.d.bots[0].lastSelectedImport.proposed,1);assert.equal(f.d.bots[0].lastSelectedImport.saved,0);assert.equal(f.d.leads.length,0);
+  const lead=f.d.bots[0].prospectReviews[0];assert.ok(isPublishedProspect(lead));assert.equal(lead.email,'');assert.equal(lead.reviewState,'pending');assert.equal(lead.draft,undefined);
   assert.equal(lead.selectedSources[0].source,'sales_navigator');assert.equal(f.d.messages.length,1);
   await f.run([person]);
-  assert.equal(f.d.bots[0].lastSelectedImport.existing,1);assert.equal(f.d.leads.length,1);
+  assert.equal(f.d.bots[0].lastSelectedImport.existing,1);assert.equal(f.d.bots[0].prospectReviews.length,1);
+  assert.equal(f.d.leads.length,0);
+  reviewProspect(f.d,'a',lead.id,'save');
+  await f.run([person]);
+  assert.equal(f.d.bots[0].lastSelectedImport.existing,1);assert.equal(f.d.bots[0].prospectReviews.length,0);
+  assert.equal(f.d.leads.length,1);assert.equal(f.d.leads[0].id,lead.id);assert.equal(f.d.leads[0].status,'research');
 });
 
 test('unconfirmed, intake-only, wrong role, and namesake records are held and never trigger a broad fallback',async()=>{
@@ -70,8 +76,8 @@ test('a private selection can verify while the public search retains its own lea
   b.lease={id:'active-web-page',until:new Date(Date.now()+60000).toISOString()};
   await f.run([person]);
   assert.equal(b.lease.id,'active-web-page');
-  assert.equal(b.lastSelectedImports.sales_navigator.saved,1);
-  assert.equal(f.d.leads[0].discoverySources[0].source,'sales_navigator');
+  assert.equal(b.lastSelectedImports.sales_navigator.proposed,1);
+  assert.equal(b.prospectReviews[0].discoverySources[0].source,'sales_navigator');
 });
 
 test('selection does not publish over a maximum filled concurrently by another source',async()=>{

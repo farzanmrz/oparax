@@ -5,7 +5,7 @@ import {readResearchStream} from './research-events.mjs';
 
 const activityKinds={
   started:'Job started',target:'Search scope',query:'Search',source:'Source',verification:'Evidence check',
-  saved:'Published',held:'Verification pending',progress:'Progress',error:'Service issue'
+  proposed:'Ready for review',saved:'Published',held:'Verification pending',progress:'Progress',error:'Service issue'
 };
 const stateLabels={
   queued:'Queued',planning:'Reading the brief',searching:'Searching',verifying:'Checking sources',

@@ -115,7 +115,7 @@ test('Barbour first turn opens source selection with zero model calls, and repla
   assert.equal(w.d.messages.at(-1).details.type,'sourceChoice');assert.equal(w.d.bots[0].researchJob,undefined);
   await submit({...first,id});assert.equal(w.d.messages.length,2);assert.deepEqual(jobs,[]);
   await submit({id,message:'Sales Navigator',requestId:'barbour-private'});
-  assert.equal(w.d.bots[0].searchGate.status,'awaiting_selection');assert.deepEqual(jobs,[]);
+  assert.equal(w.d.bots[0].searchGate.status,'private_access_required');assert.deepEqual(jobs,[]);
   const select={id,message:'Use these research sources: Public web.',searchSources:['web'],requestId:'barbour-public'};
   await submit(select);await submit(select);
   assert.deepEqual(jobs,[w.d.bots[0].researchJob.id]);assert.equal(w.d.bots.length,1);assert.equal(w.d.messages.length,6);

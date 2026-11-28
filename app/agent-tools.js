@@ -58,19 +58,19 @@ export default function AgentTools({agent,workspace,demo=false,busy=false,onOpen
     <ul>
       <ToolRow name={publicSearch||!sources.length?'Web research':'Public evidence'} icon="search" status={!publicSearch&&sources.length?'Verification':demo?'Sample search':agent.active?`Every ${agent.cadence}h`:'On demand'}
         actions={<><button type="button" onClick={showActivity}>View activity</button><button type="button" onClick={onShowProspects}>View sources</button></>}>
-        {!publicSearch&&sources.length?'Checks the people you select against public employer and role evidence.':demo?'Replay the sample search and see the evidence it uses.':'Searches the public web for people, employers and professional profiles.'}
+        {!publicSearch&&sources.length?'Checks profiles against public employer and role evidence.':demo?'Replay the sample search and see the evidence it uses.':'Searches the public web for people, employers and professional profiles.'}
       </ToolRow>
-      <ToolRow name="Bot computer" icon="computer" status={demo?'Demo':'On demand'}
+      <ToolRow name="Workspace computer" icon="computer" status={demo?'Demo':'On demand'}
         actions={demo?<a href="/">Sign in to open a computer</a>:<button type="button" onClick={()=>onOpenComputer('desktop')}>Open computer</button>}>
-        {demo?'Each saved bot gets its own private browser in your workspace.':'Open this bot’s private browser at a blank page.'}
+        Your bots share one private browser in this workspace.
       </ToolRow>
-      <ToolRow name="LinkedIn & Sales Navigator" icon="linkedin" status={demo?'Demo':privateSources.length?'Private browser':'Select a source'}
+      <ToolRow name="LinkedIn & Sales Navigator" icon="linkedin" status={demo?'Demo':privateSources.includes('linkedin')?'Public profile search':privateSources.length?'Private browser':'Select a source'}
         actions={<>{!demo&&privateSources.length?privateSources.map(s=><button type="button" key={s} onClick={()=>openSource(s)}>Open {sourceLabel(s)}</button>):<button type="button" onClick={()=>openSource()}>Choose source</button>}<button type="button" onClick={()=>onNavigate('LinkedIn queue')}>Review drafts</button></>}>
-        {demo?'Explore how agents review profiles you select.':'Open the selected service on the agent computer. Sign in and choose profiles to verify.'}
+        Agents can find publicly indexed LinkedIn profiles. Open the workspace browser to view a private profile or use Sales Navigator.
       </ToolRow>
       <ToolRow name="RocketReach" icon="search" status={demo?'Demo':rocketConnected?'Connected':'Not connected'} connected={!demo&&rocketConnected}
         actions={<button type="button" disabled={busy} onClick={()=>manageSource('rocketreach')}>{rocketConnected?'Manage RocketReach':'Connect RocketReach'}</button>}>
-        Searches for people by role and employer. Work email lookups use your RocketReach account.
+        Connect your RocketReach account once for all your bots. Each bot can search by role and employer when RocketReach is enabled.
       </ToolRow>
       {sources.includes('email')&&<ToolRow name="Mailbox research" icon="inbox" status={demo?'Demo':sender?'Connected':'Not connected'} connected={!demo&&!!sender}
         actions={<button type="button" disabled={busy} onClick={()=>manageSource('email')}>Manage email source</button>}>

@@ -72,6 +72,47 @@ class EvidenceTests(unittest.TestCase):
         result = self.check('<p>Nicholas Drury, Head of Footwear at Barbour.</p>', researchTarget=target)
         self.assertEqual(result['status'], 'verified')
 
+    def test_personal_category_cannot_be_borrowed_from_the_company_or_previous_work(self):
+        scope = {'company':'MANGO','industry':'footwear','industryTerms':['shoes'],'roleCategoryTerms':['footwear','shoes']}
+        def article(body, role='Buyer'):
+            return self.check('<p>'+body+'</p><p>MANGO designs shoes.</p>', company='MANGO', person='Ana Jones',
+                              role=role, researchTarget=scope)
+        self.assertEqual(article('Ana Jones, Buyer at MANGO.')['status'], 'unsupported')
+        self.assertEqual(article('Ana Jones, Buyer at MANGO, which sells footwear.')['status'], 'unsupported')
+        self.assertEqual(article('Ana Jones, Buyer at MANGO. Previously she managed footwear.')['status'], 'unsupported')
+        result = article('Ana Jones, Buyer at MANGO, oversees sourcing for shoes.')
+        self.assertIn('oversees sourcing for shoes', result['lead']['evidence'])
+        self.assertEqual(article('Ana Jones, Footwear Buyer at MANGO.', role='Footwear Buyer')['status'], 'verified')
+
+        def profile(role, snippet):
+            return self.check('<p>MANGO designs shoes.</p>', company='MANGO', person='Ana Jones', role=role,
+                researchTarget=scope, kind='profile', profileHit={'url':'https://es.linkedin.com/in/ana-jones',
+                    'title':'Ana Jones - '+role+' at MANGO | LinkedIn','snippet':snippet})['status']
+        self.assertEqual(profile('Buyer','MANGO designs shoes. Previously Footwear Buyer at Acme.'), 'unsupported')
+        self.assertEqual(profile('Head of Design, Shoes and Bags',''), 'verified')
+
+    def test_spanish_current_footwear_affiliation_and_first_party_storefront(self):
+        official = 'https://shop.mango.com/es/es/mujer/zapatos/'
+        page = verifier.Page()
+        page.feed("<head><title>Zapatos de mujer 2026 | MANGO España (Península y Baleares)</title></head>")
+        page = page.finish()
+        target = {'company':'MANGO','industry':'footwear','industryTerms':['shoes','calzado','zapatos'],
+                  'roleCategoryTerms':['footwear','shoes','calzado']}
+        self.assertEqual(verifier.company_anchor(page, official, {'company':'MANGO','researchTarget':target})['domain'],'mango.com')
+        self.assertFalse(verifier.company_anchor(page,'https://shop.mango.com.other.example/shoes/',{'company':'MANGO','researchTarget':target}))
+        def profile(title, role, snippet):
+            result = verifier.verify(dict(company='MANGO',kind='profile',source=official,person='Ana Jones',role=role,
+                researchTarget=target,profileHit={'url':'https://es.linkedin.com/in/ana-jones',
+                'title':'Ana Jones - '+title+' | LinkedIn','snippet':snippet}),lambda url:(official,page))
+            return result['status']
+        self.assertEqual(profile('MANGO','Footwear Production Manager',
+                                'Con más de 7 años como Footwear Production Manager en MANGO, contribuyo a la producción.'),'verified')
+        self.assertEqual(profile('Compradora de calzado en MANGO','Compradora de calzado',''),'verified')
+        for snippet in ['Anteriormente fui Footwear Production Manager en MANGO.',
+                        'Oferta de empleo: Footwear Production Manager en MANGO.',
+                        'Recomiendo a Juan, Footwear Production Manager en MANGO.']:
+            self.assertEqual(profile('MANGO','Footwear Production Manager',snippet),'unsupported')
+
     def test_requested_domain_requires_a_contextual_link_or_first_party_source(self):
         target = dict(company='Barbour', domain='barbour.com', industry='footwear')
         html = '<p>Nicholas Drury, Head of Footwear at <a href="https://www.barbour.com/">Barbour</a>.</p>'

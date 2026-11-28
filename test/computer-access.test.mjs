@@ -49,6 +49,8 @@ test('desktop issuance requires an authenticated owner, their agent, the selecte
   assert.equal((await launch('sales_navigator')).status,408);
   data.computerLaunch={until:Date.now()+10000,agentId:'64930d0c-16dc-4268-8f1d-ce51ed7bc0ce',requestId:'abc',provider:'desktop'};
   data.bots[0].computerLaunch={requestId,agentId:agent,provider:'sales_navigator',until:Date.now()+10000,deadline:Date.now()+100000};
+  assert.equal((await launch('sales_navigator')).status,409);
+  data.computerLaunch={recent:[]};
   assert.equal((await launch('sales_navigator')).status,202);
   delete data.bots[0].computerLaunch;
   data.computerLaunch={recent:Array(12).fill(Date.now())};

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {rocketReachAction,runRocketReach} from '../lib/rocketreach.mjs';
 import {view} from '../lib/store.mjs';
+import {reviewProspect} from '../lib/prospect-review.mjs';
 
 const brief='Find 50 buyers at Example.',agentId='agent-a';
 const plan={target:brief,goal:50,roles:['Buyer'],roleTerms:['Buyer'],employers:['Example'],companyContexts:[{company:'Example',domain:'example.test'}]};
@@ -22,7 +23,7 @@ function fixture(){
   return {d,deps,state,calls,batches,action,run:(p={})=>runRocketReach(agentId,{requestId:'one-approved-source-task',...p},deps)};
 }
 
-test('manual search submits only a bounded company/current title query and imports only independently qualified IDs',async()=>{
+test('manual search runs one bounded directory query and automatically proposes verified matches without owner selection',async()=>{
   const f=fixture();f.state.reply=()=>({profiles:[{...raw(1),phone:'private',emails:[{email:'wrong@example.test'}]},raw(2)]});
   const requestId=crypto.randomUUID();
   await f.action('rocketReachSearch',{company:'Example',role:'Buyer',requestId});
@@ -32,11 +33,15 @@ test('manual search submits only a bounded company/current title query and impor
   assert.equal(f.calls[0].opts.headers['Api-Key'],'valid-test-authentication-credential');
   assert.equal(f.d.leads.length,0);assert.ok(!JSON.stringify(f.d.bots[0].rocketReach).includes('wrong@example.test'));
   await assert.rejects(f.action('rocketReachImport',{profileIds:['arbitrary']}),/latest/);
-  await f.action('rocketReachImport',{profileIds:['1']});await f.action('rocketReachImport',{profileIds:['1']});
-  assert.equal(f.calls.length,1);assert.equal(f.d.leads.length,1);
-  assert.equal(f.d.leads[0].email,'');assert.equal(f.d.leads[0].status,'research');
-  assert.equal(f.d.leads[0].discoverySources[0].source,'rocketreach');
-  assert.equal(f.d.bots[0].rocketReach.receipt.existing,1);
+  assert.equal(f.d.bots[0].rocketReach.receipt.proposed,2);
+  const person=f.d.bots[0].prospectReviews.find(p=>p.linkedinUrl===raw(1).linkedin_url);
+  assert.equal(person.email,'');assert.equal(person.reviewState,'pending');assert.equal(person.discoverySources[0].source,'rocketreach');
+  await assert.rejects(f.action('rocketReachEnrich',{leadId:person.id}),/verified prospect/);
+  reviewProspect(f.d,agentId,person.id,'skip');
+  await f.action('rocketReachImport',{profileIds:['1']});
+  assert.equal(f.d.bots[0].rocketReach.receipt.existing,1);assert.equal(f.calls.length,1);
+  assert.equal(f.d.bots[0].prospectReviews.length,2);assert.equal(f.d.bots[0].prospectReviews.find(p=>p.id===person.id).reviewState,'skipped');
+  assert.equal(f.d.leads.length,0);
 });
 
 test('unattended 50-person goal verifies in checkpointed groups without lookups, fetches subsequent source page only for remainder',async()=>{
@@ -53,11 +58,24 @@ test('unattended 50-person goal verifies in checkpointed groups without lookups,
   };
   let more=true,n=0;
   while(more&&n++<10)more=(await f.run()).continuing;
-  assert.equal(more,false);assert.equal(n,6);assert.equal(f.d.leads.length,50);
+  assert.equal(more,false);assert.equal(n,6);assert.equal(f.d.bots[0].prospectReviews.length,50);assert.equal(f.d.leads.length,0);
   assert.deepEqual(f.calls.map(c=>{const {page_size,start}=JSON.parse(c.opts.body);return [page_size,start];}),[[50,1],[7,51]]);
   assert.ok(f.batches.every(n=>n<=6));assert.equal(f.d.bots[0].rocketReach.receipt.held,7);
   assert.equal(f.d.bots[0].rocketReach.receipt.status,'goal_met');assert.equal((await f.run()).continuing,false);
-  assert.equal(f.calls.length,2);assert.ok(f.d.leads.every(l=>!l.email&&l.status==='research'));
+  assert.equal(f.calls.length,2);assert.ok(f.d.bots[0].prospectReviews.every(l=>!l.email&&l.reviewState==='pending'));
+});
+
+test('manual discovery charges for only the remaining search and a skipped proposal still counts toward the requested quota',async()=>{
+  const f=fixture();
+  f.d.bots[0].researchJob.qualifiedIds=Array.from({length:49},(_,i)=>'previous-match-'+i);
+  f.state.reply=()=>({profiles:[raw(1),raw(2)]});
+  await f.action('rocketReachSearch');
+  assert.equal(JSON.parse(f.calls[0].opts.body).page_size,1);
+  assert.equal(f.d.bots[0].prospectReviews.length,1);
+  reviewProspect(f.d,agentId,f.d.bots[0].prospectReviews[0].id,'skip');
+  await f.action('rocketReachSearch');
+  assert.equal(f.d.bots[0].rocketReach.receipt.status,'goal_met');
+  assert.equal(f.calls.length,1);assert.equal(f.d.leads.length,0);
 });
 
 test('disconnected or unselected sources, reached goals and workspace allowance make no provider call',async()=>{
@@ -158,10 +176,10 @@ test('industry and geography filters are grounded in the owner brief and a super
 });
 
 test('an open-ended directory search can pass fifty, and missing public verification is distinct from a dry source',async()=>{
-  const f=fixture();f.deps.plan={...plan,goal:null};
+  const f=fixture();f.d.bots[0].brief='Find buyers at Example.';f.deps.plan={...plan,goal:null};
   f.state.reply=(url,opts)=>{const p=JSON.parse(opts.body);return {pagination:{total:53},profiles:Array.from({length:p.start===1?50:3},(_,i)=>raw(i+p.start))};};
   for(let i=0;i<10&&(await f.run()).continuing;i++){}
-  assert.equal(f.d.leads.length,53);assert.equal(f.d.bots[0].rocketReach.receipt.status,'exhausted');
+  assert.equal(f.d.bots[0].prospectReviews.length,53);assert.equal(f.d.leads.length,0);assert.equal(f.d.bots[0].rocketReach.receipt.status,'exhausted');
   const g=fixture();g.deps.plan={...plan,goal:null};g.state.reply=()=>({profiles:[raw(1)]});
   g.deps.verifySelections=async(id,rows)=>({verified:[],held:rows.map(r=>({...r,evidenceUnavailable:true}))});
   await g.run();assert.equal(g.d.bots[0].rocketReach.receipt.status,'verification_incomplete');

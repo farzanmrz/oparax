@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The SDK runs "boot" detached. All state here belongs to this agent's VM.
+# The SDK runs "boot" detached. State belongs to the workspace's private computer.
 set -euo pipefail
 umask 077
 mode=$1
@@ -10,7 +10,7 @@ attempt=${5:-0}
 [[ $request =~ ^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$ ]] || exit 2
 [[ $attempt =~ ^[0-9]+$ ]] || exit 2
 case "$destination" in
-  about:blank|https://www.linkedin.com/login|https://www.linkedin.com/sales/home) ;;
+  about:blank|https://www.linkedin.com/feed/|https://www.linkedin.com/sales/home) ;;
   *) exit 2 ;;
 esac
 root=${OPARAX_DESKTOP_STATE_DIR:-"$HOME/.oparax"}

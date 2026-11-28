@@ -26,15 +26,11 @@ export async function POST(request){
         const agent=bot(data,input.agentId);requireSkill(agent,'computer_use');
         if(input.provider!=='desktop')requireSkill(agent,skillForSource(input.provider));
         if(input.provider!=='desktop'&&!selectedSearchSources(agent).includes(input.provider))throw new Fault('Choose this search source in the conversation first.',409);
-        // Older workspaces kept one active grant at the workspace level.
-        const legacy=data.computerLaunch;
-        if(legacy?.agentId){
-          const owner=data.bots.find(b=>b.id===legacy.agentId);
-          const {recent,...pending}=legacy;
-          if(owner&&!owner.computerLaunch)owner.computerLaunch=pending;
-          data.computerLaunch={recent:recent||[]};
-        }
-        const at=Date.now(),previous=agent.computerLaunch||data.computerLaunch;
+        // One owner computer serializes launches across bots. Allow in-progress
+        // requests from the older per-bot implementation to be polled after release.
+        const at=Date.now();
+        const workspaceLaunch=data.computerLaunch;
+        const previous=workspaceLaunch?.requestId||workspaceLaunch?.until>at ? workspaceLaunch : agent.computerLaunch;
         const sameRequest=previous?.requestId===input.requestId;
         if(sameRequest&&(previous.agentId!==input.agentId||previous.provider!==input.provider)){
           throw new Fault('Open a new link for the selected agent and source.',409);
@@ -43,11 +39,12 @@ export async function POST(request){
           if(sameRequest)return false;
           throw new Fault('Another computer request is starting. Try again in a moment.',409);
         }
+        if(!sameRequest&&previous?.pollUntil>at)throw new Fault('Your workspace computer is opening in another tab. Try again in a moment.',409);
         if(sameRequest&&previous.deadline<at)throw new Fault('Startup timed out. Open the computer again to retry.',408);
         const recent=(data.computerLaunch?.recent||[]).filter(time=>time>at-600000);
         if(!sameRequest&&recent.length>=12)throw new Fault('Several computer sessions were opened recently. Try again in a few minutes.',429);
-        data.computerLaunch={recent:sameRequest?recent:[...recent,at]};
-        agent.computerLaunch={lease,until:at+90000,requestId:input.requestId,agentId:input.agentId,provider:input.provider,
+        delete agent.computerLaunch;
+        data.computerLaunch={recent:sameRequest?recent:[...recent,at],lease,until:at+90000,requestId:input.requestId,agentId:input.agentId,provider:input.provider,
           deadline:sameRequest?previous.deadline:at+23*60000};
         return true;
       });
@@ -56,11 +53,11 @@ export async function POST(request){
       try{desktop=await openAgentDesktop({ownerId:user.id,agentId:input.agentId,provider:input.provider,requestId:input.requestId});}
       finally{
         await edit(data=>{
-          const agent=bot(data,input.agentId),launch=agent.computerLaunch;
+          const launch=data.computerLaunch;
           if(launch?.lease!==lease)return;
           if(desktop?.status==='starting'){
-            delete launch.lease;delete launch.until;
-          }else delete agent.computerLaunch;
+            delete launch.lease;delete launch.until;launch.pollUntil=Date.now()+15_000;
+          }else data.computerLaunch={recent:launch.recent};
         });
       }
       if(desktop.status==='starting')return starting();

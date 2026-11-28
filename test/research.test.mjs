@@ -4,7 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {research,model} from '../lib/agent.mjs';
 import {view} from '../lib/store.mjs';
 import {queueResearch,continuationRequest} from '../lib/research-job.mjs';
-import {candidateRows,validatePlan,outreachDraft} from '../lib/research.mjs';
+import {candidateRows,validatePlan,scopedPlan,scopeVerificationTarget,outreachDraft} from '../lib/research.mjs';
 import {attributedProfile,profileResults} from '../lib/research-profiles.mjs';
 
 const brief='Find sourcing staff, designers and buyers at the footwear company Barbour.';
@@ -98,7 +98,7 @@ test('retry replays an interrupted verification page and its article query witho
     }
     assert.equal(f.b.researchJob.id,'request');
     assert.deepEqual(pages,[0,0]);
-    assert.deepEqual(f.data.leads.map(p=>p.person),[person(0).person]);
+    assert.deepEqual(f.b.prospectReviews.map(p=>p.person),[person(0).person]);
     assert.equal(f.b.researchJob.articleFacets.length,1);
     assert.equal(f.b.researchJob.blockedPages,0);
   }
@@ -111,20 +111,23 @@ test('an HTTP 402 from the model returns an actionable safe failure',async t=>{
   await assert.rejects(model([]),error=>error.status===402&&/AI Gateway budget/.test(error.message)&&!error.message.includes('private'));
 });
 
-test('budget rejection while drafting preserves verified people and holds their outreach',async()=>{
+test('research presents verified people without spending outreach budget or creating sendable copy',async()=>{
+  const tasks=[];
   const f=fixture({services:{model:async(_,run)=>{
-    if(run.task==='draft')throw {statusCode:402};
+    tasks.push(run.task);
     return JSON.stringify(plan);
   },profilePage:async()=>pageOf([person(0)],0)}});
   f.data.businessMemory={salesProposition:'We supply materials to footwear brands.'};
   await f.run();
-  const lead=f.data.leads[0],receipt=view(f.data).bots[0].lastRun.receipt;
-  assert.equal(receipt.reason,'model_budget');assert.equal(receipt.uniqueQualified,1);assert.equal(f.b.researchRequestedAt,undefined);
-  assert.equal(lead.body,'');assert.equal(lead.status,'research');assert.match(lead.draftQuestion,/AI Gateway budget/);
-  assert.equal(f.b.researchJob.indexCursors.Barbour,undefined);
+  const desk=view(f.data);
+  assert.equal(desk.leads.length,0);
+  const [candidate]=desk.bots[0].prospectReviews;
+  assert.equal(candidate.person,person(0).person);assert.equal(candidate.body,undefined);
+  assert.equal(desk.bots[0].lastRun.counts.proposed,1);
+  assert.equal(tasks.includes('draft'),false);
 });
 
-test('one request qualifies and saves exactly fifty unique named profiles across four durable batches',async()=>{
+test('one request proposes exactly fifty unique named profiles across four durable batches',async()=>{
   let plans=0;
   const f=fixture({brief:'Find up to 50 buyers at the footwear company Barbour.',services:{
     model:async()=>{plans++;return JSON.stringify(plan);},
@@ -136,8 +139,8 @@ test('one request qualifies and saves exactly fifty unique named profiles across
     if(page<3)assert.equal(f.b.lastRun.status,'continuing');
   }
   assert.equal(plans,1);assert.equal(f.b.lastRun.status,'goal_met');assert.equal(f.b.researchRequestedAt,undefined);
-  assert.equal(f.data.leads.length,50);assert.equal(new Set(f.data.leads.map(l=>l.linkedinUrl)).size,50);
-  for(const l of f.data.leads){
+  assert.equal(f.data.leads.length,0);assert.equal(f.b.prospectReviews.length,50);assert.equal(new Set(f.b.prospectReviews.map(l=>l.linkedinUrl)).size,50);
+  for(const l of f.b.prospectReviews){
     assert.equal(l.companyVerification.source,source);assert.match(l.companyVerification.evidence,/Barbour designs footwear/i);
     assert.ok(l.linkedinEvidence.includes(l.person));assert.equal(l.source,source);
   }
@@ -147,17 +150,17 @@ test('one request qualifies and saves exactly fifty unique named profiles across
 test('an explicitly requested quota is fulfilled without publishing overflow',async()=>{
   const f=fixture({brief:'Find 2 buyers at the footwear company Barbour.',
     answers:[{...plan,requestedCount:2,countPhrase:'2 buyers'}],services:{profilePage:async()=>pageOf([person(0),person(1),person(2)],0)}});
-  await f.run();assert.equal(f.b.researchJob.goal,2);assert.equal(f.data.leads.length,2);assert.equal(f.b.lastRun.status,'goal_met');
+  await f.run();assert.equal(f.b.researchJob.goal,2);assert.equal(f.b.prospectReviews.length,2);assert.equal(f.b.lastRun.status,'goal_met');
   assert.equal(validatePlan(JSON.stringify({...plan,requestedCount:2026,countPhrase:'2026 buyers'}),{brief}).goal,null);
 });
 
-test('exact employer, role and a real personal profile are required before automatic publication',async()=>{
+test('exact employer, role and a real personal profile are required before presenting a match for review',async()=>{
   const good=person(0),wrong=person(1);
   wrong.profileHit.title=wrong.person+' - Footwear Buyer at Barbour EHS | LinkedIn';
   wrong.profileHit.snippet='Footwear Buyer at Barbour EHS.';
   const companyOnly={...person(2),profileHit:{url:'https://www.linkedin.com/company/barbour',title:'Barbour | LinkedIn',snippet:'Footwear.'}};
   const f=fixture({services:{profilePage:async()=>pageOf([good,wrong,companyOnly],0)}});
-  await f.run();assert.equal(f.data.leads.length,1);assert.equal(f.data.leads[0].person,good.person);
+  await f.run();assert.equal(f.b.prospectReviews.length,1);assert.equal(f.b.prospectReviews[0].person,good.person);
   assert.equal(f.b.researchJob.qualified,1);assert.ok(f.b.researchJob.pending.some(p=>p.person===wrong.person));
 });
 
@@ -171,6 +174,23 @@ test('article-first candidates lacking a matched LinkedIn stay pending, includin
   await f.run();assert.equal(f.data.leads.length,0);assert.equal(f.b.researchJob.pending[0].person,article.person);
   assert.equal(f.b.lastRun.counts.profileLookupFailed,true);
 });
+test('a corroborated match is available for review while a second profile is still being checked',async()=>{
+  const article={company:'Barbour',person:'Morgan Green',role:'Buyer',source:'https://example.org/staff',quote:'Morgan Green, Buyer at Barbour'};
+  let checkpoint;
+  const f=fixture({answers:[plan,{candidates:[article]}],services:{
+    profilePage:async()=>pageOf([person(0)],0),
+    articleSearch:async()=>[{url:article.source,title:'Staff',snippet:article.quote}],
+    profileSearch:async()=>{
+      checkpoint=view(f.data).bots[0].prospectReviews.map(p=>p.person);
+      return {results:[],failed:false};
+    },
+    verify:async(_,rows)=>realVerifier(rows,{...fixturePages,[article.source]:'<p>Barbour designs footwear.</p><p>Morgan Green, Buyer at Barbour.</p>'})
+  }});
+  await f.run();
+  assert.deepEqual(checkpoint,[person(0).person]);assert.equal(f.data.leads.length,0);
+  assert.equal(f.b.researchJob.qualified,1);assert.equal(f.b.lastRun.counts.proposed,1);
+});
+
 test('independent article can establish employer and a separate indexed title can establish matched profile',async()=>{
   const article={company:'Barbour',person:'Morgan Green',role:'Buyer',source:'https://example.org/staff',quote:'Morgan Green, Buyer at Barbour'};
   const f=fixture({answers:[plan,{candidates:[article]}],services:{
@@ -178,7 +198,7 @@ test('independent article can establish employer and a separate indexed title ca
     profileSearch:async()=>({results:[{title:'Morgan Green - Buyer at Barbour | LinkedIn',snippet:'Footwear buyer.',url:'https://www.linkedin.com/in/morgan-green'}],failed:false}),
     verify:async(_,rows)=>realVerifier(rows,{[article.source]:'<p>Barbour designs footwear.</p><p>Morgan Green, Buyer at Barbour.</p>'})
   }});
-  await f.run();assert.equal(f.data.leads[0].linkedinUrl,'https://www.linkedin.com/in/morgan-green');assert.equal(f.b.researchJob.qualified,1);
+  await f.run();assert.equal(f.b.prospectReviews[0].linkedinUrl,'https://www.linkedin.com/in/morgan-green');assert.equal(f.b.researchJob.qualified,1);
 });
 test('genuinely ambiguous brief asks the question before any discovery',async()=>{
   const question='Which company or industry should I look for buyers in?';
@@ -253,7 +273,7 @@ test('market research follows fresh evidence past its initial source survey, the
   assert.equal(f.b.researchRequestedAt,undefined);
 });
 
-test('a billing interruption between verification and drafting saves the person without a sendable template',()=>{
+test('a billing interruption between verification and drafting saves the verified record without a sendable template',()=>{
   const verified={person:'Test Contact',role:'Buyer',company:'Example firm',linkedinUrl:'https://www.linkedin.com/in/test-contact'};
   const draft=outreachDraft(verified,'The service budget is exhausted.');
   assert.equal(draft.linkedinUrl,verified.linkedinUrl);
@@ -262,4 +282,33 @@ test('a billing interruption between verification and drafting saves the person 
   assert.ok(draft.draftQuestion);
   const complete={...verified,subject:'Reviewed subject',body:'Reviewed offer',linkedin:'Reviewed DM'};
   assert.equal(outreachDraft(complete,'The service budget is exhausted.').body,complete.body);
+});
+
+
+test('a personal product remit survives plan caching and stays separate from the employer industry',()=>{
+  const brief='Find purchasers and designers at MANGO, the footwear aspect of Mango.';
+  const stored={...plan,employers:['MANGO'],companyContexts:[{company:'MANGO',industry:'footwear'}]};
+  assert.equal(scopedPlan(stored,{brief}).roleCategory,'footwear');
+  const current=validatePlan(JSON.stringify({...stored,roleCategory:'footwear'}),{brief});
+  assert.ok(scopeVerificationTarget({},current).roleCategoryTerms.includes('shoes'));
+  const sectorOnly={brief:'Find buyers at the footwear company Barbour.'};
+  assert.equal(validatePlan(JSON.stringify({...plan,roleCategory:'footwear'}),sectorOnly).roleCategory,'');
+  assert.equal(scopedPlan(plan,sectorOnly).roleCategory,'');
+  assert.equal(validatePlan(JSON.stringify({...stored,roleCategory:'jewelry'}),{brief}).roleCategory,'');
+});
+
+test('a resumed legacy run replans the person scope, drops a spurious limit, and revisits its first role query',async()=>{
+  const brief='Find designers and buyers at the footwear division of MANGO.';
+  const current={...plan,target:brief,employers:['MANGO'],companyContexts:[{company:'MANGO',industry:'footwear'}],roleCategory:'footwear'};
+  const pages=[];
+  const f=fixture({brief,answers:[current],services:{companyProof:async()=>null,profilePage:async args=>{
+    pages.push([args.page,args.plan.roleCategory]);return {rows:[],searched:true,exhausted:true};
+  }}});
+  const legacy={...current,goal:50,limitVersion:2};delete legacy.roleCategory;
+  f.b.researchJob={id:'request',pages:2,seen:['https://www.linkedin.com/in/revisit'],qualifiedIds:[],qualified:0,goal:50,
+    profileIndexVersion:3,indexCursors:{MANGO:2},plan:legacy,planSignature:JSON.stringify([brief,[]]),counts:{},pending:[],queries:[],candidates:[]};
+  await f.run(2);
+  assert.deepEqual(pages,[[0,'footwear']]);
+  assert.equal(f.b.researchJob.goal,null);
+  assert.equal(f.b.researchJob.plan.roleCategory,'footwear');
 });

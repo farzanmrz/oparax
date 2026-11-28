@@ -8,7 +8,7 @@ import path from 'node:path';
 import http from 'node:http';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {desktopName} from '../lib/agent-desktop.mjs';
+import {desktopName,workspaceDesktopName} from '../lib/agent-desktop.mjs';
 import gateway from '../lib/desktop-proxy.cjs';
 
 const uid='ab1df3c8-a119-46f8-afcc-c35c3ba8e26e', aid='b02d34ef-000a-471b-999e-3814811f947d';
@@ -17,6 +17,30 @@ test('project VM names bind valid workspace and agent ids in the same order',()=
   assert.equal(desktopName(uid,aid),desktopName(uid.toUpperCase(),aid));
   assert.notEqual(desktopName(uid,aid),desktopName(aid,uid));
   assert.throws(()=>desktopName(uid,'../../another-workspace'));
+});
+test('bots in one workspace reuse its most recent existing browser without resuming old computers',async()=>{
+  const other='03f95f16-3166-4f1a-a581-5a4bda27af86';
+  const data={bots:[{id:aid},{id:other}]};
+  const requested=[];
+  const options={getWorkspace:async()=>({data}),saveWorkspace:async change=>change(data),lookup:async({name,resume})=>{
+    assert.equal(resume,false);requested.push(name);
+    return {updatedAt:new Date(name===desktopName(uid,other)?2000:1000)};
+  }};
+  assert.equal(await workspaceDesktopName(uid,options),desktopName(uid,other));
+  assert.equal(requested.length,2);
+  data.bots=[{id:aid}];
+  assert.equal(await workspaceDesktopName(uid,options),desktopName(uid,other));
+  assert.equal(requested.length,2);
+  assert.notEqual(desktopName(uid,other),desktopName(aid,other));
+});
+test('a workspace without a legacy browser uses its owner-scoped name; transient provider failures do not pin it',async()=>{
+  const data={bots:[{id:aid}]};
+  const options={getWorkspace:async()=>({data}),saveWorkspace:async change=>change(data)};
+  await assert.rejects(workspaceDesktopName(uid,{...options,lookup:async()=>{throw Error('Provider unavailable')}}),/Provider unavailable/);
+  assert.equal(data.browserProfile,undefined);
+  const missing=Object.assign(Error('Missing'),{response:{status:404}});
+  assert.equal(await workspaceDesktopName(uid,{...options,lookup:async()=>{throw missing}}),desktopName(uid));
+  assert.notEqual(desktopName(aid),desktopName(uid));
 });
 async function fixture(t,settings={}) {
   const dir=await mkdtemp(path.join(tmpdir(),'oparax-desktop-test-'));
@@ -107,7 +131,7 @@ test('VM-local first boot is fenced per request, source and attempt, and recover
   await writeFile(helper,await readFile(new URL('../lib/desktop-job.sh',import.meta.url)));
   // Exercise supervisor failure only. No browser or package manager is involved.
   await writeFile(path.join(dir,'desktop-start.sh'),'exit 23\n');
-  const opted='https://www.linkedin.com/login', another='https://www.linkedin.com/sales/home';
+  const opted='https://www.linkedin.com/feed/', another='https://www.linkedin.com/sales/home';
   const args=(mode,id,url=opted,attempt)=>[helper,mode,id,'https://machine.example',url,...(attempt?[String(attempt)]:[])];
   async function invoke(...v){return (await call('bash',args(...v),{env})).stdout.trim();}
   assert.equal(await invoke('inspect',uid),'launch 1');
@@ -144,7 +168,7 @@ test('a previously ready VM adopts the new desktop release even after its old re
   await Promise.all([mkdir(prior),mkdir(current)]);
   const code=await readFile(new URL('../lib/desktop-job.sh',import.meta.url));
   for(const release of [prior,current])await writeFile(path.join(release,'desktop-job.sh'),code);
-  const args=['inspect',uid,'https://sandbox.example','https://www.linkedin.com/login'];
+  const args=['inspect',uid,'https://sandbox.example','https://www.linkedin.com/feed/'];
   const inspect=async release=>(await promisify(execFile)('bash',[path.join(release,'desktop-job.sh'),...args],{env:{...process.env,OPARAX_DESKTOP_STATE_DIR:state}})).stdout.trim();
   assert.equal(await inspect(prior),'launch 1');
   const job=path.join(state,'desktop-jobs',uid);

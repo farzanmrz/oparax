@@ -46,7 +46,7 @@ test('AgentMail uses only this agent inbox and provider-side domain, recipient a
 });
 function setup(){
   const b={id,brief:'Find designers at Northwind',searchSources:['email'],name:'Single sales agent'};
-  b.researchJob={planSignature:mailboxBriefSignature(b),plan:{target:b.brief,employers:['Northwind'],companyContexts:[{company:'Northwind',industry:'footwear'}],roles:['designer'],roleTerms:[]}};
+  b.researchJob={planSignature:mailboxBriefSignature(b),plan:{target:b.brief,roleCategory:'',employers:['Northwind'],companyContexts:[{company:'Northwind',industry:'footwear'}],roles:['designer'],roleTerms:[]}};
   const data={bots:[b],leads:[],messages:[],events:[],mailbox:{id:'owner-mailbox'},suppressed:[]};
   const reads=[],lookups=[];
   const deps={read:async()=>({data}),edit:async fn=>fn(data),readSenders:async s=>{reads.push(s);return {examined:2,rows:['Ada Stone','Jane Moon'].map((person,i)=>({person,at:new Date().toISOString(),reference:'PRIVATE-MESSAGE-'+i,senderKey:person}))}},
@@ -55,15 +55,15 @@ function setup(){
   return {b,data,reads,lookups,deps};
 }
 const request=()=>({...scope,source:'email',consent:true,requestId:randomUUID()});
-test('one explicit scope publishes independently checked records only, stores private trace, leaves sending off, and replays idempotently',async()=>{
+test('one explicit scope proposes independently checked records only, stores private trace, leaves sending off, and replays idempotently',async()=>{
   const {b,data,deps,lookups,reads}=setup(),p=request();
   await assert.rejects(runMailboxResearch(id,{...p,consent:false},deps),/Confirm/);
   await assert.rejects(runConsentedMailboxResearch(id,randomUUID(),deps),/Confirm/);
   await assert.rejects(runMailboxResearch(id,{...p,company:'Wrong employer'},deps),/employer in this campaign/);
   assert.equal(reads.length,0);
   const receipt=await runMailboxResearch(id,p,deps);
-  assert.equal(receipt.saved,1);assert.equal(receipt.held,1);assert.equal(b.mailboxPending[0].person,'Jane Moon');
-  const lead=data.leads[0];assert.equal(lead.email,'');assert.equal(lead.status,'research');assert.equal(lead.discoverySources[0].source,'email');
+  assert.equal(receipt.proposed,1);assert.equal(receipt.saved,0);assert.equal(data.leads.length,0);assert.equal(receipt.held,1);assert.equal(b.mailboxPending[0].person,'Jane Moon');
+  const lead=b.prospectReviews[0];assert.equal(lead.email,'');assert.equal(lead.reviewState,'pending');assert.equal(lead.discoverySources[0].source,'email');
   assert.ok(b.mailboxEvidence[0].reference.startsWith('PRIVATE-'));assert.ok(!JSON.stringify(lookups).includes('PRIVATE-'));assert.ok(!JSON.stringify(lead).includes('PRIVATE-'));assert.ok(!JSON.stringify(receipt).includes('Ada'));
   assert.deepEqual(await runMailboxResearch(id,p,deps),receipt);assert.equal(reads.length,1);
   await assert.rejects(runMailboxResearch(id,{...p,domain:'other.example'},deps),/different mailbox scope/);
@@ -72,7 +72,7 @@ test('remembered scope is private to this mailbox, campaign, brief and provider;
   const {b,data,deps,reads}=setup();
   await runMailboxResearch(id,{...request(),remember:true},deps);
   const again=await runConsentedMailboxResearch(id,randomUUID(),deps);
-  assert.equal(again.existing,1);assert.equal(data.leads.length,1);
+  assert.equal(again.existing,1);assert.equal(b.prospectReviews.length,1);assert.equal(data.leads.length,0);
   b.brief+=' in Brazil';await assert.rejects(runConsentedMailboxResearch(id,randomUUID(),deps),/Confirm/);b.brief='Find designers at Northwind';
   data.mailbox.id='new';await assert.rejects(runConsentedMailboxResearch(id,randomUUID(),deps),/Confirm/);data.mailbox.id='owner-mailbox';
   await runMailboxResearch(id,{...request(),revoke:true},deps);await assert.rejects(runConsentedMailboxResearch(id,randomUUID(),deps),/Confirm/);
@@ -81,9 +81,9 @@ test('remembered scope is private to this mailbox, campaign, brief and provider;
 test('a different verified organization domain, and two e-mail identities sharing the same name, are held',async()=>{
   const {b,data,deps}=setup(),original=deps.verifyCandidates;
   deps.verifyCandidates=async(...args)=>{const r=await original(...args);for(const x of r.verified)x.record.companyVerification={name:'Northwind',domain:'unrelated.example',source:'https://unrelated.example',evidence:'A different firm'};return r;};
-  assert.equal((await runMailboxResearch(id,request(),deps)).saved,0);
+  assert.equal((await runMailboxResearch(id,request(),deps)).proposed,0);
   const previous=deps.readSenders;deps.readSenders=async(...args)=>{const x=await previous(...args);return {...x,rows:[...x.rows,{...x.rows[0],senderKey:'distinct',reference:'new-private'}]};};
-  deps.verifyCandidates=original;assert.equal((await runMailboxResearch(id,request(),deps)).saved,0);
+  deps.verifyCandidates=original;assert.equal((await runMailboxResearch(id,request(),deps)).proposed,0);
   assert.equal(data.leads.length,0);assert.ok(b.mailboxPending.length);
 });
 

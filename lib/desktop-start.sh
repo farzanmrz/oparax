@@ -11,7 +11,7 @@ scripts=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 origin=$1
 destination=$2
 case "$destination" in
-  about:blank|https://www.linkedin.com/login|https://www.linkedin.com/sales/home) ;;
+  about:blank|https://www.linkedin.com/feed/|https://www.linkedin.com/sales/home) ;;
   *) exit 2 ;;
 esac
 if ! command -v google-chrome-stable >/dev/null || ! command -v x11vnc >/dev/null || ! test -f /usr/share/novnc/vnc.html || ! test -d /usr/share/nodejs/ws; then
@@ -61,6 +61,11 @@ if ! timeout 2 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5900; IFS= read -r banner <&3
   nohup x11vnc -display "$DISPLAY" -auth "$XAUTHORITY" -listen 127.0.0.1 -localhost -rfbport 5900 -forever -shared -nopw -noxdamage </dev/null >/dev/null 2>&1 9>&- &
 fi
 # Only fixed provider landing URLs are passed to the standard browser. Browser confinement remains enabled.
+# A restored private disk can retain Chromium's lock from the previous VM hostname.
+# Remove stale launcher locks only when this VM has no process using its browser profile.
+if [[ -L "$state/chrome/SingletonLock" ]] && ! pgrep -f -- "--user-data-dir=$state/chrome( |$)" >/dev/null; then
+  rm -f -- "$state/chrome/SingletonLock" "$state/chrome/SingletonSocket" "$state/chrome/SingletonCookie"
+fi
 nohup google-chrome-stable --user-data-dir="$state/chrome" --disable-dev-shm-usage --no-first-run --no-default-browser-check --start-maximized "$destination" </dev/null >/dev/null 2>&1 9>&- &
 # Chrome presents a native, owner-visible window. Refuse success if it dies during launch.
 for _ in {1..60}; do

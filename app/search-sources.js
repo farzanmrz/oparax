@@ -5,9 +5,9 @@ import {mailboxScopeSuggestion} from '../lib/mailbox-scope.mjs';
 
 export const sourceOptions=[
   {value:'web',label:'Public web',detail:'Public pages and trade sources'},
-  {value:'linkedin',label:'LinkedIn',detail:'People you select in LinkedIn'},
-  {value:'sales_navigator',label:'Sales Navigator',detail:'Leads you select in Sales Navigator'},
-  {value:'rocketreach',label:'RocketReach',detail:'People and work email lookup'},
+  {value:'linkedin',label:'LinkedIn',detail:'Find people from public LinkedIn profiles'},
+  {value:'sales_navigator',label:'Sales Navigator',detail:'Add private leads from your workspace browser'},
+  {value:'rocketreach',label:'RocketReach',detail:'Search with your connected account'},
   {value:'email',label:'Connected email',detail:'Existing correspondence'}
 ];
 export function sourceName(value){return sourceOptions.find(o=>o.value===value)?.label||''}
@@ -68,7 +68,7 @@ export function MailboxResearch({agent,mailbox,isDemo,onConnect,getToken,onRefre
       <label className="check"><input type="checkbox" checked={remember} onChange={e=>{setRemember(e.target.checked);requestId.current=null}}/>Remember this exact scope for this bot’s current brief.</label>
       <button type="submit" disabled={busy||!consent}>{busy?'Checking correspondence…':'Run mailbox search'}</button>
     </form></details>{error&&<p className="error" role="alert">{error}</p>}
-    {shown&&<p role="status">Last review · {shown.domain} · {shown.examined||0} messages checked · {shown.saved||0} saved · {shown.existing||0} already saved · {Array.isArray(shown.held)?shown.held.length:shown.held||0} held</p>}
+    {shown&&<p role="status">Last review · {shown.domain} · {shown.examined||0} messages checked · {Number.isInteger(shown.proposed)?shown.proposed+' proposed':(shown.saved||0)+' saved'} · {shown.existing||0} already saved · {Array.isArray(shown.held)?shown.held.length:shown.held||0} held</p>}
     {agent.mailboxScopeRemembered&&<button disabled={busy} onClick={forget}>Forget saved scope</button>}
   </div>;
 }
@@ -92,7 +92,7 @@ export function RocketReachSource({agent,connection,leads,isDemo,onAction,busy,f
   return <div><details open><summary>Find people at a company</summary><form onSubmit={async e=>{e.preventDefault();if(await action('rocketReachSearch',{company:company.trim(),role:role.trim()}))setChecked([])}}>
     <label>Company<input required value={company} onChange={e=>setCompany(e.target.value)}/></label><label>Role<input required value={role} onChange={e=>setRole(e.target.value)}/></label>
     <button disabled={busy}>Search RocketReach</button>
-  </form>{results.length>0&&<div><p>Choose candidates to verify against this brief.</p>{results.map(row=><label className="check" key={row.id}><input type="checkbox" checked={checked.includes(String(row.id))} onChange={e=>setChecked(values=>e.target.checked?[...values,String(row.id)]:values.filter(value=>value!==String(row.id)))}/>{[row.person,row.role,row.company].filter(Boolean).join(' · ')}</label>)}<button disabled={busy||!picked.length} onClick={()=>action('rocketReachImport',{profileIds:picked})}>Verify {picked.length} selected</button></div>}</details>
+  </form>{results.length>0&&<div><p>Directory results. You can recheck a person against this brief.</p>{results.map(row=><label className="check" key={row.id}><input type="checkbox" checked={checked.includes(String(row.id))} onChange={e=>setChecked(values=>e.target.checked?[...values,String(row.id)]:values.filter(value=>value!==String(row.id)))}/>{[row.person,row.role,row.company].filter(Boolean).join(' · ')}</label>)}<button disabled={busy||!picked.length} onClick={()=>action('rocketReachImport',{profileIds:picked})}>Recheck {picked.length} selected</button></div>}</details>
     {!!leads.length&&<details open={focusLead?true:undefined}><summary>Look up a work email</summary><label>Person<select value={lookupId} onChange={e=>setLeadId(e.target.value)}>{leads.map(person=><option key={person.id} value={person.id}>{person.person} · {person.company}</option>)}</select></label>
       {lookupState==='pending'?<p>RocketReach is processing this lookup.</p>:lookupBlocked?<p>{lookupState==='unknown'?'The last lookup has an uncertain outcome. Review it in RocketReach before trying again.':lookupState==='no_work_email'?'RocketReach returned no work email.':recipient?.email||'Lookup complete.'}</p>:<p><small>One standard email lookup. Your plan may also use one person-export credit.</small></p>}
       {!lookupBlocked&&<button disabled={busy||!lookupId} onClick={()=>action('rocketReachEnrich',{leadId:lookupId})}>{lookupState==='pending'?'Check existing lookup status':'Look up work email · up to 1 lookup'}</button>}</details>}

@@ -182,8 +182,8 @@ def starts(values, phrase):
 
 # Connectors permit press-style attributions in either order while excluding a
 # second person's name between the candidate and the attributed role.
-CONNECTORS = set('the a an of for at from with as s is serves serving who she he our its company brand has been appointed named promoted to new joined global group responsible current currently'.split())
-PAST = re.compile(r'\b(former(?:ly)?|previous(?:ly)?|retired|ex|departing|outgoing|was|resigned|departed|late)\b', re.I)
+CONNECTORS = set('the a an of for at from with as s is serves serving who she he our its company brand has been appointed named promoted to new joined global group responsible current currently en de del la el para como es actual'.split())
+PAST = re.compile(r'\b(former(?:ly)?|previous(?:ly)?|retired|ex|departing|outgoing|was|resigned|departed|late|antes|anteriormente|trabajaba|trabajó|trabajé|fui|fue)\b', re.I)
 
 
 def company_starts(line, tokens, values, company, industry_words=()):
@@ -221,6 +221,31 @@ def attribution(line, tokens, company, person, role):
                 if PAST.search(prefix + ' ' + line[start:end]):
                     continue
                 return start, end
+    return None
+
+
+def role_category_evidence(role, target, trailing=''):
+    """Require the category in the attributed title or its subject's present duties."""
+    terms = [words(t) for t in target.get('roleCategoryTerms') or [] if isinstance(t, str) and t.strip()]
+    if not terms or any(tuple(starts(role, term)) for term in terms):
+        return ''
+    # The matched attribution ends immediately before this phrase. Bounded grammar
+    # excludes a second person's role, the employer's catalog and past experience.
+    duty = re.match(r"^[ ,]*(?:who\s+)?(?:(?:is\s+)?responsible for|oversees|leads|manages|handles|"
+                    r"runs|heads|speciali[sz]es in|is in charge of)\s+", trailing, re.I)
+    if not duty:
+        return None
+    tokens = list(WORD.finditer(trailing[duty.end():]))
+    allowed = set("sourcing supply chain buying procurement purchasing design production development "
+                  "the all of for in its men s women kids and children product category department line".split())
+    values = [fold(m.group()) for m in tokens]
+    for term in terms:
+        for pos in starts(values[:12], term):
+            if pos > 7 or not set(values[:pos]) <= allowed:
+                continue
+            end = duty.end() + tokens[pos+len(term)-1].end()
+            if not re.search(r'[.;:!?|]',trailing[:end]):
+                return trailing[:end]
     return None
 
 
@@ -318,6 +343,11 @@ def verified_email(row, evidence_line, source, anchor):
     return addr
 
 
+def catalog_label_from_path(url, terms):
+    path_words = words(unquote(urlsplit(url).path))
+    return any(tuple(starts(path_words,term)) for term in terms)
+
+
 def company_anchor(page, url, row):
     """A shared corporate page can establish employer identity but cannot identify a person."""
     target = row.get('researchTarget') or {}
@@ -327,6 +357,27 @@ def company_anchor(page, url, row):
     industry_words = {term[0] for term in [words(t) for t in [target.get('industry') or '',*(target.get('industryTerms') or [])]] if term}
     domain = official_domain(url,name,target)
     if page.title and domain:
+        # On first-party stores the category name and brand are often separate title
+        # segments, or the brand is in the title and the category in storefront links.
+        title_parts = re.split(r'\s*[|·]\s*|\s+[–—-]\s+', page.title)
+        terms = [words(t) for t in [target.get('industry'),*(target.get('industryTerms') or [])] if t]
+        brand = words(name)
+        on_category_path = catalog_label_from_path(url,terms)
+        branded = any(words(part)==brand or (on_category_path and words(part)[:len(brand)]==brand)
+                      for part in title_parts)
+        def catalog_label(label):
+            label_words = [word for word in words(label) if not re.fullmatch(r'(?:19|20)[0-9]{2}',word)]
+            qualifiers = {'men','mens','women','womens','s','for','all','kids','leather','online',
+                          'collection','collections','de','mujer','hombre','piel'}
+            return any(any(set(label_words[:pos]+label_words[pos+len(term):]) <= qualifiers
+                           for pos in starts(label_words,term)) for term in terms)
+        if branded and terms:
+            if any(catalog_label(part) for part in title_parts if words(part)!=words(name)):
+                return {'name':name,'source':url,'evidence':page.title,'domain':domain}
+            for href,label in page.catalog_labels:
+                dest=urljoin(url,href)
+                if label and matches_domain(dest,domain) and catalog_label(label) and catalog_label_from_path(dest,terms):
+                    return {'name':name,'source':url,'evidence':page.title+' · '+label+' → '+dest,'domain':domain}
         doc_title = Page()
         doc_title.blocks = [page.title]
         if tuple(starts(words(page.title),words(name))):
@@ -361,7 +412,7 @@ def profile_url(raw):
     return ''
 
 
-PAST_INDEX = re.compile(r'\b(?:former(?:ly)?|previous(?:ly)?|worked|interned|departed|retired|past|ex[- ])\b|'
+PAST_INDEX = re.compile(r'\b(?:former(?:ly)?|previous(?:ly)?|worked|interned|departed|retired|past|anterior(?:mente)?|antes|trabajaba|trabajó|trabajé|fui|fue|hasta (?:19|20)\d{2}|ex[- ])\b|'
                         r'(?:19|20)\d\d\s*[-–—]\s*(?:[A-Z][a-z]{2,8}\s+)?(?:19|20)\d\d|'
                         r'can introduce|people working at|mutual connections', re.I)
 
@@ -374,10 +425,12 @@ def official_domain(url, company, target):
     # For an inferred first-party anchor the brand must be the registrable label. Requiring
     # a whole host pattern also excludes a similarly named subdomain on a third-party site.
     parts = host.split('.')
+    if len(parts) >= 3 and parts[0] in ('shop','store','about','corporate','company'):
+        parts = parts[1:]
     brand = ''.join(words(company))
     if (len(parts) == 2 or (len(parts) == 3 and parts[1] in ('co','com','org') and len(parts[2]) == 2)):
         if parts[0].replace('-', '') == brand:
-            return host
+            return '.'.join(parts)
     return ''
 
 
@@ -404,7 +457,7 @@ PRODUCT_AREAS = {
 SOCIAL = re.compile(r"\b(?:hiring|jobs?|vacanc(?:y|ies)|recruiting|recruitment|apply now|job openings?|"
                     r"opening for|open position|position (?:is )?(?:available|open)|exciting opportunity|"
                     r"opportunity (?:to join|for a)|shared this|reposted|reacted (?:to|on)|liked this|"
-                    r"(?:posted|posts?) (?:about|by)|join our team|we(?:’re|'re| are) looking for)\b",re.I)
+                    r"oferta de (?:empleo|trabajo)|vacantes?|buscamos|estamos contratando|recomiendo a|recomendaciones|recomienda a|recomendó a|compartió|(?:posted|posts?) (?:about|by)|join our team|we(?:’re|'re| are) looking for)\b",re.I)
 
 def identity_match(context, markers):
     for kind,value,origin in markers:
@@ -572,7 +625,7 @@ def indexed_employment(row, markers=()):
         return None
     headline = ' - '.join(p for p in parts[1:] if words(p) != ['linkedin']).strip()
     # Don't resurrect an older job from the snippet if the headline names a different employer.
-    declared = re.search(r'\s(?:at|@)\s+([^|·–—]+)', headline, re.I)
+    declared = re.search(r'\s(?:at|@|en)\s+([^|·–—]+)', headline, re.I)
     if declared:
         employer = words(declared[1].split(',')[0])
         aliases = [words(v) for t,v,_ in markers if t=='legal_name']
@@ -596,6 +649,7 @@ def indexed_employment(row, markers=()):
         return None
 
     target = row.get('researchTarget') or {}
+    scoped_title = role_category_evidence(role, target) is not None
     industry = [words(t) for t in [target.get('industry'), *(target.get('industryTerms') or [])] if t]
     domain = (target.get('domain') or '').casefold()
     # Each piece is independently attributable. A following former position or unrelated
@@ -607,14 +661,14 @@ def indexed_employment(row, markers=()):
             if not present or employer not in companies or current_role!=role or SOCIAL.search(description):
                 continue
             proof = identity_match(description,markers)
-            if proof or any(tuple(starts(role,t)) for t in industry if t):
+            if scoped_title and (proof or any(tuple(starts(role,t)) for t in industry if t)):
                 return {'linkedinUrl':url,'linkedinEvidence':(title+' · '+description)[:650],'bridge':proof}
         # An explicit current or dated position overrides boilerplate skill or About text.
         return None
     precise_job = current_markdown_experience(snippet,role,companies)
     if precise_job and not SOCIAL.search(precise_job):
         proof = identity_match(precise_job,markers)
-        if proof or any(tuple(starts(role,t)) for t in industry if t):
+        if scoped_title and (proof or any(tuple(starts(role,t)) for t in industry if t)):
             return {'linkedinUrl':url,'linkedinEvidence':(title+' · '+precise_job)[:650],'bridge':proof}
     about = re.search(r'(?:^|\n)\s*#*\s*About\s*\n(.{2,420}?)(?:\n\s*#|$)',snippet,re.I|re.S)
     # A result snippet can be text from a shared job advert rather than the profile owner.
@@ -630,11 +684,11 @@ def indexed_employment(row, markers=()):
     headline_company = any(words(headline)==e for e in employers)
     if headline_company and not PAST_INDEX.search(snippet):
         block = re.search(r'(?:^|\s[·|]\s|\bAbout\s*[:·]\s*)([^·|\n]{2,220})\s*[·|]\s*'
-                          r'Experience\s*:\s*([^·|\n]{2,130})(?:\s*[·|]\s*(?:Location\s*:\s*)?([^·|\n]{2,90}))?',snippet,re.I)
+                          r'(?:Experience|Experiencia)\s*:\s*([^·|\n]{2,130})(?:\s*[·|]\s*(?:Location\s*:\s*)?([^·|\n]{2,90}))?',snippet,re.I)
         own_role = block[1].strip() if block else ''
         current_employer = (block[2].split(',')[0].strip(' .') if block else '')
         valid_pair = (block and words(current_employer) in employers and tuple(starts(words(own_role), role))
-                       and not re.search(r'\b(?:seeking|previous|former|aspiring|graduate looking)\b',own_role,re.I)
+                       and not re.search(r'\b(?:seeking|previous|former|aspiring|graduate looking|anterior|anteriormente|buscando)\b',own_role,re.I)
                        and not re.search(r'\b(?:education|former|previous)\b',block[3] or '',re.I))
         own = re.match(r'(?:(?:about|i am|i work as)[: ]+)?(?:[a-z -]{0,40} )?'+
                        r'\b'+r'\s+'.join(map(re.escape,role))+
@@ -642,7 +696,9 @@ def indexed_employment(row, markers=()):
         if valid_pair or own:
             ev = (block[0].strip(' ·|') if valid_pair else own[0]).strip()
             proof = identity_match(ev,markers)
-            if proof or any(tuple(starts(words(ev),term)) for term in industry if term):
+            scope_role = words(re.split(r'\b(?:with (?:experience|a background)|background in|con experiencia|anteriormente)\b', own_role, flags=re.I)[0]) if valid_pair else role
+            if role_category_evidence(scope_role,target) is not None and (
+                    proof or any(tuple(starts(words(ev),term)) for term in industry if term)):
                 return {'linkedinUrl':url,'linkedinEvidence':(title+' · '+ev)[:650],'bridge':proof}
     segments = [headline] + re.split(r'(?<=[.!?])\s+|(?:\s+[·|]\s+)|\n+', snippet)
     usable = []
@@ -675,7 +731,7 @@ def indexed_employment(row, markers=()):
                     continue
                 # “Graphic Designer Barbour, South Shields” is also how LinkedIn displays
                 # a job card. A bare juxtaposition in an activity snippet is insufficient.
-                if segment!=headline and not gap and not re.search(r'\b(?:current role|experience|i am)\b',segment,re.I):
+                if segment!=headline and not gap and not re.search(r'\b(?:current role|experience|i am|experiencia|actualmente|soy)\b',segment,re.I):
                     continue
                 sector_in_role = any(tuple(starts(role, term)) for term in industry if term)
                 # If the role itself is generic, require an explicit industry descriptor
@@ -693,6 +749,9 @@ def indexed_employment(row, markers=()):
                 context = headline+' · '+segment
                 bridge = identity_match(context,markers)
                 if not (sector_in_role or company_proof or domain_in_segment or bridge):
+                    continue
+                tail = segment[tokens[right[1]-1].end():]
+                if role_category_evidence(role, target, tail) is None:
                     continue
                 evidence = title if segment == headline else title + ' · ' + segment.strip()
                 return {'linkedinUrl': url, 'linkedinEvidence': evidence[:650], 'bridge':bridge}
@@ -748,6 +807,11 @@ def verify(row, read_page=None):
             continue
         start, end = match
         evidence = line[start:end]
+        if person:
+            duty = role_category_evidence(role, row.get('researchTarget') or {}, line[end:])
+            if duty is None:
+                continue
+            evidence += duty
         company_proof = company_verification(page, index, url, row['company'],
                                              row.get('researchTarget') or {}, evidence)
         if not company_proof and row.get('companySource') and row['companySource']!=url:

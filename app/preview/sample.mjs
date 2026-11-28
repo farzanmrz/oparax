@@ -40,7 +40,7 @@ export function sampleMessage(workspace,{id,message,requestId,searchSource,searc
     reply='Saved your revised demo brief. This walkthrough uses a fixed fictional account. Sign in to research that target live.';
   }else if(/research|buyer|find|sourcing|search/i.test(message)){
     if(selectedSearchSources(agent).includes('web')||(!Object.hasOwn(agent,'searchSource')&&!Object.hasOwn(agent,'searchSources')))return runSample(next,at,agentId);
-    reply=agent.searchSource?'This source requires a real signed-in agent computer. Switch to Public web to use this fictional sample.':'Where should I search for this audience?';
+    reply=agent.searchSource?'This sample runs on its fictional public-web source. Open the live workspace to research people with the sources you selected.':'Where should I search for this audience?';
   }
   else reply='In this local demo I can research the fictional account, report progress, or prepare a draft for its buyer.';
   const answered=note(agentId,'assistant',reply,at);

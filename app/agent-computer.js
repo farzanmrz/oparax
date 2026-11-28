@@ -68,9 +68,9 @@ export default function AgentComputer({ref,agent,provider,getToken,onImport,busy
   }
   const neutral=provider==='desktop';
   const receipt=agent.lastSelectedImports?.[provider]||(agent.lastSelectedImport?.source===provider?agent.lastSelectedImport:null);
-  return <section className="thread-computer" aria-label={neutral?'Private bot computer':labels[provider]+' agent computer'}>
-    <div className="row"><h2>{neutral?'Private bot computer':labels[provider]+' on your agent computer'}</h2>{!neutral&&<button type="button" disabled={opening} onClick={openDesktop}>{starting?'Preparing computer…':opening?'Opening computer…':'Open agent computer ↗'}</button>}</div>
-    {neutral?<p>{agent.name}’s private browser opens on a blank page.</p>:<p>In the private computer, select 1Password in Chrome’s toolbar. Sign in or unlock the extension yourself, then choose your saved LinkedIn login. The icon can take a moment to appear on first launch. You can also sign in directly on LinkedIn.</p>}
+  return <section className="thread-computer" aria-label={neutral?'Private workspace computer':labels[provider]+' workspace computer'}>
+    <div className="row"><h2>{neutral?'Workspace computer':labels[provider]+' in your workspace browser'}</h2>{!neutral&&<button type="button" disabled={opening} onClick={openDesktop}>{starting?'Preparing computer…':opening?'Opening computer…':'Open workspace computer ↗'}</button>}</div>
+    {neutral?<p>All your bots open the same private browser.</p>:<p>Your bots share this browser’s LinkedIn session. If LinkedIn asks you to sign in, choose Continue with Google if it appears, or use your LinkedIn email and password. Unlock 1Password in Chrome’s toolbar to save or fill your login.</p>}
     {starting&&<div className="thread-computer-wait" role="status"><p>Your private computer is starting. The first startup can take several minutes.</p><button type="button" onClick={()=>request.current?.abort(new Error('Stopped waiting for the computer. Open it again when ready.'))}>Stop waiting</button></div>}
     {error&&<p className="error" role="alert">{error}</p>}
     {opened&&<p role="status">Your agent computer opened in another tab.</p>}
@@ -89,7 +89,7 @@ export default function AgentComputer({ref,agent,provider,getToken,onImport,busy
         {importError&&<p className="error" role="alert">{importError}</p>}
       </form>
     </details>}
-    {!neutral&&receipt&&<div className="thread-import-receipt" role="status"><strong>Last selection</strong><p>{receipt.received} submitted · {receipt.saved} saved · {receipt.existing} already saved · {receipt.held?.length||0} awaiting evidence</p>
+    {!neutral&&receipt&&<div className="thread-import-receipt" role="status"><strong>Last selection</strong><p>{receipt.received} submitted · {Number.isInteger(receipt.proposed)?<>{receipt.proposed} ready for review · {receipt.existing} previously found</>:<>{receipt.saved} saved · {receipt.existing} already saved</>} · {receipt.held?.length||0} awaiting evidence</p>
     {!!receipt.held?.length&&<details><summary>Review verification issues</summary><ul>{receipt.held.map((item,i)=><li key={i}>{item.person} · {item.reason} <button type="button" disabled={busy} onClick={()=>editHeld(item)}>Edit selection</button></li>)}</ul></details>}</div>}
   </section>;
 }

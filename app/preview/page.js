@@ -3,13 +3,13 @@ import Workspace from '../workspace';
 export const metadata={title:'Interactive demo · Oparax',robots:{index:false}};
 
 const sampleSkills=[
-  ['public_research','Public web research','Research public evidence.'],['linkedin_research','LinkedIn research','Verify profiles selected in LinkedIn.'],
-  ['sales_navigator_research','Sales Navigator research','Verify people selected in Sales Navigator.'],['rocketreach_research','RocketReach research','Find professional contacts in RocketReach.'],
+  ['public_research','Public web research','Research public evidence.'],['linkedin_research','LinkedIn research','Find and check people from public LinkedIn profiles.'],
+  ['sales_navigator_research','Sales Navigator research','Check private leads you add from Sales Navigator.'],['rocketreach_research','RocketReach research','Find professional contacts in RocketReach.'],
   ['mailbox_research','Mailbox research','Check correspondence within an approved scope.'],['draft_outreach','Outreach drafting','Prepare personalized introductions.'],
   ['email_delivery','Email delivery','Send approved outreach through a connected mailbox.'],['linkedin_delivery','LinkedIn messaging','Use an approved messaging account.'],
-  ['computer_use','Private computer','Open a private browser for the bot.']
+  ['computer_use','Private computer','Open the browser shared by your workspace bots.']
 ].map(([id,label,description])=>({id,label,description,enabled:['public_research','draft_outreach'].includes(id),connectorState:'demo'}));
-const salesConnectors=[['ai','AI Gateway'],['web','Public search'],['computer','Bot computer'],['rocketreach','RocketReach'],['mailbox','Connected mailbox'],['agentmail','AgentMail'],['linkedin_messaging','LinkedIn Messaging']].map(([id,label])=>({id,label,status:'demo',summary:'Preview only'}));
+const salesConnectors=[['ai','AI Gateway'],['web','Public search'],['computer','Workspace computer'],['rocketreach','RocketReach'],['mailbox','Connected mailbox'],['agentmail','AgentMail'],['linkedin_messaging','LinkedIn Messaging']].map(([id,label])=>({id,label,status:'demo',summary:'Preview only'}));
 const businessMemory={version:1,company:'Alder Studio (fictional)',productsServices:'Leather swatches for independent footwear designers.',salesProposition:'Let buyers evaluate new finishes before choosing a material.',proof:'Use only the fictional sample profile shown in this demo.',buyerTargeting:'UK materials and partnerships buyers',voice:'Short, direct and specific.',restrictions:'Ask before sending sample specifications.'};
 const customSkills=[{id:'sample-introduction',name:'Introduce a material sample',instructions:'Refer to the buyer’s verified role. Ask which finishes their studio is evaluating.',version:1}];
 
