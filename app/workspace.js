@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {loginCallback} from '../lib/login.mjs';
+import {loginCallback,verificationFailure} from '../lib/login.mjs';
 import {runSample,sampleMessage} from './preview/sample.mjs';
 import AgentThread,{agentState,providerBusy,Provenance} from './agent-thread';
 import SendDraft from './send-draft';
@@ -91,9 +91,11 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    const brief=getPendingBrief(d.userEmail);
    if(typeof brief==='string'&&brief){setInitialDraft(brief);S(newThread);P('Agents')}
  },[preview,d?.userEmail,initialAgentId]);
- function session(s){activeSession.current=s;A(s);if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else{
+ function session(s){activeSession.current=s;A(s);
+   try{if(s)sessionStorage.setItem('oparax.sales.session',JSON.stringify(s));else sessionStorage.removeItem('oparax.sales.session')}catch{}
+   if(!s){
    appliedLoad.current=++loadGeneration.current;setDeliveryFailure(null);
-   sessionStorage.removeItem('oparax.sales.session');pendingOwner.current=null;setEveSnapshot(null);setEveCommand(null);activeTurnRequest.current?.reject?.(new Error('The sign-in session changed.'));activeTurnRequest.current=null;setTeaching(null);setInitialDraft('');S(initialAgentId);P(initialPage);
+   pendingOwner.current=null;setEveSnapshot(null);setEveCommand(null);activeTurnRequest.current?.reject?.(new Error('The sign-in session changed.'));activeTurnRequest.current=null;setTeaching(null);setInitialDraft('');S(initialAgentId);P(initialPage);
  }}
  async function token(){
    const s=activeSession.current;if(!s)throw Error('Sign in first.');if(s.expires>Date.now()+45000)return s.access;
@@ -102,56 +104,120 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    entry.request=(async()=>{
      const res=await fetch(url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh})});
      if(activeSession.current!==s)throw Error('The sign-in session changed.');
-     if(!res.ok){session(null);D(null);throw Error('Your session expired. Sign in again.')}
+     if(!res.ok){
+       if([400,401,403].includes(res.status)){session(null);D(null);setLinkRoute(true);throw Error('Your session expired. Sign in again.')}
+       throw Error('Could not refresh your session. Try opening your workspace again.');
+     }
      const v=await res.json();if(activeSession.current!==s)throw Error('The sign-in session changed.');
      const next={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+v.expires_in*1000};session(next);return next.access;
    })().finally(()=>{if(refreshing.current===entry)refreshing.current=null});
    return entry.request;
  }
- async function load(s,signal){if(!s)return;const generation=++loadGeneration.current,t=await token();const r=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store',signal});const v=await r.json();if(!r.ok)throw Error(v.error||'Workspace unavailable.');if(!signal?.aborted&&activeSession.current&&generation>appliedLoad.current){appliedLoad.current=generation;D(v)}return v}
- const started=useRef(false);
+ async function load(s,signal){
+   if(!s)return;
+   const generation=++loadGeneration.current,t=await token();
+   const result=await fetch('/api/desk',{headers:{Authorization:'Bearer '+t},cache:'no-store',signal});
+   const desk=await result.json();
+   if(!result.ok){
+     if([401,403].includes(result.status)&&activeSession.current?.access===t){session(null);D(null);setLinkRoute(true)}
+     throw Error(desk.error||'Workspace unavailable.');
+   }
+   if(!signal?.aborted&&activeSession.current?.access===t&&generation>appliedLoad.current){appliedLoad.current=generation;D(desk)}
+   return desk;
+ }
+ const [signInRoute,setSignInRoute]=useState(false),[pendingLink,setPendingLink]=useState(null);
+ const verifying=useRef(false),started=useRef(false);
+ function setLinkRoute(signin,verification=null){
+   const route=new URL(location.href);
+   for(const key of ['token_hash','type','error','error_code','error_description','access_token','refresh_token','expires_in'])route.searchParams.delete(key);
+   if(signin)route.searchParams.set('signin','1');else route.searchParams.delete('signin');
+   const state={...history.state};delete state.oparaxEmailLink;
+   if(verification)state.oparaxEmailLink=verification;
+   history.replaceState(state,'',route.pathname+route.search);
+   setSignInRoute(signin);setPendingLink(verification);
+ }
+ function restoreDestination(){
+   try{
+     const savedSettings=JSON.parse(localStorage.getItem(settingsHint)||'null');localStorage.removeItem(settingsHint);
+     const until=Number(localStorage.getItem(returnHint));localStorage.removeItem(returnHint);
+     const savedAgent=JSON.parse(localStorage.getItem(agentHint)||'null');localStorage.removeItem(agentHint);
+     if(location.pathname==='/'&&savedAgent?.until>Date.now()&&savedAgent.id===newThread){
+       P('Agents');S(newThread);history.replaceState(null,'','/?new=1');
+     }else if(location.pathname==='/'&&savedAgent?.until>Date.now()&&typeof savedAgent.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedAgent.id)){
+       P('Agents');S(savedAgent.id);history.replaceState(null,'','/research?agent='+savedAgent.id);
+     }else if(location.pathname==='/'&&savedSettings?.until>Date.now()&&['Business memory','Skills & connections'].includes(savedSettings.page)){
+       const id=savedSettings.page==='Skills & connections'&&typeof savedSettings.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedSettings.id)?savedSettings.id:null;
+       P(savedSettings.page);setSkillId(id);history.replaceState(null,'',viewLinks[savedSettings.page]+(id?'&agent='+id:''));
+     }else if(location.pathname==='/'&&until>Date.now()){
+       P('Prospects');history.replaceState(null,'','/prospects');
+     }
+   }catch{}
+ }
+ async function openSession(current){
+   session(current);
+   await load(current);
+ }
+ async function handleInvalidLink(message){
+   setLinkRoute(true);E(message);
+   let previous;
+   try{previous=JSON.parse(sessionStorage.getItem('oparax.sales.session')||'null')}catch{}
+   if(!previous)return;
+   try{
+     session(previous);
+     const desk=await load(previous);
+     if(desk){setLinkRoute(false);E('');N('That link could not be used. You are signed in as '+desk.userEmail+'.');}
+   }catch(error){
+     E(activeSession.current?error.message:message);
+   }
+ }
+ async function confirmLink(){
+   if(verifying.current||!pendingLink)return;
+   verifying.current=true;B(true);E('');
+   try{
+     let result;
+     try{
+       result=await fetch(url+'/auth/v1/verify',{method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},body:JSON.stringify(pendingLink)});
+     }catch{throw Error('Could not reach the sign-in service. Check your connection and try again.')}
+     const value=await result.json().catch(()=>({}));
+     if(!result.ok){
+       const failure=verificationFailure(result.status,value.error_code||value.code);
+       if(failure.retryable)throw Error(failure.message);
+       await handleInvalidLink(failure.message);return;
+     }
+     if(!value.access_token||!value.refresh_token){
+       await handleInvalidLink('The sign-in service returned an incomplete session. Request a new link below.');return;
+     }
+     setLinkRoute(false);restoreDestination();
+     await openSession({access:value.access_token,refresh:value.refresh_token,expires:Date.now()+Number(value.expires_in||3600)*1000});
+   }catch(error){E(error.message)}finally{verifying.current=false;B(false)}
+ }
  useEffect(()=>{
    if(preview||started.current)return;
    started.current=true;
    (async()=>{
      try {
        const callback=loginCallback(location.search,location.hash);
-       let current;
-       if(callback.error||callback.session||callback.verification) {
-         history.replaceState(null,'',location.pathname+(location.pathname==='/research'&&initialAgentId?'?agent='+encodeURIComponent(initialAgentId):''));
-         if(callback.error)throw Error(callback.error);
-         current=callback.session;
-         if(callback.verification) {
-           const result=await fetch(url+'/auth/v1/verify',{
-             method:'POST',headers:{apikey:anon,'Content-Type':'application/json'},
-             body:JSON.stringify(callback.verification)
-           });
-           const v=await result.json();
-           if(!result.ok||!v.access_token||!v.refresh_token)throw Error('This email link is invalid or has expired. Request a fresh link below.');
-           current={access:v.access_token,refresh:v.refresh_token,expires:Date.now()+Number(v.expires_in||3600)*1000};
-         }
-         try{
-           const savedSettings=JSON.parse(localStorage.getItem(settingsHint)||'null');localStorage.removeItem(settingsHint);
-           const until=Number(localStorage.getItem(returnHint));localStorage.removeItem(returnHint);
-           const savedAgent=JSON.parse(localStorage.getItem(agentHint)||'null');localStorage.removeItem(agentHint);
-           if(location.pathname==='/'&&savedAgent?.until>Date.now()&&savedAgent.id===newThread){
-             P('Agents');S(newThread);history.replaceState(null,'','/?new=1');
-           }else if(location.pathname==='/'&&savedAgent?.until>Date.now()&&typeof savedAgent.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedAgent.id)){
-             P('Agents');S(savedAgent.id);history.replaceState(null,'','/research?agent='+savedAgent.id);
-           }else if(location.pathname==='/'&&savedSettings?.until>Date.now()&&['Business memory','Skills & connections'].includes(savedSettings.page)){
-             const id=savedSettings.page==='Skills & connections'&&typeof savedSettings.id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(savedSettings.id)?savedSettings.id:null;
-             P(savedSettings.page);setSkillId(id);history.replaceState(null,'',viewLinks[savedSettings.page]+(id?'&agent='+id:''));
-           }else if(location.pathname==='/'&&until>Date.now()){
-             P('Prospects');history.replaceState(null,'','/prospects');
-           }
-         }catch{}
-       } else {
-         current=JSON.parse(sessionStorage.getItem('oparax.sales.session')||'null');
+       if(callback.error){await handleInvalidLink(callback.error);return;}
+       if(callback.session){setLinkRoute(false);restoreDestination();await openSession(callback.session);return;}
+       if(callback.verification){setLinkRoute(true,callback.verification);return;}
+       if(new URLSearchParams(location.search).get('signin')==='1'){
+         setSignInRoute(true);
+         if(history.state?.oparaxEmailLink){setPendingLink(history.state.oparaxEmailLink);return;}
        }
-       if(current){session(current);await load(current);}
+       const previous=JSON.parse(sessionStorage.getItem('oparax.sales.session')||'null');
+       if(previous)await openSession(previous);
      } catch(error){E(error.message);} finally {R(true);}
    })();
  },[preview,url,anon]);
+ useEffect(()=>{
+   if(preview)return;
+   function reopenEmailLink(){
+     const callback=loginCallback('',location.hash);
+     if(callback.error||callback.session||callback.verification)location.reload();
+   }
+   window.addEventListener('hashchange',reopenEmailLink);
+   return ()=>window.removeEventListener('hashchange',reopenEmailLink);
+ },[preview]);
  const displayedBot=sel?d?.bots.find(bot=>bot.id===sel):d?.bots[0];
  const unconfirmed=page==='Agents'&&displayedBot?.chatTurn?.status==='unconfirmed'?displayedBot.chatTurn.requestId:null;
  useEffect(()=>{
@@ -225,7 +291,7 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
    if(requesting.current)return;
    requesting.current=true;
    const email=String(new FormData(e.currentTarget).get('email')||'').trim();
-   B(true);E('');Y(false);
+   B(true);E('');N('');setSignInRoute(true);
    try {
      try {
        const target=currentRoute();
@@ -239,13 +305,23 @@ export default function Workspace({url,anon,preview = null,initialPage = 'Agents
      }catch{}
      const response=await fetch('/api/signin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
      const result=await response.json();
-     if(!response.ok)throw Error(result.error);
-     Y(email);
+     const retryAfter=Number(result.retryAfterSeconds)||0;
+     if(!response.ok){
+       if(retryAfter)Y({email,delivery:'limited',retryAt:Date.now()+retryAfter*1000});
+       throw Error(result.error||'Could not send the email. Try again.');
+     }
+     Y({email,delivery:result.delivery||'sent',retryAt:Date.now()+retryAfter*1000});
    } catch(error){E(error.message);} finally{requesting.current=false;B(false);}
  }
  function logout(){if(auth)fetch(url+'/auth/v1/logout',{method:'POST',headers:{apikey:anon,Authorization:'Bearer '+auth.access}}).catch(()=>{});session(null);D(null);Y(false);E('')}
+ async function retryWorkspace(){
+   B(true);E('');
+   try{await load(auth)}catch(error){E(error.message)}finally{B(false)}
+ }
  const notice=err?<p role="alert" className="error">{err}</p>:msg?<p role="status" className="notice">{msg}</p>:null;
- if(!d)return <AgentEntry busy={busy} ready={ready} sent={sent} notice={notice} auth={auth} login={login} logout={logout} initialPage={initialAgentId?'Research':page}/>;
+ if(!d)return <AgentEntry busy={busy} ready={ready} sent={sent} notice={notice} auth={auth} login={login} logout={logout}
+   initialPage={initialAgentId?'Research':page} signInRoute={signInRoute} pendingLink={!!pendingLink} confirmLink={confirmLink}
+   requestNewLink={()=>{setLinkRoute(true);E('')}} retryWorkspace={retryWorkspace}/>;
  const publishedLeads=preview?d.leads:d.leads.filter(isPublishedProspect);
  const b=sel===newThread?null:sel?d.bots.find(x=>x.id===sel):d.bots[0];
  const l=publishedLeads.find(x=>x.id===draftId);

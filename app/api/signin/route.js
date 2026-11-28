@@ -1,6 +1,9 @@
 import {createHash} from 'node:crypto';
 import {dbUrl,pubKey,rpc,Fault,failure} from '../../../lib/store.mjs';
 
+// outreach_signin_claim holds an address for up to one minute after an accepted request.
+const resendWindowSeconds = 60;
+
 export async function POST(req) {
   try {
     const input = await req.json().catch(() => null);
@@ -10,7 +13,9 @@ export async function POST(req) {
     }
     const digest = createHash('sha256').update(email).digest('hex');
     const claim = await rpc('outreach_signin_claim', {digest});
-    if (claim === 'accepted') return Response.json({ok:true});
+    if (claim === 'accepted') {
+      return Response.json({ok:true,delivery:'recent',retryAfterSeconds:resendWindowSeconds});
+    }
     if (claim !== 'claimed') throw new Fault('A sign-in request is already in progress. Check your email in a moment.',429);
     let accepted = false;
     try {
@@ -23,7 +28,14 @@ export async function POST(req) {
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         console.warn('Sign-in email request failed',response.status,String(error.code||'unknown').slice(0,80));
-        if (response.status === 429) throw new Fault('Too many sign-in requests. Please wait before requesting a new link.',429);
+        if (response.status === 429) {
+          const retryAfter=response.headers.get('Retry-After');
+          const retryAfterSeconds=retryAfter && /^\d+$/.test(retryAfter) ? Number(retryAfter) : resendWindowSeconds;
+          return Response.json({
+            error:'Too many sign-in requests. Please wait before requesting a new link.',
+            retryAfterSeconds
+          },{status:429,headers:{'Retry-After':String(retryAfterSeconds)}});
+        }
         if (error.code === 'email_address_invalid') throw new Fault('Check the spelling of the email address.');
         throw new Fault('The email provider could not accept the request. Try again shortly.',503);
       }
@@ -31,6 +43,6 @@ export async function POST(req) {
     } finally {
       await rpc('outreach_signin_finish',{digest,ok:accepted});
     }
-    return Response.json({ok:true});
+    return Response.json({ok:true,delivery:'sent',retryAfterSeconds:resendWindowSeconds});
   } catch (error) {return failure(error);}
 }

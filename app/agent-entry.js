@@ -4,6 +4,7 @@ import './agent-entry.css';
 
 const draftKey='oparax.sales.signinBrief';
 const sessionWindow=60*60*1000;
+const emailDraftKey='oparax.sales.signinEmail';
 const examples=[
   ['Find buyers','Find 50 footwear buyers at UK retailers. Verify each person’s current employer and LinkedIn profile.'],
   ['Research an account','Find the people responsible for buying leather at Barbour. Show me the sources for each match.']
@@ -24,21 +25,31 @@ export function getPendingBrief(email){
   }catch{return '';}
 }
 function bindBrief(text,email){
-  clearPendingBrief();
-  if(!text.trim())return;
+  if(!text.trim()){getPendingBrief(email);return;}
   try{localStorage.setItem(draftKey,JSON.stringify({text:text.trim(),email:emailKey(email),expires:Date.now()+sessionWindow}));}catch{}
 }
 function Arrow(){return <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>;}
 
-export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,initialPage}){
+export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,initialPage,signInRoute,pendingLink,confirmLink,requestNewLink,retryWorkspace}){
   const direct=['Prospects','Research','Business memory','Skills & connections'].includes(initialPage);
   const [step,setStep]=useState(direct?'signin':'brief');
   useEffect(()=>{if(direct)setStep('signin')},[direct]);
   const [brief,setBrief]=useState('');
   const input=useRef(null);
-  const signin=step==='signin'||sent||auth;
+  const [email,setEmail]=useState(''),[wait,setWait]=useState(0);
+  useEffect(()=>{try{setEmail(sessionStorage.getItem(emailDraftKey)||'')}catch{}},[]);
+  useEffect(()=>{
+    if(!sent?.retryAt||emailKey(email)!==emailKey(sent.email)){setWait(0);return;}
+    const update=()=>setWait(Math.max(0,Math.ceil((sent.retryAt-Date.now())/1000)));
+    update();
+    const timer=setInterval(()=>{update();if(Date.now()>=sent.retryAt)clearInterval(timer)},1000);
+    return ()=>clearInterval(timer);
+  },[sent,email]);
+  const signin=step==='signin'||signInRoute||sent||auth||pendingLink;
+  const delivered=sent&&sent.delivery!=='limited';
   function submitEmail(event){
-    bindBrief(brief,new FormData(event.currentTarget).get('email'));
+    try{sessionStorage.setItem(emailDraftKey,email.trim())}catch{}
+    bindBrief(brief,email);
     return login(event);
   }
   function start(event){
@@ -48,21 +59,27 @@ export default function AgentEntry({busy,ready,sent,notice,auth,login,logout,ini
   }
   return <main className="agent-entry">
     <header className="ae-nav"><a className="brand" href="/" aria-label="Oparax home"><span className="mark" aria-hidden="true"/>Oparax</a>
-      {!signin&&<button className="ae-signin" onClick={()=>setStep('signin')}>Sign in <Arrow/></button>}
+      {ready&&!signin&&<button className="ae-signin" onClick={()=>setStep('signin')}>Sign in <Arrow/></button>}
     </header>
     <section className="ae-stage">
-      {signin?<div className="ae-card ae-auth">
+      {!ready?<div className="ae-card ae-auth" role="status"><h1>Opening Oparax…</h1></div>:signin?<div className="ae-card ae-auth">
         <span className="ae-caption">OPARAX SALES BOTS</span>
-        <h1>{sent?'Check your email.':auth?'Opening your workspace…':initialPage==='Prospects'?'Open your prospects.':'Open your workspace.'}</h1>
-        {auth?<>{notice}<button type="button" onClick={logout}>Switch account</button></>:<>
-          <p className="ae-desc">{sent?<>A sign-in link was requested for <strong>{sent}</strong>. Check your inbox and spam folder.</>:brief.trim()?'Sign in to take this brief into your workspace.':'Sign up or sign in with any email address.'}</p>
+        <h1>{pendingLink?'Confirm sign-in.':delivered?'Check your email.':auth?'Opening your workspace…':initialPage==='Prospects'?'Open your prospects.':'Open your workspace.'}</h1>
+        {pendingLink?<div className="ae-form">
+          <p className="ae-desc">Continue to sign in to Oparax with this email link.</p>
+          {notice}
+          <button className="ae-submit primary" type="button" disabled={busy||!ready} onClick={confirmLink}>{busy?'Signing in…':'Continue to workspace'} <Arrow/></button>
+          <button className="ae-link" type="button" disabled={busy} onClick={requestNewLink}>Request a new link</button>
+        </div>:auth?<>{notice}{notice&&<button type="button" disabled={busy} onClick={retryWorkspace}>Retry opening workspace</button>}<button type="button" disabled={busy} onClick={logout}>Switch account</button></>:<>
+          <p className="ae-desc">{delivered?<>{sent.delivery==='recent'?'A sign-in email was already requested for ':'We sent a sign-in link to '}<strong>{sent.email}</strong>. Open the latest email in your inbox or spam folder.</>:brief.trim()?'Sign in to take this brief into your workspace.':'Enter your email to sign in to Oparax.'}</p>
+          {notice}
           {brief.trim()&&!sent&&<blockquote className="ae-quote">{brief}</blockquote>}
           <form onSubmit={submitEmail} className="ae-form">
             <label htmlFor="ae-email">Email address</label>
-            <input id="ae-email" type="email" name="email" autoComplete="email" required placeholder="you@example.com" />
-            <button className="ae-submit primary" disabled={busy||!ready}>{busy?'Sending…':sent?'Send another link':'Email me a sign-in link'} <Arrow/></button>
-          </form>{notice}
-          {!sent&&!direct&&<button type="button" className="ae-link" onClick={()=>setStep('brief')}>{brief.trim()?'Edit your brief':'Write a brief'}</button>}
+            <input id="ae-email" type="email" name="email" autoComplete="email" value={email} onChange={event=>setEmail(event.target.value)} required placeholder="you@example.com" />
+            <button className="ae-submit primary" disabled={busy||!ready||wait>0}>{busy?'Sending…':wait?'Request again in '+wait+'s':delivered?'Send another link':'Email me a sign-in link'} <Arrow/></button>
+          </form>
+          {!sent&&!direct&&!signInRoute&&<button type="button" className="ae-link" onClick={()=>setStep('brief')}>{brief.trim()?'Edit your brief':'Write a brief'}</button>}
         </>}
       </div>:<div className="ae-card">
         <span className="ae-caption"><span aria-hidden="true" className="ae-beacon"/>SALES BOTS</span>
