@@ -4,6 +4,7 @@ import ResearchFeed from './research-feed';
 import BotModel from './bot-model';
 import {MODEL_CHOICES} from '../lib/agent-models.mjs';
 import {ChatComposer,EveActivity} from './eve-chat';
+import {chatStatus,conversationRows} from './eve-result.mjs';
 import {ResearchOutcome,researchCeiling,verifiedCount} from './research-outcome';
 import AgentComputer from './agent-computer';
 import SendDraft from './send-draft';
@@ -24,7 +25,9 @@ export function providerBusy(agent){
   return Object.values(agent?.sourceStates||{}).some(row=>['queued','working','running','searching','verifying'].includes(row?.status));
 }
 const stateDescriptions={web:'Public-source research',linkedin:'Select people in your agent computer',sales_navigator:'Select leads in your agent computer',rocketreach:'A connected RocketReach account is required',email:'An approved mailbox scope is required'};
-export function agentState(agent){
+export function agentState(agent,chat){
+  const turn=chatStatus(agent?.chatTurn,chat);
+  if(turn)return turn;
   const phase=agent?.researchJob?.status||agent?.lastRun?.status;
   if(agent?.searchGate?.status==='awaiting_source')return {label:'Choose a search source',tone:'attention'};
   if(providerBusy(agent)||agent?.researchRequestedAt||agent?.lease&&Date.parse(agent.lease.until)>Date.now()||['queued','running','continuing'].includes(phase))return {label:'Working',tone:'working'};
@@ -47,13 +50,13 @@ function Message({message,name}){
     {!legacyCopy&&<p>{message.content}</p>}{draft&&<div className="thread-draft"><strong>Draft for {draft.person}</strong>{draft.to&&<p>To · {draft.to}</p>}{draft.senderEmail&&<p>From · {draft.senderEmail}</p>}{draft.body&&<section><small>Email</small>{draft.subject&&<p><strong>{draft.subject}</strong></p>}<p>{draft.body}</p></section>}{draft.linkedin&&<section><small>LinkedIn</small><p>{draft.linkedin}</p></section>}</div>}{delivery&&<div className="thread-delivery"><strong>{({sent:'Accepted by sender',sending:'Sending',needs_review:'Delivery needs review',rejected:'Send rejected'})[delivery.status]||'Delivery receipt'}</strong><p>{[delivery.provider,delivery.from&&'From '+delivery.from,delivery.to&&'To '+delivery.to].filter(Boolean).join(' · ')}</p>{delivery.providerId&&<small>Receipt {delivery.providerId}</small>}</div>}</div>
   </article>;
 }
-export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource,onTeach,onRetryTurn,startingName='',startingModel='auto',stream}){
+export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onSend,getToken,onShowProspects,showActivity,tools,initialDraft='',onClearDraft,onImport,workspace,onAction,onOpen,onRefresh,managedRequest,onFindEmail,onManageSource,onTeach,onRetryTurn,startingName='',startingModel='auto',stream,deliveryError}){
   const [chosenModel,setChosenModel]=useState(startingModel||'auto');
   const [botName,setBotName]=useState(startingName||''),[panels,setPanels]=useState({});
   const [personId,setPersonId]=useState(null),[chooseSource,setChooseSource]=useState(false);
   const [value,setValue]=useState(initialDraft),[pending,setPending]=useState(''),[activity,setActivity]=useState(!!showActivity||(!isDemo&&agentState(agent).tone==='working')),[settings,setSettings]=useState(false);
   const scroller=useRef(null),field=useRef(null),follow=useRef(true),request=useRef(null),sending=useRef(false);
-  const name=agent?.name||'New bot',state=agentState(agent),job=agent?.researchJob,run=agent?.lastRun;
+  const name=agent?.name||'New bot',state=agentState(agent,{snapshot:stream,pending,deliveryError}),job=agent?.researchJob,run=agent?.lastRun;
   const sources=selectedSearchSources(agent),sourceKey=sources.join(',');
   const sourcePending=!!agent&&!sources.length&&!!(agent.searchGate?.status==='awaiting_source'||run?.status==='failed'||job?.status==='failed'||messages.some(m=>m.role==='assistant'&&m.details?.type==='sourceChoice'));
   const showSources=!!agent&&(sourcePending||chooseSource);
@@ -80,7 +83,8 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   const question=run?.question,failed=job?.status==='failed'||run?.status==='failed';
   const lastWorking=useRef(webWorking);
   useEffect(()=>{if(webWorking&&!lastWorking.current)setActivity(true);lastWorking.current=webWorking},[webWorking]);
-  const showBrief=agent?.brief&&!messages.some(m=>m.role==='user'&&m.content.trim()===agent.brief.trim());
+  const rows=conversationRows(messages,agent?.chatTurn,pending);
+  const showBrief=agent?.brief&&!rows.some(m=>m.role==='user'&&m.content.trim()===agent.brief.trim());
   useEffect(()=>{if(showActivity&&!sourcePending){setActivity(true);requestAnimationFrame(()=>document.getElementById('thread-activity-panel')?.scrollIntoView({block:'nearest'}))}},[showActivity,sourcePending]);
   useEffect(()=>{const el=scroller.current;if(el&&follow.current&&!showActivity&&!sourcePending)el.scrollTop=el.scrollHeight},[agent?.id,messages.length,pending,leads.length,showActivity,sourcePending,stream?.status,agent?.chatTurn?.status]);
   useEffect(()=>{
@@ -98,8 +102,8 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
   async function send(input,selected){
     const message=String(input??value).trim();if(!message||sending.current||busy)return;
     if(!request.current||request.current.message!==message||request.current.selection!==selected?.join(',')||request.current.name!==botName||request.current.model!==chosenModel)request.current={message,selection:selected?.join(','),name:botName,model:chosenModel,id:crypto.randomUUID()};
-    sending.current=true;setPending(message);setValue(message);follow.current=true;
-    try{if(await onSend(message,request.current.id,selected,agent?undefined:botName.trim(),agent?undefined:chosenModel)){request.current=null;setValue('');setChooseSource(false)}}finally{sending.current=false;setPending('')}
+    sending.current=true;setPending({message,requestId:request.current.id});setValue('');follow.current=true;
+    try{if(await onSend(message,request.current.id,selected,agent?undefined:botName.trim(),agent?undefined:chosenModel)){request.current=null;setChooseSource(false)}else{setValue(message)}}finally{sending.current=false;setPending('')}
   }
   const actions=agent?[
     {label:isDemo?'Run sample research':failed?'Retry research':'Find prospects',message:isDemo?'Run sample research for this brief.':failed?'Retry this research run.':'Research this brief and find verified prospects.'},
@@ -125,9 +129,8 @@ export default function AgentThread({agent,messages,leads,isDemo,busy,notice,onS
 
         <div className="thread-messages" aria-label="Conversation">
           {showBrief&&<article className="thread-brief"><small>Research brief</small><p>{agent.brief}</p></article>}
-          {messages.map(m=>{const person=['prospectDraft','sendReview'].includes(m.details?.type)&&leads.find(l=>l.id===m.details.prospectId);const records=person?.reviewDrafts?.filter(item=>item.botId===agent.id)||[];const referenced=m.details?.draftId||m.details?.requestId||m.details?.id;const matching=referenced?records.filter(item=>item.id===referenced):records.filter(item=>item.channel===m.details?.channel&&item.body===m.details?.body&&item.linkedin===m.details?.linkedin&&item.subject===m.details?.subject);const draft=matching.length===1?matching[0]:null;return <div key={m.id}><Message message={m} name={name}/>{person&&draft&&m.details?.requiresConfirmation!==false&&<SendDraft agent={agent} lead={person} draft={draft} workspace={workspace} getToken={getToken} onRefresh={onRefresh} onOpen={onOpen} onFindEmail={onFindEmail} preview={isDemo}/>}</div>})}
-          {pending&&!messages.slice(-1).some(m=>m.role==='user'&&m.content===pending)&&<Message message={{role:'user',content:pending}} name={name}/>}
-          {!isDemo&&<EveActivity snapshot={stream} turn={agent?.chatTurn} pending={pending} messages={messages} onRetry={onRetryTurn} canManageBudget={workspace?.canManageModelBudget===true}/>}
+          {rows.map(m=>{const person=['prospectDraft','sendReview'].includes(m.details?.type)&&leads.find(l=>l.id===m.details.prospectId);const records=person?.reviewDrafts?.filter(item=>item.botId===agent.id)||[];const referenced=m.details?.draftId||m.details?.requestId||m.details?.id;const matching=referenced?records.filter(item=>item.id===referenced):records.filter(item=>item.channel===m.details?.channel&&item.body===m.details?.body&&item.linkedin===m.details?.linkedin&&item.subject===m.details?.subject);const draft=matching.length===1?matching[0]:null;return <div key={m.id}><Message message={m} name={name}/>{person&&draft&&m.details?.requiresConfirmation!==false&&<SendDraft agent={agent} lead={person} draft={draft} workspace={workspace} getToken={getToken} onRefresh={onRefresh} onOpen={onOpen} onFindEmail={onFindEmail} preview={isDemo}/>}</div>})}
+          {!isDemo&&<EveActivity snapshot={stream} turn={agent?.chatTurn} pending={pending} deliveryError={deliveryError} onRetry={onRetryTurn} canManageBudget={workspace?.canManageModelBudget===true}/>}
         </div>
 
         {agent&&!!sources.length&&<section className="source-readiness" aria-label="Selected research sources">
